@@ -13,6 +13,21 @@ dist-ssr
 artifacts
 *.zip
 *.local
+*.sqlite
+*.sqlite3
+*.db
+
+# Local drafts, external references, and other non-canonical working material
+data/draft/
+data/reference/
+data/local/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 
 # Editor directories and files
 .vscode/*

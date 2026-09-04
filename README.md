@@ -84,6 +84,8 @@ Do not commit:
 
 Reformatting, combining, paraphrasing, or translating third-party material does not automatically remove its original license or terms.
 
+For the detailed storage boundaries and external-material review record, see [`docs/repository-structure.md`](docs/repository-structure.md) and [`docs/data-policy.md`](docs/data-policy.md).
+
 ## Development strategy
 
 Typewriter is intentionally developed in stages.
