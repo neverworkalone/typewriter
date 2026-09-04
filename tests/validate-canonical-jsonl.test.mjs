@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
-import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  copyFile,
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -24,9 +31,27 @@ const VALIDATOR_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'scripts/validate/canonical-jsonl.mjs',
 );
-const CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
-const DATA_DIRECTORY = path.dirname(CANONICAL_DIRECTORY);
 const execFile = promisify(execFileCallback);
+const MALFORMED_SECOND_ROW = Buffer.concat([
+  Buffer.from('{"lemma":"첫 행"}\n'),
+  Buffer.from([
+    0x7b,
+    0x22,
+    0x6c,
+    0x65,
+    0x6d,
+    0x6d,
+    0x61,
+    0x22,
+    0x3a,
+    0x22,
+    0xec,
+    0x28,
+    0x22,
+    0x7d,
+  ]),
+]);
+const PREEXISTING_CANONICAL = Buffer.from('{"lemma":"기존"}\n');
 
 test('validates JSONL syntax and accepts one final newline', async () => {
   const summary = await validateCanonicalDirectory(
@@ -64,37 +89,14 @@ test('rejects blank rows with their 1-based line number', async () => {
   );
 });
 
-test('rejects invalid UTF-8 with the file path', async () => {
+test('rejects invalid UTF-8 with the file path and line number', async () => {
   const temporaryDirectory = await mkdtemp(
     path.join(tmpdir(), 'typewriter-validator-'),
   );
   const fixturePath = path.join(temporaryDirectory, 'invalid-utf8.jsonl');
-  const malformedBytes = Buffer.from([
-    0x7b,
-    0x22,
-    0x6c,
-    0x65,
-    0x6d,
-    0x6d,
-    0x61,
-    0x22,
-    0x3a,
-    0x22,
-    0xec,
-    0x28,
-    0x22,
-    0x7d,
-  ]);
-  const malformedSecondRow = Buffer.concat([
-    Buffer.from('{"lemma":"첫 행"}\n'),
-    malformedBytes,
-  ]);
-  let dataDirectoryExisted = false;
-  let canonicalDirectoryExisted = false;
-  let cliFixturePath;
 
   try {
-    await writeFile(fixturePath, malformedSecondRow);
+    await writeFile(fixturePath, MALFORMED_SECOND_ROW);
 
     await assert.rejects(
       validateCanonicalDirectory(temporaryDirectory),
@@ -108,43 +110,60 @@ test('rejects invalid UTF-8 with the file path', async () => {
         return true;
       },
     );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
 
-    dataDirectoryExisted = await directoryExists(DATA_DIRECTORY);
-    canonicalDirectoryExisted = await directoryExists(CANONICAL_DIRECTORY);
-    cliFixturePath = path.join(
-      CANONICAL_DIRECTORY,
-      `.validator-invalid-utf8-${process.pid}.jsonl`,
+test('real CLI preserves pre-existing canonical data on success and failure', async () => {
+  const passingRepository = await createDisposableCliRepository({
+    'preexisting.jsonl': PREEXISTING_CANONICAL,
+  });
+  const failingRepository = await createDisposableCliRepository({
+    'preexisting.jsonl': PREEXISTING_CANONICAL,
+    'invalid-utf8.jsonl': MALFORMED_SECOND_ROW,
+  });
+
+  try {
+    const passingResult = await execFile(
+      process.execPath,
+      [passingRepository.validatorPath],
+      { cwd: passingRepository.repositoryPath },
+    );
+    assert.match(passingResult.stdout, /Validated 1 canonical JSONL file/);
+    assert.deepEqual(
+      await readFile(passingRepository.preexistingPath),
+      PREEXISTING_CANONICAL,
     );
 
-    await mkdir(CANONICAL_DIRECTORY, { recursive: true });
-    await writeFile(cliFixturePath, malformedSecondRow);
-
     await assert.rejects(
-      execFile(process.execPath, [VALIDATOR_PATH], {
-        cwd: REPOSITORY_DIRECTORY,
-      }),
+      execFile(
+        process.execPath,
+        [failingRepository.validatorPath],
+        { cwd: failingRepository.repositoryPath },
+      ),
       (error) => {
         assert.equal(error.code, 1);
         assert.match(
           error.stderr,
-          new RegExp(
-            `canonical/\\.validator-invalid-utf8-${process.pid}\\.jsonl:2: invalid UTF-8 encoding`,
-          ),
+          /data\/canonical\/invalid-utf8\.jsonl:2: invalid UTF-8 encoding/,
         );
         return true;
       },
     );
+    assert.deepEqual(
+      await readFile(failingRepository.preexistingPath),
+      PREEXISTING_CANONICAL,
+    );
   } finally {
-    if (cliFixturePath) {
-      await rm(cliFixturePath, { force: true });
-    }
-    if (!canonicalDirectoryExisted) {
-      await rm(CANONICAL_DIRECTORY, { recursive: true, force: true });
-    }
-    if (!dataDirectoryExisted) {
-      await rm(DATA_DIRECTORY, { recursive: true, force: true });
-    }
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await rm(passingRepository.repositoryPath, {
+      recursive: true,
+      force: true,
+    });
+    await rm(failingRepository.repositoryPath, {
+      recursive: true,
+      force: true,
+    });
   }
 });
 
@@ -165,13 +184,32 @@ test('reports an initial empty canonical directory without claiming completeness
   }
 });
 
-async function directoryExists(directory) {
+async function createDisposableCliRepository(files) {
+  const repositoryPath = await mkdtemp(
+    path.join(tmpdir(), 'typewriter-cli-'),
+  );
+  const validatorPath = path.join(
+    repositoryPath,
+    'scripts/validate/canonical-jsonl.mjs',
+  );
+  const canonicalDirectory = path.join(repositoryPath, 'data/canonical');
+
   try {
-    return (await stat(directory)).isDirectory();
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return false;
+    await mkdir(path.dirname(validatorPath), { recursive: true });
+    await mkdir(canonicalDirectory, { recursive: true });
+    await copyFile(VALIDATOR_PATH, validatorPath);
+
+    for (const [filename, contents] of Object.entries(files)) {
+      await writeFile(path.join(canonicalDirectory, filename), contents);
     }
+
+    return {
+      repositoryPath,
+      validatorPath,
+      preexistingPath: path.join(canonicalDirectory, 'preexisting.jsonl'),
+    };
+  } catch (error) {
+    await rm(repositoryPath, { recursive: true, force: true });
     throw error;
   }
 }
