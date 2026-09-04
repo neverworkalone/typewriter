@@ -127,6 +127,8 @@ Implementation work must follow [`AGENTS.md`](AGENTS.md).
 
 Pull-request reviews must follow [`REVIEW.md`](REVIEW.md).
 
+Local validation commands and the CI workflow are documented in [`docs/development.md`](docs/development.md).
+
 ## Status
 
 Typewriter is in early development.
