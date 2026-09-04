@@ -45,33 +45,55 @@ async function collectJsonlFiles(directory) {
   return files;
 }
 
+function splitByteLines(bytes) {
+  if (bytes.length === 0) {
+    return [];
+  }
+
+  const lines = [];
+  let lineStart = 0;
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    if (bytes[index] === 0x0a) {
+      lines.push(bytes.subarray(lineStart, index));
+      lineStart = index + 1;
+    }
+  }
+
+  // A single final LF terminates the last JSON value; it is not an extra row.
+  if (lineStart < bytes.length) {
+    lines.push(bytes.subarray(lineStart));
+  }
+
+  return lines;
+}
+
 async function validateJsonlFile(filePath) {
   const bytes = await readFile(filePath);
-  let contents;
-
-  try {
-    contents = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch (error) {
-    throw new ValidationError(
-      `${displayPath(filePath)}: invalid UTF-8 encoding (${error.message})`,
-      'INVALID_UTF8',
-    );
-  }
+  const byteLines = splitByteLines(bytes);
 
   // An empty file is allowed while the canonical dataset is being bootstrapped.
   // A blank row inside a non-empty file is rejected as a formatting error.
-  if (contents.length === 0) {
+  if (byteLines.length === 0) {
     return 0;
   }
 
-  const lines = contents.split('\n');
-  // A single final newline terminates the last JSON value; it is not an extra row.
-  if (contents.endsWith('\n')) {
-    lines.pop();
-  }
-
-  for (const [index, rawLine] of lines.entries()) {
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  for (const [index, byteLine] of byteLines.entries()) {
     const lineNumber = index + 1;
+    let rawLine;
+
+    try {
+      // UTF-8 continuation bytes cannot contain LF, so decoding one LF-delimited
+      // slice preserves the row where the first malformed sequence occurs.
+      rawLine = decoder.decode(byteLine);
+    } catch (error) {
+      throw new ValidationError(
+        `${displayPath(filePath)}:${lineNumber}: invalid UTF-8 encoding (${error.message})`,
+        'INVALID_UTF8',
+      );
+    }
+
     const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
 
     if (line.trim().length === 0) {
@@ -91,7 +113,7 @@ async function validateJsonlFile(filePath) {
     }
   }
 
-  return lines.length;
+  return byteLines.length;
 }
 
 export async function validateCanonicalDirectory(directory = DEFAULT_CANONICAL_DIRECTORY) {
