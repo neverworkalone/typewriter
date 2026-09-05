@@ -1,4 +1,5 @@
 import sqlite3InitModule from './vendor/sqlite3.mjs';
+import { assertProofPayload } from './proof-contract.mjs';
 
 let proofPromise;
 
@@ -75,7 +76,7 @@ async function runProof() {
       throw new Error('packaged dictionary accepted or persisted a write');
     }
 
-    return {
+    const payload = {
       ok: true,
       sqlite_version: sqlite3.version.libVersion,
       database_bytes: bytes.byteLength,
@@ -86,6 +87,7 @@ async function runProof() {
       write_blocked: writeBlocked,
       persisted_write_count: persistedCount,
     };
+    return assertProofPayload(payload);
   } finally {
     database.close();
   }

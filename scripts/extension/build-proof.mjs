@@ -46,8 +46,10 @@ export async function buildProofPackage({
     'manifest.json',
     'proof.html',
     'proof.js',
+    'proof-contract.mjs',
     'sqlite-worker.mjs',
     'THIRD-PARTY-NOTICES.txt',
+    'Apache-2.0.txt',
   ]) {
     await cp(
       path.join(PROOF_SOURCE_DIRECTORY, filename),

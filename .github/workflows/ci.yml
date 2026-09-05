@@ -50,8 +50,5 @@ jobs:
       - name: Build MV3 proof package
         run: node scripts/extension/build-proof.mjs
 
-      - name: Run SQLite builder tests
-        run: node --test tests/build-dictionary.test.mjs
-
-      - name: Run reproducibility tests
-        run: node --test tests/reproducibility.test.mjs
+      - name: Run toolchain tests
+        run: node --test tests/*.test.mjs

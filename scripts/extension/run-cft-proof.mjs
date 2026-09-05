@@ -6,6 +6,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import { assertProofPayload } from '../../extension/mv3-proof/proof-contract.mjs';
+
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_EXTENSION_DIRECTORY = path.join(
@@ -311,14 +313,7 @@ export async function runCftProof({
         `MV3 proof made non-extension requests: ${JSON.stringify(nonExtensionRequests)}`,
       );
     }
-    if (
-      payload.write_blocked !== true
-      || payload.persisted_write_count !== 0
-    ) {
-      throw new Error(
-        `MV3 proof did not prove read-only behavior: ${JSON.stringify(payload)}`,
-      );
-    }
+    assertProofPayload(payload);
 
     return {
       extensionId,

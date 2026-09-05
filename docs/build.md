@@ -68,10 +68,12 @@ contract.
 `node scripts/extension/build-proof.mjs` assembles a self-contained extension
 directory at `dist/mv3-proof/`. It contains the generated `dictionary.sqlite`, the
 module worker, the proof page, and the pinned `@sqlite.org/sqlite-wasm` module plus
-WASM binary. The manifest has no permissions or host permissions. The worker fetches
-only the packaged database, deserializes it into an in-memory SQLite connection,
-enables `query_only`, runs exact lemma/search-form/relation lookups, and verifies that
-a write is rejected and not persisted.
+WASM binary. The manifest has no permissions, host permissions, or
+`web_accessible_resources`; an extension-origin worker can fetch its own packaged
+database without exposing it to web origins. The worker deserializes the database
+into an in-memory SQLite connection, enables `query_only`, runs exact
+lemma/search-form/relation lookups, and verifies that a write is rejected and not
+persisted.
 
 The proof runs in an action popup extension page (`proof.html`) that creates a
 dedicated module worker (`sqlite-worker.mjs`). It does not use a service worker or
@@ -94,7 +96,8 @@ The CFT runner discovers the unpacked extension ID through `chrome://extensions/
 opens `proof.html`, blocks ordinary network resolution, and fails if the proof page
 makes a non-extension request or if the read-only assertion fails. The current proof
 uses `@sqlite.org/sqlite-wasm` 3.53.0-build1 under its Apache-2.0 license; see
-`extension/mv3-proof/THIRD-PARTY-NOTICES.txt`.
+`extension/mv3-proof/THIRD-PARTY-NOTICES.txt` and the included full license copy
+`extension/mv3-proof/Apache-2.0.txt`.
 
 실제 검증 기록 (2026-09-05, Chrome for Testing 152.0.7977.76): unpacked MV3
 패키지가 로드됐고 `Proof passed`를 반환했다. 비확장 요청은 0건이었으며, SQLite
