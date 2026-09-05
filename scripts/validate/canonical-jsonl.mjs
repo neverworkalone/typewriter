@@ -339,6 +339,13 @@ export async function readCanonicalRecords(directory = DEFAULT_CANONICAL_DIRECTO
     }
 
     if (error.code === 'ENOTDIR') {
+      if (directory.endsWith('.jsonl')) {
+        return {
+          fileCount: 1,
+          records: await readJsonlFile(directory),
+        };
+      }
+
       throw new ValidationError(
         `${displayPath(directory)}: canonical input path is not a directory`,
         'INVALID_ROOT',
