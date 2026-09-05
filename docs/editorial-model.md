@@ -247,7 +247,7 @@ association으로 낮추거나 relation을 만들지 않았다.
 | w130 | included | start | 서늘해지고 잎이 물드는 `가을`을 빛바랜 색의 sensory로만 확장했다. |
 | w131 | included | start | 추운 `겨울`을 서늘함과 sensory, 긴 밤의 어둠과 scene으로 구분했다. |
 | w134 | included | start | 공기의 움직임인 바람과 소망의 바람을 두 sense로 나누고, 전자는 바다·온도와, 후자는 소원과 연결했다. |
-| w135 | included | start | 시야를 실제로 가리는 `안개`를 희미함과 near, 막막함과 mood로 구분했다. |
+| w135 | included | start | 시야를 실제로 가리는 `안개`를 희미함과 sensory, 막막함과 mood로 구분했다. |
 | w136 | included | start | 하늘의 물방울 덩어리인 `구름`을 빛을 가리는 sensory 장면으로만 기록했다. |
 | w138 | included | start | 약한 밤의 빛인 `달빛`을 빛과 sensory, 밤과 scene으로 연결했다. |
 | w139 | included | start | 먼 점광원인 `별빛`을 빛과 sensory, 밤과 scene으로 연결했다. |
@@ -333,6 +333,7 @@ association으로 낮추거나 relation을 만들지 않았다.
 | `w067-s1 → w066-s1` | 어둠에서 밝음으로 향하는 시각 축 `antonym`; 관계는 방향성을 가지므로 역행을 자동 생성하지 않음 |
 | `w046-s1 ↔ w047-s1` | 물체의 끝·모서리라는 물리 축끼리만 `antonym` |
 | `w046-s2 ↔ w047-s2` | 감각·반응의 예민함 축끼리만 `antonym`; `s1 ↔ s2` 교차 연결은 금지 |
+| `w135-s1 → w041-s1` | 안개가 시야를 흐리게 하는 감각 효과는 `sensory`; 기상 현상과 시각 성질을 `near`로 묶지 않음 |
 | `w070-s1`와 `w070-s2` | 색의 빛바램과 기억·감정의 빛바램을 별도 sense로 유지 |
 | `w075-s1`와 `w075-s2` | 물리 온도와 관계 분위기를 별도 sense로 유지 |
 | `w134-s1`와 `w134-s2` | 공기의 움직임과 소망을 별도 sense로 유지 |
@@ -372,8 +373,8 @@ node --test tests/validate-canonical-jsonl.test.mjs
 - 전체 194 records 중 `role: start` 160개와 `role: reference-only` 34개;
 - 160개 출발어의 `candidate_id`가 중복 없이 존재하고 #20 ledger 80개가 모두 수록됨;
 - 전체 234개 sense ID와 238개 relation target/target_sense가 존재하며 self-reference 없음;
-- relation type별 수량은 `direct` 17, `near` 36, `antonym` 31, `mood` 36,
-  `scene` 24, `sensory` 47, `action` 20, `association` 27;
+- relation type별 수량은 `direct` 17, `near` 35, `antonym` 31, `mood` 36,
+  `scene` 24, `sensory` 48, `action` 20, `association` 27;
 - #20 범주별 추가 수량은 E 12, Q 12, S 14, C 14, A 8, O 12, X 8로,
   행동에만 치우치지 않도록 구성했다.
 
