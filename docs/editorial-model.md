@@ -22,8 +22,9 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 | relation | 340 | 사람이 이 누적 배치에서 직접 판단해 남긴 관계 |
 | expression | 14 | start expression 13 + reference-only expression 1 |
 
-300개 전체 후보의 편집 완성은 M1의 범위다. SQLite, 정식 schema의 산출물,
-자동 의미 판정과 ranking은 여전히 M2 이후의 범위다. 미검수 초안이나 외부 원문은 저장하지 않았고, 아래의 gloss·관계
+300개 전체 후보의 편집 완성은 M1의 범위다. M2에서는 이 모델을 보존하는 정식
+schema·SQLite 산출물과 구조 검증을 구현했으며, 자동 의미 판정과 ranking은
+여전히 M3 이후의 범위다. 미검수 초안이나 외부 원문은 저장하지 않았고, 아래의 gloss·관계
 판단·문장 틀은 Typewriter가 이 배치를 위해 작성한 편집 기록이다.
 
 ## Editorial Model v1 확정 범위
@@ -946,12 +947,12 @@ M2는 v1의 의미를 추측하거나 자동으로 보정하지 않고, 저장·
   start 결과로 잘못 세지 않는지;
 - UI에서 같은 묶음으로 보이는 type도 canonical에서는 분리되어 있는지.
 
-### M2 이후로 명시적으로 보류할 것
+### M3 이후로 명시적으로 보류할 것
 
-정식 JSON Schema 파일의 세부 산출 형식, 형태론·자동 정규화 전체, relation
-ranking/점수, SQLite build, Chrome UI 변경, embedding·vector search와 5K
-확장은 이 v1의 acceptance에 포함하지 않는다. M2는 위 최소 경계를 구현한
-뒤 실제 검색 사용에서 드러난 반례가 있을 때만 필드를 늘린다.
+형태론·자동 의미 정규화 전체, relation ranking/점수, Chrome UI 변경,
+embedding·vector search와 5K 확장은 이 v1의 acceptance에 포함하지 않는다.
+M2의 정규화는 구조 보존과 기본값 처리만 담당하며, 실제 검색 사용에서 드러난
+반례가 있을 때만 canonical 필드를 늘린다.
 
 ## M1 대표 UI projection audit
 

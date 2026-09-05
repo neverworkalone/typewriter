@@ -12,6 +12,7 @@
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "build:proof": "node scripts/extension/build-proof.mjs",
     "test:mv3:chrome": "node scripts/extension/run-cft-proof.mjs",
+    "verify:m2": "node scripts/verify/m2-pipeline.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
