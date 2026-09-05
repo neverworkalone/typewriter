@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/canonical-record.schema.json",
+  "title": "Typewriter canonical record",
+  "description": "The minimal Editorial Model v1 shape for one canonical JSONL record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "record_type",
+    "role",
+    "lemma",
+    "search_forms",
+    "senses"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[wr][0-9]{3}$"
+    },
+    "record_type": {
+      "type": "string",
+      "enum": ["entry", "expression"]
+    },
+    "role": {
+      "type": "string",
+      "enum": ["start", "reference-only"]
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^w[0-9]{3}$"
+    },
+    "lemma": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "search_forms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "senses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/sense"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "record_type": {
+            "const": "entry"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "senses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pos": {
+                  "enum": ["noun", "adjective", "verb"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "record_type": {
+            "const": "expression"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "senses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pos": {
+                  "const": "expression"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sense": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pos", "gloss"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3}-s[1-9][0-9]*$"
+        },
+        "pos": {
+          "type": "string",
+          "enum": ["noun", "adjective", "verb", "expression"]
+        },
+        "gloss": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relation"
+          }
+        }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "type", "note"],
+      "properties": {
+        "target": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3}$"
+        },
+        "target_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3}-s[1-9][0-9]*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "direct",
+            "near",
+            "antonym",
+            "mood",
+            "scene",
+            "sensory",
+            "action",
+            "association"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    }
+  }
+}

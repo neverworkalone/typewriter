@@ -19,7 +19,9 @@ command. A missing canonical directory is an initial empty state: the command ex
 successfully and reports that it validated zero files and records; this is not a
 claim that the dictionary is complete.
 
-It validates UTF-8 decoding and JSON parsing only. Each non-empty line must contain
-one JSON value. A single final newline is allowed, while blank rows are rejected with
-the file path and 1-based line number. Lexical fields, parts of speech, relations,
-references, normalization, and SQLite building are outside this M0-2 command.
+It validates UTF-8 decoding, JSON parsing, and the row-level shape in
+`schema/canonical-record.schema.json`. Each non-empty line must contain one current
+Editorial Model v1 record. A single final newline is allowed, while blank rows and
+schema errors are rejected with the file path and 1-based line number. Cross-record
+references, relation ownership, dataset completeness, normalization, and SQLite
+building are handled by later M2 commands.
