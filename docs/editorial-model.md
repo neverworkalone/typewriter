@@ -1,11 +1,12 @@
-# M1 provisional Editorial Model — #18/#19/#20/#21/#22
+# Typewriter Editorial Model v1 — M1 pilot (#17–#23)
 
 ## 범위와 상태
 
 이 문서는 M1-2에서 처음 canonical에 넣은 대표 출발어 40개, M1-3에서
 추가한 **경계 사례 40개**, M1-4와 M1-5에서 각각 확장한 **추가 출발어 80개씩**, M1-6에서 완성한 **남은 출발어 60개**를 편집한 결정 기록이다. 정식 JSON Schema나 장기
-ontology가 아니다. 실제 검색과 다음 배치의 편집에서 문제가 드러나면 이
-모델을 다시 줄이거나 바꿀 수 있다.
+ontology를 미리 고정하는 문서는 아니다. 대신 M1 파일럿에서 실제로 확인한
+word·sense·expression·relation의 의미와 M2 인계 경계를 **Editorial Model v1**로
+확정한다. 실제 검색에서 반례가 발견되면 다음 버전에서 바꿀 수 있다.
 
 canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl)이다.
 이 누적 배치는 `docs/pilot-scope.md`의 대표 ID 40개, #19의 추가 경계 ID
@@ -21,9 +22,26 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 | relation | 340 | 사람이 이 누적 배치에서 직접 판단해 남긴 관계 |
 | expression | 14 | start expression 13 + reference-only expression 1 |
 
-300개 전체 후보의 편집 완성은 이 PR의 범위다. SQLite, 정식 schema, 자동
-의미 판정은 여전히 이 PR의 범위가 아니다. 미검수 초안이나 외부 원문은 저장하지 않았고, 아래의 gloss·관계
+300개 전체 후보의 편집 완성은 M1의 범위다. SQLite, 정식 schema의 산출물,
+자동 의미 판정과 ranking은 여전히 M2 이후의 범위다. 미검수 초안이나 외부 원문은 저장하지 않았고, 아래의 gloss·관계
 판단·문장 틀은 Typewriter가 이 배치를 위해 작성한 편집 기록이다.
+
+## Editorial Model v1 확정 범위
+
+M1-7에서 다음 네 가지를 v1의 기준으로 확정한다.
+
+- canonical record는 표제어 또는 고정 표현, 하나 이상의 sense, 그리고
+  선택적인 source→target relation으로 구성한다.
+- `direct`, `near`, `antonym`, `mood`, `scene`, `sensory`, `action`,
+  `association`은 서로 다른 편집 판단을 보존하며 자동으로 합치거나 대칭화하지 않는다.
+- source sense, target sense, 품사, relation note를 함께 읽어야 검색 결과의
+  거리를 설명할 수 있다. `reference-only`는 관계 도착점으로 표시할 수 있지만
+  검색 출발어 수에는 포함하지 않는다.
+- M2는 아래에 적은 구조·참조 무결성을 기계적으로 검사하고, sense 분할·관계
+  type·방향·writer usefulness 같은 의미 판단은 편집 검토로 남긴다.
+
+정확한 수량은 품질 quota가 아니라 이 v1을 검증한 현재 pilot snapshot의
+추적값이다. 다음 확장에서 수량을 맞추기 위해 관계를 채우지 않는다.
 
 ## 검수 기록 약속
 
@@ -520,24 +538,23 @@ ledger의 `관계 없음`은 검수 누락이 아니라 일반적·중복적인 
 | `w290`, `w292` | 고정된 전체 의미를 가진 독립 `expression`; 단순 활용형으로 취급하지 않음 |
 | 모든 #21 `action` target | target 품사는 동사 또는 expression이어야 하며, 전수 audit에서 이를 확인 |
 
-### #22로 넘기는 blocker
+### #21→#22 역사 handoff blocker
 
-현재 blocker는 없다. #21의 80개 start, 34개 reference-only, 325개 sense,
+이 절은 #21 당시의 handoff 기록이다. 당시 blocker는 없었고, #21의 80개 start, 34개 reference-only, 325개 sense,
 312개 relation과 새 표현 2개를 검수했고, #20 대비 관계 밀도·범주별 분포·
-보류 관계를 기록했다. #22는 이 PR이 머지된 최신 `master`에서 남은 후보를
-별도 배치로 검토하면 된다.
+보류 관계를 기록했다. 이후 #22에서 남은 후보를 별도 배치로 검토했다.
 
-## #20에서 #21로 넘긴 blocker
+## #20→#21 역사 handoff blocker
 
 이 절은 #20 당시의 handoff 기록이다. 당시 blocker는 없었고, 누적 160개
 출발어, 34개 참조 전용 레코드, 234개 sense, 238개 relation을 전수 점검한
 뒤 #21을 최신 `master`에서 시작했다.
 
-### M2 이후의 비차단 보류
+### #21 당시 M2 이후의 비차단 보류 (역사 기록)
 
 - formal schema validator, 형태론 전체, 검색 ranking은 여전히 M2 이후로 보류한다.
-- 이 항목들은 #21의 canonical 검수와 #22 착수를 막지 않으며, JSONL validator와
-  수동 identity·sense·relation audit로 현재 M1 범위를 검증한다.
+- 이 항목들은 당시 #21의 canonical 검수와 #22 착수를 막지 않았으며, JSONL
+  validator와 수동 identity·sense·relation audit로 그 시점의 M1 범위를 검증했다.
 
 ## #22 남은 60개 파일럿 완성 ledger
 
@@ -697,12 +714,12 @@ canonical record로 추가했다.
 | `w298-s2 → w228-s1` | 일을 시작하는 표현과 일반 동사의 near; 물리적 발 동작 sense에는 복제하지 않음 |
 | 모든 #22 `action` target | target 품사는 동사 또는 expression이어야 하며 전수 audit에서 확인 |
 
-### #23으로 넘기는 blocker
+### #23 최종 audit 상태
 
 현재 blocker는 없다. `w001–w300` 300개 start, 26개 reference-only, 386개
 sense, 340개 relation, start expression 13개와 reference-only expression 1개를
-검수했고, 32개 관계 없는 후보와 28개 신규 relation의 type을 문서화했다. #23은 최신 `master`에서 M1 최종
-감사·회고를 수행하면 된다.
+검수했고, 32개 관계 없는 후보와 28개 신규 relation의 type을 문서화했다.
+이 문서의 v1 규칙·projection·M2 경계가 #23의 최종 audit 및 인계 결과다.
 
 ## 검증 기록
 
@@ -726,12 +743,13 @@ node --test tests/validate-canonical-jsonl.test.mjs
 - #22 신규 relation은 28개이며, 관계 없는 남은 후보 32개도 상투적 target을
   만들지 않고 수록했다;
 - `git diff --check`와 후보 표면형 300개 대조, target·sense·중복·action
-  품사 전수 audit도 통과했다.
+  품사 전수 audit, 위 대표 UI projection audit도 통과했다.
 
-## 임시 레코드 모델
+## Editorial Model v1 — 최소 레코드 모델
 
-이 구조는 현재 326개 레코드를 사람이 읽고 고치기 위한 최소 표현이다. 정식
-schema로 고정하지 않는다.
+이 구조는 현재 326개 레코드를 사람이 읽고 고치면서 검증한 최소 표현이며,
+M2 parser/validator가 우선 지원해야 할 데이터 경계다. 이 문서가 정식
+JSON Schema 파일 자체를 고정하는 것은 아니다.
 
 | 필드 | 현재 의미 |
 | --- | --- |
@@ -746,18 +764,28 @@ schema로 고정하지 않는다.
 | `relations` | source sense에서 target record/sense로 향하는 관계. 대상 sense가 중요할 때 `target_sense`를 함께 기록 |
 | relation `note` | 관계를 왜 남겼는지와 direct 문장 틀을 적는 편집 판단 |
 
+### v1 개념 경계
+
+| 개념 | v1 표현 | 포함·제외 기준 |
+| --- | --- | --- |
+| word/entry | `record_type: entry`인 record의 `lemma`와 `search_forms` | 한 표제어를 하나의 record로 두며, M1에서는 별도 word 테이블이나 형태소 계층을 만들지 않는다. |
+| sense | record 안의 독립 `senses[]` 항목 | 목적어·주어·장면·관계 방향·품사가 달라 문장 틀이 달라질 때 나눈다. 강도나 분위기 차이만으로 늘리지 않는다. |
+| expression | `record_type: expression`인 고정 구·표현 | 띄어쓰기와 전체 의미가 보존되는 독립 검색 단위만 포함하며, 단순 활용형이나 임의 명사구는 제외한다. |
+| gloss | 각 sense의 짧은 `gloss` | Typewriter가 작성한 writer-facing 설명이다. 외부 사전 원문을 복사한 정의가 아니다. |
+| relation | sense 안의 `relations[]` | source sense에서 target record/sense로 향하는 writer-useful 연결만 남기며, 일반적인 연상 사실은 보류한다. |
+
 이번 배치에서 `lemma`는 검색 후보 표면형을 무시한다는 뜻이 아니다. 예를
 들어 `다정`, `선명`, `담담`은 `search_forms`에 남기고, sense의 품사와 활용을
 검토하기 쉬운 `다정하다`, `선명하다`, `담담하다`를 lemma로 삼았다. 이것은
 한국어 전체의 정규화 규칙을 확정한 것이 아니라 이 40개를 혼동 없이 읽기 위한
 작은 편집 결정이다.
 
-## 관계 유형과 임시 UI projection
+## Editorial Model v1 — 관계 유형과 UI projection
 
 관계 유형은 source sense와 target sense 사이의 **정직한 거리**를 표시한다.
 평면적인 synonym 목록으로 합치지 않는다.
 
-| 내부 type | 이 배치에서의 의미 | 임시 UI 묶음 |
+| 내부 type | 이 배치에서의 의미 | UI 그룹 |
 | --- | --- | --- |
 | `direct` | 표시한 sense와 문장 틀에서 직접 바꿔 넣을 수 있음 | 유의어 |
 | `near` | 중심 뜻이 가깝지만 대체하면 범위·강도·상황이 달라짐 | 말의 결 |
@@ -768,9 +796,38 @@ schema로 고정하지 않는다.
 | `action` | source가 자연스럽게 불러오는 동작. target은 이 배치에서 동사 또는 동작 표현이어야 함 | 연상 |
 | `association` | writer에게 유용하지만 더 넓은 연결 | 연상 |
 
-이 projection은 M1에서 검색 결과를 생각하기 위한 메모이며 제품 UI 계약이
-아니다. 특히 `direct`와 `near`를 같은 결과로 보여 주더라도 데이터에서는
-둘을 합치지 않는다.
+이 projection은 M2가 pilot 결과를 표시할 때 사용할 v1 데이터 경계다. 실제
+레이아웃·ranking·키보드 동작까지 정하는 제품 UI 계약은 아니다. 특히
+`direct`와 `near`를 같은 결과로 보여 주더라도 데이터에서는 둘을 합치지
+않는다.
+
+projection 규칙은 다음과 같다.
+
+1. source sense의 `gloss`는 `뜻풀이`로 표시하고, 여러 sense는 한 문장으로
+   합치지 않는다.
+2. `direct`만 `유의어`, `antonym`만 `반의어`로 보낸다. `near`는 직접 대체가
+   아니므로 `유의어`에 넣지 않고 `말의 결`로 보낸다.
+3. `near`와 `mood`는 `말의 결`, `scene`·`sensory`·`action`·`association`은
+   `연상`으로 보낸다. UI가 하위 type을 숨겨도 canonical의 type과 note는
+   보존한다.
+4. projection은 source sense 단위로 수행한다. target record가 같아도
+   target sense가 다르면 합치지 않으며, `reference-only` target도 결과로
+   표시할 수 있지만 검색 출발어로 승격해 세지 않는다.
+5. relation이 없는 sense는 빈 관계 묶음을 만들지 않는다. 결과를 만들기
+   위해 일반적인 장면·association을 자동 생성하지 않는다.
+
+### v1 relation type 포함·제외 기준
+
+| type | 포함할 때 | 제외할 때 | 파일럿 기준 사례 |
+| --- | --- | --- | --- |
+| `direct` | 같은 sense와 문장 슬롯에서 직접 바꿔 넣을 수 있을 때 | 분위기만 비슷하거나 품사·문장 틀이 다를 때 | `w026-s1 → r008-s1`; 정답 문장 대체 |
+| `near` | 중심 뜻은 가깝지만 범위·강도·상황이 달라 대체가 깨질 때 | 단순 공통 감각이거나 일반적인 대상·집합 관계일 때 | `w299-s1 → r019-s1`; `w107 → w106`은 제거 |
+| `antonym` | 같은 비교 축의 대응 sense가 반대일 때 | 결과 방향만 반대이거나 내용과 행위처럼 단위가 다를 때 | `w192-s1 ↔ w193-s1`; `w276 ↔ w277`은 보류 |
+| `mood` | source가 target의 정서·톤을 불러올 때 | 직접 대체나 단순 장면 동반으로 설명되는 경우 | `w004-s1 → w060-s1` |
+| `scene` | source에서 특정 장소·시간·상황 장면을 구체적으로 열 때 | 모든 장소·사물이 함께 있을 수 있다는 일반 사실일 때 | `w172-s1 → w147-s1`; `서점 → 책` 일반 연결은 보류 |
+| `sensory` | source의 감각을 다른 감각 이미지나 구체 감각 장면으로 확장할 때 | source와 target의 방향 설명이 맞지 않거나 단순 근접어일 때 | `w132-s1 → w091-s1`; `w180 → w066`은 near로 정리 |
+| `action` | source가 불러오는 동작이고 target 품사가 verb/expression일 때 | target이 명사이거나 source와 동작의 주체·방향이 맞지 않을 때 | `w021-s1 → w217-s1`; `w097-s2 → w202-s1` |
+| `association` | 더 넓지만 특정한 writer 탐색 장면·대상이 있을 때 | 일반적인 개체·집합, 동작·대상, 또는 기계적 역방향일 때 | `w293-s1 → w196-s1`; `읽다 → 책`은 제거 |
 
 ## 회귀로 고정한 편집 판단
 
@@ -846,10 +903,72 @@ schema로 고정하지 않는다.
 | `association` | 방향은 writer가 source에서 target을 떠올릴 수 있는지로 판단하며, 품사 일치를 요구하지 않는다. |
 
 따라서 `기쁨 → 웃다`는 action, `웃다 → 기쁨`은 mood가 될 수 있지만
-두 행을 같은 관계로 복제하지 않는다. 내부 type을 UI에서 넓은 묶음으로
-보이게 하는 projection은 #18의 임시 표를 유지한다. 이 배치에서는
+두 행을 같은 관계로 복제하지 않는다. M1-2 #18 당시에는 내부 type을 UI에서
+넓은 묶음으로 보이게 하는 초기 projection 표를 기록했지만, M1-7에서 이를
+재검토해 위의 v1 projection으로 확정했다. 이 배치에서는
 `action`과 `mood`, `scene`과 `sensory`를 합치지 않는 편이 편집 판단을
 보존하므로 새 UI type을 추가하거나 기존 type을 통합하지 않았다.
+
+## M2 인계 — 자동 검증과 편집 검토의 분리
+
+M2는 v1의 의미를 추측하거나 자동으로 보정하지 않고, 저장·참조 무결성을
+검사하는 데서 시작한다. 다음 항목은 현재 pilot에서 실제로 사용했으므로
+기계적으로 강제할 최소 경계다.
+
+### M2가 자동으로 검사할 항목
+
+| 층위 | 최소 검사 |
+| --- | --- |
+| 파일 | UTF-8 JSONL 문법과 행 단위 오류 위치. 기존 `scripts/validate/canonical-jsonl.mjs`의 동작을 유지한다. |
+| record | `id` 중복 금지, `record_type`은 `entry`/`expression`, `role`은 `start`/`reference-only` 중 하나, `lemma`·`search_forms`·`senses` 비어 있지 않음 |
+| 후보 | 현재 M1 snapshot에서 `w001–w300`은 각각 정확히 한 번 `start`로 존재하고 `candidate_id`가 일치한다. 순수 참조 `r###`에는 `candidate_id`가 없다. 후보를 승격할 때는 기존 ID를 복제하지 않는다. |
+| sense | sense ID 중복 금지, record 안에 하나 이상 존재, `pos`는 현재 사용한 `noun`/`adjective`/`verb`/`expression` 중 하나, `gloss` 비어 있지 않음 |
+| expression | `record_type: expression`의 sense는 `pos: expression`이어야 한다. 고정 표현인지, 어디서 sense를 나눌지는 구조 검사가 아니라 편집 검토다. |
+| relation | `target` record와 `target_sense`가 존재하고 target record에 속함, type은 8개 enum 중 하나, note 비어 있지 않음 |
+| 안전성 | self-reference 금지. `action` target은 `verb` 또는 `expression`이어야 한다. relation의 역방향·동일 품사·대칭성은 자동 요구하지 않는다. |
+
+현재 canonical에는 relation이 없는 sense에서 빈 `relations: []`를 쓰지 않는다.
+파서 내부에서 빈 목록으로 정규화할 수는 있지만, 없는 관계를 생성하거나
+대칭 relation을 보충해서는 안 된다.
+
+### 편집 검토로 남길 항목
+
+다음은 구조 validator가 참이라고 판정할 수 없는 v1 판단이다. M2 도구는
+검토 대상과 note를 보존해야 하지만, 아래 의미를 자동 승인하지 않는다.
+
+- gloss가 writer에게 충분히 구체적인지와 같은 표면형의 sense를 나눌지;
+- `direct`의 실제 문장 대체 가능성, `near`의 거리, `mood`·`scene`·`sensory`·
+  `action`·`association`의 source→target 방향과 writer usefulness;
+- expression을 독립 검색 단위로 둘지, 고정 표현을 어디서 sense로 나눌지,
+  lemma와 search form을 어떻게 편집할지, relation note가 해당 source sense만
+  설명하는지;
+- 수량을 채우기 위해 일반적인 target을 추가하지 않는지, reference-only를
+  start 결과로 잘못 세지 않는지;
+- UI에서 같은 묶음으로 보이는 type도 canonical에서는 분리되어 있는지.
+
+### M2 이후로 명시적으로 보류할 것
+
+정식 JSON Schema 파일의 세부 산출 형식, 형태론·자동 정규화 전체, relation
+ranking/점수, SQLite build, Chrome UI 변경, embedding·vector search와 5K
+확장은 이 v1의 acceptance에 포함하지 않는다. M2는 위 최소 경계를 구현한
+뒤 실제 검색 사용에서 드러난 반례가 있을 때만 필드를 늘린다.
+
+## M1 대표 UI projection audit
+
+관계 type을 UI의 다섯 표시 묶음으로 투영해도 직접 대체어와 먼 연상이
+섞이지 않는지 대표 source sense를 수동으로 확인했다. target이
+`reference-only`여도 결과로 표시할 수 있고, 별도 검색 출발어로 세지 않는
+규칙을 함께 확인했다.
+
+| source sense | canonical relation | UI projection | 확인 결과 |
+| --- | --- | --- | --- |
+| `w026-s1 담담하다` | `direct → r008-s1 덤덤하다`, `mood → w030-s1 평온` | 유의어 / 말의 결 | 직접 대체와 정서 색이 분리됨 |
+| `w192-s1 열다` | `antonym → w193-s1 닫다` | 반의어 | 같은 상태 변화 축만 반의어로 표시됨 |
+| `w004-s1 그리움` | `mood → w060-s1 여운`, `association → w176-s1 편지` | 말의 결 / 연상 | 정서와 구체 매개 장면이 분리됨 |
+| `w132-s1 비` | `sensory → w091-s1 빗소리` | 연상 | 기상 장면에서 청각 이미지로 확장됨 |
+| `w021-s1 희망` | `action → w217-s1 바라다`, `association → w275-s1 꿈` | 연상 | 하위 type을 보존한 채 동작·미래 장면을 표시함 |
+| `w293-s1 손을 내밀다` | `association → w196-s1 건네다` | 연상 | 물리 sense에만 표시되고 도움 제안·요청 sense에는 복제되지 않음 |
+| `w293-s2/s3` | relation 없음 | 별도 관계 묶음 없음 | 관용 용법의 방향을 물리 relation에 섞지 않음 |
 
 ### #19 최소 editorial regression set
 
@@ -882,21 +1001,40 @@ schema로 고정하지 않는다.
 | `w276 진실 ↔ w277 거짓말`의 `antonym` | 참된 내용과 거짓 발화 행위의 단위가 달라 현재는 보류한다. |
 | `w247 이름 → w245 문장`의 `association` | 모든 단어가 문장에 들어간다는 일반 사실만으로는 writer-facing 관계가 되지 않아 보류한다. |
 
-### #19에서 #20으로 넘긴 blocker
+### #19→#20 역사 handoff blocker
 
-현재 blocker는 없다. 누적 80개 출발어, 대표 다의어·표현·비대칭 관계,
+이 절은 #19 당시의 handoff 기록이다. 당시 blocker는 없었고, 누적 80개 출발어, 대표 다의어·표현·비대칭 관계,
 sense 대응 반의 관계, 내부 type과 UI projection의 분리를 이 PR에서
-검토했고, 이 판단으로 #20은 이 PR이 머지된 최신 master에서 시작할 수 있었다.
+검토했다. 이 판단으로 #20을 최신 master에서 시작할 수 있었다.
 
-### #20으로 넘긴 재검토 항목
+### #20 당시 다음 배치로 넘긴 재검토 항목 (역사 기록)
 
 - `마음`, `파도`, `찾다`, `놓다`, `안다`, `약속하다`의 추가 용례가 현재
   sense 경계를 실제 writer 검색에서 유지하는지 확인한다.
 - 남은 후보를 수량으로 채우기 전에 보류 관계의 문장 틀과 장면 유용성을
   다시 검토한다.
 
-### M2 이후의 비차단 보류
+### #20 당시 M2 이후의 비차단 보류 (역사 기록)
 
 - formal schema validator, 형태론 전체, 검색 ranking은 M2 이후로 보류한다.
-- 이 항목들은 #20의 검수나 다음 태스크 착수를 막지 않으며, 문서화한 ledger와
-  수동 전수 검토로 M1의 현재 범위를 충분히 검증한다.
+- 이 항목들은 당시 #20의 검수나 다음 태스크 착수를 막지 않았으며, 문서화한
+  ledger와 수동 전수 검토로 그 시점의 M1 범위를 검증했다.
+
+## M1/#3 acceptance 대조
+
+부모 #3과 이 issue #23의 완료 기준을 현재 산출물과 직접 대조한 결과다.
+이 표는 부모 issue를 자동으로 닫는 지시가 아니며, 완료 근거를 저장소에서
+추적하기 위한 기록이다.
+
+| 기준 | 근거 | 상태 |
+| --- | --- | --- |
+| 약 300개 pilot으로 모델을 검증하고 범위를 기록 | `docs/pilot-scope.md`의 `w001–w300`, #17–#22 ledger, 300 start + 26 reference-only + 386 sense + 340 relation 집계 | [x] |
+| 미검수 draft를 canonical로 취급하지 않음 | `docs/data-policy.md`의 material role 규칙, canonical JSONL에는 검수된 Typewriter record만 수록 | [x] |
+| word/sense/expression/gloss와 relation의 type·방향·품사 기준이 있음 | v1 최소 레코드 모델, relation type 포함·제외 matrix, 방향성·품사 표, regression set | [x] |
+| 대표 정답과 오류·보류 사례가 있음 | `w026`, `w192`, `w299`, `w132`, `w293` projection과 제거·보류 사례(`w107`, `w114`, `w180`, `읽다→책`, `나무→숲`) | [x] |
+| M2 자동화와 인간 편집 판단을 분리 | `M2 인계 — 자동 검증과 편집 검토의 분리`의 기계 검사·비강제·보류 목록 | [x] |
+| UI의 `뜻풀이 / 유의어 / 반의어 / 말의 결 / 연상` projection을 설명 | v1 projection 규칙과 대표 UI projection audit | [x] |
+
+따라서 M1 pilot의 현재 editorial model은 v1로 인계할 수 있다. 이 PR은
+부모 #3을 닫는 closing keyword를 사용하지 않으며, M2에서 구현할 schema,
+SQLite, UI 변경을 선행하지 않는다.
