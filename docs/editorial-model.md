@@ -538,24 +538,23 @@ ledger의 `관계 없음`은 검수 누락이 아니라 일반적·중복적인 
 | `w290`, `w292` | 고정된 전체 의미를 가진 독립 `expression`; 단순 활용형으로 취급하지 않음 |
 | 모든 #21 `action` target | target 품사는 동사 또는 expression이어야 하며, 전수 audit에서 이를 확인 |
 
-### #22로 넘기는 blocker
+### #21→#22 역사 handoff blocker
 
-현재 blocker는 없다. #21의 80개 start, 34개 reference-only, 325개 sense,
+이 절은 #21 당시의 handoff 기록이다. 당시 blocker는 없었고, #21의 80개 start, 34개 reference-only, 325개 sense,
 312개 relation과 새 표현 2개를 검수했고, #20 대비 관계 밀도·범주별 분포·
-보류 관계를 기록했다. #22는 이 PR이 머지된 최신 `master`에서 남은 후보를
-별도 배치로 검토하면 된다.
+보류 관계를 기록했다. 이후 #22에서 남은 후보를 별도 배치로 검토했다.
 
-## #20에서 #21로 넘긴 blocker
+## #20→#21 역사 handoff blocker
 
 이 절은 #20 당시의 handoff 기록이다. 당시 blocker는 없었고, 누적 160개
 출발어, 34개 참조 전용 레코드, 234개 sense, 238개 relation을 전수 점검한
 뒤 #21을 최신 `master`에서 시작했다.
 
-### M2 이후의 비차단 보류
+### #21 당시 M2 이후의 비차단 보류 (역사 기록)
 
 - formal schema validator, 형태론 전체, 검색 ranking은 여전히 M2 이후로 보류한다.
-- 이 항목들은 #21의 canonical 검수와 #22 착수를 막지 않으며, JSONL validator와
-  수동 identity·sense·relation audit로 현재 M1 범위를 검증한다.
+- 이 항목들은 당시 #21의 canonical 검수와 #22 착수를 막지 않았으며, JSONL
+  validator와 수동 identity·sense·relation audit로 그 시점의 M1 범위를 검증했다.
 
 ## #22 남은 60개 파일럿 완성 ledger
 
@@ -904,8 +903,9 @@ projection 규칙은 다음과 같다.
 | `association` | 방향은 writer가 source에서 target을 떠올릴 수 있는지로 판단하며, 품사 일치를 요구하지 않는다. |
 
 따라서 `기쁨 → 웃다`는 action, `웃다 → 기쁨`은 mood가 될 수 있지만
-두 행을 같은 관계로 복제하지 않는다. 내부 type을 UI에서 넓은 묶음으로
-보이게 하는 projection은 #18의 임시 표를 유지한다. 이 배치에서는
+두 행을 같은 관계로 복제하지 않는다. M1-2 #18 당시에는 내부 type을 UI에서
+넓은 묶음으로 보이게 하는 초기 projection 표를 기록했지만, M1-7에서 이를
+재검토해 위의 v1 projection으로 확정했다. 이 배치에서는
 `action`과 `mood`, `scene`과 `sensory`를 합치지 않는 편이 편집 판단을
 보존하므로 새 UI type을 추가하거나 기존 type을 통합하지 않았다.
 
@@ -923,7 +923,7 @@ M2는 v1의 의미를 추측하거나 자동으로 보정하지 않고, 저장·
 | record | `id` 중복 금지, `record_type`은 `entry`/`expression`, `role`은 `start`/`reference-only` 중 하나, `lemma`·`search_forms`·`senses` 비어 있지 않음 |
 | 후보 | 현재 M1 snapshot에서 `w001–w300`은 각각 정확히 한 번 `start`로 존재하고 `candidate_id`가 일치한다. 순수 참조 `r###`에는 `candidate_id`가 없다. 후보를 승격할 때는 기존 ID를 복제하지 않는다. |
 | sense | sense ID 중복 금지, record 안에 하나 이상 존재, `pos`는 현재 사용한 `noun`/`adjective`/`verb`/`expression` 중 하나, `gloss` 비어 있지 않음 |
-| expression | `record_type: expression`의 sense는 `pos: expression`이어야 하며, 고정 표현을 일반 단어로 쪼개지 않는다. |
+| expression | `record_type: expression`의 sense는 `pos: expression`이어야 한다. 고정 표현인지, 어디서 sense를 나눌지는 구조 검사가 아니라 편집 검토다. |
 | relation | `target` record와 `target_sense`가 존재하고 target record에 속함, type은 8개 enum 중 하나, note 비어 있지 않음 |
 | 안전성 | self-reference 금지. `action` target은 `verb` 또는 `expression`이어야 한다. relation의 역방향·동일 품사·대칭성은 자동 요구하지 않는다. |
 
@@ -939,8 +939,9 @@ M2는 v1의 의미를 추측하거나 자동으로 보정하지 않고, 저장·
 - gloss가 writer에게 충분히 구체적인지와 같은 표면형의 sense를 나눌지;
 - `direct`의 실제 문장 대체 가능성, `near`의 거리, `mood`·`scene`·`sensory`·
   `action`·`association`의 source→target 방향과 writer usefulness;
-- expression을 독립 검색 단위로 둘지, lemma와 search form을 어떻게
-  편집할지, relation note가 해당 source sense만 설명하는지;
+- expression을 독립 검색 단위로 둘지, 고정 표현을 어디서 sense로 나눌지,
+  lemma와 search form을 어떻게 편집할지, relation note가 해당 source sense만
+  설명하는지;
 - 수량을 채우기 위해 일반적인 target을 추가하지 않는지, reference-only를
   start 결과로 잘못 세지 않는지;
 - UI에서 같은 묶음으로 보이는 type도 canonical에서는 분리되어 있는지.
@@ -1000,24 +1001,24 @@ ranking/점수, SQLite build, Chrome UI 변경, embedding·vector search와 5K
 | `w276 진실 ↔ w277 거짓말`의 `antonym` | 참된 내용과 거짓 발화 행위의 단위가 달라 현재는 보류한다. |
 | `w247 이름 → w245 문장`의 `association` | 모든 단어가 문장에 들어간다는 일반 사실만으로는 writer-facing 관계가 되지 않아 보류한다. |
 
-### #19에서 #20으로 넘긴 blocker
+### #19→#20 역사 handoff blocker
 
-현재 blocker는 없다. 누적 80개 출발어, 대표 다의어·표현·비대칭 관계,
+이 절은 #19 당시의 handoff 기록이다. 당시 blocker는 없었고, 누적 80개 출발어, 대표 다의어·표현·비대칭 관계,
 sense 대응 반의 관계, 내부 type과 UI projection의 분리를 이 PR에서
-검토했고, 이 판단으로 #20은 이 PR이 머지된 최신 master에서 시작할 수 있었다.
+검토했다. 이 판단으로 #20을 최신 master에서 시작할 수 있었다.
 
-### #20으로 넘긴 재검토 항목
+### #20 당시 다음 배치로 넘긴 재검토 항목 (역사 기록)
 
 - `마음`, `파도`, `찾다`, `놓다`, `안다`, `약속하다`의 추가 용례가 현재
   sense 경계를 실제 writer 검색에서 유지하는지 확인한다.
 - 남은 후보를 수량으로 채우기 전에 보류 관계의 문장 틀과 장면 유용성을
   다시 검토한다.
 
-### M2 이후의 비차단 보류
+### #20 당시 M2 이후의 비차단 보류 (역사 기록)
 
 - formal schema validator, 형태론 전체, 검색 ranking은 M2 이후로 보류한다.
-- 이 항목들은 #20의 검수나 다음 태스크 착수를 막지 않으며, 문서화한 ledger와
-  수동 전수 검토로 M1의 현재 범위를 충분히 검증한다.
+- 이 항목들은 당시 #20의 검수나 다음 태스크 착수를 막지 않았으며, 문서화한
+  ledger와 수동 전수 검토로 그 시점의 M1 범위를 검증했다.
 
 ## M1/#3 acceptance 대조
 
