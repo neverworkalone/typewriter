@@ -38,12 +38,14 @@ assertions; the test command itself should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs no project dependencies, selects Node.js 20.x,
-and runs the same two commands as the local workflow:
+and runs the same validator and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
+3. `node scripts/validate/dataset-integrity.mjs`
+4. `node --test tests/validate-dataset-integrity.test.mjs`
 
-The workflow proves that the documented JSONL and row-schema validator and its
+The workflow proves that the documented JSONL and dataset validators and their
 regression tests run in a clean environment. It does not claim that the canonical
 dictionary has editorial, lexical, relation, or coverage quality.
 

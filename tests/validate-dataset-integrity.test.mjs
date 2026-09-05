@@ -74,6 +74,16 @@ const invalidCases = [
     'TARGET_SENSE_RECORD_MISMATCH',
     /target_sense w001-s1 belongs to record w001, not w002/,
   ],
+  [
+    'missing-target-sense.jsonl',
+    'MISSING_TARGET_SENSE',
+    /relation target_sense w002-s9 does not exist/,
+  ],
+  [
+    'sense-record-mismatch.jsonl',
+    'SENSE_RECORD_MISMATCH',
+    /sense r002-s1 does not belong to record r001/,
+  ],
   ['duplicate-record.jsonl', 'DUPLICATE_RECORD_ID', /duplicate record id w001/],
   ['duplicate-sense.jsonl', 'DUPLICATE_SENSE_ID', /duplicate sense id w001-s1/],
   [
@@ -102,6 +112,16 @@ const invalidCases = [
     'start-candidate-missing.jsonl',
     'START_CANDIDATE_MISSING',
     /role start requires candidate_id equal to the record id/,
+  ],
+  [
+    'start-candidate-mismatch.jsonl',
+    'START_CANDIDATE_MISMATCH',
+    /candidate_id w002 must equal record id w001/,
+  ],
+  [
+    'start-record-id.jsonl',
+    'START_RECORD_ID',
+    /role start requires a candidate record id beginning with w/,
   ],
 ];
 

@@ -28,3 +28,9 @@ jobs:
 
       - name: Run validator tests
         run: node --test tests/validate-canonical-jsonl.test.mjs
+
+      - name: Validate dataset integrity
+        run: node scripts/validate/dataset-integrity.mjs
+
+      - name: Run dataset validator tests
+        run: node --test tests/validate-dataset-integrity.test.mjs
