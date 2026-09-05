@@ -199,7 +199,7 @@ Do not substitute broad unrelated testing for the validation that demonstrates t
 
 ## Monitoring after PR creation
 
-After creating and pushing the implementation PR, automatically begin monitoring that PR every 10 minutes when the execution environment supports it.
+After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
 
 On each check:
 
