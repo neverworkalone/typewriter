@@ -17,7 +17,7 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 | 전체 canonical 레코드 | 194 | 출발어 160 + 참조 전용 34 |
 | 검색 출발어 | 160 | #17 대표 40 + #19 경계 사례 40 + #20 확장 80 |
 | 참조 전용 레코드 | 34 | 관계 도착점으로만 수록하며 출발어로 세지 않음 |
-| sense | 232 | 다의어는 하나의 레코드 안에서 sense를 나눔 |
+| sense | 234 | 다의어는 하나의 레코드 안에서 sense를 나눔 |
 | relation | 238 | 사람이 이 누적 배치에서 직접 판단해 남긴 관계 |
 
 300개 전체 후보, SQLite, 정식 schema, 자동 의미 판정은 이 PR의 범위가
@@ -221,8 +221,8 @@ association으로 낮추거나 relation을 만들지 않았다.
 | w043 | included | start | 쉽게 눌리는 `무름`을 단단함과 같은 물리 축의 antonym으로 한정했다. |
 | w044 | included | start | 표면의 거침과 말·태도의 거침을 두 sense로 나누고 각각 부드러운 표면·태도와 대응시켰다. |
 | w045 | included | start | 표면의 부드러움과 온화한 말투를 두 sense로 나누고 거칠다와 대응시켰다. |
-| w046 | included | start | 감각이나 반응의 `날카로움`을 둔함과 antonym으로, 피부 자극은 sensory로 기록했다. |
-| w047 | included | start | 예민하지 않은 `둔함`을 날카로움과 같은 감각·반응 축의 antonym으로 두었다. |
+| w046 | included | start | 물체의 끝·모서리와 감각·반응의 `날카로움`을 두 sense로 나누고 대응하는 둔함 sense와만 antonym으로 연결했다. |
+| w047 | included | start | 물리적 무딤과 예민하지 않은 `둔함`을 두 sense로 나누어 날카로움의 같은 축과만 대응시켰다. |
 | w055 | included | start | 따뜻한 기운인 `온기`를 냉기와 antonym, 온도의 감각과 sensory로 연결했다. |
 | w056 | included | start | 차가운 기운인 `냉기`를 온기와 antonym, 서늘함과 near로 구분했다. |
 | w062 | included | start | 중립적인 감각 범주인 `냄새`를 향기와 near, 비린내와 sensory로 좁혀 갔다. |
@@ -253,11 +253,11 @@ association으로 낮추거나 relation을 만들지 않았다.
 | w139 | included | start | 먼 점광원인 `별빛`을 빛과 sensory, 밤과 scene으로 연결했다. |
 | w142 | included | start | 넓은 짠물 공간인 `바다`를 파도와 scene, 물소리와 sensory로 확장했다. |
 | w144 | included | start | 트인 자연 공간인 `들판`을 그 안을 가르는 바람의 scene으로만 연결했다. |
-| w182 | included | start | 빠르게 나아가는 `달리다`를 멈추다와 함께 탐색하되 어휘적 antonym으로 확정하지 않았다. |
+| w182 | included | start | 빠르게 나아가는 `달리다`를 수록했지만 순차적으로 반대되는 `멈추다`와 near 관계는 만들지 않았다. |
 | w183 | included | start | 진행을 그치는 `멈추다`와 몸을 편하게 하는 `쉬다`를 near로 구분했다. |
 | w185 | included | start | 뒤를 보는 돌아보기와 지난 일·사람을 살피는 돌아보기를 두 sense로 나누었다. |
 | w186 | included | start | 장소를 떠나는 용법과 세상을 떠난다는 완곡 용법을 두 sense로 나누었다. |
-| w187 | included | start | 목적지에 이르는 `도착하다`를 역과 scene, 떠나다와 near로 기록했다. |
+| w187 | included | start | 목적지에 이르는 `도착하다`를 역과 scene으로만 기록하고 순차 국면인 `떠나다`와 near로 연결하지 않았다. |
 | w188 | included | start | 사람이나 대상을 마주하는 `만나다`를 카페와 scene으로만 확장했다. |
 | w189 | included | start | 가까운 사람과 헤어지는 `이별하다`를 쓸쓸함과 mood, 편지와 association으로 구분했다. |
 | w200 | included | start | 말소리를 내는 용법과 내용을 알려 주는 용법을 두 sense로 나누었다. |
@@ -317,7 +317,7 @@ association으로 낮추거나 relation을 만들지 않았다.
 
 | 보류·낮춘 후보 | 판단 |
 | --- | --- |
-| `w182 달리다 ↔ w183 멈추다` | 함께 탐색할 움직임의 상태이지만 동작 동사의 어휘적 antonym으로 확정하지 않고 near로 낮췄다. |
+| `w182 달리다 ↔ w183 멈추다`, `w187 도착하다 ↔ w186 떠나다` | 움직임의 순차·대조 국면일 뿐 가까운 뜻이 아니므로 near 관계를 만들지 않았다. |
 | `w134-s1 바람 → w281 소원` | 물리적 바람과 소망의 바람은 sense가 달라 연결하지 않았다. `w134-s2`에서만 소원과 near다. |
 | `w128 봄`, `w130 가을`, `w144 들판`의 넓은 장면 후보 | 수량을 맞추기 위한 계절·자연 연상을 추가하지 않고, 검수한 장면만 남겼다. |
 | `w243 잉크 → w245 문장` | “모든 글이 문장으로 이루어진다”가 아니라 잉크가 실제 기록 재료라는 구체 근거가 있어 association으로만 허용했다. |
@@ -330,7 +330,9 @@ association으로 낮추거나 relation을 만들지 않았다.
 | --- | --- |
 | `w044-s1 ↔ w045-s1` | 물리 표면 sense끼리만 `antonym`; `s1 ↔ s2` 교차 연결은 금지 |
 | `w044-s2 ↔ w045-s2` | 말·태도 sense끼리만 `antonym`; 촉감 sense와 섞지 않음 |
-| `w067-s1 ↔ w066-s1` | 어둠과 밝음의 시각 축 `antonym` |
+| `w067-s1 → w066-s1` | 어둠에서 밝음으로 향하는 시각 축 `antonym`; 관계는 방향성을 가지므로 역행을 자동 생성하지 않음 |
+| `w046-s1 ↔ w047-s1` | 물체의 끝·모서리라는 물리 축끼리만 `antonym` |
+| `w046-s2 ↔ w047-s2` | 감각·반응의 예민함 축끼리만 `antonym`; `s1 ↔ s2` 교차 연결은 금지 |
 | `w070-s1`와 `w070-s2` | 색의 빛바램과 기억·감정의 빛바램을 별도 sense로 유지 |
 | `w075-s1`와 `w075-s2` | 물리 온도와 관계 분위기를 별도 sense로 유지 |
 | `w134-s1`와 `w134-s2` | 공기의 움직임과 소망을 별도 sense로 유지 |
@@ -347,7 +349,7 @@ association으로 낮추거나 relation을 만들지 않았다.
 ## #21 전에 해소해야 하는 실제 blocker
 
 현재 blocker는 없다. #20은 누적 160개 출발어, 34개 참조 전용 레코드,
-232개 sense, 238개 relation을 전수 점검했고, 기존 경계 회귀와 #20 회귀를
+234개 sense, 238개 relation을 전수 점검했고, 기존 경계 회귀와 #20 회귀를
 함께 확인했다. 다음 태스크는 이 PR이 머지된 최신 `master`에서 시작하면 된다.
 
 ### M2 이후의 비차단 보류
@@ -369,8 +371,8 @@ node --test tests/validate-canonical-jsonl.test.mjs
 
 - 전체 194 records 중 `role: start` 160개와 `role: reference-only` 34개;
 - 160개 출발어의 `candidate_id`가 중복 없이 존재하고 #20 ledger 80개가 모두 수록됨;
-- 전체 232개 sense ID와 238개 relation target/target_sense가 존재하며 self-reference 없음;
-- relation type별 수량은 `direct` 17, `near` 38, `antonym` 29, `mood` 36,
+- 전체 234개 sense ID와 238개 relation target/target_sense가 존재하며 self-reference 없음;
+- relation type별 수량은 `direct` 17, `near` 36, `antonym` 31, `mood` 36,
   `scene` 24, `sensory` 47, `action` 20, `association` 27;
 - #20 범주별 추가 수량은 E 12, Q 12, S 14, C 14, A 8, O 12, X 8로,
   행동에만 치우치지 않도록 구성했다.
