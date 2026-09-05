@@ -2,9 +2,10 @@
 
 ## Current requirements
 
-The current validation tools require Node.js 18 or newer and have no third-party
-runtime dependencies. The CI workflow uses Node.js 20.x. There is no dependency
-installation step; the commands use Node.js built-ins only.
+The validation and normalization tools require Node.js 18 or newer. The SQLite
+builder uses the built-in `node:sqlite` module and requires Node.js 22.5 or newer;
+CI uses Node.js 22.x. There is no dependency installation step; the commands use
+Node.js built-ins only.
 
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
@@ -21,6 +22,8 @@ node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
 node scripts/normalize/canonical.mjs
 node --test tests/normalize-canonical.test.mjs
+node scripts/build/dictionary.mjs
+node --test tests/build-dictionary.test.mjs
 ```
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
@@ -43,9 +46,9 @@ commands themselves should pass.
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
-the revision under review, installs no project dependencies, selects Node.js 20.x,
-and runs the same validator, normalization, and regression commands as the local
-workflow:
+the revision under review, installs no project dependencies, selects Node.js 22.x,
+and runs the same validator, normalization, SQLite build, and regression commands
+as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
@@ -53,10 +56,12 @@ workflow:
 4. `node --test tests/validate-dataset-integrity.test.mjs`
 5. `node scripts/normalize/canonical.mjs`
 6. `node --test tests/normalize-canonical.test.mjs`
+7. `node scripts/build/dictionary.mjs`
+8. `node --test tests/build-dictionary.test.mjs`
 
-The workflow proves that the documented JSONL, dataset, and normalization checks
-and their regression tests run in a clean environment. It does not claim that the
-canonical dictionary has editorial, lexical, relation, or coverage quality.
+The workflow proves that the documented JSONL, dataset, normalization, and SQLite
+checks and their regression tests run in a clean environment. It does not claim that
+the canonical dictionary has editorial, lexical, relation, or coverage quality.
 
 ## Failure diagnosis
 

@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.x
 
       - name: Validate canonical JSONL
         run: node scripts/validate/canonical-jsonl.mjs
@@ -40,3 +40,9 @@ jobs:
 
       - name: Run normalization tests
         run: node --test tests/normalize-canonical.test.mjs
+
+      - name: Build SQLite dictionary
+        run: node scripts/build/dictionary.mjs
+
+      - name: Run SQLite builder tests
+        run: node --test tests/build-dictionary.test.mjs
