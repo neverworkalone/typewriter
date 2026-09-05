@@ -77,6 +77,9 @@ non-reproducible builds and records `worktree_state: "dirty-allowed"`. An explic
 commit revision is resolved and verified when Git is available. In a Git-less
 environment, only a full 40-character SHA may be injected, and the metadata marks
 it as `source_revision_verified: "false"` and `worktree_state: "unavailable"`.
+When Git is available, an explicit revision must resolve to the current `HEAD`; the
+builder does not materialize historical commits, so a different commit is rejected
+instead of being recorded as verified provenance.
 
 `readLogicalDatabaseSnapshot` in [`scripts/build/query.mjs`](../scripts/build/query.mjs)
 compares the schema, named indexes, and ordered contents of every dictionary table.

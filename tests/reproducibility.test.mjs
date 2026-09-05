@@ -125,6 +125,71 @@ test('rejects dirty repositories unless explicitly allowed', async () => {
   }
 });
 
+test('accepts current HEAD refs and rejects a different explicit commit', async () => {
+  const repositoryDirectory = await mkdtemp(
+    path.join(tmpdir(), 'typewriter-git-revisions-'),
+  );
+
+  try {
+    await execFile('git', ['init', '-q', '-b', 'master'], {
+      cwd: repositoryDirectory,
+    });
+    await execFile('git', ['config', 'user.name', 'Typewriter Test'], {
+      cwd: repositoryDirectory,
+    });
+    await execFile('git', ['config', 'user.email', 'typewriter@example.test'], {
+      cwd: repositoryDirectory,
+    });
+    await writeFile(path.join(repositoryDirectory, 'tracked.txt'), 'first\n');
+    await execFile('git', ['add', 'tracked.txt'], { cwd: repositoryDirectory });
+    await execFile('git', ['commit', '-q', '-m', 'first'], {
+      cwd: repositoryDirectory,
+    });
+    const firstRevision = (
+      await execFile('git', ['rev-parse', 'HEAD'], { cwd: repositoryDirectory })
+    ).stdout.trim();
+
+    await writeFile(path.join(repositoryDirectory, 'tracked.txt'), 'second\n');
+    await execFile('git', ['add', 'tracked.txt'], { cwd: repositoryDirectory });
+    await execFile('git', ['commit', '-q', '-m', 'second'], {
+      cwd: repositoryDirectory,
+    });
+    const secondRevision = (
+      await execFile('git', ['rev-parse', 'HEAD'], { cwd: repositoryDirectory })
+    ).stdout.trim();
+
+    await assert.rejects(
+      resolveBuildProvenance({
+        repositoryDirectory,
+        sourceRevision: firstRevision,
+      }),
+      (error) => {
+        assert.equal(error.code, 'SOURCE_REVISION_MISMATCH');
+        assert.match(error.message, /current Git HEAD/);
+        return true;
+      },
+    );
+
+    for (const revision of [
+      'HEAD',
+      'HEAD~0',
+      secondRevision,
+      secondRevision.slice(0, 8),
+    ]) {
+      const provenance = await resolveBuildProvenance({
+        repositoryDirectory,
+        sourceRevision: revision,
+      });
+      assert.equal(provenance.source_revision, secondRevision);
+      assert.equal(provenance.source_revision_source, 'explicit-git');
+      assert.equal(provenance.source_revision_verified, 'true');
+      assert.equal(provenance.worktree_state, 'clean');
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('rejects invalid revisions and clearly marks Git-less injection', async () => {
   await assert.rejects(
     resolveBuildProvenance({

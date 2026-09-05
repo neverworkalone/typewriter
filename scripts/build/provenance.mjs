@@ -36,6 +36,8 @@ export async function resolveBuildProvenance({
   allowDirty = false,
 } = {}) {
   const explicitRevision = sourceRevision !== undefined;
+  const requestedRevision =
+    typeof sourceRevision === 'string' ? sourceRevision.trim() : sourceRevision;
   let gitHead;
   let gitAvailable = true;
 
@@ -66,22 +68,29 @@ export async function resolveBuildProvenance({
         resolvedRevision = await runGit(repositoryDirectory, [
           'rev-parse',
           '--verify',
-          `${sourceRevision}^{commit}`,
+          `${requestedRevision}^{commit}`,
         ]);
       } catch (error) {
         throw invalidRevision(
-          `sourceRevision ${sourceRevision} is not a valid Git commit: ${error.message.trim()}`,
+          `sourceRevision ${requestedRevision} is not a valid Git commit: ${error.message.trim()}`,
         );
+      }
+      if (resolvedRevision !== gitHead) {
+        const mismatch = new Error(
+          `sourceRevision ${requestedRevision} resolves to ${resolvedRevision}, but the current Git HEAD is ${gitHead}; the builder reads the current worktree and cannot verify a different commit`,
+        );
+        mismatch.code = 'SOURCE_REVISION_MISMATCH';
+        throw mismatch;
       }
       revisionSource = 'explicit-git';
       revisionVerified = 'true';
     } else {
-      if (!FULL_REVISION_PATTERN.test(sourceRevision)) {
+      if (!FULL_REVISION_PATTERN.test(requestedRevision)) {
         throw invalidRevision(
           'Git is unavailable; an explicit sourceRevision must be a full 40-character commit SHA',
         );
       }
-      resolvedRevision = sourceRevision.toLowerCase();
+      resolvedRevision = requestedRevision.toLowerCase();
       revisionSource = 'explicit-unverified';
       revisionVerified = 'false';
     }
