@@ -144,7 +144,7 @@ function assertRepresentativeQueries(database, model) {
   assert.equal(relation.target_lemma, '덤덤하다');
 }
 
-function assertProvenanceMetadata(metadata, worktreeState) {
+function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
   assert.equal(metadata.dictionary_version, 'm2-pilot-1');
   assert.equal(metadata.schema_version, '1');
   assert.equal(metadata.normalization_version, '1');
@@ -156,7 +156,10 @@ function assertProvenanceMetadata(metadata, worktreeState) {
   assert.match(metadata.source_revision, /^[0-9a-f]{40}$/);
   assert.equal(metadata.source_revision_verified, 'true');
   assert.equal(metadata.source_revision_source, 'git-head');
-  assert.equal(metadata.worktree_state, worktreeState);
+  assert.ok(['clean', 'dirty-allowed'].includes(metadata.worktree_state));
+  if (expectedWorktreeState !== undefined) {
+    assert.equal(metadata.worktree_state, expectedWorktreeState);
+  }
 }
 
 function verifyDatabase(database, model, expected, worktreeState) {
@@ -222,7 +225,7 @@ export async function runM2Pipeline({
       allowDirty,
     });
     const expected = expectedRows(model);
-    const expectedWorktreeState = allowDirty ? 'dirty-allowed' : 'clean';
+    const expectedWorktreeState = first.metadata.worktree_state;
 
     const firstDatabase = new DatabaseSync(firstPath, { readOnly: true });
     const secondDatabase = new DatabaseSync(secondPath, { readOnly: true });

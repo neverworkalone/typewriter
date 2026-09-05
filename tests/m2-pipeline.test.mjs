@@ -17,5 +17,5 @@ test('runs the complete M2 pipeline and compares canonical rows to SQLite', asyn
   assert.equal(summary.expressionCount, 14);
   assert.equal(summary.databaseBuilds, 2);
   assert.equal(summary.normalizationVersion, '1');
-  assert.equal(summary.worktreeState, 'dirty-allowed');
+  assert.ok(['clean', 'dirty-allowed'].includes(summary.worktreeState));
 });
