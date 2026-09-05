@@ -16,6 +16,7 @@ import { promisify } from 'node:util';
 
 import {
   ValidationError,
+  validateCanonicalFile,
   validateCanonicalDirectory,
 } from '../scripts/validate/canonical-jsonl.mjs';
 
@@ -23,6 +24,7 @@ const FIXTURE_DIRECTORY = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   'fixtures/validator',
 );
+const SCHEMA_FIXTURE_DIRECTORY = path.join(FIXTURE_DIRECTORY, 'invalid-schema');
 const REPOSITORY_DIRECTORY = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -31,9 +33,15 @@ const VALIDATOR_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'scripts/validate/canonical-jsonl.mjs',
 );
+const SCHEMA_PATH = path.join(
+  REPOSITORY_DIRECTORY,
+  'schema/canonical-record.schema.json',
+);
 const execFile = promisify(execFileCallback);
 const MALFORMED_SECOND_ROW = Buffer.concat([
-  Buffer.from('{"lemma":"첫 행"}\n'),
+  Buffer.from(
+    '{"id":"w001","record_type":"entry","role":"start","candidate_id":"w001","lemma":"첫 행","search_forms":["첫 행"],"senses":[{"id":"w001-s1","pos":"noun","gloss":"첫 번째 줄"}]}\n',
+  ),
   Buffer.from([
     0x7b,
     0x22,
@@ -51,7 +59,9 @@ const MALFORMED_SECOND_ROW = Buffer.concat([
     0x7d,
   ]),
 ]);
-const PREEXISTING_CANONICAL = Buffer.from('{"lemma":"기존"}\n');
+const PREEXISTING_CANONICAL = Buffer.from(
+  '{"id":"w001","record_type":"entry","role":"start","candidate_id":"w001","lemma":"기존","search_forms":["기존"],"senses":[{"id":"w001-s1","pos":"noun","gloss":"이미 존재하는 값"}]}\n',
+);
 
 test('validates JSONL syntax and accepts one final newline', async () => {
   const summary = await validateCanonicalDirectory(
@@ -70,6 +80,63 @@ test('reports the file and 1-based line for JSON syntax errors after valid rows'
       assert.ok(error instanceof ValidationError);
       assert.equal(error.code, 'INVALID_JSON');
       assert.match(error.message, /syntax-after-valid\.jsonl:2: invalid JSON/);
+      return true;
+    },
+  );
+});
+
+test('reports missing required fields with the file and 1-based line', async () => {
+  await assert.rejects(
+    validateCanonicalFile(
+      path.join(SCHEMA_FIXTURE_DIRECTORY, 'missing-required.jsonl'),
+    ),
+    (error) => {
+      assert.ok(error instanceof ValidationError);
+      assert.equal(error.code, 'SCHEMA_ERROR');
+      assert.match(
+        error.message,
+        /missing-required\.jsonl:1: schema validation failed.*senses.*required/,
+      );
+      return true;
+    },
+  );
+});
+
+test('rejects invalid enum values and entry/expression mismatches', async () => {
+  await assert.rejects(
+    validateCanonicalFile(
+      path.join(SCHEMA_FIXTURE_DIRECTORY, 'invalid-enum.jsonl'),
+    ),
+    (error) => {
+      assert.ok(error instanceof ValidationError);
+      assert.match(error.message, /invalid-enum\.jsonl:1/);
+      assert.match(error.message, /senses\[0\]\.pos/);
+      return true;
+    },
+  );
+
+  await assert.rejects(
+    validateCanonicalFile(
+      path.join(SCHEMA_FIXTURE_DIRECTORY, 'expression-pos-mismatch.jsonl'),
+    ),
+    (error) => {
+      assert.ok(error instanceof ValidationError);
+      assert.match(error.message, /expression-pos-mismatch\.jsonl:1/);
+      assert.match(error.message, /must be "expression"/);
+      return true;
+    },
+  );
+});
+
+test('rejects empty required values', async () => {
+  await assert.rejects(
+    validateCanonicalFile(
+      path.join(SCHEMA_FIXTURE_DIRECTORY, 'empty-value.jsonl'),
+    ),
+    (error) => {
+      assert.ok(error instanceof ValidationError);
+      assert.match(error.message, /empty-value\.jsonl:1/);
+      assert.match(error.message, /senses\[0\]\.gloss/);
       return true;
     },
   );
@@ -198,6 +265,11 @@ async function createDisposableCliRepository(files) {
     await mkdir(path.dirname(validatorPath), { recursive: true });
     await mkdir(canonicalDirectory, { recursive: true });
     await copyFile(VALIDATOR_PATH, validatorPath);
+    await mkdir(path.join(repositoryPath, 'schema'), { recursive: true });
+    await copyFile(
+      SCHEMA_PATH,
+      path.join(repositoryPath, 'schema/canonical-record.schema.json'),
+    );
 
     for (const [filename, contents] of Object.entries(files)) {
       await writeFile(path.join(canonicalDirectory, filename), contents);
