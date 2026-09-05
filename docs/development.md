@@ -12,13 +12,15 @@ external responses, generated databases, or credential files.
 
 ## Local validation
 
-Run both commands before opening or updating a pull request:
+Run validation and normalization checks before opening or updating a pull request:
 
 ```sh
 node scripts/validate/canonical-jsonl.mjs
 node scripts/validate/dataset-integrity.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
+node scripts/normalize/canonical.mjs
+node --test tests/normalize-canonical.test.mjs
 ```
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
@@ -28,26 +30,33 @@ A repository with no `data/canonical/` directory is an initial empty state: the
 validator exits successfully and reports zero files and records, but that output does
 not mean the dictionary is complete.
 
-The test command runs self-authored fixtures for valid entry/expression records, JSON
-syntax errors after a valid row, blank rows, invalid UTF-8, schema omissions and enum
-errors, expression/part-of-speech mismatches, final-newline handling, empty input,
-and the real CLI's exit status. The invalid fixtures are expected inputs inside
-assertions; the test command itself should pass.
+The validator test commands run self-authored fixtures for valid entry/expression
+records, JSON syntax errors after a valid row, blank rows, invalid UTF-8, schema
+omissions and enum errors, expression/part-of-speech mismatches, final-newline
+handling, empty input, and the real CLI's exit status. The dataset validator tests
+cover cross-record references, relation ownership, duplicate/self-reference checks,
+and part-of-speech constraints. The normalization tests cover defaults, ordering,
+meaning preservation, file batching, idempotence, input immutability, and refusal of
+invalid datasets. Invalid fixtures are expected inputs inside assertions; the test
+commands themselves should pass.
 
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs no project dependencies, selects Node.js 20.x,
-and runs the same validator and regression commands as the local workflow:
+and runs the same validator, normalization, and regression commands as the local
+workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
 3. `node scripts/validate/dataset-integrity.mjs`
 4. `node --test tests/validate-dataset-integrity.test.mjs`
+5. `node scripts/normalize/canonical.mjs`
+6. `node --test tests/normalize-canonical.test.mjs`
 
-The workflow proves that the documented JSONL and dataset validators and their
-regression tests run in a clean environment. It does not claim that the canonical
-dictionary has editorial, lexical, relation, or coverage quality.
+The workflow proves that the documented JSONL, dataset, and normalization checks
+and their regression tests run in a clean environment. It does not claim that the
+canonical dictionary has editorial, lexical, relation, or coverage quality.
 
 ## Failure diagnosis
 

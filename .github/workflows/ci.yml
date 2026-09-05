@@ -34,3 +34,9 @@ jobs:
 
       - name: Run dataset validator tests
         run: node --test tests/validate-dataset-integrity.test.mjs
+
+      - name: Normalize canonical data
+        run: node scripts/normalize/canonical.mjs
+
+      - name: Run normalization tests
+        run: node --test tests/normalize-canonical.test.mjs
