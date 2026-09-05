@@ -15,8 +15,8 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 | 전체 canonical 레코드 | 69 | 출발어 40 + 참조 전용 29 |
 | 검색 출발어 | 40 | #17에서 명시한 대표 ID와 정확히 일치 |
 | 참조 전용 레코드 | 29 | 관계 도착점으로만 수록하며 출발어로 세지 않음 |
-| sense | 74 | 다의어는 하나의 레코드 안에서 sense를 나눔 |
-| relation | 56 | 사람이 이 배치에서 직접 판단해 남긴 관계 |
+| sense | 77 | 다의어는 하나의 레코드 안에서 sense를 나눔 |
+| relation | 58 | 사람이 이 배치에서 직접 판단해 남긴 관계 |
 
 300개 전체 후보, SQLite, 정식 schema, 자동 의미 판정은 이 PR의 범위가
 아니다. 미검수 초안이나 외부 원문은 저장하지 않았고, 아래의 gloss·관계
@@ -32,6 +32,8 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
   `role: start`로 수록되었다.
 - 참조 레코드는 `role: reference-only`로만 수록되며, 검색 출발어 수에
   포함하지 않는다.
+- 참조 레코드도 아래의 별도 ledger에서 `included` 상태, `reference-only`
+  역할, 그리고 이 배치에서 출발어가 아닌 이유를 항목별로 기록한다.
 - 이 배치에 `held`, `duplicate`, `excluded` 출발어는 없다. 다음 배치에서
   그런 상태를 쓰면 반드시 상태를 택한 사유를 함께 기록하고 canonical 밖에
   둔다.
@@ -52,12 +54,12 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 | w026 | included | start | 후보 표면형은 `담담`, canonical lemma는 `담담하다`로 정리하고 감정 반응 문장에서만 direct를 허용했다. |
 | w030 | included | start | 마음의 안정인 `평온`과 `평안`의 direct 문장 틀을 확인하고 `고요`는 mood로 남겼다. |
 | w031 | included | start | `다정하다`로 정규화하고 사람을 대하는 태도에서 `냉정하다`와 antonym으로 기록했다. |
-| w032 | included | start | `냉정하다`로 정규화하고 `다정하다`와 반대 축을 이루는지 확인했다. |
+| w032 | included | start | `냉정하다`로 정규화하고 대인 태도 sense(`w032-s1`)를 `다정하다`와 반대 축으로, 판단 sense(`w032-s2`)를 별도로 기록했다. |
 | w036 | included | start | `어색하다`로 정규화하고 관계의 거리감인 `서먹하다`와 near로 구분했다. |
 | w040 | included | start | `선명하다`로 정규화하고 시각 윤곽에서 `또렷하다`만 direct, `희미하다`는 antonym으로 두었다. |
 | w041 | included | start | `희미하다`로 정규화하고 `선명하다`와 antonym, 빛과는 sensory로 연결했다. |
-| w048 | included | start | 무게와 부담의 명사 `가벼움`을 유지하고 `무거움`과 antonym으로 기록했다. |
-| w049 | included | start | 무게와 부담의 명사 `무거움`을 유지하고 `가벼움`과 antonym으로 기록했다. |
+| w048 | included | start | 물리적 무게와 마음·일의 부담을 두 sense로 나누고 각각 대응하는 `무거움` sense와 antonym으로 기록했다. |
+| w049 | included | start | 물리적 무게와 마음·일의 부담을 두 sense로 나누고 각각 대응하는 `가벼움` sense와 antonym으로 기록했다. |
 | w060 | included | start | 사건 뒤 남는 `여운`을 그리움과 mood, 메아리와 association으로 구분했다. |
 | w061 | included | start | 꽃 냄새 문장에서 `향내`로 직접 바꿔 넣을 수 있는지 확인했다. |
 | w066 | included | start | `빛`의 광원과 색조 sense를 분리하고 각각 햇살·색조와 sensory로만 연결했다. |
@@ -84,6 +86,45 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 | w299 | included | start | 길을 잃은 상태와 그 뒤 헤매는 행동을 구분해 `헤매다`는 near로만 기록했다. |
 | w300 | included | start | 특정 일이 남는 표현과 일반적인 꺼림칙함을 구분해 `찜찜하다`는 near, `불안`은 mood로 두었다. |
 
+## 29개 참조 전용 편집 ledger
+
+참조 레코드도 blanket 승인으로 처리하지 않는다. 아래 29개는 모두
+`included` 상태와 `reference-only` 역할을 갖지만, 현재 배치에서는 관계
+도착점으로만 검수했다. `w###`인 항목은 이미 300개 후보에 있으므로 별도의
+`r###` identity를 만들지 않고, 후속 배치에서 같은 ID를 `start`로 승격한다.
+
+| ID | 상태 | 역할 | 수록·역할 사유 |
+| --- | --- | --- | --- |
+| w137 | included | reference-only | 후보표의 `햇살`을 `w066 빛`의 자연 감각 target으로만 검수했다. |
+| w193 | included | reference-only | 후보표의 `닫다`를 `w192 열다`의 반의 target으로만 검수했다. |
+| w275 | included | reference-only | 후보표의 `꿈`을 `w021 희망`이 여는 미래 장면 target으로만 검수했다. |
+| w176 | included | reference-only | 후보표의 `편지`를 `w004 그리움`의 전달 장면 target으로만 검수했다. |
+| w269 | included | reference-only | 후보표의 `나무`를 `w143 숲`의 구성 이미지 target으로만 검수했다. |
+| w088 | included | reference-only | 후보표의 `메아리`를 `w060 여운`의 소리 이미지 target으로만 검수했다. |
+| w097 | included | reference-only | 후보표의 `눈길`을 `w133-s2 눈`의 장면 target으로만 검수했다. |
+| r001 | included | reference-only | 후보표 밖의 `향내`를 `w061 향기`의 동일 냄새 문장 틀 target으로만 검수했다. |
+| r002 | included | reference-only | 후보표 밖의 `감촉`을 `w079 촉감`의 접촉 감각 문장 틀 target으로만 검수했다. |
+| r004 | included | reference-only | 후보표 밖의 `달콤함`을 `w099 단맛`의 동일 명사 자리 target으로만 검수했다. |
+| r005 | included | reference-only | 후보표 밖의 `아픔`을 `w106 통증`의 신체 감각 문장 틀 target으로만 검수했다. |
+| r006 | included | reference-only | 후보표 밖의 `음성`을 `w120 목소리`의 말소리 문장 틀 target으로만 검수했다. |
+| r008 | included | reference-only | 후보표 밖의 `덤덤하다`를 `w026 담담하다`의 감정 반응 문장 틀 target으로만 검수했다. |
+| r009 | included | reference-only | 후보표 밖의 `평안`을 `w030 평온`의 마음 상태 문장 틀 target으로만 검수했다. |
+| r010 | included | reference-only | 후보표 밖의 `거닐다`를 `w181 걷다`와 비교할 느긋한 이동 target으로만 검수했다. |
+| r012 | included | reference-only | 후보표 밖의 `응시하다`를 `w202 바라보다`와 비교할 시선 행동 target으로만 검수했다. |
+| r013 | included | reference-only | 후보표 밖의 `원하다`를 `w217 바라다`의 원하는 행위 target으로만 검수했다. |
+| r014 | included | reference-only | 후보표 밖의 `작성하다`를 `w237-s1 쓰다`의 기록 문장 틀 target으로만 검수했다. |
+| r015 | included | reference-only | 후보표 밖의 `사용하다`를 `w237-s2 쓰다`의 도구 이용 문장 틀 target으로만 검수했다. |
+| r016 | included | reference-only | 후보표 밖의 `착용하다`를 `w237-s3 쓰다`의 몸에 거는 문장 틀 target으로만 검수했다. |
+| r017 | included | reference-only | 후보표 밖의 `안도하다`를 `w288 마음이 놓이다`의 걱정 해소 문장 틀 target으로만 검수했다. |
+| r018 | included | reference-only | 후보표 밖의 표현 `호흡을 가다듬다`를 `w296 숨을 고르다`의 호흡 안정 target으로만 검수했다. |
+| r019 | included | reference-only | 후보표 밖의 `헤매다`를 `w299 길을 잃다` 뒤의 이동 행동과 비교할 target으로만 검수했다. |
+| r020 | included | reference-only | 후보표 밖의 `찜찜하다`를 `w300 마음에 걸리다`와 비교할 꺼림칙한 감정 target으로만 검수했다. |
+| r026 | included | reference-only | 후보표 밖의 `서먹하다`를 `w036 어색하다`와 비교할 관계 거리감 target으로만 검수했다. |
+| r028 | included | reference-only | 후보표 밖의 `약`을 `w237-s4 쓰다`의 쓴맛 장면 target으로만 검수했다. |
+| r029 | included | reference-only | 후보표 밖의 `색조`를 `w066-s2 빛`의 색 감각 target으로만 검수했다. |
+| r030 | included | reference-only | 후보표 밖의 `또렷하다`를 `w040 선명하다`의 시각 윤곽 문장 틀 target으로만 검수했다. |
+| r031 | included | reference-only | 후보표 밖의 `쉬다`를 `w296 숨을 고르다` 뒤에 이어지는 행동 target으로만 검수했다. |
+
 ## 임시 레코드 모델
 
 이 구조는 현재 69개 레코드를 사람이 읽고 고치기 위한 최소 표현이다. 정식
@@ -91,10 +132,10 @@ schema로 고정하지 않는다.
 
 | 필드 | 현재 의미 |
 | --- | --- |
-| `id` | 출발어는 `w###`, 참조 전용은 `r###`인 저장소 내부 식별자 |
+| `id` | 후보표에 있는 항목은 기존 `w###`, 후보표 밖의 순수 참조는 `r###`인 저장소 내부 식별자 |
 | `record_type` | 일반 표제어 `entry` 또는 고정된 표현 `expression` |
 | `role` | 검색 출발어 `start` 또는 관계 도착점 전용 `reference-only` |
-| `candidate_id` | 출발어인 경우 `docs/pilot-scope.md`의 후보 ID. 참조 전용에는 없음 |
+| `candidate_id` | 후보표에 대응하는 출발어 또는 참조 전용 레코드의 후보 ID. 후보표 밖 순수 참조에는 없음 |
 | `lemma` | 현재 배치에서 편집 기준으로 삼은 표제어. 활용·어근형 후보는 필요한 만큼 dictionary form으로 정리 |
 | `search_forms` | 후보표의 표면형과 현재 검색에 필요한 정규화형. 표현은 고정된 띄어쓰기를 유지 |
 | `senses` | 하나 이상의 의미 단위. 각 sense가 독립 ID와 품사를 가짐 |
@@ -136,8 +177,12 @@ schema로 고정하지 않는다.
 | source | target | 기대 type | 검수 이유 |
 | --- | --- | --- | --- |
 | `w026-s1 담담하다` | `r008-s1 덤덤하다` | `direct` | “소식을 담담하게/덤덤하게 받아들였다”에서 직접 대체 가능 |
-| `w040-s1 선명하다` | `r030-s1 또렷하다` | `direct` | 시각 윤곽 문맥에서 직접 대체 가능 |
-| `w192-s1 열다` | `r011-s1 닫다` | `antonym` | 문·뚜껑의 상태를 바꾸는 반대 방향 |
+| `w040-s1 선명하다` | `r030-s1 또렷하다` | `direct` | “멀리서도 윤곽이 선명하다/또렷하다”에서 같은 서술 자리의 대체 |
+| `w099-s1 단맛` | `r004-s1 달콤함` | `direct` | “이 과일의 단맛이/달콤함이 강하게 느껴진다”에서 같은 명사 주어 자리의 대체 |
+| `w192-s1 열다` | `w193-s1 닫다` | `antonym` | 문·뚜껑의 상태를 바꾸는 반대 방향 |
+| `w031-s1 다정하다` | `w032-s1 냉정하다` | `antonym` | 사람을 대하는 태도 sense끼리의 반대 축 |
+| `w048-s1 가벼움` | `w049-s1 무거움` | `antonym` | 물체의 물리적 무게 sense끼리의 반대 축 |
+| `w048-s2 가벼움` | `w049-s2 무거움` | `antonym` | 일이나 마음의 부담 sense끼리의 반대 축 |
 | `w299-s1 길을 잃다` | `r019-s1 헤매다` | `near` | 상태와 그 뒤의 이동 행동이 달라 직접 대체·반의가 아님 |
 | `w133-s1 눈(기관)` | `w202-s1 바라보다` | `action` | 신체 기관이 시선 행동을 불러오며 target이 동사임 |
 | `w021-s1 희망` | `w217-s1 바라다` | `action` | 희망이 바람의 행동을 불러오며 target이 동사임 |
@@ -167,11 +212,14 @@ node --test tests/validate-canonical-jsonl.test.mjs
 
 추가로 이 배치의 JSONL을 읽어 다음을 확인했다.
 
-- 레코드 69개, 출발어 40개, 참조 전용 29개, sense 74개, 관계 56개;
+- 레코드 69개, 출발어 40개, 참조 전용 29개, sense 77개, 관계 58개;
 - 출발어 ID가 `docs/pilot-scope.md`의 명시적 대표 40개와 정확히 일치;
+- 후보표에 있는 참조 target은 `r###`로 중복 생성하지 않고 기존 `w###` ID를
+  사용하며, 후보표 밖 target만 `r###`를 사용;
 - 모든 relation target과 `target_sense`가 존재;
-- self-reference, 동일 source/type/target 중복, 빈 필수 필드가 없음;
-- relation type별 수량은 `direct` 14, `near` 7, `antonym` 7, `mood` 9,
+- self-reference, 동일 lexical identity의 후보-ID/참조-ID 이중 생성, 동일
+  source/type/target 중복, 빈 필수 필드가 없음;
+- relation type별 수량은 `direct` 14, `near` 7, `antonym` 9, `mood` 9,
   `scene` 3, `sensory` 7, `action` 4, `association` 5;
 - 14개의 `direct` 관계 모두 JSONL의 `note`에 확인한 문장 틀을 갖고 있음;
 - 4개의 `action` 관계 target은 모두 동사 sense이며, 장소·감각 명사를
