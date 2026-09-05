@@ -80,3 +80,65 @@ export function getRecord(database, recordId) {
 
   return { ...record, search_forms: searchForms, senses };
 }
+
+function plainRows(rows) {
+  return rows.map((row) => ({ ...row }));
+}
+
+export function readLogicalDatabaseSnapshot(database) {
+  const schema = plainRows(
+    database
+      .prepare(
+        `SELECT type, name, tbl_name, sql
+         FROM sqlite_master
+         WHERE name NOT LIKE 'sqlite_%'
+         ORDER BY type, name`,
+      )
+      .all(),
+  );
+
+  const rows = {
+    metadata: plainRows(
+      database.prepare('SELECT key, value FROM metadata ORDER BY key').all(),
+    ),
+    records: plainRows(
+      database
+        .prepare(
+          'SELECT id, record_type, role, candidate_id, lemma FROM records ORDER BY id',
+        )
+        .all(),
+    ),
+    search_forms: plainRows(
+      database
+        .prepare(
+          'SELECT record_id, position, form FROM search_forms ORDER BY record_id, position',
+        )
+        .all(),
+    ),
+    senses: plainRows(
+      database
+        .prepare(
+          'SELECT id, record_id, position, pos, gloss FROM senses ORDER BY record_id, position',
+        )
+        .all(),
+    ),
+    relations: plainRows(
+      database
+        .prepare(
+          `SELECT source_sense_id, position, target_record_id,
+                  target_sense_id, type, note
+           FROM relations
+           ORDER BY source_sense_id, position`,
+        )
+        .all(),
+    ),
+  };
+
+  return {
+    schema,
+    indexes: schema.filter(({ type }) => type === 'index'),
+    rows,
+  };
+}
+
+export const logicalDatabaseSnapshot = readLogicalDatabaseSnapshot;

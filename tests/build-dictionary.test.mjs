@@ -37,6 +37,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
+      allowDirty: true,
     });
 
     assert.equal(summary.recordCount, 326);
@@ -140,6 +141,7 @@ test('rebuilds from an empty output and protects canonical input', async () => {
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
+      allowDirty: true,
     });
 
     const staleDatabase = new DatabaseSync(outputPath);
@@ -150,6 +152,7 @@ test('rebuilds from an empty output and protects canonical input', async () => {
       inputDirectory: PILOT_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
+      allowDirty: true,
     });
     assert.deepEqual(await readFile(canonicalPath), before);
 
@@ -172,6 +175,7 @@ test('rebuilds from an empty output and protects canonical input', async () => {
       buildDictionary({
         inputDirectory: PILOT_DIRECTORY,
         outputPath: path.join(PILOT_DIRECTORY, 'not-generated.sqlite'),
+        allowDirty: true,
       }),
       (error) => {
         assert.ok(error instanceof BuildError);

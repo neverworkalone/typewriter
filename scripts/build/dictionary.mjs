@@ -8,6 +8,10 @@ import {
   ValidationError,
 } from '../validate/canonical-jsonl.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
+import {
+  BUILD_TOOL_VERSION,
+  resolveBuildProvenance,
+} from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
 
 export const DICTIONARY_VERSION = 'm2-pilot-1';
@@ -54,6 +58,13 @@ function assertOutputIsGeneratedOutsideCanonical(inputDirectory, outputPath) {
 function metadataEntries(model, metadata) {
   const counts = {
     record_count: model.records.length,
+    start_count: model.records.filter((record) => record.role === 'start').length,
+    reference_only_count: model.records.filter(
+      (record) => record.role === 'reference-only',
+    ).length,
+    candidate_count: model.records.filter(
+      (record) => record.candidate_id !== null,
+    ).length,
     search_form_count: model.records.reduce(
       (count, record) => count + record.search_forms.length,
       0,
@@ -71,6 +82,7 @@ function metadataEntries(model, metadata) {
   const values = {
     ...metadata,
     build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
+    build_tool_version: BUILD_TOOL_VERSION,
     dictionary_version: DICTIONARY_VERSION,
     normalization_version: model.normalization_version,
     schema_version: SQLITE_SCHEMA_VERSION,
@@ -173,6 +185,9 @@ export async function buildDictionary({
   outputPath = DEFAULT_DICTIONARY_OUTPUT,
   metadata = {},
   checkPilotCompleteness = false,
+  repositoryDirectory = process.cwd(),
+  sourceRevision,
+  allowDirty = false,
 } = {}) {
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
@@ -180,14 +195,29 @@ export async function buildDictionary({
   const model = await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness,
   });
-  const generatedMetadata = metadataEntries(model, metadata);
+  const provenance = await resolveBuildProvenance({
+    repositoryDirectory,
+    sourceRevision,
+    allowDirty,
+  });
 
   await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
   await rm(resolvedOutputPath, { force: true });
 
   let database;
+  let generatedMetadata;
   try {
     database = new DatabaseSync(resolvedOutputPath);
+    const sqliteVersion = database
+      .prepare('SELECT sqlite_version() AS version')
+      .get().version;
+    generatedMetadata = metadataEntries(model, {
+      ...metadata,
+      ...provenance,
+      node_version: process.version,
+      sqlite_module: 'node:sqlite',
+      sqlite_version: sqliteVersion,
+    });
     database.exec('PRAGMA foreign_keys = ON;');
     database.exec(
       `PRAGMA user_version = ${Number.parseInt(SQLITE_SCHEMA_VERSION, 10)};`,
@@ -237,6 +267,7 @@ export async function buildDictionary({
 export async function main() {
   const summary = await buildDictionary({
     checkPilotCompleteness: !process.argv.includes('--no-pilot-regression'),
+    allowDirty: process.argv.includes('--allow-dirty'),
   });
   console.log(
     `Built ${summary.outputPath}: ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s).`,

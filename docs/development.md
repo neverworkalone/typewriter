@@ -13,7 +13,8 @@ external responses, generated databases, or credential files.
 
 ## Local validation
 
-Run validation and normalization checks before opening or updating a pull request:
+Run validation, normalization, build, and reproducibility checks before opening or
+updating a pull request:
 
 ```sh
 node scripts/validate/canonical-jsonl.mjs
@@ -24,7 +25,12 @@ node scripts/normalize/canonical.mjs
 node --test tests/normalize-canonical.test.mjs
 node scripts/build/dictionary.mjs
 node --test tests/build-dictionary.test.mjs
+node --test tests/reproducibility.test.mjs
 ```
+
+The default SQLite build requires a clean Git worktree. While developing locally,
+`node scripts/build/dictionary.mjs --allow-dirty` is an explicit non-reproducible
+escape hatch; CI always builds from a clean checkout.
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
 files. It does not scan `data/draft/`, `data/reference/`, generated output, or test
@@ -58,10 +64,12 @@ as the local workflow:
 6. `node --test tests/normalize-canonical.test.mjs`
 7. `node scripts/build/dictionary.mjs`
 8. `node --test tests/build-dictionary.test.mjs`
+9. `node --test tests/reproducibility.test.mjs`
 
-The workflow proves that the documented JSONL, dataset, normalization, and SQLite
-checks and their regression tests run in a clean environment. It does not claim that
-the canonical dictionary has editorial, lexical, relation, or coverage quality.
+The workflow proves that the documented JSONL, dataset, normalization, SQLite, and
+reproducibility checks and their regression tests run in a clean environment. It does
+not claim that the canonical dictionary has editorial, lexical, relation, or coverage
+quality.
 
 ## Failure diagnosis
 

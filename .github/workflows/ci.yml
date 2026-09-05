@@ -46,3 +46,6 @@ jobs:
 
       - name: Run SQLite builder tests
         run: node --test tests/build-dictionary.test.mjs
+
+      - name: Run reproducibility tests
+        run: node --test tests/reproducibility.test.mjs
