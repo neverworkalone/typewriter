@@ -10,7 +10,9 @@ From the repository root:
 
 ```sh
 node scripts/validate/canonical-jsonl.mjs
+node scripts/validate/dataset-integrity.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
+node --test tests/validate-dataset-integrity.test.mjs
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -24,4 +26,6 @@ It validates UTF-8 decoding, JSON parsing, and the row-level shape in
 Editorial Model v1 record. A single final newline is allowed, while blank rows and
 schema errors are rejected with the file path and 1-based line number. Cross-record
 references, relation ownership, dataset completeness, normalization, and SQLite
-building are handled by later M2 commands.
+building are handled by later M2 commands. The dataset command runs the current
+`w001`–`w300` pilot completeness regression by default; pass
+`--no-pilot-regression` when validating a smaller independent fixture.

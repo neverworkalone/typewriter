@@ -16,7 +16,9 @@ Run both commands before opening or updating a pull request:
 
 ```sh
 node scripts/validate/canonical-jsonl.mjs
+node scripts/validate/dataset-integrity.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
+node --test tests/validate-dataset-integrity.test.mjs
 ```
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
@@ -36,12 +38,14 @@ assertions; the test command itself should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs no project dependencies, selects Node.js 20.x,
-and runs the same two commands as the local workflow:
+and runs the same validator and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
+3. `node scripts/validate/dataset-integrity.mjs`
+4. `node --test tests/validate-dataset-integrity.test.mjs`
 
-The workflow proves that the documented JSONL and row-schema validator and its
+The workflow proves that the documented JSONL and dataset validators and their
 regression tests run in a clean environment. It does not claim that the canonical
 dictionary has editorial, lexical, relation, or coverage quality.
 
@@ -56,6 +60,9 @@ the 1-based line number. Typical causes are:
 - `schema validation failed`: inspect the reported `$` path and add or correct only
   the current Editorial Model v1 fields; cross-record references are checked by the
   later dataset validator.
+- `relation target ... does not exist` or `target_sense ...`: inspect the target
+  record and sense IDs. The dataset validator checks ownership and existence but
+  does not create, reverse, or classify relations.
 
 When the validator reports zero files and records, first confirm that canonical data
 has not been added yet. Do not treat an empty initial dataset as a successful
@@ -73,7 +80,7 @@ use the smallest self-authored fixture that demonstrates the behavior.
 | --- | --- |
 | M0 | Canonical-only file discovery, strict UTF-8 decoding, JSON parsing, blank-row and final-newline behavior, empty initial state, line-aware errors, and repeatable tests/CI. |
 | M1 | Editorial model and pilot-data review: senses, expressions, relation categories, and the criteria used to curate writer-facing records. |
-| M2 | Formal JSONL schema and lexical fields, reference and relation integrity, duplicate and part-of-speech checks, normalization, deterministic SQLite build, and generated metadata. |
+| M2 | Formal JSONL schema and lexical fields, dataset-wide reference and relation integrity, duplicate and part-of-speech checks, normalization, deterministic SQLite build, and generated metadata. |
 
 Do not extend the M0 workflow to enforce an unvalidated lexical schema or to build the
 Chrome product. Those checks belong to the milestone where their requirements are
