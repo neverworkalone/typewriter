@@ -62,3 +62,28 @@ support exact term lookup, complete record/sense retrieval, and source-sense
 relations with target lemma, part of speech, and gloss display. Fuzzy search,
 ranking, morphology, user data, and extension runtime integration are outside this
 contract.
+
+## Reproducibility and provenance
+
+The builder records `dictionary_version`, `schema_version`,
+`normalization_version`, `build_tool_version`, `node_version`, `sqlite_module`,
+`sqlite_version`, source revision fields, and generated row counts in `metadata`.
+It does not record a build timestamp, absolute input path, or output path.
+
+By default, `source_revision` is the full Git `HEAD` commit and the source
+worktree must be clean. A dirty worktree fails with `DIRTY_WORKTREE`; passing
+`allowDirty: true` is an explicit escape hatch for local or otherwise
+non-reproducible builds and records `worktree_state: "dirty-allowed"`. An explicit
+commit revision is resolved and verified when Git is available. In a Git-less
+environment, only a full 40-character SHA may be injected, and the metadata marks
+it as `source_revision_verified: "false"` and `worktree_state: "unavailable"`.
+When Git is available, an explicit revision must resolve to the current `HEAD`; the
+builder does not materialize historical commits, so a different commit is rejected
+instead of being recorded as verified provenance.
+
+`readLogicalDatabaseSnapshot` in [`scripts/build/query.mjs`](../scripts/build/query.mjs)
+compares the schema, named indexes, and ordered contents of every dictionary table.
+Two builds with the same canonical revision and fixed runtime/tool inputs must have
+the same logical snapshot. SQLite byte-for-byte identity is not required: page
+layout and other file-level details are implementation artifacts rather than part of
+the dictionary contract.
