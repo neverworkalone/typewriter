@@ -46,7 +46,7 @@ commands themselves should pass.
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
-the revision under review, installs no project dependencies, selects Node.js 20.x,
+the revision under review, installs no project dependencies, selects Node.js 22.x,
 and runs the same validator, normalization, SQLite build, and regression commands
 as the local workflow:
 
