@@ -63,6 +63,44 @@ relations with target lemma, part of speech, and gloss display. Fuzzy search,
 ranking, morphology, user data, and extension runtime integration are outside this
 contract.
 
+## MV3 SQLite WASM proof
+
+`node scripts/extension/build-proof.mjs` assembles a self-contained extension
+directory at `dist/mv3-proof/`. It contains the generated `dictionary.sqlite`, the
+module worker, the proof page, and the pinned `@sqlite.org/sqlite-wasm` module plus
+WASM binary. The manifest has no permissions or host permissions. The worker fetches
+only the packaged database, deserializes it into an in-memory SQLite connection,
+enables `query_only`, runs exact lemma/search-form/relation lookups, and verifies that
+a write is rejected and not persisted.
+
+The proof runs in an action popup extension page (`proof.html`) that creates a
+dedicated module worker (`sqlite-worker.mjs`). It does not use a service worker or
+offscreen document. The worker lifetime is tied to the proof page and the page
+terminates it after the result. Package-relative `chrome.runtime.getURL()` and
+`self.location` URLs are used for all assets; no filesystem path, CDN, or runtime
+external request is part of the contract. The generated SQLite is read-only runtime
+output derived from canonical JSONL and is never the source of truth.
+
+The static/package checks run as part of the normal test suite. When Chrome for
+Testing is available, run the actual MV3 proof with:
+
+```sh
+npm run build:proof -- --allow-dirty
+npm run test:mv3:chrome -- \
+  --chrome="/path/to/Google Chrome for Testing"
+```
+
+The CFT runner discovers the unpacked extension ID through `chrome://extensions/`,
+opens `proof.html`, blocks ordinary network resolution, and fails if the proof page
+makes a non-extension request or if the read-only assertion fails. The current proof
+uses `@sqlite.org/sqlite-wasm` 3.53.0-build1 under its Apache-2.0 license; see
+`extension/mv3-proof/THIRD-PARTY-NOTICES.txt`.
+
+실제 검증 기록 (2026-09-05, Chrome for Testing 152.0.7977.76): unpacked MV3
+패키지가 로드됐고 `Proof passed`를 반환했다. 비확장 요청은 0건이었으며, SQLite
+3.53.0에서 `query_only = 1`, `담담하다` lemma, `담담` search form, `w026-s1`
+관계가 조회됐다. 쓰기 시도는 차단됐고 테스트 행은 저장되지 않았다.
+
 ## Reproducibility and provenance
 
 The builder records `dictionary_version`, `schema_version`,

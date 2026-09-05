@@ -1,0 +1,20 @@
+{
+  "name": "typewriter",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs",
+    "normalize": "node scripts/normalize/canonical.mjs",
+    "build:dictionary": "node scripts/build/dictionary.mjs",
+    "build:proof": "node scripts/extension/build-proof.mjs",
+    "test:mv3:chrome": "node scripts/extension/run-cft-proof.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.0-build1"
+  }
+}
