@@ -1,24 +1,24 @@
-# M1 provisional Editorial Model — #18/#19/#20
+# M1 provisional Editorial Model — #18/#19/#20/#21
 
 ## 범위와 상태
 
 이 문서는 M1-2에서 처음 canonical에 넣은 대표 출발어 40개, M1-3에서
-추가한 **경계 사례 40개**, M1-4에서 확장한 **추가 출발어 80개**를 편집한 결정 기록이다. 정식 JSON Schema나 장기
+추가한 **경계 사례 40개**, M1-4와 M1-5에서 각각 확장한 **추가 출발어 80개씩**을 편집한 결정 기록이다. 정식 JSON Schema나 장기
 ontology가 아니다. 실제 검색과 다음 배치의 편집에서 문제가 드러나면 이
 모델을 다시 줄이거나 바꿀 수 있다.
 
 canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl)이다.
 이 누적 배치는 `docs/pilot-scope.md`의 대표 ID 40개, #19의 추가 경계 ID
-40개, #20의 추가 ID 80개를 검색 출발어로 포함하고, 관계 대상을 완결하기
-위한 참조 전용 레코드 34개를 함께 둔다.
+40개, #20과 #21의 추가 ID 80개씩을 검색 출발어로 포함하고, 관계 대상을
+완결하기 위한 참조 전용 레코드 34개를 함께 둔다.
 
 | 항목 | 수량 | 의미 |
 | --- | ---: | --- |
-| 전체 canonical 레코드 | 194 | 출발어 160 + 참조 전용 34 |
-| 검색 출발어 | 160 | #17 대표 40 + #19 경계 사례 40 + #20 확장 80 |
+| 전체 canonical 레코드 | 274 | 출발어 240 + 참조 전용 34 |
+| 검색 출발어 | 240 | #17 대표 40 + #19 경계 사례 40 + #20 확장 80 + #21 확장 80 |
 | 참조 전용 레코드 | 34 | 관계 도착점으로만 수록하며 출발어로 세지 않음 |
-| sense | 234 | 다의어는 하나의 레코드 안에서 sense를 나눔 |
-| relation | 238 | 사람이 이 누적 배치에서 직접 판단해 남긴 관계 |
+| sense | 322 | 다의어는 하나의 레코드 안에서 sense를 나눔 |
+| relation | 319 | 사람이 이 누적 배치에서 직접 판단해 남긴 관계 |
 
 300개 전체 후보, SQLite, 정식 schema, 자동 의미 판정은 이 PR의 범위가
 아니다. 미검수 초안이나 외부 원문은 저장하지 않았고, 아래의 gloss·관계
@@ -27,11 +27,11 @@ canonical 원본은 [`data/canonical/pilot.jsonl`](../data/canonical/pilot.jsonl
 ## 검수 기록 약속
 
 `docs/pilot-scope.md`의 **후속 검수 최소 체크리스트**를 이 배치에도
-적용했다. 아래의 #18 40개 ledger, #19 추가 40개 ledger, #20 추가 80개
-ledger가 각 검색 출발어의 결정 상태와 짧은 판단을 한 번씩 기록한다.
+적용했다. 아래의 #18 40개 ledger, #19 추가 40개 ledger, #20과 #21의 추가
+80개 ledger가 각 검색 출발어의 결정 상태와 짧은 판단을 한 번씩 기록한다.
 
-- `included`인 출발어만 canonical에 들어간다. #18과 #19의 각 40개, #20의
-  80개는 모두 `role: start`로 수록되었다.
+- `included`인 출발어만 canonical에 들어간다. #18과 #19의 각 40개, #20과
+  #21의 각 80개는 모두 `role: start`로 수록되었다.
 - 참조 레코드는 `role: reference-only`로만 수록되며, 검색 출발어 수에
   포함하지 않는다.
 - 참조 레코드도 아래의 별도 ledger에서 `included` 상태, `reference-only`
@@ -347,16 +347,191 @@ association으로 낮추거나 relation을 만들지 않았다.
 | `w291-s1`와 `w291-s2` | 물리적 이동 불능과 비유적 제약의 expression을 별도 sense로 유지 |
 | 모든 `action` target | target 품사는 동사 또는 expression이어야 함 |
 
-## #21 전에 해소해야 하는 실제 blocker
+## #21 추가 80개 확장 ledger
 
-현재 blocker는 없다. #20은 누적 160개 출발어, 34개 참조 전용 레코드,
-234개 sense, 238개 relation을 전수 점검했고, 기존 경계 회귀와 #20 회귀를
-함께 확인했다. 다음 태스크는 이 PR이 머지된 최신 `master`에서 시작하면 된다.
+#21은 누적 출발어를 160개에서 240개로 넓히면서, 이전 배치에서 정한
+relation type·sense 분할·관계 방향이 범주가 달라져도 유지되는지 확인하는
+확장이다. 숫자를 채우기 위해 관계를 만들지 않고, 참조 전용 레코드는 새로
+추가하지 않았다.
+
+| 범주 | #21 추가 | 누적 출발어 | 추가 ID |
+| --- | ---: | ---: | --- |
+| 정서·내면 (E) | 6 | 30 | w014, w015, w024, w025, w027, w029 |
+| 성질·태도·상태 (Q) | 6 | 30 | w052, w053, w054, w057, w058, w059 |
+| 감각 (S) | 18 | 45 | w078, w080, w082, w083, w084, w085, w087, w089, w092, w093, w094, w095, w098, w100, w101, w102, w103, w104 |
+| 시간·자연·공간·장면 (C) | 18 | 43 | w123, w126, w141, w146, w148, w149, w150, w152, w153, w154, w155, w156, w158, w159, w161, w162, w163, w164 |
+| 움직임·관계·변화 (A) | 15 | 42 | w196, w197, w198, w199, w201, w204, w205, w206, w208, w209, w210, w211, w212, w214, w215 |
+| 사물·몸·쓰기 재료 (O) | 9 | 25 | w255, w256, w258, w259, w261, w262, w263, w264, w265 |
+| 추상어·표현·경계 (X) | 8 | 25 | w282, w283, w284, w285, w286, w287, w290, w292 |
+
+모든 행은 `included`와 `start`로 확정했다. 다만 이는 표제어 레코드를
+수록했다는 뜻이지 가능한 모든 relation을 승인했다는 뜻은 아니다. 다음
+ledger의 `관계 없음`은 검수 누락이 아니라 일반적·중복적인 연결을 의도적으로
+남기지 않은 결과다.
+
+| 후보 ID | 상태 | 역할 | 검수 판단 |
+| --- | --- | --- | --- |
+| w014 | included | start | `원망`은 상대에게 탓을 돌리는 마음으로 `서운함`과 near, `분노`와 mood만 남겼다. |
+| w015 | included | start | `질투`는 관심을 빼앗길까 하는 마음으로 `의심`을 부를 수 있는 mood로만 기록했다. |
+| w024 | included | start | `믿음`은 앞으로의 가능성을 지지할 수 있지만 `희망`과는 다른 방향이므로 mood로 두었다. |
+| w025 | included | start | `무심하다`는 관심을 드러내지 않는 태도로 정리하고 `무뚝뚝함`과 near, `냉정함`과 mood로 구분했다. |
+| w027 | included | start | `초조`는 기다림 속의 급한 불안으로 `불안`과 near, `긴장`과 mood로 좁혔다. |
+| w029 | included | start | `허전하다`는 비어 채워지지 않는 감정으로 `쓸쓸함`과 near, `빈방`과 scene으로 확장했다. |
+| w052 | included | start | 물리적 깊이와 생각·감정의 깊이를 두 sense로 나누고 대응하는 `얕음` sense끼리만 antonym으로 연결했다. |
+| w053 | included | start | 물리적 얕음과 내용의 얕음을 두 sense로 나누고 `깊음`의 같은 축과만 antonym으로 연결했다. |
+| w054 | included | start | 공간의 빈틈과 방어의 허점을 두 sense로 나누고 공간 sense만 `틈`과 near로 연결했다. |
+| w057 | included | start | `적막`은 소리와 인기척이 끊긴 장면으로 `고요`와 mood, `소란`과 antonym으로 기록했다. |
+| w058 | included | start | `소란`은 소리와 움직임이 넘치는 상태로 `적막`과 같은 장면 축의 antonym만 남겼다. |
+| w059 | included | start | `침묵`은 말이나 소리를 내지 않는 상태라 주변 장면인 `적막`과 near로 구분했다. |
+| w078 | included | start | 수분이 적은 `건조`를 `젖음`과 antonym, `촉감`과 sensory로 연결했다. |
+| w080 | included | start | 찌르는 피부 감각인 `따가움`을 넓은 `통증`과 near, `촉감`과 sensory로 기록했다. |
+| w082 | included | start | 몸이 느끼는 온도인 `뜨거움`을 `차가움`과 antonym, 퍼지는 `열기`와 near로 구분했다. |
+| w083 | included | start | 직접 느끼는 `차가움`을 `뜨거움`과 antonym, 주변 기운인 `냉기`와 near로 구분했다. |
+| w084 | included | start | 수분이 스민 `젖음`을 `건조`와 antonym, 공기·물체의 `습기`와 sensory로 기록했다. |
+| w085 | included | start | 수분·생기의 메마름과 감정·관계의 메마름을 두 sense로 나누고 각각 `건조`와 near, `무심함`과 mood로 연결했다. |
+| w087 | included | start | 소리가 퍼져 남는 `울림`을 넓은 `소리`와 sensory, 되돌아오는 `메아리`와 near로 구분했다. |
+| w089 | included | start | 낮은 말소리인 `속삭임`을 목소리의 크기와 거리감을 드러내는 sensory로 기록했다. |
+| w092 | included | start | 걷는 원인이 드러나는 `발소리`를 넓은 `소리`와 sensory로 연결했다. |
+| w093 | included | start | 몸에서 나는 `숨소리`를 호흡 장면으로 좁혀 `소리`와 sensory로 기록했다. |
+| w094 | included | start | 반복되는 몸의 리듬인 `심장박동`이 긴장할 때 빨라지는 관계를 mood로만 남겼다. |
+| w095 | included | start | 보이지 않는 존재를 알아차리게 하는 `기척`을 방 안의 장면인 `방`과 scene으로 연결했다. |
+| w098 | included | start | 음식의 맛을 느끼는 감각과 먹고 싶은 정도·취향을 두 sense로 나누고 첫 sense만 `단맛`과 near로 연결했다. |
+| w100 | included | start | 혀로 느끼는 `쓴맛`을 단맛과 같은 맛의 대비가 아니라 구체 감각 확장인 sensory로 기록했다. |
+| w101 | included | start | `신맛`은 맛 후보로 수록했지만 이번 배치에서 확인된 writer-facing target이 없어 관계를 만들지 않았다. |
+| w102 | included | start | `짠맛`은 맛 후보로 수록했지만 일반적인 음식 연상으로 관계를 채우지 않았다. |
+| w103 | included | start | `떫은맛`은 독립 감각으로 수록하고 다른 맛과의 중복 near를 보류했다. |
+| w104 | included | start | `목마름`은 몸의 상태로 수록했지만 물·습기 같은 일반 장면 target은 만들지 않았다. |
+| w123 | included | start | 낮의 시간 축에서 `밤`과 antonym, `아침`과 near를 기록하고 시간 순서를 반의어로 넓히지 않았다. |
+| w126 | included | start | 자정 무렵인 `한밤중`을 `밤`과 near, 빛이 적은 `어둠`과 scene으로 구분했다. |
+| w141 | included | start | 흐르는 자연 공간인 `강`을 더 넓은 수변 장면인 `바다`와 scene으로만 연결했다. |
+| w146 | included | start | 통행이 모이는 `길목`을 수록했지만 일반적인 장소 연상은 관계로 만들지 않았다. |
+| w148 | included | start | 건물의 위쪽 구조인 `지붕`을 수록하고 보편적인 건물 장면 target은 보류했다. |
+| w149 | included | start | 오르내리는 구조물인 `계단`을 수록했지만 다른 공간과의 일반 장면 연결은 보류했다. |
+| w150 | included | start | 드나드는 경계인 `문턱`을 생활 공간인 `방`과 scene으로 기록했다. |
+| w152 | included | start | 사람이 없는 공간인 `빈방`을 `방`과 near, `외로움`과 mood로 구분했다. |
+| w153 | included | start | 조리 공간인 `부엌`을 넓은 생활 공간인 `방`과 scene으로만 연결했다. |
+| w154 | included | start | 이동을 이어 주는 실내 공간인 `복도`를 `방`과 scene으로 기록했다. |
+| w155 | included | start | 집 안의 열린 공간인 `마당`을 수록했지만 바람·집 같은 일반 연상은 보류했다. |
+| w156 | included | start | 건물 위의 공간인 `옥상`을 수록했지만 수량을 위한 장면 target은 만들지 않았다. |
+| w158 | included | start | 사람이 기다리는 `정류장`을 이동 장면의 `역`과 scene으로 연결했다. |
+| w159 | included | start | 열차가 서는 `플랫폼`을 `역`과 scene으로 구분했다. |
+| w161 | included | start | 물건과 사람이 모이는 `시장`을 수록했지만 일반 장소 관계는 보류했다. |
+| w162 | included | start | 배움의 공간인 `학교`를 수록했지만 보편적인 장소 연상은 만들지 않았다. |
+| w163 | included | start | 진료와 통증의 장면을 여는 `병원`을 `통증`과 scene으로 기록했다. |
+| w164 | included | start | 공연을 보는 `극장`을 수록했지만 카페·학교 같은 넓은 장소 연상은 보류했다. |
+| w196 | included | start | 건네고 받는 상호 장면에서 `건네다`와 `받다`를 direct·near가 아닌 association으로 연결했다. |
+| w197 | included | start | `받다`도 반대 행동의 대체어가 아니라 `건네다`를 떠올리는 association으로 기록했다. |
+| w198 | included | start | `부르다`는 여러 용법이 더 필요한 행동으로 수록하고 이번 배치에서는 관계를 확정하지 않았다. |
+| w199 | included | start | 응답 행동인 `대답하다`를 말소리를 내는 `말하다`와 action으로 연결했다. |
+| w201 | included | start | 소리를 알아차리는 듣기와 말을 받아들이는 듣기를 두 sense로 나누고 각각 sensory·association으로 기록했다. |
+| w204 | included | start | `울다`를 `슬픔`과 mood, `눈물`과 sensory로 연결해 행동과 정서·흔적을 구분했다. |
+| w205 | included | start | 몸을 기대는 물리 sense와 사람·도움에 의지하는 sense를 나누고 무리한 near를 만들지 않았다. |
+| w206 | included | start | 기울어지는 움직임을 수록했지만 방향만으로 다른 움직임과 near를 만들지 않았다. |
+| w208 | included | start | 몸이 떠는 `떨다`를 흔들리는 상태인 `흔들리다`와 near로 기록했다. |
+| w209 | included | start | 방향을 바꾸는 `돌아서다`를 수록했지만 앞뒤 이동의 일반 연상은 보류했다. |
+| w210 | included | start | 가까워지는 행동인 `다가가다`를 수록했지만 장면만으로 관계를 채우지 않았다. |
+| w211 | included | start | 미는 힘의 방향에서 `당기다`와 antonym으로 연결했다. |
+| w212 | included | start | 당기는 힘의 방향에서 `밀다`와 antonym으로 연결했다. |
+| w214 | included | start | 상대를 밖으로 밀어내는 행동이 `거절하다`를 떠올리는 association으로만 이어진다. |
+| w215 | included | start | 붙드는 행동을 `잡다`와 near, 놓아 보내는 방향을 `놓다`와 antonym으로 구분했다. |
+| w255 | included | start | 입술은 말소리를 내는 장면을 불러오므로 `말하다`와 action으로 기록했다. |
+| w256 | included | start | 목에서 나는 소리와 `목소리`의 관계를 sensory로 기록하고 신체와 소리를 합치지 않았다. |
+| w258 | included | start | 물건을 넣는 `주머니`를 수록했지만 일반적인 사물·옷 연상은 보류했다. |
+| w259 | included | start | 발에 신는 `신발`을 달리는 장면과 association으로 연결했다. |
+| w261 | included | start | 마시는 도구인 `컵`을 머무는 장소인 `카페`와 scene으로 구분했다. |
+| w262 | included | start | 음식을 담는 `접시`를 수록했지만 일반적인 식사 장면 target은 만들지 않았다. |
+| w263 | included | start | 머리를 정돈하는 `빗`을 신체 부위인 `머리`와 association으로 연결했다. |
+| w264 | included | start | 타는 `불`을 시각 감각인 `빛`과 열의 감각인 `열기`에 각각 sensory로 연결했다. |
+| w265 | included | start | 불이 타고 남은 `재`를 `불`과 association으로 기록했다. |
+| w282 | included | start | 피하기 어려운 미래의 `운명`을 바라는 미래 장면인 `꿈`과 association으로만 연결했다. |
+| w283 | included | start | 예기치 않은 `우연`을 누군가를 마주하는 `만나다`와 association으로 기록했다. |
+| w284 | included | start | 물리적 공간의 틈과 시간·관계 사이의 여유를 두 sense로 나누고 각각 `빈틈`·`사이`와 near로 연결했다. |
+| w285 | included | start | 경계선이나 경계 상태를 수록하고 비어 있는 `틈`과는 association으로 구분했다. |
+| w286 | included | start | 시간·관계의 거리인 `사이`를 `틈`의 대응 sense와 near로 기록했다. |
+| w287 | included | start | 가까이 있는 `곁`을 수록했지만 `사이`·관계와의 일반적인 연상은 보류했다. |
+| w290 | included | start | `가슴이 먹먹하다`는 고정된 감정 표현이므로 expression으로 두고 `슬픔`과 mood로 연결했다. |
+| w292 | included | start | `입을 다물다`는 말하지 않는 행동을 보존하는 expression으로 두고 `침묵`과 near로 기록했다. |
+
+## #21 참조 전용 ledger
+
+#21에서는 참조 전용 레코드를 추가하지 않았다. 현재 참조 전용은 34개로
+유지되며, 새 relation은 기존 reference 또는 #21의 start 레코드만 target으로
+삼는다. 따라서 #21의 80개는 모두 검색 출발어이고, 참조 전용 수를 늘려
+출발어 수를 부풀리지 않았다.
+
+| 추가 ID | 상태 | 역할 | 수록·역할 사유 |
+| --- | --- | --- | --- |
+| 없음 | 해당 없음 | reference-only 없음 | 34개 기존 참조 전용 레코드로 모든 #21 target을 완결할 수 있었다. |
+
+## #21 decision log와 보류 구분
+
+- **관계 밀도:** #20은 출발어 80개에 relation 150개를 추가해 출발어당
+  1.88개였지만, #21은 80개에 81개를 추가해 1.01개다. 이는 모델이
+  느슨해진 결과가 아니라 `w101–w104`, 여러 일반 공간·사물·행동 후보의
+  관계를 quota처럼 만들지 않은 결과다.
+- **범주 균형:** #21은 E 6, Q 6, S 18, C 18, A 15, O 9, X 8개를
+  추가해 누적 E 30, Q 30, S 45, C 43, A 42, O 25, X 25개가 되었다.
+  감각·장면을 넓혔지만 관계 밀도를 동일하게 강제하지 않았다.
+- **sense 경계:** `깊음/얕음`은 물리·추상 축, `빈틈`은 공간·방어 축,
+  `메마름`은 물리·관계 축, `입맛`은 감각·식욕 축, `듣다`는 소리·수용
+  축, `기대다`는 물리·의지 축, `틈`은 공간·시간·관계 축으로 나누었다.
+- **표현 경계:** 새 표현은 `가슴이 먹먹하다`, `입을 다물다` 두 개뿐이다.
+  단일 동사와 일반 명사구는 expression으로 승격하지 않았다.
+- **direct 문턱:** #21에서는 새 `direct`를 추가하지 않았다. 보완·상호
+  행동인 `건네다/받다`도 direct나 near가 아니라 association으로 두었다.
+- **보류한 관계:** `신맛`, `짠맛`, `떫은맛`, `목마름`, `길목`, `지붕`,
+  `계단`, `마당`, `옥상`, `시장`, `학교`, `극장`, `부르다`, `기대다`,
+  `기울다`, `돌아서다`, `다가가다`, `주머니`, `접시`, `곁`은 현재
+  관계를 남기지 않았다. 이들은 `included`이지만 generic scene·공통
+  target을 억지로 채우지 않은 사례다.
+
+| 관계 type | #20 누적 | #21 추가 | #21 누적 |
+| --- | ---: | ---: | ---: |
+| `direct` | 17 | 0 | 17 |
+| `near` | 35 | 20 | 55 |
+| `antonym` | 31 | 14 | 45 |
+| `mood` | 36 | 11 | 47 |
+| `scene` | 24 | 11 | 35 |
+| `sensory` | 48 | 13 | 61 |
+| `action` | 20 | 2 | 22 |
+| `association` | 27 | 10 | 37 |
+| **합계** | **238** | **81** | **319** |
+
+## #21 editorial regression set
+
+| 사례 | 기대 결과 |
+| --- | --- |
+| `w052-s1 ↔ w053-s1`, `w052-s2 ↔ w053-s2` | 물리 깊이와 내용의 깊이를 각각 대응 sense끼리만 `antonym`; cross-sense 금지 |
+| `w078-s1 ↔ w084-s1` | 수분 축의 `antonym`; `건조`와 `젖음`을 촉감의 near로 바꾸지 않음 |
+| `w082-s1 ↔ w083-s1` | 직접 느끼는 온도 축의 `antonym`; `열기`·`냉기`는 near로 분리 |
+| `w057-s1 ↔ w058-s1`와 `w059-s1 → w057-s1` | 소란과 적막은 `antonym`, 침묵과 적막은 주변 장면 차이의 `near` |
+| `w085-s1`와 `w085-s2` | 물리적 메마름과 관계의 메마름을 분리하고 각각 near·mood로 유지 |
+| `w098-s1`와 `w098-s2` | 맛을 느끼는 감각과 식욕·취향을 분리; 첫 sense만 `단맛`과 near |
+| `w123-s1 → w125-s1` | 낮과 밤은 시간 축의 `antonym`; 아침은 `near`이며 단순 순서 관계가 아님 |
+| `w201-s1`와 `w201-s2` | 소리를 듣는 sense와 말을 받아들이는 sense를 분리해 sensory·association으로 유지 |
+| `w196-s1 ↔ w197-s1` | 건네고 받기는 상호 행동이지만 직접 대체·near가 아닌 association |
+| `w211-s1 ↔ w212-s1` | 밀기와 당기기는 같은 힘의 방향 축에서 `antonym` |
+| `w284-s1`와 `w284-s2` | 물리적 틈과 시간·관계의 틈을 분리하고 `빈틈`·`사이` target도 대응 sense로 제한 |
+| `w290`, `w292` | 고정된 전체 의미를 가진 독립 `expression`; 단순 활용형으로 취급하지 않음 |
+| 모든 #21 `action` target | target 품사는 동사 또는 expression이어야 하며, 전수 audit에서 이를 확인 |
+
+### #22로 넘기는 blocker
+
+현재 blocker는 없다. #21의 80개 start, 34개 reference-only, 322개 sense,
+319개 relation과 새 표현 2개를 검수했고, #20 대비 관계 밀도·범주별 분포·
+보류 관계를 기록했다. #22는 이 PR이 머지된 최신 `master`에서 남은 후보를
+별도 배치로 검토하면 된다.
+
+## #20에서 #21로 넘긴 blocker
+
+이 절은 #20 당시의 handoff 기록이다. 당시 blocker는 없었고, 누적 160개
+출발어, 34개 참조 전용 레코드, 234개 sense, 238개 relation을 전수 점검한
+뒤 #21을 최신 `master`에서 시작했다.
 
 ### M2 이후의 비차단 보류
 
 - formal schema validator, 형태론 전체, 검색 ranking은 여전히 M2 이후로 보류한다.
-- 이 항목들은 #20의 canonical 검수와 #21 착수를 막지 않으며, JSONL validator와
+- 이 항목들은 #21의 canonical 검수와 #22 착수를 막지 않으며, JSONL validator와
   수동 identity·sense·relation audit로 현재 M1 범위를 검증한다.
 
 ## 검증 기록
@@ -368,19 +543,21 @@ node scripts/validate/canonical-jsonl.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 ```
 
-추가로 #17–#20 누적 JSONL을 읽어 다음을 확인했다.
+추가로 #17–#21 누적 JSONL을 읽어 다음을 확인했다.
 
-- 전체 194 records 중 `role: start` 160개와 `role: reference-only` 34개;
-- 160개 출발어의 `candidate_id`가 중복 없이 존재하고 #20 ledger 80개가 모두 수록됨;
-- 전체 234개 sense ID와 238개 relation target/target_sense가 존재하며 self-reference 없음;
-- relation type별 수량은 `direct` 17, `near` 35, `antonym` 31, `mood` 36,
-  `scene` 24, `sensory` 48, `action` 20, `association` 27;
-- #20 범주별 추가 수량은 E 12, Q 12, S 14, C 14, A 8, O 12, X 8로,
-  행동에만 치우치지 않도록 구성했다.
+- 전체 274 records 중 `role: start` 240개와 `role: reference-only` 34개;
+- 240개 출발어의 `candidate_id`가 중복 없이 존재하고 #21 ledger 80개가 모두 수록됨;
+- 전체 322개 sense ID와 319개 relation target/target_sense가 존재하며 self-reference 없음;
+- relation type별 수량은 `direct` 17, `near` 55, `antonym` 45, `mood` 47,
+  `scene` 35, `sensory` 61, `action` 22, `association` 37;
+- #21 범주별 추가 수량은 E 6, Q 6, S 18, C 18, A 15, O 9, X 8이며,
+  참조 전용 추가 0개와 새 expression 2개를 확인했다;
+- `git diff --check`와 후보 표면형 300개 대조, target·sense·중복·action
+  품사 전수 audit도 통과했다.
 
 ## 임시 레코드 모델
 
-이 구조는 현재 194개 레코드를 사람이 읽고 고치기 위한 최소 표현이다. 정식
+이 구조는 현재 274개 레코드를 사람이 읽고 고치기 위한 최소 표현이다. 정식
 schema로 고정하지 않는다.
 
 | 필드 | 현재 의미 |
