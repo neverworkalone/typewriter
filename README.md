@@ -1,4 +1,5 @@
 # Typewriter
+[![CI](https://github.com/neverworkalone/typewriter/actions/workflows/ci.yml/badge.svg)](https://github.com/neverworkalone/typewriter/actions/workflows/ci.yml)
 
 > **작가를 위한, 말의 결을 찾는 사전.**
 
