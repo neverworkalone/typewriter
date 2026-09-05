@@ -2,10 +2,13 @@
 
 ## Current requirements
 
-The validation and normalization tools require Node.js 18 or newer. The SQLite
-builder uses the built-in `node:sqlite` module and requires Node.js 22.5 or newer;
-CI uses Node.js 22.x. There is no dependency installation step; the commands use
-Node.js built-ins only.
+The complete M2 toolchain uses the built-in `node:sqlite` module and the vendored
+SQLite WASM runtime, so it requires Node.js 22.5 or newer; CI uses Node.js 22.x.
+Install the pinned runtime before running the commands:
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+```
 
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
@@ -26,6 +29,14 @@ node --test tests/normalize-canonical.test.mjs
 node scripts/build/dictionary.mjs
 node --test tests/build-dictionary.test.mjs
 node --test tests/reproducibility.test.mjs
+```
+
+Build the packaged MV3 proof locally with the same clean-build contract. While
+developing locally, pass `--allow-dirty` explicitly if the worktree has uncommitted
+changes:
+
+```sh
+node scripts/extension/build-proof.mjs --allow-dirty
 ```
 
 The default SQLite build requires a clean Git worktree. While developing locally,
@@ -52,9 +63,9 @@ commands themselves should pass.
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
-the revision under review, installs no project dependencies, selects Node.js 22.x,
-and runs the same validator, normalization, SQLite build, and regression commands
-as the local workflow:
+the revision under review, installs the pinned dependency with `npm ci`, selects
+Node.js 22.x, and runs the same validator, normalization, SQLite build, MV3 package,
+and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
@@ -63,13 +74,13 @@ as the local workflow:
 5. `node scripts/normalize/canonical.mjs`
 6. `node --test tests/normalize-canonical.test.mjs`
 7. `node scripts/build/dictionary.mjs`
-8. `node --test tests/build-dictionary.test.mjs`
-9. `node --test tests/reproducibility.test.mjs`
+8. `node scripts/extension/build-proof.mjs`
+9. `node --test tests/*.test.mjs`
 
-The workflow proves that the documented JSONL, dataset, normalization, SQLite, and
-reproducibility checks and their regression tests run in a clean environment. It does
-not claim that the canonical dictionary has editorial, lexical, relation, or coverage
-quality.
+The workflow proves that the documented JSONL, dataset, normalization, SQLite,
+reproducibility, and MV3 package checks and their regression tests run in a clean
+environment. It does not claim that the canonical dictionary has editorial, lexical,
+relation, or coverage quality.
 
 ## Failure diagnosis
 
@@ -102,7 +113,7 @@ use the smallest self-authored fixture that demonstrates the behavior.
 | --- | --- |
 | M0 | Canonical-only file discovery, strict UTF-8 decoding, JSON parsing, blank-row and final-newline behavior, empty initial state, line-aware errors, and repeatable tests/CI. |
 | M1 | Editorial model and pilot-data review: senses, expressions, relation categories, and the criteria used to curate writer-facing records. |
-| M2 | Formal JSONL schema and lexical fields, dataset-wide reference and relation integrity, duplicate and part-of-speech checks, normalization, deterministic SQLite build, and generated metadata. |
+| M2 | Formal JSONL schema and lexical fields, dataset-wide reference and relation integrity, duplicate and part-of-speech checks, normalization, deterministic SQLite build, generated metadata, and the packaged MV3 SQLite WASM proof. |
 
 Do not extend the M0 workflow to enforce an unvalidated lexical schema or to build the
 Chrome product. Those checks belong to the milestone where their requirements are

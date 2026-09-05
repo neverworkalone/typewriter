@@ -25,16 +25,17 @@ runtime, not by the dictionary build.
 ## Current and next-needed directories
 
 The current repository contains `public/` for the existing extension and brand
-assets. `docs/` contains repository and policy documentation. The canonical input
-location reserved for the M0-2 validator and later data work is:
+assets, `extension/mv3-proof/` for the M2 MV3 source proof, and `docs/` for
+repository, build, and policy documentation. The canonical input location used by
+the M2 toolchain is:
 
 ```text
 data/canonical/*.jsonl
 ```
 
-Only reviewed Typewriter records belong there. The directory will be created when
-the validator or the first canonical record needs it; an empty placeholder is not
-needed yet.
+Only reviewed Typewriter records belong there. The generated SQLite and packaged
+extension are built into ignored `artifacts/` or `dist/` output and are never edited
+as canonical data.
 
 The following locations are deliberately not created as part of the foundation:
 

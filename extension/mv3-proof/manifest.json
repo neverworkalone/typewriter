@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Typewriter M2 SQLite WASM proof",
+  "version": "0.2.0",
+  "description": "Minimal offline read-only SQLite WASM proof for Typewriter M2.",
+  "action": {
+    "default_popup": "proof.html"
+  },
+  "permissions": [],
+  "host_permissions": [],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  }
+}
