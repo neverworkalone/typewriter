@@ -32,5 +32,33 @@ The command runs the current `w001`–`w300` pilot completeness regression by
 default. Use `--no-pilot-regression` for a smaller valid fixture; schema and
 dataset-integrity validation still run in either mode.
 
-SQLite building, generated artifacts, and runtime packaging are separate later
-contracts. This issue does not introduce them.
+## SQLite dictionary
+
+`node scripts/build/dictionary.mjs` consumes the in-memory normalized model and
+creates `artifacts/dictionary.sqlite` from a fresh output path. The generated
+database is ignored build output and is never an editable source. The builder
+requires Node.js 22.5 or newer for the built-in `node:sqlite` module.
+
+The schema in [`scripts/build/sqlite-schema.mjs`](../scripts/build/sqlite-schema.mjs)
+contains only the current lookup model:
+
+- `records` preserves record identity, `entry`/`expression`, role, optional
+  candidate, and lemma;
+- `search_forms` preserves every form and its source position;
+- `senses` preserves source record, sense position, part of speech, and gloss;
+- `relations` preserves source sense order, target record/sense, relation type, and
+  note;
+- `metadata` stores deterministic contract versions and generated row counts.
+
+Exact lemma and search-form indexes support lookup. Sense-by-record and
+source/target relation indexes support ordered record and relation traversal. The
+builder inserts records and senses before relations so forward references work, and
+SQLite foreign keys plus integrity checks verify the resulting graph. Each build
+removes the requested generated file first; it does not depend on an existing DB or
+apply migrations. An output path inside `data/canonical/` is rejected.
+
+The read-only helpers in [`scripts/build/query.mjs`](../scripts/build/query.mjs)
+support exact term lookup, complete record/sense retrieval, and source-sense
+relations with target lemma, part of speech, and gloss display. Fuzzy search,
+ranking, morphology, user data, and extension runtime integration are outside this
+contract.
