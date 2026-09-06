@@ -42,7 +42,7 @@ function countSearchForms(records) {
   );
 }
 
-function expectedRows(model) {
+function expectedRowsFromNormalizedModel(model) {
   const records = model.records.map((record) => ({
     id: record.id,
     record_type: record.record_type,
@@ -94,6 +94,71 @@ function expectedRows(model) {
       || left.position - right.position
     )),
   };
+}
+
+function expectedRowsFromCanonicalRecords(canonicalRecords) {
+  const records = canonicalRecords.map((recordInfo) => recordInfo.record);
+  const rows = {
+    records: records.map((record) => ({
+      id: record.id,
+      record_type: record.record_type,
+      role: record.role,
+      candidate_id: record.candidate_id ?? null,
+      lemma: record.lemma,
+    })),
+    search_forms: records.flatMap((record) => (
+      record.search_forms.map((form, position) => ({
+        record_id: record.id,
+        position,
+        form,
+      }))
+    )),
+    senses: records.flatMap((record) => (
+      record.senses.map((sense, position) => ({
+        id: sense.id,
+        record_id: record.id,
+        position,
+        pos: sense.pos,
+        gloss: sense.gloss,
+      }))
+    )),
+    relations: records.flatMap((record) => (
+      record.senses.flatMap((sense) => (
+        (sense.relations ?? []).map((relation, position) => ({
+          source_sense_id: sense.id,
+          position,
+          target_record_id: relation.target,
+          target_sense_id: relation.target_sense ?? null,
+          type: relation.type,
+          note: relation.note,
+        }))
+      ))
+    )),
+  };
+
+  return {
+    records: rows.records.sort((left, right) => left.id.localeCompare(right.id, 'en')),
+    search_forms: rows.search_forms.sort((left, right) => (
+      left.record_id.localeCompare(right.record_id, 'en')
+      || left.position - right.position
+    )),
+    senses: rows.senses.sort((left, right) => (
+      left.record_id.localeCompare(right.record_id, 'en')
+      || left.position - right.position
+    )),
+    relations: rows.relations.sort((left, right) => (
+      left.source_sense_id.localeCompare(right.source_sense_id, 'en')
+      || left.position - right.position
+    )),
+  };
+}
+
+export function assertCanonicalModelMatchesRaw(canonicalRecords, model) {
+  assert.deepEqual(
+    expectedRowsFromNormalizedModel(model),
+    expectedRowsFromCanonicalRecords(canonicalRecords),
+    'normalized model must preserve canonical logical fields',
+  );
 }
 
 function expectedMetadata(model) {
@@ -191,6 +256,7 @@ export async function runM2Pipeline({
     checkPilotCompleteness: true,
   });
 
+  assertCanonicalModelMatchesRaw(canonical.records, model);
   assert.equal(canonical.fileCount, dataset.fileCount);
   assert.equal(dataset.recordCount, model.records.length);
   assert.equal(dataset.senseCount, model.records.reduce(
@@ -224,7 +290,7 @@ export async function runM2Pipeline({
       repositoryDirectory,
       allowDirty,
     });
-    const expected = expectedRows(model);
+    const expected = expectedRowsFromCanonicalRecords(canonical.records);
     const expectedWorktreeState = first.metadata.worktree_state;
 
     const firstDatabase = new DatabaseSync(firstPath, { readOnly: true });

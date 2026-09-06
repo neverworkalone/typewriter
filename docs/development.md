@@ -29,6 +29,7 @@ node --test tests/normalize-canonical.test.mjs
 node scripts/build/dictionary.mjs
 node --test tests/build-dictionary.test.mjs
 node --test tests/reproducibility.test.mjs
+node --test tests/*.test.mjs
 ```
 
 The one-command M2 audit runs the schema and dataset checks, normalization, two
