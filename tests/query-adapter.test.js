@@ -9,6 +9,8 @@ import {
   ERROR_CODES,
   REQUEST_METHODS,
 } from '../src/runtime/protocol.js';
+import searchRegressionCorpus from './fixtures/search-regressions/m4-baseline.json';
+import { expectedBrowserQueries } from './helpers/search-regressions.js';
 
 class FakeWorker {
   constructor(handler) {
@@ -57,6 +59,45 @@ function respond(worker, request, result) {
 }
 
 describe('DictionaryRuntime', () => {
+  it('reuses the shared baseline corpus for exact browser query requests', async () => {
+    let worker;
+    const baselineQueries = expectedBrowserQueries(searchRegressionCorpus);
+    const resultsByQuery = new Map(
+      baselineQueries.map(({ query, result_ids }) => [
+        query,
+        result_ids.map((id) => ({ id })),
+      ]),
+    );
+    const runtime = new DictionaryRuntime({
+      timeoutMs: 100,
+      workerFactory: () => {
+        worker = new FakeWorker((request, currentWorker) => {
+          if (request.method === REQUEST_METHODS.ready) {
+            respond(currentWorker, request, { ready: true, query_only: 1 });
+            return;
+          }
+
+          if (request.method === REQUEST_METHODS.search) {
+            respond(currentWorker, request, resultsByQuery.get(request.params.term) || []);
+          }
+        });
+        workers.push(worker);
+        return worker;
+      },
+    });
+
+    await runtime.ready();
+    for (const { query, result_ids } of baselineQueries) {
+      await expect(runtime.search(query)).resolves.toEqual(
+        result_ids.map((id) => ({ id })),
+      );
+      expect(worker.messages.at(-1)).toMatchObject({
+        method: REQUEST_METHODS.search,
+        params: { term: query },
+      });
+    }
+  });
+
   it('deduplicates initialization and exposes read-only lookup methods', async () => {
     let factoryCalls = 0;
     let worker;

@@ -1,0 +1,372 @@
+{
+  "schema_version": 1,
+  "corpus_id": "m4-search-regressions",
+  "cases": [
+    {
+      "id": "m3-exact-lemma-damdamhada",
+      "query": "담담하다",
+      "input_class": "exact-lemma",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "ready",
+        "result_ids": ["w026"],
+        "selected_record_id": "r008"
+      },
+      "actual": {
+        "status": "ready",
+        "result_ids": ["w026"],
+        "selected_record_id": "r008"
+      },
+      "selection": {
+        "kind": "relation-target",
+        "source_record_id": "w026",
+        "source_sense_id": "w026-s1",
+        "record_id": "r008",
+        "sense_id": "r008-s1",
+        "relation_type": "direct"
+      },
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "w026",
+          "in_results": true,
+          "record_type": "entry",
+          "role": "start",
+          "sense_ids": ["w026-s1"]
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w026-s1",
+          "target_record_id": "r008",
+          "target_sense_id": "r008-s1",
+          "type": "direct"
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w026-s1",
+          "target_record_id": "w030",
+          "target_sense_id": "w030-s1",
+          "type": "mood"
+        }
+      ],
+      "problem": "none",
+      "policy": "Exact lemma lookup is supported; a reference-only relation target is opened only through the recorded relation."
+    },
+    {
+      "id": "m3-exact-search-form-damdam",
+      "query": "담담",
+      "input_class": "exact-search-form",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "ready",
+        "result_ids": ["w026"],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "ready",
+        "result_ids": ["w026"],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "w026",
+          "in_results": true,
+          "record_type": "entry",
+          "role": "start",
+          "sense_ids": ["w026-s1"]
+        }
+      ],
+      "problem": "none",
+      "policy": "An explicit canonical search form is supported without morphological inference."
+    },
+    {
+      "id": "m3-polysemy-sseuda",
+      "query": "쓰다",
+      "input_class": "exact-lemma",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "ready",
+        "result_ids": ["w237"],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "ready",
+        "result_ids": ["w237"],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "w237",
+          "in_results": true,
+          "record_type": "entry",
+          "role": "start",
+          "sense_ids": ["w237-s1", "w237-s2", "w237-s3", "w237-s4"]
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w237-s1",
+          "target_record_id": "r014",
+          "target_sense_id": "r014-s1",
+          "type": "direct"
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w237-s2",
+          "target_record_id": "r015",
+          "target_sense_id": "r015-s1",
+          "type": "direct"
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w237-s3",
+          "target_record_id": "r016",
+          "target_sense_id": "r016-s1",
+          "type": "direct"
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w237-s4",
+          "target_record_id": "r028",
+          "target_sense_id": "r028-s1",
+          "type": "association"
+        }
+      ],
+      "problem": "none",
+      "policy": "A polysemous record remains one result while its canonical sense order and relation types stay visible."
+    },
+    {
+      "id": "m3-expression-maeumi-noida",
+      "query": "마음이 놓이다",
+      "input_class": "exact-lemma",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "ready",
+        "result_ids": ["w288"],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "ready",
+        "result_ids": ["w288"],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "w288",
+          "in_results": true,
+          "record_type": "expression",
+          "role": "start",
+          "sense_ids": ["w288-s1"]
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w288-s1",
+          "target_record_id": "r017",
+          "target_sense_id": "r017-s1",
+          "type": "direct"
+        }
+      ],
+      "problem": "none",
+      "policy": "A phrase is searchable only through its canonical lemma or exact search form."
+    },
+    {
+      "id": "m3-antonym-sijakhada",
+      "query": "시작하다",
+      "input_class": "exact-lemma",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "ready",
+        "result_ids": ["w228"],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "ready",
+        "result_ids": ["w228"],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "w228",
+          "in_results": true,
+          "record_type": "entry",
+          "role": "start",
+          "sense_ids": ["w228-s1"]
+        },
+        {
+          "kind": "relation",
+          "source_sense_id": "w228-s1",
+          "target_record_id": "w229",
+          "target_sense_id": "w229-s1",
+          "type": "antonym"
+        }
+      ],
+      "problem": "none",
+      "policy": "An antonym remains an antonym relation and is not reclassified as a direct substitute."
+    },
+    {
+      "id": "m3-reference-only-free-search-blocked",
+      "query": "덤덤하다",
+      "input_class": "unsupported",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "unsupported",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "r008",
+          "in_results": false,
+          "role": "reference-only",
+          "sense_ids": ["r008-s1"]
+        }
+      ],
+      "problem": "unsupported",
+      "policy": "Reference-only records may be reached from a relation but are not promoted to free-search starts."
+    },
+    {
+      "id": "m4-normalization-hangul-nfd",
+      "query": "담담하다",
+      "input_class": "normalization-candidate",
+      "evaluation": "pending",
+      "expected": {
+        "status": "pending",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [],
+      "problem": "normalization",
+      "policy": "Unicode canonical-equivalence handling is a candidate for review; it is not an M3 pass criterion until a narrow rule is approved."
+    },
+    {
+      "id": "m4-normalization-surrounding-space",
+      "query": "  담담하다  ",
+      "input_class": "normalization-candidate",
+      "evaluation": "pending",
+      "expected": {
+        "status": "pending",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [],
+      "problem": "normalization",
+      "policy": "Trimming surrounding whitespace may be safe for a writer input, but must be approved and tested as a limited rule rather than assumed."
+    },
+    {
+      "id": "m4-no-data-unknown-term",
+      "query": "없는 말",
+      "input_class": "no-data",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [],
+      "problem": "no-data",
+      "policy": "No canonical start record is asserted; the product must not invent a lexical answer for this input."
+    },
+    {
+      "id": "m4-unsupported-inflected-form",
+      "query": "담담했다",
+      "input_class": "unsupported",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "unsupported",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [],
+      "problem": "unsupported",
+      "policy": "General Korean morphology and inflection analysis are outside the current search contract."
+    },
+    {
+      "id": "m4-unsupported-internal-expression-space",
+      "query": "마음이  놓이다",
+      "input_class": "unsupported",
+      "evaluation": "baseline",
+      "expected": {
+        "status": "unsupported",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "empty",
+        "result_ids": [],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [],
+      "problem": "unsupported",
+      "policy": "Internal whitespace is not collapsed or rewritten because expression boundaries must remain explicit."
+    },
+    {
+      "id": "m4-editorial-gap-record-without-relations",
+      "query": "마당",
+      "input_class": "editorial-gap",
+      "evaluation": "pending",
+      "expected": {
+        "status": "pending",
+        "result_ids": ["w155"],
+        "selected_record_id": null
+      },
+      "actual": {
+        "status": "ready",
+        "result_ids": ["w155"],
+        "selected_record_id": null
+      },
+      "selection": null,
+      "assertions": [
+        {
+          "kind": "record",
+          "record_id": "w155",
+          "in_results": true,
+          "record_type": "entry",
+          "role": "start",
+          "sense_ids": ["w155-s1"],
+          "relation_count": 0
+        }
+      ],
+      "problem": "editorial",
+      "policy": "A present record does not prove that a useful relation exists; missing relation coverage remains an editorial review item."
+    }
+  ]
+}
