@@ -57,6 +57,7 @@ function openRelation(relation) {
     :class="{ 'is-compact': compact }"
     data-dictionary-record
     :data-record-id="record.id"
+    tabindex="-1"
   >
     <header class="result-header">
       <h2>{{ record.lemma }}</h2>
@@ -124,6 +125,12 @@ function openRelation(relation) {
 .dictionary-result {
   width: 100%;
   color: #2b2927;
+}
+
+.dictionary-result:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 3px;
+  border-radius: 3px;
 }
 
 .result-header {

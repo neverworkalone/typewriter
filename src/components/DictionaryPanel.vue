@@ -1,7 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
-import { SEARCH_STATUS } from '../domain/search-state.js';
+import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 import DictionaryResult from './DictionaryResult.vue';
 import ProductFooter from './ProductFooter.vue';
@@ -48,6 +48,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  selectedRecordId: {
+    type: String,
+    default: null,
+  },
 });
 
 const emit = defineEmits([
@@ -57,7 +61,12 @@ const emit = defineEmits([
   'relation',
   'retry',
   'open-settings',
+  'select-candidate',
 ]);
+
+const searchBar = ref(null);
+const candidateRefs = new Map();
+const resultRefs = new Map();
 
 const isReady = computed(() => (
   props.records.length > 0
@@ -67,6 +76,15 @@ const isInitialLoading = computed(() => (
   props.status === SEARCH_STATUS.loading && props.records.length === 0
 ));
 const isRelationTarget = computed(() => isReady.value && props.mode === 'relation-target');
+const candidateListEnabled = computed(() => (
+  props.interactive
+  && props.mode === SEARCH_MODES.exact
+  && props.status === SEARCH_STATUS.ready
+  && props.records.length > 1
+));
+const selectedCandidateIndex = computed(() => (
+  props.records.findIndex((record) => record.id === props.selectedRecordId)
+));
 const statusTitle = computed(() => {
   if (props.status === SEARCH_STATUS.loading) return '검색 중입니다.';
   if (props.status === SEARCH_STATUS.empty) {
@@ -90,6 +108,98 @@ const statusDescription = computed(() => {
 });
 
 const showRetry = computed(() => props.status === SEARCH_STATUS.error);
+
+function setCandidateRef(recordId, instance) {
+  if (instance) {
+    candidateRefs.set(recordId, instance);
+  } else {
+    candidateRefs.delete(recordId);
+  }
+}
+
+function setResultRef(recordId, instance) {
+  const element = instance?.$el || instance;
+  if (element) {
+    resultRefs.set(recordId, element);
+  } else {
+    resultRefs.delete(recordId);
+  }
+}
+
+function candidateIndex(recordId) {
+  return props.records.findIndex((record) => record.id === recordId);
+}
+
+function focusSearch() {
+  searchBar.value?.focus();
+}
+
+function focusCandidateAt(index, event) {
+  if (!candidateListEnabled.value || props.records.length === 0) return;
+
+  const boundedIndex = Math.max(0, Math.min(index, props.records.length - 1));
+  const record = props.records[boundedIndex];
+  if (!record) return;
+
+  event?.preventDefault();
+  emit('select-candidate', record.id);
+  nextTick(() => candidateRefs.get(record.id)?.focus());
+}
+
+function moveCandidate(direction, event) {
+  if (!candidateListEnabled.value) return;
+
+  const currentIndex = selectedCandidateIndex.value;
+  const nextIndex = currentIndex < 0
+    ? direction === 'next' ? 0 : props.records.length - 1
+    : currentIndex + (direction === 'next' ? 1 : -1);
+  focusCandidateAt(nextIndex, event);
+}
+
+function handleSearchBarNavigation({ direction, event }) {
+  moveCandidate(direction, event);
+}
+
+function handleCandidateFocus(recordId) {
+  if (candidateListEnabled.value) {
+    emit('select-candidate', recordId);
+  }
+}
+
+function focusCandidateResult(recordId) {
+  nextTick(() => {
+    const result = resultRefs.get(recordId);
+    if (!result) return;
+
+    const firstRelation = result.querySelector('.relation-link:not(.is-static)');
+    (firstRelation || result).focus?.();
+  });
+}
+
+function handleCandidateKeydown(recordId, event) {
+  if (!candidateListEnabled.value) return;
+
+  if (event.key === 'ArrowDown') {
+    moveCandidate('next', event);
+    return;
+  }
+  if (event.key === 'ArrowUp') {
+    moveCandidate('previous', event);
+    return;
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    emit('select-candidate', recordId);
+    focusCandidateResult(recordId);
+    return;
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    focusSearch();
+  }
+}
+
+defineExpose({ focusSearch });
 </script>
 
 <template>
@@ -107,6 +217,7 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
     data-dictionary-panel
   >
     <SearchBar
+      ref="searchBar"
       :model-value="query"
       :compact="compact"
       :autofocus="autofocus"
@@ -114,12 +225,38 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
       @update:model-value="emit('update:query', $event)"
       @submit="emit('submit', $event)"
       @clear="emit('clear')"
+      @navigate-candidates="handleSearchBarNavigation"
     />
 
     <div v-if="isReady" class="dictionary-scroll-region">
+      <div
+        v-if="candidateListEnabled"
+        class="candidate-list"
+        role="listbox"
+        aria-label="검색 후보"
+      >
+        <div
+          v-for="record in records"
+          :key="record.id"
+          :ref="(element) => setCandidateRef(record.id, element)"
+          class="candidate-option"
+          :class="{ 'is-selected': record.id === selectedRecordId }"
+          :id="`search-candidate-${record.id}`"
+          :data-record-id="record.id"
+          role="option"
+          tabindex="-1"
+          :aria-selected="String(record.id === selectedRecordId)"
+          :aria-posinset="candidateIndex(record.id) + 1"
+          :aria-setsize="records.length"
+          @focus="handleCandidateFocus(record.id)"
+          @keydown="handleCandidateKeydown(record.id, $event)"
+          @click="emit('select-candidate', record.id)"
+        >{{ record.lemma }}</div>
+      </div>
       <DictionaryResult
         v-for="record in records"
         :key="record.id"
+        :ref="(instance) => setResultRef(record.id, instance)"
         :record="record"
         :settings="settings"
         :compact="compact"
@@ -193,6 +330,42 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
   overflow-y: auto;
   scrollbar-color: #968f89 transparent;
   scrollbar-width: thin;
+}
+
+.candidate-list {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  gap: 8px;
+  padding-bottom: 2px;
+}
+
+.candidate-option {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #d8d3cf;
+  border-radius: 6px;
+  background: #fff;
+  color: #5f5955;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.candidate-option.is-selected {
+  border-color: #e5534b;
+  background: rgba(229, 83, 75, 0.06);
+  color: #7e433e;
+  font-weight: 700;
+}
+
+.candidate-option:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
 }
 
 .dictionary-scroll-region::-webkit-scrollbar {
@@ -290,6 +463,18 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
   padding: 7px 3.5px 0;
   overflow-y: visible;
   scrollbar-width: none;
+}
+
+.dictionary-panel.is-compact .candidate-list {
+  gap: 7px;
+  padding-bottom: 1.75px;
+}
+
+.dictionary-panel.is-compact .candidate-option {
+  padding: 3.5px 7px;
+  border-radius: 5.25px;
+  font-size: 11.375px;
+  line-height: 15.75px;
 }
 
 .dictionary-panel.is-compact.has-results .dictionary-scroll-region {

@@ -10,6 +10,7 @@ import {
   createReadySearchState,
   SEARCH_ACTIONS,
   SEARCH_MODES,
+  SEARCH_STATUS,
   withHistoryFlags,
 } from './search-state.js';
 import { normalizeSearchResponse } from '../runtime/search-query.js';
@@ -113,6 +114,7 @@ export class SearchSession {
         ...entry,
         status: snapshot?.status ?? null,
         queryMeta: snapshot?.queryMeta ?? null,
+        selectedRecordId: snapshot?.selectedRecordId ?? null,
       }));
   }
 
@@ -139,6 +141,7 @@ export class SearchSession {
       query: term,
       targetRecordId: null,
       queryMeta: null,
+      selectedRecordId: null,
       navigation: {
         kind: 'exact-search',
         term,
@@ -194,6 +197,40 @@ export class SearchSession {
     return this.searchExact(term);
   }
 
+  selectCandidate(recordId) {
+    if (typeof recordId !== 'string' || recordId.length === 0) {
+      throw new SearchDomainError(
+        'INVALID_CANDIDATE',
+        '선택할 검색 후보 record ID가 필요합니다.',
+      );
+    }
+
+    if (this._state.status !== SEARCH_STATUS.ready || this._state.mode !== SEARCH_MODES.exact) {
+      throw new SearchDomainError(
+        'CANDIDATE_NOT_AVAILABLE',
+        'exact 검색 결과가 준비된 뒤 후보를 선택할 수 있습니다.',
+      );
+    }
+
+    if (!this._state.results.some((record) => record.id === recordId)) {
+      throw new SearchDomainError(
+        'CANDIDATE_NOT_FOUND',
+        '현재 검색 결과에 없는 후보입니다.',
+        { recordId },
+      );
+    }
+
+    if (this._state.selectedRecordId === recordId) {
+      return this._state;
+    }
+
+    this._setState({
+      ...this._state,
+      selectedRecordId: recordId,
+    });
+    return this._state;
+  }
+
   openRelationTarget(target, context = {}) {
     const resolved = resolveTarget(target, context);
     const request = {
@@ -201,6 +238,7 @@ export class SearchSession {
       action: SEARCH_ACTIONS.relationTarget,
       query: null,
       targetRecordId: resolved.targetRecordId,
+      selectedRecordId: null,
       navigation: {
         kind: 'relation-target',
         targetRecordId: resolved.targetRecordId,

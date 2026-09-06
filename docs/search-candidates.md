@@ -37,5 +37,23 @@ sense and relation arrays remain in their stored `position` order. Relation targ
 actions carry their source sense and canonical relation type into the existing
 history snapshot; candidate ranking does not rewrite that navigation context.
 
-Candidate selection UI and keyboard behavior are separate M4 work. This document
-defines only the deterministic result model that those surfaces consume.
+## Keyboard selection contract
+
+The popup exposes ready exact-search candidates as a separate `listbox` only
+when two or more start records match; a single exact result keeps the M3 result
+layout without a duplicate selector. Each start record is an `option` with
+`aria-posinset`, `aria-setsize`, and `aria-selected`. The full result cards remain
+outside that listbox, so their relation controls stay ordinary tab stops. Arrow
+keys move the selected option without wrapping at either boundary, and Enter
+confirms the current option without issuing a second exact search, then moves
+focus to the selected result's first relation control (or the result card when
+no relation control exists). Relation-target screens do not expose a candidate
+list or candidate selection state. The selected record ID is kept in the
+current `SearchSession` history snapshot, so relation-target navigation and a
+later `back()` restore the same candidate selection while a new exact search
+starts with no selection.
+
+Korean IME composition is handled at the input boundary: Enter is ignored while
+`compositionstart` is active and only submits after `compositionend`. This
+interaction contract is covered by the component tests and the Chrome for Testing
+popup smoke path.

@@ -353,6 +353,144 @@ export async function runCftProduct({
       '}))()',
     ].join('\n'));
 
+    const popupIme = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupIme);
+    const popupImeStart = await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.focus();',
+      '  input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "ㄷ" }));',
+      '  input.value = "ㄷ";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true, isComposing: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented, inputValue: input.value, hasRecord: Boolean(document.querySelector("[data-dictionary-record]")) };',
+      '})() ',
+    ].join('\n'));
+    await sleep(100);
+    const popupImeEarly = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  inputValue: document.querySelector("[aria-label=\\"검색어\\"]")?.value || "",',
+      '  hasRecord: Boolean(document.querySelector("[data-dictionary-record]")),',
+      '}))()',
+    ].join('\n'));
+    await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "담담하다";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "담담하다" }));',
+      '  const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented };',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupIme.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w026\\"]"))',
+    );
+    await sleep(50);
+    const popupImeKeyboard = await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.focus();',
+      '  const event = new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented };',
+      '})() ',
+    ].join('\n'));
+    await sleep(50);
+    const popupImeKeyboardState = await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const active = document.activeElement;',
+      '  return {',
+      '    activeIsInput: active?.matches("[aria-label=\\"검색어\\"]") || false,',
+      '    activeRecordId: active?.dataset.recordId || "",',
+      '    activeRole: active?.getAttribute("role") || "",',
+      '    activeSelected: active?.getAttribute("aria-selected") || "",',
+      '    candidateCount: document.querySelectorAll("[role=\\"option\\"]").length,',
+      '    hasListbox: Boolean(document.querySelector("[role=\\"listbox\\"]")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await sleep(50);
+    const popupImeTabToButton = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  activeIsSearchButton: document.activeElement?.matches(".search-button") || false,',
+      '}))()',
+    ].join('\n'));
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await sleep(50);
+    const popupImeTab = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  activeIsRelation: document.activeElement?.matches(".relation-link") || false,',
+      '  outlineStyle: getComputedStyle(document.activeElement).outlineStyle,',
+      '}))()',
+    ].join('\n'));
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      modifiers: 8,
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      modifiers: 8,
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await sleep(50);
+    const popupImeShiftTab = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  activeClass: document.activeElement?.className || "",',
+      '  activeIsSearchButton: document.activeElement?.matches(".search-button") || false,',
+      '}))()',
+    ].join('\n'));
+    await evaluate(connection, popupIme.sessionId, 'document.querySelector("[data-target-record-id=\\"r008\\"]")?.click()');
+    await waitForCondition(
+      connection,
+      popupIme.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"r008\\"]")) && document.activeElement?.matches("[aria-label=\\"검색어\\"]")',
+    );
+    const popupImeRelation = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  inputFocused: document.activeElement?.matches("[aria-label=\\"검색어\\"]") || false,',
+      '  hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '}))()',
+    ].join('\n'));
+
     const popupEscape = await createExtensionSession(connection, extensionId, 'popup.html');
     extensionTargets.push(popupEscape);
     await evaluate(connection, popupEscape.sessionId, [
@@ -488,6 +626,9 @@ export async function runCftProduct({
       '(() => ({',
       '  hasBackButton: Boolean(document.querySelector(".back-button")),',
       '  isRelationTarget: document.querySelector("[data-dictionary-panel]")?.classList.contains("is-relation-target") || false,',
+      '  inputFocused: document.activeElement?.matches("[aria-label=\\"검색어\\"]") || false,',
+      '  hasCandidateList: Boolean(document.querySelector("[role=\\"listbox\\"]")),',
+      '  candidateCount: document.querySelectorAll("[role=\\"option\\"]").length,',
       '  panelHeight: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().height),',
       '  resultTop: Math.round(document.querySelector("[data-dictionary-record]").getBoundingClientRect().top),',
       '}))()',
@@ -783,6 +924,27 @@ export async function runCftProduct({
       throw new Error('Popup CFT assertions failed: ' + JSON.stringify({ popupReady, focusResult }));
     }
     if (
+      popupImeStart.defaultPrevented
+      || popupImeStart.hasRecord
+      || popupImeEarly.hasRecord
+      || popupImeEarly.inputValue !== 'ㄷ'
+      || popupImeKeyboard.defaultPrevented
+      || !popupImeKeyboardState.activeIsInput
+      || popupImeKeyboardState.activeRecordId !== ''
+      || popupImeKeyboardState.activeRole !== ''
+      || popupImeKeyboardState.activeSelected !== ''
+      || popupImeKeyboardState.candidateCount !== 0
+      || popupImeKeyboardState.hasListbox
+      || !popupImeTabToButton.activeIsSearchButton
+      || !popupImeTab.activeIsRelation
+      || popupImeTab.outlineStyle !== 'solid'
+      || !popupImeShiftTab.activeIsSearchButton
+      || !popupImeRelation.inputFocused
+      || popupImeRelation.hasBackButton
+    ) {
+      throw new Error('IME/keyboard candidate CFT assertions failed: ' + JSON.stringify({ popupImeStart, popupImeEarly, popupImeKeyboard, popupImeKeyboardState, popupImeTab, popupImeShiftTab, popupImeRelation }));
+    }
+    if (
       popupEmptyState.panelHeight >= 240
       || popupEmptyState.bodyHeight !== popupEmptyState.panelHeight
       || popupEmptyState.appHeight !== popupEmptyState.panelHeight
@@ -820,6 +982,9 @@ export async function runCftProduct({
     if (
       popupRelation.hasBackButton
       || !popupRelation.isRelationTarget
+      || !popupRelation.inputFocused
+      || popupRelation.hasCandidateList
+      || popupRelation.candidateCount !== 0
       || popupRelation.panelHeight >= 376
     ) {
       throw new Error('Relation-target layout CFT assertions failed: ' + JSON.stringify(popupRelation));
@@ -911,6 +1076,13 @@ export async function runCftProduct({
     return {
       extensionId,
       popupReady,
+      popupImeStart,
+      popupImeEarly,
+      popupImeKeyboard,
+      popupImeKeyboardState,
+      popupImeTab,
+      popupImeShiftTab,
+      popupImeRelation,
       popupEscapeFirst,
       popupEscapeAfterFirst,
       popupPendingClearFirst,

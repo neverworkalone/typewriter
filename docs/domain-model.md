@@ -48,6 +48,10 @@ ID 탐색을 시작할 수 있다.
 - `back()`과 `forward()`는 이미 읽은 snapshot을 복원하며 새 DB query를 만들지
   않는다. 진행 중인 요청은 먼저 취소하고 history에 loading snapshot을 남기지
   않는다.
+- `selectCandidate(recordId)`는 현재 exact `ready` 결과 중 하나를 선택해
+  `selectedRecordId`를 현재 history snapshot에만 기록한다. 관계 target 탐색은
+  후보 선택 UI와 상태를 초기화하고, `back()`은 이전 후보 선택을 함께
+  복원한다.
 - `searchExact()` 또는 `openRelationTarget()`을 back 이후 실행하면 forward
   history branch를 버리고 새 항목을 추가한다.
 
