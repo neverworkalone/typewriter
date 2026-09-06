@@ -148,6 +148,7 @@ describe('DictionaryRuntime', () => {
 
     await expect(runtime.ready()).rejects.toMatchObject({
       code: ERROR_CODES.TIMEOUT,
+      details: { phase: 'load' },
     });
     expect(runtime.state).toBe('failed');
 
@@ -156,6 +157,44 @@ describe('DictionaryRuntime', () => {
       query_only: 1,
     });
     expect(factoryCalls).toBe(2);
+  });
+
+  it('marks a timeout after readiness as a query failure without unloading the runtime', async () => {
+    const worker = new FakeWorker((request, currentWorker) => {
+      if (request.method === REQUEST_METHODS.ready) {
+        respond(currentWorker, request, { ready: true, query_only: 1 });
+      }
+    });
+    workers.push(worker);
+    const runtime = new DictionaryRuntime({
+      timeoutMs: 5,
+      workerFactory: () => worker,
+    });
+
+    await runtime.ready();
+    await expect(runtime.search('담담하다')).rejects.toMatchObject({
+      code: ERROR_CODES.TIMEOUT,
+      details: { method: REQUEST_METHODS.search, phase: 'query' },
+    });
+    expect(runtime.state).toBe('ready');
+    expect(worker.terminated).toBe(false);
+  });
+
+  it('marks a worker failure during initialization as a load failure', async () => {
+    const worker = new FakeWorker((_, currentWorker) => {
+      queueMicrotask(() => currentWorker.emit('error', { message: 'worker boot failed' }));
+    });
+    workers.push(worker);
+    const runtime = new DictionaryRuntime({
+      timeoutMs: 100,
+      workerFactory: () => worker,
+    });
+
+    await expect(runtime.ready()).rejects.toMatchObject({
+      code: ERROR_CODES.WORKER_ERROR,
+      details: { phase: 'load' },
+    });
+    expect(runtime.state).toBe('failed');
   });
 
   it('rejects pending operations when closed and validates arguments', async () => {
