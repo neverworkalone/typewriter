@@ -61,8 +61,51 @@ const FORBIDDEN_SOURCE_FIELDS = new Set([
   'context',
   'example',
   'example_sentence',
+  'definition',
+  'dictionary_quote',
+  'notes',
   'original_sentence',
   'source_sentence',
+  'source_text',
+]);
+
+const CORPUS_KEYS = new Set(['schema_version', 'corpus_id', 'cases']);
+const CASE_KEYS = new Set([
+  'id',
+  'query',
+  'input_class',
+  'evaluation',
+  'expected',
+  'actual',
+  'selection',
+  'assertions',
+  'problem',
+  'policy',
+]);
+const OBSERVATION_KEYS = new Set(['status', 'result_ids', 'selected_record_id']);
+const SELECTION_KEYS = new Set([
+  'kind',
+  'record_id',
+  'source_record_id',
+  'source_sense_id',
+  'sense_id',
+  'relation_type',
+]);
+const RECORD_ASSERTION_KEYS = new Set([
+  'kind',
+  'record_id',
+  'in_results',
+  'record_type',
+  'role',
+  'sense_ids',
+  'relation_count',
+]);
+const RELATION_ASSERTION_KEYS = new Set([
+  'kind',
+  'source_sense_id',
+  'target_record_id',
+  'target_sense_id',
+  'type',
 ]);
 
 function isPlainObject(value) {
@@ -75,6 +118,18 @@ function isNonEmptyString(value) {
 
 function addError(errors, location, message) {
   errors.push(`${location}: ${message}`);
+}
+
+function validateAllowedKeys(value, allowedKeys, location, errors) {
+  if (!isPlainObject(value)) {
+    return;
+  }
+
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.has(key)) {
+      addError(errors, `${location}.${key}`, 'unknown field is not allowed');
+    }
+  }
 }
 
 function validateEnum(value, allowed, location, errors) {
@@ -109,6 +164,7 @@ function validateObservation(observation, location, statuses, errors) {
     return;
   }
 
+  validateAllowedKeys(observation, OBSERVATION_KEYS, location, errors);
   validateEnum(observation.status, statuses, `${location}.status`, errors);
   validateUniqueStrings(observation.result_ids, `${location}.result_ids`, errors);
 
@@ -141,6 +197,7 @@ function validateSelection(selection, expected, actual, location, errors) {
     return;
   }
 
+  validateAllowedKeys(selection, SELECTION_KEYS, location, errors);
   validateEnum(selection.kind, ['record', 'relation-target'], `${location}.kind`, errors);
   for (const field of ['record_id']) {
     if (!isNonEmptyString(selection[field])) {
@@ -171,6 +228,7 @@ function validateRecordAssertion(assertion, location, resultIds, errors) {
     return;
   }
 
+  validateAllowedKeys(assertion, RECORD_ASSERTION_KEYS, location, errors);
   if (assertion.kind !== 'record') {
     addError(errors, `${location}.kind`, 'must be record');
   }
@@ -207,6 +265,7 @@ function validateRelationAssertion(assertion, location, errors) {
     return;
   }
 
+  validateAllowedKeys(assertion, RELATION_ASSERTION_KEYS, location, errors);
   if (assertion.kind !== 'relation') {
     addError(errors, `${location}.kind`, 'must be relation');
   }
@@ -277,6 +336,7 @@ export function validateSearchRegressionCorpus(corpus) {
     return ['$: must be an object'];
   }
 
+  validateAllowedKeys(corpus, CORPUS_KEYS, '$', errors);
   if (corpus.schema_version !== SEARCH_REGRESSION_SCHEMA_VERSION) {
     addError(errors, '$.schema_version', `must be ${SEARCH_REGRESSION_SCHEMA_VERSION}`);
   }
@@ -298,6 +358,7 @@ export function validateSearchRegressionCorpus(corpus) {
       return;
     }
 
+    validateAllowedKeys(searchCase, CASE_KEYS, location, errors);
     if (!isNonEmptyString(searchCase.id)) {
       addError(errors, `${location}.id`, 'must be a non-empty string');
     } else if (caseIds.has(searchCase.id)) {

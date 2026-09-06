@@ -42,10 +42,13 @@ test('M4 search regression corpus has a valid shape and no source sentences', ()
 test('fixture validation rejects duplicate results and source-text fields', () => {
   const invalidFixture = structuredClone(fixture);
   invalidFixture.cases[0].actual.result_ids.push('w026');
-  invalidFixture.cases[0].source_sentence = 'forbidden';
+  invalidFixture.cases[0].source_text = 'forbidden';
+  invalidFixture.cases[0].expected.definition = 'forbidden';
 
   const errors = validateSearchRegressionCorpus(invalidFixture);
   assert.ok(errors.some((error) => error.includes('duplicate value')));
+  assert.ok(errors.some((error) => error.includes('source_text')));
+  assert.ok(errors.some((error) => error.includes('definition')));
   assert.ok(errors.some((error) => error.includes('raw source/example text')));
 });
 

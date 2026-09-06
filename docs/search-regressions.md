@@ -75,9 +75,11 @@ Each case has this shape:
 target. `assertions` may preserve the required record/sense/relation boundary for
 the query, without copying definitions or source prose.
 
-The validator rejects duplicate case/query combinations, contradictory result
-membership, duplicate IDs, invalid status/category combinations, and source/example
-text fields such as `source_sentence` or `example_sentence`.
+The validator uses a strict allowlist for the corpus, case, observation, selection,
+and assertion objects. It rejects unknown fields, duplicate case/query combinations,
+contradictory result membership, duplicate IDs, invalid status/category combinations,
+and source/example text fields such as `source_text`, `source_sentence`, or
+`example_sentence`.
 
 ## Adding a case
 
