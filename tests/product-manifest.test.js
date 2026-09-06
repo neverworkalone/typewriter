@@ -21,6 +21,9 @@ describe('product MV3 manifest', () => {
     expect(manifest.permissions).toEqual([]);
     expect(manifest.host_permissions).toBeUndefined();
     expect(manifest.web_accessible_resources).toBeUndefined();
+    expect(manifest.content_security_policy.extension_pages).toBe(
+      "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+    );
   });
 
   it('keeps both declared HTML entrypoints in the product source', async () => {

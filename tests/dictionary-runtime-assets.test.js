@@ -1,0 +1,37 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it } from 'vitest';
+
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+describe('product dictionary runtime assets', () => {
+  it('keeps the worker independent from Node-only query helpers', async () => {
+    const workerSource = await readFile(
+      path.join(repositoryRoot, 'src/runtime/dictionary-worker.mjs'),
+      'utf8',
+    );
+
+    expect(workerSource).not.toContain('node:sqlite');
+    expect(workerSource).not.toContain('scripts/build/query');
+    expect(workerSource).toContain("import sqlite3InitModule from './vendor/sqlite3.mjs'");
+    expect(workerSource).toContain("new URL('../dictionary.sqlite', self.location.href)");
+    expect(workerSource).toContain('PRAGMA query_only = ON');
+    expect(workerSource).toContain("databasePromise = loadDatabase()");
+    expect(workerSource).toContain("case 'get-record'");
+    expect(workerSource).toContain("case 'get-relations'");
+    expect(workerSource).toContain("case 'metadata'");
+  });
+
+  it('copies only the worker protocol and pinned runtime through the product build config', async () => {
+    const viteConfig = await readFile(path.join(repositoryRoot, 'vite.config.js'), 'utf8');
+
+    expect(viteConfig).toContain("src/runtime/dictionary-worker.mjs");
+    expect(viteConfig).toContain("src/runtime/protocol.js");
+    expect(viteConfig).toContain("src/runtime/query-adapter.js");
+    expect(viteConfig).toContain("node_modules/@sqlite.org/sqlite-wasm/dist");
+    expect(viteConfig).toContain("dist/dictionary.sqlite");
+    expect(viteConfig).toContain("path.join(vendorDirectory, 'sqlite3.wasm')");
+  });
+});
