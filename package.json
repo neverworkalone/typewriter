@@ -12,6 +12,7 @@
     "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
+    "validate:search": "node scripts/validate/search-regressions.mjs",
     "package": "bash pack.sh",
     "package:minify": "bash pack.sh --minify",
     "validate:package": "node scripts/validate-package.mjs",

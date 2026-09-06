@@ -3,13 +3,13 @@ export function findRecordsByExactTerm(database, term) {
     .prepare(`
       SELECT id, record_type, role, candidate_id, lemma
       FROM records
-      WHERE lemma = ?
+      WHERE role = 'start' AND lemma = ?
       UNION
       SELECT records.id, records.record_type, records.role,
         records.candidate_id, records.lemma
       FROM records
       INNER JOIN search_forms ON search_forms.record_id = records.id
-      WHERE search_forms.form = ?
+      WHERE records.role = 'start' AND search_forms.form = ?
       ORDER BY id
     `)
     .all(term, term)
