@@ -38,6 +38,10 @@ The current M3/M4 boundary is deliberately narrow:
 - A missing relation is an editorial question. The corpus can record that gap but
   cannot supply a target without Typewriter editorial evidence.
 
+The inflected query `담담했다` remains a pending unsupported-policy case rather
+than a baseline result: the current exact runtime reports no match, and Typewriter
+does not infer Korean morphology solely to produce a more specific label.
+
 These rules preserve the existing Editorial Model v1 relation types. A `direct`
 relation is not promoted above `near`, `mood`, or association relations by the
 fixture itself, and an `antonym` remains an antonym.

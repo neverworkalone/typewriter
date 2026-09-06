@@ -2,6 +2,7 @@
 import { computed, nextTick, ref } from 'vue';
 
 import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
+import { SEARCH_UNSUPPORTED_REASONS } from '../runtime/search-query.js';
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 import DictionaryResult from './DictionaryResult.vue';
 import ProductFooter from './ProductFooter.vue';
@@ -68,6 +69,11 @@ const searchBar = ref(null);
 const candidateRefs = new Map();
 const resultRefs = new Map();
 
+const EMPTY_REASONS = Object.freeze({
+  noExactMatch: 'no-exact-match',
+  relationTargetNotFound: 'relation-target-not-found',
+});
+
 const isReady = computed(() => (
   props.records.length > 0
   && (props.status === SEARCH_STATUS.ready || props.status === SEARCH_STATUS.loading)
@@ -85,27 +91,74 @@ const candidateListEnabled = computed(() => (
 const selectedCandidateIndex = computed(() => (
   props.records.findIndex((record) => record.id === props.selectedRecordId)
 ));
-const statusTitle = computed(() => {
-  if (props.status === SEARCH_STATUS.loading) return '검색 중입니다.';
-  if (props.status === SEARCH_STATUS.empty) {
-    return props.emptyReason === 'relation-target-not-found'
-      ? '관계 대상을 찾을 수 없습니다.'
-      : '검색 결과가 없습니다.';
+const statePresentation = computed(() => {
+  if (props.status === SEARCH_STATUS.loading) {
+    return {
+      category: 'loading',
+      title: '검색 중입니다.',
+      description: '잠시만 기다려 주세요.',
+    };
   }
-  if (props.error?.kind === 'load') return '사전과 WASM을 불러오지 못했습니다.';
-  if (props.error?.kind === 'query') return '검색 중 오류가 발생했습니다.';
-  return '검색 결과를 표시할 수 없습니다.';
+
+  if (props.status === SEARCH_STATUS.empty) {
+    if (props.emptyReason === EMPTY_REASONS.relationTargetNotFound) {
+      return {
+        category: 'relation-target',
+        title: '관계 대상을 찾을 수 없습니다.',
+        description: '이 관계어는 현재 사전에서 확인되지 않습니다.',
+      };
+    }
+    if (props.emptyReason === SEARCH_UNSUPPORTED_REASONS.referenceOnly) {
+      return {
+        category: 'unsupported',
+        title: '관계어는 직접 검색할 수 없습니다.',
+        description: '검색 결과에서 관계어를 눌러 탐색해 주세요.',
+      };
+    }
+    if (props.emptyReason === SEARCH_UNSUPPORTED_REASONS.internalWhitespace) {
+      return {
+        category: 'unsupported',
+        title: '지원하지 않는 입력 형식입니다.',
+        description: '표현은 사전에 등록된 공백 그대로 입력해 주세요.',
+      };
+    }
+    if (props.emptyReason === SEARCH_UNSUPPORTED_REASONS.emptyAfterNormalization) {
+      return {
+        category: 'unsupported',
+        title: '검색어를 입력해 주세요.',
+        description: '',
+      };
+    }
+    return {
+      category: 'no-data',
+      title: '사전에 없는 말입니다.',
+      description: '현재 사전에 정확히 일치하는 출발어가 없습니다.',
+    };
+  }
+
+  if (props.error?.kind === 'load') {
+    return {
+      category: 'runtime',
+      title: '사전을 불러오지 못했습니다.',
+      description: '패키지된 사전 파일을 확인한 뒤 다시 시도해 주세요.',
+    };
+  }
+  if (props.error?.kind === 'query') {
+    return {
+      category: 'runtime',
+      title: '검색을 처리하지 못했습니다.',
+      description: '잠시 후 다시 시도해 주세요.',
+    };
+  }
+  return {
+    category: 'unknown',
+    title: '결과를 표시할 수 없습니다.',
+    description: '',
+  };
 });
 
-const statusDescription = computed(() => {
-  if (props.status === SEARCH_STATUS.loading) return '잠시만 기다려 주세요.';
-  if (props.status === SEARCH_STATUS.empty) return '';
-  if (props.error?.kind === 'load') {
-    return '패키지된 사전 파일을 확인한 뒤 다시 시도해 주세요.';
-  }
-  if (props.error?.kind === 'query') return '검색 요청을 처리하지 못했습니다.';
-  return '';
-});
+const statusTitle = computed(() => statePresentation.value.title);
+const statusDescription = computed(() => statePresentation.value.description);
 
 const showRetry = computed(() => props.status === SEARCH_STATUS.error);
 
@@ -285,6 +338,8 @@ defineExpose({ focusSearch });
       class="dictionary-state-region"
       :class="{ 'is-empty': status === SEARCH_STATUS.empty }"
       :data-search-state="status"
+      :data-search-category="statePresentation.category"
+      :data-search-reason="emptyReason || undefined"
       role="status"
       aria-live="polite"
     >

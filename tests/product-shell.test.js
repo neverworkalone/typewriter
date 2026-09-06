@@ -488,9 +488,20 @@ describe('product MV3 Vue shells', () => {
             details: { phase: 'query' },
           });
         }
+        if (mode === 'unsupported') {
+          return {
+            rawQuery: '마음이  놓이다',
+            normalizedQuery: '마음이  놓이다',
+            normalizationRules: [],
+            status: 'unsupported',
+            reason: 'internal-whitespace-not-normalized',
+            matches: [],
+          };
+        }
+        if (mode === 'gap') return [{ id: 'gap' }];
         return [];
       },
-      getRecord: async () => null,
+      getRecord: async (id) => (id === 'gap' ? makeRecord('gap', '마당') : null),
     };
     const host = mountWithProps(PopupApp, {
       runtime,
@@ -512,19 +523,34 @@ describe('product MV3 Vue shells', () => {
 
     await submit('없는 말');
     expect(host.querySelector('[data-search-state="empty"]')).not.toBeNull();
-    expect(host.textContent).toContain('검색 결과가 없습니다.');
-    expect(host.querySelector('.state-copy').textContent.trim()).toBe('검색 결과가 없습니다.');
-    expect(host.querySelector('.state-copy span')).toBeNull();
+    expect(host.querySelector('[data-search-category="no-data"]')).not.toBeNull();
+    expect(host.textContent).toContain('사전에 없는 말입니다.');
+    expect(host.querySelector('.state-copy').textContent.trim()).toContain('사전에 없는 말입니다.');
+    expect(host.querySelector('.state-copy span').textContent).toContain('정확히 일치하는 출발어');
+    expect(host.querySelector('.retry-button')).toBeNull();
+
+    mode = 'unsupported';
+    await submit('마음이  놓이다');
+    expect(host.querySelector('[data-search-category="unsupported"]')).not.toBeNull();
+    expect(host.querySelector('[data-search-reason="internal-whitespace-not-normalized"]')).not.toBeNull();
+    expect(host.textContent).toContain('지원하지 않는 입력 형식입니다.');
+    expect(host.textContent).toContain('사전에 등록된 공백 그대로');
     expect(host.querySelector('.retry-button')).toBeNull();
 
     mode = 'load';
     await submit('load');
     expect(host.querySelector('[data-search-state="error"]')).not.toBeNull();
-    expect(host.textContent).toContain('사전과 WASM을 불러오지 못했습니다.');
+    expect(host.textContent).toContain('사전을 불러오지 못했습니다.');
 
     mode = 'query';
     await submit('query');
-    expect(host.textContent).toContain('검색 중 오류가 발생했습니다.');
+    expect(host.textContent).toContain('검색을 처리하지 못했습니다.');
+
+    mode = 'gap';
+    await submit('마당');
+    expect(host.querySelector('[data-record-id="gap"]')).not.toBeNull();
+    expect(host.querySelector('[data-editorial-gap]')).not.toBeNull();
+    expect(host.textContent).toContain('연결된 관계어는 아직 정리되지 않았습니다.');
   });
 
   it('shows dirty state until Settings are explicitly saved', async () => {
