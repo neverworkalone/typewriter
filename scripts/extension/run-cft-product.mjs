@@ -267,6 +267,19 @@ export async function runCftProduct({
       '  scrollOverflowY: getComputedStyle(document.querySelector(".dictionary-scroll-region")).overflowY,',
       '  panelWidth: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().width),',
       '  panelHeight: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().height),',
+      '  footerHeight: getComputedStyle(document.querySelector(".product-footer")).height,',
+      '  footerAlignItems: getComputedStyle(document.querySelector(".product-footer")).alignItems,',
+      '  footerPaddingRight: getComputedStyle(document.querySelector(".product-footer")).paddingRight,',
+      '  definitionTopGap: (() => {',
+      '    const divider = document.querySelector(".result-divider");',
+      '    const section = document.querySelector("[data-group-id=\\"definition\\"]");',
+      '    return divider && section ? Math.round((section.getBoundingClientRect().top - divider.getBoundingClientRect().bottom) * 100) / 100 : null;',
+      '  })(),',
+      '  definitionBottomGap: (() => {',
+      '    const text = document.querySelector(".definition-text");',
+      '    const divider = document.querySelector(".definition-divider");',
+      '    return text && divider ? Math.round((divider.getBoundingClientRect().top - text.getBoundingClientRect().bottom) * 100) / 100 : null;',
+      '  })(),',
       '}))()',
     ].join('\n'));
     await evaluate(connection, popup.sessionId, [
@@ -294,12 +307,14 @@ export async function runCftProduct({
       popup.sessionId,
       'Boolean(document.querySelector("[data-record-id=\\"r008\\"]"))',
     );
-    await evaluate(connection, popup.sessionId, 'document.querySelector(".back-button")?.click()');
-    await waitForCondition(
-      connection,
-      popup.sessionId,
-      'Boolean(document.querySelector("[data-record-id=\\"w026\\"]")) && !document.querySelector("[data-record-id=\\"r008\\"]")',
-    );
+    const popupRelation = await evaluate(connection, popup.sessionId, [
+      '(() => ({',
+      '  hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '  isRelationTarget: document.querySelector("[data-dictionary-panel]")?.classList.contains("is-relation-target") || false,',
+      '  panelHeight: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().height),',
+      '  resultTop: Math.round(document.querySelector("[data-dictionary-record]").getBoundingClientRect().top),',
+      '}))()',
+    ].join('\n'));
 
     const popupEmpty = await createExtensionSession(connection, extensionId, 'popup.html');
     extensionTargets.push(popupEmpty);
@@ -327,6 +342,10 @@ export async function runCftProduct({
       '    bodyHeight: document.body.scrollHeight,',
       '    appHeight: Math.round(document.querySelector("#app").getBoundingClientRect().height),',
       '    hasFooter: Boolean(document.querySelector(".product-footer")),',
+      '    copy: document.querySelector(".state-copy")?.textContent.trim() || "",',
+      '    hasDescription: Boolean(document.querySelector(".state-copy span")),',
+      '    hasRetry: Boolean(document.querySelector(".retry-button")),',
+      '    stateRegionHeight: Math.round(document.querySelector(".dictionary-state-region").getBoundingClientRect().height),',
       '  };',
       '})() ',
     ].join('\n'));
@@ -391,11 +410,32 @@ export async function runCftProduct({
       options.sessionId,
       'document.querySelectorAll("[role=\\"switch\\"]")[2]?.click()',
     );
+    await evaluate(
+      connection,
+      options.sessionId,
+      'document.querySelectorAll("[role=\\"switch\\"]")[4]?.click()',
+    );
     await waitForCondition(
       connection,
       options.sessionId,
-      'document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]") !== null',
+      'document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"association\\"]") !== null',
     );
+    const optionsPreview = await evaluate(connection, options.sessionId, [
+      '(() => {',
+      '  const panel = document.querySelector(".preview-panel [data-dictionary-panel]");',
+      '  const region = document.querySelector(".preview-panel .dictionary-scroll-region");',
+      '  const footer = document.querySelector(".preview-panel .product-footer");',
+      '  return {',
+      '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
+      '    previewHeight: Math.round(document.querySelector(".preview-panel").getBoundingClientRect().height),',
+      '    regionClientHeight: Math.round(region.clientHeight),',
+      '    regionScrollHeight: Math.round(region.scrollHeight),',
+      '    overflowY: getComputedStyle(region).overflowY,',
+      '    footerHeight: getComputedStyle(footer).height,',
+      '    footerPaddingRight: getComputedStyle(footer).paddingRight,',
+      '  };',
+      '})() ',
+    ].join('\n'));
     const optionsDirty = await evaluate(connection, options.sessionId, [
       '(() => ({',
       '  status: document.querySelector(".save-status")?.textContent.trim() || "",',
@@ -417,7 +457,15 @@ export async function runCftProduct({
     const optionsReloaded = await evaluate(connection, options.sessionId, [
       '(() => ({',
       '  antonymEnabled: document.querySelectorAll("[role=\\"switch\\"]")[2]?.getAttribute("aria-checked") === "true",',
+      '  associationEnabled: document.querySelectorAll("[role=\\"switch\\"]")[4]?.getAttribute("aria-checked") === "true",',
       '  hasAntonymAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]")),',
+      '  hasAssociationAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"association\\"]")),',
+      '}))()',
+    ].join('\n'));
+    const optionsVersion = await evaluate(connection, options.sessionId, [
+      '(() => ({',
+      '  rendered: document.querySelector(".brand-version")?.textContent.trim() || "",',
+      '  manifest: chrome.runtime.getManifest().version,',
       '}))()',
     ].join('\n'));
 
@@ -436,6 +484,12 @@ export async function runCftProduct({
       || popupReady.scrollOverflowY !== 'auto'
       || popupReady.panelWidth !== 480
       || popupReady.panelHeight < 376
+      || popupReady.footerHeight !== '20px'
+      || popupReady.footerAlignItems !== 'center'
+      || popupReady.footerPaddingRight !== '12px'
+      || popupReady.definitionTopGap === null
+      || popupReady.definitionBottomGap === null
+      || Math.abs(popupReady.definitionTopGap - popupReady.definitionBottomGap) > 1
       || focusResult !== 'search-button'
     ) {
       throw new Error('Popup CFT assertions failed: ' + JSON.stringify({ popupReady, focusResult }));
@@ -445,8 +499,19 @@ export async function runCftProduct({
       || popupEmptyState.bodyHeight !== popupEmptyState.panelHeight
       || popupEmptyState.appHeight !== popupEmptyState.panelHeight
       || !popupEmptyState.hasFooter
+      || popupEmptyState.copy !== '검색 결과가 없습니다.'
+      || popupEmptyState.hasDescription
+      || popupEmptyState.hasRetry
+      || popupEmptyState.stateRegionHeight < 104
     ) {
       throw new Error('Empty popup sizing CFT assertions failed: ' + JSON.stringify(popupEmptyState));
+    }
+    if (
+      popupRelation.hasBackButton
+      || !popupRelation.isRelationTarget
+      || popupRelation.panelHeight >= 376
+    ) {
+      throw new Error('Relation-target layout CFT assertions failed: ' + JSON.stringify(popupRelation));
     }
     if (
       popupLongOverflow.regionScrollHeight <= popupLongOverflow.regionClientHeight
@@ -460,17 +525,37 @@ export async function runCftProduct({
       throw new Error('Long-result overflow CFT assertions failed: ' + JSON.stringify({ popupLongOverflow, popupLongScroll }));
     }
     if (
+      optionsPreview.regionScrollHeight > optionsPreview.regionClientHeight + 1
+      || optionsPreview.overflowY !== 'visible'
+      || optionsPreview.panelHeight >= optionsPreview.previewHeight
+      || optionsPreview.footerHeight !== '17.5px'
+      || optionsPreview.footerPaddingRight !== '10.5px'
+    ) {
+      throw new Error('Options preview sizing CFT assertions failed: ' + JSON.stringify(optionsPreview));
+    }
+    if (
       JSON.stringify(optionsDefault.switches) !== JSON.stringify(['true', 'true', 'false', 'true', 'false'])
       || optionsDefault.previewRecord !== 'preview-w006'
       || optionsDefault.hasAntonymByDefault
     ) {
       throw new Error('Default Settings CFT assertions failed: ' + JSON.stringify(optionsDefault));
     }
-    if (!optionsReloaded.antonymEnabled || !optionsReloaded.hasAntonymAfterReload) {
+    if (
+      !optionsReloaded.antonymEnabled
+      || !optionsReloaded.associationEnabled
+      || !optionsReloaded.hasAntonymAfterReload
+      || !optionsReloaded.hasAssociationAfterReload
+    ) {
       throw new Error('Persisted Settings CFT assertions failed: ' + JSON.stringify(optionsReloaded));
     }
     if (optionsDirty.status !== '저장되지 않음' || optionsDirty.saveDisabled) {
       throw new Error('Dirty Settings CFT assertions failed: ' + JSON.stringify(optionsDirty));
+    }
+    if (
+      !optionsVersion.rendered
+      || optionsVersion.rendered !== optionsVersion.manifest
+    ) {
+      throw new Error('Options version CFT assertions failed: ' + JSON.stringify(optionsVersion));
     }
     if (nonExtensionRequests.length > 0) {
       throw new Error('Product UI made non-extension requests: ' + JSON.stringify(nonExtensionRequests));
@@ -479,13 +564,16 @@ export async function runCftProduct({
     return {
       extensionId,
       popupReady,
+      popupRelation,
       popupEmptyState,
       popupLongOverflow,
       popupLongScroll,
       focusResult,
       optionsDefault,
+      optionsPreview,
       optionsDirty,
       optionsReloaded,
+      optionsVersion,
       nonExtensionRequests,
     };
   } finally {

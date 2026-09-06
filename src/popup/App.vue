@@ -36,14 +36,25 @@ const settingsStore = props.settingsStore || createSettingsStore();
 const query = ref('');
 const searchState = ref(session.state);
 const settings = ref({ ...DEFAULT_SETTINGS });
+const lastRecords = ref([]);
 let unsubscribe = null;
 
 const records = computed(() => (
-  searchState.value.status === 'ready' ? searchState.value.results : []
+  searchState.value.status === 'ready'
+    ? searchState.value.results
+    : searchState.value.status === 'loading'
+      ? lastRecords.value
+      : []
 ));
 
 function applyState(nextState) {
   searchState.value = nextState;
+
+  if (nextState.status === 'ready') {
+    lastRecords.value = nextState.results;
+  } else if (nextState.status === 'empty' || nextState.status === 'error') {
+    lastRecords.value = [];
+  }
 
   if (nextState.status === 'loading' && nextState.query !== null) {
     query.value = nextState.query;
@@ -71,10 +82,6 @@ async function search(value = query.value) {
 
 async function openRelation(relation) {
   await session.openRelationTarget(relation);
-}
-
-function goBack() {
-  session.back();
 }
 
 async function retry() {
@@ -131,14 +138,12 @@ onBeforeUnmount(() => {
       :status="searchState.status"
       :error="searchState.error"
       :empty-reason="searchState.emptyReason"
-      :can-go-back="searchState.canGoBack"
       :mode="searchState.mode"
       :settings="settings"
       autofocus
       @update:query="query = $event"
       @submit="search"
       @relation="openRelation"
-      @back="goBack"
       @retry="retry"
       @open-settings="openOptions"
     />

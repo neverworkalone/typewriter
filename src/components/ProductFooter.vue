@@ -25,8 +25,8 @@ defineEmits(['open-settings']);
 
 <style scoped>
 .product-footer-wrap {
-  flex: 0 0 auto;
   width: 100%;
+  display: contents;
 }
 
 .footer-divider {
@@ -38,14 +38,15 @@ defineEmits(['open-settings']);
 .product-footer {
   display: flex;
   width: 100%;
-  height: 28px;
+  height: 20px;
+  padding-right: 12px;
   gap: 12px;
   align-items: center;
   justify-content: flex-end;
   overflow: hidden;
   color: #77716b;
   font-size: 12px;
-  line-height: 1;
+  line-height: normal;
   white-space: nowrap;
 }
 
@@ -62,7 +63,8 @@ defineEmits(['open-settings']);
 }
 
 .product-footer-wrap.is-compact .product-footer {
-  height: 24.5px;
+  height: 17.5px;
+  padding-right: 10.5px;
   gap: 10.5px;
   font-size: 10.5px;
 }

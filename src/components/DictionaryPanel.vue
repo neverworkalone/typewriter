@@ -28,10 +28,6 @@ const props = defineProps({
     type: String,
     default: null,
   },
-  canGoBack: {
-    type: Boolean,
-    default: false,
-  },
   mode: {
     type: String,
     default: 'idle',
@@ -58,17 +54,15 @@ const emit = defineEmits([
   'update:query',
   'submit',
   'relation',
-  'back',
   'retry',
   'open-settings',
 ]);
 
-const isReady = computed(() => props.status === SEARCH_STATUS.ready && props.records.length > 0);
-const showBack = computed(() => (
-  props.interactive
-  && props.canGoBack
-  && props.mode === 'relation-target'
+const isReady = computed(() => (
+  props.records.length > 0
+  && (props.status === SEARCH_STATUS.ready || props.status === SEARCH_STATUS.loading)
 ));
+const isRelationTarget = computed(() => isReady.value && props.mode === 'relation-target');
 const statusTitle = computed(() => {
   if (props.status === SEARCH_STATUS.loading) return '검색 중입니다.';
   if (props.status === SEARCH_STATUS.empty) {
@@ -83,11 +77,7 @@ const statusTitle = computed(() => {
 
 const statusDescription = computed(() => {
   if (props.status === SEARCH_STATUS.loading) return '잠시만 기다려 주세요.';
-  if (props.status === SEARCH_STATUS.empty) {
-    return props.emptyReason === 'relation-target-not-found'
-      ? '연결된 단어의 기록이 없습니다.'
-      : `‘${props.query}’에 맞는 단어를 찾지 못했습니다.`;
-  }
+  if (props.status === SEARCH_STATUS.empty) return '';
   if (props.error?.kind === 'load') {
     return '패키지된 사전 파일을 확인한 뒤 다시 시도해 주세요.';
   }
@@ -95,16 +85,21 @@ const statusDescription = computed(() => {
   return '';
 });
 
-const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.status === SEARCH_STATUS.empty);
+const showRetry = computed(() => props.status === SEARCH_STATUS.error);
 </script>
 
 <template>
   <section
     class="dictionary-panel"
     :class="[
-      { 'is-compact': compact, 'has-results': isReady },
+      {
+        'is-compact': compact,
+        'has-results': isReady,
+        'is-relation-target': isRelationTarget,
+      },
       `state-${status}`,
     ]"
+    :aria-busy="isReady && status === SEARCH_STATUS.loading"
     data-dictionary-panel
   >
     <SearchBar
@@ -117,13 +112,6 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
     />
 
     <div v-if="isReady" class="dictionary-scroll-region">
-      <button
-        v-if="showBack"
-        class="back-button"
-        type="button"
-        aria-label="이전 결과로 돌아가기"
-        @click="emit('back')"
-      >← 이전 결과</button>
       <DictionaryResult
         v-for="record in records"
         :key="record.id"
@@ -146,10 +134,17 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
       />
     </div>
 
-    <div v-else class="dictionary-state-region" :data-search-state="status" role="status" aria-live="polite">
+    <div
+      v-else
+      class="dictionary-state-region"
+      :class="{ 'is-empty': status === SEARCH_STATUS.empty }"
+      :data-search-state="status"
+      role="status"
+      aria-live="polite"
+    >
       <div class="state-copy">
         <strong>{{ statusTitle }}</strong>
-        <span>{{ statusDescription }}</span>
+        <span v-if="statusDescription">{{ statusDescription }}</span>
       </div>
       <button
         v-if="showRetry"
@@ -200,6 +195,15 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
   justify-content: space-between;
 }
 
+.dictionary-panel.is-relation-target.has-results {
+  min-height: 0;
+}
+
+.dictionary-panel.is-relation-target.has-results .dictionary-scroll-region {
+  min-height: 0;
+  justify-content: flex-start;
+}
+
 .dictionary-scroll-region::-webkit-scrollbar {
   width: 4px;
 }
@@ -218,19 +222,6 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
   border-top: 1px solid #e1ddda;
 }
 
-.back-button {
-  align-self: flex-start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #7e433e;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.back-button:focus-visible,
 .retry-button:focus-visible {
   outline: 2px solid #7e433e;
   outline-offset: 2px;
@@ -249,6 +240,15 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
   min-height: 104px;
   justify-content: center;
   padding: 8px 4px 0;
+}
+
+.dictionary-state-region.is-empty {
+  min-height: 104px;
+  padding: 0 4px;
+}
+
+.dictionary-state-region.is-empty .state-copy {
+  gap: 0;
 }
 
 .state-copy {
@@ -294,9 +294,11 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
 }
 
 .dictionary-panel.is-compact .dictionary-scroll-region {
-  max-height: 258px;
+  max-height: none;
   gap: 7px;
   padding: 7px 3.5px 0;
+  overflow-y: visible;
+  scrollbar-width: none;
 }
 
 .dictionary-panel.is-compact.has-results .dictionary-scroll-region {
@@ -317,8 +319,11 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error || props.s
 }
 
 .dictionary-panel.is-compact .state-copy span,
-.dictionary-panel.is-compact .retry-button,
-.dictionary-panel.is-compact .back-button {
+.dictionary-panel.is-compact .retry-button {
   font-size: 10.5px;
+}
+
+.dictionary-panel.is-compact .dictionary-scroll-region::-webkit-scrollbar {
+  display: none;
 }
 </style>

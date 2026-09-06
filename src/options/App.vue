@@ -26,6 +26,7 @@ const savedSettings = ref({ ...DEFAULT_SETTINGS });
 const settingsReady = ref(false);
 const saveState = ref('saved');
 const saving = ref(false);
+const productVersion = globalThis.chrome?.runtime?.getManifest?.().version || '0.3.0';
 
 const previewRecord = computed(() => projectRecord(PREVIEW_RECORD));
 const isDirty = computed(() => (
@@ -96,7 +97,7 @@ onMounted(() => {
       <div class="brand-lockup">
         <img class="brand-mark" src="/logo.png" alt="" />
         <span class="brand-name">Typewriter</span>
-        <span class="brand-version">1.0</span>
+        <span class="brand-version">{{ productVersion }}</span>
       </div>
       <div class="save-controls">
         <span

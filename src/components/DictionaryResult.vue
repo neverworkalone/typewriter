@@ -196,7 +196,7 @@ function openRelation(relation) {
 }
 
 .definition-divider {
-  margin-top: 8px;
+  margin-top: 5px;
 }
 
 .relation-list {
@@ -302,7 +302,7 @@ function openRelation(relation) {
 }
 
 .dictionary-result.is-compact .definition-divider {
-  margin-top: 7px;
+  margin-top: 4.375px;
 }
 
 .dictionary-result.is-compact .sense-block + .sense-block {

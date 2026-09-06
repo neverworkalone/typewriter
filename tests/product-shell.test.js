@@ -74,9 +74,10 @@ describe('product MV3 Vue shells', () => {
 
     expect(host.querySelector('[data-product-surface="options"]')).not.toBeNull();
     expect(host.textContent).toContain('설정');
+    expect(host.querySelector('.brand-version').textContent.trim()).toBe('0.3.0');
   });
 
-  it('searches on Enter, moves through relation targets, and restores with back', async () => {
+  it('searches on Enter and moves through relation targets without a back control', async () => {
     const records = new Map([
       ['w026', makeRecord('w026', '담담하다', 'start', [{
         position: 0,
@@ -125,12 +126,55 @@ describe('product MV3 Vue shells', () => {
     host.querySelector('[data-target-record-id="r008"]').click();
     await flush();
     expect(host.querySelector('[data-record-id="r008"]')).not.toBeNull();
-    expect(host.querySelector('.back-button')).not.toBeNull();
+    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
+  });
 
-    host.querySelector('.back-button').click();
+  it('keeps the current result visible while a later search is pending', async () => {
+    let releaseSecondSearch;
+    const secondSearch = new Promise((resolve) => {
+      releaseSecondSearch = () => resolve([{ id: 'second' }]);
+    });
+    const records = new Map([
+      ['first', makeRecord('first', '첫 단어')],
+      ['second', makeRecord('second', '두 번째')],
+    ]);
+    const runtime = {
+      search: async (term) => (term === '첫 단어' ? [{ id: 'first' }] : secondSearch),
+      getRecord: async (id) => records.get(id) || null,
+    };
+    const host = mountWithProps(PopupApp, {
+      runtime,
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+      },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+    const form = host.querySelector('.search-row');
+
+    async function submit(term) {
+      input.value = term;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flush();
+    }
+
+    await submit('첫 단어');
+    expect(host.querySelector('[data-record-id="first"]')).not.toBeNull();
+
+    const pendingSearch = submit('두 번째');
+    await nextTick();
+    await nextTick();
+
+    expect(host.querySelector('[data-record-id="first"]')).not.toBeNull();
+    expect(host.querySelector('[data-dictionary-panel].has-results')).not.toBeNull();
+    expect(host.querySelector('[data-dictionary-panel][aria-busy="true"]')).not.toBeNull();
+    expect(host.querySelector('[data-search-state="loading"]')).toBeNull();
+
+    releaseSecondSearch();
+    await pendingSearch;
     await flush();
-    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
-    expect(host.querySelector('[data-record-id="r008"]')).toBeNull();
+    expect(host.querySelector('[data-record-id="second"]')).not.toBeNull();
   });
 
   it('renders all distinct runtime states with retry and error copy', async () => {
@@ -174,6 +218,9 @@ describe('product MV3 Vue shells', () => {
     await submit('없는 말');
     expect(host.querySelector('[data-search-state="empty"]')).not.toBeNull();
     expect(host.textContent).toContain('검색 결과가 없습니다.');
+    expect(host.querySelector('.state-copy').textContent.trim()).toBe('검색 결과가 없습니다.');
+    expect(host.querySelector('.state-copy span')).toBeNull();
+    expect(host.querySelector('.retry-button')).toBeNull();
 
     mode = 'load';
     await submit('load');
