@@ -24,6 +24,7 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/dictionary-worker.mjs',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
+  'runtime/search-query.js',
   'runtime/vendor/sqlite3.mjs',
   'runtime/vendor/sqlite3.wasm',
   'Apache-2.0.txt',

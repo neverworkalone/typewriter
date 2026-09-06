@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const SEARCH_REGRESSION_SCHEMA_VERSION = 1;
+export const SEARCH_REGRESSION_SCHEMA_VERSION = 2;
 
 export const SEARCH_INPUT_CLASSES = Object.freeze([
   'exact-lemma',
@@ -16,11 +16,11 @@ export const SEARCH_INPUT_CLASSES = Object.freeze([
 export const SEARCH_EVALUATIONS = Object.freeze(['baseline', 'pending']);
 export const EXPECTED_STATUSES = Object.freeze([
   'ready',
-  'empty',
+  'no-match',
   'unsupported',
   'pending',
 ]);
-export const ACTUAL_STATUSES = Object.freeze(['ready', 'empty', 'error']);
+export const ACTUAL_STATUSES = Object.freeze(['ready', 'no-match', 'unsupported', 'error']);
 export const SEARCH_PROBLEMS = Object.freeze([
   'none',
   'normalization',
@@ -42,8 +42,8 @@ export const RELATION_TYPES = Object.freeze([
 const EXPECTED_STATUS_BY_INPUT_CLASS = Object.freeze({
   'exact-lemma': 'ready',
   'exact-search-form': 'ready',
-  'normalization-candidate': 'pending',
-  'no-data': 'empty',
+  'normalization-candidate': 'ready',
+  'no-data': 'no-match',
   unsupported: 'unsupported',
   'editorial-gap': 'pending',
 });
@@ -82,7 +82,23 @@ const CASE_KEYS = new Set([
   'problem',
   'policy',
 ]);
-const OBSERVATION_KEYS = new Set(['status', 'result_ids', 'selected_record_id']);
+const OBSERVATION_KEYS = new Set([
+  'status',
+  'result_ids',
+  'selected_record_id',
+  'raw_query',
+  'normalized_query',
+  'normalization_rules',
+  'reason',
+  'matches',
+]);
+const MATCH_ASSERTION_KEYS = new Set([
+  'record_id',
+  'kind',
+  'field',
+  'value',
+  'normalization_rules',
+]);
 const SELECTION_KEYS = new Set([
   'kind',
   'record_id',
@@ -173,7 +189,7 @@ function validateObservation(observation, location, statuses, errors) {
   }
 
   if (
-    (observation.status === 'empty' || observation.status === 'unsupported' || observation.status === 'error')
+    (observation.status === 'no-match' || observation.status === 'unsupported' || observation.status === 'error')
     && observation.result_ids?.length > 0
   ) {
     addError(errors, location, `${observation.status} observations must not contain results`);
@@ -181,6 +197,65 @@ function validateObservation(observation, location, statuses, errors) {
 
   if (observation.selected_record_id !== null && !isNonEmptyString(observation.selected_record_id)) {
     addError(errors, `${location}.selected_record_id`, 'must be null or a non-empty string');
+  }
+
+  if (observation.raw_query !== undefined && !isNonEmptyString(observation.raw_query)) {
+    addError(errors, `${location}.raw_query`, 'must be a non-empty string when present');
+  }
+  if (observation.normalized_query !== undefined && typeof observation.normalized_query !== 'string') {
+    addError(errors, `${location}.normalized_query`, 'must be a string when present');
+  }
+  if (observation.normalization_rules !== undefined) {
+    validateUniqueStrings(observation.normalization_rules, `${location}.normalization_rules`, errors);
+    for (const rule of observation.normalization_rules) {
+      if (!['unicode-nfc', 'trim-surrounding-whitespace'].includes(rule)) {
+        addError(errors, `${location}.normalization_rules`, `contains unsupported rule ${JSON.stringify(rule)}`);
+      }
+    }
+  }
+  if (observation.reason !== undefined && observation.reason !== null && !isNonEmptyString(observation.reason)) {
+    addError(errors, `${location}.reason`, 'must be null or a non-empty string');
+  }
+  if (observation.matches !== undefined) {
+    if (!Array.isArray(observation.matches)) {
+      addError(errors, `${location}.matches`, 'must be an array');
+    } else {
+      const seen = new Set();
+      observation.matches.forEach((match, index) => {
+        const matchLocation = `${location}.matches[${index}]`;
+        if (!isPlainObject(match)) {
+          addError(errors, matchLocation, 'must be an object');
+          return;
+        }
+        validateAllowedKeys(match, MATCH_ASSERTION_KEYS, matchLocation, errors);
+        if (!isNonEmptyString(match.record_id)) {
+          addError(errors, `${matchLocation}.record_id`, 'must be a non-empty string');
+        } else if (seen.has(match.record_id)) {
+          addError(errors, `${matchLocation}.record_id`, 'duplicates another match');
+        }
+        seen.add(match.record_id);
+        validateEnum(
+          match.kind,
+          ['exact', 'exact-lemma', 'exact-search-form', 'normalized'],
+          `${matchLocation}.kind`,
+          errors,
+        );
+        validateEnum(match.field, ['lemma', 'search-form'], `${matchLocation}.field`, errors);
+        if (!isNonEmptyString(match.value)) {
+          addError(errors, `${matchLocation}.value`, 'must be a non-empty string');
+        }
+        validateUniqueStrings(
+          match.normalization_rules,
+          `${matchLocation}.normalization_rules`,
+          errors,
+        );
+      });
+
+      const matchIds = observation.matches.map(({ record_id }) => record_id);
+      if (JSON.stringify(matchIds) !== JSON.stringify(observation.result_ids)) {
+        addError(errors, `${location}.matches`, 'record_id order must match result_ids');
+      }
+    }
   }
 }
 
@@ -386,6 +461,19 @@ export function validateSearchRegressionCorpus(corpus) {
     validateObservation(searchCase.expected, expectedLocation, EXPECTED_STATUSES, errors);
     validateObservation(searchCase.actual, actualLocation, ACTUAL_STATUSES, errors);
 
+    for (const [observationName, observation] of [
+      ['expected', searchCase.expected],
+      ['actual', searchCase.actual],
+    ]) {
+      if (observation?.raw_query !== undefined && observation.raw_query !== searchCase.query) {
+        addError(
+          errors,
+          `${location}.${observationName}.raw_query`,
+          'must match case.query',
+        );
+      }
+    }
+
     const expectedStatus = EXPECTED_STATUS_BY_INPUT_CLASS[searchCase.input_class];
     if (expectedStatus && searchCase.expected?.status !== expectedStatus) {
       addError(errors, `${expectedLocation}.status`, `must be ${expectedStatus} for ${searchCase.input_class}`);
@@ -395,8 +483,8 @@ export function validateSearchRegressionCorpus(corpus) {
       addError(errors, `${location}.problem`, `must be ${expectedProblem} for ${searchCase.input_class}`);
     }
 
-    if (searchCase.input_class === 'normalization-candidate' && searchCase.evaluation !== 'pending') {
-      addError(errors, `${location}.evaluation`, 'normalization candidates must remain pending');
+    if (searchCase.input_class === 'normalization-candidate' && searchCase.evaluation !== 'baseline') {
+      addError(errors, `${location}.evaluation`, 'approved normalization candidates must be baseline cases');
     }
     if (searchCase.input_class === 'editorial-gap' && searchCase.evaluation !== 'pending') {
       addError(errors, `${location}.evaluation`, 'editorial gaps must remain pending');

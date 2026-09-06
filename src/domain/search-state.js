@@ -38,6 +38,7 @@ export function createInitialSearchState() {
     query: null,
     targetRecordId: null,
     navigation: null,
+    queryMeta: null,
     results: [],
     error: null,
     emptyReason: null,
@@ -46,13 +47,21 @@ export function createInitialSearchState() {
   };
 }
 
-function requestFields({ mode, action, query = null, targetRecordId = null, navigation = null }) {
+function requestFields({
+  mode,
+  action,
+  query = null,
+  targetRecordId = null,
+  navigation = null,
+  queryMeta = null,
+}) {
   return {
     mode,
     action,
     query,
     targetRecordId,
     navigation,
+    queryMeta,
   };
 }
 

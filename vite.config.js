@@ -34,6 +34,10 @@ async function copyRuntimeAssets() {
       path.join(runtimeDirectory, 'query-adapter.js'),
     ),
     cp(
+      path.join(projectRoot, 'src/runtime/search-query.js'),
+      path.join(runtimeDirectory, 'search-query.js'),
+    ),
+    cp(
       path.join(sqliteWasmDirectory, 'index.mjs'),
       path.join(vendorDirectory, 'sqlite3.mjs'),
     ),

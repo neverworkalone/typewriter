@@ -1,19 +1,80 @@
-export function findRecordsByExactTerm(database, term) {
+import {
+  createSearchMatch,
+  createSearchResponse,
+  normalizeSearchInput,
+  SEARCH_MATCH_FIELDS,
+  SEARCH_UNSUPPORTED_REASONS,
+} from '../../src/runtime/search-query.js';
+
+function findSearchRows(database, term) {
   return database
     .prepare(`
-      SELECT id, record_type, role, candidate_id, lemma
+      SELECT id, record_type, role, candidate_id, lemma,
+             'lemma' AS match_field, lemma AS match_value, 0 AS match_priority
       FROM records
       WHERE role = 'start' AND lemma = ?
-      UNION
+      UNION ALL
       SELECT records.id, records.record_type, records.role,
-        records.candidate_id, records.lemma
+             records.candidate_id, records.lemma,
+             'search-form' AS match_field, search_forms.form AS match_value,
+             1 AS match_priority
       FROM records
       INNER JOIN search_forms ON search_forms.record_id = records.id
       WHERE records.role = 'start' AND search_forms.form = ?
-      ORDER BY id
+      ORDER BY id, match_priority
     `)
     .all(term, term)
     .map((row) => ({ ...row }));
+}
+
+function hasReferenceOnlyMatch(database, term) {
+  return Boolean(database
+    .prepare(`
+      SELECT records.id
+      FROM records
+      LEFT JOIN search_forms ON search_forms.record_id = records.id
+      WHERE records.role = 'reference-only'
+        AND (records.lemma = ? OR search_forms.form = ?)
+      LIMIT 1
+    `)
+    .get(term, term));
+}
+
+export function findRecordsBySearchTerm(database, rawQuery) {
+  const input = normalizeSearchInput(rawQuery);
+  if (input.unsupportedReason) {
+    return createSearchResponse(input);
+  }
+
+  const rows = findSearchRows(database, input.normalizedQuery);
+  const seen = new Set();
+  const matches = [];
+
+  for (const row of rows) {
+    if (seen.has(row.id)) {
+      continue;
+    }
+    seen.add(row.id);
+    matches.push(createSearchMatch(row, {
+      field: row.match_field === 'lemma'
+        ? SEARCH_MATCH_FIELDS.lemma
+        : SEARCH_MATCH_FIELDS.searchForm,
+      value: row.match_value,
+      normalizationRules: input.normalizationRules,
+    }));
+  }
+
+  if (matches.length === 0 && hasReferenceOnlyMatch(database, input.normalizedQuery)) {
+    return createSearchResponse(input, [], {
+      reason: SEARCH_UNSUPPORTED_REASONS.referenceOnly,
+    });
+  }
+
+  return createSearchResponse(input, matches);
+}
+
+export function findRecordsByExactTerm(database, term) {
+  return findRecordsBySearchTerm(database, term).matches.map(({ match, ...record }) => record);
 }
 
 export function getMetadata(database) {

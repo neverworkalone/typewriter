@@ -121,14 +121,20 @@ export function projectRecord(record, { match = null } = {}) {
   return projected;
 }
 
-export function projectSearchResults(records) {
+export function projectSearchResults(records, matches = null) {
+  const matchById = Array.isArray(matches)
+    ? new Map(matches.map((summary) => [summary.id, summary.match || null]))
+    : null;
+
   return records
     .filter((record) => record.role !== 'reference-only')
     .map((record, position) => projectRecord(record, {
-      match: {
-        kind: 'exact',
-        position,
-      },
+      match: matchById?.has(record.id)
+        ? matchById.get(record.id)
+        : {
+          kind: 'exact',
+          position,
+        },
     }));
 }
 

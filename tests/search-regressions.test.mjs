@@ -20,6 +20,7 @@ import {
 } from './helpers/search-regressions.js';
 import {
   findRecordsByExactTerm,
+  findRecordsBySearchTerm,
   getRecord,
   getSenseRelations,
 } from '../scripts/build/query.mjs';
@@ -151,9 +152,65 @@ test('M3 baseline cases match the canonical SQLite exact-query contract', async 
       const pendingNormalization = caseById(fixture, 'm4-normalization-hangul-nfd');
       assert.deepEqual(
         findRecordsByExactTerm(database, pendingNormalization.query),
-        [],
-        'the unapproved Unicode normalization candidate remains an exact no-match',
+        [{
+          id: 'w026',
+          record_type: 'entry',
+          role: 'start',
+          candidate_id: 'w026',
+          lemma: '담담하다',
+        }],
+        'approved NFC normalization reaches the canonical lemma',
       );
+    } finally {
+      database.close();
+    }
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('M4 query responses preserve normalization and match provenance', async () => {
+  const outputDirectory = await mkdtemp(path.join(repositoryDirectory, 'tmp-search-query-contract-'));
+  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+
+  try {
+    await buildDictionary({
+      inputDirectory: path.join(repositoryDirectory, 'data/canonical'),
+      outputPath,
+      checkPilotCompleteness: true,
+      allowDirty: true,
+      repositoryDirectory,
+    });
+
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      for (const searchCase of fixture.cases.filter(({ actual }) => actual.raw_query !== undefined)) {
+        const response = findRecordsBySearchTerm(database, searchCase.query);
+        assert.equal(response.status, searchCase.actual.status, `${searchCase.id} status`);
+        assert.equal(response.rawQuery, searchCase.actual.raw_query, `${searchCase.id} raw query`);
+        assert.equal(
+          response.normalizedQuery,
+          searchCase.actual.normalized_query,
+          `${searchCase.id} normalized query`,
+        );
+        assert.deepEqual(
+          response.normalizationRules,
+          searchCase.actual.normalization_rules,
+          `${searchCase.id} normalization rules`,
+        );
+        assert.equal(response.reason, searchCase.actual.reason, `${searchCase.id} reason`);
+        assert.deepEqual(
+          response.matches.map(({ id, match }) => ({
+            record_id: id,
+            kind: match.kind,
+            field: match.field,
+            value: match.value,
+            normalization_rules: match.normalizationRules,
+          })),
+          searchCase.actual.matches,
+          `${searchCase.id} match provenance`,
+        );
+      }
     } finally {
       database.close();
     }
