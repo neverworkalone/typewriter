@@ -95,6 +95,45 @@ TYPEWRITER_ALLOW_DIRTY=true npm run build
 The generated product database and runtime assets are build output; canonical JSONL
 remains the editable source of truth.
 
+## Product release package
+
+`npm run package` creates the default non-minified Chrome release package. The
+optional `npm run package:minify` command uses the same inputs and validator with
+Vite/esbuild minification enabled. Both commands rebuild `dist/`, then create
+`<repository>_<manifest-version>.zip` in `TYPEWRITER_ZIP_DIR` or, by default, in
+`~/Downloads`.
+
+The package contains only the MV3 product surface: `manifest.json`, `popup.html`,
+`options.html`, Vite assets/chunks, the current generated `dictionary.sqlite`, the
+SQLite worker/protocol/query adapter, the pinned SQLite JavaScript/WASM runtime,
+icons and `logo.png`, plus the full `Apache-2.0.txt` license and
+`THIRD-PARTY-NOTICES.txt`. Development sources, tests, package configuration,
+source maps, remote code/CDN references, host permissions, and web-accessible product
+resources are rejected.
+
+`node scripts/validate-package.mjs` checks the manifest contract, package file set,
+MV3 permissions/CSP, SQLite integrity and M2 metadata/source revision, legal files,
+file modes, and ZIP integrity/contents. The pack script writes to a temporary ZIP
+and moves it atomically only after creation; `TYPEWRITER_ALLOW_DIRTY=true` is an
+explicit local-development escape hatch that records `dirty-allowed` provenance.
+
+For Chrome integration, run the following after packaging. The runner validates the
+generated package and loads both the working `dist/` and a temporary extraction of
+the exact ZIP through isolated Chrome profiles:
+
+```sh
+npm run test:mv3:package -- \
+  --chrome="/path/to/Google Chrome for Testing" \
+  --extension=dist \
+  --zip=/path/to/typewriter_0.3.0.zip
+```
+
+It checks the popup and Settings flows, local dictionary coverage, saved settings
+reflection, content-sized/scrolling layouts, and that no request leaves the
+extension origin. This is the supported automated equivalent of installing the ZIP
+as an unpacked extension; the Chrome GUI's direct ZIP installation path remains a
+manual release smoke check.
+
 실제 검증 기록 (2026-09-06, Chrome for Testing 152.0.7977.76): 제품 `popup.html`에서
 패키지된 query adapter가 worker와 SQLite/WASM을 로드했고, `담담하다` lemma, `담담`
 search form, expression `마음이 놓이다`, 다의어 sense 순서, `r008`

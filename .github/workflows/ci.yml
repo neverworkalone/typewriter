@@ -61,3 +61,56 @@ jobs:
 
       - name: Build product extension
         run: npm run build
+
+      - name: Build non-minified release package
+        env:
+          TYPEWRITER_ZIP_DIR: ${{ runner.temp }}/typewriter-package-nonmin
+        run: npm run package
+
+      - name: Install Chrome for Testing
+        id: chrome
+        shell: bash
+        run: |
+          cft_metadata="$RUNNER_TEMP/chrome-for-testing.json"
+          cft_archive="$RUNNER_TEMP/chrome-for-testing.zip"
+          cft_directory="$RUNNER_TEMP/chrome-for-testing"
+          curl --fail --silent --show-error --location \
+            https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
+            -o "$cft_metadata"
+          cft_url="$(node -e '
+            const fs = require("node:fs");
+            const metadata = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const download = metadata.channels.Stable.downloads.chrome.find(
+              ({ platform }) => platform === "linux64",
+            );
+            if (!download) process.exit(1);
+            process.stdout.write(download.url);
+          ' "$cft_metadata")"
+          curl --fail --silent --show-error --location "$cft_url" -o "$cft_archive"
+          mkdir -p "$cft_directory"
+          unzip -q "$cft_archive" -d "$cft_directory"
+          chrome_path="$cft_directory/chrome-linux64/chrome"
+          chmod +x "$chrome_path"
+          "$chrome_path" --version
+          echo "path=$chrome_path" >> "$GITHUB_OUTPUT"
+
+      - name: Verify non-minified package in Chrome
+        env:
+          TYPEWRITER_ZIP_DIR: ${{ runner.temp }}/typewriter-package-nonmin
+        run: >-
+          npm run test:mv3:package --
+          --chrome="${{ steps.chrome.outputs.path }}"
+          --extension=dist
+          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_0.3.0.zip"
+
+      - name: Build minified release package
+        env:
+          TYPEWRITER_ZIP_DIR: ${{ runner.temp }}/typewriter-package-minified
+        run: npm run package:minify
+
+      - name: Verify minified package in Chrome
+        run: >-
+          npm run test:mv3:package --
+          --chrome="${{ steps.chrome.outputs.path }}"
+          --extension=dist
+          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_0.3.0.zip"
