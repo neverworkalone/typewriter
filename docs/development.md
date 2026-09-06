@@ -22,6 +22,10 @@ npm run build        # production MV3 assets in dist/, minified by esbuild
 npm run test:unit    # Vitest component/unit tests
 ```
 
+`npm run build` generates the product's packaged `dictionary.sqlite` and the
+`runtime/` SQLite WASM worker assets after the Vite bundle. If the worktree is
+dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
+
 `npm run test` remains the Node.js test command for the M2 toolchain. The product
 build does not replace or modify the M2 proof source or its generated package.
 

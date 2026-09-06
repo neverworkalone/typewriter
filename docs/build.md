@@ -64,6 +64,45 @@ relations with target lemma, part of speech, and gloss display. Fuzzy search,
 ranking, morphology, user data, and extension runtime integration are outside this
 contract.
 
+## Product dictionary runtime
+
+`npm run build` also assembles the product runtime under `dist/`:
+
+- `dictionary.sqlite` is generated from the canonical JSONL pilot data;
+- `runtime/dictionary-worker.mjs` is the dedicated module worker;
+- `runtime/protocol.js` contains the versioned request/response contract;
+- `runtime/query-adapter.js` is the browser-facing read-only adapter; and
+- `runtime/vendor/sqlite3.mjs` plus `runtime/vendor/sqlite3.wasm` are the pinned
+  SQLite WASM runtime assets.
+
+The main-thread adapter in [`src/runtime/query-adapter.js`](../src/runtime/query-adapter.js)
+exposes only exact start-record search, record/sense/relation reads, metadata, and
+runtime status. Reference-only records can be fetched by ID for relation display,
+but are never returned from free-term search. The worker loads its own packaged
+database with extension-relative URLs, keeps one initialization promise, enables
+`PRAGMA query_only = ON`, and returns structured errors for asset, WASM, database,
+query, and lifecycle failures. The manifest allows WASM evaluation for extension
+pages while retaining zero host permissions and no web-accessible dictionary asset.
+
+The product build uses the same clean-worktree provenance contract as the SQLite
+builder. During local development with uncommitted changes, use the explicit
+escape hatch:
+
+```sh
+TYPEWRITER_ALLOW_DIRTY=true npm run build
+```
+
+The generated product database and runtime assets are build output; canonical JSONL
+remains the editable source of truth.
+
+실제 검증 기록 (2026-09-06, Chrome for Testing 152.0.7977.76): 제품 `popup.html`에서
+패키지된 query adapter가 worker와 SQLite/WASM을 로드했고, `담담하다` lemma, `담담`
+search form, expression `마음이 놓이다`, 다의어 sense 순서, `r008`
+reference-only ID 조회, relation target/note, metadata를 확인했다. 런타임 상태는
+`query_only = 1`이었고, write 요청은 `UNSUPPORTED_REQUEST`로 거절됐으며 외부
+요청은 0건이었다. 실제 SQLite 쓰기 차단·비영속성은 기존 MV3 proof가 계속
+검증한다.
+
 ## MV3 SQLite WASM proof
 
 `node scripts/extension/build-proof.mjs` assembles a self-contained extension
