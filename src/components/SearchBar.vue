@@ -121,7 +121,12 @@ defineExpose({ focus });
   opacity: 1;
 }
 
-.search-input:focus-visible,
+.search-input:focus,
+.search-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .search-button:focus-visible {
   outline: 2px solid #7e433e;
   outline-offset: 2px;

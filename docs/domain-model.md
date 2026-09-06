@@ -69,4 +69,7 @@ sense/group projection만 렌더링하며, `definition`, `synonyms`, `antonyms`,
 표시 설정은 `src/ui/settings.js`의 다섯 키로 제한한다. 기본값은 Figma의
 미리보기와 맞춰 뜻풀이·유의어·말의 결은 켜고 반의어·연상은 끈다.
 `createSettingsStore()`는 확장 프로그램의 `chrome.storage.local`에 설정만
-저장하며, 읽기 전용 dictionary SQLite와 섞지 않는다.
+저장하며, 읽기 전용 dictionary SQLite와 섞지 않는다. Options의 토글은 먼저
+미리보기와 draft 상태만 갱신하고, 명시적인 저장 버튼이 현재 draft를
+영속화한다. 설정을 불러오거나 저장하는 동안에는 토글을 잠가 순서가 뒤섞이지
+않게 한다.

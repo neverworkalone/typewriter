@@ -262,6 +262,7 @@ export async function runCftProduct({
       '  recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
       '  hasDirectTarget: Boolean(document.querySelector("[data-target-record-id=\\"r008\\"]")),',
       '  inputFocused: document.activeElement?.matches("[aria-label=\\"검색어\\"]") || false,',
+      '  inputOutlineStyle: getComputedStyle(document.querySelector("[aria-label=\\"검색어\\"]")).outlineStyle,',
       '  scrollMaxHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).maxHeight,',
       '  scrollOverflowY: getComputedStyle(document.querySelector(".dictionary-scroll-region")).overflowY,',
       '  panelWidth: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().width),',
@@ -300,6 +301,77 @@ export async function runCftProduct({
       'Boolean(document.querySelector("[data-record-id=\\"w026\\"]")) && !document.querySelector("[data-record-id=\\"r008\\"]")',
     );
 
+    const popupEmpty = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupEmpty);
+    await evaluate(connection, popupEmpty.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "test";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupEmpty.sessionId,
+      'Boolean(document.querySelector("[data-search-state=\\"empty\\"]"))',
+    );
+    const popupEmptyState = await evaluate(connection, popupEmpty.sessionId, [
+      '(() => {',
+      '  const panel = document.querySelector("[data-dictionary-panel]");',
+      '  return {',
+      '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
+      '    bodyHeight: document.body.scrollHeight,',
+      '    appHeight: Math.round(document.querySelector("#app").getBoundingClientRect().height),',
+      '    hasFooter: Boolean(document.querySelector(".product-footer")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+
+    const popupLong = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupLong);
+    await evaluate(connection, popupLong.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "쓰다";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupLong.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w237\\"]"))',
+    );
+    const popupLongOverflow = await evaluate(connection, popupLong.sessionId, [
+      '(() => {',
+      '  const panel = document.querySelector("[data-dictionary-panel]");',
+      '  const region = document.querySelector(".dictionary-scroll-region");',
+      '  return {',
+      '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
+      '    regionClientHeight: Math.round(region.clientHeight),',
+      '    regionScrollHeight: Math.round(region.scrollHeight),',
+      '    overflowY: getComputedStyle(region).overflowY,',
+      '    hasSearch: Boolean(document.querySelector("[aria-label=\\"검색어\\"]")),',
+      '    hasFooter: Boolean(document.querySelector(".product-footer")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+    const popupLongScroll = await evaluate(connection, popupLong.sessionId, [
+      '(() => {',
+      '  const region = document.querySelector(".dictionary-scroll-region");',
+      '  const before = region.scrollTop;',
+      '  region.scrollTop = region.scrollHeight;',
+      '  return { before, after: region.scrollTop, max: region.scrollHeight - region.clientHeight };',
+      '})() ',
+    ].join('\n'));
+
     const options = await createExtensionSession(connection, extensionId, 'options.html');
     extensionTargets.push(options);
     await waitForCondition(
@@ -324,6 +396,18 @@ export async function runCftProduct({
       options.sessionId,
       'document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]") !== null',
     );
+    const optionsDirty = await evaluate(connection, options.sessionId, [
+      '(() => ({',
+      '  status: document.querySelector(".save-status")?.textContent.trim() || "",',
+      '  saveDisabled: document.querySelector(".save-button")?.disabled ?? true,',
+      '}))() ',
+    ].join('\n'));
+    await evaluate(connection, options.sessionId, 'document.querySelector(".save-button")?.click()');
+    await waitForCondition(
+      connection,
+      options.sessionId,
+      'document.querySelector(".save-status")?.textContent.includes("저장됨") && document.querySelector(".save-button")?.disabled === true',
+    );
     await connection.command('Page.reload', {}, options.sessionId);
     await waitForCondition(
       connection,
@@ -347,6 +431,7 @@ export async function runCftProduct({
       popupReady.recordId !== 'w026'
       || !popupReady.hasDirectTarget
       || !popupReady.inputFocused
+      || popupReady.inputOutlineStyle !== 'none'
       || popupReady.scrollMaxHeight !== '487px'
       || popupReady.scrollOverflowY !== 'auto'
       || popupReady.panelWidth !== 480
@@ -354,6 +439,25 @@ export async function runCftProduct({
       || focusResult !== 'search-button'
     ) {
       throw new Error('Popup CFT assertions failed: ' + JSON.stringify({ popupReady, focusResult }));
+    }
+    if (
+      popupEmptyState.panelHeight >= 240
+      || popupEmptyState.bodyHeight !== popupEmptyState.panelHeight
+      || popupEmptyState.appHeight !== popupEmptyState.panelHeight
+      || !popupEmptyState.hasFooter
+    ) {
+      throw new Error('Empty popup sizing CFT assertions failed: ' + JSON.stringify(popupEmptyState));
+    }
+    if (
+      popupLongOverflow.regionScrollHeight <= popupLongOverflow.regionClientHeight
+      || popupLongOverflow.overflowY !== 'auto'
+      || popupLongOverflow.panelHeight >= 600
+      || !popupLongOverflow.hasSearch
+      || !popupLongOverflow.hasFooter
+      || popupLongScroll.after <= popupLongScroll.before
+      || popupLongScroll.after !== popupLongScroll.max
+    ) {
+      throw new Error('Long-result overflow CFT assertions failed: ' + JSON.stringify({ popupLongOverflow, popupLongScroll }));
     }
     if (
       JSON.stringify(optionsDefault.switches) !== JSON.stringify(['true', 'true', 'false', 'true', 'false'])
@@ -365,6 +469,9 @@ export async function runCftProduct({
     if (!optionsReloaded.antonymEnabled || !optionsReloaded.hasAntonymAfterReload) {
       throw new Error('Persisted Settings CFT assertions failed: ' + JSON.stringify(optionsReloaded));
     }
+    if (optionsDirty.status !== '저장되지 않음' || optionsDirty.saveDisabled) {
+      throw new Error('Dirty Settings CFT assertions failed: ' + JSON.stringify(optionsDirty));
+    }
     if (nonExtensionRequests.length > 0) {
       throw new Error('Product UI made non-extension requests: ' + JSON.stringify(nonExtensionRequests));
     }
@@ -372,8 +479,12 @@ export async function runCftProduct({
     return {
       extensionId,
       popupReady,
+      popupEmptyState,
+      popupLongOverflow,
+      popupLongScroll,
       focusResult,
       optionsDefault,
+      optionsDirty,
       optionsReloaded,
       nonExtensionRequests,
     };

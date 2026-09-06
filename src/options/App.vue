@@ -8,6 +8,8 @@ import {
   createSettingsStore,
   DEFAULT_SETTINGS,
   SETTING_DEFINITIONS,
+  SETTING_KEYS,
+  normalizeSettings,
 } from '../ui/settings.js';
 import { PREVIEW_RECORD } from '../components/preview-record.js';
 
@@ -20,40 +22,66 @@ const props = defineProps({
 
 const settingsStore = props.settingsStore || createSettingsStore();
 const settings = ref({ ...DEFAULT_SETTINGS });
-const saveStatus = ref('저장됨');
+const savedSettings = ref({ ...DEFAULT_SETTINGS });
+const settingsReady = ref(false);
+const saveState = ref('saved');
 const saving = ref(false);
 
 const previewRecord = computed(() => projectRecord(PREVIEW_RECORD));
+const isDirty = computed(() => (
+  settingsReady.value
+  && SETTING_KEYS.some((key) => settings.value[key] !== savedSettings.value[key])
+));
+const saveStatus = computed(() => {
+  if (!settingsReady.value) return '불러오는 중';
+  if (saving.value) return '저장 중';
+  if (saveState.value === 'error') return '저장 실패';
+  if (saveState.value === 'fallback') return '기본값 사용';
+  return isDirty.value ? '저장되지 않음' : '저장됨';
+});
 
 async function loadSettings() {
   try {
-    settings.value = await settingsStore.load();
-    saveStatus.value = '저장됨';
+    const loaded = normalizeSettings(await settingsStore.load());
+    settings.value = loaded;
+    savedSettings.value = { ...loaded };
+    saveState.value = 'saved';
   } catch {
     settings.value = { ...DEFAULT_SETTINGS };
-    saveStatus.value = '기본값 사용';
+    savedSettings.value = { ...DEFAULT_SETTINGS };
+    saveState.value = 'fallback';
+  } finally {
+    settingsReady.value = true;
   }
 }
 
 async function saveSettings() {
+  if (!settingsReady.value || saving.value || !isDirty.value) return;
+
   saving.value = true;
-  saveStatus.value = '저장 중';
+  saveState.value = 'saving';
+  const snapshot = normalizeSettings(settings.value);
   try {
-    settings.value = await settingsStore.save(settings.value);
-    saveStatus.value = '저장됨';
+    const result = await settingsStore.save(snapshot);
+    const persisted = normalizeSettings(result ?? snapshot);
+    settings.value = { ...persisted };
+    savedSettings.value = { ...persisted };
+    saveState.value = 'saved';
   } catch {
-    saveStatus.value = '저장 실패';
+    saveState.value = 'error';
   } finally {
     saving.value = false;
   }
 }
 
 function updateSetting(key, value) {
+  if (!settingsReady.value || saving.value) return;
+
   settings.value = {
     ...settings.value,
     [key]: value,
   };
-  void saveSettings();
+  saveState.value = 'dirty';
 }
 
 onMounted(() => {
@@ -71,10 +99,24 @@ onMounted(() => {
         <span class="brand-version">1.0</span>
       </div>
       <div class="save-controls">
-        <span class="save-status" :class="{ 'is-error': saveStatus === '저장 실패' }" aria-live="polite">
+        <span
+          class="save-status"
+          :class="{
+            'is-error': saveState === 'error',
+            'is-dirty': isDirty,
+            'is-saving': saveState === 'saving',
+          }"
+          aria-live="polite"
+        >
           {{ saveStatus }}
         </span>
-        <button class="save-button" type="button" :disabled="saving" @click="saveSettings">
+        <button
+          class="save-button"
+          :class="{ 'is-inactive': !isDirty || saving || !settingsReady }"
+          type="button"
+          :disabled="!settingsReady || saving || !isDirty"
+          @click="saveSettings"
+        >
           저장
         </button>
       </div>
@@ -96,6 +138,7 @@ onMounted(() => {
               <ToggleControl
                 :model-value="settings[setting.key]"
                 :label="setting.label + ' 표시'"
+                :disabled="!settingsReady || saving"
                 @update:model-value="updateSetting(setting.key, $event)"
               />
             </div>

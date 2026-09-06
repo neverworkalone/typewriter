@@ -185,11 +185,13 @@ describe('product MV3 Vue shells', () => {
     expect(host.textContent).toContain('검색 중 오류가 발생했습니다.');
   });
 
-  it('persists settings toggles and applies them to the shared preview renderer', async () => {
+  it('shows dirty state until Settings are explicitly saved', async () => {
     let stored = { ...DEFAULT_SETTINGS };
+    let saveCalls = 0;
     const settingsStore = {
       load: async () => ({ ...stored }),
       save: async (value) => {
+        saveCalls += 1;
         stored = { ...value };
         return { ...stored };
       },
@@ -206,12 +208,70 @@ describe('product MV3 Vue shells', () => {
 
     switches[2].click();
     await flush();
-    expect(stored.antonyms).toBe(true);
+    expect(stored.antonyms).toBe(false);
+    expect(host.querySelector('.save-status').textContent).toContain('저장되지 않음');
+    expect(host.querySelector('.save-button').disabled).toBe(false);
     expect(host.querySelector('[data-group-id="antonyms"]')).not.toBeNull();
 
     switches[0].click();
     await flush();
-    expect(stored.definition).toBe(false);
+    expect(stored.definition).toBe(true);
     expect(host.querySelector('[data-group-id="definition"]')).toBeNull();
+
+    host.querySelector('.save-button').click();
+    await flush();
+    expect(saveCalls).toBe(1);
+    expect(stored).toEqual({
+      ...DEFAULT_SETTINGS,
+      definition: false,
+      antonyms: true,
+    });
+    expect(host.querySelector('.save-status').textContent).toContain('저장됨');
+    expect(host.querySelector('.save-button').disabled).toBe(true);
+  });
+
+  it('locks setting edits while loading and while an explicit save is pending', async () => {
+    let resolveLoad;
+    let resolveSave;
+    let saveCalls = 0;
+    const loaded = new Promise((resolve) => {
+      resolveLoad = () => resolve({ ...DEFAULT_SETTINGS });
+    });
+    const settingsStore = {
+      load: () => loaded,
+      save: (value) => {
+        saveCalls += 1;
+        return new Promise((resolve) => {
+          resolveSave = () => resolve({ ...value });
+        });
+      },
+    };
+    const host = mountWithProps(OptionsApp, { settingsStore });
+    const firstSwitch = host.querySelector('[role="switch"]');
+
+    expect(firstSwitch.disabled).toBe(true);
+    firstSwitch.click();
+    expect(host.querySelector('.save-status').textContent).toContain('불러오는 중');
+
+    resolveLoad();
+    await flush();
+    expect(firstSwitch.disabled).toBe(false);
+
+    firstSwitch.click();
+    await flush();
+    const saveButton = host.querySelector('.save-button');
+    saveButton.click();
+    saveButton.click();
+    await flush();
+    expect(saveCalls).toBe(1);
+    expect(host.querySelectorAll('[role="switch"]:disabled')).toHaveLength(5);
+
+    firstSwitch.click();
+    expect(host.querySelector('.save-status').textContent).toContain('저장 중');
+
+    resolveSave();
+    await flush();
+    expect(host.querySelectorAll('[role="switch"]:disabled')).toHaveLength(0);
+    expect(host.querySelector('.save-status').textContent).toContain('저장됨');
   });
 });

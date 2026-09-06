@@ -78,13 +78,21 @@ input {
 }
 
 .save-status {
-  color: #22c55e;
+  color: #16a34a;
   font-size: 12px;
   font-weight: 500;
 }
 
+.save-status.is-dirty {
+  color: #c2410c;
+}
+
 .save-status.is-error {
   color: #b42318;
+}
+
+.save-status.is-saving {
+  color: #64748b;
 }
 
 .save-button {
@@ -99,9 +107,14 @@ input {
   font-weight: 500;
 }
 
+.save-button.is-inactive {
+  background: rgba(229, 83, 75, 0.5);
+  cursor: default;
+}
+
 .save-button:disabled {
-  cursor: wait;
-  opacity: 0.7;
+  cursor: default;
+  opacity: 1;
 }
 
 .save-button:focus-visible {

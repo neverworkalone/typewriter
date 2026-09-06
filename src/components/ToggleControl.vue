@@ -8,6 +8,10 @@ defineProps({
     type: String,
     default: '설정 전환',
   },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -21,6 +25,7 @@ const emit = defineEmits(['update:modelValue']);
     role="switch"
     :aria-checked="modelValue"
     :aria-label="label"
+    :disabled="disabled"
     @click="emit('update:modelValue', !modelValue)"
   >
     <span class="toggle-knob" aria-hidden="true"></span>
@@ -62,5 +67,10 @@ const emit = defineEmits(['update:modelValue']);
 .toggle-control:focus-visible {
   outline: 2px solid #7e433e;
   outline-offset: 2px;
+}
+
+.toggle-control:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 </style>

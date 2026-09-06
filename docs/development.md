@@ -34,9 +34,12 @@ The product popup and options page use only extension-local assets and the
 storage permission. When Chrome for Testing is available, the product CFT check
 loads both entrypoints, searches the packaged dictionary, follows a relation and
 returns with back, verifies keyboard focus, checks the five default toggles, and
-reloads Settings to confirm persistence. It fails if the pages make a non-extension
-request. The runner uses --use-mock-keychain because it is an isolated automation
-profile and does not need macOS Keychain-backed browser credentials.
+reloads Settings to confirm explicit-save persistence. It also checks that the
+empty result stays content-sized, that the four-sense `쓰다` result actually
+overflows and scrolls inside the popup, and that search/focus/footer remain
+available. It fails if the pages make a non-extension request. The runner uses
+--use-mock-keychain because it is an isolated automation profile and does not
+need macOS Keychain-backed browser credentials.
 
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
