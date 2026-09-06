@@ -24,11 +24,13 @@ databases.
   source revision, worktree state, runtime versions, and row counts. Clean builds
   require a clean Git worktree; `allowDirty` is for explicitly non-reproducible local
   work only.
-- The MV3 proof package contains its own database, module worker, SQLite WASM binary,
-  loader, and Apache-2.0 license copy. It has no permissions, host permissions, or
-  `web_accessible_resources`; the extension-origin worker performs exact local
-  lookups and enables SQLite `query_only`. User favorites, recent searches, and
-  settings must remain outside this read-only dictionary database.
+- The product package contains the generated database, module worker, SQLite WASM
+  binary, loader, and required Apache-2.0 license copy. Its manifest has only the
+  `storage` permission, no host permissions, and no `web_accessible_resources`.
+  The extension-origin product worker performs exact local lookups, enables SQLite
+  `query_only`, and verifies that a representative write is rejected without a
+  persisted row. User favorites, recent searches, and settings must remain outside
+  this read-only dictionary database.
 
 ## M2 audit boundary
 
@@ -51,9 +53,10 @@ canonical relation categories or SQLite contract.
 
 ## Chrome for Testing evidence
 
-The packaged proof was rerun on 2026-09-05 with Chrome for Testing 152.0.7977.76.
-It loaded the MV3 page and module worker from the unpacked package, fetched no
-non-extension URL, reported SQLite 3.53.0 and `query_only = 1`, found `담담하다`,
-`담담`, and the `w026-s1 → r008-s1` relation with its note, and rejected a test
-write without persisting it. Re-run the platform-specific command in
-[`docs/build.md`](build.md) when changing the extension loader or vendored runtime.
+The product/package CFT check was rerun on 2026-09-06 with Chrome for Testing
+152.0.7977.82. It loaded both the unpacked product and the generated ZIP extraction,
+fetched no non-extension URL, reported SQLite 3.53.0 with `query_only = 1`,
+`write_blocked = true`, and `persisted_write_count = 0`, and found `담담하다`,
+`담담`, and the `w026-s1 → r008-s1` relation with its note. Re-run the
+platform-specific command in [`docs/build.md`](build.md) when changing the
+extension loader or vendored runtime.

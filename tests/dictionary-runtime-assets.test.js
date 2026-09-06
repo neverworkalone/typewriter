@@ -18,6 +18,8 @@ describe('product dictionary runtime assets', () => {
     expect(workerSource).toContain("import sqlite3InitModule from './vendor/sqlite3.mjs'");
     expect(workerSource).toContain("new URL('../dictionary.sqlite', self.location.href)");
     expect(workerSource).toContain('PRAGMA query_only = ON');
+    expect(workerSource).toContain('writeBlocked');
+    expect(workerSource).toContain('persistedWriteCount');
     expect(workerSource).toContain("databasePromise = loadDatabase()");
     expect(workerSource).toContain("case 'get-record'");
     expect(workerSource).toContain("case 'get-relations'");

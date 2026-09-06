@@ -130,7 +130,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
   });
 
-  it('shows a clear control and reserves the first Escape for clearing the search', async () => {
+  it('shows a clear control and keeps results while the first Escape clears only the query', async () => {
     const record = makeRecord('w026', '담담하다');
     const runtime = {
       search: async () => [{ id: record.id }],
@@ -157,13 +157,13 @@ describe('product MV3 Vue shells', () => {
     await flush();
 
     expect(input.value).toBe('');
-    expect(host.querySelector('[data-record-id="w026"]')).toBeNull();
-    expect(host.querySelector('.dictionary-empty-region')).not.toBeNull();
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+    expect(host.querySelector('.dictionary-scroll-region')).not.toBeNull();
+    expect(host.querySelector('.dictionary-empty-region')).toBeNull();
     expect(host.querySelector('.search-clear-button')).toBeNull();
 
     input.value = record.lemma;
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await flush();
 
     const firstEscape = new KeyboardEvent('keydown', {
@@ -176,7 +176,9 @@ describe('product MV3 Vue shells', () => {
 
     expect(firstEscape.defaultPrevented).toBe(true);
     expect(input.value).toBe('');
-    expect(host.querySelector('[data-record-id="w026"]')).toBeNull();
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+    expect(host.querySelector('.dictionary-scroll-region')).not.toBeNull();
+    expect(host.querySelector('.dictionary-empty-region')).toBeNull();
 
     const secondEscape = new KeyboardEvent('keydown', {
       bubbles: true,

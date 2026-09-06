@@ -20,7 +20,6 @@ import {
   getSenseRelations,
   readLogicalDatabaseSnapshot,
 } from '../build/query.mjs';
-import { buildProofPackage } from '../extension/build-proof.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -273,7 +272,6 @@ export async function runM2Pipeline({
   );
   const firstPath = path.join(temporaryDirectory, 'first.sqlite');
   const secondPath = path.join(temporaryDirectory, 'second.sqlite');
-  const proofDirectory = path.join(temporaryDirectory, 'mv3-proof');
 
   try {
     const first = await buildDictionary({
@@ -317,16 +315,6 @@ export async function runM2Pipeline({
     assert.deepEqual(firstSnapshot, secondSnapshot);
     assert.deepEqual(first.metadata, second.metadata);
 
-    const proof = await buildProofPackage({
-      inputDirectory,
-      outputDirectory: proofDirectory,
-      repositoryDirectory,
-      allowDirty,
-    });
-    assert.equal(proof.recordCount, dataset.recordCount);
-    assert.equal(proof.senseCount, dataset.senseCount);
-    assert.equal(proof.relationCount, dataset.relationCount);
-
     return {
       ...dataset,
       startCount: model.records.filter((record) => record.role === 'start').length,
@@ -339,7 +327,6 @@ export async function runM2Pipeline({
       ).length,
       normalizationVersion: model.normalization_version,
       databaseBuilds: 2,
-      proofDirectory,
       sourceRevision: first.metadata.source_revision,
       worktreeState: first.metadata.worktree_state,
     };
@@ -353,7 +340,7 @@ export async function main() {
     allowDirty: process.argv.includes('--allow-dirty'),
   });
   console.log(
-    `M2 audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s), with ${summary.databaseBuilds} reproducible SQLite builds and MV3 package verification.`,
+    `M2 audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s), with ${summary.databaseBuilds} reproducible SQLite builds.`,
   );
 }
 

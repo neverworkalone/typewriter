@@ -260,6 +260,7 @@ export async function runCftProduct({
     '--disable-background-networking',
     '--disable-component-update',
     '--disable-sync',
+    '--password-store=basic',
     '--use-mock-keychain',
     '--disable-extensions-except=' + path.resolve(extensionDirectory),
     '--load-extension=' + path.resolve(extensionDirectory),
@@ -316,6 +317,11 @@ export async function runCftProduct({
       popup.sessionId,
       'Boolean(document.querySelector("[data-record-id=\\"w026\\"]"))',
     );
+    await waitForCondition(
+      connection,
+      popup.sessionId,
+      '(() => { const product = document.querySelector("[data-product-surface=\\"popup\\"]"); return product?.dataset.runtimeQueryOnly === "1" && product?.dataset.runtimeWriteBlocked === "true" && product?.dataset.runtimePersistedWriteCount === "0"; })()',
+    );
     const popupReady = await evaluate(connection, popup.sessionId, [
       '(() => ({',
       '  recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
@@ -323,6 +329,9 @@ export async function runCftProduct({
       '  inputFocused: document.activeElement?.matches("[aria-label=\\"검색어\\"]") || false,',
       '  inputOutlineStyle: getComputedStyle(document.querySelector("[aria-label=\\"검색어\\"]")).outlineStyle,',
       '  hasClearButton: Boolean(document.querySelector(".search-clear-button")),',
+      '  runtimeQueryOnly: Number(document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeQueryOnly || NaN),',
+      '  runtimeWriteBlocked: document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeWriteBlocked === "true",',
+      '  runtimePersistedWriteCount: Number(document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimePersistedWriteCount || NaN),',
       '  scrollMaxHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).maxHeight,',
       '  scrollOverflowY: getComputedStyle(document.querySelector(".dictionary-scroll-region")).overflowY,',
       '  scrollMinHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).minHeight,',
@@ -373,7 +382,7 @@ export async function runCftProduct({
     await waitForCondition(
       connection,
       popupEscape.sessionId,
-      'document.querySelector("[aria-label=\\"검색어\\"]").value === "" && Boolean(document.querySelector(".dictionary-empty-region"))',
+      'document.querySelector("[aria-label=\\"검색어\\"]").value === "" && Boolean(document.querySelector("[data-record-id=\\"w026\\"]"))',
     );
     const popupEscapeAfterFirst = await evaluate(connection, popupEscape.sessionId, [
       '(() => {',
@@ -383,6 +392,7 @@ export async function runCftProduct({
       '  return {',
       '    query: input.value,',
       '    hasRecord: Boolean(document.querySelector("[data-dictionary-record]")),',
+      '    hasScrollRegion: Boolean(document.querySelector(".dictionary-scroll-region")),',
       '    hasClearButton: Boolean(document.querySelector(".search-clear-button")),',
       '    secondDefaultPrevented: event.defaultPrevented,',
       '  };',
@@ -701,6 +711,9 @@ export async function runCftProduct({
       || popupReady.footerAlignItems !== 'center'
       || popupReady.footerPaddingRight !== '12px'
       || !popupReady.hasClearButton
+      || popupReady.runtimeQueryOnly !== 1
+      || !popupReady.runtimeWriteBlocked
+      || popupReady.runtimePersistedWriteCount !== 0
       || popupReady.definitionTopGap === null
       || popupReady.definitionBottomGap === null
       || Math.abs(popupReady.definitionTopGap - popupReady.definitionBottomGap) > 1
@@ -727,7 +740,8 @@ export async function runCftProduct({
     if (
       !popupEscapeFirst.defaultPrevented
       || popupEscapeAfterFirst.query !== ''
-      || popupEscapeAfterFirst.hasRecord
+      || !popupEscapeAfterFirst.hasRecord
+      || !popupEscapeAfterFirst.hasScrollRegion
       || popupEscapeAfterFirst.hasClearButton
       || popupEscapeAfterFirst.secondDefaultPrevented
     ) {
