@@ -3,7 +3,8 @@
 ## Current requirements
 
 The complete M2 toolchain uses the built-in `node:sqlite` module and the vendored
-SQLite WASM runtime, so it requires Node.js 22.5 or newer; CI uses Node.js 22.x.
+SQLite WASM runtime, so it requires Node.js 22.12.0 or newer; CI uses Node.js
+22.12.x.
 Install the pinned runtime before running the commands:
 
 ```sh
@@ -88,7 +89,7 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.x, and runs the same validator, normalization, SQLite build, MV3 package,
+Node.js 22.12.x, and runs the same validator, normalization, SQLite build, MV3 package,
 integrated audit, and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
@@ -101,6 +102,8 @@ integrated audit, and regression commands as the local workflow:
 8. `node scripts/extension/build-proof.mjs`
 9. `node scripts/verify/m2-pipeline.mjs`
 10. `node --test tests/*.test.mjs`
+11. `npm run test:unit`
+12. `npm run build`
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
 reproducibility, integrated audit, and MV3 package checks and their regression tests

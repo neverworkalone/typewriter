@@ -37,7 +37,8 @@ dataset-integrity validation still run in either mode.
 `node scripts/build/dictionary.mjs` consumes the in-memory normalized model and
 creates `artifacts/dictionary.sqlite` from a fresh output path. The generated
 database is ignored build output and is never an editable source. The builder
-requires Node.js 22.5 or newer for the built-in `node:sqlite` module.
+requires Node.js 22.12.0 or newer for the built-in `node:sqlite` module and the
+product Vite toolchain.
 
 The schema in [`scripts/build/sqlite-schema.mjs`](../scripts/build/sqlite-schema.mjs)
 contains only the current lookup model:
