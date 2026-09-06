@@ -353,6 +353,79 @@ export async function runCftProduct({
       '}))()',
     ].join('\n'));
 
+    const popupIme = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupIme);
+    const popupImeStart = await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.focus();',
+      '  input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true, data: "ㄷ" }));',
+      '  input.value = "ㄷ";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true, isComposing: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented, inputValue: input.value, hasRecord: Boolean(document.querySelector("[data-dictionary-record]")) };',
+      '})() ',
+    ].join('\n'));
+    await sleep(100);
+    const popupImeEarly = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  inputValue: document.querySelector("[aria-label=\\"검색어\\"]")?.value || "",',
+      '  hasRecord: Boolean(document.querySelector("[data-dictionary-record]")),',
+      '}))()',
+    ].join('\n'));
+    await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "담담하다";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "담담하다" }));',
+      '  const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented };',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupIme.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w026\\"]"))',
+    );
+    await sleep(50);
+    const popupImeKeyboard = await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.focus();',
+      '  const event = new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented };',
+      '})() ',
+    ].join('\n'));
+    await sleep(50);
+    const popupImeKeyboardState = await evaluate(connection, popupIme.sessionId, [
+      '(() => {',
+      '  const active = document.activeElement;',
+      '  return {',
+      '    activeRecordId: active?.dataset.recordId || "",',
+      '    activeRole: active?.getAttribute("role") || "",',
+      '    activeSelected: active?.getAttribute("aria-selected") || "",',
+      '    candidateCount: document.querySelectorAll("[role=\\"option\\"]").length,',
+      '    hasListbox: Boolean(document.querySelector("[role=\\"listbox\\"]")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+    await evaluate(connection, popupIme.sessionId, 'document.querySelector("[data-target-record-id=\\"r008\\"]")?.click()');
+    await waitForCondition(
+      connection,
+      popupIme.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"r008\\"]")) && document.activeElement?.matches("[aria-label=\\"검색어\\"]")',
+    );
+    const popupImeRelation = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  inputFocused: document.activeElement?.matches("[aria-label=\\"검색어\\"]") || false,',
+      '  hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '}))()',
+    ].join('\n'));
+
     const popupEscape = await createExtensionSession(connection, extensionId, 'popup.html');
     extensionTargets.push(popupEscape);
     await evaluate(connection, popupEscape.sessionId, [
@@ -783,6 +856,22 @@ export async function runCftProduct({
       throw new Error('Popup CFT assertions failed: ' + JSON.stringify({ popupReady, focusResult }));
     }
     if (
+      popupImeStart.defaultPrevented
+      || popupImeStart.hasRecord
+      || popupImeEarly.hasRecord
+      || popupImeEarly.inputValue !== 'ㄷ'
+      || popupImeKeyboard.defaultPrevented !== true
+      || popupImeKeyboardState.activeRecordId !== 'w026'
+      || popupImeKeyboardState.activeRole !== 'option'
+      || popupImeKeyboardState.activeSelected !== 'true'
+      || popupImeKeyboardState.candidateCount !== 1
+      || !popupImeKeyboardState.hasListbox
+      || !popupImeRelation.inputFocused
+      || popupImeRelation.hasBackButton
+    ) {
+      throw new Error('IME/keyboard candidate CFT assertions failed: ' + JSON.stringify({ popupImeStart, popupImeEarly, popupImeKeyboard, popupImeKeyboardState, popupImeRelation }));
+    }
+    if (
       popupEmptyState.panelHeight >= 240
       || popupEmptyState.bodyHeight !== popupEmptyState.panelHeight
       || popupEmptyState.appHeight !== popupEmptyState.panelHeight
@@ -911,6 +1000,11 @@ export async function runCftProduct({
     return {
       extensionId,
       popupReady,
+      popupImeStart,
+      popupImeEarly,
+      popupImeKeyboard,
+      popupImeKeyboardState,
+      popupImeRelation,
       popupEscapeFirst,
       popupEscapeAfterFirst,
       popupPendingClearFirst,

@@ -130,6 +130,157 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
   });
 
+  it('does not submit during Korean IME composition and submits once after compositionend', async () => {
+    const record = makeRecord('w026', '담담하다');
+    const calls = [];
+    const runtime = {
+      search: async (term) => {
+        calls.push(term);
+        return [{ id: record.id }];
+      },
+      getRecord: async () => record,
+    };
+    const host = mountWithProps(PopupApp, {
+      runtime,
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+      },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+
+    input.focus();
+    input.dispatchEvent(new Event('compositionstart', { bubbles: true }));
+    input.value = '담';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const composingEnter = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+    input.dispatchEvent(composingEnter);
+    await flush();
+
+    expect(composingEnter.defaultPrevented).toBe(false);
+    expect(calls).toEqual([]);
+    expect(host.querySelector('[data-dictionary-record]')).toBeNull();
+
+    input.value = record.lemma;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('compositionend', { bubbles: true }));
+    const committedEnter = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+    input.dispatchEvent(committedEnter);
+    await flush();
+
+    expect(committedEnter.defaultPrevented).toBe(true);
+    expect(calls).toEqual([record.lemma]);
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+  });
+
+  it('moves, selects, and restores focus for multiple keyboard candidates', async () => {
+    const records = new Map([
+      ['first', makeRecord('first', '첫 번째')],
+      ['second', makeRecord('second', '두 번째', 'start', [{
+        position: 0,
+        target: 'target',
+        target_sense: 'target-s1',
+        type: 'direct',
+        target_lemma: '관계 대상',
+        target_pos: 'noun',
+        target_gloss: '관계 대상 뜻풀이',
+      }])],
+      ['target', makeRecord('target', '관계 대상', 'reference-only')],
+    ]);
+    const calls = [];
+    const runtime = {
+      search: async (term) => {
+        calls.push(term);
+        return [{ id: 'first' }, { id: 'second' }];
+      },
+      getRecord: async (id) => records.get(id) || null,
+    };
+    const host = mountWithProps(PopupApp, {
+      runtime,
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+      },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+    input.value = '후보';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    host.querySelector('.search-row').dispatchEvent(new Event('submit', {
+      bubbles: true,
+      cancelable: true,
+    }));
+    await flush();
+
+    const options = () => [...host.querySelectorAll('[role="option"]')];
+    expect(options()).toHaveLength(2);
+    expect(options()[0].getAttribute('tabindex')).toBe('-1');
+    expect(options()[0].getAttribute('aria-selected')).toBe('false');
+
+    const firstDown = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowDown',
+    });
+    input.dispatchEvent(firstDown);
+    await flush();
+    expect(firstDown.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(options()[0]);
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
+
+    const secondDown = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowDown',
+    });
+    options()[0].dispatchEvent(secondDown);
+    await flush();
+    expect(secondDown.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(options()[1]);
+    expect(options()[1].getAttribute('aria-selected')).toBe('true');
+
+    const boundaryDown = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowDown',
+    });
+    options()[1].dispatchEvent(boundaryDown);
+    await flush();
+    expect(document.activeElement).toBe(options()[1]);
+
+    const enter = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+    options()[1].dispatchEvent(enter);
+    await flush();
+    expect(enter.defaultPrevented).toBe(true);
+    expect(calls).toEqual(['후보']);
+
+    const up = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowUp',
+    });
+    options()[1].dispatchEvent(up);
+    await flush();
+    expect(document.activeElement).toBe(options()[0]);
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
+
+    options()[1].querySelector('[data-target-record-id="target"]').click();
+    await flush();
+    expect(host.querySelector('[data-record-id="target"]')).not.toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('[role="option"][aria-selected="true"]')).toBeNull();
+  });
+
   it('shows a clear control and keeps results while the first Escape clears only the query', async () => {
     const record = makeRecord('w026', '담담하다');
     const runtime = {

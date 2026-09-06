@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 
@@ -20,9 +20,31 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  candidate: {
+    type: Boolean,
+    default: false,
+  },
+  candidateSelected: {
+    type: Boolean,
+    default: false,
+  },
+  candidateIndex: {
+    type: Number,
+    default: 0,
+  },
+  candidateCount: {
+    type: Number,
+    default: 0,
+  },
 });
 
-const emit = defineEmits(['relation']);
+const emit = defineEmits([
+  'relation',
+  'candidate-focus',
+  'candidate-keydown',
+]);
+
+const root = ref(null);
 
 const senses = computed(() => (Array.isArray(props.record.senses) ? props.record.senses : []));
 const settings = computed(() => props.settings || DEFAULT_SETTINGS);
@@ -49,14 +71,50 @@ function openRelation(relation) {
     emit('relation', relation);
   }
 }
+
+function handleCandidateFocus() {
+  if (props.candidate) {
+    emit('candidate-focus', props.record.id);
+  }
+}
+
+function handleCandidateKeydown(event) {
+  if (!props.candidate || event.target !== event.currentTarget) return;
+  if (event.isComposing || event.keyCode === 229) return;
+
+  if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
+    emit('candidate-keydown', {
+      recordId: props.record.id,
+      event,
+    });
+  }
+}
+
+function focus() {
+  root.value?.focus();
+}
+
+defineExpose({ focus });
 </script>
 
 <template>
   <article
     class="dictionary-result"
-    :class="{ 'is-compact': compact }"
+    :class="{
+      'is-compact': compact,
+      'is-candidate': candidate,
+      'is-selected': candidate && candidateSelected,
+    }"
     data-dictionary-record
     :data-record-id="record.id"
+    :id="candidate ? `search-candidate-${record.id}` : undefined"
+    :role="candidate ? 'option' : undefined"
+    :tabindex="candidate ? -1 : undefined"
+    :aria-selected="candidate ? String(candidateSelected) : undefined"
+    :aria-posinset="candidate ? candidateIndex + 1 : undefined"
+    :aria-setsize="candidate ? candidateCount : undefined"
+    @focus="handleCandidateFocus"
+    @keydown="handleCandidateKeydown"
   >
     <header class="result-header">
       <h2>{{ record.lemma }}</h2>
@@ -124,6 +182,19 @@ function openRelation(relation) {
 .dictionary-result {
   width: 100%;
   color: #2b2927;
+}
+
+.dictionary-result.is-candidate {
+  border-radius: 4px;
+}
+
+.dictionary-result.is-candidate.is-selected {
+  background: rgba(229, 83, 75, 0.06);
+}
+
+.dictionary-result.is-candidate:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 3px;
 }
 
 .result-header {

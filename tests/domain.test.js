@@ -231,6 +231,9 @@ describe('SearchSession', () => {
     expect(first.mode).toBe('exact');
     expect(first.results.map(({ id }) => id)).toEqual(['w026', 'w030']);
     expect(first.canGoBack).toBe(true);
+    const selected = session.selectCandidate('w030');
+    expect(selected.selectedRecordId).toBe('w030');
+    expect(session.history[0].selectedRecordId).toBe('w030');
     expect(calls).toEqual([
       ['search', '담담하다'],
       ['getRecord', 'w026'],
@@ -260,11 +263,13 @@ describe('SearchSession', () => {
     const restored = session.back();
     expect(restored.mode).toBe('exact');
     expect(restored.results.map(({ id }) => id)).toEqual(['w026', 'w030']);
+    expect(restored.selectedRecordId).toBe('w030');
     expect(restored.canGoForward).toBe(true);
 
     await session.searchExact('없는 말');
     expect(session.state.status).toBe('empty');
     expect(session.state.emptyReason).toBe('no-exact-match');
+    expect(session.state.selectedRecordId).toBe(null);
     expect(session.state.canGoForward).toBe(false);
     expect(session.history.map(({ kind }) => kind)).toEqual(['exact', 'exact']);
     expect(statuses).toContain('loading');

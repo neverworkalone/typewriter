@@ -30,17 +30,23 @@ const emit = defineEmits([
   'clear',
   'focus',
   'tab',
+  'navigate-candidates',
 ]);
 
 const input = ref(null);
 const button = ref(null);
+const isComposing = ref(false);
+
+function isComposingEvent(event) {
+  return isComposing.value || event.isComposing || event.keyCode === 229;
+}
 
 function updateValue(event) {
   emit('update:modelValue', event.target.value);
 }
 
 function submit() {
-  if (props.disabled || props.readonly) return;
+  if (props.disabled || props.readonly || isComposing.value) return;
   emit('submit', input.value?.value ?? props.modelValue);
 }
 
@@ -53,6 +59,8 @@ function clearValue() {
 }
 
 function handleEscape(event) {
+  if (isComposingEvent(event)) return;
+
   if (input.value?.value) {
     event.preventDefault();
     event.stopPropagation();
@@ -66,6 +74,32 @@ function handleTab(event) {
 
   event.preventDefault();
   button.value?.focus();
+}
+
+function handleKeydown(event) {
+  if (event.key === 'Enter') {
+    if (isComposingEvent(event)) return;
+
+    event.preventDefault();
+    submit();
+    return;
+  }
+
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+  if (isComposingEvent(event) || props.disabled || props.readonly) return;
+
+  emit('navigate-candidates', {
+    direction: event.key === 'ArrowDown' ? 'next' : 'previous',
+    event,
+  });
+}
+
+function handleCompositionStart() {
+  isComposing.value = true;
+}
+
+function handleCompositionEnd() {
+  isComposing.value = false;
 }
 
 function focus() {
@@ -94,8 +128,10 @@ defineExpose({ focus });
         aria-label="검색어"
         @input="updateValue"
         @focus="emit('focus', $event)"
+        @compositionstart="handleCompositionStart"
+        @compositionend="handleCompositionEnd"
         @keydown.tab="handleTab"
-        @keydown.enter.prevent="submit"
+        @keydown="handleKeydown"
         @keydown.escape="handleEscape"
       />
       <button

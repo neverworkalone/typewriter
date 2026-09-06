@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { SearchSession } from '../domain/index.js';
 import { DictionaryRuntime } from '../runtime/query-adapter.js';
@@ -38,6 +38,7 @@ const searchState = ref(session.state);
 const settings = ref({ ...DEFAULT_SETTINGS });
 const runtimeStatus = ref(null);
 const lastRecords = ref([]);
+const dictionaryPanel = ref(null);
 let unsubscribe = null;
 
 const records = computed(() => (
@@ -60,8 +61,8 @@ function applyState(nextState) {
   if (nextState.status === 'loading' && nextState.query !== null) {
     query.value = nextState.query;
   }
-  if (nextState.status === 'ready' && nextState.results[0]) {
-    query.value = nextState.results[0].lemma;
+  if (nextState.status === 'ready') {
+    query.value = nextState.query ?? nextState.results[0]?.lemma ?? query.value;
   }
 }
 
@@ -84,11 +85,13 @@ async function loadRuntimeStatus() {
 }
 
 async function search(value = query.value) {
-  const term = typeof value === 'string' ? value.trim() : '';
-  if (!term) return;
+  const term = typeof value === 'string' ? value : '';
+  if (!term.trim()) return;
 
   query.value = term;
   await session.searchExact(term);
+  await nextTick();
+  dictionaryPanel.value?.focusSearch?.();
 }
 
 function clearSearch() {
@@ -100,6 +103,12 @@ function clearSearch() {
 
 async function openRelation(relation) {
   await session.openRelationTarget(relation);
+  await nextTick();
+  dictionaryPanel.value?.focusSearch?.();
+}
+
+function selectCandidate(recordId) {
+  session.selectCandidate?.(recordId);
 }
 
 async function retry() {
@@ -112,7 +121,7 @@ async function retry() {
   }
 
   if (searchState.value.mode === 'relation-target' && searchState.value.targetRecordId) {
-    await session.openRelationTarget(searchState.value.targetRecordId);
+    await openRelation(searchState.value.targetRecordId);
     return;
   }
 
@@ -158,18 +167,21 @@ onBeforeUnmount(() => {
   >
     <span class="sr-only">말의 결을 찾는 사전</span>
     <DictionaryPanel
+      ref="dictionaryPanel"
       :query="query"
       :records="records"
       :status="searchState.status"
       :error="searchState.error"
       :empty-reason="searchState.emptyReason"
       :mode="searchState.mode"
+      :selected-record-id="searchState.selectedRecordId"
       :settings="settings"
       autofocus
       @update:query="query = $event"
       @submit="search"
       @clear="clearSearch"
       @relation="openRelation"
+      @select-candidate="selectCandidate"
       @retry="retry"
       @open-settings="openOptions"
     />

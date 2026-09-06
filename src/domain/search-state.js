@@ -39,6 +39,7 @@ export function createInitialSearchState() {
     targetRecordId: null,
     navigation: null,
     queryMeta: null,
+    selectedRecordId: null,
     results: [],
     error: null,
     emptyReason: null,
@@ -54,6 +55,7 @@ function requestFields({
   targetRecordId = null,
   navigation = null,
   queryMeta = null,
+  selectedRecordId = null,
 }) {
   return {
     mode,
@@ -62,6 +64,7 @@ function requestFields({
     targetRecordId,
     navigation,
     queryMeta,
+    selectedRecordId,
   };
 }
 
