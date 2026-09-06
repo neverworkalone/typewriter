@@ -53,6 +53,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:query',
   'submit',
+  'clear',
   'relation',
   'retry',
   'open-settings',
@@ -112,6 +113,7 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
       :readonly="!interactive"
       @update:model-value="emit('update:query', $event)"
       @submit="emit('submit', $event)"
+      @clear="emit('clear')"
     />
 
     <div v-if="isReady" class="dictionary-scroll-region">
@@ -234,11 +236,14 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
 .dictionary-state-region.is-empty {
   min-height: 104px;
   padding: 0 4px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .dictionary-state-region.is-empty .state-copy {
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 0;
+  justify-content: center;
 }
 
 .state-copy {

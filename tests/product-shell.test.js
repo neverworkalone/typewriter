@@ -130,6 +130,63 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
   });
 
+  it('shows a clear control and reserves the first Escape for clearing the search', async () => {
+    const record = makeRecord('w026', '담담하다');
+    const runtime = {
+      search: async () => [{ id: record.id }],
+      getRecord: async () => record,
+    };
+    const host = mountWithProps(PopupApp, {
+      runtime,
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+      },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+    const form = host.querySelector('.search-row');
+
+    input.value = record.lemma;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(host.querySelector('.search-clear-button')).not.toBeNull();
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+
+    host.querySelector('.search-clear-button').click();
+    await flush();
+
+    expect(input.value).toBe('');
+    expect(host.querySelector('[data-record-id="w026"]')).toBeNull();
+    expect(host.querySelector('.dictionary-empty-region')).not.toBeNull();
+    expect(host.querySelector('.search-clear-button')).toBeNull();
+
+    input.value = record.lemma;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flush();
+
+    const firstEscape = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Escape',
+    });
+    input.dispatchEvent(firstEscape);
+    await flush();
+
+    expect(firstEscape.defaultPrevented).toBe(true);
+    expect(input.value).toBe('');
+    expect(host.querySelector('[data-record-id="w026"]')).toBeNull();
+
+    const secondEscape = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Escape',
+    });
+    input.dispatchEvent(secondEscape);
+    expect(secondEscape.defaultPrevented).toBe(false);
+  });
+
   it('keeps the current result visible while a later search is pending', async () => {
     let releaseFirstSearch;
     const firstSearch = new Promise((resolve) => {
