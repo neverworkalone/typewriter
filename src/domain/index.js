@@ -34,3 +34,16 @@ export {
   SearchDomainError,
   SearchSession,
 } from './search-session.js';
+
+export {
+  SEARCH_MATCH_FIELDS,
+  SEARCH_MATCH_KINDS,
+  SEARCH_NORMALIZATION_RULES,
+  SEARCH_RESULT_STATUSES,
+  SEARCH_UNSUPPORTED_REASONS,
+  createLegacySearchResponse,
+  createSearchMatch,
+  createSearchResponse,
+  normalizeSearchInput,
+  normalizeSearchResponse,
+} from '../runtime/search-query.js';

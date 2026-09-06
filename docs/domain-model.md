@@ -23,7 +23,8 @@ projected relation에 남는다. 따라서 UI group은 표시 위치일 뿐 rela
 바꾸지 않는다. relation이 없는 sense는 `definition` group만 가지며, 비어 있는
 relation group은 생성하지 않는다. `projectSearchResults()`는 입력 배열을
 정렬하거나 ranking하지 않고 query adapter가 반환한 SQLite/ID 순서를 그대로
-보존한다.
+보존한다. 검색 후보에 `match` provenance가 있으면 record projection에도
+그대로 전달한다.
 
 `reference-only` target은 검색 결과 projection에서 출발어로 승격되지 않는다.
 관계 항목의 `action.type = "open-relation-target"`와 target ID를 사용해 별도의
@@ -33,8 +34,10 @@ ID 탐색을 시작할 수 있다.
 
 `SearchSession`은 runtime adapter를 주입받는 UI-independent service다.
 
-- `searchExact(term)`는 `runtime.search()` 후 각 record를 ID로 읽어 exact 검색
-  결과를 만든다.
+- `searchExact(term)`는 `runtime.search()`의 구조화된 응답을 보존한 뒤 각
+  candidate record를 ID로 읽어 exact 검색 결과를 만든다. 상태의 `queryMeta`에는
+  raw query, normalized query, 적용 규칙, no-match/unsupported reason, match
+  provenance가 남는다.
 - `openRelationTarget(target)`는 `runtime.getRecord(targetId)`만 호출한다.
   자유 입력 exact search와 관계 target 탐색은 서로 다른 `mode`와 `action`이다.
 - `back()`과 `forward()`는 이미 읽은 snapshot을 복원하며 새 DB query를 만들지
@@ -55,7 +58,9 @@ ID 탐색을 시작할 수 있다.
 
 각 요청의 이전 결과가 늦게 도착해도 request token이 현재 요청과 다르면 상태를
 덮어쓰지 않는다. 이 레이어는 ranking, fuzzy/prefix search, morphology, relation
-자동 수정, user storage를 구현하지 않는다.
+자동 수정, user storage를 구현하지 않는다. 입력 정규화는
+[`src/runtime/search-query.js`](../src/runtime/search-query.js)의 NFC와 앞뒤
+공백 제거 규칙만 사용하며 내부 공백을 재작성하지 않는다.
 
 ## Product UI
 

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "corpus_id": "m4-search-regressions",
   "cases": [
     {
@@ -15,7 +15,20 @@
       "actual": {
         "status": "ready",
         "result_ids": ["w026"],
-        "selected_record_id": "r008"
+        "selected_record_id": "r008",
+        "raw_query": "담담하다",
+        "normalized_query": "담담하다",
+        "normalization_rules": [],
+        "reason": null,
+        "matches": [
+          {
+            "record_id": "w026",
+            "kind": "exact-lemma",
+            "field": "lemma",
+            "value": "담담하다",
+            "normalization_rules": []
+          }
+        ]
       },
       "selection": {
         "kind": "relation-target",
@@ -65,7 +78,20 @@
       "actual": {
         "status": "ready",
         "result_ids": ["w026"],
-        "selected_record_id": null
+        "selected_record_id": null,
+        "raw_query": "담담",
+        "normalized_query": "담담",
+        "normalization_rules": [],
+        "reason": null,
+        "matches": [
+          {
+            "record_id": "w026",
+            "kind": "exact-search-form",
+            "field": "search-form",
+            "value": "담담",
+            "normalization_rules": []
+          }
+        ]
       },
       "selection": null,
       "assertions": [
@@ -221,9 +247,14 @@
         "selected_record_id": null
       },
       "actual": {
-        "status": "empty",
+        "status": "unsupported",
         "result_ids": [],
-        "selected_record_id": null
+        "selected_record_id": null,
+        "raw_query": "덤덤하다",
+        "normalized_query": "덤덤하다",
+        "normalization_rules": [],
+        "reason": "reference-only-not-searchable",
+        "matches": []
       },
       "selection": null,
       "assertions": [
@@ -242,41 +273,67 @@
       "id": "m4-normalization-hangul-nfd",
       "query": "담담하다",
       "input_class": "normalization-candidate",
-      "evaluation": "pending",
+      "evaluation": "baseline",
       "expected": {
-        "status": "pending",
-        "result_ids": [],
+        "status": "ready",
+        "result_ids": ["w026"],
         "selected_record_id": null
       },
       "actual": {
-        "status": "empty",
-        "result_ids": [],
-        "selected_record_id": null
+        "status": "ready",
+        "result_ids": ["w026"],
+        "selected_record_id": null,
+        "raw_query": "담담하다",
+        "normalized_query": "담담하다",
+        "normalization_rules": ["unicode-nfc"],
+        "reason": null,
+        "matches": [
+          {
+            "record_id": "w026",
+            "kind": "normalized",
+            "field": "lemma",
+            "value": "담담하다",
+            "normalization_rules": ["unicode-nfc"]
+          }
+        ]
       },
       "selection": null,
       "assertions": [],
       "problem": "normalization",
-      "policy": "Unicode canonical-equivalence handling is a candidate for review; it is not an M3 pass criterion until a narrow rule is approved."
+      "policy": "Only NFC canonical-equivalence normalization is approved; the raw query and applied rule remain visible in the match provenance."
     },
     {
       "id": "m4-normalization-surrounding-space",
       "query": "  담담하다  ",
       "input_class": "normalization-candidate",
-      "evaluation": "pending",
+      "evaluation": "baseline",
       "expected": {
-        "status": "pending",
-        "result_ids": [],
+        "status": "ready",
+        "result_ids": ["w026"],
         "selected_record_id": null
       },
       "actual": {
-        "status": "empty",
-        "result_ids": [],
-        "selected_record_id": null
+        "status": "ready",
+        "result_ids": ["w026"],
+        "selected_record_id": null,
+        "raw_query": "  담담하다  ",
+        "normalized_query": "담담하다",
+        "normalization_rules": ["trim-surrounding-whitespace"],
+        "reason": null,
+        "matches": [
+          {
+            "record_id": "w026",
+            "kind": "normalized",
+            "field": "lemma",
+            "value": "담담하다",
+            "normalization_rules": ["trim-surrounding-whitespace"]
+          }
+        ]
       },
       "selection": null,
       "assertions": [],
       "problem": "normalization",
-      "policy": "Trimming surrounding whitespace may be safe for a writer input, but must be approved and tested as a limited rule rather than assumed."
+      "policy": "Only surrounding whitespace is trimmed; internal expression whitespace is never collapsed or rewritten."
     },
     {
       "id": "m4-no-data-unknown-term",
@@ -284,14 +341,19 @@
       "input_class": "no-data",
       "evaluation": "baseline",
       "expected": {
-        "status": "empty",
+        "status": "no-match",
         "result_ids": [],
         "selected_record_id": null
       },
       "actual": {
-        "status": "empty",
+        "status": "no-match",
         "result_ids": [],
-        "selected_record_id": null
+        "selected_record_id": null,
+        "raw_query": "없는 말",
+        "normalized_query": "없는 말",
+        "normalization_rules": [],
+        "reason": "no-exact-match",
+        "matches": []
       },
       "selection": null,
       "assertions": [],
@@ -309,9 +371,14 @@
         "selected_record_id": null
       },
       "actual": {
-        "status": "empty",
+        "status": "no-match",
         "result_ids": [],
-        "selected_record_id": null
+        "selected_record_id": null,
+        "raw_query": "담담했다",
+        "normalized_query": "담담했다",
+        "normalization_rules": [],
+        "reason": "no-exact-match",
+        "matches": []
       },
       "selection": null,
       "assertions": [],
@@ -329,9 +396,14 @@
         "selected_record_id": null
       },
       "actual": {
-        "status": "empty",
+        "status": "unsupported",
         "result_ids": [],
-        "selected_record_id": null
+        "selected_record_id": null,
+        "raw_query": "마음이  놓이다",
+        "normalized_query": "마음이  놓이다",
+        "normalization_rules": [],
+        "reason": "internal-whitespace-not-normalized",
+        "matches": []
       },
       "selection": null,
       "assertions": [],

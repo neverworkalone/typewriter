@@ -59,10 +59,13 @@ removes the requested generated file first; it does not depend on an existing DB
 apply migrations. An output path inside `data/canonical/` is rejected.
 
 The read-only helpers in [`scripts/build/query.mjs`](../scripts/build/query.mjs)
-support exact term lookup, complete record/sense retrieval, and source-sense
-relations with target lemma, part of speech, and gloss display. Fuzzy search,
-ranking, morphology, user data, and extension runtime integration are outside this
-contract.
+support the same conservative search response as the product worker: raw query,
+NFC-plus-surrounding-trim normalization, exact lemma/search-form provenance,
+reference-only blocking, and structured `no-match`/`unsupported` outcomes.
+Complete record/sense retrieval and source-sense relations include target lemma,
+part of speech, and gloss display. Fuzzy search, ranking, morphology, user data,
+and extension runtime integration beyond this shared contract are outside this
+milestone.
 
 ## Product dictionary runtime
 
@@ -72,13 +75,18 @@ contract.
 - `runtime/dictionary-worker.mjs` is the dedicated module worker;
 - `runtime/protocol.js` contains the versioned request/response contract;
 - `runtime/query-adapter.js` is the browser-facing read-only adapter; and
+- `runtime/search-query.js` contains the shared pure search normalizer and response
+  contract; and
 - `runtime/vendor/sqlite3.mjs` plus `runtime/vendor/sqlite3.wasm` are the pinned
   SQLite WASM runtime assets.
 
 The main-thread adapter in [`src/runtime/query-adapter.js`](../src/runtime/query-adapter.js)
 exposes only exact start-record search, record/sense/relation reads, metadata, and
-runtime status. Reference-only records can be fetched by ID for relation display,
-but are never returned from free-term search. The worker loads its own packaged
+runtime status. The worker and Node helper share
+[`src/runtime/search-query.js`](../src/runtime/search-query.js), so raw and
+normalized query fields plus match provenance use one implementation.
+Reference-only records can be fetched by ID for relation display, but are never
+returned from free-term search. The worker loads its own packaged
 database with extension-relative URLs, keeps one initialization promise, enables
 `PRAGMA query_only = ON`, and returns structured errors for asset, WASM, database,
 query, and lifecycle failures. During the same product load it verifies that a

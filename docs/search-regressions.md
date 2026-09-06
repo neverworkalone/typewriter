@@ -1,10 +1,10 @@
 # M4 search regression corpus
 
 `tests/fixtures/search-regressions/m4-baseline.json` is the shared, writer-facing
-search corpus for M4. It records a query, the expected policy, the currently
-observed result, any selected record, and the problem classification. It does not
-store an original writing sentence, external dictionary text, or an invented
-lexical answer.
+search corpus for M4 (schema version 2). It records a query, the expected policy,
+the currently observed result, any selected record, and the problem
+classification. It does not store an original writing sentence, external
+dictionary text, or an invented lexical answer.
 
 ## Scope contract
 
@@ -14,14 +14,14 @@ The corpus separates the following cases:
 | --- | --- | --- |
 | `exact-lemma` | The query is a canonical lemma for a `start` record. | Baseline-supported. |
 | `exact-search-form` | The query is an explicitly curated `search_forms` value. | Baseline-supported. |
-| `normalization-candidate` | A narrow Unicode or surrounding-whitespace rule might be useful. | `pending`; not a pass criterion yet. |
-| `no-data` | No canonical start record is asserted for the query. | Show no result; do not invent an answer. |
+| `normalization-candidate` | A narrow Unicode or surrounding-whitespace rule is approved and recorded. | Baseline-supported only for NFC and surrounding trim. |
+| `no-data` | No canonical start record is asserted for the query. | Return a structured no-match; do not invent an answer. |
 | `unsupported` | The current policy intentionally does not interpret the input. | Show the policy boundary, not a guessed match. |
 | `editorial-gap` | A record exists, but relation or editorial coverage is not established. | `pending`; do not manufacture a relation. |
 
 `evaluation` is `baseline` when the current exact contract is reproducible and
-`pending` when the case needs evidence or a later policy decision. A pending case
-must not be counted as a successful normalization or coverage result.
+`pending` when the case needs evidence or a later policy decision. The editorial
+gap remains pending; the two narrow normalization rules are now baseline cases.
 
 The current M3/M4 boundary is deliberately narrow:
 
@@ -30,8 +30,9 @@ The current M3/M4 boundary is deliberately narrow:
   are never free-search starts.
 - Expressions are matched as their exact canonical phrase. Tokenization and
   expression rewriting are not implied.
-- Unicode canonical equivalence and trimming surrounding whitespace are recorded
-  as candidates for M4-2 review, not silently applied here.
+- Unicode NFC canonical equivalence and trimming surrounding whitespace are the
+  only approved normalization rules. The raw query, normalized key, applied
+  rules, and match provenance are returned together.
 - Internal whitespace rewriting, inflection handling, fuzzy search, prefix search,
   and general Korean morphology are outside the current policy.
 - A missing relation is an editorial question. The corpus can record that gap but
@@ -59,7 +60,18 @@ Each case has this shape:
   "actual": {
     "status": "ready",
     "result_ids": ["w026"],
-    "selected_record_id": null
+    "selected_record_id": null,
+    "raw_query": "  담담하다  ",
+    "normalized_query": "담담하다",
+    "normalization_rules": ["trim-surrounding-whitespace"],
+    "reason": null,
+    "matches": [{
+      "record_id": "w026",
+      "kind": "normalized",
+      "field": "lemma",
+      "value": "담담하다",
+      "normalization_rules": ["trim-surrounding-whitespace"]
+    }]
   },
   "selection": null,
   "assertions": [],
@@ -68,9 +80,13 @@ Each case has this shape:
 }
 ```
 
-`expected.status` is one of `ready`, `empty`, `unsupported`, or `pending`.
-`actual.status` records the current query surface as `ready`, `empty`, or
-`error`. `result_ids` preserve the observed order; they are not a ranking score.
+`expected.status` is one of `ready`, `no-match`, `unsupported`, or `pending`.
+`actual.status` records the current query surface as `ready`, `no-match`,
+`unsupported`, or `error`. `result_ids` preserve the observed order; they are
+not a ranking score. When present, `raw_query`, `normalized_query`,
+`normalization_rules`, `reason`, and `matches` assert the structured query
+response. A match records whether the hit came from an exact lemma, exact search
+form, or an approved normalization path.
 `selection` is optional and is used for a chosen record or an explicit relation
 target. `assertions` may preserve the required record/sense/relation boundary for
 the query, without copying definitions or source prose.
@@ -86,7 +102,8 @@ and source/example text fields such as `source_text`, `source_sentence`, or
 1. Add the smallest query that demonstrates the writer-facing behavior. Store the
    query only; do not add the original sentence or external source text.
 2. Choose one `input_class` and its matching `problem` value. Use `pending` when
-   there is no demonstrated policy or editorial evidence.
+   there is no demonstrated policy or editorial evidence; do not add a new
+   normalization rule without an explicit narrow contract.
 3. Record both `expected` and the current `actual` result. Never create a result ID
    to make an unsupported or editorial-gap case pass.
 4. Add only the record, sense, relation, or selection assertions needed to preserve
@@ -97,5 +114,6 @@ and source/example text fields such as `source_text`, `source_sentence`, or
 
 The corpus is intentionally reusable: Node tests compare it with the canonical
 SQLite query helpers, while Vitest's browser query-adapter contract forwards the
-same exact baseline queries. Later M4 tasks may add approved provenance fields and
-candidate tiers without changing the meaning of the baseline cases.
+same exact baseline queries. The browser worker and Node helper import the same
+pure normalizer and response builder, so they cannot silently diverge on the
+approved rules. Candidate ranking and broader search forms remain later M4 work.

@@ -144,6 +144,52 @@ describe('Editorial Model v1 projection', () => {
 });
 
 describe('SearchSession', () => {
+  it('retains the structured query contract and match provenance in state and history', async () => {
+    const record = makeRecord('w026', '담담하다', 'start', [{
+      id: 'w026-s1',
+      pos: 'adjective',
+      gloss: '차분하다',
+      relations: [],
+    }]);
+    const response = {
+      rawQuery: '  담담하다  ',
+      normalizedQuery: '담담하다',
+      normalizationRules: ['trim-surrounding-whitespace'],
+      status: 'ready',
+      reason: null,
+      matches: [{
+        id: 'w026',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w026',
+        lemma: '담담하다',
+        match: {
+          kind: 'normalized',
+          field: 'lemma',
+          value: '담담하다',
+          normalizationRules: ['trim-surrounding-whitespace'],
+        },
+      }],
+    };
+    const runtime = {
+      search: async () => response,
+      getRecord: async () => record,
+    };
+    const session = new SearchSession({ runtime });
+
+    const state = await session.searchExact('  담담하다  ');
+
+    expect(state.queryMeta).toEqual(response);
+    expect(state.results[0]).toMatchObject({
+      id: 'w026',
+      match: response.matches[0].match,
+    });
+    expect(session.history[0]).toMatchObject({
+      query: '  담담하다  ',
+      queryMeta: response,
+    });
+  });
+
   it('separates exact search from relation navigation and restores the prior result', async () => {
     const calls = [];
     const records = new Map([

@@ -98,6 +98,53 @@ describe('DictionaryRuntime', () => {
     }
   });
 
+  it('preserves the structured worker response while forwarding the raw query', async () => {
+    let worker;
+    const rawQuery = '  담담하다  ';
+    const response = {
+      rawQuery,
+      normalizedQuery: '담담하다',
+      normalizationRules: ['trim-surrounding-whitespace'],
+      status: 'ready',
+      reason: null,
+      matches: [{
+        id: 'w026',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w026',
+        lemma: '담담하다',
+        match: {
+          kind: 'normalized',
+          field: 'lemma',
+          value: '담담하다',
+          normalizationRules: ['trim-surrounding-whitespace'],
+        },
+      }],
+    };
+    const runtime = new DictionaryRuntime({
+      timeoutMs: 100,
+      workerFactory: () => {
+        worker = new FakeWorker((request, currentWorker) => {
+          if (request.method === REQUEST_METHODS.ready) {
+            respond(currentWorker, request, { ready: true, query_only: 1 });
+          }
+          if (request.method === REQUEST_METHODS.search) {
+            respond(currentWorker, request, response);
+          }
+        });
+        workers.push(worker);
+        return worker;
+      },
+    });
+
+    await runtime.ready();
+    await expect(runtime.search(rawQuery)).resolves.toEqual(response);
+    expect(worker.messages.at(-1)).toMatchObject({
+      method: REQUEST_METHODS.search,
+      params: { term: rawQuery },
+    });
+  });
+
   it('deduplicates initialization and exposes read-only lookup methods', async () => {
     let factoryCalls = 0;
     let worker;

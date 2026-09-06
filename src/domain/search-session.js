@@ -12,6 +12,7 @@ import {
   SEARCH_MODES,
   withHistoryFlags,
 } from './search-state.js';
+import { normalizeSearchResponse } from '../runtime/search-query.js';
 
 export class SearchDomainError extends Error {
   constructor(code, message, details) {
@@ -111,6 +112,7 @@ export class SearchSession {
       .map(({ snapshot, ...entry }) => ({
         ...entry,
         status: snapshot?.status ?? null,
+        queryMeta: snapshot?.queryMeta ?? null,
       }));
   }
 
@@ -136,6 +138,7 @@ export class SearchSession {
       action: SEARCH_ACTIONS.exact,
       query: term,
       targetRecordId: null,
+      queryMeta: null,
       navigation: {
         kind: 'exact-search',
         term,
@@ -151,15 +154,27 @@ export class SearchSession {
       const search = typeof this.runtime.search === 'function'
         ? this.runtime.search
         : this.runtime.findRecordsByExactTerm;
-      const summaries = await search.call(this.runtime, term);
-      if (!Array.isArray(summaries)) {
+      const rawResponse = await search.call(this.runtime, term);
+      let response;
+      try {
+        response = normalizeSearchResponse(rawResponse, term);
+      } catch (error) {
         throw new SearchDomainError(
           'INVALID_QUERY_RESULT',
-          'dictionary runtime search 결과가 배열이 아닙니다.',
+          'dictionary runtime search 결과가 구조화된 응답이 아닙니다.',
+          { cause: error?.message || String(error) },
         );
       }
+      operation.request = {
+        ...operation.request,
+        queryMeta: response,
+      };
+      operation.historyEntry.queryMeta = response;
+      operation.emptyReason = response.reason || 'no-exact-match';
 
-      const startSummaries = summaries.filter((summary) => summary.role !== 'reference-only');
+      const startSummaries = response.matches.filter(
+        (summary) => summary.role !== 'reference-only',
+      );
       const records = await Promise.all(startSummaries.map((summary) => (
         hasFullRecord(summary) ? summary : this.runtime.getRecord(summary.id)
       )));
@@ -171,7 +186,7 @@ export class SearchSession {
         );
       }
 
-      return projectSearchResults(records);
+      return projectSearchResults(records, startSummaries);
     });
   }
 
@@ -300,7 +315,10 @@ export class SearchSession {
       }
 
       const nextState = result === null || result.length === 0
-        ? createEmptySearchState(operation.request, emptyReason)
+        ? createEmptySearchState(
+          operation.request,
+          operation.emptyReason || emptyReason,
+        )
         : createReadySearchState(
           operation.request,
           Array.isArray(result) ? result : [result],
