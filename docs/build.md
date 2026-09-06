@@ -63,9 +63,11 @@ support the same conservative search response as the product worker: raw query,
 NFC-plus-surrounding-trim normalization, exact lemma/search-form provenance,
 reference-only blocking, and structured `no-match`/`unsupported` outcomes.
 Complete record/sense retrieval and source-sense relations include target lemma,
-part of speech, and gloss display. Fuzzy search, ranking, morphology, user data,
+part of speech, and gloss display. Fuzzy search, broad relevance scoring,
+morphology, user data,
 and extension runtime integration beyond this shared contract are outside this
-milestone.
+milestone. Candidate ordering uses only the documented exact-match tiers and
+deterministic source/ID ties; it does not use frequency or generated scores.
 
 ## Product dictionary runtime
 

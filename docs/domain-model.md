@@ -26,6 +26,11 @@ relation group은 생성하지 않는다. `projectSearchResults()`는 입력 배
 보존한다. 검색 후보에 `match` provenance가 있으면 record projection에도
 그대로 전달한다.
 
+검색 후보의 tier ranking은 runtime query contract에서 끝난다. projection은
+이미 결정된 record 순서를 소비할 뿐이며, 한 record 내부의 sense/relation
+source order나 canonical relation type을 재분류하지 않는다. 우선순위와 동점
+규칙은 [`docs/search-candidates.md`](search-candidates.md)에 고정한다.
+
 `reference-only` target은 검색 결과 projection에서 출발어로 승격되지 않는다.
 관계 항목의 `action.type = "open-relation-target"`와 target ID를 사용해 별도의
 ID 탐색을 시작할 수 있다.
