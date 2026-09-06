@@ -223,6 +223,15 @@ async function closeChrome(child) {
   if (child.exitCode === null) child.kill('SIGKILL');
 }
 
+async function removeTemporaryDirectory(directory) {
+  await rm(directory, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 200,
+  });
+}
+
 export async function runCftProduct({
   chromePath = DEFAULT_CHROME_CANDIDATES[0],
   extensionDirectory = DEFAULT_EXTENSION_DIRECTORY,
@@ -778,7 +787,7 @@ export async function runCftProduct({
     }
     await closeChrome(child);
     if (ownedProfile) {
-      await rm(resolvedProfileDirectory, { recursive: true, force: true });
+      await removeTemporaryDirectory(resolvedProfileDirectory);
     }
   }
 }

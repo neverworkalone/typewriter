@@ -250,6 +250,15 @@ async function closeChrome(child) {
   }
 }
 
+async function removeTemporaryDirectory(directory) {
+  await rm(directory, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 200,
+  });
+}
+
 export async function runCftProof({
   chromePath = DEFAULT_CHROME_CANDIDATES[0],
   extensionDirectory = DEFAULT_EXTENSION_DIRECTORY,
@@ -378,7 +387,7 @@ export async function runCftProof({
     }
     await closeChrome(child);
     if (ownedProfile) {
-      await rm(resolvedProfileDirectory, { recursive: true, force: true });
+      await removeTemporaryDirectory(resolvedProfileDirectory);
     }
   }
 }

@@ -67,7 +67,12 @@ export async function runCftPackage({
       zip: zipSummary,
     };
   } finally {
-    await rm(extractedDirectory, { recursive: true, force: true });
+    await rm(extractedDirectory, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200,
+    });
   }
 }
 
