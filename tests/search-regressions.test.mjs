@@ -210,6 +210,18 @@ test('M4 query responses preserve normalization and match provenance', async () 
           searchCase.actual.matches,
           `${searchCase.id} match provenance`,
         );
+
+        if (searchCase.id === 'm3-exact-lemma-damdamhada') {
+          const matchingPaths = database.prepare(`
+            SELECT records.id
+            FROM records
+            LEFT JOIN search_forms ON search_forms.record_id = records.id
+            WHERE records.role = 'start'
+              AND (records.lemma = ? OR search_forms.form = ?)
+          `).all(searchCase.query, searchCase.query);
+          assert.equal(matchingPaths.length, 2, 'fixture should exercise lemma/form path duplication');
+          assert.deepEqual(response.matches.map(({ id }) => id), ['w026']);
+        }
       }
     } finally {
       database.close();

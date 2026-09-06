@@ -11,6 +11,14 @@ export const SEARCH_MATCH_KINDS = Object.freeze({
   normalized: 'normalized',
 });
 
+export const SEARCH_MATCH_PRIORITIES = Object.freeze({
+  exactLemma: 0,
+  exactSearchForm: 1,
+  normalized: 2,
+  legacyExact: 0,
+  unknown: Number.POSITIVE_INFINITY,
+});
+
 export const SEARCH_MATCH_FIELDS = Object.freeze({
   lemma: 'lemma',
   searchForm: 'search-form',
@@ -51,6 +59,106 @@ function matchKind(field, normalizationRules) {
   return field === SEARCH_MATCH_FIELDS.lemma
     ? SEARCH_MATCH_KINDS.exactLemma
     : SEARCH_MATCH_KINDS.exactSearchForm;
+}
+
+function compareIds(left, right) {
+  const leftId = String(left ?? '');
+  const rightId = String(right ?? '');
+  if (leftId < rightId) return -1;
+  if (leftId > rightId) return 1;
+  return 0;
+}
+
+function matchPriority(match = {}) {
+  if (match.kind === SEARCH_MATCH_KINDS.exactLemma) {
+    return SEARCH_MATCH_PRIORITIES.exactLemma;
+  }
+  if (match.kind === SEARCH_MATCH_KINDS.exactSearchForm) {
+    return SEARCH_MATCH_PRIORITIES.exactSearchForm;
+  }
+  if (match.kind === SEARCH_MATCH_KINDS.normalized) {
+    return SEARCH_MATCH_PRIORITIES.normalized;
+  }
+  if (match.kind === SEARCH_MATCH_KINDS.exact) {
+    return SEARCH_MATCH_PRIORITIES.legacyExact;
+  }
+  return SEARCH_MATCH_PRIORITIES.unknown;
+}
+
+function fieldPriority(match = {}) {
+  return match.field === SEARCH_MATCH_FIELDS.lemma ? 0 : 1;
+}
+
+function comparePriorities(left, right) {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+function compareCandidateOrder(left, right) {
+  const leftPriority = matchPriority(left.candidate.match);
+  const rightPriority = matchPriority(right.candidate.match);
+  const priorityDifference = comparePriorities(leftPriority, rightPriority);
+  if (priorityDifference !== 0) {
+    return priorityDifference;
+  }
+
+  if (left.sourceOrder !== right.sourceOrder) {
+    return left.sourceOrder - right.sourceOrder;
+  }
+
+  return compareIds(left.candidate.id, right.candidate.id);
+}
+
+function compareCandidateQuality(left, right) {
+  const priorityDifference = comparePriorities(
+    matchPriority(left.candidate.match),
+    matchPriority(right.candidate.match),
+  );
+  if (priorityDifference !== 0) {
+    return priorityDifference;
+  }
+
+  if (left.candidate.id === right.candidate.id) {
+    const fieldDifference = fieldPriority(left.candidate.match)
+      - fieldPriority(right.candidate.match);
+    if (fieldDifference !== 0) {
+      return fieldDifference;
+    }
+  }
+
+  return compareCandidateOrder(left, right);
+}
+
+/**
+ * Rank one candidate per record without inventing lexical scores.
+ *
+ * The input order is the deterministic SQLite source order. Match tier is the
+ * only primary priority; source order and the record ID are deterministic ties.
+ */
+export function rankSearchMatches(matches) {
+  if (!Array.isArray(matches)) {
+    throw new TypeError('Search matches must be an array.');
+  }
+
+  const bestByRecord = new Map();
+  matches.forEach((candidate, sourceOrder) => {
+    if (!candidate || typeof candidate !== 'object') {
+      throw new TypeError('Each search match must be an object.');
+    }
+    if (typeof candidate.id !== 'string' || candidate.id.length === 0) {
+      throw new TypeError('Each search match must have a record ID.');
+    }
+
+    const ranked = { candidate, sourceOrder };
+    const existing = bestByRecord.get(candidate.id);
+    if (!existing || compareCandidateQuality(ranked, existing) < 0) {
+      bestByRecord.set(candidate.id, ranked);
+    }
+  });
+
+  return [...bestByRecord.values()]
+    .sort(compareCandidateOrder)
+    .map(({ candidate }) => candidate);
 }
 
 export function normalizeSearchInput(rawQuery) {
@@ -111,7 +219,7 @@ export function createSearchMatch(summary, {
 }
 
 export function createSearchResponse(input, matches = [], { reason = null } = {}) {
-  const normalizedMatches = [...matches];
+  const normalizedMatches = rankSearchMatches(matches);
   const status = (
     input.unsupportedReason
     || reason === SEARCH_UNSUPPORTED_REASONS.referenceOnly
@@ -210,6 +318,6 @@ export function normalizeSearchResponse(response, rawQuery) {
     normalizationRules,
     status,
     reason,
-    matches,
+    matches: rankSearchMatches(matches),
   };
 }

@@ -38,6 +38,7 @@ export {
 export {
   SEARCH_MATCH_FIELDS,
   SEARCH_MATCH_KINDS,
+  SEARCH_MATCH_PRIORITIES,
   SEARCH_NORMALIZATION_RULES,
   SEARCH_RESULT_STATUSES,
   SEARCH_UNSUPPORTED_REASONS,
@@ -46,4 +47,5 @@ export {
   createSearchResponse,
   normalizeSearchInput,
   normalizeSearchResponse,
+  rankSearchMatches,
 } from '../runtime/search-query.js';

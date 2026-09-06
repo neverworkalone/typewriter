@@ -116,4 +116,6 @@ The corpus is intentionally reusable: Node tests compare it with the canonical
 SQLite query helpers, while Vitest's browser query-adapter contract forwards the
 same exact baseline queries. The browser worker and Node helper import the same
 pure normalizer and response builder, so they cannot silently diverge on the
-approved rules. Candidate ranking and broader search forms remain later M4 work.
+approved rules. Candidate tier order is documented in
+[`docs/search-candidates.md`](search-candidates.md); broader search forms remain
+later M4 work.
