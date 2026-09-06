@@ -92,6 +92,9 @@ async function search(value = query.value) {
 }
 
 function clearSearch() {
+  if (typeof session.cancelPending === 'function') {
+    session.cancelPending();
+  }
   query.value = '';
 }
 

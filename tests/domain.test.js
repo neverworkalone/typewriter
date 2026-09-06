@@ -296,6 +296,43 @@ describe('SearchSession', () => {
     expect(session.state).toMatchObject({ status: 'ready', query: '기준' });
   });
 
+  it('cancels a pending search without clearing the current result or history', async () => {
+    let resolvePending;
+    const records = new Map([
+      ['first', makeRecord('first', '첫 결과')],
+      ['second', makeRecord('second', '두 번째 결과')],
+    ]);
+    const runtime = {
+      search: async (term) => {
+        if (term === '첫 검색') return [{ id: 'first' }];
+        return new Promise((resolve) => {
+          resolvePending = resolve;
+        });
+      },
+      getRecord: async (id) => records.get(id) || null,
+    };
+    const session = new SearchSession({ runtime });
+
+    await session.searchExact('첫 검색');
+    const pending = session.searchExact('두 번째 검색');
+    expect(session.state).toMatchObject({ status: 'loading', query: '두 번째 검색' });
+
+    expect(session.cancelPending()).toMatchObject({
+      status: 'ready',
+      query: '첫 검색',
+      results: [expect.objectContaining({ id: 'first' })],
+    });
+    expect(session.history.map(({ query }) => query)).toEqual(['첫 검색']);
+
+    resolvePending([{ id: 'second' }]);
+    await pending;
+    expect(session.state).toMatchObject({
+      status: 'ready',
+      query: '첫 검색',
+      results: [expect.objectContaining({ id: 'first' })],
+    });
+  });
+
   it('distinguishes no-result, load failure, query failure, and missing relation targets', async () => {
     const runtime = {
       search: async (term) => {

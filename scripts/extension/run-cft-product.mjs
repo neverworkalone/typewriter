@@ -398,6 +398,67 @@ export async function runCftProduct({
       '  };',
       '})() ',
     ].join('\n'));
+    const popupPendingClear = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupPendingClear);
+    await evaluate(connection, popupPendingClear.sessionId, [
+      '(() => {',
+      '  const originalPostMessage = Worker.prototype.postMessage;',
+      '  Worker.prototype.postMessage = function delayedPostMessage(message, transfer) {',
+      '    if (message?.method === "search") {',
+      '      setTimeout(() => {',
+      '        if (transfer === undefined) originalPostMessage.call(this, message);',
+      '        else originalPostMessage.call(this, message, transfer);',
+      '      }, 250);',
+      '      return;',
+      '    }',
+      '    if (transfer === undefined) return originalPostMessage.call(this, message);',
+      '    return originalPostMessage.call(this, message, transfer);',
+      '  };',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await evaluate(connection, popupPendingClear.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.focus();',
+      '  input.value = "담담하다";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupPendingClear.sessionId,
+      'Boolean(document.querySelector("[data-dictionary-panel][aria-busy=\\"true\\"]"))',
+    );
+    const popupPendingClearFirst = await evaluate(connection, popupPendingClear.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });',
+      '  input.dispatchEvent(event);',
+      '  return { defaultPrevented: event.defaultPrevented };',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupPendingClear.sessionId,
+      'document.querySelector("[aria-label=\\"검색어\\"]").value === "" && Boolean(document.querySelector(".dictionary-empty-region")) && !Boolean(document.querySelector(".dictionary-empty-region.is-loading"))',
+    );
+    await sleep(250);
+    const popupPendingClearAfter = await evaluate(connection, popupPendingClear.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  return {',
+      '    query: input.value,',
+      '    hasRecord: Boolean(document.querySelector("[data-dictionary-record]")),',
+      '    hasEmptyRegion: Boolean(document.querySelector(".dictionary-empty-region")),',
+      '    isLoading: Boolean(document.querySelector(".dictionary-empty-region.is-loading")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
     await evaluate(connection, popup.sessionId, [
       '(() => {',
       '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
@@ -748,6 +809,15 @@ export async function runCftProduct({
       throw new Error('Popup clear/Escape CFT assertions failed: ' + JSON.stringify({ popupEscapeFirst, popupEscapeAfterFirst }));
     }
     if (
+      !popupPendingClearFirst.defaultPrevented
+      || popupPendingClearAfter.query !== ''
+      || popupPendingClearAfter.hasRecord
+      || !popupPendingClearAfter.hasEmptyRegion
+      || popupPendingClearAfter.isLoading
+    ) {
+      throw new Error('Pending popup clear CFT assertions failed: ' + JSON.stringify({ popupPendingClearFirst, popupPendingClearAfter }));
+    }
+    if (
       popupRelation.hasBackButton
       || !popupRelation.isRelationTarget
       || popupRelation.panelHeight >= 376
@@ -843,6 +913,8 @@ export async function runCftProduct({
       popupReady,
       popupEscapeFirst,
       popupEscapeAfterFirst,
+      popupPendingClearFirst,
+      popupPendingClearAfter,
       popupRelation,
       popupPeaceLayout,
       popupEmptyState,
