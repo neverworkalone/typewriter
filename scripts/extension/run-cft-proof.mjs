@@ -241,12 +241,16 @@ async function closeChrome(child) {
   if (child.exitCode === null) {
     child.kill('SIGTERM');
     await Promise.race([
-      once(child, 'exit'),
+      once(child, 'exit').catch(() => {}),
       sleep(2000),
     ]);
   }
   if (child.exitCode === null) {
     child.kill('SIGKILL');
+    await Promise.race([
+      once(child, 'exit').catch(() => {}),
+      sleep(2000),
+    ]);
   }
 }
 
