@@ -10,6 +10,20 @@ Install the pinned runtime before running the commands:
 npm ci --ignore-scripts --no-audit --no-fund
 ```
 
+The product MV3 shell uses Vue 3 with Vite and is kept separate from the M2 proof
+under `extension/mv3-proof/`. The two product entrypoints are `popup.html` and
+`options.html`; their Vue source lives under `src/popup/` and `src/options/`.
+Use the following commands while working on the product shell:
+
+```sh
+npm run dev          # Vite development server
+npm run build        # production MV3 assets in dist/, minified by esbuild
+npm run test:unit    # Vitest component/unit tests
+```
+
+`npm run test` remains the Node.js test command for the M2 toolchain. The product
+build does not replace or modify the M2 proof source or its generated package.
+
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
 external responses, generated databases, or credential files.

@@ -55,3 +55,9 @@ jobs:
 
       - name: Run toolchain tests
         run: node --test tests/*.test.mjs
+
+      - name: Run product unit tests
+        run: npm run test:unit
+
+      - name: Build product extension
+        run: npm run build
