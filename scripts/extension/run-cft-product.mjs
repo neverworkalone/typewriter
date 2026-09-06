@@ -265,6 +265,7 @@ export async function runCftProduct({
       '  inputOutlineStyle: getComputedStyle(document.querySelector("[aria-label=\\"검색어\\"]")).outlineStyle,',
       '  scrollMaxHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).maxHeight,',
       '  scrollOverflowY: getComputedStyle(document.querySelector(".dictionary-scroll-region")).overflowY,',
+      '  scrollMinHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).minHeight,',
       '  panelWidth: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().width),',
       '  panelHeight: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().height),',
       '  footerHeight: getComputedStyle(document.querySelector(".product-footer")).height,',
@@ -314,6 +315,40 @@ export async function runCftProduct({
       '  panelHeight: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().height),',
       '  resultTop: Math.round(document.querySelector("[data-dictionary-record]").getBoundingClientRect().top),',
       '}))()',
+    ].join('\n'));
+
+    const popupPeace = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupPeace);
+    await evaluate(connection, popupPeace.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "평온";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupPeace.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w030\\"]"))',
+    );
+    const popupPeaceLayout = await evaluate(connection, popupPeace.sessionId, [
+      '(() => {',
+      '  const panel = document.querySelector("[data-dictionary-panel]");',
+      '  const region = document.querySelector(".dictionary-scroll-region");',
+      '  const result = document.querySelector("[data-dictionary-record]");',
+      '  const divider = document.querySelector(".footer-divider");',
+      '  return {',
+      '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
+      '    regionMinHeight: getComputedStyle(region).minHeight,',
+      '    regionClientHeight: Math.round(region.clientHeight),',
+      '    regionScrollHeight: Math.round(region.scrollHeight),',
+      '    footerGap: Math.round((divider.getBoundingClientRect().top - result.getBoundingClientRect().bottom) * 100) / 100,',
+      '  };',
+      '})() ',
     ].join('\n'));
 
     const popupEmpty = await createExtensionSession(connection, extensionId, 'popup.html');
@@ -427,6 +462,7 @@ export async function runCftProduct({
       '  const footer = document.querySelector(".preview-panel .product-footer");',
       '  return {',
       '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
+      '    panelWidth: Math.round(panel.getBoundingClientRect().width),',
       '    previewHeight: Math.round(document.querySelector(".preview-panel").getBoundingClientRect().height),',
       '    regionClientHeight: Math.round(region.clientHeight),',
       '    regionScrollHeight: Math.round(region.scrollHeight),',
@@ -466,6 +502,7 @@ export async function runCftProduct({
       '(() => ({',
       '  rendered: document.querySelector(".brand-version")?.textContent.trim() || "",',
       '  manifest: chrome.runtime.getManifest().version,',
+      '  brandAlignItems: getComputedStyle(document.querySelector(".brand-lockup")).alignItems,',
       '}))()',
     ].join('\n'));
 
@@ -482,8 +519,9 @@ export async function runCftProduct({
       || popupReady.inputOutlineStyle !== 'none'
       || popupReady.scrollMaxHeight !== '487px'
       || popupReady.scrollOverflowY !== 'auto'
+      || popupReady.scrollMinHeight !== '0px'
       || popupReady.panelWidth !== 480
-      || popupReady.panelHeight < 376
+      || popupReady.panelHeight >= 376
       || popupReady.footerHeight !== '20px'
       || popupReady.footerAlignItems !== 'center'
       || popupReady.footerPaddingRight !== '12px'
@@ -514,6 +552,14 @@ export async function runCftProduct({
       throw new Error('Relation-target layout CFT assertions failed: ' + JSON.stringify(popupRelation));
     }
     if (
+      popupPeaceLayout.regionMinHeight !== '0px'
+      || popupPeaceLayout.regionScrollHeight > popupPeaceLayout.regionClientHeight + 1
+      || popupPeaceLayout.panelHeight >= 376
+      || popupPeaceLayout.footerGap > 10
+    ) {
+      throw new Error('Direct peace-search layout CFT assertions failed: ' + JSON.stringify(popupPeaceLayout));
+    }
+    if (
       popupLongOverflow.regionScrollHeight <= popupLongOverflow.regionClientHeight
       || popupLongOverflow.overflowY !== 'auto'
       || popupLongOverflow.panelHeight >= 600
@@ -527,6 +573,7 @@ export async function runCftProduct({
     if (
       optionsPreview.regionScrollHeight > optionsPreview.regionClientHeight + 1
       || optionsPreview.overflowY !== 'visible'
+      || optionsPreview.panelWidth !== 360
       || optionsPreview.panelHeight >= optionsPreview.previewHeight
       || optionsPreview.footerHeight !== '17.5px'
       || optionsPreview.footerPaddingRight !== '10.5px'
@@ -554,6 +601,7 @@ export async function runCftProduct({
     if (
       !optionsVersion.rendered
       || optionsVersion.rendered !== optionsVersion.manifest
+      || optionsVersion.brandAlignItems !== 'baseline'
     ) {
       throw new Error('Options version CFT assertions failed: ' + JSON.stringify(optionsVersion));
     }
@@ -565,6 +613,7 @@ export async function runCftProduct({
       extensionId,
       popupReady,
       popupRelation,
+      popupPeaceLayout,
       popupEmptyState,
       popupLongOverflow,
       popupLongScroll,

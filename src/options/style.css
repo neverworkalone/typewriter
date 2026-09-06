@@ -50,10 +50,12 @@ input {
 }
 
 .brand-lockup {
+  align-items: baseline;
   gap: 8px;
 }
 
 .brand-mark {
+  align-self: center;
   width: 40px;
   height: 40px;
   margin-right: 8px;
@@ -230,6 +232,10 @@ input {
 
 .preview-panel .dictionary-panel {
   flex: 0 0 auto;
+}
+
+.preview-panel .dictionary-panel.is-compact {
+  width: 360px;
 }
 
 .sr-only {

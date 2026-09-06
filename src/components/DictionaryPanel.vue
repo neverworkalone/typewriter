@@ -62,6 +62,9 @@ const isReady = computed(() => (
   props.records.length > 0
   && (props.status === SEARCH_STATUS.ready || props.status === SEARCH_STATUS.loading)
 ));
+const isInitialLoading = computed(() => (
+  props.status === SEARCH_STATUS.loading && props.records.length === 0
+));
 const isRelationTarget = computed(() => isReady.value && props.mode === 'relation-target');
 const statusTitle = computed(() => {
   if (props.status === SEARCH_STATUS.loading) return '검색 중입니다.';
@@ -99,7 +102,7 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
       },
       `state-${status}`,
     ]"
-    :aria-busy="isReady && status === SEARCH_STATUS.loading"
+    :aria-busy="status === SEARCH_STATUS.loading"
     data-dictionary-panel
   >
     <SearchBar
@@ -127,7 +130,11 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
       />
     </div>
 
-    <div v-else-if="status === SEARCH_STATUS.idle" class="dictionary-empty-region">
+    <div
+      v-else-if="status === SEARCH_STATUS.idle || isInitialLoading"
+      class="dictionary-empty-region"
+      :class="{ 'is-loading': isInitialLoading }"
+    >
       <ProductFooter
         :compact="compact"
         @open-settings="emit('open-settings')"
@@ -184,24 +191,6 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
   overflow-y: auto;
   scrollbar-color: #968f89 transparent;
   scrollbar-width: thin;
-}
-
-.dictionary-panel.has-results {
-  min-height: 376px;
-}
-
-.dictionary-panel.has-results .dictionary-scroll-region {
-  min-height: 314px;
-  justify-content: space-between;
-}
-
-.dictionary-panel.is-relation-target.has-results {
-  min-height: 0;
-}
-
-.dictionary-panel.is-relation-target.has-results .dictionary-scroll-region {
-  min-height: 0;
-  justify-content: flex-start;
 }
 
 .dictionary-scroll-region::-webkit-scrollbar {

@@ -131,6 +131,10 @@ describe('product MV3 Vue shells', () => {
   });
 
   it('keeps the current result visible while a later search is pending', async () => {
+    let releaseFirstSearch;
+    const firstSearch = new Promise((resolve) => {
+      releaseFirstSearch = () => resolve([{ id: 'first' }]);
+    });
     let releaseSecondSearch;
     const secondSearch = new Promise((resolve) => {
       releaseSecondSearch = () => resolve([{ id: 'second' }]);
@@ -140,7 +144,7 @@ describe('product MV3 Vue shells', () => {
       ['second', makeRecord('second', '두 번째')],
     ]);
     const runtime = {
-      search: async (term) => (term === '첫 단어' ? [{ id: 'first' }] : secondSearch),
+      search: async (term) => (term === '첫 단어' ? firstSearch : secondSearch),
       getRecord: async (id) => records.get(id) || null,
     };
     const host = mountWithProps(PopupApp, {
@@ -159,7 +163,15 @@ describe('product MV3 Vue shells', () => {
       await flush();
     }
 
-    await submit('첫 단어');
+    const pendingFirstSearch = submit('첫 단어');
+    await nextTick();
+    await nextTick();
+    expect(host.querySelector('[data-search-state="loading"]')).toBeNull();
+    expect(host.querySelector('.dictionary-empty-region.is-loading')).not.toBeNull();
+
+    releaseFirstSearch();
+    await pendingFirstSearch;
+    await flush();
     expect(host.querySelector('[data-record-id="first"]')).not.toBeNull();
 
     const pendingSearch = submit('두 번째');
