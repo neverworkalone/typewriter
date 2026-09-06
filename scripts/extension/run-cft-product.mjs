@@ -119,6 +119,43 @@ async function waitForCondition(connection, sessionId, expression, timeoutMillis
 }
 
 async function findExtensionId(connection, sessionId) {
+  const findWithDevToolsDom = async () => {
+    await connection.command('DOM.enable', {}, sessionId);
+    const { root } = await connection.command(
+      'DOM.getDocument',
+      { depth: -1, pierce: true },
+      sessionId,
+    );
+    const candidates = [];
+    const visit = (node) => {
+      if (node.nodeName?.toLowerCase() === 'extensions-item') {
+        const attributes = Object.fromEntries(
+          (node.attributes || []).reduce((pairs, value, index, values) => {
+            if (index % 2 === 0) pairs.push([value, values[index + 1]]);
+            return pairs;
+          }, []),
+        );
+        candidates.push({
+          id: attributes.id || '',
+          attributes,
+        });
+      }
+      for (const child of node.children || []) visit(child);
+      for (const shadowRoot of node.shadowRoots || []) visit(shadowRoot);
+      if (node.contentDocument) visit(node.contentDocument);
+    };
+    visit(root);
+    const candidate = candidates.find((item) => /^[a-p]{32}$/.test(item.id));
+    return candidate?.id || null;
+  };
+
+  try {
+    const extensionId = await findWithDevToolsDom();
+    if (extensionId) return extensionId;
+  } catch {
+    // Fall back to the page-side traversal used by older Chrome WebUI versions.
+  }
+
   const expression = [
     '(() => {',
     '  function collect(root, output = []) {',
@@ -145,7 +182,17 @@ async function findExtensionId(connection, sessionId) {
     if (/^[a-p]{32}$/.test(candidate?.id)) return candidate.id;
     await sleep(100);
   }
-  throw new Error('Could not determine the unpacked Typewriter extension ID.');
+  let devToolsDomError = '';
+  try {
+    const extensionId = await findWithDevToolsDom();
+    if (extensionId) return extensionId;
+  } catch (error) {
+    devToolsDomError = error.message;
+  }
+  throw new Error(
+    'Could not determine the unpacked Typewriter extension ID.'
+      + (devToolsDomError ? ` ${devToolsDomError}` : ''),
+  );
 }
 
 async function createExtensionSession(connection, extensionId, page) {
@@ -244,7 +291,7 @@ export async function runCftProduct({
       '(() => {',
       '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
       '  input.focus();',
-      '  input.value = "담담하다";',
+      '  input.value = "담담";',
       '  input.dispatchEvent(new Event("input", { bubbles: true }));',
       '  input.dispatchEvent(new KeyboardEvent("keydown", {',
       '    key: "Enter", bubbles: true, cancelable: true,',
@@ -428,6 +475,32 @@ export async function runCftProduct({
       '})() ',
     ].join('\n'));
 
+    const popupExpression = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupExpression);
+    await evaluate(connection, popupExpression.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "마음이 놓이다";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupExpression.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w288\\"]"))',
+    );
+    const popupExpressionResult = await evaluate(connection, popupExpression.sessionId, [
+      '(() => ({',
+      '  recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
+      '  hasDefinition: Boolean(document.querySelector("[data-group-id=\\"definition\\"]")),',
+      '  hasDirectRelation: Boolean(document.querySelector("[data-group-id=\\"synonyms\\"]")),',
+      '}))() ',
+    ].join('\n'));
+
     const options = await createExtensionSession(connection, extensionId, 'options.html');
     extensionTargets.push(options);
     await waitForCondition(
@@ -510,6 +583,31 @@ export async function runCftProduct({
       '  hasSynonymsAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"synonyms\\"]")),',
       '}))()',
     ].join('\n'));
+
+    const popupSettings = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupSettings);
+    await evaluate(connection, popupSettings.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "그리움";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupSettings.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w004\\"]"))',
+    );
+    const popupSettingsResult = await evaluate(connection, popupSettings.sessionId, [
+      '(() => ({',
+      '  recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
+      '  visibleGroups: [...document.querySelectorAll("[data-group-id]")].map((node) => node.dataset.groupId),',
+      '}))() ',
+    ].join('\n'));
     const optionsVersion = await evaluate(connection, options.sessionId, [
       '(() => ({',
       '  rendered: document.querySelector(".brand-version")?.textContent.trim() || "",',
@@ -586,6 +684,13 @@ export async function runCftProduct({
       throw new Error('Long-result overflow CFT assertions failed: ' + JSON.stringify({ popupLongOverflow, popupLongScroll }));
     }
     if (
+      popupExpressionResult.recordId !== 'w288'
+      || !popupExpressionResult.hasDefinition
+      || !popupExpressionResult.hasDirectRelation
+    ) {
+      throw new Error('Expression search CFT assertions failed: ' + JSON.stringify(popupExpressionResult));
+    }
+    if (
       optionsPreview.regionScrollHeight > optionsPreview.regionClientHeight + 1
       || optionsPreview.overflowY !== 'visible'
       || optionsPreview.panelWidth !== 360
@@ -616,6 +721,12 @@ export async function runCftProduct({
     ) {
       throw new Error('Persisted Settings CFT assertions failed: ' + JSON.stringify(optionsReloaded));
     }
+    if (
+      popupSettingsResult.recordId !== 'w004'
+      || JSON.stringify(popupSettingsResult.visibleGroups) !== JSON.stringify(['texture', 'association'])
+    ) {
+      throw new Error('Popup settings reflection CFT assertions failed: ' + JSON.stringify(popupSettingsResult));
+    }
     if (optionsDirty.status !== '저장되지 않음' || optionsDirty.saveDisabled) {
       throw new Error('Dirty Settings CFT assertions failed: ' + JSON.stringify(optionsDirty));
     }
@@ -645,11 +756,13 @@ export async function runCftProduct({
       popupEmptyState,
       popupLongOverflow,
       popupLongScroll,
+      popupExpressionResult,
       focusResult,
       optionsDefault,
       optionsPreview,
       optionsDirty,
       optionsReloaded,
+      popupSettingsResult,
       optionsVersion,
       nonExtensionRequests,
     };

@@ -1,6 +1,6 @@
 {
   "name": "typewriter",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -13,8 +13,12 @@
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "build:proof": "node scripts/extension/build-proof.mjs",
+    "package": "bash pack.sh",
+    "package:minify": "bash pack.sh --minify",
+    "validate:package": "node scripts/validate-package.mjs",
     "test:mv3:chrome": "node scripts/extension/run-cft-proof.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
+    "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:unit": "vitest run",

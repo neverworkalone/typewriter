@@ -118,6 +118,42 @@ async function evaluate(connection, sessionId, expression) {
 }
 
 async function findExtensionId(connection, sessionId) {
+  const findWithDevToolsDom = async () => {
+    await connection.command('DOM.enable', {}, sessionId);
+    const {root} = await connection.command(
+      'DOM.getDocument',
+      {depth: -1, pierce: true},
+      sessionId
+    );
+    const candidates = [];
+    const visit = node => {
+      if (node.nodeName?.toLowerCase() === 'extensions-item') {
+        const attributes = Object.fromEntries(
+          (node.attributes || []).reduce((pairs, value, index, values) => {
+            if (index % 2 === 0) pairs.push([value, values[index + 1]]);
+            return pairs;
+          }, [])
+        );
+        candidates.push({id: attributes.id || '', attributes});
+      }
+      for (const child of node.children || []) visit(child);
+      for (const shadowRoot of node.shadowRoots || []) visit(shadowRoot);
+      if (node.contentDocument) visit(node.contentDocument);
+    };
+    visit(root);
+    const candidate = candidates.find(item => /^[a-p]{32}$/.test(item.id));
+    return candidate?.id || null;
+  };
+
+  try {
+    const extensionId = await findWithDevToolsDom();
+    if (extensionId) {
+      return {id: extensionId, items: []};
+    }
+  } catch {
+    // Fall back to the page-side traversal used by older Chrome WebUI versions.
+  }
+
   const expression = `(() => {
     function collect(root, output = []) {
       if (!root?.querySelectorAll) return output;
@@ -154,8 +190,17 @@ async function findExtensionId(connection, sessionId) {
     sessionId,
     'document.body?.innerText || document.documentElement?.innerHTML || ""',
   );
+  let devToolsDomError = '';
+  try {
+    const extensionId = await findWithDevToolsDom();
+    if (extensionId) {
+      return {id: extensionId, items};
+    }
+  } catch (error) {
+    devToolsDomError = error.message;
+  }
   throw new Error(
-    `Could not determine the unpacked extension ID. Items: ${JSON.stringify(items)} Body: ${String(bodyText).slice(0, 2000)}`,
+    `Could not determine the unpacked extension ID. Items: ${JSON.stringify(items)} Body: ${String(bodyText).slice(0, 2000)}${devToolsDomError ? ` DevTools DOM: ${devToolsDomError}` : ''}`,
   );
 }
 

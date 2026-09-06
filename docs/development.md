@@ -23,6 +23,43 @@ npm run test:unit    # Vitest component/unit tests
 npm run test:mv3:product -- --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
 ```
 
+Create the release ZIP in the default non-minified form, or explicitly request the
+minified form. Both commands rebuild the product and validate the unpacked directory
+and ZIP before returning:
+
+```sh
+TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
+TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified npm run package:minify
+npm run validate:package -- \
+  --project-root="$PWD" \
+  --dir=dist \
+  --zip=/tmp/typewriter-package/typewriter_0.3.0.zip
+```
+
+Without `TYPEWRITER_ZIP_DIR`, the ZIP is written to `~/Downloads`. The packager
+builds into `dist/`, removes development-only output, copies the full Apache-2.0
+license and third-party notice, and atomically moves the completed ZIP into place.
+During local development, a dirty-worktree build must be explicit:
+`TYPEWRITER_ALLOW_DIRTY=true TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package`.
+
+When Chrome for Testing is available, verify both the unpacked build and the exact
+ZIP contents after extraction:
+
+```sh
+npm run test:mv3:package -- \
+  --chrome="/path/to/Google Chrome for Testing" \
+  --extension=dist \
+  --zip=/tmp/typewriter-package/typewriter_0.3.0.zip
+```
+
+The package runner first applies the package validator, then loads `dist/` and a
+temporary extraction of the ZIP in isolated Chrome profiles. It runs the same popup
+and Settings checks for search forms, expressions, empty and relation results,
+content-sized layout, long-result scrolling, saved-option reflection, and zero
+external requests. Chrome's GUI-only direct ZIP installation is not automated; the
+extracted directory is the equivalent unpacked installation surface used by the
+runner.
+
 `npm run build` generates the product's packaged `dictionary.sqlite` and the
 `runtime/` SQLite WASM worker assets after the Vite bundle. If the worktree is
 dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
@@ -120,11 +157,15 @@ integrated audit, and regression commands as the local workflow:
 10. `node --test tests/*.test.mjs`
 11. `npm run test:unit`
 12. `npm run build`
+13. `npm run package`
+14. Chrome verification of the non-minified package
+15. `npm run package:minify`
+16. Chrome verification of the minified package
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
-reproducibility, integrated audit, and MV3 package checks and their regression tests
-run in a clean environment. It does not claim that the canonical dictionary has
-editorial, lexical, relation, or coverage quality.
+reproducibility, integrated audit, MV3 package, and both Chrome-loaded release
+package checks run in a clean environment. It does not claim that the canonical
+dictionary has editorial, lexical, relation, or coverage quality.
 
 ## Failure diagnosis
 

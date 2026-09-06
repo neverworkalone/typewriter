@@ -13,6 +13,7 @@ const sqliteWasmDirectory = path.join(
   projectRoot,
   'node_modules/@sqlite.org/sqlite-wasm/dist',
 );
+const shouldMinify = process.env.TYPEWRITER_BUILD_MINIFY !== 'false';
 
 async function copyRuntimeAssets() {
   const runtimeDirectory = path.join(projectRoot, 'dist/runtime');
@@ -68,7 +69,7 @@ export default defineConfig({
   plugins: [vue(), productRuntimeAssets()],
   build: {
     target: 'es2022',
-    minify: 'esbuild',
+    minify: shouldMinify ? 'esbuild' : false,
     emptyOutDir: true,
     rollupOptions: {
       input: {
