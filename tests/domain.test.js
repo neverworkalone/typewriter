@@ -224,14 +224,92 @@ describe('SearchSession', () => {
     expect(statuses).toContain('loading');
   });
 
+  it('does not retain a cancelled loading search in history', async () => {
+    const deferred = new Map();
+    const records = new Map([
+      ['w001', makeRecord('w001', '첫 검색', 'start', [{
+        id: 'w001-s1',
+        pos: 'noun',
+        gloss: '첫 결과',
+        relations: [],
+      }])],
+      ['w002', makeRecord('w002', '두 번째 검색', 'start', [{
+        id: 'w002-s1',
+        pos: 'noun',
+        gloss: '두 번째 결과',
+        relations: [],
+      }])],
+    ]);
+    const runtime = {
+      search: (term) => new Promise((resolve) => {
+        deferred.set(term, resolve);
+      }),
+      getRecord: async (id) => records.get(id) || null,
+    };
+    const session = new SearchSession({ runtime });
+
+    const first = session.searchExact('A');
+    const second = session.searchExact('B');
+    deferred.get('B')([{ id: 'w002' }]);
+    await second;
+    expect(session.state.results.map(({ id }) => id)).toEqual(['w002']);
+
+    session.back();
+    expect(session.state.status).toBe('idle');
+    expect(session.state.results).toEqual([]);
+    expect(session.history.map(({ query }) => query)).toEqual(['B']);
+    expect(session.history.some(({ query }) => query === 'A')).toBe(false);
+    deferred.get('A')([{ id: 'w001' }]);
+    await first;
+    expect(session.state.status).toBe('idle');
+  });
+
+  it('cancels a pending search before back/forward restoration', async () => {
+    let resolvePending;
+    const record = makeRecord('w026', '담담하다', 'start', [{
+      id: 'w026-s1',
+      pos: 'adjective',
+      gloss: '차분하다',
+      relations: [],
+    }]);
+    const runtime = {
+      search: async (term) => {
+        if (term === '기준') return [{ id: 'w026' }];
+        return new Promise((resolve) => {
+          resolvePending = resolve;
+        });
+      },
+      getRecord: async () => record,
+    };
+    const session = new SearchSession({ runtime });
+
+    await session.searchExact('기준');
+    const pending = session.searchExact('진행 중');
+    expect(session.state.status).toBe('loading');
+    session.back();
+    expect(session.state).toMatchObject({ status: 'ready', query: '기준' });
+    expect(session.state.canGoForward).toBe(false);
+    session.forward();
+    expect(session.state).toMatchObject({ status: 'ready', query: '기준' });
+    resolvePending([{ id: 'w026' }]);
+    await pending;
+    expect(session.state).toMatchObject({ status: 'ready', query: '기준' });
+  });
+
   it('distinguishes no-result, load failure, query failure, and missing relation targets', async () => {
     const runtime = {
       search: async (term) => {
         if (term === 'load failure') {
-          throw Object.assign(new Error('database missing'), { code: 'ASSET_LOAD_FAILED' });
+          throw Object.assign(new Error('database missing'), {
+            code: 'TIMEOUT',
+            details: { phase: 'load' },
+          });
         }
         if (term === 'query failure') {
-          throw Object.assign(new Error('SQL failed'), { code: 'QUERY_FAILED' });
+          throw Object.assign(new Error('SQL failed'), {
+            code: 'TIMEOUT',
+            details: { phase: 'query' },
+          });
         }
         return [];
       },
@@ -245,13 +323,13 @@ describe('SearchSession', () => {
     await session.searchExact('load failure');
     expect(session.state).toMatchObject({
       status: 'error',
-      error: { kind: 'load', code: 'ASSET_LOAD_FAILED' },
+      error: { kind: 'load', code: 'TIMEOUT' },
     });
 
     await session.searchExact('query failure');
     expect(session.state).toMatchObject({
       status: 'error',
-      error: { kind: 'query', code: 'QUERY_FAILED' },
+      error: { kind: 'query', code: 'TIMEOUT' },
     });
 
     await session.openRelationTarget('r404');

@@ -151,7 +151,13 @@ export class DictionaryRuntime {
           throw toRuntimeError(error, ERROR_CODES.RUNTIME_CLOSED);
         }
 
-        throw this._fail(error);
+        const runtimeError = this._fail(error);
+        runtimeError.details = {
+          ...(runtimeError.details || {}),
+          phase: 'load',
+        };
+        this._lastError = runtimeError;
+        throw runtimeError;
       });
 
     return this._readyPromise;
@@ -305,7 +311,10 @@ export class DictionaryRuntime {
         const error = new DictionaryRuntimeError(
           ERROR_CODES.TIMEOUT,
           `Dictionary runtime request timed out: ${method}.`,
-          { method },
+          {
+            method,
+            phase: method === REQUEST_METHODS.ready ? 'load' : 'query',
+          },
         );
         reject(error);
 

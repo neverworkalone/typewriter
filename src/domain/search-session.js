@@ -98,6 +98,7 @@ export class SearchSession {
     }];
     this._historyIndex = 0;
     this._activeRequest = 0;
+    this._pendingOperation = null;
   }
 
   get state() {
@@ -219,6 +220,12 @@ export class SearchSession {
   }
 
   back() {
+    if (this._pendingOperation) {
+      this._invalidatePending();
+      this._restoreHistoryState();
+      return this._state;
+    }
+
     this._activeRequest = ++this._requestSequence;
     if (this._historyIndex === 0) {
       return this._state;
@@ -230,6 +237,12 @@ export class SearchSession {
   }
 
   forward() {
+    if (this._pendingOperation) {
+      this._invalidatePending();
+      this._restoreHistoryState();
+      return this._state;
+    }
+
     this._activeRequest = ++this._requestSequence;
     if (this._historyIndex >= this._history.length - 1) {
       return this._state;
@@ -241,7 +254,7 @@ export class SearchSession {
   }
 
   reset() {
-    this._activeRequest = ++this._requestSequence;
+    this._invalidatePending();
     this._history = [{
       id: 'history-0',
       kind: 'initial',
@@ -254,21 +267,21 @@ export class SearchSession {
   }
 
   _begin(request, entry) {
-    this._activeRequest = ++this._requestSequence;
+    this._invalidatePending();
     this._history = this._history.slice(0, this._historyIndex + 1);
     const historyEntry = {
       id: `history-${++this._historySequence}`,
       ...entry,
       snapshot: null,
     };
-    this._history.push(historyEntry);
-    this._historyIndex = this._history.length - 1;
-    this._setState(createLoadingSearchState(request));
-    return {
+    const operation = {
       token: this._activeRequest,
       request,
       historyEntry,
     };
+    this._pendingOperation = operation;
+    this._setState(createLoadingSearchState(request), { recordHistory: false });
+    return operation;
   }
 
   async _run(operation, load, { emptyReason = 'no-exact-match' } = {}) {
@@ -295,7 +308,7 @@ export class SearchSession {
   }
 
   _isCurrent(operation) {
-    return operation.token === this._activeRequest && this._history.includes(operation.historyEntry);
+    return operation.token === this._activeRequest && this._pendingOperation === operation;
   }
 
   _commit(operation, state) {
@@ -303,6 +316,9 @@ export class SearchSession {
       return this._state;
     }
 
+    this._pendingOperation = null;
+    this._history.push(operation.historyEntry);
+    this._historyIndex = this._history.length - 1;
     operation.historyEntry.snapshot = state;
     this._setState(state);
     return this._state;
@@ -313,16 +329,27 @@ export class SearchSession {
     this._setState(snapshot);
   }
 
-  _setState(state) {
+  _setState(state, { recordHistory = true } = {}) {
     this._state = withHistoryFlags(state, {
       canGoBack: this._historyIndex > 0,
       canGoForward: this._historyIndex < this._history.length - 1,
     });
-    this._history[this._historyIndex].snapshot = this._state;
+    if (recordHistory) {
+      this._history[this._historyIndex].snapshot = this._state;
+    }
 
     for (const listener of this._listeners) {
       listener(this._state);
     }
+  }
+
+  _invalidatePending() {
+    if (this._pendingOperation) {
+      this._pendingOperation.cancelled = true;
+      this._pendingOperation = null;
+    }
+
+    this._activeRequest = ++this._requestSequence;
   }
 }
 

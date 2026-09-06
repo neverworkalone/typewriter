@@ -91,9 +91,13 @@ export function classifySearchError(error) {
   const message = typeof error?.message === 'string' && error.message.length > 0
     ? error.message
     : '검색 중 오류가 발생했습니다.';
+  const phase = error?.details?.phase;
+  const kind = phase === 'load' || phase === 'query'
+    ? phase
+    : LOAD_FAILURE_CODES.has(code) ? 'load' : 'query';
 
   return {
-    kind: LOAD_FAILURE_CODES.has(code) ? 'load' : 'query',
+    kind,
     code,
     message,
     ...(error?.details === undefined ? {} : { details: error.details }),
