@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
+          node-version: 22.13.x
 
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -55,3 +55,9 @@ jobs:
 
       - name: Run toolchain tests
         run: node --test tests/*.test.mjs
+
+      - name: Run product unit tests
+        run: npm run test:unit
+
+      - name: Build product extension
+        run: npm run build

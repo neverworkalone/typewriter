@@ -3,12 +3,27 @@
 ## Current requirements
 
 The complete M2 toolchain uses the built-in `node:sqlite` module and the vendored
-SQLite WASM runtime, so it requires Node.js 22.5 or newer; CI uses Node.js 22.x.
+SQLite WASM runtime, and the product uses Vite 8.2.2. Together they require
+Node.js 22.13.0 or newer; CI uses Node.js 22.13.x.
 Install the pinned runtime before running the commands:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund
 ```
+
+The product MV3 shell uses Vue 3 with Vite and is kept separate from the M2 proof
+under `extension/mv3-proof/`. The two product entrypoints are `popup.html` and
+`options.html`; their Vue source lives under `src/popup/` and `src/options/`.
+Use the following commands while working on the product shell:
+
+```sh
+npm run dev          # Vite development server
+npm run build        # production MV3 assets in dist/, minified by esbuild
+npm run test:unit    # Vitest component/unit tests
+```
+
+`npm run test` remains the Node.js test command for the M2 toolchain. The product
+build does not replace or modify the M2 proof source or its generated package.
 
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
@@ -74,7 +89,7 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.x, and runs the same validator, normalization, SQLite build, MV3 package,
+Node.js 22.13.x, and runs the same validator, normalization, SQLite build, MV3 package,
 integrated audit, and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
@@ -87,6 +102,8 @@ integrated audit, and regression commands as the local workflow:
 8. `node scripts/extension/build-proof.mjs`
 9. `node scripts/verify/m2-pipeline.mjs`
 10. `node --test tests/*.test.mjs`
+11. `npm run test:unit`
+12. `npm run build`
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
 reproducibility, integrated audit, and MV3 package checks and their regression tests

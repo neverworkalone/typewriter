@@ -24,9 +24,11 @@ runtime, not by the dictionary build.
 
 ## Current and next-needed directories
 
-The current repository contains `public/` for the existing extension and brand
-assets, `extension/mv3-proof/` for the M2 MV3 source proof, and `docs/` for
-repository, build, and policy documentation. The canonical input location used by
+The current repository contains `public/` for product manifest and brand assets,
+`src/popup/` and `src/options/` for the product Vue entrypoints, and
+`extension/mv3-proof/` for the independent M2 MV3 source proof. The root
+`popup.html` and `options.html` files are the product HTML entrypoints; Vite writes
+their generated assets to ignored `dist/`. The canonical input location used by
 the M2 toolchain is:
 
 ```text
