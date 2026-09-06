@@ -29,6 +29,16 @@ node --test tests/normalize-canonical.test.mjs
 node scripts/build/dictionary.mjs
 node --test tests/build-dictionary.test.mjs
 node --test tests/reproducibility.test.mjs
+node --test tests/*.test.mjs
+```
+
+The one-command M2 audit runs the schema and dataset checks, normalization, two
+logical reproducibility builds, representative queries, metadata comparisons, and
+the packaged MV3 asset build. Use `--allow-dirty` only while developing in a dirty
+worktree:
+
+```sh
+node scripts/verify/m2-pipeline.mjs --allow-dirty
 ```
 
 Build the packaged MV3 proof locally with the same clean-build contract. While
@@ -65,7 +75,7 @@ commands themselves should pass.
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
 Node.js 22.x, and runs the same validator, normalization, SQLite build, MV3 package,
-and regression commands as the local workflow:
+integrated audit, and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
@@ -75,12 +85,13 @@ and regression commands as the local workflow:
 6. `node --test tests/normalize-canonical.test.mjs`
 7. `node scripts/build/dictionary.mjs`
 8. `node scripts/extension/build-proof.mjs`
-9. `node --test tests/*.test.mjs`
+9. `node scripts/verify/m2-pipeline.mjs`
+10. `node --test tests/*.test.mjs`
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
-reproducibility, and MV3 package checks and their regression tests run in a clean
-environment. It does not claim that the canonical dictionary has editorial, lexical,
-relation, or coverage quality.
+reproducibility, integrated audit, and MV3 package checks and their regression tests
+run in a clean environment. It does not claim that the canonical dictionary has
+editorial, lexical, relation, or coverage quality.
 
 ## Failure diagnosis
 

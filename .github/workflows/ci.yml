@@ -50,5 +50,8 @@ jobs:
       - name: Build MV3 proof package
         run: node scripts/extension/build-proof.mjs
 
+      - name: Run integrated M2 audit
+        run: node scripts/verify/m2-pipeline.mjs
+
       - name: Run toolchain tests
         run: node --test tests/*.test.mjs
