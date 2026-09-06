@@ -405,6 +405,7 @@ export async function runCftProduct({
       '(() => {',
       '  const active = document.activeElement;',
       '  return {',
+      '    activeIsInput: active?.matches("[aria-label=\\"검색어\\"]") || false,',
       '    activeRecordId: active?.dataset.recordId || "",',
       '    activeRole: active?.getAttribute("role") || "",',
       '    activeSelected: active?.getAttribute("aria-selected") || "",',
@@ -412,6 +413,26 @@ export async function runCftProduct({
       '    hasListbox: Boolean(document.querySelector("[role=\\"listbox\\"]")),',
       '  };',
       '})() ',
+    ].join('\n'));
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await sleep(50);
+    const popupImeTabToButton = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  activeIsSearchButton: document.activeElement?.matches(".search-button") || false,',
+      '}))()',
     ].join('\n'));
     await connection.command('Input.dispatchKeyEvent', {
       type: 'keyDown',
@@ -907,12 +928,14 @@ export async function runCftProduct({
       || popupImeStart.hasRecord
       || popupImeEarly.hasRecord
       || popupImeEarly.inputValue !== 'ㄷ'
-      || popupImeKeyboard.defaultPrevented !== true
-      || popupImeKeyboardState.activeRecordId !== 'w026'
-      || popupImeKeyboardState.activeRole !== 'option'
-      || popupImeKeyboardState.activeSelected !== 'true'
-      || popupImeKeyboardState.candidateCount !== 1
-      || !popupImeKeyboardState.hasListbox
+      || popupImeKeyboard.defaultPrevented
+      || !popupImeKeyboardState.activeIsInput
+      || popupImeKeyboardState.activeRecordId !== ''
+      || popupImeKeyboardState.activeRole !== ''
+      || popupImeKeyboardState.activeSelected !== ''
+      || popupImeKeyboardState.candidateCount !== 0
+      || popupImeKeyboardState.hasListbox
+      || !popupImeTabToButton.activeIsSearchButton
       || !popupImeTab.activeIsRelation
       || popupImeTab.outlineStyle !== 'solid'
       || !popupImeShiftTab.activeIsSearchButton

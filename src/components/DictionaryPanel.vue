@@ -66,6 +66,7 @@ const emit = defineEmits([
 
 const searchBar = ref(null);
 const candidateRefs = new Map();
+const resultRefs = new Map();
 
 const isReady = computed(() => (
   props.records.length > 0
@@ -79,7 +80,7 @@ const candidateListEnabled = computed(() => (
   props.interactive
   && props.mode === SEARCH_MODES.exact
   && props.status === SEARCH_STATUS.ready
-  && props.records.length > 0
+  && props.records.length > 1
 ));
 const selectedCandidateIndex = computed(() => (
   props.records.findIndex((record) => record.id === props.selectedRecordId)
@@ -113,6 +114,15 @@ function setCandidateRef(recordId, instance) {
     candidateRefs.set(recordId, instance);
   } else {
     candidateRefs.delete(recordId);
+  }
+}
+
+function setResultRef(recordId, instance) {
+  const element = instance?.$el || instance;
+  if (element) {
+    resultRefs.set(recordId, element);
+  } else {
+    resultRefs.delete(recordId);
   }
 }
 
@@ -156,6 +166,16 @@ function handleCandidateFocus(recordId) {
   }
 }
 
+function focusCandidateResult(recordId) {
+  nextTick(() => {
+    const result = resultRefs.get(recordId);
+    if (!result) return;
+
+    const firstRelation = result.querySelector('.relation-link:not(.is-static)');
+    (firstRelation || result).focus?.();
+  });
+}
+
 function handleCandidateKeydown(recordId, event) {
   if (!candidateListEnabled.value) return;
 
@@ -170,6 +190,7 @@ function handleCandidateKeydown(recordId, event) {
   if (event.key === 'Enter') {
     event.preventDefault();
     emit('select-candidate', recordId);
+    focusCandidateResult(recordId);
     return;
   }
   if (event.key === 'Escape') {
@@ -235,6 +256,7 @@ defineExpose({ focusSearch });
       <DictionaryResult
         v-for="record in records"
         :key="record.id"
+        :ref="(instance) => setResultRef(record.id, instance)"
         :record="record"
         :settings="settings"
         :compact="compact"

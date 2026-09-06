@@ -181,6 +181,8 @@ describe('product MV3 Vue shells', () => {
     expect(committedEnter.defaultPrevented).toBe(true);
     expect(calls).toEqual([record.lemma]);
     expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+    expect(host.querySelector('[role="listbox"]')).toBeNull();
+    expect(host.querySelectorAll('[role="option"]')).toHaveLength(0);
   });
 
   it('moves, selects, and restores focus for multiple keyboard candidates', async () => {
@@ -256,6 +258,8 @@ describe('product MV3 Vue shells', () => {
     await flush();
     expect(document.activeElement).toBe(options()[1]);
 
+    const relationLink = host.querySelector('[data-record-id="second"] [data-target-record-id="target"]');
+
     const enter = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
@@ -265,6 +269,7 @@ describe('product MV3 Vue shells', () => {
     await flush();
     expect(enter.defaultPrevented).toBe(true);
     expect(calls).toEqual(['후보']);
+    expect(document.activeElement).toBe(relationLink);
 
     const up = new KeyboardEvent('keydown', {
       bubbles: true,
@@ -276,7 +281,6 @@ describe('product MV3 Vue shells', () => {
     expect(document.activeElement).toBe(options()[0]);
     expect(options()[0].getAttribute('aria-selected')).toBe('true');
 
-    const relationLink = host.querySelector('[data-record-id="second"] [data-target-record-id="target"]');
     relationLink.focus();
     expect(document.activeElement).toBe(relationLink);
     expect(relationLink.tabIndex).toBe(0);

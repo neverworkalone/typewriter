@@ -39,14 +39,17 @@ history snapshot; candidate ranking does not rewrite that navigation context.
 
 ## Keyboard selection contract
 
-The popup exposes the ready exact-search candidates as a separate `listbox`; each
-start record is an `option` with `aria-posinset`, `aria-setsize`, and
-`aria-selected`. The full result cards remain outside that listbox, so their
-relation controls stay ordinary tab stops. Arrow keys move the selected option
-without wrapping at either boundary, and Enter confirms the current option
-without issuing a second exact search. Relation-target screens do not expose a
-candidate list or candidate selection state. The selected record ID is kept in
-the current `SearchSession` history snapshot, so relation-target navigation and a
+The popup exposes ready exact-search candidates as a separate `listbox` only
+when two or more start records match; a single exact result keeps the M3 result
+layout without a duplicate selector. Each start record is an `option` with
+`aria-posinset`, `aria-setsize`, and `aria-selected`. The full result cards remain
+outside that listbox, so their relation controls stay ordinary tab stops. Arrow
+keys move the selected option without wrapping at either boundary, and Enter
+confirms the current option without issuing a second exact search, then moves
+focus to the selected result's first relation control (or the result card when
+no relation control exists). Relation-target screens do not expose a candidate
+list or candidate selection state. The selected record ID is kept in the
+current `SearchSession` history snapshot, so relation-target navigation and a
 later `back()` restore the same candidate selection while a new exact search
 starts with no selection.
 
