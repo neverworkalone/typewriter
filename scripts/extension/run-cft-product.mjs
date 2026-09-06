@@ -218,9 +218,12 @@ async function createExtensionSession(connection, extensionId, page) {
 async function closeChrome(child) {
   if (child.exitCode === null) {
     child.kill('SIGTERM');
-    await Promise.race([once(child, 'exit'), sleep(2000)]);
+    await Promise.race([once(child, 'exit').catch(() => {}), sleep(2000)]);
   }
-  if (child.exitCode === null) child.kill('SIGKILL');
+  if (child.exitCode === null) {
+    child.kill('SIGKILL');
+    await Promise.race([once(child, 'exit').catch(() => {}), sleep(2000)]);
+  }
 }
 
 async function removeTemporaryDirectory(directory) {
