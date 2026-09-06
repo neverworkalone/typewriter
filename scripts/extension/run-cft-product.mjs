@@ -693,6 +693,7 @@ export async function runCftProduct({
       '  const searchRow = document.querySelector(".search-row");',
       '  const footerDivider = document.querySelector(".footer-divider");',
       '  const copy = document.querySelector(".state-copy strong");',
+      '  const copyBlock = document.querySelector(".state-copy");',
       '  return {',
       '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
       '    bodyHeight: document.body.scrollHeight,',
@@ -703,7 +704,7 @@ export async function runCftProduct({
       '    hasDescription: Boolean(document.querySelector(".state-copy span")),',
       '    hasRetry: Boolean(document.querySelector(".retry-button")),',
       '    stateRegionHeight: Math.round(document.querySelector(".dictionary-state-region").getBoundingClientRect().height),',
-      '    copyCenter: copy ? Math.round((copy.getBoundingClientRect().top + copy.getBoundingClientRect().bottom) * 50) / 100 : null,',
+      '    copyCenter: copyBlock ? Math.round((copyBlock.getBoundingClientRect().top + copyBlock.getBoundingClientRect().bottom) * 50) / 100 : null,',
       '    emptyAreaMidpoint: searchRow && footerDivider ? Math.round((searchRow.getBoundingClientRect().bottom + footerDivider.getBoundingClientRect().top) * 50) / 100 : null,',
       '  };',
       '})() ',
@@ -950,8 +951,8 @@ export async function runCftProduct({
       || popupEmptyState.appHeight !== popupEmptyState.panelHeight
       || popupEmptyState.footerBottomGap > 10
       || !popupEmptyState.hasFooter
-      || popupEmptyState.copy !== '검색 결과가 없습니다.'
-      || popupEmptyState.hasDescription
+      || popupEmptyState.copy !== '사전에 없는 말입니다.현재 사전에 정확히 일치하는 출발어가 없습니다.'
+      || !popupEmptyState.hasDescription
       || popupEmptyState.hasRetry
       || popupEmptyState.stateRegionHeight < 104
       || popupEmptyState.copyCenter === null
