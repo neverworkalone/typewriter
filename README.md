@@ -70,6 +70,9 @@ Principles:
 - recent searches, favorites, settings, and other user data stay separate from the dictionary database;
 - runtime lookup should not depend on external dictionary or AI services.
 
+The UI-independent search state and Editorial Model v1 projection are documented in
+[`docs/domain-model.md`](docs/domain-model.md).
+
 ## Data policy
 
 External APIs, dictionaries, corpora, and LLMs may be used as reference, verification, or draft-generation tools when their terms permit the intended use.
