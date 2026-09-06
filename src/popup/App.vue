@@ -80,6 +80,13 @@ async function search(value = query.value) {
   await session.searchExact(term);
 }
 
+function clearSearch() {
+  query.value = '';
+  if (typeof session.reset === 'function') {
+    session.reset();
+  }
+}
+
 async function openRelation(relation) {
   await session.openRelationTarget(relation);
 }
@@ -143,6 +150,7 @@ onBeforeUnmount(() => {
       autofocus
       @update:query="query = $event"
       @submit="search"
+      @clear="clearSearch"
       @relation="openRelation"
       @retry="retry"
       @open-settings="openOptions"
