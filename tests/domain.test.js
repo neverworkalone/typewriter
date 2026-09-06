@@ -248,6 +248,8 @@ describe('SearchSession', () => {
     expect(relation.status).toBe('ready');
     expect(relation.mode).toBe('relation-target');
     expect(relation.targetRecordId).toBe('r008');
+    expect(relation.selectedRecordId).toBe(null);
+    expect(() => session.selectCandidate('r008')).toThrowError('exact 검색 결과가 준비된 뒤 후보를 선택할 수 있습니다.');
     expect(relation.results[0]).toMatchObject({
       id: 'r008',
       role: 'reference-only',

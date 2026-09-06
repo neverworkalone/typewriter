@@ -128,6 +128,9 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-record-id="r008"]')).not.toBeNull();
     expect(host.querySelector('.back-button')).toBeNull();
     expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
+    expect(host.querySelector('[role="listbox"]')).toBeNull();
+    expect(host.querySelectorAll('[role="option"]')).toHaveLength(0);
+    expect(document.activeElement).toBe(input);
   });
 
   it('does not submit during Korean IME composition and submits once after compositionend', async () => {
@@ -273,7 +276,11 @@ describe('product MV3 Vue shells', () => {
     expect(document.activeElement).toBe(options()[0]);
     expect(options()[0].getAttribute('aria-selected')).toBe('true');
 
-    options()[1].querySelector('[data-target-record-id="target"]').click();
+    const relationLink = host.querySelector('[data-record-id="second"] [data-target-record-id="target"]');
+    relationLink.focus();
+    expect(document.activeElement).toBe(relationLink);
+    expect(relationLink.tabIndex).toBe(0);
+    relationLink.click();
     await flush();
     expect(host.querySelector('[data-record-id="target"]')).not.toBeNull();
     expect(document.activeElement).toBe(input);

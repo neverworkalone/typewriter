@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue';
 
-import { SEARCH_STATUS } from '../domain/search-state.js';
+import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 import DictionaryResult from './DictionaryResult.vue';
 import ProductFooter from './ProductFooter.vue';
@@ -77,6 +77,7 @@ const isInitialLoading = computed(() => (
 const isRelationTarget = computed(() => isReady.value && props.mode === 'relation-target');
 const candidateListEnabled = computed(() => (
   props.interactive
+  && props.mode === SEARCH_MODES.exact
   && props.status === SEARCH_STATUS.ready
   && props.records.length > 0
 ));
@@ -132,15 +133,7 @@ function focusCandidateAt(index, event) {
 
   event?.preventDefault();
   emit('select-candidate', record.id);
-  nextTick(() => {
-    candidateRefs.get(record.id)?.focus?.();
-    if (typeof document === 'undefined') return;
-
-    const element = document.getElementById(`search-candidate-${record.id}`);
-    if (element && document.activeElement !== element) {
-      element.focus();
-    }
-  });
+  nextTick(() => candidateRefs.get(record.id)?.focus());
 }
 
 function moveCandidate(direction, event) {
@@ -163,7 +156,7 @@ function handleCandidateFocus(recordId) {
   }
 }
 
-function handleCandidateKeydown({ recordId, event }) {
+function handleCandidateKeydown(recordId, event) {
   if (!candidateListEnabled.value) return;
 
   if (event.key === 'ArrowDown') {
@@ -216,27 +209,38 @@ defineExpose({ focusSearch });
 
     <div v-if="isReady" class="dictionary-scroll-region">
       <div
+        v-if="candidateListEnabled"
         class="candidate-list"
-        :role="candidateListEnabled ? 'listbox' : undefined"
-        :aria-label="candidateListEnabled ? '검색 후보' : undefined"
+        role="listbox"
+        aria-label="검색 후보"
       >
-        <DictionaryResult
+        <div
           v-for="record in records"
           :key="record.id"
-          :ref="(instance) => setCandidateRef(record.id, instance)"
-          :record="record"
-          :settings="settings"
-          :compact="compact"
-          :interactive="interactive"
-          :candidate="candidateListEnabled"
-          :candidate-selected="candidateListEnabled && record.id === selectedRecordId"
-          :candidate-index="candidateIndex(record.id)"
-          :candidate-count="records.length"
-          @relation="emit('relation', $event)"
-          @candidate-focus="handleCandidateFocus"
-          @candidate-keydown="handleCandidateKeydown"
-        />
+          :ref="(element) => setCandidateRef(record.id, element)"
+          class="candidate-option"
+          :class="{ 'is-selected': record.id === selectedRecordId }"
+          :id="`search-candidate-${record.id}`"
+          :data-record-id="record.id"
+          role="option"
+          tabindex="-1"
+          :aria-selected="String(record.id === selectedRecordId)"
+          :aria-posinset="candidateIndex(record.id) + 1"
+          :aria-setsize="records.length"
+          @focus="handleCandidateFocus(record.id)"
+          @keydown="handleCandidateKeydown(record.id, $event)"
+          @click="emit('select-candidate', record.id)"
+        >{{ record.lemma }}</div>
       </div>
+      <DictionaryResult
+        v-for="record in records"
+        :key="record.id"
+        :record="record"
+        :settings="settings"
+        :compact="compact"
+        :interactive="interactive"
+        @relation="emit('relation', $event)"
+      />
       <ProductFooter
         :compact="compact"
         @open-settings="emit('open-settings')"
@@ -308,8 +312,38 @@ defineExpose({ focusSearch });
 
 .candidate-list {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  flex-direction: row;
   gap: 8px;
+  padding-bottom: 2px;
+}
+
+.candidate-option {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #d8d3cf;
+  border-radius: 6px;
+  background: #fff;
+  color: #5f5955;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.candidate-option.is-selected {
+  border-color: #e5534b;
+  background: rgba(229, 83, 75, 0.06);
+  color: #7e433e;
+  font-weight: 700;
+}
+
+.candidate-option:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
 }
 
 .dictionary-scroll-region::-webkit-scrollbar {
@@ -411,6 +445,14 @@ defineExpose({ focusSearch });
 
 .dictionary-panel.is-compact .candidate-list {
   gap: 7px;
+  padding-bottom: 1.75px;
+}
+
+.dictionary-panel.is-compact .candidate-option {
+  padding: 3.5px 7px;
+  border-radius: 5.25px;
+  font-size: 11.375px;
+  line-height: 15.75px;
 }
 
 .dictionary-panel.is-compact.has-results .dictionary-scroll-region {

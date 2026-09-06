@@ -413,6 +413,50 @@ export async function runCftProduct({
       '  };',
       '})() ',
     ].join('\n'));
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await sleep(50);
+    const popupImeTab = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  activeIsRelation: document.activeElement?.matches(".relation-link") || false,',
+      '  outlineStyle: getComputedStyle(document.activeElement).outlineStyle,',
+      '}))()',
+    ].join('\n'));
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyDown',
+      key: 'Tab',
+      code: 'Tab',
+      modifiers: 8,
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await connection.command('Input.dispatchKeyEvent', {
+      type: 'keyUp',
+      key: 'Tab',
+      code: 'Tab',
+      modifiers: 8,
+      windowsVirtualKeyCode: 9,
+      nativeVirtualKeyCode: 9,
+    }, popupIme.sessionId);
+    await sleep(50);
+    const popupImeShiftTab = await evaluate(connection, popupIme.sessionId, [
+      '(() => ({',
+      '  activeClass: document.activeElement?.className || "",',
+      '  activeIsSearchButton: document.activeElement?.matches(".search-button") || false,',
+      '}))()',
+    ].join('\n'));
     await evaluate(connection, popupIme.sessionId, 'document.querySelector("[data-target-record-id=\\"r008\\"]")?.click()');
     await waitForCondition(
       connection,
@@ -561,6 +605,9 @@ export async function runCftProduct({
       '(() => ({',
       '  hasBackButton: Boolean(document.querySelector(".back-button")),',
       '  isRelationTarget: document.querySelector("[data-dictionary-panel]")?.classList.contains("is-relation-target") || false,',
+      '  inputFocused: document.activeElement?.matches("[aria-label=\\"검색어\\"]") || false,',
+      '  hasCandidateList: Boolean(document.querySelector("[role=\\"listbox\\"]")),',
+      '  candidateCount: document.querySelectorAll("[role=\\"option\\"]").length,',
       '  panelHeight: Math.round(document.querySelector("[data-dictionary-panel]").getBoundingClientRect().height),',
       '  resultTop: Math.round(document.querySelector("[data-dictionary-record]").getBoundingClientRect().top),',
       '}))()',
@@ -866,10 +913,13 @@ export async function runCftProduct({
       || popupImeKeyboardState.activeSelected !== 'true'
       || popupImeKeyboardState.candidateCount !== 1
       || !popupImeKeyboardState.hasListbox
+      || !popupImeTab.activeIsRelation
+      || popupImeTab.outlineStyle !== 'solid'
+      || !popupImeShiftTab.activeIsSearchButton
       || !popupImeRelation.inputFocused
       || popupImeRelation.hasBackButton
     ) {
-      throw new Error('IME/keyboard candidate CFT assertions failed: ' + JSON.stringify({ popupImeStart, popupImeEarly, popupImeKeyboard, popupImeKeyboardState, popupImeRelation }));
+      throw new Error('IME/keyboard candidate CFT assertions failed: ' + JSON.stringify({ popupImeStart, popupImeEarly, popupImeKeyboard, popupImeKeyboardState, popupImeTab, popupImeShiftTab, popupImeRelation }));
     }
     if (
       popupEmptyState.panelHeight >= 240
@@ -909,6 +959,9 @@ export async function runCftProduct({
     if (
       popupRelation.hasBackButton
       || !popupRelation.isRelationTarget
+      || !popupRelation.inputFocused
+      || popupRelation.hasCandidateList
+      || popupRelation.candidateCount !== 0
       || popupRelation.panelHeight >= 376
     ) {
       throw new Error('Relation-target layout CFT assertions failed: ' + JSON.stringify(popupRelation));
@@ -1004,6 +1057,8 @@ export async function runCftProduct({
       popupImeEarly,
       popupImeKeyboard,
       popupImeKeyboardState,
+      popupImeTab,
+      popupImeShiftTab,
       popupImeRelation,
       popupEscapeFirst,
       popupEscapeAfterFirst,

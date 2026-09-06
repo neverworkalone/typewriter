@@ -205,10 +205,10 @@ export class SearchSession {
       );
     }
 
-    if (this._state.status !== SEARCH_STATUS.ready) {
+    if (this._state.status !== SEARCH_STATUS.ready || this._state.mode !== SEARCH_MODES.exact) {
       throw new SearchDomainError(
         'CANDIDATE_NOT_AVAILABLE',
-        '검색 결과가 준비된 뒤 후보를 선택할 수 있습니다.',
+        'exact 검색 결과가 준비된 뒤 후보를 선택할 수 있습니다.',
       );
     }
 
