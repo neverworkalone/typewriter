@@ -221,9 +221,7 @@ export class SearchSession {
 
   back() {
     if (this._pendingOperation) {
-      this._invalidatePending();
-      this._restoreHistoryState();
-      return this._state;
+      return this.cancelPending();
     }
 
     this._activeRequest = ++this._requestSequence;
@@ -263,6 +261,16 @@ export class SearchSession {
     }];
     this._historyIndex = 0;
     this._setState(this._history[0].snapshot);
+    return this._state;
+  }
+
+  cancelPending() {
+    if (!this._pendingOperation) {
+      return this._state;
+    }
+
+    this._invalidatePending();
+    this._restoreHistoryState();
     return this._state;
   }
 

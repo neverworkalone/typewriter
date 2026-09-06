@@ -11,9 +11,9 @@ Install the pinned runtime before running the commands:
 npm ci --ignore-scripts --no-audit --no-fund
 ```
 
-The product MV3 shell uses Vue 3 with Vite and is kept separate from the M2 proof
-under `extension/mv3-proof/`. The two product entrypoints are `popup.html` and
-`options.html`; their Vue source lives under `src/popup/` and `src/options/`.
+The product MV3 shell uses Vue 3 with Vite. The two product entrypoints are
+`popup.html` and `options.html`; their Vue source lives under `src/popup/` and
+`src/options/`.
 Use the following commands while working on the product shell:
 
 ```sh
@@ -65,7 +65,8 @@ runner.
 dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
 
 `npm run test` remains the Node.js test command for the M2 toolchain. The product
-build does not replace or modify the M2 proof source or its generated package.
+build does not replace the M2 data audit; product/package verification runs through
+`npm run test:mv3:package`.
 
 The product popup and options page use only extension-local assets and the
 storage permission. When Chrome for Testing is available, the product CFT check
@@ -73,10 +74,11 @@ loads both entrypoints, searches the packaged dictionary, follows a relation and
 returns with back, verifies keyboard focus, checks the five default toggles, and
 reloads Settings to confirm explicit-save persistence. It also checks that the
 empty result stays content-sized, that the four-sense `쓰다` result actually
-overflows and scrolls inside the popup, and that search/focus/footer remain
+overflows and scrolls inside the popup, verifies the product runtime's SQLite
+`query_only` and write rejection, and confirms that search/focus/footer remain
 available. It fails if the pages make a non-extension request. The runner uses
---use-mock-keychain because it is an isolated automation profile and does not
-need macOS Keychain-backed browser credentials.
+isolated temporary profiles with `--password-store=basic` and
+`--use-mock-keychain`; it never uses the user's Chrome account or macOS Keychain.
 
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
@@ -101,20 +103,11 @@ node --test tests/*.test.mjs
 ```
 
 The one-command M2 audit runs the schema and dataset checks, normalization, two
-logical reproducibility builds, representative queries, metadata comparisons, and
-the packaged MV3 asset build. Use `--allow-dirty` only while developing in a dirty
-worktree:
+logical reproducibility builds, representative queries, and metadata comparisons.
+Use `--allow-dirty` only while developing in a dirty worktree:
 
 ```sh
 node scripts/verify/m2-pipeline.mjs --allow-dirty
-```
-
-Build the packaged MV3 proof locally with the same clean-build contract. While
-developing locally, pass `--allow-dirty` explicitly if the worktree has uncommitted
-changes:
-
-```sh
-node scripts/extension/build-proof.mjs --allow-dirty
 ```
 
 The default SQLite build requires a clean Git worktree. While developing locally,
@@ -142,8 +135,8 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.13.x, and runs the same validator, normalization, SQLite build, MV3 package,
-integrated audit, and regression commands as the local workflow:
+Node.js 22.13.x, and runs the same validator, normalization, SQLite build, product
+package, integrated audit, and regression commands as the local workflow:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
@@ -152,18 +145,17 @@ integrated audit, and regression commands as the local workflow:
 5. `node scripts/normalize/canonical.mjs`
 6. `node --test tests/normalize-canonical.test.mjs`
 7. `node scripts/build/dictionary.mjs`
-8. `node scripts/extension/build-proof.mjs`
-9. `node scripts/verify/m2-pipeline.mjs`
-10. `node --test tests/*.test.mjs`
-11. `npm run test:unit`
-12. `npm run build`
-13. `npm run package`
-14. Chrome verification of the non-minified package
-15. `npm run package:minify`
-16. Chrome verification of the minified package
+8. `node scripts/verify/m2-pipeline.mjs`
+9. `node --test tests/*.test.mjs`
+10. `npm run test:unit`
+11. `npm run build`
+12. `npm run package`
+13. Chrome verification of the non-minified product package
+14. `npm run package:minify`
+15. Chrome verification of the minified product package
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
-reproducibility, integrated audit, MV3 package, and both Chrome-loaded release
+reproducibility, integrated audit, product package, and both Chrome-loaded release
 package checks run in a clean environment. It does not claim that the canonical
 dictionary has editorial, lexical, relation, or coverage quality.
 
@@ -198,7 +190,7 @@ use the smallest self-authored fixture that demonstrates the behavior.
 | --- | --- |
 | M0 | Canonical-only file discovery, strict UTF-8 decoding, JSON parsing, blank-row and final-newline behavior, empty initial state, line-aware errors, and repeatable tests/CI. |
 | M1 | Editorial model and pilot-data review: senses, expressions, relation categories, and the criteria used to curate writer-facing records. |
-| M2 | Formal JSONL schema and lexical fields, dataset-wide reference and relation integrity, duplicate and part-of-speech checks, normalization, deterministic SQLite build, generated metadata, and the packaged MV3 SQLite WASM proof. |
+| M2 | Formal JSONL schema and lexical fields, dataset-wide reference and relation integrity, duplicate and part-of-speech checks, normalization, deterministic SQLite build, generated metadata, and SQLite data regression. |
 
 Do not extend the M0 workflow to enforce an unvalidated lexical schema or to build the
 Chrome product. Those checks belong to the milestone where their requirements are

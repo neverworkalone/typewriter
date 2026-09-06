@@ -36,6 +36,7 @@ const settingsStore = props.settingsStore || createSettingsStore();
 const query = ref('');
 const searchState = ref(session.state);
 const settings = ref({ ...DEFAULT_SETTINGS });
+const runtimeStatus = ref(null);
 const lastRecords = ref([]);
 let unsubscribe = null;
 
@@ -72,6 +73,16 @@ async function loadSettings() {
   }
 }
 
+async function loadRuntimeStatus() {
+  if (typeof runtime?.getRuntimeStatus !== 'function') return;
+
+  try {
+    runtimeStatus.value = await runtime.getRuntimeStatus();
+  } catch {
+    runtimeStatus.value = null;
+  }
+}
+
 async function search(value = query.value) {
   const term = typeof value === 'string' ? value.trim() : '';
   if (!term) return;
@@ -81,10 +92,10 @@ async function search(value = query.value) {
 }
 
 function clearSearch() {
-  query.value = '';
-  if (typeof session.reset === 'function') {
-    session.reset();
+  if (typeof session.cancelPending === 'function') {
+    session.cancelPending();
   }
+  query.value = '';
 }
 
 async function openRelation(relation) {
@@ -128,6 +139,7 @@ function openOptions() {
 onMounted(() => {
   unsubscribe = session.subscribe(applyState);
   void loadSettings();
+  void loadRuntimeStatus();
 });
 
 onBeforeUnmount(() => {
@@ -137,7 +149,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="popup-app" data-product-surface="popup">
+  <main
+    class="popup-app"
+    data-product-surface="popup"
+    :data-runtime-query-only="runtimeStatus?.query_only"
+    :data-runtime-write-blocked="runtimeStatus?.write_blocked"
+    :data-runtime-persisted-write-count="runtimeStatus?.persisted_write_count"
+  >
     <span class="sr-only">말의 결을 찾는 사전</span>
     <DictionaryPanel
       :query="query"

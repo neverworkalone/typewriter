@@ -96,11 +96,37 @@ async function loadDatabase() {
       );
     }
 
+    let writeBlocked = false;
+    try {
+      database.exec(
+        "INSERT INTO records (id, record_type, role, lemma) VALUES ('__typewriter_read_only_probe__', 'entry', 'start', '쓰기 금지')",
+      );
+    } catch {
+      writeBlocked = true;
+    }
+
+    const persistedWriteCount = Number(database.selectValue(
+      "SELECT COUNT(*) FROM records WHERE id = '__typewriter_read_only_probe__'",
+    ));
+    if (!writeBlocked || persistedWriteCount !== 0) {
+      throw workerError(
+        ERROR_CODES.DATABASE_LOAD_FAILED,
+        'The packaged dictionary accepted or persisted a write.',
+        {
+          query_only: queryOnly,
+          write_blocked: writeBlocked,
+          persisted_write_count: persistedWriteCount,
+        },
+      );
+    }
+
     return {
       database,
       sqlite3,
       bytes: bytes.byteLength,
       queryOnly,
+      writeBlocked,
+      persistedWriteCount,
     };
   } catch (error) {
     try {
@@ -219,6 +245,8 @@ function getStatus(runtime) {
     ready: true,
     state: 'ready',
     query_only: runtime.queryOnly,
+    write_blocked: runtime.writeBlocked,
+    persisted_write_count: runtime.persistedWriteCount,
     database_bytes: runtime.bytes,
     sqlite_version: runtime.sqlite3.version.libVersion,
   };

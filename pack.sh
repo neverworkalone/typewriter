@@ -38,8 +38,8 @@ TYPEWRITER_BUILD_MINIFY="$typewriterMinify" npm run build
 rm -f "$DIST_DIR/favicon.ico" "$DIST_DIR/icon.png"
 find "$DIST_DIR" -name '.DS_Store' -type f -delete
 
-cp "$PROJECT_ROOT/extension/mv3-proof/Apache-2.0.txt" "$DIST_DIR/Apache-2.0.txt"
-cp "$PROJECT_ROOT/extension/mv3-proof/THIRD-PARTY-NOTICES.txt" "$DIST_DIR/THIRD-PARTY-NOTICES.txt"
+cp "$PROJECT_ROOT/Apache-2.0.txt" "$DIST_DIR/Apache-2.0.txt"
+cp "$PROJECT_ROOT/THIRD-PARTY-NOTICES.txt" "$DIST_DIR/THIRD-PARTY-NOTICES.txt"
 find "$DIST_DIR" -type f -exec chmod 0644 {} +
 
 ZIP_NAME="$(python3 "$PROJECT_ROOT/pack.py")"

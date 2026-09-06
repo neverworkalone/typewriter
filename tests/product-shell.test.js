@@ -130,7 +130,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
   });
 
-  it('shows a clear control and reserves the first Escape for clearing the search', async () => {
+  it('shows a clear control and keeps results while the first Escape clears only the query', async () => {
     const record = makeRecord('w026', '담담하다');
     const runtime = {
       search: async () => [{ id: record.id }],
@@ -157,13 +157,13 @@ describe('product MV3 Vue shells', () => {
     await flush();
 
     expect(input.value).toBe('');
-    expect(host.querySelector('[data-record-id="w026"]')).toBeNull();
-    expect(host.querySelector('.dictionary-empty-region')).not.toBeNull();
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+    expect(host.querySelector('.dictionary-scroll-region')).not.toBeNull();
+    expect(host.querySelector('.dictionary-empty-region')).toBeNull();
     expect(host.querySelector('.search-clear-button')).toBeNull();
 
     input.value = record.lemma;
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await flush();
 
     const firstEscape = new KeyboardEvent('keydown', {
@@ -176,7 +176,9 @@ describe('product MV3 Vue shells', () => {
 
     expect(firstEscape.defaultPrevented).toBe(true);
     expect(input.value).toBe('');
-    expect(host.querySelector('[data-record-id="w026"]')).toBeNull();
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+    expect(host.querySelector('.dictionary-scroll-region')).not.toBeNull();
+    expect(host.querySelector('.dictionary-empty-region')).toBeNull();
 
     const secondEscape = new KeyboardEvent('keydown', {
       bubbles: true,
@@ -240,10 +242,72 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-dictionary-panel][aria-busy="true"]')).not.toBeNull();
     expect(host.querySelector('[data-search-state="loading"]')).toBeNull();
 
+    const firstEscape = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Escape',
+    });
+    input.dispatchEvent(firstEscape);
+    await flush();
+
+    expect(firstEscape.defaultPrevented).toBe(true);
+    expect(input.value).toBe('');
+    expect(host.querySelector('[data-record-id="first"]')).not.toBeNull();
+    expect(host.querySelector('[data-record-id="second"]')).toBeNull();
+    expect(host.querySelector('[data-dictionary-panel][aria-busy="true"]')).toBeNull();
+
     releaseSecondSearch();
     await pendingSearch;
     await flush();
-    expect(host.querySelector('[data-record-id="second"]')).not.toBeNull();
+    expect(host.querySelector('[data-record-id="first"]')).not.toBeNull();
+    expect(host.querySelector('[data-record-id="second"]')).toBeNull();
+  });
+
+  it('stays idle when the first pending search is cleared before it resolves', async () => {
+    let releaseSearch;
+    const pendingSearch = new Promise((resolve) => {
+      releaseSearch = resolve;
+    });
+    const record = makeRecord('first', '첫 결과');
+    const runtime = {
+      search: async () => pendingSearch,
+      getRecord: async () => record,
+    };
+    const host = mountWithProps(PopupApp, {
+      runtime,
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS }),
+      },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+    const form = host.querySelector('.search-row');
+
+    input.value = '지운 검색';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flush();
+
+    expect(host.querySelector('.dictionary-empty-region.is-loading')).not.toBeNull();
+
+    const firstEscape = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Escape',
+    });
+    input.dispatchEvent(firstEscape);
+    await flush();
+
+    expect(firstEscape.defaultPrevented).toBe(true);
+    expect(input.value).toBe('');
+    expect(host.querySelector('.dictionary-empty-region')).not.toBeNull();
+    expect(host.querySelector('.dictionary-empty-region.is-loading')).toBeNull();
+    expect(host.querySelector('[data-record-id="first"]')).toBeNull();
+
+    releaseSearch([{ id: record.id }]);
+    await flush();
+    expect(host.querySelector('.dictionary-empty-region')).not.toBeNull();
+    expect(host.querySelector('.dictionary-empty-region.is-loading')).toBeNull();
+    expect(host.querySelector('[data-record-id="first"]')).toBeNull();
   });
 
   it('renders all distinct runtime states with retry and error copy', async () => {

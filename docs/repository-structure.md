@@ -25,9 +25,8 @@ runtime, not by the dictionary build.
 ## Current and next-needed directories
 
 The current repository contains `public/` for product manifest and brand assets,
-`src/popup/` and `src/options/` for the product Vue entrypoints, `src/domain/` for
-UI-independent search state and Editorial Model v1 projection, and
-`extension/mv3-proof/` for the independent M2 MV3 source proof. The root
+`src/popup/` and `src/options/` for the product Vue entrypoints, and `src/domain/`
+for UI-independent search state and Editorial Model v1 projection. The root
 `popup.html` and `options.html` files are the product HTML entrypoints; Vite writes
 their generated assets to ignored `dist/`. The canonical input location used by
 the M2 toolchain is:

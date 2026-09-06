@@ -81,8 +81,12 @@ runtime status. Reference-only records can be fetched by ID for relation display
 but are never returned from free-term search. The worker loads its own packaged
 database with extension-relative URLs, keeps one initialization promise, enables
 `PRAGMA query_only = ON`, and returns structured errors for asset, WASM, database,
-query, and lifecycle failures. The manifest allows WASM evaluation for extension
-pages while retaining zero host permissions and no web-accessible dictionary asset.
+query, and lifecycle failures. During the same product load it verifies that a
+representative SQLite write is rejected and leaves no persisted row; runtime status
+exposes `query_only`, `write_blocked`, and `persisted_write_count` for the product
+Chrome check. The manifest allows WASM evaluation for extension pages while
+retaining only the `storage` permission, no host permissions, and no web-accessible
+dictionary asset.
 
 The product build uses the same clean-worktree provenance contract as the SQLite
 builder. During local development with uncommitted changes, use the explicit
@@ -129,59 +133,18 @@ npm run test:mv3:package -- \
 ```
 
 It checks the popup and Settings flows, local dictionary coverage, saved settings
-reflection, content-sized/scrolling layouts, and that no request leaves the
-extension origin. This is the supported automated equivalent of installing the ZIP
-as an unpacked extension; the Chrome GUI's direct ZIP installation path remains a
-manual release smoke check.
+reflection, content-sized/scrolling layouts, the product runtime's SQLite
+`query_only` and write-rejection status, and that no request leaves the extension
+origin. This is the supported automated equivalent of installing the ZIP as an
+unpacked extension; the Chrome GUI's direct ZIP installation path remains a manual
+release smoke check.
 
-실제 검증 기록 (2026-09-06, Chrome for Testing 152.0.7977.76): 제품 `popup.html`에서
+실제 검증 기록 (2026-09-06, Chrome for Testing 152.0.7977.82): 제품 `popup.html`에서
 패키지된 query adapter가 worker와 SQLite/WASM을 로드했고, `담담하다` lemma, `담담`
 search form, expression `마음이 놓이다`, 다의어 sense 순서, `r008`
-reference-only ID 조회, relation target/note, metadata를 확인했다. 런타임 상태는
-`query_only = 1`이었고, write 요청은 `UNSUPPORTED_REQUEST`로 거절됐으며 외부
-요청은 0건이었다. 실제 SQLite 쓰기 차단·비영속성은 기존 MV3 proof가 계속
-검증한다.
-
-## MV3 SQLite WASM proof
-
-`node scripts/extension/build-proof.mjs` assembles a self-contained extension
-directory at `dist/mv3-proof/`. It contains the generated `dictionary.sqlite`, the
-module worker, the proof page, and the pinned `@sqlite.org/sqlite-wasm` module plus
-WASM binary. The manifest has no permissions, host permissions, or
-`web_accessible_resources`; an extension-origin worker can fetch its own packaged
-database without exposing it to web origins. The worker deserializes the database
-into an in-memory SQLite connection, enables `query_only`, runs exact
-lemma/search-form/relation lookups, and verifies that a write is rejected and not
-persisted.
-
-The proof runs in an action popup extension page (`proof.html`) that creates a
-dedicated module worker (`sqlite-worker.mjs`). It does not use a service worker or
-offscreen document. The worker lifetime is tied to the proof page and the page
-terminates it after the result. Package-relative `chrome.runtime.getURL()` and
-`self.location` URLs are used for all assets; no filesystem path, CDN, or runtime
-external request is part of the contract. The generated SQLite is read-only runtime
-output derived from canonical JSONL and is never the source of truth.
-
-The static/package checks run as part of the normal test suite. When Chrome for
-Testing is available, run the actual MV3 proof with:
-
-```sh
-npm run build:proof -- --allow-dirty
-npm run test:mv3:chrome -- \
-  --chrome="/path/to/Google Chrome for Testing"
-```
-
-The CFT runner discovers the unpacked extension ID through `chrome://extensions/`,
-opens `proof.html`, blocks ordinary network resolution, and fails if the proof page
-makes a non-extension request or if the read-only assertion fails. The current proof
-uses `@sqlite.org/sqlite-wasm` 3.53.0-build1 under its Apache-2.0 license; see
-`extension/mv3-proof/THIRD-PARTY-NOTICES.txt` and the included full license copy
-`extension/mv3-proof/Apache-2.0.txt`.
-
-실제 검증 기록 (2026-09-05, Chrome for Testing 152.0.7977.76): unpacked MV3
-패키지가 로드됐고 `Proof passed`를 반환했다. 비확장 요청은 0건이었으며, SQLite
-3.53.0에서 `query_only = 1`, `담담하다` lemma, `담담` search form, `w026-s1`
-관계가 조회됐다. 쓰기 시도는 차단됐고 테스트 행은 저장되지 않았다.
+reference-only ID 조회, relation target/note, metadata를 확인했다. 제품 runtime
+상태는 `query_only = 1`, `write_blocked = true`, `persisted_write_count = 0`이었고
+외부 요청은 0건이었다.
 
 ## Reproducibility and provenance
 
