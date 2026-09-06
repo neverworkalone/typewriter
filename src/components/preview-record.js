@@ -1,0 +1,42 @@
+const PREVIEW_RELATIONS = [
+  ['direct', 'preview-direct-1', '외롭다'],
+  ['direct', 'preview-direct-2', '적적하다'],
+  ['direct', 'preview-direct-3', '허전하다'],
+  ['direct', 'preview-direct-4', '고독하다'],
+  ['antonym', 'preview-antonym-1', '활기차다'],
+  ['antonym', 'preview-antonym-2', '흥겹다'],
+  ['antonym', 'preview-antonym-3', '북적이다'],
+  ['mood', 'preview-mood-1', '스산하다'],
+  ['mood', 'preview-mood-2', '서글프다'],
+  ['mood', 'preview-mood-3', '처연하다'],
+  ['mood', 'preview-mood-4', '적막하다'],
+  ['mood', 'preview-mood-5', '허무하다'],
+  ['association', 'preview-association-1', '빈 방'],
+  ['association', 'preview-association-2', '늦은 밤'],
+  ['association', 'preview-association-3', '찬바람'],
+  ['association', 'preview-association-4', '혼자 남다'],
+  ['association', 'preview-association-5', '술이 당기다'],
+].map(([type, target, targetLemma], position) => ({
+  position,
+  target,
+  target_sense: `${target}-s1`,
+  type,
+  target_lemma: targetLemma,
+  target_pos: 'expression',
+  target_gloss: `${targetLemma} 미리보기`,
+}));
+
+export const PREVIEW_RECORD = Object.freeze({
+  id: 'preview-w006',
+  record_type: 'entry',
+  role: 'start',
+  candidate_id: 'preview-w006',
+  lemma: '쓸쓸하다',
+  search_forms: ['쓸쓸하다'],
+  senses: [{
+    id: 'preview-w006-s1',
+    pos: 'adjective',
+    gloss: '외롭고 적적한 느낌이 있다. 마음이나 분위기가 허전하고 쓸쓸하다.',
+    relations: PREVIEW_RELATIONS,
+  }],
+});

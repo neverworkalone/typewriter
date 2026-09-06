@@ -56,3 +56,20 @@ ID 탐색을 시작할 수 있다.
 각 요청의 이전 결과가 늦게 도착해도 request token이 현재 요청과 다르면 상태를
 덮어쓰지 않는다. 이 레이어는 ranking, fuzzy/prefix search, morphology, relation
 자동 수정, user storage를 구현하지 않는다.
+
+## Product UI
+
+`src/components/DictionaryPanel.vue`는 popup과 Settings 미리보기에서 함께
+사용하는 검색 표면이다. `DictionaryResult.vue`는 `projectRecord()`가 만든
+sense/group projection만 렌더링하며, `definition`, `synonyms`, `antonyms`,
+`texture`, `association` 설정이 false인 group과 item이 없는 group은
+표시하지 않는다. 따라서 Settings 미리보기는 별도 markup으로 결과를 복제하지
+않고 동일한 projection과 결과 renderer를 사용한다.
+
+표시 설정은 `src/ui/settings.js`의 다섯 키로 제한한다. 기본값은 Figma의
+미리보기와 맞춰 뜻풀이·유의어·말의 결은 켜고 반의어·연상은 끈다.
+`createSettingsStore()`는 확장 프로그램의 `chrome.storage.local`에 설정만
+저장하며, 읽기 전용 dictionary SQLite와 섞지 않는다. Options의 토글은 먼저
+미리보기와 draft 상태만 갱신하고, 명시적인 저장 버튼이 현재 draft를
+영속화한다. 설정을 불러오거나 저장하는 동안에는 토글을 잠가 순서가 뒤섞이지
+않게 한다.

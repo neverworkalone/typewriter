@@ -73,6 +73,10 @@ Principles:
 The UI-independent search state and Editorial Model v1 projection are documented in
 [`docs/domain-model.md`](docs/domain-model.md).
 
+The M3 product UI reuses that projection in the popup and the Settings preview.
+Display choices are user data stored under the extension's local `storage` area;
+they never enter the read-only dictionary database.
+
 ## Data policy
 
 External APIs, dictionaries, corpora, and LLMs may be used as reference, verification, or draft-generation tools when their terms permit the intended use.

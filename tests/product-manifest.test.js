@@ -12,13 +12,13 @@ async function readRepositoryJson(relativePath) {
 }
 
 describe('product MV3 manifest', () => {
-  it('declares the Vue popup and options entrypoints without external permissions', async () => {
+  it('declares the Vue popup and options entrypoints with only local storage permission', async () => {
     const manifest = await readRepositoryJson('public/manifest.json');
 
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.action.default_popup).toBe('popup.html');
     expect(manifest.options_ui.page).toBe('options.html');
-    expect(manifest.permissions).toEqual([]);
+    expect(manifest.permissions).toEqual(['storage']);
     expect(manifest.host_permissions).toBeUndefined();
     expect(manifest.web_accessible_resources).toBeUndefined();
     expect(manifest.content_security_policy.extension_pages).toBe(

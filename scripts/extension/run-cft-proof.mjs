@@ -230,6 +230,7 @@ export async function runCftProof({
     '--disable-background-networking',
     '--disable-component-update',
     '--disable-sync',
+    '--use-mock-keychain',
     '--disable-extensions-except=' + path.resolve(extensionDirectory),
     '--load-extension=' + path.resolve(extensionDirectory),
     '--host-resolver-rules=MAP * 0.0.0.0,EXCLUDE localhost',
