@@ -20,6 +20,7 @@ Use the following commands while working on the product shell:
 npm run dev          # Vite development server
 npm run build        # production MV3 assets in dist/, minified by esbuild
 npm run test:unit    # Vitest component/unit tests
+npm run test:mv3:product -- --chrome="/path/to/Google Chrome for Testing" # popup/options CFT check
 ```
 
 `npm run build` generates the product's packaged `dictionary.sqlite` and the
@@ -28,6 +29,14 @@ dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
 
 `npm run test` remains the Node.js test command for the M2 toolchain. The product
 build does not replace or modify the M2 proof source or its generated package.
+
+The product popup and options page use only extension-local assets and the
+storage permission. When Chrome for Testing is available, the product CFT check
+loads both entrypoints, searches the packaged dictionary, follows a relation and
+returns with back, verifies keyboard focus, checks the five default toggles, and
+reloads Settings to confirm persistence. It fails if the pages make a non-extension
+request. The runner uses --use-mock-keychain because it is an isolated automation
+profile and does not need macOS Keychain-backed browser credentials.
 
 For a clean-checkout verification, clone the repository into a new directory and run
 the commands below from its root. The checkout must not contain local drafts,
