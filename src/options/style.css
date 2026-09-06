@@ -50,19 +50,24 @@ input {
 }
 
 .brand-lockup {
-  align-items: baseline;
+  height: 40px;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .brand-mark {
-  align-self: center;
+  align-self: flex-start;
+  flex: 0 0 40px;
   width: 40px;
   height: 40px;
-  margin-right: 8px;
+  margin-right: 0;
   object-fit: contain;
 }
 
 .brand-name {
+  flex: 0 0 84px;
+  width: 84px;
+  margin-top: 8px;
   color: #2b2927;
   font-size: 16px;
   font-weight: 500;
@@ -70,6 +75,7 @@ input {
 }
 
 .brand-version {
+  margin-top: 12px;
   color: #9ca3af;
   font-size: 12px;
   line-height: 18px;

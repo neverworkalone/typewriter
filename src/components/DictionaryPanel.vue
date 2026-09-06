@@ -234,6 +234,7 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
 .dictionary-state-region.is-empty {
   min-height: 104px;
   padding: 0 4px;
+  justify-content: flex-end;
 }
 
 .dictionary-state-region.is-empty .state-copy {
@@ -278,10 +279,6 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
   padding: 8.75px 8.75px 7px;
 }
 
-.dictionary-panel.is-compact.has-results {
-  min-height: 258px;
-}
-
 .dictionary-panel.is-compact .dictionary-scroll-region {
   max-height: none;
   gap: 7px;
@@ -291,7 +288,7 @@ const showRetry = computed(() => props.status === SEARCH_STATUS.error);
 }
 
 .dictionary-panel.is-compact.has-results .dictionary-scroll-region {
-  min-height: 203.75px;
+  min-height: 0;
 }
 
 .dictionary-panel.is-compact .dictionary-scroll-region :deep(.dictionary-result + .dictionary-result) {

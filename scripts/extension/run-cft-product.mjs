@@ -372,10 +372,12 @@ export async function runCftProduct({
     const popupEmptyState = await evaluate(connection, popupEmpty.sessionId, [
       '(() => {',
       '  const panel = document.querySelector("[data-dictionary-panel]");',
+      '  const footer = document.querySelector(".product-footer");',
       '  return {',
       '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
       '    bodyHeight: document.body.scrollHeight,',
       '    appHeight: Math.round(document.querySelector("#app").getBoundingClientRect().height),',
+      '    footerBottomGap: Math.round((panel.getBoundingClientRect().bottom - footer.getBoundingClientRect().bottom) * 100) / 100,',
       '    hasFooter: Boolean(document.querySelector(".product-footer")),',
       '    copy: document.querySelector(".state-copy")?.textContent.trim() || "",',
       '    hasDescription: Boolean(document.querySelector(".state-copy span")),',
@@ -443,7 +445,12 @@ export async function runCftProduct({
     await evaluate(
       connection,
       options.sessionId,
-      'document.querySelectorAll("[role=\\"switch\\"]")[2]?.click()',
+      'document.querySelectorAll("[role=\\"switch\\"]")[0]?.click()',
+    );
+    await evaluate(
+      connection,
+      options.sessionId,
+      'document.querySelectorAll("[role=\\"switch\\"]")[1]?.click()',
     );
     await evaluate(
       connection,
@@ -453,7 +460,7 @@ export async function runCftProduct({
     await waitForCondition(
       connection,
       options.sessionId,
-      'document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"association\\"]") !== null',
+      'document.querySelector(".preview-panel [data-group-id=\\"texture\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"association\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"definition\\"]") === null && document.querySelector(".preview-panel [data-group-id=\\"synonyms\\"]") === null',
     );
     const optionsPreview = await evaluate(connection, options.sessionId, [
       '(() => {',
@@ -464,6 +471,7 @@ export async function runCftProduct({
       '    panelHeight: Math.round(panel.getBoundingClientRect().height),',
       '    panelWidth: Math.round(panel.getBoundingClientRect().width),',
       '    previewHeight: Math.round(document.querySelector(".preview-panel").getBoundingClientRect().height),',
+      '    panelFooterBottomGap: Math.round((panel.getBoundingClientRect().bottom - footer.getBoundingClientRect().bottom) * 100) / 100,',
       '    regionClientHeight: Math.round(region.clientHeight),',
       '    regionScrollHeight: Math.round(region.scrollHeight),',
       '    overflowY: getComputedStyle(region).overflowY,',
@@ -488,21 +496,27 @@ export async function runCftProduct({
     await waitForCondition(
       connection,
       options.sessionId,
-      'document.querySelectorAll("[role=\\"switch\\"]")[2]?.getAttribute("aria-checked") === "true"',
+      'document.querySelectorAll("[role=\\"switch\\"]")[0]?.getAttribute("aria-checked") === "false" && document.querySelectorAll("[role=\\"switch\\"]")[1]?.getAttribute("aria-checked") === "false" && document.querySelectorAll("[role=\\"switch\\"]")[4]?.getAttribute("aria-checked") === "true"',
     );
     const optionsReloaded = await evaluate(connection, options.sessionId, [
       '(() => ({',
-      '  antonymEnabled: document.querySelectorAll("[role=\\"switch\\"]")[2]?.getAttribute("aria-checked") === "true",',
+      '  definitionDisabled: document.querySelectorAll("[role=\\"switch\\"]")[0]?.getAttribute("aria-checked") === "false",',
+      '  synonymsDisabled: document.querySelectorAll("[role=\\"switch\\"]")[1]?.getAttribute("aria-checked") === "false",',
+      '  textureEnabled: document.querySelectorAll("[role=\\"switch\\"]")[3]?.getAttribute("aria-checked") === "true",',
       '  associationEnabled: document.querySelectorAll("[role=\\"switch\\"]")[4]?.getAttribute("aria-checked") === "true",',
-      '  hasAntonymAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]")),',
+      '  hasTextureAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"texture\\"]")),',
       '  hasAssociationAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"association\\"]")),',
+      '  hasDefinitionAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"definition\\"]")),',
+      '  hasSynonymsAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"synonyms\\"]")),',
       '}))()',
     ].join('\n'));
     const optionsVersion = await evaluate(connection, options.sessionId, [
       '(() => ({',
       '  rendered: document.querySelector(".brand-version")?.textContent.trim() || "",',
       '  manifest: chrome.runtime.getManifest().version,',
-      '  brandAlignItems: getComputedStyle(document.querySelector(".brand-lockup")).alignItems,',
+      '  brandMarkRect: (() => { const rect = document.querySelector(".brand-mark").getBoundingClientRect(); return { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }; })(),',
+      '  brandNameRect: (() => { const rect = document.querySelector(".brand-name").getBoundingClientRect(); return { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }; })(),',
+      '  brandVersionRect: (() => { const rect = document.querySelector(".brand-version").getBoundingClientRect(); return { left: Math.round(rect.left), top: Math.round(rect.top), width: Math.round(rect.width), height: Math.round(rect.height) }; })(),',
       '}))()',
     ].join('\n'));
 
@@ -536,6 +550,7 @@ export async function runCftProduct({
       popupEmptyState.panelHeight >= 240
       || popupEmptyState.bodyHeight !== popupEmptyState.panelHeight
       || popupEmptyState.appHeight !== popupEmptyState.panelHeight
+      || popupEmptyState.footerBottomGap > 10
       || !popupEmptyState.hasFooter
       || popupEmptyState.copy !== '검색 결과가 없습니다.'
       || popupEmptyState.hasDescription
@@ -574,7 +589,9 @@ export async function runCftProduct({
       optionsPreview.regionScrollHeight > optionsPreview.regionClientHeight + 1
       || optionsPreview.overflowY !== 'visible'
       || optionsPreview.panelWidth !== 360
+      || optionsPreview.panelHeight >= 258
       || optionsPreview.panelHeight >= optionsPreview.previewHeight
+      || optionsPreview.panelFooterBottomGap > 8
       || optionsPreview.footerHeight !== '17.5px'
       || optionsPreview.footerPaddingRight !== '10.5px'
     ) {
@@ -588,9 +605,13 @@ export async function runCftProduct({
       throw new Error('Default Settings CFT assertions failed: ' + JSON.stringify(optionsDefault));
     }
     if (
-      !optionsReloaded.antonymEnabled
+      !optionsReloaded.definitionDisabled
+      || !optionsReloaded.synonymsDisabled
+      || !optionsReloaded.textureEnabled
       || !optionsReloaded.associationEnabled
-      || !optionsReloaded.hasAntonymAfterReload
+      || optionsReloaded.hasDefinitionAfterReload
+      || optionsReloaded.hasSynonymsAfterReload
+      || !optionsReloaded.hasTextureAfterReload
       || !optionsReloaded.hasAssociationAfterReload
     ) {
       throw new Error('Persisted Settings CFT assertions failed: ' + JSON.stringify(optionsReloaded));
@@ -601,7 +622,14 @@ export async function runCftProduct({
     if (
       !optionsVersion.rendered
       || optionsVersion.rendered !== optionsVersion.manifest
-      || optionsVersion.brandAlignItems !== 'baseline'
+      || optionsVersion.brandMarkRect.left !== 48
+      || optionsVersion.brandMarkRect.top !== 24
+      || optionsVersion.brandMarkRect.width !== 40
+      || optionsVersion.brandMarkRect.height !== 40
+      || optionsVersion.brandNameRect.left !== 96
+      || optionsVersion.brandNameRect.top !== 32
+      || optionsVersion.brandVersionRect.left !== 188
+      || optionsVersion.brandVersionRect.top !== 36
     ) {
       throw new Error('Options version CFT assertions failed: ' + JSON.stringify(optionsVersion));
     }
