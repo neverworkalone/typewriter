@@ -118,6 +118,12 @@ function openRelation(relation) {
       </template>
       <p v-else class="no-visible-groups">표시할 항목이 없습니다.</p>
     </section>
+
+    <p
+      v-if="record.role === 'start' && record.hasRelations === false"
+      class="editorial-gap-note"
+      data-editorial-gap
+    >연결된 관계어는 아직 정리되지 않았습니다.</p>
   </article>
 </template>
 
@@ -247,11 +253,17 @@ function openRelation(relation) {
 }
 
 .result-no-senses,
-.no-visible-groups {
+.no-visible-groups,
+.editorial-gap-note {
   margin: 0;
   color: #77716b;
   font-size: 13px;
   line-height: 20px;
+}
+
+.editorial-gap-note {
+  margin-top: 8px;
+  font-size: 12px;
 }
 
 .no-visible-groups {
@@ -287,6 +299,11 @@ function openRelation(relation) {
 .dictionary-result.is-compact .definition-text,
 .dictionary-result.is-compact .relation-link {
   font-size: 12.25px;
+}
+
+.dictionary-result.is-compact .editorial-gap-note {
+  margin-top: 7px;
+  font-size: 10.5px;
 }
 
 .dictionary-result.is-compact .definition-text {

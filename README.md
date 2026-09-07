@@ -79,6 +79,9 @@ The M4 input support boundary and shared search regression corpus are documented
 The deterministic candidate tiers and tie rules are documented in
 [`docs/search-candidates.md`](docs/search-candidates.md).
 
+The M4 failure-state contract and M5 handoff are documented in
+[`docs/m4-handoff.md`](docs/m4-handoff.md).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

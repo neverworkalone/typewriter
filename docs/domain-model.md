@@ -45,6 +45,10 @@ ID 탐색을 시작할 수 있다.
   provenance가 남는다.
 - `openRelationTarget(target)`는 `runtime.getRecord(targetId)`만 호출한다.
   자유 입력 exact search와 관계 target 탐색은 서로 다른 `mode`와 `action`이다.
+- `emptyReason`은 `no-exact-match`, 승인된 unsupported reason, 또는
+  `relation-target-not-found`를 보존한다. Product shell은 이를 각각 미수록,
+  정책상 미지원, 관계 대상 없음으로 구분해 표시하며, load/query runtime
+  failure는 typed `error.kind`로 별도 표시한다.
 - `back()`과 `forward()`는 이미 읽은 snapshot을 복원하며 새 DB query를 만들지
   않는다. 진행 중인 요청은 먼저 취소하고 history에 loading snapshot을 남기지
   않는다.
