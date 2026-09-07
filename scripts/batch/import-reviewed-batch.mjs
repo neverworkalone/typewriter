@@ -7,6 +7,17 @@ import {
   validateBatch,
 } from './validate-batch.mjs';
 
+export function compareCanonicalIds(left, right) {
+  const leftPrefix = left[0];
+  const rightPrefix = right[0];
+  if (leftPrefix !== rightPrefix) {
+    return leftPrefix.localeCompare(rightPrefix, 'en');
+  }
+
+  const numberDifference = Number(left.slice(1)) - Number(right.slice(1));
+  return numberDifference || left.localeCompare(right, 'en');
+}
+
 export async function writeReviewedBatchImport({
   manifestPath,
   stagedRecordsPath,
@@ -24,7 +35,7 @@ export async function writeReviewedBatchImport({
 
   const records = summary.stagedRecords
     .map(({ record }) => record)
-    .sort((left, right) => left.id.localeCompare(right.id, 'en'));
+    .sort((left, right) => compareCanonicalIds(left.id, right.id));
   await mkdir(path.dirname(outputPath), { recursive: true });
   const output = records.length > 0
     ? `${records.map((record) => JSON.stringify(record)).join('\n')}\n`

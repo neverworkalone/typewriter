@@ -65,6 +65,48 @@
       "items": { "$ref": "#/$defs/record" }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "review": {
+            "type": "object",
+            "properties": {
+              "status": { "const": "complete" }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "review": {
+            "type": "object",
+            "required": ["completed_at"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "review": {
+            "type": "object",
+            "properties": {
+              "status": { "enum": ["unreviewed", "in-review"] }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "review": {
+            "type": "object",
+            "not": { "required": ["completed_at"] }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "record": {
       "type": "object",
@@ -88,7 +130,7 @@
         },
         "canonical_id": {
           "type": "string",
-          "pattern": "^[wr][0-9]{3}$"
+          "pattern": "^[wr][0-9]{3,}$"
         },
         "decision": {
           "enum": ["included", "held", "rejected", "corrected"]
@@ -103,14 +145,84 @@
           "minItems": 1,
           "items": {
             "type": "string",
-            "pattern": "^[wr][0-9]{3}$"
+            "pattern": "^[wr][0-9]{3,}$"
           }
         },
         "decision_note": {
           "type": "string",
           "pattern": "\\S"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": { "const": "inventory" }
+            }
+          },
+          "then": {
+            "required": ["inventory_id"],
+            "properties": {
+              "role": { "const": "start" }
+            },
+            "not": { "required": ["related_to"] }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": { "const": "reference-closure" }
+            }
+          },
+          "then": {
+            "required": ["related_to"],
+            "properties": {
+              "role": { "const": "reference-only" }
+            },
+            "not": { "required": ["inventory_id"] }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "enum": ["included", "corrected"] }
+            }
+          },
+          "then": {
+            "required": ["canonical_id"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "enum": ["held", "rejected"] }
+            }
+          },
+          "then": {
+            "not": { "required": ["canonical_id"] }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "corrected" }
+            }
+          },
+          "then": {
+            "required": ["corrected_fields"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "enum": ["included", "held", "rejected"] }
+            }
+          },
+          "then": {
+            "not": { "required": ["corrected_fields"] }
+          }
+        }
+      ]
     }
   }
 }

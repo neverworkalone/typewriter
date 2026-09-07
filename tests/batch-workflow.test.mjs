@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,12 +8,20 @@ import {
   BatchValidationError,
   REPOSITORY_DIRECTORY,
   validateBatch,
+  validateBatchManifest,
 } from '../scripts/batch/validate-batch.mjs';
-import { writeReviewedBatchImport } from '../scripts/batch/import-reviewed-batch.mjs';
+import {
+  compareCanonicalIds,
+  writeReviewedBatchImport,
+} from '../scripts/batch/import-reviewed-batch.mjs';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
+import {
+  DEFAULT_INVENTORY_PATH,
+  readTargetInventory,
+} from '../scripts/validate/target-inventory.mjs';
 
 function createManifest() {
   return {
@@ -128,6 +136,180 @@ async function writeFixtureFiles({ directory, manifest, records }) {
   );
   return { manifestPath, stagedRecordsPath };
 }
+
+async function createIdBoundaryFixture() {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-batch-id-boundary-'));
+  const canonicalDirectory = path.join(directory, 'canonical');
+  const inventoryPath = path.join(directory, 'inventory.json');
+  await mkdir(canonicalDirectory, { recursive: true });
+
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const existingRecord = {
+    id: 'w999',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w999',
+    lemma: '기존 경계 표제어',
+    search_forms: ['기존 경계 표제어'],
+    senses: [{
+      id: 'w999-s1',
+      pos: 'noun',
+      gloss: '세 자리 식별자의 마지막에 있는 기존 record.',
+    }],
+  };
+  await writeFile(
+    path.join(canonicalDirectory, 'base.jsonl'),
+    `${[...canonical.records.map(({ record }) => record), existingRecord]
+      .map((record) => JSON.stringify(record))
+      .join('\n')}\n`,
+    'utf8',
+  );
+
+  const { inventory } = await readTargetInventory(DEFAULT_INVENTORY_PATH);
+  const inventoryFixture = structuredClone(inventory);
+  const candidate = inventoryFixture.entries.find(
+    (entry) => entry.source === 'editorial' && entry.status === 'candidate',
+  );
+  assert.ok(candidate, 'the default inventory must contain an editorial candidate');
+  inventoryFixture.entries.push({
+    inventory_id: 'm5-boundary-999',
+    source: 'canonical',
+    canonical_id: 'w999',
+    promoted_from: 'm5-boundary-999',
+    status: 'current',
+    planned_role: 'start',
+    record_type: 'entry',
+    lemma: existingRecord.lemma,
+    search_forms: existingRecord.search_forms,
+    reason_codes: ['E'],
+    pos: ['noun'],
+    sense_profile: 'single',
+    flags: [],
+    decision_note: '가변 폭 ID 경계 fixture의 기존 canonical start.',
+  });
+  inventoryFixture.canonical_snapshot.record_count += 1;
+  inventoryFixture.canonical_snapshot.start_count += 1;
+  await writeFile(inventoryPath, `${JSON.stringify(inventoryFixture, null, 2)}\n`, 'utf8');
+
+  const manifest = createManifest();
+  manifest.batch_id = 'm5-2-id-boundary';
+  manifest.records = [{
+    source: 'inventory',
+    inventory_id: candidate.inventory_id,
+    role: 'start',
+    canonical_id: 'w1000',
+    decision: 'included',
+    decision_note: '세 자리에서 네 자리로 넘어가는 deterministic ID fixture.',
+  }];
+  const stagedRecord = {
+    id: 'w1000',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w1000',
+    lemma: '다음 경계 표제어',
+    search_forms: ['다음 경계 표제어'],
+    senses: [{
+      id: 'w1000-s1',
+      pos: 'noun',
+      gloss: '네 자리 식별자를 사용하는 신규 record.',
+    }],
+  };
+  const manifestPath = path.join(directory, 'batch.json');
+  const stagedRecordsPath = path.join(directory, 'reviewed.jsonl');
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  await writeFile(stagedRecordsPath, `${JSON.stringify(stagedRecord)}\n`, 'utf8');
+
+  return {
+    directory,
+    manifestPath,
+    stagedRecordsPath,
+    inventoryPath,
+    canonicalDirectory,
+  };
+}
+
+test('uses the batch JSON Schema conditional rules as the executable manifest contract', () => {
+  assert.equal(validateBatchManifest(createManifest()).batch_id, 'm5-2-fixture');
+
+  const invalidCases = [
+    ['inventory rows require inventory_id', (manifest) => {
+      delete manifest.records[0].inventory_id;
+    }],
+    ['inventory rows forbid related_to', (manifest) => {
+      manifest.records[0].related_to = ['w301'];
+    }],
+    ['reference closure rows require related_to', (manifest) => {
+      delete manifest.records[1].related_to;
+    }],
+    ['reference closure rows forbid inventory_id', (manifest) => {
+      manifest.records[1].inventory_id = 'm5-002';
+    }],
+    ['source-specific roles are required', (manifest) => {
+      manifest.records[0].role = 'reference-only';
+    }],
+    ['included rows require canonical_id', (manifest) => {
+      delete manifest.records[0].canonical_id;
+    }],
+    ['held rows forbid canonical_id', (manifest) => {
+      manifest.records[1].decision = 'held';
+    }],
+    ['corrected rows require corrected_fields', (manifest) => {
+      delete manifest.records[0].corrected_fields;
+    }],
+    ['included rows forbid corrected_fields', (manifest) => {
+      manifest.records[0].decision = 'included';
+    }],
+    ['complete review requires completed_at', (manifest) => {
+      delete manifest.review.completed_at;
+    }],
+    ['incomplete review forbids completed_at', (manifest) => {
+      manifest.review.status = 'in-review';
+    }],
+  ];
+
+  for (const [label, mutate] of invalidCases) {
+    const manifest = structuredClone(createManifest());
+    mutate(manifest);
+    assert.throws(
+      () => validateBatchManifest(manifest),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError, label);
+        return true;
+      },
+      label,
+    );
+  }
+});
+
+test('validates and imports variable-width IDs at the w999 to w1000 boundary', async () => {
+  const fixture = await createIdBoundaryFixture();
+  const outputPath = path.join(fixture.directory, 'canonical-import.jsonl');
+
+  try {
+    const summary = await validateBatch(fixture);
+    assert.equal(summary.stagedRecordCount, 1);
+    assert.equal(summary.manifest.records[0].canonical_id, 'w1000');
+
+    const imported = await writeReviewedBatchImport({
+      ...fixture,
+      outputPath,
+    });
+    assert.equal(imported.outputRecordCount, 1);
+    const importedRecords = await readCanonicalRecords(outputPath);
+    assert.deepEqual(
+      importedRecords.records.map(({ record }) => record.id),
+      ['w1000'],
+    );
+
+    assert.ok(compareCanonicalIds('w999', 'w1000') < 0);
+    assert.deepEqual(
+      ['w1000', 'w999', 'r1000', 'r999'].sort(compareCanonicalIds),
+      ['r999', 'r1000', 'w999', 'w1000'],
+    );
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
 
 test('validates a reviewed target plus reference closure and writes only an external import artifact', async () => {
   const fixture = await createFixture();

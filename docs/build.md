@@ -28,8 +28,9 @@ It is a build input, not a second source of truth and is not committed as a
 normalized dataset. The mapping is pure and idempotent: applying
 `normalizeRecords` to its own `records` produces the same logical object.
 
-The command runs the current `w001`–`w300` pilot completeness regression by
-default. Use `--no-pilot-regression` for a smaller valid fixture; schema and
+The command requires the current `w001`–`w300` pilot candidates by default and
+allows additional post-pilot start candidates for M5 expansion. Use
+`--no-pilot-regression` for a smaller valid fixture; schema and
 dataset-integrity validation still run in either mode.
 
 ## SQLite dictionary

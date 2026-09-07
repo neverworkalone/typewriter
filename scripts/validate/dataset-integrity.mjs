@@ -245,20 +245,13 @@ export function validatePilotCompleteness(recordInfos) {
   const duplicated = EXPECTED_PILOT_CANDIDATE_IDS.filter(
     (candidateId) => (startsByCandidateId.get(candidateId)?.length ?? 0) > 1,
   );
-  const unexpected = [...startsByCandidateId.keys()].filter(
-    (candidateId) => !EXPECTED_PILOT_CANDIDATE_IDS.includes(candidateId),
-  );
-
-  if (missing.length || duplicated.length || unexpected.length) {
+  if (missing.length || duplicated.length) {
     const details = [];
     if (missing.length) {
       details.push(`missing start candidate(s): ${missing.join(', ')}`);
     }
     if (duplicated.length) {
       details.push(`duplicated start candidate(s): ${duplicated.join(', ')}`);
-    }
-    if (unexpected.length) {
-      details.push(`unexpected start candidate(s): ${unexpected.join(', ')}`);
     }
     fail(
       `pilot completeness regression failed (${details.join('; ')})`,

@@ -30,7 +30,9 @@ Git or the product package.
 ## Manifest contract
 
 The contract is [`schema/batch-manifest.schema.json`](../schema/batch-manifest.schema.json).
-The executable validator is [`scripts/batch/validate-batch.mjs`](../scripts/batch/validate-batch.mjs).
+The batch validator executes that schema for structural checks and keeps only
+cross-file checks (inventory membership, staged mapping, lexical collisions, and
+reference closure) in [`scripts/batch/validate-batch.mjs`](../scripts/batch/validate-batch.mjs).
 
 A manifest records:
 
@@ -77,8 +79,8 @@ The gate checks, before any canonical import:
    unknown fields;
 2. target inventory ID/revision and editorial target status;
 3. staged records are approved exactly once by the manifest;
-4. deterministic IDs: new `start` rows continue the next `wNNN` IDs and
-   `reference-only` rows continue the next `rNNN` IDs in manifest order;
+4. deterministic IDs: new `start` rows continue the next `wNNN+` IDs and
+   `reference-only` rows continue the next `rNNN+` IDs in manifest order;
 5. deterministic sense IDs (`<record-id>-s1`, `<record-id>-s2`, …);
 6. duplicate record IDs, lemmas, search forms, and canonical collisions;
 7. record roles, relation targets, target senses, action target parts of speech,
@@ -107,7 +109,8 @@ rejected row can never be emitted by this command.
 
 The manifest's record order is the deterministic allocation order. Within each
 role, the first approved new record receives the next available ID for that role:
-`wNNN` for `start` and `rNNN` for `reference-only`. Sense IDs are assigned from
+`wNNN+` for `start` and `rNNN+` for `reference-only` (`NNN+` means at least three
+digits). Sense IDs are assigned from
 the record ID in sense order. The gate rejects an explicit ID that does not match
 this allocation, so a second run with the same reviewed input has the same logical
 IDs.

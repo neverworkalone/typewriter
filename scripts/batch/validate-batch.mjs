@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import Ajv2020 from 'ajv/dist/2020.js';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
@@ -15,15 +18,21 @@ import {
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+const require = createRequire(import.meta.url);
+const BATCH_MANIFEST_SCHEMA = require('../../schema/batch-manifest.schema.json');
 
-const BATCH_ID_PATTERN = /^m5-[0-9]+-[a-z0-9][a-z0-9-]*$/u;
-const INVENTORY_REVISION_PATTERN = /^m5-[1-9][0-9]*$/u;
-const CANONICAL_ID_PATTERN = /^[wr][0-9]{3}$/u;
-const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
-const SOURCES = Object.freeze(['inventory', 'reference-closure']);
+const manifestSchemaValidator = new Ajv2020({
+  allErrors: true,
+  formats: {
+    'date-time': {
+      type: 'string',
+      validate: (value) => Number.isFinite(Date.parse(value)),
+    },
+  },
+}).compile(BATCH_MANIFEST_SCHEMA);
+
 const ROLES = Object.freeze(['start', 'reference-only']);
 const DECISIONS = Object.freeze(['included', 'held', 'rejected', 'corrected']);
-const REVIEW_STATUSES = Object.freeze(['unreviewed', 'in-review', 'complete']);
 
 export class BatchValidationError extends Error {
   constructor(message, code = 'BATCH_VALIDATION_ERROR') {
@@ -37,12 +46,6 @@ function fail(message, code = 'BATCH_VALIDATION_ERROR') {
   throw new BatchValidationError(message, code);
 }
 
-function requireObject(value, label) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    fail(`${label} must be an object`, 'INVALID_SHAPE');
-  }
-}
-
 function requireString(value, label) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     fail(`${label} must be a non-empty string`, 'INVALID_VALUE');
@@ -54,20 +57,6 @@ function requireString(value, label) {
 
   if (value.normalize('NFC') !== value) {
     fail(`${label} must be NFC-normalized`, 'NON_NFC_VALUE');
-  }
-}
-
-function requireEnum(value, values, label) {
-  if (!values.includes(value)) {
-    fail(`${label} must be one of ${values.join(', ')} (received ${String(value)})`, 'INVALID_ENUM');
-  }
-}
-
-function requireAllowedKeys(value, allowedKeys, label) {
-  for (const key of Object.keys(value)) {
-    if (!allowedKeys.includes(key)) {
-      fail(`${label}.${key} is not allowed`, 'UNKNOWN_FIELD');
-    }
   }
 }
 
@@ -119,31 +108,6 @@ function assertCanonicalImportOutputPath(outputPath, canonicalDirectory) {
 
 function validateManifestRecord(record, index) {
   const prefix = `manifest.records[${index}]`;
-  requireObject(record, prefix);
-  requireAllowedKeys(
-    record,
-    [
-      'source',
-      'inventory_id',
-      'role',
-      'canonical_id',
-      'decision',
-      'corrected_fields',
-      'related_to',
-      'decision_note',
-    ],
-    prefix,
-  );
-
-  for (const key of ['source', 'role', 'decision', 'decision_note']) {
-    if (!Object.hasOwn(record, key)) {
-      fail(`${prefix}.${key} is required`, 'MISSING_FIELD');
-    }
-  }
-
-  requireEnum(record.source, SOURCES, `${prefix}.source`);
-  requireEnum(record.role, ROLES, `${prefix}.role`);
-  requireEnum(record.decision, DECISIONS, `${prefix}.decision`);
   requireString(record.decision_note, `${prefix}.decision_note`);
 
   if (Object.hasOwn(record, 'inventory_id')) {
@@ -151,163 +115,86 @@ function validateManifestRecord(record, index) {
   }
   if (Object.hasOwn(record, 'canonical_id')) {
     requireString(record.canonical_id, `${prefix}.canonical_id`);
-    if (!CANONICAL_ID_PATTERN.test(record.canonical_id)) {
-      fail(`${prefix}.canonical_id has an invalid format`, 'INVALID_CANONICAL_ID');
-    }
   }
   if (Object.hasOwn(record, 'corrected_fields')) {
-    if (!Array.isArray(record.corrected_fields) || record.corrected_fields.length === 0) {
-      fail(`${prefix}.corrected_fields must contain at least one field`, 'INVALID_CORRECTION_FIELDS');
-    }
     requireUnique(record.corrected_fields, `${prefix}.corrected_fields`);
     record.corrected_fields.forEach((field, fieldIndex) => {
       requireString(field, `${prefix}.corrected_fields[${fieldIndex}]`);
     });
   }
   if (Object.hasOwn(record, 'related_to')) {
-    if (!Array.isArray(record.related_to) || record.related_to.length === 0) {
-      fail(`${prefix}.related_to must contain at least one canonical ID`, 'INVALID_RELATED_RECORDS');
-    }
     requireUnique(record.related_to, `${prefix}.related_to`);
     record.related_to.forEach((relatedId, relatedIndex) => {
       requireString(relatedId, `${prefix}.related_to[${relatedIndex}]`);
-      if (!CANONICAL_ID_PATTERN.test(relatedId)) {
-        fail(`${prefix}.related_to contains an invalid canonical ID`, 'INVALID_CANONICAL_ID');
-      }
     });
-  }
-
-  if (record.source === 'inventory') {
-    if (!Object.hasOwn(record, 'inventory_id')) {
-      fail(`${prefix}.inventory_id is required for inventory records`, 'MISSING_INVENTORY_ID');
-    }
-    if (record.role !== 'start') {
-      fail(`${prefix}.inventory records must have role start`, 'INVALID_BATCH_ROLE');
-    }
-    if (Object.hasOwn(record, 'related_to')) {
-      fail(`${prefix}.inventory records must not declare related_to`, 'UNEXPECTED_RELATED_RECORDS');
-    }
-  } else {
-    if (Object.hasOwn(record, 'inventory_id')) {
-      fail(`${prefix}.reference-closure records must not have inventory_id`, 'UNEXPECTED_INVENTORY_ID');
-    }
-    if (record.role !== 'reference-only') {
-      fail(`${prefix}.reference-closure records must have role reference-only`, 'INVALID_BATCH_ROLE');
-    }
-    if (!Object.hasOwn(record, 'related_to')) {
-      fail(`${prefix}.reference-closure records require related_to`, 'MISSING_RELATED_RECORDS');
-    }
-  }
-
-  const includesCanonical = record.decision === 'included' || record.decision === 'corrected';
-  if (includesCanonical && !Object.hasOwn(record, 'canonical_id')) {
-    fail(`${prefix}.canonical_id is required for ${record.decision} records`, 'MISSING_CANONICAL_ID');
-  }
-  if (!includesCanonical && Object.hasOwn(record, 'canonical_id')) {
-    fail(`${prefix}.canonical_id is not allowed for ${record.decision} records`, 'UNEXPECTED_CANONICAL_ID');
-  }
-  if (record.decision === 'corrected' && !Object.hasOwn(record, 'corrected_fields')) {
-    fail(`${prefix}.corrected_fields is required for corrected records`, 'MISSING_CORRECTION_FIELDS');
-  }
-  if (record.decision !== 'corrected' && Object.hasOwn(record, 'corrected_fields')) {
-    fail(`${prefix}.corrected_fields is only allowed for corrected records`, 'UNEXPECTED_CORRECTION_FIELDS');
   }
 }
 
-export function validateBatchManifest(manifest) {
-  requireObject(manifest, 'manifest');
-  requireAllowedKeys(
-    manifest,
-    [
-      'schema_version',
-      'batch_id',
-      'inventory_id',
-      'inventory_revision',
-      'generator',
-      'generated_at',
-      'review',
-      'records',
-    ],
+function schemaErrorPath(error) {
+  const pathParts = error.instancePath
+    .split('/')
+    .filter(Boolean)
+    .map((part) => part.replaceAll('~1', '/').replaceAll('~0', '~'));
+  if (error.keyword === 'required') {
+    pathParts.push(error.params.missingProperty);
+  }
+  if (error.keyword === 'additionalProperties') {
+    pathParts.push(error.params.additionalProperty);
+  }
+  return pathParts.reduce(
+    (result, part) => (/^\d+$/u.test(part) ? `${result}[${part}]` : `${result}.${part}`),
     'manifest',
   );
+}
 
-  for (const key of [
-    'schema_version',
-    'batch_id',
-    'inventory_id',
-    'inventory_revision',
-    'generator',
-    'generated_at',
-    'review',
-    'records',
-  ]) {
-    if (!Object.hasOwn(manifest, key)) {
-      fail(`manifest.${key} is required`, 'MISSING_FIELD');
-    }
+function schemaErrorCode(error) {
+  if (error.keyword === 'additionalProperties') {
+    return 'UNKNOWN_FIELD';
+  }
+  if (error.keyword === 'required') {
+    return 'MISSING_FIELD';
+  }
+  if (error.keyword === 'format') {
+    return 'INVALID_TIMESTAMP';
+  }
+  if (error.keyword === 'enum' || error.keyword === 'const') {
+    return 'INVALID_ENUM';
+  }
+  return 'SCHEMA_ERROR';
+}
+
+function validateManifestSchema(manifest) {
+  if (manifestSchemaValidator(manifest)) {
+    return;
   }
 
-  if (manifest.schema_version !== '1') {
-    fail('manifest.schema_version must be 1', 'SCHEMA_VERSION');
-  }
+  const error = manifestSchemaValidator.errors?.[0];
+  const detail = error
+    ? `${schemaErrorPath(error)} ${error.message}`
+    : 'manifest does not match the batch manifest schema';
+  fail(`batch manifest schema validation failed: ${detail}`, error ? schemaErrorCode(error) : 'SCHEMA_ERROR');
+}
+
+export function validateBatchManifest(manifest) {
+  validateManifestSchema(manifest);
+
   requireString(manifest.batch_id, 'manifest.batch_id');
-  if (!BATCH_ID_PATTERN.test(manifest.batch_id)) {
-    fail('manifest.batch_id has an invalid format', 'INVALID_BATCH_ID');
-  }
-  if (manifest.inventory_id !== 'm5-core-5k') {
-    fail('manifest.inventory_id must be m5-core-5k', 'INVENTORY_ID');
-  }
   requireString(manifest.inventory_revision, 'manifest.inventory_revision');
-  if (!INVENTORY_REVISION_PATTERN.test(manifest.inventory_revision)) {
-    fail('manifest.inventory_revision has an invalid format', 'INVALID_INVENTORY_REVISION');
-  }
 
-  requireObject(manifest.generator, 'manifest.generator');
-  requireAllowedKeys(
-    manifest.generator,
-    ['model_id', 'tool_version', 'prompt_version', 'draft_sha256'],
-    'manifest.generator',
-  );
   for (const key of ['model_id', 'tool_version', 'prompt_version']) {
-    if (!Object.hasOwn(manifest.generator, key)) {
-      fail(`manifest.generator.${key} is required`, 'MISSING_FIELD');
-    }
     requireString(manifest.generator[key], `manifest.generator.${key}`);
   }
   if (Object.hasOwn(manifest.generator, 'draft_sha256')) {
     requireString(manifest.generator.draft_sha256, 'manifest.generator.draft_sha256');
-    if (!SHA256_PATTERN.test(manifest.generator.draft_sha256)) {
-      fail('manifest.generator.draft_sha256 must be a lowercase SHA-256 digest', 'INVALID_DIGEST');
-    }
   }
 
   requireIsoDate(manifest.generated_at, 'manifest.generated_at');
 
-  requireObject(manifest.review, 'manifest.review');
-  requireAllowedKeys(
-    manifest.review,
-    ['status', 'reviewer', 'completed_at'],
-    'manifest.review',
-  );
-  for (const key of ['status', 'reviewer']) {
-    if (!Object.hasOwn(manifest.review, key)) {
-      fail(`manifest.review.${key} is required`, 'MISSING_FIELD');
-    }
-  }
-  requireEnum(manifest.review.status, REVIEW_STATUSES, 'manifest.review.status');
   requireString(manifest.review.reviewer, 'manifest.review.reviewer');
   if (Object.hasOwn(manifest.review, 'completed_at')) {
     requireIsoDate(manifest.review.completed_at, 'manifest.review.completed_at');
   }
-  if (manifest.review.status === 'complete' && !Object.hasOwn(manifest.review, 'completed_at')) {
-    fail('manifest.review.completed_at is required when review is complete', 'MISSING_COMPLETION_TIME');
-  }
-  if (manifest.review.status !== 'complete' && Object.hasOwn(manifest.review, 'completed_at')) {
-    fail('manifest.review.completed_at is only allowed when review is complete', 'UNEXPECTED_COMPLETION_TIME');
-  }
 
-  if (!Array.isArray(manifest.records) || manifest.records.length === 0) {
-    fail('manifest.records must contain at least one record', 'INVALID_RECORDS');
-  }
   const inventoryIds = new Set();
   const canonicalIds = new Set();
   manifest.records.forEach((record, index) => {

@@ -137,7 +137,7 @@ function validateSeedPromotion(entry) {
       'MISSING_PROMOTED_CANONICAL_ID',
     );
   }
-  if (!/^w[0-9]{3}$/u.test(entry.canonical_id)) {
+  if (!/^w[0-9]{3,}$/u.test(entry.canonical_id)) {
     throw new TargetInventoryGenerationError(
       `promoted seed ${entry.inventory_id} has invalid canonical_id ${entry.canonical_id}`,
       'INVALID_PROMOTED_CANONICAL_ID',

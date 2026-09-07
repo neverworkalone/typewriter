@@ -26,6 +26,7 @@ It validates UTF-8 decoding, JSON parsing, and the row-level shape in
 Editorial Model v1 record. A single final newline is allowed, while blank rows and
 schema errors are rejected with the file path and 1-based line number. Cross-record
 references, relation ownership, dataset completeness, normalization, and SQLite
-building are handled by later M2 commands. The dataset command runs the current
-`w001`–`w300` pilot completeness regression by default; pass
-`--no-pilot-regression` when validating a smaller independent fixture.
+building are handled by later M2 commands. The dataset command requires the
+current `w001`–`w300` pilot candidates by default; additional post-pilot start
+candidates are allowed for M5 expansion. Pass `--no-pilot-regression` when
+validating a smaller independent fixture.
