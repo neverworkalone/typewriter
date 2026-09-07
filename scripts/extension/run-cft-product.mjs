@@ -788,6 +788,18 @@ export async function runCftProduct({
       popupLong.sessionId,
       'Boolean(document.querySelector("[data-record-id=\\"w237\\"]"))',
     );
+    // Keep the overflow check independent of sense count: polysemous results render one selected sense.
+    await evaluate(connection, popupLong.sessionId, [
+      '(() => {',
+      '  const region = document.querySelector(".dictionary-scroll-region");',
+      '  const fixture = document.createElement("div");',
+      '  fixture.dataset.cftOverflowFixture = "true";',
+      '  fixture.setAttribute("aria-hidden", "true");',
+      '  fixture.style.cssText = "height: 600px; flex: 0 0 600px;";',
+      '  region.append(fixture);',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
     const popupLongOverflow = await evaluate(connection, popupLong.sessionId, [
       '(() => {',
       '  const panel = document.querySelector("[data-dictionary-panel]");',
@@ -797,6 +809,7 @@ export async function runCftProduct({
       '    regionClientHeight: Math.round(region.clientHeight),',
       '    regionScrollHeight: Math.round(region.scrollHeight),',
       '    overflowY: getComputedStyle(region).overflowY,',
+      '    hasOverflowFixture: Boolean(document.querySelector("[data-cft-overflow-fixture]")),',
       '    hasSearch: Boolean(document.querySelector("[aria-label=\\"검색어\\"]")),',
       '    hasFooter: Boolean(document.querySelector(".product-footer")),',
       '  };',
@@ -1093,6 +1106,7 @@ export async function runCftProduct({
     if (
       popupLongOverflow.regionScrollHeight <= popupLongOverflow.regionClientHeight
       || popupLongOverflow.overflowY !== 'auto'
+      || !popupLongOverflow.hasOverflowFixture
       || popupLongOverflow.panelHeight >= 600
       || !popupLongOverflow.hasSearch
       || !popupLongOverflow.hasFooter
