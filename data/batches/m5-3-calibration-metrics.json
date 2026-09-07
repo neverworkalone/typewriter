@@ -1,0 +1,114 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-3-calibration-20260907",
+  "inventory_revision_before": "m5-1",
+  "inventory_revision_after": "m5-2",
+  "selection": {
+    "selected_start_count": 60,
+    "groups": [
+      { "name": "emotion / inner state", "selected": 10, "imported": 9, "held": 1, "rejected": 0 },
+      { "name": "quality / attitude", "selected": 10, "imported": 9, "held": 0, "rejected": 1 },
+      { "name": "sensory image", "selected": 10, "imported": 9, "held": 1, "rejected": 0 },
+      { "name": "scene / time / nature / space", "selected": 10, "imported": 8, "held": 1, "rejected": 1 },
+      { "name": "action / relation / change", "selected": 10, "imported": 10, "held": 0, "rejected": 0 },
+      { "name": "object / expression", "selected": 10, "imported": 7, "held": 1, "rejected": 2 }
+    ],
+    "selection_prep_seconds": 0,
+    "selection_prep_note": "The 60-row representative inventory was supplied by #76; #78 did not add a new selection pass."
+  },
+  "decisions": {
+    "included": 11,
+    "corrected": 41,
+    "held": 4,
+    "rejected": 4,
+    "importable_start_count": 52,
+    "correction_rate_of_selected": 0.6833333333333333,
+    "correction_rate_of_importable": 0.7884615384615384,
+    "held_rate": 0.06666666666666667,
+    "rejected_rate": 0.06666666666666667,
+    "held_or_rejected_rate": 0.13333333333333333,
+    "sense_field_correction_count": 23,
+    "relation_field_correction_count": 41
+  },
+  "review_timing": {
+    "generated_at": "2026-09-07T08:29:02Z",
+    "completed_at": "2026-09-07T08:39:05Z",
+    "review_window_seconds": 603,
+    "review_window": "00:10:03",
+    "review_window_seconds_per_selected_start": 10.05,
+    "review_window_seconds_per_importable_start": 11.596153846153847,
+    "method": "wall-clock interval in the batch manifest; individual decision timers were not instrumented",
+    "limitation": "The interval is a calibration baseline, not a controlled editor-time study."
+  },
+  "canonical_import": {
+    "imported_start_count": 52,
+    "imported_reference_only_count": 12,
+    "imported_record_count": 64,
+    "imported_sense_count": 82,
+    "imported_relation_count": 88,
+    "imported_expression_count": 3,
+    "sense_pos": {
+      "adjective": 23,
+      "expression": 3,
+      "noun": 37,
+      "verb": 19
+    },
+    "relation_type_counts": {
+      "action": 6,
+      "association": 7,
+      "antonym": 1,
+      "direct": 3,
+      "mood": 18,
+      "near": 27,
+      "scene": 7,
+      "sensory": 19
+    },
+    "relations_on_records_with_relation_corrections": {
+      "action": 6,
+      "association": 7,
+      "antonym": 1,
+      "direct": 1,
+      "mood": 15,
+      "near": 22,
+      "scene": 4,
+      "sensory": 10
+    },
+    "relation_mix_note": "The reviewed draft stored no relation bodies, so this is the final relation-type mix on records whose manifest corrected_fields includes relations; it is not an event-level diff count."
+  },
+  "quality_checks": {
+    "direct_relations_reviewed": 3,
+    "direct_replacement_errors": 0,
+    "over_broad_relation_errors": 0,
+    "reference_closure_errors": 0,
+    "batch_validator": "passed",
+    "raw_draft_committed": false
+  },
+  "post_review_audit": {
+    "audited_start_count": 52,
+    "audited_sense_count": 82,
+    "relation_count_before_audit": 139,
+    "removed_relation_count": 51,
+    "retargeted_or_retyped_relation_count": 5,
+    "relation_count_after_audit": 88,
+    "full_admission_audit": {
+      "second_pass_relation_count_before_audit": 127,
+      "second_pass_removed_relation_count": 39,
+      "second_pass_relation_count_after_audit": 88,
+      "criteria": "Keep only direct, near, antonym, mood, sensory, scene, action, or association relations with a stable writer-facing use explained by the source sense; remove incidental co-occurrence, generic outcomes, arbitrary modifiers or places, broad category links, and unsupported cross-sensory links."
+    },
+    "remaining_over_broad_relation_errors": 0,
+    "remaining_direct_replacement_errors": 0,
+    "remaining_reference_closure_errors": 0,
+    "timing_note": "The feedback audit was a separate editorial pass after the original 603-second batch window; it was not individually timed."
+  },
+  "post_import_inventory": {
+    "canonical_record_count": 390,
+    "current_start_count": 352,
+    "current_reference_only_count": 38,
+    "candidate_start_count": 4,
+    "held_count": 7,
+    "duplicate_count": 2,
+    "inflected_form_count": 2
+  },
+  "draft_sha256": "8ba163ed1128b61abd438819ae36119530e22347c84915980cfcdc966af0d367"
+}

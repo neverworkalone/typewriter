@@ -89,6 +89,9 @@ The M5 reviewed batch workflow, external staging boundary, manifest contract, an
 canonical import gate are documented in
 [`docs/m5-batch-workflow.md`](docs/m5-batch-workflow.md).
 
+The first M5-3 calibration batch measurements and expansion gate are recorded in
+[`docs/m5-3-calibration-report.md`](docs/m5-3-calibration-report.md).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.
