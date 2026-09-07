@@ -1,245 +1,126 @@
-# Typewriter — Pull Request Review
+# Typewriter PR Review
 
-This file is the entry point for pull-request reviews.
+Review with the minimum context needed to reach a reliable decision.
 
-Its purpose is to route the reviewer to only the review guidance relevant to
-the current PR.
+## Context-efficient review flow
 
-Do not read or apply `AGENTS.md` when performing a PR review.
-`AGENTS.md` defines implementation-agent workflow, not review policy.
+Use this order:
 
-## Review basis
+1. Read PR metadata, current head SHA, and the active issue.
+2. Inspect the complete changed-file list.
+3. Classify the changed surface and read only the applicable review guide(s).
+4. Inspect per-file patches, starting with behavior- or architecture-relevant files.
+5. Load surrounding source only when a patch cannot be understood safely by itself.
+6. Check CI status for the exact reviewed head.
+7. Open detailed CI output, additional files, or broader repository context only when needed.
 
-Review the PR against, in this order:
+Do not begin by fetching:
 
-1. the user's current request;
-2. the active issue and its acceptance criteria;
-3. the review guides applicable to the actual changed surface;
-4. the repository sources of truth referenced by those guides;
-5. the current PR implementation and validation results.
+- the full PR diff when per-file patches are sufficient;
+- complete source files when a patch plus a small surrounding region is sufficient;
+- successful CI logs;
+- generated artifacts already validated by CI;
+- unrelated repository documents;
+- complete historical PR discussion.
 
-Do not review against speculative future requirements.
-
-## Before reviewing
-
-For every requested PR review:
-
-1. identify the current PR head SHA;
-2. inspect the complete changed-file list;
-3. read the active issue;
-4. select only the review guides applicable to the changed surface;
-5. inspect the current implementation changes;
-6. confirm validation for the exact reviewed head.
-
-Select guides from the actual changed files and behavior, not merely from the
-PR title or description.
-
-A PR may require more than one guide.
-
-Do not read unrelated review guides.
-
-## Context efficiency
-
-Minimize review context without reducing review coverage.
-
-Prefer this inspection order:
-
-1. PR metadata and current head SHA;
-2. complete changed-file list;
-3. applicable review guides;
-4. per-file patches for the changed implementation;
-5. surrounding source or repository documents only when needed to understand
-   or validate those changes.
-
-Do not fetch broad repository context, the complete PR diff, full CI logs, or
-unrelated files preemptively when narrower evidence is sufficient.
-
-Inspect the complete changed surface, but load detailed content incrementally
-by changed file rather than pulling unrelated or already-understood material
-into review context.
+Expand context only when the current evidence is insufficient.
 
 ## Review guide routing
 
-Read [`docs/review-data.md`](docs/review-data.md) when the PR changes:
+- canonical/editorial/schema → `docs/review-data.md`
+- search/normalization/ranking → `docs/review-search.md`
+- validators/build/SQLite/CI → `docs/review-toolchain.md`
+- Chrome/runtime/UI/storage → `docs/review-extension.md`
+- external sources/licensing → `docs/review-licensing.md`
 
-- canonical dictionary data;
-- lexical or editorial schema;
-- senses or relations;
-- editorial classification, grouping, or ranking semantics.
+Read multiple guides only when the actual behavioral impact requires them.
 
-Read [`docs/review-search.md`](docs/review-search.md) when the PR changes:
+If a change affects behavior outside its apparent file category, load the
+additional guide or source of truth needed for that impact.
 
-- search normalization;
-- candidate generation;
-- search ranking or ordering;
-- homonym or sense-selection behavior;
-- search state or search regression behavior.
+## Depth by risk
 
-Read [`docs/review-toolchain.md`](docs/review-toolchain.md) when the PR changes:
+Do not review every changed file at equal depth.
 
-- validators;
-- import or normalization scripts;
-- canonical-data build tooling;
-- SQLite generation;
-- generated artifacts;
-- CI validation itself.
+Review deeply when a change affects:
 
-Read [`docs/review-extension.md`](docs/review-extension.md) when the PR changes:
+- architecture or shared behavior;
+- canonical data semantics;
+- search semantics or ranking;
+- validators or CI correctness;
+- persistence, permissions, packaging, or runtime boundaries;
+- licensing or external data provenance.
 
-- Chrome extension runtime behavior;
-- popup or Settings implementation;
-- keyboard interaction;
-- packaged SQLite/WASM loading;
-- storage, permissions, Manifest V3, or CSP behavior.
+Use lighter inspection for mechanical edits, generated output, fixtures,
+documentation, or repetitive data when automated validation covers their
+relevant properties.
 
-Read [`docs/review-licensing.md`](docs/review-licensing.md) when the PR changes:
+## Automated validation
 
-- external dictionaries, APIs, corpora, or datasets;
-- source provenance;
-- import-source policy;
-- licensing or attribution;
-- handling of raw third-party material.
+Trust deterministic CI for the property it validates on the exact reviewed
+head.
 
-Documentation-only changes require only the guide whose policy or behavior
-the documentation describes. If no specialized behavior is affected, this
-file is sufficient.
+Do not manually repeat passed mechanical checks.
 
-## What every review must determine
+For large data changes, review:
 
-Every review must determine both:
+- the rule or generation logic;
+- changed editorial decisions;
+- representative samples where semantic judgment is needed.
 
-1. whether the reported or intended problem is actually solved; and
-2. whether the overall approach is valid for the current Typewriter product,
-   issue, and architecture.
+Do not manually inspect the complete dataset when validators cover mechanical
+integrity.
 
-Do not approve a patch merely because one test or example passes if the
-underlying approach creates a broader current failure.
+Inspect successful CI details only when:
 
-When the approach is flawed:
+- the validator, fixture, expected result, or CI workflow changed;
+- the result conflicts with the implementation;
+- the check may not cover the claimed property.
 
-- explain the root problem;
-- explain why the current approach is unsafe, misleading, brittle, or
-  inconsistent with current Typewriter requirements;
-- recommend a bounded safer direction;
-- define how that direction should be validated.
+When a repeated manual finding is scriptable, move it into a validator or
+regression test so future reviews do not repeat that work.
 
-Do not require speculative or unnecessarily general architecture.
+## Findings
 
-## CI and automated validation
+When several failures appear to share one cause, identify and review the root
+cause instead of exhaustively collecting every equivalent symptom.
 
-Prefer deterministic automated validation over manual re-checking.
+Batch related findings in one review pass.
 
-When a deterministic CI check covers a property and has passed on the exact
-PR head being reviewed, treat that result as sufficient evidence for that
-property.
-
-Do not manually repeat the same full-dataset or mechanical validation.
-
-Do not open successful raw CI logs unless:
-
-- the validator or CI check itself changed;
-- the result is inconsistent with the reviewed implementation;
-- representative semantic review reveals a contradiction; or
-- the active issue explicitly requires inspection of detailed output.
-
-A failing check is a blocker when it validates behavior required by the
-current issue or applicable review guide.
-
-## First review
-
-The first review of a PR must inspect the complete current changed surface.
-
-Find related instances of the same root cause before submitting findings and
-report them together whenever practical.
-
-Do not intentionally use a one-finding → one-fix → one-review loop.
-
-The goal is to minimize review/fix cycles.
+Prefer a generalized regression or validator for the defect class over many
+redundant case-specific checks.
 
 ## Follow-up review
 
-A follow-up review occurs only when the user explicitly requests another
-review.
-
 Use the previously reviewed head as the baseline.
 
-Review:
+Inspect:
 
-1. whether previously accepted blockers were resolved;
-2. all material changes between the previously reviewed head and current head;
-3. regressions or contradictions introduced by those changes;
-4. whether the complete current changed-file surface contains new areas that
-   were not part of the previous review.
+1. previous blockers;
+2. changes from the previously reviewed head to the current head;
+3. regressions caused by those changes;
+4. newly added changed-file areas.
 
-Do not re-read unchanged hunks merely because they remain part of the PR.
+Do not reread unchanged hunks.
 
-For follow-up reviews, inspect the previously reported blocker threads and
-review activity added or changed since the previous reviewed head.
+Do not reload the complete historical discussion. Read only previous blocker
+threads and review activity needed to understand the current state.
 
-Do not reload the complete historical PR discussion unless needed to resolve
-current context.
+If the current head has not materially changed outside the fixes, do not
+restart a full first-pass review.
 
-Do not restart an unrestricted search for minor issues in unchanged material
-that was already available during the first comprehensive review.
+## Stop condition
 
-A newly discovered serious current defect may still be reported when it
-materially violates the issue, corrupts data, breaks the product or build, or
-creates a real licensing failure.
+Stop expanding review context once:
 
-Normal review should converge within the initial review plus one requested
-follow-up review. Additional rounds should be exceptional.
+- the active issue is understood;
+- the complete changed surface has been accounted for;
+- the applicable approach has been evaluated;
+- no unresolved blocker remains;
+- required validation is confirmed.
 
-## Stale findings
+Do not continue searching unchanged or unrelated areas merely to find
+additional minor issues.
 
-Before repeating an existing finding, confirm that it still exists on the
-current head.
-
-Do not report or reimplement a finding that applies only to an older head.
-
-## Regression principle
-
-When a reproducible defect is fixed and the behavior can be usefully checked
-by script, add or update automated regression coverage when proportionate.
-
-Do not create brittle or expensive automation merely to replace direct human
-evaluation where automation adds little value.
-
-Repeated mechanical review findings should migrate into validators or
-regression tests rather than remain permanent manual review work.
-
-## Blockers
-
-A blocker is a current defect that can produce an incorrect, misleading,
-unreproducible, legally risky, materially incomplete, or unusable result for
-the active issue or current Typewriter product.
-
-Do not treat hypothetical future requirements as blockers.
-
-Separate required fixes from optional future improvements.
-
-## Merge authorization
-
-When the user explicitly asks to review a specific PR, that request also
-authorizes merging that exact PR if and only if:
-
-- the current head has been reviewed;
-- no blockers remain;
-- required validation for the changed surface passes on that head;
-- the PR is mergeable into the intended base branch; and
-- the user has not explicitly prohibited merging.
-
-Do not request separate merge confirmation once those conditions are met.
-
-If any condition is not satisfied, do not merge.
-
-## Review completion
-
-A review is complete when:
-
-- the requested current scope has been examined;
-- the reported problem and the overall approach have both been evaluated;
-- current blockers found in that pass have been reported together;
-- optional future concerns are separated from blockers;
-- the reviewed head is identified;
-- required validation is confirmed; and
-- no finding is being intentionally withheld to create another review cycle.
+When uncertain whether the current context is sufficient to judge correctness
+or cross-file impact, expand the context rather than optimizing for token use.
