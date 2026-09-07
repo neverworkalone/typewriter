@@ -102,10 +102,10 @@ test('M5-5 recalibration artifacts record the fixed gate result', async () => {
   assert.equal(gate.audit.open_blocker_count, 0);
 
   const { inventory } = inventoryResult;
-  assert.equal(inventory.revision, 'm5-3');
+  assert.equal(inventory.revision, 'm5-5');
   assert.deepEqual(inventory.canonical_snapshot, {
-    record_count: 432,
-    start_count: 390,
+    record_count: 470,
+    start_count: 428,
     reference_only_count: 42,
   });
   assert.deepEqual(
@@ -147,6 +147,140 @@ test('M5-5 recalibration records and reference closure are searchable', async ()
       assert.equal(getRecord(database, 'w371').senses[0].relations[0].target, 'r048');
       assert.equal(getRecord(database, 'r051').role, 'reference-only');
       assert.equal(getRecord(database, 'r051').senses[0].relations.length, 0);
+    } finally {
+      database.close();
+    }
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('M5-7 new 40-start batch reproduces the fixed expansion gate', async () => {
+  const [manifest, relationDiff, metrics, canonicalResult, inventoryResult, preImportInventory] = await Promise.all([
+    readJson('m5-7-recalibration.json'),
+    readJson('m5-7-recalibration-relation-diff.json'),
+    readJson('m5-7-recalibration-metrics.json'),
+    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readTargetInventory(DEFAULT_INVENTORY_PATH),
+    readFile(path.join(BATCH_DIRECTORY, 'm5-7-preimport-inventory.json'), 'utf8').then(JSON.parse),
+  ]);
+
+  validateBatchManifest(manifest);
+  validateRelationDiff(relationDiff);
+  const derivedArtifact = createMetricsArtifact({
+    manifest,
+    relationDiff,
+    canonicalRecords: canonicalResult.records,
+    source: metrics.source,
+  });
+  assertMetricsMatch(metrics, derivedArtifact);
+
+  assert.equal(manifest.inventory_revision, 'm5-4');
+  assert.deepEqual(
+    Object.fromEntries(
+      ['included', 'corrected', 'held', 'rejected'].map((decision) => [
+        decision,
+        manifest.records.filter(
+          (record) => record.source === 'inventory' && record.decision === decision,
+        ).length,
+      ]),
+    ),
+    { included: 28, corrected: 10, held: 1, rejected: 1 },
+  );
+  assert.equal(metrics.derived.selection.selected_start_count, 40);
+  assert.equal(metrics.derived.canonical_import.imported_start_count, 38);
+  assert.equal(metrics.derived.canonical_import.imported_reference_only_count, 0);
+  assert.equal(metrics.derived.canonical_import.imported_sense_count, 38);
+  assert.equal(metrics.derived.canonical_import.imported_relation_count, 9);
+  assert.equal(metrics.derived.canonical_import.imported_expression_count, 3);
+
+  assert.deepEqual(
+    {
+      before: metrics.derived.relation_diff.before_count,
+      after: metrics.derived.relation_diff.after_count,
+      removed: metrics.derived.relation_diff.removed_count,
+      noise: metrics.derived.relation_diff.noise_event_count,
+      noise_rate: metrics.derived.relation_diff.noise_rate_of_before,
+    },
+    { before: 10, after: 9, removed: 1, noise: 1, noise_rate: 0.1 },
+  );
+  assert.deepEqual(metrics.derived.relation_diff.classification_counts, {
+    'broad-common-category': 1,
+  });
+
+  assert.equal(metrics.derived.timing.status, 'complete');
+  assert.equal(metrics.derived.timing.total_wall_clock_seconds, 678);
+  assert.equal(metrics.derived.timing.total_editor_seconds, 472);
+  assert.deepEqual(metrics.derived.timing.unmeasured_passes, []);
+  assert.deepEqual(
+    Object.keys(metrics.derived.timing.passes).sort(),
+    [
+      'feedback-fixes',
+      'final-audit',
+      'held-rejected',
+      'initial-review',
+      'post-review-audit',
+      'post-review-fixes',
+      'target-preparation',
+    ],
+  );
+  assert.ok(metrics.derived.timing.total_editor_seconds / 40 <= 12);
+  assert.equal(metrics.derived.audit.independent, true);
+  assert.equal(metrics.derived.audit.open_blocker_count, 0);
+
+  assert.equal(preImportInventory.revision, 'm5-4');
+  assert.deepEqual(preImportInventory.canonical_snapshot, {
+    record_count: 432,
+    start_count: 390,
+    reference_only_count: 42,
+  });
+  assert.equal(
+    preImportInventory.entries.filter(
+      (entry) => entry.source === 'editorial' && entry.status === 'candidate',
+    ).length,
+    40,
+  );
+
+  const { inventory } = inventoryResult;
+  assert.equal(inventory.revision, 'm5-5');
+  assert.deepEqual(inventory.canonical_snapshot, {
+    record_count: 470,
+    start_count: 428,
+    reference_only_count: 42,
+  });
+  assert.deepEqual(
+    inventory.entries
+      .filter((entry) => /^m5-(?:019|034|053|060|10[1-9]|11[0-9]|12[0-9]|13[0-6])$/u.test(entry.inventory_id))
+      .sort((left, right) => left.inventory_id.localeCompare(right.inventory_id, 'en', { numeric: true }))
+      .map((entry) => entry.status),
+    [...Array(38).fill('current'), 'held', 'held'],
+  );
+
+  assert.equal(canonicalResult.records.length, 470);
+});
+
+test('M5-7 imported starts and expressions are searchable while held rows stay out', async () => {
+  const outputDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-7-search-'));
+  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+
+  try {
+    await buildDictionary({
+      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
+      outputPath,
+      checkPilotCompleteness: true,
+      allowDirty: true,
+    });
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      assert.deepEqual(findRecordsByExactTerm(database, '서투르다').map(({ id }) => id), ['w391']);
+      assert.deepEqual(findRecordsByExactTerm(database, '마음을 열다').map(({ id }) => id), ['w394']);
+      assert.deepEqual(findRecordsByExactTerm(database, '귀에 익다').map(({ id }) => id), ['w427']);
+      assert.deepEqual(findRecordsByExactTerm(database, '눈에 밟히다').map(({ id }) => id), ['w428']);
+      assert.deepEqual(findRecordsByExactTerm(database, '말문이 막히다'), []);
+      assert.deepEqual(findRecordsByExactTerm(database, '손을 놓다'), []);
+      assert.equal(getRecord(database, 'w394').record_type, 'expression');
+      assert.equal(getRecord(database, 'w395').senses[0].relations[0].target, 'w018');
+      assert.deepEqual(getRecord(database, 'w400').senses[0].relations, []);
     } finally {
       database.close();
     }

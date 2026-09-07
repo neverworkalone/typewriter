@@ -177,6 +177,22 @@ was not measured, and the lower bound already exceeds the fixed 12-second
 ceiling. No further bounded expansion or 5K bulk generation is authorized until
 the process backlog is repaired and re-audited.
 
+## M5-7 expansion result
+
+M5-7 added 36 Typewriter-authored candidates to the four remaining unreviewed
+rows and selected 40 new starts across all seven axes. It imported 38 starts,
+held one expression, and rejected one expression after complete review. The
+selection, source-bound relation diff, measured follow-up passes, and fixed-gate
+decision are recorded in
+[`docs/m5-7-expansion-report.md`](m5-7-expansion-report.md).
+
+The post-import inventory is revision `m5-5`: 428 current starts, 42 current
+reference-only records, and no remaining candidates. The fixed gate passes with
+10% relation noise, 25% selected-start correction, 11.8 editor seconds per
+selected start, zero unmeasured passes, and zero independent-audit blockers.
+The result is `APPROVE BOUNDED`; this is not a 5K bulk-generation or M5-complete
+decision.
+
 ## Validation commands
 
 Regenerate the reviewable snapshot after changing canonical input or the seed:

@@ -1,0 +1,115 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-7-recalibration-20260907",
+  "source": {
+    "manifest": "data/batches/m5-7-recalibration.json",
+    "relation_diff": "data/batches/m5-7-recalibration-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 40
+    },
+    "decisions": {
+      "included": 28,
+      "corrected": 10,
+      "held": 1,
+      "rejected": 1,
+      "importable_start_count": 38,
+      "correction_rate_of_selected": 0.25,
+      "correction_rate_of_importable": 0.2631578947368421,
+      "held_rate": 0.025,
+      "rejected_rate": 0.025,
+      "held_or_rejected_rate": 0.05,
+      "sense_field_correction_count": 5,
+      "relation_field_correction_count": 5
+    },
+    "canonical_import": {
+      "imported_start_count": 38,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 38,
+      "imported_sense_count": 38,
+      "imported_relation_count": 9,
+      "imported_expression_count": 3,
+      "relation_type_counts": {
+        "near": 2,
+        "scene": 1,
+        "sensory": 1,
+        "mood": 5
+      }
+    },
+    "relation_diff": {
+      "before_count": 10,
+      "after_count": 9,
+      "added_count": 0,
+      "removed_count": 1,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": 1,
+      "noise_event_count": 1,
+      "noise_rate_of_before": 0.1,
+      "classification_counts": {
+        "broad-common-category": 1
+      }
+    },
+    "timing": {
+      "status": "complete",
+      "passes": {
+        "target-preparation": {
+          "status": "complete",
+          "wall_clock_seconds": 94,
+          "editor_seconds": 48
+        },
+        "initial-review": {
+          "status": "complete",
+          "wall_clock_seconds": 240,
+          "editor_seconds": 210
+        },
+        "feedback-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 105,
+          "editor_seconds": 80
+        },
+        "final-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 120,
+          "editor_seconds": 60
+        },
+        "held-rejected": {
+          "status": "complete",
+          "wall_clock_seconds": 38,
+          "editor_seconds": 24
+        },
+        "post-review-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 36,
+          "editor_seconds": 20
+        },
+        "post-review-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 45,
+          "editor_seconds": 30
+        }
+      },
+      "total_wall_clock_seconds": 678,
+      "total_editor_seconds": 472,
+      "measured_wall_clock_seconds": 678,
+      "measured_editor_seconds": 472,
+      "unmeasured_passes": []
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 4,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {
+        "relation-noise": 1,
+        "sense": 1,
+        "direct-replacement": 1,
+        "reference-closure": 1
+      }
+    }
+  }
+}

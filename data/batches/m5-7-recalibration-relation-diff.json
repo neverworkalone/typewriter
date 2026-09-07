@@ -1,0 +1,21 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-7-recalibration-20260907",
+  "before_count": 10,
+  "after_count": 9,
+  "events": [
+    {
+      "event_id": "m5-7-recalibration-20260907-event-0001",
+      "relation_id": "m5-7-w400-s1-r1",
+      "operation": "remove",
+      "source_sense": "w400-s1",
+      "before": {
+        "target": "w013",
+        "target_sense": "w013-s1",
+        "type": "mood"
+      },
+      "error_category": "broad-common-category"
+    }
+  ],
+  "source_note": "Reviewed relation snapshots for the new 40-start batch; raw drafts remain outside the repository."
+}
