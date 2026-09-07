@@ -40,6 +40,7 @@ function resolveTarget(target, context = {}) {
     return {
       targetRecordId: target,
       sourceSenseId: context.sourceSenseId ?? null,
+      targetSenseId: context.targetSenseId ?? null,
       relationType: context.relationType ?? null,
     };
   }
@@ -60,6 +61,10 @@ function resolveTarget(target, context = {}) {
   return {
     targetRecordId,
     sourceSenseId: relation.sourceSenseId ?? context.sourceSenseId ?? null,
+    targetSenseId: relation.targetSenseId
+      ?? relation.target_sense
+      ?? context.targetSenseId
+      ?? null,
     relationType: relation.canonicalType
       ?? relation.type
       ?? context.relationType
@@ -267,6 +272,7 @@ export class SearchSession {
         kind: 'relation-target',
         targetRecordId: resolved.targetRecordId,
         sourceSenseId: resolved.sourceSenseId,
+        targetSenseId: resolved.targetSenseId,
         relationType: resolved.relationType,
       },
     };
@@ -275,6 +281,7 @@ export class SearchSession {
       action: SEARCH_ACTIONS.relationTarget,
       targetRecordId: resolved.targetRecordId,
       sourceSenseId: resolved.sourceSenseId,
+      targetSenseId: resolved.targetSenseId,
       relationType: resolved.relationType,
     });
 
@@ -287,6 +294,7 @@ export class SearchSession {
       return projectRelationTarget(record, {
         targetRecordId: resolved.targetRecordId,
         sourceSenseId: resolved.sourceSenseId,
+        targetSenseId: resolved.targetSenseId,
         relationType: resolved.relationType,
       });
     }, { emptyReason: 'relation-target-not-found' });

@@ -312,7 +312,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[role="option"][aria-selected="true"]')).toBeNull();
   });
 
-  it('shows and switches homonym definitions without adding history or a back control', async () => {
+  it('shows and switches homonym definitions, then preserves the relation target sense', async () => {
     const record = {
       id: 'w133',
       record_type: 'entry',
@@ -331,20 +331,54 @@ describe('product MV3 Vue shells', () => {
           id: 'w133-s2',
           pos: 'noun',
           gloss: '하늘에서 내리는 것',
+          relations: [{
+            position: 0,
+            target: 'w097',
+            target_sense: 'w097-s1',
+            type: 'scene',
+            target_lemma: '눈길',
+            target_pos: 'noun',
+            target_gloss: '눈이 쌓여 하얗게 된 길',
+          }],
+        },
+      ],
+    };
+    const targetRecord = {
+      id: 'w097',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w097',
+      lemma: '눈길',
+      search_forms: ['눈길'],
+      senses: [
+        {
+          id: 'w097-s1',
+          pos: 'noun',
+          gloss: '눈이 쌓여 하얗게 된 길',
+          relations: [],
+        },
+        {
+          id: 'w097-s2',
+          pos: 'noun',
+          gloss: '사람이나 대상을 바라보는 시선',
           relations: [],
         },
       ],
     };
+    const records = new Map([
+      [record.id, record],
+      [targetRecord.id, targetRecord],
+    ]);
     const session = new SearchSession({
       runtime: {
         search: async () => [{ id: record.id }],
-        getRecord: async () => record,
+        getRecord: async (id) => records.get(id) || null,
       },
     });
     const host = mountWithProps(PopupApp, {
       session,
       settingsStore: {
-        load: async () => ({ ...DEFAULT_SETTINGS }),
+        load: async () => ({ ...DEFAULT_SETTINGS, association: true }),
       },
     });
     const input = host.querySelector('[aria-label="검색어"]');
@@ -382,6 +416,27 @@ describe('product MV3 Vue shells', () => {
     expect(session.history).toHaveLength(1);
     expect(session.state.selectedRecordId).toBe('w133');
     expect(session.state.selectedSenseId).toBe('w133-s2');
+
+    host.querySelector('[data-record-id="w133"] [data-target-record-id="w097"]').click();
+    await flush();
+
+    expect(host.querySelector('[data-record-id="w097"]')).not.toBeNull();
+    expect(host.querySelector('.back-button')).not.toBeNull();
+    expect(host.querySelectorAll('.sense-block')).toHaveLength(1);
+    expect(host.querySelector('.sense-block[data-sense-id="w097-s1"]')).not.toBeNull();
+    expect(host.querySelector('.sense-block[data-sense-id="w097-s2"]')).toBeNull();
+    expect(host.querySelector('.definition-text').textContent.trim()).toBe('눈이 쌓여 하얗게 된 길');
+    expect(session.state.navigation).toMatchObject({
+      targetRecordId: 'w097',
+      targetSenseId: 'w097-s1',
+    });
+    expect(session.history).toHaveLength(2);
+
+    host.querySelector('.back-button').click();
+    await flush();
+
+    expect(host.querySelector('[data-record-id="w133"]')).not.toBeNull();
+    expect(host.querySelector('[role="option"][data-sense-id="w133-s2"]').getAttribute('aria-selected')).toBe('true');
   });
 
   it('shows a clear control and keeps results while the first Escape clears only the query', async () => {

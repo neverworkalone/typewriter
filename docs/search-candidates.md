@@ -38,6 +38,8 @@ passes the ordered candidates to `projectSearchResults()`, while each record's
 sense and relation arrays remain in their stored `position` order. Relation target
 actions carry their source sense and canonical relation type into the existing
 history snapshot; candidate ranking does not rewrite that navigation context.
+When a relation records `target_sense`, relation navigation carries that target
+sense into the projection so a polysemous target shows only the intended sense.
 
 ## Keyboard selection contract
 

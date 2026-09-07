@@ -382,6 +382,11 @@ export async function runCftProduct({
       '    definition: document.querySelector(".definition-text")?.textContent.trim() || "",',
       '    hasBackButton: Boolean(document.querySelector(".back-button")),',
       '    hasHeaderDivider: Boolean(document.querySelector(".result-divider")),',
+      '    candidateDefinitionGap: (() => {',
+      '      const list = document.querySelector(".candidate-list");',
+      '      const definition = document.querySelector("[data-group-id=\\"definition\\"]");',
+      '      return list && definition ? Math.round((definition.getBoundingClientRect().top - list.getBoundingClientRect().bottom) * 100) / 100 : null;',
+      '    })(),',
       '  };',
       '})() ',
     ].join('\n'));
@@ -1001,6 +1006,8 @@ export async function runCftProduct({
       || popupHomonymFirst.definition !== '빛을 받아 사물을 보는 몸의 기관'
       || popupHomonymFirst.hasBackButton
       || popupHomonymFirst.hasHeaderDivider
+      || popupHomonymFirst.candidateDefinitionGap === null
+      || Math.abs(popupHomonymFirst.candidateDefinitionGap - 9) > 1
       || JSON.stringify(popupHomonymSecond.selectedOptions) !== JSON.stringify(['false', 'true'])
       || popupHomonymSecond.resultCount !== 1
       || JSON.stringify(popupHomonymSecond.visibleSenseIds) !== JSON.stringify(['w133-s2'])

@@ -292,7 +292,7 @@ defineExpose({ focusCandidate });
   flex-direction: column;
   gap: 1px;
   align-self: flex-start;
-  margin-top: 8px;
+  margin: 8px 0 9px;
   padding: 2px 10px 2px 9px;
   border: 1px solid #e1ddda;
   border-radius: 8px;
@@ -471,7 +471,7 @@ defineExpose({ focusCandidate });
 .dictionary-result.is-compact .candidate-list {
   min-width: 175px;
   gap: 0.875px;
-  margin-top: 7px;
+  margin: 7px 0;
   padding: 1.75px 8.75px 1.75px 7.875px;
   border-radius: 7px;
 }

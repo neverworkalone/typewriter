@@ -140,6 +140,23 @@ describe('Editorial Model v1 projection', () => {
       ],
     });
     expect(polysemous.senses.map(({ id }) => id)).toEqual(['w237-s1', 'w237-s2']);
+
+    const relationTarget = projectRelationTarget({
+      ...makeRecord('w237', '쓰다'),
+      senses: [
+        { id: 'w237-s1', pos: 'verb', gloss: '기록하다', relations: [] },
+        { id: 'w237-s2', pos: 'verb', gloss: '이용하다', relations: [] },
+      ],
+    }, {
+      targetRecordId: 'w237',
+      targetSenseId: 'w237-s2',
+    });
+    expect(relationTarget.senses.map(({ id }) => id)).toEqual(['w237-s2']);
+    expect(relationTarget.match).toMatchObject({
+      kind: 'relation-target',
+      targetRecordId: 'w237',
+      targetSenseId: 'w237-s2',
+    });
   });
 });
 
@@ -248,6 +265,7 @@ describe('SearchSession', () => {
 
     const relation = await session.openRelationTarget({
       targetId: 'r008',
+      targetSenseId: 'r008-s1',
       sourceSenseId: 'w026-s1',
       canonicalType: 'direct',
     });
@@ -264,6 +282,7 @@ describe('SearchSession', () => {
         kind: 'relation-target',
         targetRecordId: 'r008',
         sourceSenseId: 'w026-s1',
+        targetSenseId: 'r008-s1',
         relationType: 'direct',
       },
     });

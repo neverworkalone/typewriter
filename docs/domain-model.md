@@ -33,7 +33,8 @@ source order나 canonical relation type을 재분류하지 않는다. 우선순�
 
 `reference-only` target은 검색 결과 projection에서 출발어로 승격되지 않는다.
 관계 항목의 `action.type = "open-relation-target"`와 target ID를 사용해 별도의
-ID 탐색을 시작할 수 있다.
+ID 탐색을 시작할 수 있다. relation에 `target_sense`가 있으면 해당 sense도
+함께 전달되어 다의어 target에서 지정된 뜻만 표시한다.
 
 ## Search state
 
