@@ -18,7 +18,7 @@
     "schema_version": "1",
     "relation_diff": {
       "artifact": "data/batches/m5-5-recalibration-relation-diff.json",
-      "sha256": "19de584892a0d4f89a77b78d98ce563e05cae8a4cb72ff148e9904d7e90c52de"
+      "sha256": "0ab91e25bc333672f62dc5b0810b5e3a0e762b34d706f4c934c758cfcab07993"
     },
     "timing": {
       "status": "complete",
@@ -79,7 +79,14 @@
           "category": "relation-noise",
           "severity": "warning",
           "status": "resolved",
-          "note": "4개 remove event를 incidental co-occurrence, broad-common-category, generic-result-or-reaction, arbitrary-modifier-or-place로 분류하고 제거했다."
+          "note": "7개 remove event를 incidental co-occurrence, broad-common-category, generic-result-or-reaction, arbitrary-modifier-or-place, sense-target-type-error로 분류하고 제거했다."
+        },
+        {
+          "id": "m5-5-sense-boundary-review",
+          "category": "sense",
+          "severity": "warning",
+          "status": "resolved",
+          "note": "w361 담백하다의 맛·말투와 w364 까칠하다의 표면·태도를 각각 독립 sense로 분리했다."
         },
         {
           "id": "m5-5-reference-closure-review",
@@ -98,12 +105,12 @@
     {"source":"inventory","inventory_id":"m5-064","role":"start","decision":"included","decision_note":"안쓰러움의 감정 방향을 확인한 뒤 포함했다.","canonical_id":"w356"},
     {"source":"inventory","inventory_id":"m5-065","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"서러움의 gloss를 상실 일반 정서와 겹치지 않도록 교정한 뒤 포함했다.","canonical_id":"w357"},
     {"source":"inventory","inventory_id":"m5-066","role":"start","decision":"included","decision_note":"애틋함의 애정·거리감 결을 확인한 뒤 포함했다.","canonical_id":"w358"},
-    {"source":"inventory","inventory_id":"m5-067","role":"start","decision":"included","decision_note":"야무지다의 writer-facing 품사와 gloss를 확인한 뒤 포함했다.","canonical_id":"w359"},
-    {"source":"inventory","inventory_id":"m5-068","role":"start","decision":"included","decision_note":"어수선하다의 공간 장면을 확인한 뒤 포함했다.","canonical_id":"w360"},
-    {"source":"inventory","inventory_id":"m5-069","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"담백하다와 담담하다의 관계를 near로 교정한 뒤 포함했다.","canonical_id":"w361"},
+    {"source":"inventory","inventory_id":"m5-067","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"야무지다와 완고하다는 쓰임 축이 달라 near relation을 제거한 뒤 포함했다.","canonical_id":"w359"},
+    {"source":"inventory","inventory_id":"m5-068","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"어수선하다와 집의 일반적 배경 결합을 제거한 뒤 포함했다.","canonical_id":"w360"},
+    {"source":"inventory","inventory_id":"m5-069","role":"start","decision":"corrected","corrected_fields":["senses","relations"],"decision_note":"맛과 말투의 sense를 분리하고 담담하다 near를 말투 sense에만 연결한 뒤 포함했다.","canonical_id":"w361"},
     {"source":"inventory","inventory_id":"m5-070","role":"start","decision":"included","decision_note":"흐릿하다의 시각 sense와 sensory target을 확인한 뒤 포함했다.","canonical_id":"w362"},
     {"source":"inventory","inventory_id":"m5-071","role":"start","decision":"included","decision_note":"묵직하다의 물리·비유 sense 두 개를 확인한 뒤 포함했다.","canonical_id":"w363"},
-    {"source":"inventory","inventory_id":"m5-072","role":"start","decision":"included","decision_note":"까칠하다의 표면·태도 경계를 확인한 뒤 포함했다.","canonical_id":"w364"},
+    {"source":"inventory","inventory_id":"m5-072","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"까칠하다의 물리 표면과 날 선 태도를 두 sense로 분리한 뒤 포함했다.","canonical_id":"w364"},
     {"source":"inventory","inventory_id":"m5-073","role":"start","decision":"included","decision_note":"쫀득하다의 촉감과 reference target을 확인한 뒤 포함했다.","canonical_id":"w365"},
     {"source":"inventory","inventory_id":"m5-074","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"축축하다의 감각 relation을 표면 target으로 교정한 뒤 포함했다.","canonical_id":"w366"},
     {"source":"inventory","inventory_id":"m5-075","role":"start","decision":"included","decision_note":"새콤하다의 단일 미각 sense를 확인한 뒤 포함했다.","canonical_id":"w367"},

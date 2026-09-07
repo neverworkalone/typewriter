@@ -169,8 +169,10 @@ measurements and decision are recorded in
 
 The import advanced the seed and generated inventory from `m5-2` to `m5-3`:
 390 current starts, 42 current reference-only records, 4 remaining candidates,
-and 9 held rows. The result is `APPROVE BOUNDED` for one further bounded
-expansion under the same contract; it is not approval for 5K bulk generation.
+and 9 held rows. The fixed gate result is `HOLD PROCESS` because the
+relation-noise rate is 35%, above the unchanged 25% ceiling. No further bounded
+expansion or 5K bulk generation is authorized until the process backlog is
+repaired and re-audited.
 
 ## Validation commands
 

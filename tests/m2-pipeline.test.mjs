@@ -20,8 +20,8 @@ test('runs the complete M2 pipeline and compares canonical rows to SQLite', asyn
   assert.equal(summary.referenceOnlyCount, 42);
   assert.equal(summary.candidateCount, 390);
   assert.equal(summary.searchFormCount, 497);
-  assert.equal(summary.senseCount, 512);
-  assert.equal(summary.relationCount, 444);
+  assert.equal(summary.senseCount, 514);
+  assert.equal(summary.relationCount, 442);
   assert.equal(summary.expressionCount, 20);
   assert.equal(summary.databaseBuilds, 2);
   assert.equal(summary.normalizationVersion, '1');

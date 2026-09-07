@@ -2,10 +2,34 @@
   "schema_version": "1",
   "batch_id": "m5-5-recalibration-20260907",
   "before_count": 20,
-  "after_count": 16,
+  "after_count": 14,
   "events": [
     {
       "event_id": "m5-5-recalibration-20260907-event-0001",
+      "relation_id": "m5-5-w359-s1-r1",
+      "operation": "remove",
+      "source_sense": "w359-s1",
+      "before": {
+        "target": "w034",
+        "target_sense": "w034-s1",
+        "type": "near"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-5-recalibration-20260907-event-0002",
+      "relation_id": "m5-5-w360-s1-r1",
+      "operation": "remove",
+      "source_sense": "w360-s1",
+      "before": {
+        "target": "w171",
+        "target_sense": "w171-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-5-recalibration-20260907-event-0003",
       "relation_id": "m5-5-w360-s1-r2",
       "operation": "remove",
       "source_sense": "w360-s1",
@@ -17,27 +41,30 @@
       "error_category": "incidental-co-occurrence"
     },
     {
-      "event_id": "m5-5-recalibration-20260907-event-0002",
+      "event_id": "m5-5-recalibration-20260907-event-0004",
       "relation_id": "m5-5-w361-s1-r1",
-      "operation": "retype",
+      "operation": "remove",
       "source_sense": "w361-s1",
       "before": {
         "target": "w026",
         "target_sense": "w026-s1",
         "type": "association"
       },
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-5-recalibration-20260907-event-0005",
+      "relation_id": "m5-5-w361-s2-r1",
+      "operation": "add",
+      "source_sense": "w361-s2",
       "after": {
         "target": "w026",
         "target_sense": "w026-s1",
         "type": "near"
-      },
-      "changed_fields": [
-        "type"
-      ],
-      "error_category": "sense-target-type-error"
+      }
     },
     {
-      "event_id": "m5-5-recalibration-20260907-event-0003",
+      "event_id": "m5-5-recalibration-20260907-event-0006",
       "relation_id": "m5-5-w366-s1-r1",
       "operation": "retarget",
       "source_sense": "w366-s1",
@@ -58,7 +85,7 @@
       "error_category": "unsupported-cross-sensory"
     },
     {
-      "event_id": "m5-5-recalibration-20260907-event-0004",
+      "event_id": "m5-5-recalibration-20260907-event-0007",
       "relation_id": "m5-5-w374-s1-r1",
       "operation": "remove",
       "source_sense": "w374-s1",
@@ -70,7 +97,7 @@
       "error_category": "broad-common-category"
     },
     {
-      "event_id": "m5-5-recalibration-20260907-event-0005",
+      "event_id": "m5-5-recalibration-20260907-event-0008",
       "relation_id": "m5-5-w381-s1-r1",
       "operation": "remove",
       "source_sense": "w381-s1",
@@ -82,7 +109,7 @@
       "error_category": "generic-result-or-reaction"
     },
     {
-      "event_id": "m5-5-recalibration-20260907-event-0006",
+      "event_id": "m5-5-recalibration-20260907-event-0009",
       "relation_id": "m5-5-w387-s1-r1",
       "operation": "remove",
       "source_sense": "w387-s1",

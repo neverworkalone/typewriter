@@ -34,7 +34,7 @@ async function readJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
 }
 
-test('M5-5 recalibration artifacts satisfy the fixed expansion gate', async () => {
+test('M5-5 recalibration artifacts record the fixed gate result', async () => {
   const [manifest, relationDiff, metrics, canonicalResult, inventoryResult] = await Promise.all([
     readJson('m5-5-recalibration.json'),
     readJson('m5-5-recalibration-relation-diff.json'),
@@ -64,12 +64,12 @@ test('M5-5 recalibration artifacts satisfy the fixed expansion gate', async () =
         ).length,
       ]),
     ),
-    { included: 30, corrected: 8, held: 1, rejected: 1 },
+    { included: 27, corrected: 11, held: 1, rejected: 1 },
   );
   assert.equal(metrics.derived.canonical_import.imported_start_count, 38);
   assert.equal(metrics.derived.canonical_import.imported_reference_only_count, 4);
-  assert.equal(metrics.derived.canonical_import.imported_sense_count, 44);
-  assert.equal(metrics.derived.canonical_import.imported_relation_count, 16);
+  assert.equal(metrics.derived.canonical_import.imported_sense_count, 46);
+  assert.equal(metrics.derived.canonical_import.imported_relation_count, 14);
   assert.equal(metrics.derived.canonical_import.imported_expression_count, 3);
 
   const relationSummary = summarizeRelationDiff(relationDiff);
@@ -82,11 +82,11 @@ test('M5-5 recalibration artifacts satisfy the fixed expansion gate', async () =
       retargeted: relationSummary.retargeted_count,
       noise: relationSummary.noise_event_count,
     },
-    { before: 20, after: 16, removed: 4, retyped: 1, retargeted: 1, noise: 4 },
+    { before: 20, after: 14, removed: 7, retyped: 0, retargeted: 1, noise: 7 },
   );
 
   const gate = metrics.derived;
-  assert.ok(gate.relation_diff.noise_rate_of_before <= 0.25);
+  assert.ok(gate.relation_diff.noise_rate_of_before > 0.25);
   assert.ok(gate.relation_diff.noise_rate_of_before < 51 / 139);
   assert.ok(gate.decisions.correction_rate_of_selected <= 0.5);
   assert.equal(gate.timing.status, 'complete');
@@ -130,6 +130,12 @@ test('M5-5 recalibration records and reference closure are searchable', async ()
     try {
       assert.deepEqual(findRecordsByExactTerm(database, '민망함').map(({ id }) => id), ['w353']);
       assert.deepEqual(findRecordsByExactTerm(database, '눈을 피하다').map(({ id }) => id), ['w388']);
+      assert.equal(getRecord(database, 'w361').senses.length, 2);
+      assert.deepEqual(getRecord(database, 'w361').senses[0].relations, []);
+      assert.equal(getRecord(database, 'w361').senses[1].relations[0].target, 'w026');
+      assert.equal(getRecord(database, 'w364').senses.length, 2);
+      assert.deepEqual(getRecord(database, 'w359').senses[0].relations, []);
+      assert.deepEqual(getRecord(database, 'w360').senses[0].relations, []);
       assert.equal(getRecord(database, 'w373').senses.length, 2);
       assert.equal(getRecord(database, 'w362').senses[0].relations[0].target, 'r043');
       assert.equal(getRecord(database, 'w371').senses[0].relations[0].target, 'r048');
