@@ -50,7 +50,9 @@ ceiling, so the batch cannot authorize expansion. The audit also split
 senses. All non-add events have a failure category in the ledger, and every
 added or changed after-tuple is present in the approved canonical records.
 
-Timing is complete for all five required passes:
+Timing is complete for all five required passes and the measured
+`post-review-audit` follow-up added after the final reviewer feedback. The
+follow-up was measured as new work; no earlier pass duration was backfilled.
 
 | Pass | Wall-clock seconds | Editor seconds |
 | --- | ---: | ---: |
@@ -59,12 +61,13 @@ Timing is complete for all five required passes:
 | Feedback fixes | 101 | 80 |
 | Final audit | 154 | 103 |
 | Held/rejected | 37 | 20 |
-| **Total** | **630** | **455** |
+| Post-review audit | 188 | 188 |
+| **Total** | **818** | **643** |
 
-The measured editor cost is `455/40 = 11.375` seconds per selected start. The
-independent final audit is complete, with zero open blockers and zero open
-findings. No raw draft, model response, external source response, or temporary
-staging file is committed.
+The measured editor cost is `643/40 = 16.075` seconds per selected start. The
+independent final audit and post-review audit are complete, with zero open
+blockers and zero open findings. No raw draft, model response, external source
+response, or temporary staging file is committed.
 
 ## Fixed-gate decision
 
@@ -76,7 +79,7 @@ process hold:
 | Independent audit, complete, open blockers 0 | PASS |
 | Relation noise ≤ 25% and below M5-3 | FAIL: 35.00% |
 | Selected-start correction ≤ 50% | PASS: 27.50% |
-| Five passes measured; editor time ≤ 12 sec/start | PASS: 11.375 sec/start |
+| Five required passes and follow-up measured; editor time ≤ 12 sec/start | FAIL: 16.075 sec/start |
 
 Decision: **HOLD PROCESS**. The relation-noise backlog must be repaired and
 re-audited before another expansion is selected. This result does not authorize

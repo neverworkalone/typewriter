@@ -11,9 +11,10 @@ relation diff, canonical import, and audit findings.
 - `importable`: selected rows whose decision is `included` or `corrected`.
 - `correction rate`: `corrected / selected`.
 - `relation noise rate`: classified `remove` events / `before_count` in the relation diff.
-- `total actual review time`: the sum of `editor_seconds` across all five timing
-  passes, including held/rejected decisions. Target preparation is included when
-  it has a non-zero editor measurement.
+- `total actual review time`: the sum of `editor_seconds` across all five required
+  timing passes, including held/rejected decisions, plus any measured
+  `post-review-audit` follow-up pass. Target preparation is included when it has
+  a non-zero editor measurement.
 - `open blocker`: an audit finding with `severity: "blocker"` and
   `status: "open"`.
 
@@ -28,10 +29,12 @@ All criteria must pass. They are not re-tuned after a batch is inspected.
 3. **Correction rate:** the selected-start correction rate is at most `0.50`.
    A high `held` or `rejected` rate is not hidden by this rule; those decisions
    remain visible in the same metrics object.
-4. **Measured cost:** `timing.status` is `complete`, all five passes have both
-   wall-clock and editor seconds, and total editor time per selected start is at
-   most `12` seconds. The report must also show the wall-clock total; editor time
-   is the gate metric and wall-clock time is the operational comparison.
+4. **Measured cost:** `timing.status` is `complete`, all five required passes
+   have both wall-clock and editor seconds, and total editor time per selected
+   start is at most `12` seconds. If a measured `post-review-audit` pass is
+   present, it is included in that total. The report must also show the wall-clock
+   total; editor time is the gate metric and wall-clock time is the operational
+   comparison.
 
 The M5-3 baseline cannot pass this gate because its timing is incomplete and its
 relation-noise and correction rates exceed the fixed ceilings. Its 603-second

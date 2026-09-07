@@ -33,6 +33,10 @@ export const TIMING_PASS_IDS = Object.freeze([
   'held-rejected',
 ]);
 
+export const OPTIONAL_TIMING_PASS_IDS = Object.freeze([
+  'post-review-audit',
+]);
+
 const DECISIONS = Object.freeze(['included', 'corrected', 'held', 'rejected']);
 
 export class BatchMetricsError extends Error {
@@ -213,12 +217,16 @@ function deriveTiming(measurement) {
     fail(`timing is missing pass(es): ${missingPasses.join(', ')}`, 'MISSING_TIMING_PASS');
   }
 
+  const measuredPassIds = [
+    ...TIMING_PASS_IDS,
+    ...OPTIONAL_TIMING_PASS_IDS.filter((id) => passById.has(id)),
+  ];
   const derivedPasses = {};
   const unmeasuredPasses = [];
   let allComplete = true;
   let totalWallClock = 0;
   let totalEditor = 0;
-  for (const id of TIMING_PASS_IDS) {
+  for (const id of measuredPassIds) {
     const pass = passById.get(id);
     const wallClock = pass.wall_clock_seconds ?? null;
     const editor = pass.editor_seconds ?? null;

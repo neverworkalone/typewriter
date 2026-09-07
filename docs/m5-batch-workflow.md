@@ -209,10 +209,14 @@ Five timing passes are required in every new measurement manifest:
 
 Each pass records wall-clock seconds and editor seconds separately. A manifest may
 be marked `incomplete` while an older baseline is being repaired, but a completed
-metrics artifact is rejected if any pass is missing either measurement. The metrics
-command derives decision counts, sense/relation corrections, canonical counts,
-relation-diff counts, rates, audit findings, and timing totals from the source
-artifacts:
+metrics artifact is rejected if any required pass is missing either measurement.
+When reviewer feedback arrives after the five-pass review has ended, the manifest
+may add the controlled `post-review-audit` pass. It must be measured from the
+actual follow-up work; it must not backfill or estimate an earlier pass. When
+present, its wall-clock and editor seconds are included in the derived timing
+totals. The metrics command derives decision counts, sense/relation corrections,
+canonical counts, relation-diff counts, rates, audit findings, and timing totals
+from the source artifacts:
 
 ```sh
 npm run batch:metrics -- \
