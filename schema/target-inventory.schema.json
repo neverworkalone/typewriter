@@ -76,6 +76,7 @@
         "inventory_id": { "type": "string", "pattern": "\\S" },
         "source": { "enum": ["canonical", "editorial"] },
         "canonical_id": { "type": "string", "pattern": "^[wr][0-9]{3}$" },
+        "promoted_from": { "type": "string", "pattern": "\\S" },
         "status": {
           "enum": ["current", "candidate", "held", "duplicate", "inflected-form"]
         },

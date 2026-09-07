@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -9,7 +9,11 @@ import {
   TargetInventoryError,
   validateTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
-import { generateTargetInventory } from '../scripts/inventory/generate-target-inventory.mjs';
+import {
+  DEFAULT_SEED_PATH,
+  TargetInventoryGenerationError,
+  generateTargetInventory,
+} from '../scripts/inventory/generate-target-inventory.mjs';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
@@ -140,4 +144,85 @@ test('rejects current inventory drift instead of treating the snapshot as source
       return true;
     },
   );
+});
+
+test('preserves inventory metadata when a candidate is promoted to a new canonical start', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-inventory-promotion-'));
+  const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  const seedPath = path.join(temporaryDirectory, 'seed.json');
+  const inventoryPath = path.join(temporaryDirectory, 'inventory.json');
+
+  try {
+    await mkdir(canonicalDirectory, { recursive: true });
+    const canonicalText = await readFile(
+      path.join(path.dirname(DEFAULT_CANONICAL_DIRECTORY), 'canonical/pilot.jsonl'),
+      'utf8',
+    );
+    const promotedRecord = {
+      id: 'w301',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w301',
+      lemma: '감격',
+      search_forms: ['감격'],
+      senses: [{
+        id: 'w301-s1',
+        pos: 'noun',
+        gloss: '벅찬 기쁨이나 감동이 북받치는 마음.',
+      }],
+    };
+    await writeFile(
+      path.join(canonicalDirectory, 'pilot.jsonl'),
+      `${canonicalText}${JSON.stringify(promotedRecord)}\n`,
+      'utf8',
+    );
+
+    const seed = JSON.parse(await readFile(DEFAULT_SEED_PATH, 'utf8'));
+    const promotedSeed = seed.targets.find((entry) => entry.inventory_id === 'm5-001');
+    promotedSeed.status = 'promoted';
+    promotedSeed.canonical_id = 'w301';
+    await writeFile(seedPath, `${JSON.stringify(seed, null, 2)}\n`, 'utf8');
+
+    await assert.rejects(
+      generateTargetInventory({
+        canonicalDirectory,
+        seedPath: DEFAULT_SEED_PATH,
+        outputPath: inventoryPath,
+      }),
+      (error) => {
+        assert.ok(error instanceof TargetInventoryGenerationError);
+        assert.equal(error.code, 'UNMAPPED_CANONICAL_START');
+        return true;
+      },
+    );
+
+    const generated = await generateTargetInventory({
+      canonicalDirectory,
+      seedPath,
+      outputPath: inventoryPath,
+    });
+    const promoted = generated.entries.find((entry) => entry.canonical_id === 'w301');
+    assert.ok(promoted);
+    assert.equal(promoted.inventory_id, 'm5-001');
+    assert.equal(promoted.promoted_from, 'm5-001');
+    assert.equal(promoted.source, 'canonical');
+    assert.equal(promoted.status, 'current');
+    assert.deepEqual(promoted.reason_codes, ['E']);
+    assert.equal(promoted.decision_note, '기쁨과 벅참의 세기를 비교할 정서 후보.');
+    assert.equal(
+      generated.entries.some((entry) => entry.source === 'editorial' && entry.inventory_id === 'm5-001'),
+      false,
+    );
+
+    const summary = await validateTargetInventory({
+      inventoryPath,
+      canonicalDirectory,
+      checkPilotCompleteness: false,
+    });
+    assert.equal(summary.currentStartCount, 301);
+    assert.equal(summary.candidateStartCount, 59);
+    assert.equal(summary.plannedStartCount, 360);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });

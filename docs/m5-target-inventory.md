@@ -84,6 +84,30 @@ later reviewed batch assigns canonical IDs only at the import boundary. This kee
 selection work separate from canonical identity and avoids counting a proposed ID
 as a reviewed record.
 
+### Candidate promotion transition
+
+When a reviewed candidate enters canonical, its seed row is not deleted. The editor
+changes that row to `status: promoted` and records the assigned `canonical_id`, for
+example:
+
+```json
+{
+  "inventory_id": "m5-001",
+  "status": "promoted",
+  "planned_role": "start",
+  "canonical_id": "w301"
+}
+```
+
+`inventory:generate` then joins the canonical `w301` row to the existing `m5-001`
+selection metadata, emits one `source: canonical` / `status: current` inventory row,
+and removes the old editorial candidate row from the generated snapshot. The
+stable inventory ID, reason codes, axes, flags, and decision note remain attached to
+the promoted record. A new canonical start without this mapping is rejected instead
+of receiving a reason code inferred from its numeric ID. The transition is covered
+by a fixture that verifies generate → validate, no duplicate search form, and
+metadata preservation.
+
 ## External material policy
 
 The M5-1 inventory is Typewriter-authored selection work; it does not contain raw

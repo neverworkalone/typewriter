@@ -27,6 +27,14 @@ const CATEGORY_RANGES = Object.freeze([
   [271, 300, 'X'],
 ]);
 
+export class TargetInventoryGenerationError extends Error {
+  constructor(message, code = 'TARGET_INVENTORY_GENERATION_ERROR') {
+    super(message);
+    this.name = 'TargetInventoryGenerationError';
+    this.code = code;
+  }
+}
+
 function categoryForCanonicalId(id) {
   if (!id.startsWith('w')) {
     return undefined;
@@ -75,6 +83,13 @@ function canonicalEntry(recordInfo) {
   const { record } = recordInfo;
   const reasonCode = categoryForCanonicalId(record.id);
 
+  if (record.role === 'start' && !reasonCode) {
+    throw new TargetInventoryGenerationError(
+      `canonical start ${record.id} needs a promoted inventory mapping before it can enter the target inventory`,
+      'UNMAPPED_CANONICAL_START',
+    );
+  }
+
   return {
     inventory_id: `canonical-${record.id}`,
     source: 'canonical',
@@ -95,6 +110,58 @@ function canonicalEntry(recordInfo) {
   };
 }
 
+function validateSeedPromotion(entry) {
+  if (entry.status !== 'promoted') {
+    if (Object.hasOwn(entry, 'canonical_id')) {
+      throw new TargetInventoryGenerationError(
+        `seed ${entry.inventory_id} must not have canonical_id until status is promoted`,
+        'INVALID_PROMOTION_STATE',
+      );
+    }
+    return;
+  }
+
+  if (!Object.hasOwn(entry, 'canonical_id')) {
+    throw new TargetInventoryGenerationError(
+      `promoted seed ${entry.inventory_id} requires canonical_id`,
+      'MISSING_PROMOTED_CANONICAL_ID',
+    );
+  }
+  if (!/^w[0-9]{3}$/u.test(entry.canonical_id)) {
+    throw new TargetInventoryGenerationError(
+      `promoted seed ${entry.inventory_id} has invalid canonical_id ${entry.canonical_id}`,
+      'INVALID_PROMOTED_CANONICAL_ID',
+    );
+  }
+  if (entry.planned_role !== 'start') {
+    throw new TargetInventoryGenerationError(
+      `promoted seed ${entry.inventory_id} must retain planned_role start`,
+      'INVALID_PROMOTION_ROLE',
+    );
+  }
+}
+
+function promotedCanonicalEntry(recordInfo, seedEntry) {
+  const { record } = recordInfo;
+
+  return {
+    inventory_id: seedEntry.inventory_id,
+    source: 'canonical',
+    canonical_id: record.id,
+    promoted_from: seedEntry.inventory_id,
+    status: 'current',
+    planned_role: record.role,
+    record_type: record.record_type,
+    lemma: record.lemma,
+    search_forms: [...record.search_forms],
+    reason_codes: [...seedEntry.reason_codes],
+    pos: [...seedEntry.pos],
+    sense_profile: seedEntry.sense_profile,
+    flags: [...seedEntry.flags],
+    decision_note: seedEntry.decision_note,
+  };
+}
+
 export async function generateTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
@@ -103,13 +170,47 @@ export async function generateTargetInventory({
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const seed = JSON.parse(await readFile(seedPath, 'utf8'));
 
+  const promotions = seed.targets.filter((entry) => {
+    validateSeedPromotion(entry);
+    return entry.status === 'promoted';
+  });
+  const promotionsByCanonicalId = new Map();
+  for (const promotion of promotions) {
+    if (promotionsByCanonicalId.has(promotion.canonical_id)) {
+      throw new TargetInventoryGenerationError(
+        `multiple promoted seeds target canonical ${promotion.canonical_id}`,
+        'DUPLICATE_PROMOTED_CANONICAL_ID',
+      );
+    }
+    promotionsByCanonicalId.set(promotion.canonical_id, promotion);
+  }
+
+  const canonicalById = new Map(
+    canonical.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),
+  );
+  for (const promotion of promotions) {
+    if (!canonicalById.has(promotion.canonical_id)) {
+      throw new TargetInventoryGenerationError(
+        `promoted seed ${promotion.inventory_id} targets missing canonical ${promotion.canonical_id}`,
+        'MISSING_PROMOTED_CANONICAL',
+      );
+    }
+  }
+
   const currentEntries = canonical.records
-    .map(canonicalEntry)
+    .map((recordInfo) => {
+      const promotion = promotionsByCanonicalId.get(recordInfo.record.id);
+      return promotion
+        ? promotedCanonicalEntry(recordInfo, promotion)
+        : canonicalEntry(recordInfo);
+    })
     .sort((left, right) => left.canonical_id.localeCompare(right.canonical_id));
 
   const entries = [
     ...currentEntries,
-    ...seed.targets.map((entry) => ({ source: 'editorial', ...entry })),
+    ...seed.targets
+      .filter((entry) => entry.status !== 'promoted')
+      .map((entry) => ({ source: 'editorial', ...entry })),
   ];
   const currentStartCount = currentEntries.filter(
     (entry) => entry.planned_role === 'start',

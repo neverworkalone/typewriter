@@ -181,6 +181,9 @@ function validateEntryShape(entry, index) {
   }
 
   requireString(entry.inventory_id, `${prefix}.inventory_id`);
+  if (Object.hasOwn(entry, 'promoted_from')) {
+    requireString(entry.promoted_from, `${prefix}.promoted_from`);
+  }
   requireEnum(entry.source, SOURCES, `${prefix}.source`);
   requireEnum(entry.status, STATUSES, `${prefix}.status`);
   if (entry.planned_role !== null) {
@@ -270,6 +273,27 @@ function validateCanonicalEntry(entry, canonicalById, index) {
   }
 
   const { record } = canonicalInfo;
+  const isPromoted = Object.hasOwn(entry, 'promoted_from');
+  if (isPromoted) {
+    if (entry.inventory_id !== entry.promoted_from) {
+      fail(`${prefix}.inventory_id must preserve promoted_from`, 'PROMOTION_ID_DRIFT');
+    }
+    if (entry.inventory_id.startsWith('canonical-')) {
+      fail(`${prefix}.promoted entry must retain its non-canonical inventory_id`, 'PROMOTION_ID_DRIFT');
+    }
+    if (record.role !== 'start' || entry.planned_role !== 'start') {
+      fail(`${prefix}.promoted entry must map to a start canonical record`, 'PROMOTION_ROLE');
+    }
+    if (entry.record_type !== record.record_type || entry.lemma !== record.lemma) {
+      fail(`${prefix}.promoted canonical identity does not match ${record.id}`, 'CANONICAL_DRIFT');
+    }
+    requireExactArray(entry.search_forms, record.search_forms, `${prefix}.search_forms`);
+    if (entry.reason_codes.length === 0) {
+      fail(`${prefix}.promoted start must preserve at least one reason code`, 'MISSING_REASON_CODE');
+    }
+    return;
+  }
+
   if (entry.inventory_id !== `canonical-${record.id}`) {
     fail(`${prefix}.inventory_id must be canonical-${record.id}`, 'CANONICAL_INVENTORY_ID');
   }
@@ -298,6 +322,9 @@ function validateCanonicalEntry(entry, canonicalById, index) {
 
 function validateEditorialEntry(entry, canonicalById, index) {
   const prefix = `entries[${index}]`;
+  if (Object.hasOwn(entry, 'promoted_from')) {
+    fail(`${prefix}.editorial entry must not have promoted_from`, 'EDITORIAL_PROMOTION_ID');
+  }
   if (Object.hasOwn(entry, 'canonical_id')) {
     fail(`${prefix}.editorial entry must not have canonical_id`, 'EDITORIAL_CANONICAL_ID');
   }
@@ -386,6 +413,7 @@ export async function readTargetInventory(inventoryPath = DEFAULT_INVENTORY_PATH
 export async function validateTargetInventory({
   inventoryPath = DEFAULT_INVENTORY_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  checkPilotCompleteness = true,
 } = {}) {
   const { inventory } = await readTargetInventory(inventoryPath);
   requireObject(inventory, 'inventory');
@@ -440,7 +468,7 @@ export async function validateTargetInventory({
   }
 
   const canonicalResult = await readCanonicalRecords(canonicalDirectory);
-  validateDatasetRecords(canonicalResult.records, { checkPilotCompleteness: true });
+  validateDatasetRecords(canonicalResult.records, { checkPilotCompleteness });
   const canonicalById = new Map(
     canonicalResult.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),
   );
