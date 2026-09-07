@@ -117,6 +117,13 @@ test('M5-3 metrics reproduce from manifest, relation diff, and canonical records
     (error) => error instanceof BatchMetricsError && error.code === 'METRICS_DRIFT',
   );
 
+  const missingMeasuredLowerBound = structuredClone(checkedInMetrics);
+  delete missingMeasuredLowerBound.derived.timing.measured_editor_seconds;
+  assert.throws(
+    () => assertMetricsMatch(derivedArtifact, missingMeasuredLowerBound),
+    (error) => error instanceof BatchMetricsError && error.code === 'SCHEMA_ERROR',
+  );
+
   const sourceTampered = structuredClone(checkedInMetrics);
   sourceTampered.source.relation_diff = 'data/batches/other-relation-diff.json';
   assert.throws(
