@@ -57,6 +57,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  selectedSenseId: {
+    type: String,
+    default: null,
+  },
 });
 
 const emit = defineEmits([
@@ -71,8 +75,8 @@ const emit = defineEmits([
 ]);
 
 const searchBar = ref(null);
-const candidateRefs = new Map();
 const resultRefs = new Map();
+const resultInstances = new Map();
 
 const EMPTY_REASONS = Object.freeze({
   noExactMatch: 'no-exact-match',
@@ -94,15 +98,75 @@ const showBack = computed(() => (
   && props.mode === SEARCH_MODES.relationTarget
   && props.records.length > 0
 ));
-const candidateListEnabled = computed(() => (
-  props.interactive
-  && props.mode === SEARCH_MODES.exact
-  && props.status === SEARCH_STATUS.ready
-  && props.records.length > 1
+function definitionLabel(record, sense, senseIndex) {
+  if (typeof sense?.gloss === 'string' && sense.gloss.length > 0) {
+    return sense.gloss;
+  }
+
+  const definitionGroup = sense?.groups?.find(({ kind }) => kind === 'definition');
+  const definition = definitionGroup?.items?.[0];
+  return definition?.text || definition?.gloss || `${record.lemma} 뜻 ${senseIndex + 1}`;
+}
+
+const candidateOptions = computed(() => {
+  if (
+    !props.interactive
+    || props.mode !== SEARCH_MODES.exact
+    || props.status !== SEARCH_STATUS.ready
+  ) {
+    return [];
+  }
+
+  return props.records.flatMap((record) => {
+    const senses = Array.isArray(record.senses) ? record.senses : [];
+    if (senses.length > 1) {
+      return senses.map((sense, senseIndex) => ({
+        key: `${record.id}:${sense.id}`,
+        recordId: record.id,
+        senseId: sense.id,
+        label: definitionLabel(record, sense, senseIndex),
+      }));
+    }
+
+    return [{
+      key: `${record.id}:${senses[0]?.id || 'record'}`,
+      recordId: record.id,
+      senseId: senses[0]?.id ?? null,
+      label: record.lemma,
+    }];
+  });
+});
+
+const candidateListEnabled = computed(() => candidateOptions.value.length > 1);
+const selectedCandidateOption = computed(() => {
+  if (!candidateListEnabled.value) return null;
+
+  const selected = candidateOptions.value.find((option) => (
+    option.recordId === props.selectedRecordId
+    && option.senseId === props.selectedSenseId
+  ));
+  if (selected) return selected;
+
+  const firstForRecord = candidateOptions.value.find((option) => (
+    option.recordId === props.selectedRecordId
+  ));
+  return firstForRecord || candidateOptions.value[0] || null;
+});
+const selectedCandidateRecordId = computed(() => (
+  selectedCandidateOption.value?.recordId ?? props.selectedRecordId ?? null
+));
+const selectedCandidateSenseId = computed(() => (
+  selectedCandidateOption.value?.senseId ?? props.selectedSenseId ?? null
 ));
 const selectedCandidateIndex = computed(() => (
-  props.records.findIndex((record) => record.id === props.selectedRecordId)
+  candidateOptions.value.findIndex(({ key }) => key === selectedCandidateOption.value?.key)
 ));
+const visibleRecords = computed(() => {
+  if (!candidateListEnabled.value) return props.records;
+
+  const selectedRecordId = selectedCandidateRecordId.value;
+  return props.records.filter((record) => record.id === selectedRecordId);
+});
 const backgroundPreset = computed(() => getBackgroundPreset(props.settings?.background));
 const statePresentation = computed(() => {
   if (props.status === SEARCH_STATUS.loading) {
@@ -175,25 +239,15 @@ const statusDescription = computed(() => statePresentation.value.description);
 
 const showRetry = computed(() => props.status === SEARCH_STATUS.error);
 
-function setCandidateRef(recordId, instance) {
-  if (instance) {
-    candidateRefs.set(recordId, instance);
-  } else {
-    candidateRefs.delete(recordId);
-  }
-}
-
 function setResultRef(recordId, instance) {
   const element = instance?.$el || instance;
   if (element) {
     resultRefs.set(recordId, element);
+    resultInstances.set(recordId, instance);
   } else {
     resultRefs.delete(recordId);
+    resultInstances.delete(recordId);
   }
-}
-
-function candidateIndex(recordId) {
-  return props.records.findIndex((record) => record.id === recordId);
 }
 
 function focusSearch() {
@@ -201,15 +255,15 @@ function focusSearch() {
 }
 
 function focusCandidateAt(index, event) {
-  if (!candidateListEnabled.value || props.records.length === 0) return;
+  if (!candidateListEnabled.value || candidateOptions.value.length === 0) return;
 
-  const boundedIndex = Math.max(0, Math.min(index, props.records.length - 1));
-  const record = props.records[boundedIndex];
-  if (!record) return;
+  const boundedIndex = Math.max(0, Math.min(index, candidateOptions.value.length - 1));
+  const option = candidateOptions.value[boundedIndex];
+  if (!option) return;
 
   event?.preventDefault();
-  emit('select-candidate', record.id);
-  nextTick(() => candidateRefs.get(record.id)?.focus());
+  emit('select-candidate', option);
+  nextTick(() => resultInstances.get(option.recordId)?.focusCandidate?.(option.key));
 }
 
 function moveCandidate(direction, event) {
@@ -217,18 +271,26 @@ function moveCandidate(direction, event) {
 
   const currentIndex = selectedCandidateIndex.value;
   const nextIndex = currentIndex < 0
-    ? direction === 'next' ? 0 : props.records.length - 1
+    ? direction === 'next' ? 0 : candidateOptions.value.length - 1
     : currentIndex + (direction === 'next' ? 1 : -1);
   focusCandidateAt(nextIndex, event);
 }
 
 function handleSearchBarNavigation({ direction, event }) {
-  moveCandidate(direction, event);
+  if (!candidateListEnabled.value) return;
+
+  const currentIndex = selectedCandidateIndex.value;
+  focusCandidateAt(
+    currentIndex < 0
+      ? direction === 'next' ? 0 : candidateOptions.value.length - 1
+      : currentIndex,
+    event,
+  );
 }
 
-function handleCandidateFocus(recordId) {
+function handleCandidateFocus(option) {
   if (candidateListEnabled.value) {
-    emit('select-candidate', recordId);
+    emit('select-candidate', option);
   }
 }
 
@@ -242,7 +304,7 @@ function focusCandidateResult(recordId) {
   });
 }
 
-function handleCandidateKeydown(recordId, event) {
+function handleCandidateKeydown({ option, event }) {
   if (!candidateListEnabled.value) return;
 
   if (event.key === 'ArrowDown') {
@@ -255,8 +317,8 @@ function handleCandidateKeydown(recordId, event) {
   }
   if (event.key === 'Enter') {
     event.preventDefault();
-    emit('select-candidate', recordId);
-    focusCandidateResult(recordId);
+    emit('select-candidate', option);
+    focusCandidateResult(option.recordId);
     return;
   }
   if (event.key === 'Escape') {
@@ -297,32 +359,8 @@ defineExpose({ focusSearch });
     />
 
     <div v-if="isReady" class="dictionary-scroll-region">
-      <div
-        v-if="candidateListEnabled"
-        class="candidate-list"
-        role="listbox"
-        aria-label="검색 후보"
-      >
-        <div
-          v-for="record in records"
-          :key="record.id"
-          :ref="(element) => setCandidateRef(record.id, element)"
-          class="candidate-option"
-          :class="{ 'is-selected': record.id === selectedRecordId }"
-          :id="`search-candidate-${record.id}`"
-          :data-record-id="record.id"
-          role="option"
-          tabindex="-1"
-          :aria-selected="String(record.id === selectedRecordId)"
-          :aria-posinset="candidateIndex(record.id) + 1"
-          :aria-setsize="records.length"
-          @focus="handleCandidateFocus(record.id)"
-          @keydown="handleCandidateKeydown(record.id, $event)"
-          @click="emit('select-candidate', record.id)"
-        >{{ record.lemma }}</div>
-      </div>
       <DictionaryResult
-        v-for="record in records"
+        v-for="record in visibleRecords"
         :key="record.id"
         :ref="(instance) => setResultRef(record.id, instance)"
         :record="record"
@@ -330,8 +368,14 @@ defineExpose({ focusSearch });
         :compact="compact"
         :interactive="interactive"
         :show-back="showBack"
+        :candidate-options="candidateOptions"
+        :selected-record-id="selectedCandidateRecordId"
+        :selected-sense-id="selectedCandidateSenseId"
         @relation="emit('relation', $event)"
         @back="emit('back')"
+        @select-candidate="emit('select-candidate', $event)"
+        @candidate-focus="handleCandidateFocus"
+        @candidate-keydown="handleCandidateKeydown"
       />
       <ProductFooter
         :compact="compact"
@@ -402,42 +446,6 @@ defineExpose({ focusSearch });
   overflow-y: auto;
   scrollbar-color: #968f89 transparent;
   scrollbar-width: thin;
-}
-
-.candidate-list {
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  gap: 8px;
-  padding-bottom: 2px;
-}
-
-.candidate-option {
-  width: max-content;
-  max-width: 100%;
-  padding: 4px 8px;
-  border: 1px solid #d8d3cf;
-  border-radius: 6px;
-  background: #fff;
-  color: #5f5955;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  line-height: 18px;
-  overflow-wrap: anywhere;
-  text-align: left;
-}
-
-.candidate-option.is-selected {
-  border-color: #e5534b;
-  background: rgba(229, 83, 75, 0.06);
-  color: #7e433e;
-  font-weight: 700;
-}
-
-.candidate-option:focus-visible {
-  outline: 2px solid #7e433e;
-  outline-offset: 2px;
 }
 
 .dictionary-scroll-region::-webkit-scrollbar {
@@ -535,18 +543,6 @@ defineExpose({ focusSearch });
   padding: 7px 3.5px 0;
   overflow-y: visible;
   scrollbar-width: none;
-}
-
-.dictionary-panel.is-compact .candidate-list {
-  gap: 7px;
-  padding-bottom: 1.75px;
-}
-
-.dictionary-panel.is-compact .candidate-option {
-  padding: 3.5px 7px;
-  border-radius: 5.25px;
-  font-size: 11.375px;
-  line-height: 15.75px;
 }
 
 .dictionary-panel.is-compact.has-results .dictionary-scroll-region {

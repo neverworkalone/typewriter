@@ -5,6 +5,7 @@ import { createApp, nextTick } from 'vue';
 
 import PopupApp from '../src/popup/App.vue';
 import OptionsApp from '../src/options/App.vue';
+import { SearchSession } from '../src/domain/index.js';
 import { DEFAULT_SETTINGS } from '../src/ui/settings.js';
 
 const mountedApps = [];
@@ -235,7 +236,7 @@ describe('product MV3 Vue shells', () => {
     const options = () => [...host.querySelectorAll('[role="option"]')];
     expect(options()).toHaveLength(2);
     expect(options()[0].getAttribute('tabindex')).toBe('-1');
-    expect(options()[0].getAttribute('aria-selected')).toBe('false');
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
 
     const firstDown = new KeyboardEvent('keydown', {
       bubbles: true,
@@ -268,8 +269,27 @@ describe('product MV3 Vue shells', () => {
     await flush();
     expect(document.activeElement).toBe(options()[1]);
 
-    const relationLink = host.querySelector('[data-record-id="second"] [data-target-record-id="target"]');
+    const up = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowUp',
+    });
+    options()[1].dispatchEvent(up);
+    await flush();
+    expect(document.activeElement).toBe(options()[0]);
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
 
+    const secondDownAgain = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'ArrowDown',
+    });
+    options()[0].dispatchEvent(secondDownAgain);
+    await flush();
+    expect(document.activeElement).toBe(options()[1]);
+    expect(options()[1].getAttribute('aria-selected')).toBe('true');
+
+    const relationLink = host.querySelector('[data-record-id="second"] [data-target-record-id="target"]');
     const enter = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
@@ -281,16 +301,6 @@ describe('product MV3 Vue shells', () => {
     expect(calls).toEqual(['후보']);
     expect(document.activeElement).toBe(relationLink);
 
-    const up = new KeyboardEvent('keydown', {
-      bubbles: true,
-      cancelable: true,
-      key: 'ArrowUp',
-    });
-    options()[1].dispatchEvent(up);
-    await flush();
-    expect(document.activeElement).toBe(options()[0]);
-    expect(options()[0].getAttribute('aria-selected')).toBe('true');
-
     relationLink.focus();
     expect(document.activeElement).toBe(relationLink);
     expect(relationLink.tabIndex).toBe(0);
@@ -300,6 +310,135 @@ describe('product MV3 Vue shells', () => {
     expect(document.activeElement).toBe(input);
     expect(host.querySelector('.back-button')).not.toBeNull();
     expect(host.querySelector('[role="option"][aria-selected="true"]')).toBeNull();
+  });
+
+  it('shows and switches homonym definitions, then preserves the relation target sense', async () => {
+    const record = {
+      id: 'w133',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w133',
+      lemma: '눈',
+      search_forms: ['눈'],
+      senses: [
+        {
+          id: 'w133-s1',
+          pos: 'noun',
+          gloss: '우리 몸의 기관',
+          relations: [],
+        },
+        {
+          id: 'w133-s2',
+          pos: 'noun',
+          gloss: '하늘에서 내리는 것',
+          relations: [{
+            position: 0,
+            target: 'w097',
+            target_sense: 'w097-s1',
+            type: 'scene',
+            target_lemma: '눈길',
+            target_pos: 'noun',
+            target_gloss: '눈이 쌓여 하얗게 된 길',
+          }],
+        },
+      ],
+    };
+    const targetRecord = {
+      id: 'w097',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w097',
+      lemma: '눈길',
+      search_forms: ['눈길'],
+      senses: [
+        {
+          id: 'w097-s1',
+          pos: 'noun',
+          gloss: '눈이 쌓여 하얗게 된 길',
+          relations: [],
+        },
+        {
+          id: 'w097-s2',
+          pos: 'noun',
+          gloss: '사람이나 대상을 바라보는 시선',
+          relations: [],
+        },
+      ],
+    };
+    const records = new Map([
+      [record.id, record],
+      [targetRecord.id, targetRecord],
+    ]);
+    const session = new SearchSession({
+      runtime: {
+        search: async () => [{ id: record.id }],
+        getRecord: async (id) => records.get(id) || null,
+      },
+    });
+    const host = mountWithProps(PopupApp, {
+      session,
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS, association: true }),
+      },
+    });
+    const input = host.querySelector('[aria-label="검색어"]');
+
+    input.value = '눈';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    host.querySelector('.search-row').dispatchEvent(new Event('submit', {
+      bubbles: true,
+      cancelable: true,
+    }));
+    await flush();
+
+    const options = () => [...host.querySelectorAll('[role="option"]')];
+    expect(options()).toHaveLength(2);
+    expect(options()[0].textContent.trim()).toBe('우리 몸의 기관');
+    expect(options()[1].textContent.trim()).toBe('하늘에서 내리는 것');
+    expect(options()[0].getAttribute('aria-selected')).toBe('true');
+    expect(options()[1].getAttribute('aria-selected')).toBe('false');
+    expect(host.querySelectorAll('[data-dictionary-record]')).toHaveLength(1);
+    expect(host.querySelector('.definition-text').textContent.trim()).toBe('우리 몸의 기관');
+    expect(host.querySelector('.sense-block[data-sense-id="w133-s2"]')).toBeNull();
+    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('.result-divider')).toBeNull();
+    expect(host.querySelector('[data-editorial-gap]')).not.toBeNull();
+    expect(session.history).toHaveLength(1);
+
+    options()[1].click();
+    await flush();
+
+    expect(options()[0].getAttribute('aria-selected')).toBe('false');
+    expect(options()[1].getAttribute('aria-selected')).toBe('true');
+    expect(host.querySelectorAll('[data-dictionary-record]')).toHaveLength(1);
+    expect(host.querySelector('.definition-text').textContent.trim()).toBe('하늘에서 내리는 것');
+    expect(host.querySelector('.sense-block[data-sense-id="w133-s1"]')).toBeNull();
+    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('[data-editorial-gap]')).toBeNull();
+    expect(session.history).toHaveLength(1);
+    expect(session.state.selectedRecordId).toBe('w133');
+    expect(session.state.selectedSenseId).toBe('w133-s2');
+
+    host.querySelector('[data-record-id="w133"] [data-target-record-id="w097"]').click();
+    await flush();
+
+    expect(host.querySelector('[data-record-id="w097"]')).not.toBeNull();
+    expect(host.querySelector('.back-button')).not.toBeNull();
+    expect(host.querySelectorAll('.sense-block')).toHaveLength(1);
+    expect(host.querySelector('.sense-block[data-sense-id="w097-s1"]')).not.toBeNull();
+    expect(host.querySelector('.sense-block[data-sense-id="w097-s2"]')).toBeNull();
+    expect(host.querySelector('.definition-text').textContent.trim()).toBe('눈이 쌓여 하얗게 된 길');
+    expect(session.state.navigation).toMatchObject({
+      targetRecordId: 'w097',
+      targetSenseId: 'w097-s1',
+    });
+    expect(session.history).toHaveLength(2);
+
+    host.querySelector('.back-button').click();
+    await flush();
+
+    expect(host.querySelector('[data-record-id="w133"]')).not.toBeNull();
+    expect(host.querySelector('[role="option"][data-sense-id="w133-s2"]').getAttribute('aria-selected')).toBe('true');
   });
 
   it('shows a clear control and keeps results while the first Escape clears only the query', async () => {

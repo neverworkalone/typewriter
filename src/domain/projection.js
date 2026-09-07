@@ -103,9 +103,12 @@ export function projectSense(sense) {
   };
 }
 
-export function projectRecord(record, { match = null } = {}) {
+export function projectRecord(record, { match = null, senseId = null } = {}) {
   const senses = Array.isArray(record.senses) ? record.senses : [];
   const projectedSenses = senses.map(projectSense);
+  const visibleSenses = senseId && projectedSenses.some(({ id }) => id === senseId)
+    ? projectedSenses.filter(({ id }) => id === senseId)
+    : projectedSenses;
   const projected = {
     id: record.id,
     recordType: record.record_type,
@@ -113,8 +116,8 @@ export function projectRecord(record, { match = null } = {}) {
     candidateId: copyNullable(record.candidate_id),
     lemma: record.lemma,
     searchForms: Array.isArray(record.search_forms) ? [...record.search_forms] : [],
-    senses: projectedSenses,
-    hasRelations: projectedSenses.some((sense) => sense.hasRelations),
+    senses: visibleSenses,
+    hasRelations: visibleSenses.some((sense) => sense.hasRelations),
     match,
   };
 
@@ -144,6 +147,7 @@ export function projectRelationTarget(record, context = {}) {
       kind: 'relation-target',
       ...context,
     },
+    senseId: context.targetSenseId ?? null,
   });
 }
 

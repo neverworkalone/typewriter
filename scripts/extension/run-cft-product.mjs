@@ -353,6 +353,66 @@ export async function runCftProduct({
       '}))()',
     ].join('\n'));
 
+    const popupHomonym = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupHomonym);
+    await evaluate(connection, popupHomonym.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "눈";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})()',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupHomonym.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w133\\"]")) && document.querySelectorAll("[role=\\"option\\"]").length === 2',
+    );
+    const popupHomonymFirst = await evaluate(connection, popupHomonym.sessionId, [
+      '(() => {',
+      '  const options = [...document.querySelectorAll("[role=\\"option\\"]")];',
+      '  return {',
+      '    optionLabels: options.map((node) => node.textContent.trim()),',
+      '    selectedOptions: options.map((node) => node.getAttribute("aria-selected")),',
+      '    resultCount: document.querySelectorAll("[data-dictionary-record]").length,',
+      '    visibleSenseIds: [...document.querySelectorAll(".sense-block")].map((node) => node.dataset.senseId),',
+      '    definition: document.querySelector(".definition-text")?.textContent.trim() || "",',
+      '    hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '    hasHeaderDivider: Boolean(document.querySelector(".result-divider")),',
+      '    candidateDefinitionGap: (() => {',
+      '      const list = document.querySelector(".candidate-list");',
+      '      const definition = document.querySelector("[data-group-id=\\"definition\\"]");',
+      '      return list && definition ? Math.round((definition.getBoundingClientRect().top - list.getBoundingClientRect().bottom) * 100) / 100 : null;',
+      '    })(),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+    await evaluate(
+      connection,
+      popupHomonym.sessionId,
+      'document.querySelector("[role=\\"option\\"][data-sense-id=\\"w133-s2\\"]")?.click()',
+    );
+    await waitForCondition(
+      connection,
+      popupHomonym.sessionId,
+      'document.querySelector("[role=\\"option\\"][data-sense-id=\\"w133-s2\\"]")?.getAttribute("aria-selected") === "true" && document.querySelector(".definition-text")?.textContent.trim() === "하늘에서 내리는 흰 얼음 알갱이"',
+    );
+    const popupHomonymSecond = await evaluate(connection, popupHomonym.sessionId, [
+      '(() => {',
+      '  const options = [...document.querySelectorAll("[role=\\"option\\"]")];',
+      '  return {',
+      '    selectedOptions: options.map((node) => node.getAttribute("aria-selected")),',
+      '    resultCount: document.querySelectorAll("[data-dictionary-record]").length,',
+      '    visibleSenseIds: [...document.querySelectorAll(".sense-block")].map((node) => node.dataset.senseId),',
+      '    definition: document.querySelector(".definition-text")?.textContent.trim() || "",',
+      '    hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+
     const popupIme = await createExtensionSession(connection, extensionId, 'popup.html');
     extensionTargets.push(popupIme);
     const popupImeStart = await evaluate(connection, popupIme.sessionId, [
@@ -728,6 +788,18 @@ export async function runCftProduct({
       popupLong.sessionId,
       'Boolean(document.querySelector("[data-record-id=\\"w237\\"]"))',
     );
+    // Keep the overflow check independent of sense count: polysemous results render one selected sense.
+    await evaluate(connection, popupLong.sessionId, [
+      '(() => {',
+      '  const region = document.querySelector(".dictionary-scroll-region");',
+      '  const fixture = document.createElement("div");',
+      '  fixture.dataset.cftOverflowFixture = "true";',
+      '  fixture.setAttribute("aria-hidden", "true");',
+      '  fixture.style.cssText = "height: 600px; flex: 0 0 600px;";',
+      '  region.append(fixture);',
+      '  return true;',
+      '})() ',
+    ].join('\n'));
     const popupLongOverflow = await evaluate(connection, popupLong.sessionId, [
       '(() => {',
       '  const panel = document.querySelector("[data-dictionary-panel]");',
@@ -737,6 +809,7 @@ export async function runCftProduct({
       '    regionClientHeight: Math.round(region.clientHeight),',
       '    regionScrollHeight: Math.round(region.scrollHeight),',
       '    overflowY: getComputedStyle(region).overflowY,',
+      '    hasOverflowFixture: Boolean(document.querySelector("[data-cft-overflow-fixture]")),',
       '    hasSearch: Boolean(document.querySelector("[aria-label=\\"검색어\\"]")),',
       '    hasFooter: Boolean(document.querySelector(".product-footer")),',
       '  };',
@@ -939,6 +1012,24 @@ export async function runCftProduct({
       throw new Error('Popup CFT assertions failed: ' + JSON.stringify({ popupReady, focusResult }));
     }
     if (
+      JSON.stringify(popupHomonymFirst.optionLabels) !== JSON.stringify(['빛을 받아 사물을 보는 몸의 기관', '하늘에서 내리는 흰 얼음 알갱이'])
+      || JSON.stringify(popupHomonymFirst.selectedOptions) !== JSON.stringify(['true', 'false'])
+      || popupHomonymFirst.resultCount !== 1
+      || JSON.stringify(popupHomonymFirst.visibleSenseIds) !== JSON.stringify(['w133-s1'])
+      || popupHomonymFirst.definition !== '빛을 받아 사물을 보는 몸의 기관'
+      || popupHomonymFirst.hasBackButton
+      || popupHomonymFirst.hasHeaderDivider
+      || popupHomonymFirst.candidateDefinitionGap === null
+      || Math.abs(popupHomonymFirst.candidateDefinitionGap - 9) > 1
+      || JSON.stringify(popupHomonymSecond.selectedOptions) !== JSON.stringify(['false', 'true'])
+      || popupHomonymSecond.resultCount !== 1
+      || JSON.stringify(popupHomonymSecond.visibleSenseIds) !== JSON.stringify(['w133-s2'])
+      || popupHomonymSecond.definition !== '하늘에서 내리는 흰 얼음 알갱이'
+      || popupHomonymSecond.hasBackButton
+    ) {
+      throw new Error('Homonym selection CFT assertions failed: ' + JSON.stringify({ popupHomonymFirst, popupHomonymSecond }));
+    }
+    if (
       popupImeStart.defaultPrevented
       || popupImeStart.hasRecord
       || popupImeEarly.hasRecord
@@ -1015,6 +1106,7 @@ export async function runCftProduct({
     if (
       popupLongOverflow.regionScrollHeight <= popupLongOverflow.regionClientHeight
       || popupLongOverflow.overflowY !== 'auto'
+      || !popupLongOverflow.hasOverflowFixture
       || popupLongOverflow.panelHeight >= 600
       || !popupLongOverflow.hasSearch
       || !popupLongOverflow.hasFooter
@@ -1100,6 +1192,8 @@ export async function runCftProduct({
     return {
       extensionId,
       popupReady,
+      popupHomonymFirst,
+      popupHomonymSecond,
       popupImeStart,
       popupImeEarly,
       popupImeKeyboard,
