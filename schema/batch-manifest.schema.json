@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/batch-manifest.schema.json",
+  "title": "Typewriter reviewed batch manifest",
+  "description": "Review metadata for a canonical import batch. Raw drafts and model responses are never stored here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "batch_id",
+    "inventory_id",
+    "inventory_revision",
+    "generator",
+    "generated_at",
+    "review",
+    "records"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^m5-[0-9]+-[a-z0-9][a-z0-9-]*$"
+    },
+    "inventory_id": { "const": "m5-core-5k" },
+    "inventory_revision": {
+      "type": "string",
+      "pattern": "^m5-[1-9][0-9]*$"
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "tool_version", "prompt_version"],
+      "properties": {
+        "model_id": { "type": "string", "pattern": "\\S" },
+        "tool_version": { "type": "string", "pattern": "\\S" },
+        "prompt_version": { "type": "string", "pattern": "\\S" },
+        "draft_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewer"],
+      "properties": {
+        "status": {
+          "enum": ["unreviewed", "in-review", "complete"]
+        },
+        "reviewer": { "type": "string", "pattern": "\\S" },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "role",
+        "decision",
+        "decision_note"
+      ],
+      "properties": {
+        "source": {
+          "enum": ["inventory", "reference-closure"]
+        },
+        "inventory_id": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "role": {
+          "enum": ["start", "reference-only"]
+        },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3}$"
+        },
+        "decision": {
+          "enum": ["included", "held", "rejected", "corrected"]
+        },
+        "corrected_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "related_to": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[wr][0-9]{3}$"
+          }
+        },
+        "decision_note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    }
+  }
+}

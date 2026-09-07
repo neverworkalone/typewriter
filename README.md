@@ -85,6 +85,10 @@ The M4 failure-state contract and M5 handoff are documented in
 The M5 target inventory, start-count contract, selection axes, and calibration
 quality gate are documented in [`docs/m5-target-inventory.md`](docs/m5-target-inventory.md).
 
+The M5 reviewed batch workflow, external staging boundary, manifest contract, and
+canonical import gate are documented in
+[`docs/m5-batch-workflow.md`](docs/m5-batch-workflow.md).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

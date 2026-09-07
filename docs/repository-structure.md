@@ -13,6 +13,7 @@ work areas are documented here without creating empty scaffolding.
 | --- | --- | --- | --- |
 | Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
 | M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/` | Tracked for review, but never a canonical input and never a product build input. |
+| M5 batch manifest | Review metadata, generator identity, decisions, and final canonical IDs; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records and raw drafts remain outside the repository. |
 | Unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | A temporary workspace outside this repository | Never committed. Keep only the review decision and permitted Typewriter-authored result when appropriate. |
 | Generated dictionary database | SQLite built deterministically from canonical input | Build output such as `dist/` or `artifacts/` | Generated, not hand-edited, and ignored as local output. |
@@ -51,6 +52,13 @@ The following locations are deliberately not created as part of the foundation:
 artifacts, not lexical records. The validator joins its current snapshot to
 `data/canonical/` and rejects drift. The dictionary builder does not discover or
 read this directory.
+
+`data/batches/` is a second M5 exception used only for reviewable manifests. A
+manifest records the target inventory revision, generator/model/prompt identity,
+review status, record decisions, and final canonical IDs. It must not contain raw
+model responses, draft text, confidence scores, secrets, or local staging paths.
+The reviewed canonical JSONL passed to the import gate stays in a temporary
+workspace outside the repository.
 
 This keeps the repository structure proportional to the workflows that exist today.
 
