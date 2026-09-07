@@ -13,8 +13,9 @@
 html,
 body,
 #app {
-  width: 100%;
-  min-width: 360px;
+  width: 480px;
+  min-width: 480px;
+  max-width: 480px;
   margin: 0;
 }
 
@@ -25,7 +26,14 @@ body {
 
 .popup-app {
   width: 480px;
-  max-width: 100vw;
+  min-width: 480px;
+  max-width: 480px;
+}
+
+.popup-app .dictionary-panel {
+  width: 480px;
+  min-width: 480px;
+  max-width: 480px;
 }
 
 .sr-only {
