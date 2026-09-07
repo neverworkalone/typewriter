@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/relation-diff.schema.json",
+  "title": "Typewriter relation diff artifact",
+  "description": "Event-level changes between a temporary relation snapshot and its reviewed final snapshot. It never stores a raw model response.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "batch_id",
+    "before_count",
+    "after_count",
+    "events"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "before_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "after_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "source_note": {
+      "type": "string",
+      "pattern": "\\S"
+    }
+  },
+  "$defs": {
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "type"],
+      "properties": {
+        "target": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}$"
+        },
+        "target_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+        },
+        "type": {
+          "enum": [
+            "direct",
+            "near",
+            "antonym",
+            "mood",
+            "scene",
+            "sensory",
+            "action",
+            "association"
+          ]
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "relation_id",
+        "operation",
+        "source_sense"
+      ],
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "relation_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "operation": {
+          "enum": ["add", "remove", "retype", "retarget"]
+        },
+        "source_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+        },
+        "before": { "$ref": "#/$defs/relation" },
+        "after": { "$ref": "#/$defs/relation" },
+        "changed_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["target", "target_sense", "type"]
+          }
+        },
+        "error_category": {
+          "enum": [
+            "incidental-co-occurrence",
+            "generic-result-or-reaction",
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "unsupported-cross-sensory",
+            "sense-target-type-error"
+          ]
+        }
+      }
+    }
+  }
+}

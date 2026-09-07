@@ -59,6 +59,9 @@
         }
       }
     },
+    "measurement": {
+      "$ref": "#/$defs/measurement"
+    },
     "records": {
       "type": "array",
       "minItems": 1,
@@ -223,6 +226,125 @@
           }
         }
       ]
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "relation_diff", "timing", "audit"],
+      "properties": {
+        "schema_version": { "const": "1" },
+        "relation_diff": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact", "sha256"],
+          "properties": {
+            "artifact": {
+              "type": "string",
+              "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "timing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "passes"],
+          "properties": {
+            "status": {
+              "enum": ["complete", "incomplete"]
+            },
+            "passes": {
+              "type": "array",
+              "minItems": 5,
+              "items": { "$ref": "#/$defs/timingPass" }
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "independent", "findings"],
+          "properties": {
+            "status": {
+              "enum": ["complete", "incomplete"]
+            },
+            "independent": { "type": "boolean" },
+            "findings": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/auditFinding" }
+            }
+          }
+        }
+      }
+    },
+    "timingPass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status"],
+      "properties": {
+        "id": {
+          "enum": [
+            "target-preparation",
+            "initial-review",
+            "feedback-fixes",
+            "final-audit",
+            "held-rejected"
+          ]
+        },
+        "status": {
+          "enum": ["complete", "partial", "unmeasured"]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "wall_clock_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "editor_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    },
+    "auditFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "severity", "status", "note"],
+      "properties": {
+        "id": { "type": "string", "pattern": "\\S" },
+        "category": {
+          "enum": [
+            "blocker",
+            "relation-noise",
+            "direct-replacement",
+            "sense",
+            "reference-closure"
+          ]
+        },
+        "severity": {
+          "enum": ["blocker", "warning", "info"]
+        },
+        "status": {
+          "enum": ["open", "resolved"]
+        },
+        "note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
     }
   }
 }

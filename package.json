@@ -14,6 +14,8 @@
     "validate:inventory": "node scripts/validate/target-inventory.mjs",
     "batch:validate": "node scripts/batch/validate-batch.mjs",
     "batch:import": "node scripts/batch/import-reviewed-batch.mjs",
+    "batch:diff": "node scripts/batch/relation-diff.mjs",
+    "batch:metrics": "node scripts/batch/derive-metrics.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",

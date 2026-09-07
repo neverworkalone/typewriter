@@ -15,6 +15,53 @@
     "reviewer": "typewriter-editorial-calibration",
     "completed_at": "2026-09-07T08:39:05Z"
   },
+  "measurement": {
+    "schema_version": "1",
+    "relation_diff": {
+      "artifact": "data/batches/m5-3-relation-diff.json",
+      "sha256": "6d7304469358c98ebf849dca40c95cbafea95788596d9c04e90c080943de0c27"
+    },
+    "timing": {
+      "status": "incomplete",
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "complete",
+          "wall_clock_seconds": 0,
+          "editor_seconds": 0,
+          "note": "Selection was supplied by #76; this batch added no target-preparation pass."
+        },
+        {
+          "id": "initial-review",
+          "status": "partial",
+          "started_at": "2026-09-07T08:29:02Z",
+          "completed_at": "2026-09-07T08:39:05Z",
+          "wall_clock_seconds": 603,
+          "note": "Wall-clock batch interval only; editor time was not instrumented."
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "unmeasured",
+          "note": "The feedback correction pass was not timed in M5-3."
+        },
+        {
+          "id": "final-audit",
+          "status": "unmeasured",
+          "note": "The second admission audit was not timed in M5-3."
+        },
+        {
+          "id": "held-rejected",
+          "status": "unmeasured",
+          "note": "Held/rejected decision time was not separately instrumented in M5-3."
+        }
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": false,
+      "findings": []
+    }
+  },
   "records": [
     {
       "source": "inventory",
