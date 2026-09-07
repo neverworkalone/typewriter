@@ -402,6 +402,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('.sense-block[data-sense-id="w133-s2"]')).toBeNull();
     expect(host.querySelector('.back-button')).toBeNull();
     expect(host.querySelector('.result-divider')).toBeNull();
+    expect(host.querySelector('[data-editorial-gap]')).not.toBeNull();
     expect(session.history).toHaveLength(1);
 
     options()[1].click();
@@ -413,6 +414,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('.definition-text').textContent.trim()).toBe('하늘에서 내리는 것');
     expect(host.querySelector('.sense-block[data-sense-id="w133-s1"]')).toBeNull();
     expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('[data-editorial-gap]')).toBeNull();
     expect(session.history).toHaveLength(1);
     expect(session.state.selectedRecordId).toBe('w133');
     expect(session.state.selectedSenseId).toBe('w133-s2');

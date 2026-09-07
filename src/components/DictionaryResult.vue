@@ -73,6 +73,9 @@ const visibleSenses = computed(() => {
   return selectedSense.value ? [selectedSense.value] : [];
 });
 const isPolysemous = computed(() => visibleSenses.value.length > 1);
+const hasVisibleSenseRelations = computed(() => (
+  visibleSenses.value.some((sense) => sense.hasRelations)
+));
 const candidateRefs = new Map();
 
 function isGroupVisible(group) {
@@ -218,7 +221,7 @@ defineExpose({ focusCandidate });
     </section>
 
     <p
-      v-if="record.role === 'start' && record.hasRelations === false"
+      v-if="record.role === 'start' && !hasVisibleSenseRelations"
       class="editorial-gap-note"
       data-editorial-gap
     >연결된 관계어는 아직 정리되지 않았습니다.</p>
