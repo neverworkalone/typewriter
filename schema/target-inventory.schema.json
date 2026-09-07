@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/target-inventory.schema.json",
+  "title": "Typewriter M5 target inventory",
+  "description": "Non-canonical target selection and review-state contract for staged dictionary expansion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "inventory_id",
+    "revision",
+    "count_unit",
+    "canonical_scope",
+    "generated_from",
+    "canonical_snapshot",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "inventory_id": { "const": "m5-core-5k" },
+    "revision": { "type": "string", "pattern": "^m5-[1-9][0-9]*$" },
+    "count_unit": { "const": "search-start" },
+    "canonical_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["directory", "roles", "source"],
+      "properties": {
+        "directory": { "type": "string", "pattern": "\\S" },
+        "roles": {
+          "type": "array",
+          "const": ["start", "reference-only"]
+        },
+        "source": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "generated_from": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "type": "string", "pattern": "\\S" }
+    },
+    "canonical_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_count", "start_count", "reference_only_count"],
+      "properties": {
+        "record_count": { "type": "integer", "minimum": 0 },
+        "start_count": { "type": "integer", "minimum": 0 },
+        "reference_only_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventory_id",
+        "source",
+        "status",
+        "planned_role",
+        "record_type",
+        "lemma",
+        "search_forms",
+        "reason_codes",
+        "pos",
+        "sense_profile",
+        "flags",
+        "decision_note"
+      ],
+      "properties": {
+        "inventory_id": { "type": "string", "pattern": "\\S" },
+        "source": { "enum": ["canonical", "editorial"] },
+        "canonical_id": { "type": "string", "pattern": "^[wr][0-9]{3}$" },
+        "status": {
+          "enum": ["current", "candidate", "held", "duplicate", "inflected-form"]
+        },
+        "planned_role": { "enum": ["start", "reference-only", null] },
+        "record_type": { "enum": ["entry", "expression"] },
+        "lemma": { "type": "string", "pattern": "\\S" },
+        "search_forms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": { "enum": ["E", "Q", "S", "C", "A", "O", "X"] }
+        },
+        "pos": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["noun", "adjective", "verb", "expression"] }
+        },
+        "sense_profile": {
+          "enum": ["single", "polysemy", "boundary", "expression"]
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "polysemy",
+              "pos-boundary",
+              "direct-boundary",
+              "mood-range",
+              "sensory-transfer",
+              "scene-expansion",
+              "action-direction",
+              "expression-unit",
+              "reference-closure",
+              "inflected-form"
+            ]
+          }
+        },
+        "related_canonical_id": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3}$"
+        },
+        "decision_note": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

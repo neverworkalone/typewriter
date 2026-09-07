@@ -27,7 +27,7 @@ const savedSettings = ref({ ...DEFAULT_SETTINGS });
 const settingsReady = ref(false);
 const saveState = ref('saved');
 const saving = ref(false);
-const productVersion = globalThis.chrome?.runtime?.getManifest?.().version || '0.3.0';
+const productVersion = globalThis.chrome?.runtime?.getManifest?.().version || '1.0.0';
 
 const previewRecord = computed(() => projectRecord(PREVIEW_RECORD));
 const isDirty = computed(() => (

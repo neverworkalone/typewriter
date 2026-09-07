@@ -12,6 +12,7 @@ work areas are documented here without creating empty scaffolding.
 | Material | Responsibility | Location | Repository rule |
 | --- | --- | --- | --- |
 | Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
+| M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/` | Tracked for review, but never a canonical input and never a product build input. |
 | Unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | A temporary workspace outside this repository | Never committed. Keep only the review decision and permitted Typewriter-authored result when appropriate. |
 | Generated dictionary database | SQLite built deterministically from canonical input | Build output such as `dist/` or `artifacts/` | Generated, not hand-edited, and ignored as local output. |
@@ -45,6 +46,11 @@ The following locations are deliberately not created as part of the foundation:
 - generated database and package output belongs in ignored build output such as
   `dist/` or `artifacts/`;
 - user data has no repository directory because it belongs to browser storage.
+
+`data/inventory/` is an M5 exception: it contains reviewable target-selection
+artifacts, not lexical records. The validator joins its current snapshot to
+`data/canonical/` and rejects drift. The dictionary builder does not discover or
+read this directory.
 
 This keeps the repository structure proportional to the workflows that exist today.
 
