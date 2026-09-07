@@ -197,6 +197,55 @@ test('completed metrics reject incomplete timing and cannot hide audit findings'
   );
 });
 
+test('M5-5 follow-up timing is a measured lower bound until the missing fix pass is recorded', async () => {
+  const [manifest, relationDiff, canonicalResult] = await Promise.all([
+    readBatchJson('m5-5-recalibration.json'),
+    readBatchJson('m5-5-recalibration-relation-diff.json'),
+    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+  ]);
+
+  const incomplete = deriveBatchMetrics({
+    manifest,
+    relationDiff,
+    canonicalRecords: canonicalResult.records,
+  });
+  assert.equal(incomplete.timing.status, 'incomplete');
+  assert.equal(incomplete.timing.measured_wall_clock_seconds, 818);
+  assert.equal(incomplete.timing.measured_editor_seconds, 643);
+  assert.deepEqual(incomplete.timing.unmeasured_passes, ['post-review-fixes']);
+  assert.equal(incomplete.timing.total_wall_clock_seconds, null);
+  assert.equal(incomplete.timing.total_editor_seconds, null);
+
+  const repairedManifest = structuredClone(manifest);
+  repairedManifest.measurement.timing.status = 'complete';
+  repairedManifest.measurement.timing.passes = repairedManifest.measurement.timing.passes.map((pass) => (
+    pass.id === 'post-review-fixes'
+      ? {
+        ...pass,
+        status: 'complete',
+        started_at: '2026-09-07T13:03:41Z',
+        completed_at: '2026-09-07T13:03:58Z',
+        wall_clock_seconds: 17,
+        editor_seconds: 13,
+        note: '후속 reviewer feedback에 대한 실제 sense·relation 수정 시간을 기록했다.',
+      }
+      : pass
+  ));
+
+  const complete = deriveBatchMetrics({
+    manifest: repairedManifest,
+    relationDiff,
+    canonicalRecords: canonicalResult.records,
+  });
+  assert.equal(complete.timing.status, 'complete');
+  assert.equal(complete.timing.total_wall_clock_seconds, 835);
+  assert.equal(complete.timing.total_editor_seconds, 656);
+  assert.equal(complete.timing.measured_wall_clock_seconds, 835);
+  assert.equal(complete.timing.measured_editor_seconds, 656);
+  assert.deepEqual(complete.timing.unmeasured_passes, []);
+  assert.equal(complete.timing.passes['post-review-fixes'].editor_seconds, 13);
+});
+
 test('relation diff events must match approved canonical tuples', async () => {
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-3-calibration.json'),

@@ -1,0 +1,127 @@
+{
+  "schema_version": "1",
+  "fixture_id": "m5-6-m5-5-relation-admission",
+  "source_artifact": "data/batches/m5-5-recalibration-relation-diff.json",
+  "removed_error_count": 7,
+  "cases": [
+    {
+      "case_id": "m5-5-remove-w359-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0001",
+      "operation": "remove",
+      "source_sense": "w359-s1",
+      "candidate": {
+        "target": "w034",
+        "target_sense": "w034-s1",
+        "type": "near"
+      },
+      "failure_category": "broad-common-category",
+      "expected_action": "omit",
+      "review_note": "넓은 공통 범주라는 이유만으로 source sense의 대체 후보로 올리지 않는다."
+    },
+    {
+      "case_id": "m5-5-remove-w360-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0002",
+      "operation": "remove",
+      "source_sense": "w360-s1",
+      "candidate": {
+        "target": "w171",
+        "target_sense": "w171-s1",
+        "type": "scene"
+      },
+      "failure_category": "arbitrary-modifier-or-place",
+      "expected_action": "omit",
+      "review_note": "장소·배경으로 임의 결합된 scene은 안정적인 작가용 쓰임이 없으면 제외한다."
+    },
+    {
+      "case_id": "m5-5-remove-w360-s1-r2",
+      "source_event_id": "m5-5-recalibration-20260907-event-0003",
+      "operation": "remove",
+      "source_sense": "w360-s1",
+      "candidate": {
+        "target": "w123",
+        "target_sense": "w123-s1",
+        "type": "association"
+      },
+      "failure_category": "incidental-co-occurrence",
+      "expected_action": "omit",
+      "review_note": "같은 장면에 우연히 함께 나타나는 것만으로 association을 만들지 않는다."
+    },
+    {
+      "case_id": "m5-5-remove-w361-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0004",
+      "operation": "remove",
+      "source_sense": "w361-s1",
+      "candidate": {
+        "target": "w026",
+        "target_sense": "w026-s1",
+        "type": "association"
+      },
+      "failure_category": "sense-target-type-error",
+      "expected_action": "omit",
+      "review_note": "source sense와 target sense의 경계가 맞지 않는 association은 그대로 통과시키지 않는다."
+    },
+    {
+      "case_id": "m5-5-remove-w374-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0007",
+      "operation": "remove",
+      "source_sense": "w374-s1",
+      "candidate": {
+        "target": "w124",
+        "target_sense": "w124-s1",
+        "type": "scene"
+      },
+      "failure_category": "broad-common-category",
+      "expected_action": "omit",
+      "review_note": "일반적인 scene 범주는 source sense에 보존할 작가용 결이 없으면 제외한다."
+    },
+    {
+      "case_id": "m5-5-remove-w381-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0008",
+      "operation": "remove",
+      "source_sense": "w381-s1",
+      "candidate": {
+        "target": "w125",
+        "target_sense": "w125-s1",
+        "type": "mood"
+      },
+      "failure_category": "generic-result-or-reaction",
+      "expected_action": "omit",
+      "review_note": "일반적인 반응이나 결과를 source mood의 관계로 승격하지 않는다."
+    },
+    {
+      "case_id": "m5-5-remove-w387-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0009",
+      "operation": "remove",
+      "source_sense": "w387-s1",
+      "candidate": {
+        "target": "w126",
+        "target_sense": "w126-s1",
+        "type": "scene"
+      },
+      "failure_category": "arbitrary-modifier-or-place",
+      "expected_action": "omit",
+      "review_note": "임의의 장소·수식 결합은 별도의 writer-facing evidence가 없으면 제외한다."
+    }
+  ],
+  "corrections": [
+    {
+      "case_id": "m5-5-retarget-w366-s1-r1",
+      "source_event_id": "m5-5-recalibration-20260907-event-0006",
+      "operation": "retarget",
+      "source_sense": "w366-s1",
+      "before": {
+        "target": "w041",
+        "target_sense": "w041-s1",
+        "type": "sensory"
+      },
+      "after": {
+        "target": "r049",
+        "target_sense": "r049-s1",
+        "type": "sensory"
+      },
+      "failure_category": "unsupported-cross-sensory",
+      "expected_action": "retarget-after-editor-review",
+      "review_note": "cross-sensory 후보는 원래 target을 통과시키지 않고, 구체적인 감각 근거가 확인된 target으로만 교정한다."
+    }
+  ]
+}
