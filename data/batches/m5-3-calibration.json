@@ -124,19 +124,23 @@
       "inventory_id": "m5-011",
       "role": "start",
       "decision": "corrected",
-      "decision_note": "Calibration review에서 senses를 전수 교정한 뒤 포함했다.",
+      "decision_note": "Calibration review에서 단정하다의 품사·sense 경계와 말하다 relation을 교정한 뒤 포함했다.",
       "canonical_id": "w310",
       "corrected_fields": [
-        "senses"
+        "senses",
+        "relations"
       ]
     },
     {
       "source": "inventory",
       "inventory_id": "m5-012",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w311"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 근거가 약한 온기 association을 제거한 뒤 포함했다.",
+      "canonical_id": "w311",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -255,9 +259,12 @@
       "source": "inventory",
       "inventory_id": "m5-025",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w322"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 둔함과 대조되는 까슬하다의 near relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w322",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -324,19 +331,23 @@
       "inventory_id": "m5-032",
       "role": "start",
       "decision": "corrected",
-      "decision_note": "Calibration review에서 senses를 전수 교정한 뒤 포함했다.",
+      "decision_note": "Calibration review에서 물가의 두 sense를 분리하고 근거가 약한 scene·association을 제거한 뒤 포함했다.",
       "canonical_id": "w329",
       "corrected_fields": [
-        "senses"
+        "senses",
+        "relations"
       ]
     },
     {
       "source": "inventory",
       "inventory_id": "m5-033",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w330"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 방과의 광범위한 scene relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w330",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -349,17 +360,23 @@
       "source": "inventory",
       "inventory_id": "m5-035",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w331"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 숲과의 광범위한 scene relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w331",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
       "inventory_id": "m5-036",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w332"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 골목과의 대비성 설명을 near relation으로 정정한 뒤 포함했다.",
+      "canonical_id": "w332",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -391,9 +408,12 @@
       "source": "inventory",
       "inventory_id": "m5-040",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w335"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 방과의 광범위한 scene relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w335",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",

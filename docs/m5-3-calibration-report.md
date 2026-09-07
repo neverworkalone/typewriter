@@ -14,14 +14,14 @@ The 60 candidate decisions were:
 
 | Decision | Count | Rate of selected starts |
 | --- | ---: | ---: |
-| `included` | 23 | 38.33% |
-| `corrected` | 29 | 48.33% |
+| `included` | 17 | 28.33% |
+| `corrected` | 35 | 58.33% |
 | `held` | 4 | 6.67% |
 | `rejected` | 4 | 6.67% |
 | Importable starts | 52 | 86.67% |
 
-The correction rate is 29/60 (`48.33%`) across the selected inventory, or 29/52
-(`55.77%`) among the imported starts. The held and rejected decisions remain in
+The correction rate is 35/60 (`58.33%`) across the selected inventory, or 35/52
+(`67.31%`) among the imported starts. The held and rejected decisions remain in
 the manifest with decision notes. Rejected rows remain `candidate` in the seed
 because the inventory status vocabulary has no `rejected` state; the manifest is
 the authoritative batch decision record.
@@ -43,35 +43,42 @@ The 60 rows remained balanced across six writer-facing groups:
 
 ## Editorial measurements
 
-The reviewed import contains 82 senses, 139 relations, and three independent
-expression records. Sense POS counts are adjective 24, expression 3, noun 37,
-and verb 18.
+The reviewed import contains 82 senses, 127 relations, and three independent
+expression records. Sense POS counts are adjective 23, expression 3, noun 37,
+and verb 19.
 
 Relation types in the imported records are:
 
 | Type | Count |
 | --- | ---: |
 | `action` | 8 |
-| `association` | 18 |
+| `association` | 16 |
+| `antonym` | 1 |
 | `direct` | 3 |
 | `mood` | 31 |
-| `near` | 29 |
-| `scene` | 20 |
-| `sensory` | 30 |
+| `near` | 27 |
+| `scene` | 15 |
+| `sensory` | 26 |
 
-Twenty-three records corrected sense fields and 27 corrected relation fields.
+Twenty-three records corrected sense fields and 35 corrected relation fields.
 For the records whose manifest lists `relations` as corrected, the final relation
-mix is action 5, association 15, direct 1, mood 24, near 19, scene 10, and
-sensory 18. The reviewed draft intentionally stored only candidate metadata, not
+mix is action 6, association 14, antonym 1, direct 1, mood 26, near 18, scene
+11, and sensory 16. The reviewed draft intentionally stored only candidate metadata, not
 relation bodies, so this is a final mix on corrected records rather than an
 event-level relation diff; a later calibration should instrument relation diffs
 directly.
 
 All three `direct` relations include an explicit sentence-slot substitution in
-the editorial note. The manual audit recorded zero direct-replacement errors and
-zero over-broad relation errors. All 12 reference-only records are referenced by
-an imported start, with explicit target senses; the batch gate reported zero
-reference-closure errors.
+the editorial note. The feedback audit rechecked all 52 imported starts and 82
+imported senses. It removed 12 broad or unsupported relation edges, retyped or
+retargeted five others, corrected the `단정하다` adjective/verb boundary, and
+removed the taste reading from the first `시큰하다` sense. The final audit records
+zero direct-replacement errors, zero over-broad relation errors, and zero
+reference-closure errors. All 12 reference-only records are referenced by an
+imported start with explicit target senses.
+
+The original batch review window remains the timing baseline below. The feedback
+audit was a separate editorial pass and was not individually timed.
 
 ## Timing baseline
 
@@ -109,7 +116,7 @@ The following checks passed for this batch:
 
 - `npm run batch:validate -- --manifest=/tmp/typewriter-m5-3-calibration/manifest.json --staged-records=/tmp/typewriter-m5-3-calibration/reviewed.jsonl --json=true`
 - `npm test` — 69 tests passed, including the M5-3 manifest/import/inventory and SQLite search regressions
-- `npm run validate` — 390 records, 468 senses, 479 relations, and inventory revision `m5-2`
+- `npm run validate` — 390 records, 468 senses, 467 relations, and inventory revision `m5-2`
 - `npm run test:unit`
 - `npm run validate:search` — existing M4 search regression corpus
 - SQLite representative lookups for `감격`, `미지근하다`, `여명`, and `목이 메다`, including polysemous and reference target-sense checks

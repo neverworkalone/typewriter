@@ -17,18 +17,18 @@
     "selection_prep_note": "The 60-row representative inventory was supplied by #76; #78 did not add a new selection pass."
   },
   "decisions": {
-    "included": 23,
-    "corrected": 29,
+    "included": 17,
+    "corrected": 35,
     "held": 4,
     "rejected": 4,
     "importable_start_count": 52,
-    "correction_rate_of_selected": 0.48333333333333334,
-    "correction_rate_of_importable": 0.5576923076923077,
+    "correction_rate_of_selected": 0.5833333333333334,
+    "correction_rate_of_importable": 0.6730769230769231,
     "held_rate": 0.06666666666666667,
     "rejected_rate": 0.06666666666666667,
     "held_or_rejected_rate": 0.13333333333333333,
     "sense_field_correction_count": 23,
-    "relation_field_correction_count": 27
+    "relation_field_correction_count": 35
   },
   "review_timing": {
     "generated_at": "2026-09-07T08:29:02Z",
@@ -45,31 +45,33 @@
     "imported_reference_only_count": 12,
     "imported_record_count": 64,
     "imported_sense_count": 82,
-    "imported_relation_count": 139,
+    "imported_relation_count": 127,
     "imported_expression_count": 3,
     "sense_pos": {
-      "adjective": 24,
+      "adjective": 23,
       "expression": 3,
       "noun": 37,
-      "verb": 18
+      "verb": 19
     },
     "relation_type_counts": {
       "action": 8,
-      "association": 18,
+      "association": 16,
+      "antonym": 1,
       "direct": 3,
       "mood": 31,
-      "near": 29,
-      "scene": 20,
-      "sensory": 30
+      "near": 27,
+      "scene": 15,
+      "sensory": 26
     },
     "relations_on_records_with_relation_corrections": {
-      "action": 5,
-      "association": 15,
+      "action": 6,
+      "association": 14,
+      "antonym": 1,
       "direct": 1,
-      "mood": 24,
-      "near": 19,
-      "scene": 10,
-      "sensory": 18
+      "mood": 26,
+      "near": 18,
+      "scene": 11,
+      "sensory": 16
     },
     "relation_mix_note": "The reviewed draft stored no relation bodies, so this is the final relation-type mix on records whose manifest corrected_fields includes relations; it is not an event-level diff count."
   },
@@ -80,6 +82,18 @@
     "reference_closure_errors": 0,
     "batch_validator": "passed",
     "raw_draft_committed": false
+  },
+  "post_review_audit": {
+    "audited_start_count": 52,
+    "audited_sense_count": 82,
+    "relation_count_before_audit": 139,
+    "removed_relation_count": 12,
+    "retargeted_or_retyped_relation_count": 5,
+    "relation_count_after_audit": 127,
+    "remaining_over_broad_relation_errors": 0,
+    "remaining_direct_replacement_errors": 0,
+    "remaining_reference_closure_errors": 0,
+    "timing_note": "The feedback audit was a separate editorial pass after the original 603-second batch window; it was not individually timed."
   },
   "post_import_inventory": {
     "canonical_record_count": 390,

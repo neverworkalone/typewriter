@@ -21,7 +21,7 @@ test('runs the complete M2 pipeline and compares canonical rows to SQLite', asyn
   assert.equal(summary.candidateCount, 352);
   assert.equal(summary.searchFormCount, 445);
   assert.equal(summary.senseCount, 468);
-  assert.equal(summary.relationCount, 479);
+  assert.equal(summary.relationCount, 467);
   assert.equal(summary.expressionCount, 17);
   assert.equal(summary.databaseBuilds, 2);
   assert.equal(summary.normalizationVersion, '1');
