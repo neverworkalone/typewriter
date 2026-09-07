@@ -1,0 +1,726 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-3-calibration-20260907",
+  "inventory_id": "m5-core-5k",
+  "inventory_revision": "m5-1",
+  "generator": {
+    "model_id": "human-editorial-calibration",
+    "tool_version": "typewriter-m5-3-authoring-1",
+    "prompt_version": "m5-3-calibration-v1",
+    "draft_sha256": "8ba163ed1128b61abd438819ae36119530e22347c84915980cfcdc966af0d367"
+  },
+  "generated_at": "2026-09-07T08:29:02Z",
+  "review": {
+    "status": "complete",
+    "reviewer": "typewriter-editorial-calibration",
+    "completed_at": "2026-09-07T08:39:05Z"
+  },
+  "records": [
+    {
+      "source": "inventory",
+      "inventory_id": "m5-001",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w301"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-002",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w302",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-003",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w303",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-004",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "Calibration review에서 sense 경계 또는 표현 단위의 기준을 먼저 보완해야 하므로 이번 import에서 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-005",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w304",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-006",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w305"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-007",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w306",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-008",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w307",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-009",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w308",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-010",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w309"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-011",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w310",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-012",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w311"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-013",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w312",
+      "corrected_fields": [
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-014",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w313"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-015",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w314"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-016",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w315",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-017",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w316",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-018",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w317"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-019",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "Calibration review에서 현재 pilot의 writer-facing 검색 장면이 충분히 분리되지 않아 다음 선정 기준 보완 대상으로 반려했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-020",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w318",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-021",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w319"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-022",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w320"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-023",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w321",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-024",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "Calibration review에서 sense 경계 또는 표현 단위의 기준을 먼저 보완해야 하므로 이번 import에서 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-025",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w322"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-026",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w323"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-027",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w324"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-028",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w325",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-029",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w326",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-030",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w327"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-031",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w328",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-032",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w329",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-033",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w330"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-034",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "Calibration review에서 현재 pilot의 writer-facing 검색 장면이 충분히 분리되지 않아 다음 선정 기준 보완 대상으로 반려했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-035",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w331"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-036",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w332"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-037",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w333"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-038",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w334",
+      "corrected_fields": [
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-039",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "Calibration review에서 sense 경계 또는 표현 단위의 기준을 먼저 보완해야 하므로 이번 import에서 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-040",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w335"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-041",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w336",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-042",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w337",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-043",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w338",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-044",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w339",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-045",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w340",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-046",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w341"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-047",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w342",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-048",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w343"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-049",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w344",
+      "corrected_fields": [
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-050",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w345"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-051",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w346"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-052",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w347",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-053",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "Calibration review에서 현재 pilot의 writer-facing 검색 장면이 충분히 분리되지 않아 다음 선정 기준 보완 대상으로 반려했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-054",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
+      "canonical_id": "w348"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-055",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 senses·relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w349",
+      "corrected_fields": [
+        "senses",
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-056",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w350",
+      "corrected_fields": [
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-057",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w351",
+      "corrected_fields": [
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-058",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "Calibration review에서 sense 경계 또는 표현 단위의 기준을 먼저 보완해야 하므로 이번 import에서 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-059",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 relations를 전수 교정한 뒤 포함했다.",
+      "canonical_id": "w352",
+      "corrected_fields": [
+        "relations"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-060",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "Calibration review에서 현재 pilot의 writer-facing 검색 장면이 충분히 분리되지 않아 다음 선정 기준 보완 대상으로 반려했다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r036",
+      "decision": "included",
+      "related_to": [
+        "w301",
+        "w307"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r037",
+      "decision": "included",
+      "related_to": [
+        "w303"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r038",
+      "decision": "included",
+      "related_to": [
+        "w305"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r039",
+      "decision": "included",
+      "related_to": [
+        "w314"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r040",
+      "decision": "included",
+      "related_to": [
+        "w315",
+        "w316",
+        "w317"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r041",
+      "decision": "included",
+      "related_to": [
+        "w323"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r042",
+      "decision": "included",
+      "related_to": [
+        "w321"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r043",
+      "decision": "included",
+      "related_to": [
+        "w328"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r044",
+      "decision": "included",
+      "related_to": [
+        "w336",
+        "w340"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r045",
+      "decision": "included",
+      "related_to": [
+        "w339",
+        "w347",
+        "w349"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r046",
+      "decision": "included",
+      "related_to": [
+        "w350"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    },
+    {
+      "source": "reference-closure",
+      "role": "reference-only",
+      "canonical_id": "r047",
+      "decision": "included",
+      "related_to": [
+        "w351"
+      ],
+      "decision_note": "신규 start relation의 target sense를 닫기 위해 함께 검수한 reference-only record다."
+    }
+  ]
+}

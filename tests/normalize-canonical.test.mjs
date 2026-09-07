@@ -28,10 +28,10 @@ test('normalizes the pilot without losing records, senses, relations, or notes',
   });
 
   assert.equal(model.normalization_version, '1');
-  assert.equal(model.records.length, 326);
+  assert.equal(model.records.length, 390);
   assert.equal(
     model.records.reduce((count, record) => count + record.senses.length, 0),
-    386,
+    468,
   );
   assert.equal(
     model.records.reduce(
@@ -43,7 +43,7 @@ test('normalizes the pilot without losing records, senses, relations, or notes',
         ),
       0,
     ),
-    340,
+    479,
   );
 
   const ids = model.records.map((record) => record.id);

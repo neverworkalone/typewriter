@@ -40,27 +40,27 @@ async function validateModifiedInventory(mutator) {
 test('validates the M5 inventory and keeps independent start counts', async () => {
   const summary = await validateTargetInventory();
 
-  assert.equal(summary.inventoryEntryCount, 393);
-  assert.equal(summary.canonicalRecordCount, 326);
-  assert.equal(summary.currentStartCount, 300);
-  assert.equal(summary.currentReferenceOnlyCount, 26);
-  assert.equal(summary.candidateStartCount, 60);
-  assert.equal(summary.plannedStartCount, 360);
-  assert.equal(summary.heldCount, 3);
+  assert.equal(summary.inventoryEntryCount, 405);
+  assert.equal(summary.canonicalRecordCount, 390);
+  assert.equal(summary.currentStartCount, 352);
+  assert.equal(summary.currentReferenceOnlyCount, 38);
+  assert.equal(summary.candidateStartCount, 4);
+  assert.equal(summary.plannedStartCount, 356);
+  assert.equal(summary.heldCount, 7);
   assert.equal(summary.duplicateCount, 2);
   assert.equal(summary.inflectedFormCount, 2);
   assert.deepEqual(summary.reasonCodeCounts, {
     A: 70,
-    C: 70,
-    E: 40,
+    C: 69,
+    E: 39,
     O: 35,
     Q: 40,
-    S: 70,
-    X: 35,
+    S: 69,
+    X: 34,
   });
   assert.deepEqual(summary.recordTypeCounts, {
-    entry: 342,
-    expression: 18,
+    entry: 339,
+    expression: 17,
   });
 });
 
@@ -70,11 +70,11 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
   try {
     const generated = await generateTargetInventory({ outputPath });
-    assert.equal(generated.entries.length, 393);
-    assert.equal(generated.canonical_snapshot.record_count, 326);
+    assert.equal(generated.entries.length, 405);
+    assert.equal(generated.canonical_snapshot.record_count, 390);
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'm5-001').source,
-      'editorial',
+      'canonical',
     );
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'canonical-r001').planned_role,
@@ -93,9 +93,10 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
 test('inventory candidates remain outside canonical input and SQLite build scope', async () => {
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  assert.equal(canonical.records.length, 326);
+  assert.equal(canonical.records.length, 390);
   assert.equal(canonical.records.some(({ record }) => record.id === 'm5-001'), false);
-  assert.equal(canonical.records.some(({ record }) => record.lemma === '감격'), false);
+  assert.equal(canonical.records.some(({ record }) => record.id === 'w301'), true);
+  assert.equal(canonical.records.some(({ record }) => record.lemma === '서투르다'), false);
 });
 
 test('rejects an inventory that omits a canonical record', async () => {
@@ -117,7 +118,7 @@ test('rejects a candidate that collides with an active canonical start', async (
   await assert.rejects(
     validateModifiedInventory((inventory) => {
       const candidate = inventory.entries.find(
-        (entry) => entry.inventory_id === 'm5-001',
+        (entry) => entry.inventory_id === 'm5-019',
       );
       candidate.lemma = '고요';
       candidate.search_forms = ['고요'];
@@ -149,6 +150,7 @@ test('rejects current inventory drift instead of treating the snapshot as source
 test('preserves inventory metadata when a candidate is promoted to a new canonical start', async () => {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-inventory-promotion-'));
   const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  const unmappedSeedPath = path.join(temporaryDirectory, 'unmapped-seed.json');
   const seedPath = path.join(temporaryDirectory, 'seed.json');
   const inventoryPath = path.join(temporaryDirectory, 'inventory.json');
 
@@ -182,6 +184,17 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
     );
 
     const seed = JSON.parse(await readFile(DEFAULT_SEED_PATH, 'utf8'));
+    for (const entry of seed.targets) {
+      if (entry.status === 'promoted') {
+        entry.status = 'candidate';
+        delete entry.canonical_id;
+      }
+    }
+    await writeFile(
+      unmappedSeedPath,
+      `${JSON.stringify(seed, null, 2)}\n`,
+      'utf8',
+    );
     const promotedSeed = seed.targets.find((entry) => entry.inventory_id === 'm5-001');
     promotedSeed.status = 'promoted';
     promotedSeed.canonical_id = 'w301';
@@ -190,7 +203,7 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
     await assert.rejects(
       generateTargetInventory({
         canonicalDirectory,
-        seedPath: DEFAULT_SEED_PATH,
+        seedPath: unmappedSeedPath,
         outputPath: inventoryPath,
       }),
       (error) => {
@@ -227,8 +240,8 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
       checkPilotCompleteness: false,
     });
     assert.equal(summary.currentStartCount, 301);
-    assert.equal(summary.candidateStartCount, 59);
-    assert.equal(summary.plannedStartCount, 360);
+    assert.equal(summary.candidateStartCount, 55);
+    assert.equal(summary.plannedStartCount, 356);
 
     for (const [driftIndex, mutate] of [
       (entry) => {

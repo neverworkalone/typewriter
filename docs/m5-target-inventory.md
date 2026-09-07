@@ -35,7 +35,7 @@ starts, held rows, duplicates, and inflected forms independently. `planned start
 means `current start + candidate start`; held, duplicate, and inflected rows are
 never silently folded into that number.
 
-The first M5 snapshot contains:
+The first M5 snapshot (`m5-1`, before the calibration import) contains:
 
 | Count | Value |
 | --- | ---: |
@@ -144,6 +144,19 @@ actual review cost, and failure types first. Only then is a numeric gate propose
 for #7. If the measured quality or cost is outside the approved gate, the next
 batch stops and the selection, draft, or review process is corrected before more
 targets are added.
+
+## M5-3 calibration result
+
+The first calibration batch imported 52 of the 60 selected starts and 12
+reference-only closure records. It recorded 29 corrected starts, 4 held starts,
+and 4 rejected starts. The complete decision, relation-type, timing, and
+post-import inventory measurements are in
+[`docs/m5-3-calibration-report.md`](m5-3-calibration-report.md).
+
+The import advanced the seed and generated inventory from `m5-1` to `m5-2`:
+352 current starts, 38 current reference-only records, 4 remaining candidates,
+and 7 held rows. This is a calibration baseline only; it does not authorize a
+later bulk batch until the issue #7 gate is explicitly updated.
 
 ## Validation commands
 

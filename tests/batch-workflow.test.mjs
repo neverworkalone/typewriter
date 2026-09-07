@@ -28,7 +28,7 @@ function createManifest() {
     schema_version: '1',
     batch_id: 'm5-2-fixture',
     inventory_id: 'm5-core-5k',
-    inventory_revision: 'm5-1',
+    inventory_revision: 'm5-2',
     generator: {
       model_id: 'fixture-model',
       tool_version: 'fixture-tool-1',
@@ -44,9 +44,9 @@ function createManifest() {
     records: [
       {
         source: 'inventory',
-        inventory_id: 'm5-001',
+        inventory_id: 'm5-019',
         role: 'start',
-        canonical_id: 'w301',
+        canonical_id: 'w353',
         decision: 'corrected',
         corrected_fields: ['senses'],
         decision_note: '검수 과정에서 감정의 품사와 관계 대상을 확정했다.',
@@ -54,9 +54,9 @@ function createManifest() {
       {
         source: 'reference-closure',
         role: 'reference-only',
-        canonical_id: 'r036',
+        canonical_id: 'r048',
         decision: 'included',
-        related_to: ['w301'],
+        related_to: ['w353'],
         decision_note: '승격 record의 relation target을 닫기 위한 참조 record다.',
       },
     ],
@@ -66,32 +66,32 @@ function createManifest() {
 function createStagedRecords() {
   return [
     {
-      id: 'w301',
+      id: 'w353',
       record_type: 'entry',
       role: 'start',
-      candidate_id: 'w301',
-      lemma: '감격',
-      search_forms: ['감격'],
+      candidate_id: 'w353',
+      lemma: '검수표적',
+      search_forms: ['검수표적'],
       senses: [{
-        id: 'w301-s1',
+        id: 'w353-s1',
         pos: 'noun',
         gloss: '벅찬 기쁨이나 감동이 북받치는 마음.',
         relations: [{
-          target: 'r036',
-          target_sense: 'r036-s1',
+          target: 'r048',
+          target_sense: 'r048-s1',
           type: 'mood',
           note: '감정의 결을 reference-only 이미지로 확장한다.',
         }],
       }],
     },
     {
-      id: 'r036',
+      id: 'r048',
       record_type: 'entry',
       role: 'reference-only',
-      lemma: '참조표',
-      search_forms: ['참조표'],
+      lemma: '검수참조',
+      search_forms: ['검수참조'],
       senses: [{
-        id: 'r036-s1',
+        id: 'r048-s1',
         pos: 'noun',
         gloss: '관계를 닫기 위해서만 사용하는 참조 표제어.',
       }],
@@ -236,7 +236,7 @@ test('uses the batch JSON Schema conditional rules as the executable manifest co
       delete manifest.records[0].inventory_id;
     }],
     ['inventory rows forbid related_to', (manifest) => {
-      manifest.records[0].related_to = ['w301'];
+      manifest.records[0].related_to = ['w353'];
     }],
     ['reference closure rows require related_to', (manifest) => {
       delete manifest.records[1].related_to;
@@ -320,7 +320,7 @@ test('validates a reviewed target plus reference closure and writes only an exte
     const summary = await validateBatch(fixture);
 
     assert.equal(summary.manifest.batch_id, 'm5-2-fixture');
-    assert.equal(summary.canonicalRecordCount, 326);
+    assert.equal(summary.canonicalRecordCount, 390);
     assert.equal(summary.stagedRecordCount, 2);
     assert.equal(summary.targetCount, 1);
     assert.equal(summary.referenceClosureCount, 1);
@@ -339,12 +339,12 @@ test('validates a reviewed target plus reference closure and writes only an exte
     const importedRecords = await readCanonicalRecords(outputPath);
     assert.deepEqual(
       importedRecords.records.map(({ record }) => record.id),
-      ['r036', 'w301'],
+      ['r048', 'w353'],
     );
 
     const after = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
     assert.equal(after.records.length, before.records.length);
-    assert.equal(after.records.some(({ record }) => record.id === 'w301'), false);
+    assert.equal(after.records.some(({ record }) => record.id === 'w353'), false);
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }
@@ -398,9 +398,9 @@ test('rejects unapproved staged rows and non-deterministic canonical IDs', async
 
   try {
     const records = await readStagedRecords(fixture.stagedRecordsPath);
-    records[0].id = 'w302';
-    records[0].candidate_id = 'w302';
-    records[0].senses[0].id = 'w302-s1';
+    records[0].id = 'w354';
+    records[0].candidate_id = 'w354';
+    records[0].senses[0].id = 'w354-s1';
     await writeFile(
       fixture.stagedRecordsPath,
       `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
@@ -416,7 +416,7 @@ test('rejects unapproved staged rows and non-deterministic canonical IDs', async
     );
 
     const manifest = await readManifest(fixture.manifestPath);
-    manifest.records[0].canonical_id = 'w302';
+    manifest.records[0].canonical_id = 'w354';
     await writeFixtureFiles({ directory: fixture.directory, manifest, records });
     await assert.rejects(
       validateBatch({
@@ -455,7 +455,7 @@ test('rejects lexical collisions and orphaned reference closure', async () => {
       },
     );
 
-    records[0].search_forms = ['감격'];
+    records[0].search_forms = ['검수표적'];
     records[0].senses[0].relations = [];
     await writeFile(
       fixture.stagedRecordsPath,
