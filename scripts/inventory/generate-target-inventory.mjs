@@ -27,6 +27,12 @@ const CATEGORY_RANGES = Object.freeze([
   [271, 300, 'X'],
 ]);
 
+const CANONICAL_DERIVED_FLAGS = new Set([
+  'polysemy',
+  'expression-unit',
+  'reference-closure',
+]);
+
 export class TargetInventoryGenerationError extends Error {
   constructor(message, code = 'TARGET_INVENTORY_GENERATION_ERROR') {
     super(message);
@@ -77,6 +83,10 @@ function flagsForCanonicalRecord(record) {
     flags.push('reference-closure');
   }
   return flags;
+}
+
+function selectionFlagsForSeed(seedEntry) {
+  return seedEntry.flags.filter((flag) => !CANONICAL_DERIVED_FLAGS.has(flag));
 }
 
 function canonicalEntry(recordInfo) {
@@ -155,9 +165,12 @@ function promotedCanonicalEntry(recordInfo, seedEntry) {
     lemma: record.lemma,
     search_forms: [...record.search_forms],
     reason_codes: [...seedEntry.reason_codes],
-    pos: [...seedEntry.pos],
-    sense_profile: seedEntry.sense_profile,
-    flags: [...seedEntry.flags],
+    pos: unique(record.senses.map((sense) => sense.pos)),
+    sense_profile: senseProfile(record),
+    flags: [
+      ...flagsForCanonicalRecord(record),
+      ...selectionFlagsForSeed(seedEntry),
+    ],
     decision_note: seedEntry.decision_note,
   };
 }

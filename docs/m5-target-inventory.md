@@ -102,11 +102,13 @@ example:
 `inventory:generate` then joins the canonical `w301` row to the existing `m5-001`
 selection metadata, emits one `source: canonical` / `status: current` inventory row,
 and removes the old editorial candidate row from the generated snapshot. The
-stable inventory ID, reason codes, axes, flags, and decision note remain attached to
-the promoted record. A new canonical start without this mapping is rejected instead
-of receiving a reason code inferred from its numeric ID. The transition is covered
-by a fixture that verifies generate → validate, no duplicate search form, and
-metadata preservation.
+stable inventory ID, reason codes, selection flags, and decision note remain attached
+to the promoted record. Canonical-derived `pos`, `sense_profile`, and structural
+flags are recalculated from the reviewed canonical record, so provisional seed
+classification cannot survive a canonical correction. A new canonical start without
+this mapping is rejected instead of receiving a reason code inferred from its numeric
+ID. The transition is covered by a fixture that verifies generate → validate, no
+duplicate search form, canonical classification refresh, and metadata preservation.
 
 ## External material policy
 

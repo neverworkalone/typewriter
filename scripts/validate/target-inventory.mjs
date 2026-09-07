@@ -45,6 +45,12 @@ const FLAGS = Object.freeze([
   'inflected-form',
 ]);
 
+const CANONICAL_DERIVED_FLAGS = new Set([
+  'polysemy',
+  'expression-unit',
+  'reference-closure',
+]);
+
 export class TargetInventoryError extends Error {
   constructor(message, code = 'TARGET_INVENTORY_ERROR') {
     super(message);
@@ -291,6 +297,16 @@ function validateCanonicalEntry(entry, canonicalById, index) {
     if (entry.reason_codes.length === 0) {
       fail(`${prefix}.promoted start must preserve at least one reason code`, 'MISSING_REASON_CODE');
     }
+    const expectedPos = unique(record.senses.map((sense) => sense.pos));
+    requireExactArray(entry.pos, expectedPos, `${prefix}.pos`);
+    if (entry.sense_profile !== senseProfile(record)) {
+      fail(`${prefix}.sense_profile does not match canonical ${record.id}`, 'CANONICAL_DRIFT');
+    }
+    requireExactArray(
+      entry.flags.filter((flag) => CANONICAL_DERIVED_FLAGS.has(flag)),
+      expectedCanonicalFlags(record),
+      `${prefix}.flags`,
+    );
     return;
   }
 

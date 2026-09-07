@@ -169,6 +169,10 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
         id: 'w301-s1',
         pos: 'noun',
         gloss: '벅찬 기쁨이나 감동이 북받치는 마음.',
+      }, {
+        id: 'w301-s2',
+        pos: 'adjective',
+        gloss: '감정이 벅차오르는 상태의.',
       }],
     };
     await writeFile(
@@ -208,6 +212,9 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
     assert.equal(promoted.source, 'canonical');
     assert.equal(promoted.status, 'current');
     assert.deepEqual(promoted.reason_codes, ['E']);
+    assert.deepEqual(promoted.pos, ['noun', 'adjective']);
+    assert.equal(promoted.sense_profile, 'boundary');
+    assert.deepEqual(promoted.flags, ['polysemy', 'direct-boundary']);
     assert.equal(promoted.decision_note, '기쁨과 벅참의 세기를 비교할 정서 후보.');
     assert.equal(
       generated.entries.some((entry) => entry.source === 'editorial' && entry.inventory_id === 'm5-001'),
@@ -222,6 +229,38 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
     assert.equal(summary.currentStartCount, 301);
     assert.equal(summary.candidateStartCount, 59);
     assert.equal(summary.plannedStartCount, 360);
+
+    for (const [driftIndex, mutate] of [
+      (entry) => {
+        entry.pos = ['noun'];
+      },
+      (entry) => {
+        entry.sense_profile = 'single';
+      },
+      (entry) => {
+        entry.flags = ['direct-boundary'];
+      },
+    ].entries()) {
+      const driftedInventory = structuredClone(generated);
+      mutate(driftedInventory.entries.find((entry) => entry.inventory_id === 'm5-001'));
+      const driftedInventoryPath = path.join(
+        temporaryDirectory,
+        `inventory-drift-${driftIndex + 1}.json`,
+      );
+      await writeFile(driftedInventoryPath, `${JSON.stringify(driftedInventory)}\n`, 'utf8');
+      await assert.rejects(
+        validateTargetInventory({
+          inventoryPath: driftedInventoryPath,
+          canonicalDirectory,
+          checkPilotCompleteness: false,
+        }),
+        (error) => {
+          assert.ok(error instanceof TargetInventoryError);
+          assert.equal(error.code, 'CANONICAL_DRIFT');
+          return true;
+        },
+      );
+    }
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
