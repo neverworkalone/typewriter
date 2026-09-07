@@ -350,6 +350,29 @@ test('validates a reviewed target plus reference closure and writes only an exte
   }
 });
 
+test('accepts a reviewed record with zero relations when no closure is needed', async () => {
+  const fixture = await createFixture();
+
+  try {
+    const manifest = await readManifest(fixture.manifestPath);
+    const records = await readStagedRecords(fixture.stagedRecordsPath);
+    manifest.records = [manifest.records[0]];
+    records[0].senses[0].relations = [];
+    await writeFixtureFiles({
+      directory: fixture.directory,
+      manifest,
+      records: [records[0]],
+    });
+
+    const summary = await validateBatch(fixture);
+    assert.equal(summary.stagedRecordCount, 1);
+    assert.equal(summary.referenceClosureCount, 0);
+    assert.equal(summary.counts.corrected, 1);
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
 test('rejects incomplete review before reading or importing staged rows', async () => {
   const fixture = await createFixture();
 

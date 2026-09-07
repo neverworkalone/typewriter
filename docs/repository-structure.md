@@ -65,6 +65,11 @@ text, confidence scores, secrets, or local staging paths.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 
+Self-authored regression fixtures for batch tooling live under
+`tests/fixtures/`. They may bind to a tracked manifest or relation-diff event
+for reproducibility, but they do not contain raw drafts, external source text,
+or canonical import rows.
+
 This keeps the repository structure proportional to the workflows that exist today.
 
 ## Data flow

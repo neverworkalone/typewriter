@@ -154,7 +154,8 @@ different `--relation-diff` path is rejected. The artifact contains only relatio
 identities and before/after fields; it is not a raw model response or an unreviewed
 draft.
 
-The versioned draft contract is [`m5-draft-template-v1.md`](m5-draft-template-v1.md).
+The current versioned draft contract is [`m5-draft-template-v2.md`](m5-draft-template-v2.md);
+[`m5-draft-template-v1.md`](m5-draft-template-v1.md) is the preceding contract.
 The draft template/prompt must treat every relation as optional. It should ask for
 the source sense, target sense, relation type, and a short writer-facing reason, but
 it must never ask an author to fill a relation quota. When the evidence is weak, the
@@ -237,6 +238,26 @@ The historical M5-3 artifact is intentionally marked `timing.status: "incomplete
 its 603-second initial-review wall-clock interval is retained, while feedback,
 final-audit, held/rejected, and editor-time measurements are explicitly unmeasured.
 Its reconstructed relation diff is an audit ledger, not a raw draft.
+
+### M5-6 process correction
+
+M5-6 fixes the two process gaps found in M5-5 without changing the expansion
+gate. The seven M5-5 removed relation events are tracked as self-authored
+regression cases in
+[`tests/fixtures/relation-admission/m5-5-regressions.json`](../tests/fixtures/relation-admission/m5-5-regressions.json)
+and are validated against their original event IDs and tuples. The fixture
+records the expected human action (`omit` or an explicitly reviewed retarget);
+it is not a semantic auto-approval rule and its events are not added to a new
+noise-rate measurement.
+
+The next batch must record `target-preparation`, `initial-review`,
+`feedback-fixes`, `final-audit`, and `held-rejected`. If feedback arrives after
+those passes, `post-review-audit` and `post-review-fixes` are recorded as
+separate passes. An unmeasured follow-up keeps timing incomplete and the
+derived measured total a lower bound; once measured, the same source-derived
+metrics calculation includes it. See
+[`m5-6-relation-process.md`](m5-6-relation-process.md) for the complete
+process correction and the canonical no-change invariant.
 
 The pre-defined expansion decision is documented in
 [`m5-expansion-gate.md`](m5-expansion-gate.md). A later calibration must apply that

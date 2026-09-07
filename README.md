@@ -98,6 +98,9 @@ The M5-5 recalibration batch and fixed-gate decision are recorded in
 The M5-4 relation-review, event-level measurement, and fixed bounded-expansion
 criteria are documented in [`docs/m5-expansion-gate.md`](docs/m5-expansion-gate.md).
 
+The M5-6 relation-admission regressions and review-cost process correction are
+documented in [`docs/m5-6-relation-process.md`](docs/m5-6-relation-process.md).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

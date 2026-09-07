@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/relation-admission-regression.schema.json",
+  "title": "Typewriter relation admission regression fixture",
+  "description": "Self-authored editorial expectations linked to a prior relation diff; it is not a gate metric or raw draft.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "source_artifact",
+    "removed_error_count",
+    "cases",
+    "corrections"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "source_artifact": {
+      "const": "data/batches/m5-5-recalibration-relation-diff.json"
+    },
+    "removed_error_count": {
+      "const": 7
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/removalCase" }
+    },
+    "corrections": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/correctionCase" }
+    }
+  },
+  "$defs": {
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "target_sense", "type"],
+      "properties": {
+        "target": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}$"
+        },
+        "target_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+        },
+        "type": {
+          "enum": [
+            "direct",
+            "near",
+            "antonym",
+            "mood",
+            "scene",
+            "sensory",
+            "action",
+            "association"
+          ]
+        }
+      }
+    },
+    "removalCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "source_event_id",
+        "operation",
+        "source_sense",
+        "candidate",
+        "failure_category",
+        "expected_action",
+        "review_note"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "source_event_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "operation": { "const": "remove" },
+        "source_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+        },
+        "candidate": { "$ref": "#/$defs/relation" },
+        "failure_category": {
+          "enum": [
+            "incidental-co-occurrence",
+            "generic-result-or-reaction",
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "unsupported-cross-sensory",
+            "sense-target-type-error"
+          ]
+        },
+        "expected_action": { "const": "omit" },
+        "review_note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    },
+    "correctionCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "source_event_id",
+        "operation",
+        "source_sense",
+        "before",
+        "after",
+        "failure_category",
+        "expected_action",
+        "review_note"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "source_event_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "operation": { "const": "retarget" },
+        "source_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+        },
+        "before": { "$ref": "#/$defs/relation" },
+        "after": { "$ref": "#/$defs/relation" },
+        "failure_category": {
+          "const": "unsupported-cross-sensory"
+        },
+        "expected_action": { "const": "retarget-after-editor-review" },
+        "review_note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    }
+  }
+}
