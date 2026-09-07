@@ -136,7 +136,8 @@ input {
   min-height: 772px;
   margin: 0 auto;
   grid-template-columns: minmax(420px, 520px) minmax(420px, 520px);
-  gap: 32px;
+  column-gap: 32px;
+  row-gap: 30px;
   padding: 30px 64px;
 }
 
@@ -242,6 +243,58 @@ input {
 
 .preview-panel .dictionary-panel.is-compact {
   width: 360px;
+}
+
+.background-card {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 150px;
+  padding: 19px 23px;
+  border: 1px solid #e5e1de;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.background-card h2 {
+  margin: 0;
+  color: #2b2927;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.background-preset-list {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.background-preset {
+  width: 100%;
+  height: 48px;
+  padding: 0 10px;
+  border: 1px solid #e5e1de;
+  border-radius: 8px;
+  background: var(--background-preset-color);
+  color: #2b2927;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.background-preset.is-selected {
+  border: 2px solid #e5534b;
+}
+
+.background-preset:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
+}
+
+.background-preset:disabled {
+  cursor: default;
 }
 
 .sr-only {

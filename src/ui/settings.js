@@ -1,11 +1,23 @@
 export const SETTINGS_STORAGE_KEY = 'typewriter.settings.v1';
 
+export const BACKGROUND_PRESETS = Object.freeze([
+  Object.freeze({ key: 'manuscript', label: '원고', color: '#f6f3ee' }),
+  Object.freeze({ key: 'blank', label: '여백', color: '#fbfbfa' }),
+  Object.freeze({ key: 'fog', label: '안개', color: '#f1f4f6' }),
+  Object.freeze({ key: 'old-book', label: '고서', color: '#f3ede2' }),
+  Object.freeze({ key: 'leaf', label: '잎새', color: '#f0f3ed' }),
+  Object.freeze({ key: 'moonlight', label: '달빛', color: '#f2f0f4' }),
+]);
+
+export const DEFAULT_BACKGROUND_PRESET = BACKGROUND_PRESETS[0].key;
+
 export const SETTING_KEYS = Object.freeze([
   'definition',
   'synonyms',
   'antonyms',
   'texture',
   'association',
+  'background',
 ]);
 
 export const DEFAULT_SETTINGS = Object.freeze({
@@ -14,6 +26,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   antonyms: false,
   texture: true,
   association: false,
+  background: DEFAULT_BACKGROUND_PRESET,
 });
 
 export const SETTING_DEFINITIONS = Object.freeze([
@@ -44,14 +57,21 @@ export const SETTING_DEFINITIONS = Object.freeze([
   },
 ]);
 
+export function getBackgroundPreset(value) {
+  return BACKGROUND_PRESETS.find((preset) => preset.key === value) || BACKGROUND_PRESETS[0];
+}
+
 export function normalizeSettings(value) {
   const candidate = value && typeof value === 'object' ? value : {};
 
   return Object.fromEntries(
-    SETTING_KEYS.map((key) => [
-      key,
-      candidate[key] === undefined ? DEFAULT_SETTINGS[key] : Boolean(candidate[key]),
-    ]),
+    [
+      ...SETTING_KEYS.filter((key) => key !== 'background').map((key) => [
+        key,
+        candidate[key] === undefined ? DEFAULT_SETTINGS[key] : Boolean(candidate[key]),
+      ]),
+      ['background', getBackgroundPreset(candidate.background).key],
+    ],
   );
 }
 

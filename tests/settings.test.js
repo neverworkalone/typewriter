@@ -8,10 +8,11 @@ import {
 } from '../src/ui/settings.js';
 
 describe('settings storage', () => {
-  it('normalizes only the five supported display settings', () => {
+  it('normalizes the supported display settings and background preset', () => {
     expect(normalizeSettings({
       definition: 0,
       synonyms: 'yes',
+      background: 'unknown',
       unknown: true,
     })).toEqual({
       definition: false,
@@ -19,6 +20,7 @@ describe('settings storage', () => {
       antonyms: false,
       texture: true,
       association: false,
+      background: DEFAULT_SETTINGS.background,
     });
   });
 
@@ -33,16 +35,23 @@ describe('settings storage', () => {
     const store = createSettingsStore({ storage, fallbackStorage: null });
 
     expect(await store.load()).toEqual(DEFAULT_SETTINGS);
-    await store.save({ ...DEFAULT_SETTINGS, association: true, texture: false });
+    await store.save({
+      ...DEFAULT_SETTINGS,
+      association: true,
+      texture: false,
+      background: 'fog',
+    });
 
     expect(payload[SETTINGS_STORAGE_KEY]).toMatchObject({
       association: true,
       texture: false,
+      background: 'fog',
     });
     expect(await store.load()).toEqual({
       ...DEFAULT_SETTINGS,
       association: true,
       texture: false,
+      background: 'fog',
     });
   });
 });
