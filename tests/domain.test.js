@@ -231,9 +231,15 @@ describe('SearchSession', () => {
     expect(first.mode).toBe('exact');
     expect(first.results.map(({ id }) => id)).toEqual(['w026', 'w030']);
     expect(first.canGoBack).toBe(true);
+    expect(first.selectedRecordId).toBe('w026');
+    expect(first.selectedSenseId).toBe('w026-s1');
+    const historyLengthBeforeSelection = session.history.length;
     const selected = session.selectCandidate('w030');
     expect(selected.selectedRecordId).toBe('w030');
+    expect(selected.selectedSenseId).toBe('w030-s1');
     expect(session.history[0].selectedRecordId).toBe('w030');
+    expect(session.history[0].selectedSenseId).toBe('w030-s1');
+    expect(session.history).toHaveLength(historyLengthBeforeSelection);
     expect(calls).toEqual([
       ['search', '담담하다'],
       ['getRecord', 'w026'],
@@ -249,6 +255,7 @@ describe('SearchSession', () => {
     expect(relation.mode).toBe('relation-target');
     expect(relation.targetRecordId).toBe('r008');
     expect(relation.selectedRecordId).toBe(null);
+    expect(relation.selectedSenseId).toBe(null);
     expect(() => session.selectCandidate('r008')).toThrowError('exact 검색 결과가 준비된 뒤 후보를 선택할 수 있습니다.');
     expect(relation.results[0]).toMatchObject({
       id: 'r008',
@@ -266,12 +273,14 @@ describe('SearchSession', () => {
     expect(restored.mode).toBe('exact');
     expect(restored.results.map(({ id }) => id)).toEqual(['w026', 'w030']);
     expect(restored.selectedRecordId).toBe('w030');
+    expect(restored.selectedSenseId).toBe('w030-s1');
     expect(restored.canGoForward).toBe(true);
 
     await session.searchExact('없는 말');
     expect(session.state.status).toBe('empty');
     expect(session.state.emptyReason).toBe('no-exact-match');
     expect(session.state.selectedRecordId).toBe(null);
+    expect(session.state.selectedSenseId).toBe(null);
     expect(session.state.canGoForward).toBe(false);
     expect(session.history.map(({ kind }) => kind)).toEqual(['exact', 'exact']);
     expect(statuses).toContain('loading');

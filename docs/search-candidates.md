@@ -1,8 +1,10 @@
 # M4 candidate order
 
-The search candidate unit is one `start` record. A sense or relation is never a
-separate search candidate, so ranking cannot reorder a polysemous record's senses
-or its relation source order.
+The runtime search candidate unit is one `start` record. A sense or relation is
+not ranked independently. In the exact-result UI, however, a record with more
+than one sense expands into ordered sense options so a writer can choose the
+intended homonym; a single-sense record remains one record option. Record order
+comes from the runtime, and sense order comes from the canonical record.
 
 ## Match tiers
 
@@ -40,18 +42,18 @@ history snapshot; candidate ranking does not rewrite that navigation context.
 ## Keyboard selection contract
 
 The popup exposes ready exact-search candidates as a separate `listbox` only
-when two or more start records match; a single exact result keeps the M3 result
-layout without a duplicate selector. Each start record is an `option` with
-`aria-posinset`, `aria-setsize`, and `aria-selected`. The full result cards remain
-outside that listbox, so their relation controls stay ordinary tab stops. Arrow
-keys move the selected option without wrapping at either boundary, and Enter
-confirms the current option without issuing a second exact search, then moves
-focus to the selected result's first relation control (or the result card when
-no relation control exists). Relation-target screens do not expose a candidate
-list or candidate selection state. The selected record ID is kept in the
-current `SearchSession` history snapshot, so relation-target navigation and a
-later `back()` restore the same candidate selection while a new exact search
-starts with no selection.
+when two or more record/sense options exist. A single exact result keeps the M3
+result layout without a duplicate selector. A polysemous record's options use
+the sense gloss as their label; a record with one sense uses its lemma. Each
+option has `aria-posinset`, `aria-setsize`, and `aria-selected`. The first option
+is selected by default and only the selected record and sense are rendered.
+Arrow keys move the selected option without wrapping at either boundary, and
+Enter confirms the current option without issuing a second exact search, then
+moves focus to the selected result's first relation control (or the result card
+when no relation control exists). Changing an option updates the current
+`SearchSession` snapshot only: it does not add a history entry or expose the
+`← 뒤로` control. Relation-target screens do not expose a candidate list or
+candidate selection state, while their existing back navigation remains intact.
 
 Korean IME composition is handled at the input boundary: Enter is ignored while
 `compositionstart` is active and only submits after `compositionend`. This

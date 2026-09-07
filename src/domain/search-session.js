@@ -115,6 +115,7 @@ export class SearchSession {
         status: snapshot?.status ?? null,
         queryMeta: snapshot?.queryMeta ?? null,
         selectedRecordId: snapshot?.selectedRecordId ?? null,
+        selectedSenseId: snapshot?.selectedSenseId ?? null,
       }));
   }
 
@@ -142,6 +143,7 @@ export class SearchSession {
       targetRecordId: null,
       queryMeta: null,
       selectedRecordId: null,
+      selectedSenseId: null,
       navigation: {
         kind: 'exact-search',
         term,
@@ -189,7 +191,13 @@ export class SearchSession {
         );
       }
 
-      return projectSearchResults(records, startSummaries);
+      const results = projectSearchResults(records, startSummaries);
+      operation.request = {
+        ...operation.request,
+        selectedRecordId: results[0]?.id ?? null,
+        selectedSenseId: results[0]?.senses?.[0]?.id ?? null,
+      };
+      return results;
     });
   }
 
@@ -197,7 +205,7 @@ export class SearchSession {
     return this.searchExact(term);
   }
 
-  selectCandidate(recordId) {
+  selectCandidate(recordId, senseId = null) {
     if (typeof recordId !== 'string' || recordId.length === 0) {
       throw new SearchDomainError(
         'INVALID_CANDIDATE',
@@ -212,7 +220,8 @@ export class SearchSession {
       );
     }
 
-    if (!this._state.results.some((record) => record.id === recordId)) {
+    const record = this._state.results.find(({ id }) => id === recordId);
+    if (!record) {
       throw new SearchDomainError(
         'CANDIDATE_NOT_FOUND',
         '현재 검색 결과에 없는 후보입니다.',
@@ -220,13 +229,27 @@ export class SearchSession {
       );
     }
 
-    if (this._state.selectedRecordId === recordId) {
+    const senses = Array.isArray(record.senses) ? record.senses : [];
+    const selectedSenseId = senseId ?? senses[0]?.id ?? null;
+    if (selectedSenseId !== null && !senses.some(({ id }) => id === selectedSenseId)) {
+      throw new SearchDomainError(
+        'CANDIDATE_SENSE_NOT_FOUND',
+        '현재 후보 record에 없는 뜻풀이입니다.',
+        { recordId, senseId: selectedSenseId },
+      );
+    }
+
+    if (
+      this._state.selectedRecordId === recordId
+      && this._state.selectedSenseId === selectedSenseId
+    ) {
       return this._state;
     }
 
     this._setState({
       ...this._state,
       selectedRecordId: recordId,
+      selectedSenseId,
     });
     return this._state;
   }
@@ -239,6 +262,7 @@ export class SearchSession {
       query: null,
       targetRecordId: resolved.targetRecordId,
       selectedRecordId: null,
+      selectedSenseId: null,
       navigation: {
         kind: 'relation-target',
         targetRecordId: resolved.targetRecordId,

@@ -52,10 +52,12 @@ ID 탐색을 시작할 수 있다.
 - `back()`과 `forward()`는 이미 읽은 snapshot을 복원하며 새 DB query를 만들지
   않는다. 진행 중인 요청은 먼저 취소하고 history에 loading snapshot을 남기지
   않는다.
-- `selectCandidate(recordId)`는 현재 exact `ready` 결과 중 하나를 선택해
-  `selectedRecordId`를 현재 history snapshot에만 기록한다. 관계 target 탐색은
-  후보 선택 UI와 상태를 초기화하고, `back()`은 이전 후보 선택을 함께
-  복원한다.
+- `searchExact()`가 준비되면 첫 번째 record와 그 record의 첫 번째 sense를
+  각각 `selectedRecordId`, `selectedSenseId`로 선택한다.
+  `selectCandidate(recordId, senseId)`는 현재 exact `ready` 결과의 record/sense를 검증해 두 선택값을
+  현재 history snapshot에만 기록한다. 따라서 동음이의어를 바꿔도 history
+  항목이나 `← 뒤로`가 생기지 않는다. 관계 target 탐색은 후보 선택 UI와 상태를
+  초기화하고, `back()`은 이전 record/sense 선택을 함께 복원한다.
 - `searchExact()` 또는 `openRelationTarget()`을 back 이후 실행하면 forward
   history branch를 버리고 새 항목을 추가한다.
 
@@ -84,8 +86,9 @@ sense/group projection만 렌더링하며, `definition`, `synonyms`, `antonyms`,
 표시하지 않는다. 따라서 Settings 미리보기는 별도 markup으로 결과를 복제하지
 않고 동일한 projection과 결과 renderer를 사용한다.
 
-표시 설정은 `src/ui/settings.js`의 다섯 키로 제한한다. 기본값은 Figma의
-미리보기와 맞춰 뜻풀이·유의어·말의 결은 켜고 반의어·연상은 끈다.
+표시 설정은 `src/ui/settings.js`의 다섯 group 키와 하나의 background preset으로
+제한한다. 기본값은 Figma의 미리보기와 맞춰 뜻풀이·유의어·말의 결은 켜고
+반의어·연상은 끈다.
 `createSettingsStore()`는 확장 프로그램의 `chrome.storage.local`에 설정만
 저장하며, 읽기 전용 dictionary SQLite와 섞지 않는다. Options의 토글은 먼저
 미리보기와 draft 상태만 갱신하고, 명시적인 저장 버튼이 현재 draft를

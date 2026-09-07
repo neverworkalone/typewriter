@@ -353,6 +353,61 @@ export async function runCftProduct({
       '}))()',
     ].join('\n'));
 
+    const popupHomonym = await createExtensionSession(connection, extensionId, 'popup.html');
+    extensionTargets.push(popupHomonym);
+    await evaluate(connection, popupHomonym.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "눈";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", {',
+      '    key: "Enter", bubbles: true, cancelable: true,',
+      '  }));',
+      '  return true;',
+      '})()',
+    ].join('\n'));
+    await waitForCondition(
+      connection,
+      popupHomonym.sessionId,
+      'Boolean(document.querySelector("[data-record-id=\\"w133\\"]")) && document.querySelectorAll("[role=\\"option\\"]").length === 2',
+    );
+    const popupHomonymFirst = await evaluate(connection, popupHomonym.sessionId, [
+      '(() => {',
+      '  const options = [...document.querySelectorAll("[role=\\"option\\"]")];',
+      '  return {',
+      '    optionLabels: options.map((node) => node.textContent.trim()),',
+      '    selectedOptions: options.map((node) => node.getAttribute("aria-selected")),',
+      '    resultCount: document.querySelectorAll("[data-dictionary-record]").length,',
+      '    visibleSenseIds: [...document.querySelectorAll(".sense-block")].map((node) => node.dataset.senseId),',
+      '    definition: document.querySelector(".definition-text")?.textContent.trim() || "",',
+      '    hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '    hasHeaderDivider: Boolean(document.querySelector(".result-divider")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+    await evaluate(
+      connection,
+      popupHomonym.sessionId,
+      'document.querySelector("[role=\\"option\\"][data-sense-id=\\"w133-s2\\"]")?.click()',
+    );
+    await waitForCondition(
+      connection,
+      popupHomonym.sessionId,
+      'document.querySelector("[role=\\"option\\"][data-sense-id=\\"w133-s2\\"]")?.getAttribute("aria-selected") === "true" && document.querySelector(".definition-text")?.textContent.trim() === "하늘에서 내리는 흰 얼음 알갱이"',
+    );
+    const popupHomonymSecond = await evaluate(connection, popupHomonym.sessionId, [
+      '(() => {',
+      '  const options = [...document.querySelectorAll("[role=\\"option\\"]")];',
+      '  return {',
+      '    selectedOptions: options.map((node) => node.getAttribute("aria-selected")),',
+      '    resultCount: document.querySelectorAll("[data-dictionary-record]").length,',
+      '    visibleSenseIds: [...document.querySelectorAll(".sense-block")].map((node) => node.dataset.senseId),',
+      '    definition: document.querySelector(".definition-text")?.textContent.trim() || "",',
+      '    hasBackButton: Boolean(document.querySelector(".back-button")),',
+      '  };',
+      '})() ',
+    ].join('\n'));
+
     const popupIme = await createExtensionSession(connection, extensionId, 'popup.html');
     extensionTargets.push(popupIme);
     const popupImeStart = await evaluate(connection, popupIme.sessionId, [
@@ -939,6 +994,22 @@ export async function runCftProduct({
       throw new Error('Popup CFT assertions failed: ' + JSON.stringify({ popupReady, focusResult }));
     }
     if (
+      JSON.stringify(popupHomonymFirst.optionLabels) !== JSON.stringify(['빛을 받아 사물을 보는 몸의 기관', '하늘에서 내리는 흰 얼음 알갱이'])
+      || JSON.stringify(popupHomonymFirst.selectedOptions) !== JSON.stringify(['true', 'false'])
+      || popupHomonymFirst.resultCount !== 1
+      || JSON.stringify(popupHomonymFirst.visibleSenseIds) !== JSON.stringify(['w133-s1'])
+      || popupHomonymFirst.definition !== '빛을 받아 사물을 보는 몸의 기관'
+      || popupHomonymFirst.hasBackButton
+      || popupHomonymFirst.hasHeaderDivider
+      || JSON.stringify(popupHomonymSecond.selectedOptions) !== JSON.stringify(['false', 'true'])
+      || popupHomonymSecond.resultCount !== 1
+      || JSON.stringify(popupHomonymSecond.visibleSenseIds) !== JSON.stringify(['w133-s2'])
+      || popupHomonymSecond.definition !== '하늘에서 내리는 흰 얼음 알갱이'
+      || popupHomonymSecond.hasBackButton
+    ) {
+      throw new Error('Homonym selection CFT assertions failed: ' + JSON.stringify({ popupHomonymFirst, popupHomonymSecond }));
+    }
+    if (
       popupImeStart.defaultPrevented
       || popupImeStart.hasRecord
       || popupImeEarly.hasRecord
@@ -1100,6 +1171,8 @@ export async function runCftProduct({
     return {
       extensionId,
       popupReady,
+      popupHomonymFirst,
+      popupHomonymSecond,
       popupImeStart,
       popupImeEarly,
       popupImeKeyboard,

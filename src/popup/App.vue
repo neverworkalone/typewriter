@@ -113,8 +113,13 @@ async function goBack() {
   dictionaryPanel.value?.focusSearch?.();
 }
 
-function selectCandidate(recordId) {
-  session.selectCandidate?.(recordId);
+function selectCandidate(candidate) {
+  if (candidate && typeof candidate === 'object') {
+    session.selectCandidate?.(candidate.recordId, candidate.senseId);
+    return;
+  }
+
+  session.selectCandidate?.(candidate);
 }
 
 async function retry() {
@@ -182,6 +187,7 @@ onBeforeUnmount(() => {
       :mode="searchState.mode"
       :can-go-back="searchState.canGoBack"
       :selected-record-id="searchState.selectedRecordId"
+      :selected-sense-id="searchState.selectedSenseId"
       :settings="settings"
       autofocus
       @update:query="query = $event"

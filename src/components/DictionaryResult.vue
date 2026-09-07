@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { DEFAULT_SETTINGS } from '../ui/settings.js';
 
@@ -24,13 +24,56 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  candidateOptions: {
+    type: Array,
+    default: () => [],
+  },
+  selectedRecordId: {
+    type: String,
+    default: null,
+  },
+  selectedSenseId: {
+    type: String,
+    default: null,
+  },
 });
 
-const emit = defineEmits(['relation', 'back']);
+const emit = defineEmits([
+  'relation',
+  'back',
+  'select-candidate',
+  'candidate-focus',
+  'candidate-keydown',
+]);
 
 const senses = computed(() => (Array.isArray(props.record.senses) ? props.record.senses : []));
 const settings = computed(() => props.settings || DEFAULT_SETTINGS);
-const isPolysemous = computed(() => senses.value.length > 1);
+const showCandidatePicker = computed(() => props.candidateOptions.length > 1);
+const selectedCandidateKey = computed(() => {
+  if (!showCandidatePicker.value) return null;
+
+  const selected = props.candidateOptions.find((option) => (
+    option.recordId === props.selectedRecordId
+    && option.senseId === props.selectedSenseId
+  ));
+  return selected?.key || props.candidateOptions[0]?.key || null;
+});
+const selectedSense = computed(() => {
+  if (!showCandidatePicker.value) return null;
+
+  const selectedOption = props.candidateOptions.find(({ key }) => (
+    key === selectedCandidateKey.value
+  ));
+  return senses.value.find(({ id }) => id === selectedOption?.senseId)
+    || senses.value[0]
+    || null;
+});
+const visibleSenses = computed(() => {
+  if (!showCandidatePicker.value) return senses.value;
+  return selectedSense.value ? [selectedSense.value] : [];
+});
+const isPolysemous = computed(() => visibleSenses.value.length > 1);
+const candidateRefs = new Map();
 
 function isGroupVisible(group) {
   return settings.value[group.id] !== false && Array.isArray(group.items) && group.items.length > 0;
@@ -53,6 +96,20 @@ function openRelation(relation) {
     emit('relation', relation);
   }
 }
+
+function setCandidateRef(key, element) {
+  if (element) {
+    candidateRefs.set(key, element);
+  } else {
+    candidateRefs.delete(key);
+  }
+}
+
+function focusCandidate(key) {
+  candidateRefs.get(key)?.focus?.();
+}
+
+defineExpose({ focusCandidate });
 </script>
 
 <template>
@@ -73,14 +130,44 @@ function openRelation(relation) {
         @click="emit('back')"
       >← 뒤로</button>
     </header>
-    <div class="result-divider" aria-hidden="true"></div>
+    <div v-if="!showCandidatePicker" class="result-divider" aria-hidden="true"></div>
+
+    <div
+      v-if="showCandidatePicker"
+      class="candidate-list"
+      role="listbox"
+      aria-label="검색 후보"
+    >
+      <button
+        v-for="(option, optionIndex) in candidateOptions"
+        :key="option.key"
+        :ref="(element) => setCandidateRef(option.key, element)"
+        class="candidate-option"
+        :class="{ 'is-selected': option.key === selectedCandidateKey }"
+        :id="`search-candidate-${option.key}`"
+        :data-record-id="option.recordId"
+        :data-sense-id="option.senseId || undefined"
+        role="option"
+        type="button"
+        tabindex="-1"
+        :aria-selected="String(option.key === selectedCandidateKey)"
+        :aria-posinset="optionIndex + 1"
+        :aria-setsize="candidateOptions.length"
+        @focus="emit('candidate-focus', option)"
+        @keydown="emit('candidate-keydown', { option, event: $event })"
+        @click="emit('select-candidate', option)"
+      >
+        <span class="candidate-indicator" aria-hidden="true"></span>
+        <span class="candidate-label">{{ option.label }}</span>
+      </button>
+    </div>
 
     <div v-if="senses.length === 0" class="result-no-senses">
       표시할 뜻풀이가 없습니다.
     </div>
 
     <section
-      v-for="(sense, senseIndex) in senses"
+      v-for="(sense, senseIndex) in visibleSenses"
       :key="sense.id"
       class="sense-block"
       :class="{ 'is-polysemous': isPolysemous }"
@@ -195,6 +282,67 @@ function openRelation(relation) {
 
 .result-divider {
   margin: 8px 0;
+}
+
+.candidate-list {
+  display: flex;
+  width: max-content;
+  min-width: 200px;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 1px;
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 2px 10px 2px 9px;
+  border: 1px solid #e1ddda;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.candidate-option {
+  display: flex;
+  width: 100%;
+  min-height: 20px;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0 2px 7px;
+  border: 0;
+  background: transparent;
+  color: #7e433e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.candidate-option.is-selected {
+  color: #2b2927;
+  font-weight: 500;
+}
+
+.candidate-indicator {
+  flex: 0 0 2px;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: transparent;
+}
+
+.candidate-option.is-selected .candidate-indicator {
+  background: #e5534b;
+}
+
+.candidate-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-option:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .sense-block + .sense-block {
@@ -318,6 +466,27 @@ function openRelation(relation) {
 
 .dictionary-result.is-compact .result-divider {
   margin: 7px 0;
+}
+
+.dictionary-result.is-compact .candidate-list {
+  min-width: 175px;
+  gap: 0.875px;
+  margin-top: 7px;
+  padding: 1.75px 8.75px 1.75px 7.875px;
+  border-radius: 7px;
+}
+
+.dictionary-result.is-compact .candidate-option {
+  min-height: 17.5px;
+  gap: 4.375px;
+  padding: 1.75px 0 1.75px 6.125px;
+  font-size: 11.375px;
+}
+
+.dictionary-result.is-compact .candidate-indicator {
+  flex-basis: 1.75px;
+  width: 1.75px;
+  height: 14px;
 }
 
 .dictionary-result.is-compact .result-section {
