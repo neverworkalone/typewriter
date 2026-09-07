@@ -908,7 +908,7 @@ export async function runCftProduct({
       || popupReady.scrollMaxHeight !== '487px'
       || popupReady.scrollOverflowY !== 'auto'
       || popupReady.scrollMinHeight !== '0px'
-      || popupReady.panelWidth !== 480
+      || popupReady.panelWidth !== 420
       || popupReady.panelHeight >= 376
       || popupReady.footerHeight !== '20px'
       || popupReady.footerAlignItems !== 'center'
@@ -951,7 +951,7 @@ export async function runCftProduct({
       || popupEmptyState.appHeight !== popupEmptyState.panelHeight
       || popupEmptyState.footerBottomGap > 10
       || !popupEmptyState.hasFooter
-      || popupEmptyState.copy !== '사전에 없는 말입니다.현재 사전에 정확히 일치하는 출발어가 없습니다.'
+      || popupEmptyState.copy !== '사전에 없는 말입니다.자주 쓰는 말이라면 등록을 요청해 보세요.'
       || !popupEmptyState.hasDescription
       || popupEmptyState.hasRetry
       || popupEmptyState.stateRegionHeight < 104

@@ -526,7 +526,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('[data-search-category="no-data"]')).not.toBeNull();
     expect(host.textContent).toContain('사전에 없는 말입니다.');
     expect(host.querySelector('.state-copy').textContent.trim()).toContain('사전에 없는 말입니다.');
-    expect(host.querySelector('.state-copy span').textContent).toContain('정확히 일치하는 출발어');
+    expect(host.querySelector('.state-copy span').textContent.trim()).toBe('자주 쓰는 말이라면 등록을 요청해 보세요.');
     expect(host.querySelector('.retry-button')).toBeNull();
 
     mode = 'unsupported';

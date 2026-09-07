@@ -132,7 +132,7 @@ const statePresentation = computed(() => {
     return {
       category: 'no-data',
       title: '사전에 없는 말입니다.',
-      description: '현재 사전에 정확히 일치하는 출발어가 없습니다.',
+      description: '자주 쓰는 말이라면 등록을 요청해 보세요.',
     };
   }
 
