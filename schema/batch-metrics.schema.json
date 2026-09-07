@@ -173,6 +173,14 @@
           "type": ["number", "null"],
           "minimum": 0
         },
+        "measured_wall_clock_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "measured_editor_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
         "unmeasured_passes": {
           "type": "array",
           "items": { "type": "string", "pattern": "\\S" }

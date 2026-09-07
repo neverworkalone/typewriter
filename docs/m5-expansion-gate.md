@@ -12,9 +12,10 @@ relation diff, canonical import, and audit findings.
 - `correction rate`: `corrected / selected`.
 - `relation noise rate`: classified `remove` events / `before_count` in the relation diff.
 - `total actual review time`: the sum of `editor_seconds` across all five required
-  timing passes, including held/rejected decisions, plus any measured
-  `post-review-audit` follow-up pass. Target preparation is included when it has
-  a non-zero editor measurement.
+  timing passes, including held/rejected decisions, plus any measured follow-up
+  pass. Target preparation is included when it has a non-zero editor measurement.
+  If a follow-up pass is unmeasured, the derived measured sum is only a lower
+  bound and the measured-cost criterion fails.
 - `open blocker`: an audit finding with `severity: "blocker"` and
   `status: "open"`.
 
@@ -31,10 +32,10 @@ All criteria must pass. They are not re-tuned after a batch is inspected.
    remain visible in the same metrics object.
 4. **Measured cost:** `timing.status` is `complete`, all five required passes
    have both wall-clock and editor seconds, and total editor time per selected
-   start is at most `12` seconds. If a measured `post-review-audit` pass is
-   present, it is included in that total. The report must also show the wall-clock
-   total; editor time is the gate metric and wall-clock time is the operational
-   comparison.
+   start is at most `12` seconds. Any measured follow-up pass is included in that
+   total; an unmeasured follow-up makes the timing incomplete. The report must
+   also show the wall-clock total; editor time is the gate metric and wall-clock
+   time is the operational comparison.
 
 The M5-3 baseline cannot pass this gate because its timing is incomplete and its
 relation-noise and correction rates exceed the fixed ceilings. Its 603-second

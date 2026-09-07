@@ -50,9 +50,11 @@ ceiling, so the batch cannot authorize expansion. The audit also split
 senses. All non-add events have a failure category in the ledger, and every
 added or changed after-tuple is present in the approved canonical records.
 
-Timing is complete for all five required passes and the measured
-`post-review-audit` follow-up added after the final reviewer feedback. The
-follow-up was measured as new work; no earlier pass duration was backfilled.
+Timing is incomplete because the actual editor time for the reviewer-driven
+sense and relation fixes after the original `feedback-fixes` pass was not
+instrumented. The five required passes and the later `post-review-audit` are
+measured; `post-review-fixes` remains explicitly unmeasured. No earlier pass
+duration was backfilled.
 
 | Pass | Wall-clock seconds | Editor seconds |
 | --- | ---: | ---: |
@@ -62,12 +64,15 @@ follow-up was measured as new work; no earlier pass duration was backfilled.
 | Final audit | 154 | 103 |
 | Held/rejected | 37 | 20 |
 | Post-review audit | 188 | 188 |
-| **Total** | **818** | **643** |
+| Post-review fixes | — | **unmeasured** |
+| **Measured lower bound** | **818** | **643** |
 
-The measured editor cost is `643/40 = 16.075` seconds per selected start. The
-independent final audit and post-review audit are complete, with zero open
-blockers and zero open findings. No raw draft, model response, external source
-response, or temporary staging file is committed.
+The source records `818` wall-clock seconds and `643` editor seconds as measured
+lower bounds. The measured editor lower bound is `643/40 = 16.075` seconds per
+selected start; the true total is higher because `post-review-fixes` is
+unmeasured. The independent final audit and post-review audit are complete, with
+zero open blockers and zero open findings. No raw draft, model response,
+external source response, or temporary staging file is committed.
 
 ## Fixed-gate decision
 
@@ -79,7 +84,7 @@ process hold:
 | Independent audit, complete, open blockers 0 | PASS |
 | Relation noise ≤ 25% and below M5-3 | FAIL: 35.00% |
 | Selected-start correction ≤ 50% | PASS: 27.50% |
-| Five required passes and follow-up measured; editor time ≤ 12 sec/start | FAIL: 16.075 sec/start |
+| Measured cost complete; editor time ≤ 12 sec/start | FAIL: timing incomplete; measured lower bound 16.075 sec/start |
 
 Decision: **HOLD PROCESS**. The relation-noise backlog must be repaired and
 re-audited before another expansion is selected. This result does not authorize

@@ -89,12 +89,15 @@ test('M5-5 recalibration artifacts record the fixed gate result', async () => {
   assert.ok(gate.relation_diff.noise_rate_of_before > 0.25);
   assert.ok(gate.relation_diff.noise_rate_of_before < 51 / 139);
   assert.ok(gate.decisions.correction_rate_of_selected <= 0.5);
-  assert.equal(gate.timing.status, 'complete');
-  assert.equal(gate.timing.unmeasured_passes.length, 0);
+  assert.equal(gate.timing.status, 'incomplete');
+  assert.deepEqual(gate.timing.unmeasured_passes, ['post-review-fixes']);
   assert.equal(gate.timing.passes['post-review-audit'].status, 'complete');
   assert.ok(gate.timing.passes['post-review-audit'].editor_seconds > 0);
-  assert.ok(gate.timing.total_editor_seconds > 455);
-  assert.ok(gate.timing.total_editor_seconds / gate.selection.selected_start_count > 12);
+  assert.equal(gate.timing.passes['post-review-fixes'].status, 'unmeasured');
+  assert.equal(gate.timing.total_editor_seconds, null);
+  assert.equal(gate.timing.measured_editor_seconds, 643);
+  assert.ok(gate.timing.measured_editor_seconds > 455);
+  assert.ok(gate.timing.measured_editor_seconds / gate.selection.selected_start_count > 12);
   assert.equal(gate.audit.independent, true);
   assert.equal(gate.audit.open_blocker_count, 0);
 

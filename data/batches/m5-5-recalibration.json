@@ -21,7 +21,7 @@
       "sha256": "0ab91e25bc333672f62dc5b0810b5e3a0e762b34d706f4c934c758cfcab07993"
     },
     "timing": {
-      "status": "complete",
+      "status": "incomplete",
       "passes": [
         {
           "id": "target-preparation",
@@ -48,7 +48,7 @@
           "completed_at": "2026-09-07T11:07:19Z",
           "wall_clock_seconds": 101,
           "editor_seconds": 80,
-          "note": "최종 11개 corrected decision과 relation retype·retarget를 반영하고 canonical tuple을 다시 확인했다."
+          "note": "8개 corrected decision과 relation retype·retarget를 반영하고 canonical tuple을 다시 확인했다."
         },
         {
           "id": "final-audit",
@@ -76,6 +76,11 @@
           "wall_clock_seconds": 188,
           "editor_seconds": 188,
           "note": "추가 reviewer feedback의 sense 분리·relation 제거를 반영한 최종 canonical과 40개 start 전 범위를 후속 재감사하고, 최종 corrected decision 11개와 reference closure를 확인했다."
+        },
+        {
+          "id": "post-review-fixes",
+          "status": "unmeasured",
+          "note": "11:20 이후 reviewer feedback으로 수행한 sense 분리·relation 제거의 실제 편집 시간은 당시 측정되지 않았다."
         }
       ]
     },

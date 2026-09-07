@@ -171,9 +171,11 @@ The import advanced the seed and generated inventory from `m5-2` to `m5-3`:
 390 current starts, 42 current reference-only records, 4 remaining candidates,
 and 9 held rows. The fixed gate result is `HOLD PROCESS` because the
 relation-noise rate is 35%, above the unchanged 25% ceiling, and the measured
-editor cost is 16.075 seconds per selected start after the post-review audit,
-above the fixed 12-second ceiling. No further bounded expansion or 5K bulk
-generation is authorized until the process backlog is repaired and re-audited.
+editor-cost lower bound is 16.075 seconds per selected start after the
+post-review audit; timing remains incomplete because the reviewer-fix edit time
+was not measured, and the lower bound already exceeds the fixed 12-second
+ceiling. No further bounded expansion or 5K bulk generation is authorized until
+the process backlog is repaired and re-audited.
 
 ## Validation commands
 

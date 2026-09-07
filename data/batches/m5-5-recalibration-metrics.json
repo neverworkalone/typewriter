@@ -59,7 +59,7 @@
       }
     },
     "timing": {
-      "status": "complete",
+      "status": "incomplete",
       "passes": {
         "target-preparation": {
           "status": "complete",
@@ -90,11 +90,20 @@
           "status": "complete",
           "wall_clock_seconds": 188,
           "editor_seconds": 188
+        },
+        "post-review-fixes": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         }
       },
-      "total_wall_clock_seconds": 818,
-      "total_editor_seconds": 643,
-      "unmeasured_passes": []
+      "total_wall_clock_seconds": null,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 818,
+      "measured_editor_seconds": 643,
+      "unmeasured_passes": [
+        "post-review-fixes"
+      ]
     },
     "audit": {
       "status": "complete",
