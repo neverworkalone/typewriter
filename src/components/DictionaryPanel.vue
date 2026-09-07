@@ -3,7 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 
 import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
 import { SEARCH_UNSUPPORTED_REASONS } from '../runtime/search-query.js';
-import { DEFAULT_SETTINGS } from '../ui/settings.js';
+import { DEFAULT_SETTINGS, getBackgroundPreset } from '../ui/settings.js';
 import DictionaryResult from './DictionaryResult.vue';
 import ProductFooter from './ProductFooter.vue';
 import SearchBar from './SearchBar.vue';
@@ -103,6 +103,7 @@ const candidateListEnabled = computed(() => (
 const selectedCandidateIndex = computed(() => (
   props.records.findIndex((record) => record.id === props.selectedRecordId)
 ));
+const backgroundPreset = computed(() => getBackgroundPreset(props.settings?.background));
 const statePresentation = computed(() => {
   if (props.status === SEARCH_STATUS.loading) {
     return {
@@ -279,6 +280,8 @@ defineExpose({ focusSearch });
       `state-${status}`,
     ]"
     :aria-busy="status === SEARCH_STATUS.loading"
+    :data-background-preset="backgroundPreset.key"
+    :style="{ '--dictionary-panel-background': backgroundPreset.color }"
     data-dictionary-panel
   >
     <SearchBar
@@ -385,7 +388,7 @@ defineExpose({ focusSearch });
   padding: 10px 10px 8px;
   overflow: hidden;
   border: 1px solid #e1ddda;
-  background: #f4f3f2;
+  background: var(--dictionary-panel-background, #f6f3ee);
   box-shadow: 0 4px 14px rgba(26, 36, 51, 0.12);
 }
 

@@ -5,6 +5,7 @@ import DictionaryPanel from '../components/DictionaryPanel.vue';
 import ToggleControl from '../components/ToggleControl.vue';
 import { projectRecord } from '../domain/index.js';
 import {
+  BACKGROUND_PRESETS,
   createSettingsStore,
   DEFAULT_SETTINGS,
   SETTING_DEFINITIONS,
@@ -161,6 +162,27 @@ onMounted(() => {
           />
         </section>
       </div>
+
+      <section class="background-card" aria-labelledby="background-card-title">
+        <h2 id="background-card-title">배경색</h2>
+        <p class="card-description">오늘의 기분에 어울리는 빛깔을 골라보세요.</p>
+        <div class="background-preset-list" role="radiogroup" aria-label="팝업 배경색">
+          <button
+            v-for="preset in BACKGROUND_PRESETS"
+            :key="preset.key"
+            class="background-preset"
+            :class="{ 'is-selected': settings.background === preset.key }"
+            :style="{ '--background-preset-color': preset.color }"
+            :data-background-preset-key="preset.key"
+            type="button"
+            role="radio"
+            :aria-checked="String(settings.background === preset.key)"
+            :aria-label="`팝업 배경색 ${preset.label}`"
+            :disabled="!settingsReady || saving"
+            @click="updateSetting('background', preset.key)"
+          >{{ preset.label }}</button>
+        </div>
+      </section>
     </section>
   </main>
 </template>

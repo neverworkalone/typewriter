@@ -789,6 +789,9 @@ export async function runCftProduct({
       '  switches: [...document.querySelectorAll("[role=\\"switch\\"]")].map((node) => node.getAttribute("aria-checked")),',
       '  previewRecord: document.querySelector("[data-record-id=\\"preview-w006\\"]")?.dataset.recordId || "",',
       '  hasAntonymByDefault: Boolean(document.querySelector(".preview-panel [data-group-id=\\"antonyms\\"]")),',
+      '  backgroundPresetCount: document.querySelectorAll("[data-background-preset-key]").length,',
+      '  selectedBackgroundPreset: document.querySelector("[data-background-preset-key][aria-checked=\\"true\\"]")?.dataset.backgroundPresetKey || "",',
+      '  previewBackground: getComputedStyle(document.querySelector(".preview-panel [data-dictionary-panel]")).backgroundColor,',
       '}))()',
     ].join('\n'));
     await evaluate(
@@ -806,10 +809,15 @@ export async function runCftProduct({
       options.sessionId,
       'document.querySelectorAll("[role=\\"switch\\"]")[4]?.click()',
     );
+    await evaluate(
+      connection,
+      options.sessionId,
+      'document.querySelector("[data-background-preset-key=\\"fog\\"]")?.click()',
+    );
     await waitForCondition(
       connection,
       options.sessionId,
-      'document.querySelector(".preview-panel [data-group-id=\\"texture\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"association\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"definition\\"]") === null && document.querySelector(".preview-panel [data-group-id=\\"synonyms\\"]") === null',
+      'document.querySelector(".preview-panel [data-group-id=\\"texture\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"association\\"]") !== null && document.querySelector(".preview-panel [data-group-id=\\"definition\\"]") === null && document.querySelector(".preview-panel [data-group-id=\\"synonyms\\"]") === null && getComputedStyle(document.querySelector(".preview-panel [data-dictionary-panel]")).backgroundColor === "rgb(241, 244, 246)"',
     );
     const optionsPreview = await evaluate(connection, options.sessionId, [
       '(() => {',
@@ -826,6 +834,8 @@ export async function runCftProduct({
       '    overflowY: getComputedStyle(region).overflowY,',
       '    footerHeight: getComputedStyle(footer).height,',
       '    footerPaddingRight: getComputedStyle(footer).paddingRight,',
+      '    backgroundPreset: panel.dataset.backgroundPreset || "",',
+      '    backgroundColor: getComputedStyle(panel).backgroundColor,',
       '  };',
       '})() ',
     ].join('\n'));
@@ -853,6 +863,8 @@ export async function runCftProduct({
       '  synonymsDisabled: document.querySelectorAll("[role=\\"switch\\"]")[1]?.getAttribute("aria-checked") === "false",',
       '  textureEnabled: document.querySelectorAll("[role=\\"switch\\"]")[3]?.getAttribute("aria-checked") === "true",',
       '  associationEnabled: document.querySelectorAll("[role=\\"switch\\"]")[4]?.getAttribute("aria-checked") === "true",',
+      '  selectedBackgroundPreset: document.querySelector("[data-background-preset-key][aria-checked=\\"true\\"]")?.dataset.backgroundPresetKey || "",',
+      '  previewBackground: getComputedStyle(document.querySelector(".preview-panel [data-dictionary-panel]")).backgroundColor,',
       '  hasTextureAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"texture\\"]")),',
       '  hasAssociationAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"association\\"]")),',
       '  hasDefinitionAfterReload: Boolean(document.querySelector(".preview-panel [data-group-id=\\"definition\\"]")),',
@@ -882,6 +894,8 @@ export async function runCftProduct({
       '(() => ({',
       '  recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
       '  visibleGroups: [...document.querySelectorAll("[data-group-id]")].map((node) => node.dataset.groupId),',
+      '  backgroundPreset: document.querySelector("[data-dictionary-panel]")?.dataset.backgroundPreset || "",',
+      '  backgroundColor: getComputedStyle(document.querySelector("[data-dictionary-panel]")).backgroundColor,',
       '}))() ',
     ].join('\n'));
     const optionsVersion = await evaluate(connection, options.sessionId, [
@@ -1025,6 +1039,8 @@ export async function runCftProduct({
       || optionsPreview.panelFooterBottomGap > 8
       || optionsPreview.footerHeight !== '17.5px'
       || optionsPreview.footerPaddingRight !== '10.5px'
+      || optionsPreview.backgroundPreset !== 'fog'
+      || optionsPreview.backgroundColor !== 'rgb(241, 244, 246)'
     ) {
       throw new Error('Options preview sizing CFT assertions failed: ' + JSON.stringify(optionsPreview));
     }
@@ -1032,6 +1048,9 @@ export async function runCftProduct({
       JSON.stringify(optionsDefault.switches) !== JSON.stringify(['true', 'true', 'false', 'true', 'false'])
       || optionsDefault.previewRecord !== 'preview-w006'
       || optionsDefault.hasAntonymByDefault
+      || optionsDefault.backgroundPresetCount !== 6
+      || optionsDefault.selectedBackgroundPreset !== 'manuscript'
+      || optionsDefault.previewBackground !== 'rgb(246, 243, 238)'
     ) {
       throw new Error('Default Settings CFT assertions failed: ' + JSON.stringify(optionsDefault));
     }
@@ -1040,6 +1059,8 @@ export async function runCftProduct({
       || !optionsReloaded.synonymsDisabled
       || !optionsReloaded.textureEnabled
       || !optionsReloaded.associationEnabled
+      || optionsReloaded.selectedBackgroundPreset !== 'fog'
+      || optionsReloaded.previewBackground !== 'rgb(241, 244, 246)'
       || optionsReloaded.hasDefinitionAfterReload
       || optionsReloaded.hasSynonymsAfterReload
       || !optionsReloaded.hasTextureAfterReload
@@ -1050,6 +1071,8 @@ export async function runCftProduct({
     if (
       popupSettingsResult.recordId !== 'w004'
       || JSON.stringify(popupSettingsResult.visibleGroups) !== JSON.stringify(['texture', 'association'])
+      || popupSettingsResult.backgroundPreset !== 'fog'
+      || popupSettingsResult.backgroundColor !== 'rgb(241, 244, 246)'
     ) {
       throw new Error('Popup settings reflection CFT assertions failed: ' + JSON.stringify(popupSettingsResult));
     }

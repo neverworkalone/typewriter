@@ -608,6 +608,64 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('.save-button').disabled).toBe(true);
   });
 
+  it('changes the popup background in the preview and persists the selected preset', async () => {
+    let stored = { ...DEFAULT_SETTINGS };
+    let saveCalls = 0;
+    const settingsStore = {
+      load: async () => ({ ...stored }),
+      save: async (value) => {
+        saveCalls += 1;
+        stored = { ...value };
+        return { ...stored };
+      },
+    };
+    const host = mountWithProps(OptionsApp, { settingsStore });
+    await flush();
+
+    const presets = [...host.querySelectorAll('.background-preset')];
+    const previewPanel = () => host.querySelector('.preview-panel [data-dictionary-panel]');
+
+    expect(presets).toHaveLength(6);
+    expect(presets[0].dataset.backgroundPresetKey).toBe('manuscript');
+    expect(presets[0].getAttribute('aria-checked')).toBe('true');
+    expect(previewPanel().dataset.backgroundPreset).toBe('manuscript');
+    expect(previewPanel().style.getPropertyValue('--dictionary-panel-background')).toBe('#f6f3ee');
+
+    presets[2].click();
+    await flush();
+
+    expect(stored.background).toBe('manuscript');
+    expect(presets[2].getAttribute('aria-checked')).toBe('true');
+    expect(previewPanel().dataset.backgroundPreset).toBe('fog');
+    expect(previewPanel().style.getPropertyValue('--dictionary-panel-background')).toBe('#f1f4f6');
+    expect(host.querySelector('.save-status').textContent).toContain('저장되지 않음');
+
+    host.querySelector('.save-button').click();
+    await flush();
+
+    expect(saveCalls).toBe(1);
+    expect(stored.background).toBe('fog');
+    expect(host.querySelector('.save-status').textContent).toContain('저장됨');
+  });
+
+  it('applies the stored background preset to the popup panel', async () => {
+    const host = mountWithProps(PopupApp, {
+      runtime: {
+        getRuntimeStatus: async () => null,
+        getRecord: async () => null,
+        search: async () => [],
+      },
+      settingsStore: {
+        load: async () => ({ ...DEFAULT_SETTINGS, background: 'moonlight' }),
+      },
+    });
+    await flush();
+
+    const panel = host.querySelector('[data-dictionary-panel]');
+    expect(panel.dataset.backgroundPreset).toBe('moonlight');
+    expect(panel.style.getPropertyValue('--dictionary-panel-background')).toBe('#f2f0f4');
+  });
+
   it('locks setting edits while loading and while an explicit save is pending', async () => {
     let resolveLoad;
     let resolveSave;
