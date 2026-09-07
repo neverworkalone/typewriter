@@ -16,7 +16,7 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[wr][0-9]{3}$"
+      "pattern": "^[wr][0-9]{3,}$"
     },
     "record_type": {
       "type": "string",
@@ -28,7 +28,7 @@
     },
     "candidate_id": {
       "type": "string",
-      "pattern": "^w[0-9]{3}$"
+      "pattern": "^w[0-9]{3,}$"
     },
     "lemma": {
       "type": "string",
@@ -112,7 +112,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[wr][0-9]{3}-s[1-9][0-9]*$"
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
         },
         "pos": {
           "type": "string",
@@ -137,11 +137,11 @@
       "properties": {
         "target": {
           "type": "string",
-          "pattern": "^[wr][0-9]{3}$"
+          "pattern": "^[wr][0-9]{3,}$"
         },
         "target_sense": {
           "type": "string",
-          "pattern": "^[wr][0-9]{3}-s[1-9][0-9]*$"
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
         },
         "type": {
           "type": "string",

@@ -12,6 +12,8 @@
     "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs && node scripts/validate/target-inventory.mjs",
     "inventory:generate": "node scripts/inventory/generate-target-inventory.mjs",
     "validate:inventory": "node scripts/validate/target-inventory.mjs",
+    "batch:validate": "node scripts/batch/validate-batch.mjs",
+    "batch:import": "node scripts/batch/import-reviewed-batch.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",
@@ -31,6 +33,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.8",
+    "ajv": "^8.20.0",
     "esbuild": "^0.28.2",
     "jsdom": "^25.0.1",
     "vite": "^8.2.2",

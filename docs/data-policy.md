@@ -89,5 +89,12 @@ duplicate, or inflected-form decision, but they must not contain raw external
 responses or unreviewed drafts. The inventory validator checks its current snapshot
 against canonical data; the dictionary builder ignores the directory.
 
+M5 batch manifests under `data/batches/` are also metadata only. They may record
+generator identity, prompt/template version, timestamps, review decisions, correction
+fields, and final canonical IDs. They must not store raw responses, draft text,
+confidence scores, secrets, or paths into a local workspace. Reviewed canonical rows
+are staged outside the repository and pass the batch import gate before an editor
+copies them into `data/canonical/`.
+
 See [`repository-structure.md`](repository-structure.md) for the directory and
 artifact boundaries.

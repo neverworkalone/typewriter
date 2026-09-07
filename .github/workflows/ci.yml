@@ -44,6 +44,9 @@ jobs:
       - name: Run target inventory tests
         run: node --test tests/target-inventory.test.mjs
 
+      - name: Run batch workflow tests
+        run: node --test tests/batch-workflow.test.mjs
+
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs
 

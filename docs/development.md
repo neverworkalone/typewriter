@@ -114,6 +114,24 @@ The default SQLite build requires a clean Git worktree. While developing locally
 `node scripts/build/dictionary.mjs --allow-dirty` is an explicit non-reproducible
 escape hatch; CI always builds from a clean checkout.
 
+For the M5 reviewed batch workflow, keep the raw draft and reviewed staging JSONL in
+an external temporary workspace. Validate the metadata manifest and staged rows
+before a deliberate canonical import:
+
+```sh
+npm run batch:validate -- \
+  --manifest=/tmp/typewriter-m5-2/batch.json \
+  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl
+npm run batch:import -- \
+  --manifest=/tmp/typewriter-m5-2/batch.json \
+  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
+  --output=/tmp/typewriter-m5-2/canonical-import.jsonl
+```
+
+The import helper never edits `data/canonical/`; it only emits validated rows outside
+the repository. See [`m5-batch-workflow.md`](m5-batch-workflow.md) for the manifest,
+ID allocation, reference-closure, and reproducibility contract.
+
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
 files. It does not scan `data/draft/`, `data/reference/`, generated output, or test
 fixtures. Each row must also satisfy [`schema/canonical-record.schema.json`](../schema/canonical-record.schema.json).
@@ -147,12 +165,13 @@ package, integrated audit, and regression commands as the local workflow:
 7. `node scripts/build/dictionary.mjs`
 8. `node scripts/verify/m2-pipeline.mjs`
 9. `node --test tests/*.test.mjs`
-10. `npm run test:unit`
-11. `npm run build`
-12. `npm run package`
-13. Chrome verification of the non-minified product package
-14. `npm run package:minify`
-15. Chrome verification of the minified product package
+10. `node --test tests/batch-workflow.test.mjs`
+11. `npm run test:unit`
+12. `npm run build`
+13. `npm run package`
+14. Chrome verification of the non-minified product package
+15. `npm run package:minify`
+16. Chrome verification of the minified product package
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
 reproducibility, integrated audit, product package, and both Chrome-loaded release
