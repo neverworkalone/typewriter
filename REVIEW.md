@@ -38,6 +38,26 @@ A PR may require more than one guide.
 
 Do not read unrelated review guides.
 
+## Context efficiency
+
+Minimize review context without reducing review coverage.
+
+Prefer this inspection order:
+
+1. PR metadata and current head SHA;
+2. complete changed-file list;
+3. applicable review guides;
+4. per-file patches for the changed implementation;
+5. surrounding source or repository documents only when needed to understand
+   or validate those changes.
+
+Do not fetch broad repository context, the complete PR diff, full CI logs, or
+unrelated files preemptively when narrower evidence is sufficient.
+
+Inspect the complete changed surface, but load detailed content incrementally
+by changed file rather than pulling unrelated or already-understood material
+into review context.
+
 ## Review guide routing
 
 Read [`docs/review-data.md`](docs/review-data.md) when the PR changes:
@@ -152,6 +172,12 @@ Review:
    were not part of the previous review.
 
 Do not re-read unchanged hunks merely because they remain part of the PR.
+
+For follow-up reviews, inspect the previously reported blocker threads and
+review activity added or changed since the previous reviewed head.
+
+Do not reload the complete historical PR discussion unless needed to resolve
+current context.
 
 Do not restart an unrestricted search for minor issues in unchanged material
 that was already available during the first comprehensive review.
