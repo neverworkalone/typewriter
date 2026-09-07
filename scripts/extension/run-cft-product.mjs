@@ -908,7 +908,7 @@ export async function runCftProduct({
       || popupReady.scrollMaxHeight !== '487px'
       || popupReady.scrollOverflowY !== 'auto'
       || popupReady.scrollMinHeight !== '0px'
-      || popupReady.panelWidth !== 480
+      || popupReady.panelWidth !== 420
       || popupReady.panelHeight >= 376
       || popupReady.footerHeight !== '20px'
       || popupReady.footerAlignItems !== 'center'
