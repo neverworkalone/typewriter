@@ -20,11 +20,11 @@ The canonical dictionary data is a long-term product asset and must remain indep
 
 When working on schemas, relation types, ranking rules, validation, search, or documentation:
 
-* add fields, relation types, controlled vocabularies, and abstractions only when justified by real Typewriter records, an explicit issue requirement, or a demonstrated near-term workflow;
-* prefer the smallest model that preserves the distinction writers actually need;
-* do not generalize merely because a hypothetical future word, language, client, or corpus could require it;
-* when a plausible future requirement is not yet demonstrated, document or defer it instead of implementing it;
-* allow the editorial model to evolve through the pilot data and real writing use.
+- add fields, relation types, controlled vocabularies, and abstractions only when justified by real Typewriter records, an explicit issue requirement, or a demonstrated near-term workflow;
+- prefer the smallest model that preserves the distinction writers actually need;
+- do not generalize merely because a hypothetical future word, language, client, or corpus could require it;
+- when a plausible future requirement is not yet demonstrated, document or defer it instead of implementing it;
+- allow the editorial model to evolve through the pilot data and real writing use.
 
 A technically elegant lexical ontology is not automatically an improvement.
 
@@ -36,24 +36,24 @@ A relationship does not need to be a strict dictionary synonym to be useful, but
 
 For example, a search may surface:
 
-* `direct`: a word or expression that can directly replace the source in a relevant sense;
-* `near`: close in meaning but not fully interchangeable;
-* `mood`: similar emotional or tonal color;
-* `scene`: evokes a related scene or situation;
-* `sensory`: shares a sensory image;
-* `action`: an action naturally associated with the source mood or situation;
-* `association`: a broader writer-useful association.
+- `direct`: a word or expression that can directly replace the source in a relevant sense;
+- `near`: close in meaning but not fully interchangeable;
+- `mood`: similar emotional or tonal color;
+- `scene`: evokes a related scene or situation;
+- `sensory`: shares a sensory image;
+- `action`: an action naturally associated with the source mood or situation;
+- `association`: a broader writer-useful association.
 
 These relation types are current working categories, not immutable ontology. Preserve, merge, rename, or split them only when pilot data demonstrates the need.
 
 Prefer:
 
-* writer usefulness over lexicographic completeness;
-* explicit relation type over a flat undifferentiated synonym list;
-* sense-aware relations when the distinction matters in actual use;
-* concise, evocative records over encyclopedic definitions;
-* high-quality common writing vocabulary over broad low-value coverage;
-* human editorial judgment over automated confidence treated as truth.
+- writer usefulness over lexicographic completeness;
+- explicit relation type over a flat undifferentiated synonym list;
+- sense-aware relations when the distinction matters in actual use;
+- concise, evocative records over encyclopedic definitions;
+- high-quality common writing vocabulary over broad low-value coverage;
+- human editorial judgment over automated confidence treated as truth.
 
 Do not turn Typewriter into sentence generation. The writer writes the sentence; Typewriter helps the writer find words.
 
@@ -65,11 +65,11 @@ External APIs, dictionaries, corpora, and LLMs may be used as reference, verific
 
 Unless an active issue explicitly establishes otherwise:
 
-* do not commit raw API responses, scraped pages, copied dictionary entries, or bulk third-party datasets;
-* do not copy restricted definitions, examples, rankings, or relationship lists into canonical data;
-* do not assume that reformatting, combining, paraphrasing, or translating third-party data removes its license or terms;
-* use reusable open data only under its applicable license and attribution requirements;
-* record source-policy decisions in the repository's data/licensing documentation when they affect ongoing work.
+- do not commit raw API responses, scraped pages, copied dictionary entries, or bulk third-party datasets;
+- do not copy restricted definitions, examples, rankings, or relationship lists into canonical data;
+- do not assume that reformatting, combining, paraphrasing, or translating third-party data removes its license or terms;
+- use reusable open data only under its applicable license and attribution requirements;
+- record source-policy decisions in the repository's data/licensing documentation when they affect ongoing work.
 
 The final relation, classification, ranking, and curation stored in Typewriter must be defensible as Typewriter data, not a disguised copy of a restricted source.
 
@@ -95,12 +95,12 @@ Chrome Extension
 
 Rules:
 
-* canonical JSONL is the source of truth;
-* generated SQLite is never the primary editable source;
-* do not hand-edit generated database output to make a test pass;
-* the same canonical revision and build inputs should reproduce the same logical database contents;
-* dictionary schema version, dictionary version, and source revision should be traceable in generated output when the active milestone requires them;
-* user data such as recent searches, favorites, and settings must remain separate from the read-only dictionary database.
+- canonical JSONL is the source of truth;
+- generated SQLite is never the primary editable source;
+- do not hand-edit generated database output to make a test pass;
+- the same canonical revision and build inputs should reproduce the same logical database contents;
+- dictionary schema version, dictionary version, and source revision should be traceable in generated output when the active milestone requires them;
+- user data such as recent searches, favorites, and settings must remain separate from the read-only dictionary database.
 
 ## Scale discipline
 
@@ -116,10 +116,10 @@ The planned progression is deliberately staged:
 
 When working before the scale milestones:
 
-* do not optimize architecture for 100,000+ entries without demonstrated need;
-* do not bulk-generate thousands of records before the editorial model is validated;
-* do not treat quantity of entries as a substitute for quality;
-* when scale exposes a model or generation problem, fix the process before adding more data.
+- do not optimize architecture for 100,000+ entries without demonstrated need;
+- do not bulk-generate thousands of records before the editorial model is validated;
+- do not treat quantity of entries as a substitute for quality;
+- when scale exposes a model or generation problem, fix the process before adding more data.
 
 ## Search and product priorities
 
@@ -127,13 +127,13 @@ Search should support a writer who is already in the middle of writing.
 
 Prefer:
 
-* fast local lookup;
-* keyboard-first interaction;
-* low-friction exploration from one word to another;
-* clear separation between direct alternatives and wider imagery/association;
-* stable, predictable ranking;
-* offline behavior after installation;
-* restrained UI that feels like a writing tool, not an AI chat product.
+- fast local lookup;
+- keyboard-first interaction;
+- low-friction exploration from one word to another;
+- clear separation between direct alternatives and wider imagery/association;
+- stable, predictable ranking;
+- offline behavior after installation;
+- restrained UI that feels like a writing tool, not an AI chat product.
 
 Do not add runtime dependency on an external dictionary or AI service unless an active issue explicitly changes the product architecture.
 
@@ -145,10 +145,10 @@ Do not implement work belonging only to a later milestone merely because it is v
 
 In particular:
 
-* do not freeze a large lexical ontology before pilot data validates it;
-* do not begin large-scale dictionary generation before the vertical slice has been used;
-* do not add generalized NLP infrastructure, embeddings, vector databases, cloud services, collaborative editing, or multi-language architecture unless current product needs demonstrate them;
-* do not expand Typewriter into a general Korean dictionary or AI writing assistant without an explicit product decision.
+- do not freeze a large lexical ontology before pilot data validates it;
+- do not begin large-scale dictionary generation before the vertical slice has been used;
+- do not add generalized NLP infrastructure, embeddings, vector databases, cloud services, collaborative editing, or multi-language architecture unless current product needs demonstrate them;
+- do not expand Typewriter into a general Korean dictionary or AI writing assistant without an explicit product decision.
 
 When current data and current requirements are fully represented by a simpler design, choose the simpler design.
 
@@ -168,32 +168,32 @@ Run the validation appropriate to the changed surface.
 
 For data changes, validation may include:
 
-* JSON/JSONL schema checks;
-* reference integrity;
-* duplicate records or relations;
-* self-reference;
-* invalid or missing lemma/sense targets;
-* part-of-speech conflicts;
-* impossible or contradictory relation metadata;
-* deterministic build checks;
-* representative editorial regression cases.
+- JSON/JSONL schema checks;
+- reference integrity;
+- duplicate records or relations;
+- self-reference;
+- invalid or missing lemma/sense targets;
+- part-of-speech conflicts;
+- impossible or contradictory relation metadata;
+- deterministic build checks;
+- representative editorial regression cases.
 
 For build/database changes, validation may include:
 
-* canonical input → SQLite build;
-* schema/index verification;
-* metadata/version verification;
-* representative lookup queries;
-* reproducibility checks.
+- canonical input → SQLite build;
+- schema/index verification;
+- metadata/version verification;
+- representative lookup queries;
+- reproducibility checks.
 
 For Chrome-extension changes, validation may include:
 
-* Manifest V3/CSP compatibility;
-* packaged SQLite/WASM loading;
-* local search correctness;
-* keyboard interaction;
-* startup/search latency;
-* extension install/update behavior relevant to the issue.
+- Manifest V3/CSP compatibility;
+- packaged SQLite/WASM loading;
+- local search correctness;
+- keyboard interaction;
+- startup/search latency;
+- extension install/update behavior relevant to the issue.
 
 Do not substitute broad unrelated testing for the validation that demonstrates the active issue is correct.
 
@@ -211,17 +211,17 @@ On each check:
 
 Continue monitoring after each feedback batch until the PR is merged or closed, or the user asks you to stop.
 
-Monitoring does not authorize requesting another review, posting `@codex review`, or merging the PR. Follow-up review initiation remains subject to `REVIEW.md`.
+Monitoring does not authorize starting, requesting, repeating, or performing a PR review, posting `@codex review`, or merging the PR.
 
 If the execution environment cannot sustain periodic monitoring, report that limitation explicitly rather than claiming monitoring is active.
 
-## Pull-request reviews
+## Review boundary
 
-When performing a pull-request review or evaluating review feedback, read and follow [`REVIEW.md`](REVIEW.md) before taking action.
+Implementation agents do not initiate, perform, or repeat PR reviews unless the user explicitly requests review work.
 
-`REVIEW.md` defines review scope, batching, blocker criteria, approach validation, stale-head handling, follow-up review limits, and convergence rules.
+PR review policy is defined exclusively by `REVIEW.md`.
 
-Reading those review rules does **not** itself authorize starting, requesting, or repeating a review. Review initiation remains a separate action.
+Do not apply `AGENTS.md` as review guidance.
 
 ## Documentation
 
@@ -229,12 +229,11 @@ Reading those review rules does **not** itself authorize starting, requesting, o
 
 Detailed rules should live in dedicated documents as they are introduced by the roadmap. Consult the applicable source of truth before changing an area, including, once present:
 
-* editorial-model guidance;
-* canonical data schema documentation;
-* data-source/licensing policy;
-* repository structure documentation;
-* build/reproducibility documentation;
-* `REVIEW.md` when reviewing a PR or evaluating review feedback.
+- editorial-model guidance;
+- canonical data schema documentation;
+- data-source/licensing policy;
+- repository structure documentation;
+- build/reproducibility documentation.
 
 Do not duplicate dedicated documents in `AGENTS.md`.
 
