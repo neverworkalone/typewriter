@@ -33,7 +33,7 @@ export const SETTING_DEFINITIONS = Object.freeze([
   {
     key: 'definition',
     label: '뜻풀이',
-    description: '단어의 기본 뜻을 표시합니다.',
+    description: '기본 뜻을 표시합니다.',
   },
   {
     key: 'synonyms',
