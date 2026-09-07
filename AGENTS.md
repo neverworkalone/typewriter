@@ -197,6 +197,27 @@ For Chrome-extension changes, validation may include:
 
 Do not substitute broad unrelated testing for the validation that demonstrates the active issue is correct.
 
+## Browser validation
+
+Do not launch Chrome or Chrome for Testing by default.
+
+Prefer deterministic Node, schema, SQLite, validator, and component-level
+tests for Typewriter.
+
+Use real Chrome validation only when the change specifically affects a
+browser-only boundary, such as:
+
+- extension manifest, permissions, or CSP;
+- packaged WASM/SQLite loading in the extension runtime;
+- Chrome extension APIs or storage behavior;
+- keyboard/runtime behavior that cannot be validated reliably without Chrome.
+
+Data, search, schema, validator, build-tooling, and ordinary UI implementation
+changes do not require CFT merely for additional confidence.
+
+Do not add or run browser automation when existing deterministic tests can
+validate the affected behavior.
+
 ## Monitoring after PR creation
 
 After creating and pushing the implementation PR, automatically begin monitoring that PR every 5 minutes when the execution environment supports it.
