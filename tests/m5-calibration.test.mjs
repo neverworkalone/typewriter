@@ -59,8 +59,8 @@ test('M5-3 calibration manifest, canonical import, and inventory transition stay
   assert.equal(manifest.inventory_revision, 'm5-1');
   assert.equal(inventoryDecisions.length, 60);
   assert.deepEqual(decisionCounts, {
-    included: 17,
-    corrected: 35,
+    included: 11,
+    corrected: 41,
     held: 4,
     rejected: 4,
   });
@@ -80,11 +80,11 @@ test('M5-3 calibration manifest, canonical import, and inventory transition stay
   assert.equal(importedIds.filter((id) => canonicalById.has(id)).length, 64);
   assert.equal(metrics.canonical_import.imported_record_count, 64);
   assert.equal(metrics.canonical_import.imported_sense_count, 82);
-  assert.equal(metrics.canonical_import.imported_relation_count, 127);
-  assert.equal(metrics.decisions.correction_rate_of_selected, 35 / 60);
-  assert.equal(metrics.decisions.correction_rate_of_importable, 35 / 52);
-  assert.equal(metrics.post_review_audit.removed_relation_count, 12);
-  assert.equal(metrics.post_review_audit.relation_count_after_audit, 127);
+  assert.equal(metrics.canonical_import.imported_relation_count, 88);
+  assert.equal(metrics.decisions.correction_rate_of_selected, 41 / 60);
+  assert.equal(metrics.decisions.correction_rate_of_importable, 41 / 52);
+  assert.equal(metrics.post_review_audit.removed_relation_count, 51);
+  assert.equal(metrics.post_review_audit.relation_count_after_audit, 88);
   assert.equal(metrics.post_review_audit.remaining_over_broad_relation_errors, 0);
   assert.equal(metrics.quality_checks.reference_closure_errors, 0);
   assert.equal(metrics.quality_checks.raw_draft_committed, false);
@@ -139,11 +139,13 @@ test('new calibration lemmas and sense-level relation targets are searchable in 
       const sensoryRecord = getRecord(database, 'w326');
       assert.deepEqual(
         sensoryRecord.senses.map((sense) => sense.relations.map(({ target }) => target)),
-        [['w106'], ['w019', 'w112']],
+        [['w106'], ['w019']],
       );
 
       const polysemousPlaceRecord = getRecord(database, 'w329');
       assert.deepEqual(polysemousPlaceRecord.senses[1].relations, []);
+      assert.deepEqual(getRecord(database, 'w335').senses[0].relations, []);
+      assert.deepEqual(getRecord(database, 'w349').senses[0].relations.map(({ target }) => target), ['w071']);
 
       const expression = getRecord(database, 'w350');
       assert.ok(

@@ -14,14 +14,14 @@ The 60 candidate decisions were:
 
 | Decision | Count | Rate of selected starts |
 | --- | ---: | ---: |
-| `included` | 17 | 28.33% |
-| `corrected` | 35 | 58.33% |
+| `included` | 11 | 18.33% |
+| `corrected` | 41 | 68.33% |
 | `held` | 4 | 6.67% |
 | `rejected` | 4 | 6.67% |
 | Importable starts | 52 | 86.67% |
 
-The correction rate is 35/60 (`58.33%`) across the selected inventory, or 35/52
-(`67.31%`) among the imported starts. The held and rejected decisions remain in
+The correction rate is 41/60 (`68.33%`) across the selected inventory, or 41/52
+(`78.85%`) among the imported starts. The held and rejected decisions remain in
 the manifest with decision notes. Rejected rows remain `candidate` in the seed
 because the inventory status vocabulary has no `rejected` state; the manifest is
 the authoritative batch decision record.
@@ -43,7 +43,7 @@ The 60 rows remained balanced across six writer-facing groups:
 
 ## Editorial measurements
 
-The reviewed import contains 82 senses, 127 relations, and three independent
+The reviewed import contains 82 senses, 88 relations, and three independent
 expression records. Sense POS counts are adjective 23, expression 3, noun 37,
 and verb 19.
 
@@ -51,31 +51,47 @@ Relation types in the imported records are:
 
 | Type | Count |
 | --- | ---: |
-| `action` | 8 |
-| `association` | 16 |
+| `action` | 6 |
+| `association` | 7 |
 | `antonym` | 1 |
 | `direct` | 3 |
-| `mood` | 31 |
+| `mood` | 18 |
 | `near` | 27 |
-| `scene` | 15 |
-| `sensory` | 26 |
+| `scene` | 7 |
+| `sensory` | 19 |
 
-Twenty-three records corrected sense fields and 35 corrected relation fields.
+Twenty-three records corrected sense fields and 41 corrected relation fields.
 For the records whose manifest lists `relations` as corrected, the final relation
-mix is action 6, association 14, antonym 1, direct 1, mood 26, near 18, scene
-11, and sensory 16. The reviewed draft intentionally stored only candidate metadata, not
+mix is action 6, association 7, antonym 1, direct 1, mood 15, near 22, scene
+4, and sensory 10. The reviewed draft intentionally stored only candidate metadata, not
 relation bodies, so this is a final mix on corrected records rather than an
 event-level relation diff; a later calibration should instrument relation diffs
 directly.
 
 All three `direct` relations include an explicit sentence-slot substitution in
-the editorial note. The feedback audit rechecked all 52 imported starts and 82
-imported senses. It removed 12 broad or unsupported relation edges, retyped or
+the editorial note. The first feedback pass rechecked all 52 imported starts and
+82 imported senses, removed 12 broad or unsupported relation edges, retyped or
 retargeted five others, corrected the `단정하다` adjective/verb boundary, and
-removed the taste reading from the first `시큰하다` sense. The final audit records
-zero direct-replacement errors, zero over-broad relation errors, and zero
-reference-closure errors. All 12 reference-only records are referenced by an
-imported start with explicit target senses.
+removed the taste reading from the first `시큰하다` sense. A second full
+admission audit applied the same rule to the remaining 127 relations and removed
+39 more, leaving 88. Cumulatively, 51 relations were removed from the original
+139 and five were retyped or retargeted.
+
+The admission rule kept a relation only when its stable writer-facing use is
+explained by the source sense: direct/near/antonym substitution or contrast,
+stable mood adjacency, a core sensory or scene image, a direct action affordance,
+or a conventional association. It removed incidental co-occurrence, generic
+outcomes, arbitrary modifiers or places, broad category links, and unsupported
+cross-sensory links. Representative removals were `w335 안뜰 → w147 창가`,
+`w318 비뚤어지다 → w054 빈틈`, `w349 얼룩 → w079 촉감`, `w311 소박하다 →
+w031 다정하다`, and `w304 체념 → w240 잊다`. Representative retained links
+were the direct `w305 자부심 → r038 긍지`, near `w321 미지근하다 → r042
+미온`, sensory `w346 등불 → w066 빛`, and action `w352 기억을 더듬다 →
+w239 기억하다`.
+
+The final audit records zero direct-replacement errors, zero over-broad relation
+errors, and zero reference-closure errors. All 12 reference-only records are
+referenced by an imported start with explicit target senses.
 
 The original batch review window remains the timing baseline below. The feedback
 audit was a separate editorial pass and was not individually timed.
@@ -116,7 +132,7 @@ The following checks passed for this batch:
 
 - `npm run batch:validate -- --manifest=/tmp/typewriter-m5-3-calibration/manifest.json --staged-records=/tmp/typewriter-m5-3-calibration/reviewed.jsonl --json=true`
 - `npm test` — 69 tests passed, including the M5-3 manifest/import/inventory and SQLite search regressions
-- `npm run validate` — 390 records, 468 senses, 467 relations, and inventory revision `m5-2`
+- `npm run validate` — 390 records, 468 senses, 428 relations, and inventory revision `m5-2`
 - `npm run test:unit`
 - `npm run validate:search` — existing M4 search regression corpus
 - SQLite representative lookups for `감격`, `미지근하다`, `여명`, and `목이 메다`, including polysemous and reference target-sense checks

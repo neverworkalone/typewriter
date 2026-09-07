@@ -115,9 +115,12 @@
       "source": "inventory",
       "inventory_id": "m5-010",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w309"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 일반적인 여운 동시 출현 relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w309",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -270,9 +273,12 @@
       "source": "inventory",
       "inventory_id": "m5-026",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w323"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 근거가 약한 다정함 mood relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w323",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -382,9 +388,12 @@
       "source": "inventory",
       "inventory_id": "m5-037",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w333"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 장소와 숨기기의 우연한 동시 출현 relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w333",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -479,9 +488,12 @@
       "source": "inventory",
       "inventory_id": "m5-046",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w341"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 기억과의 근거가 약한 action relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w341",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -499,9 +511,12 @@
       "source": "inventory",
       "inventory_id": "m5-048",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w343"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 선택과의 일반적인 선행 상황 relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w343",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",
@@ -518,9 +533,12 @@
       "source": "inventory",
       "inventory_id": "m5-050",
       "role": "start",
-      "decision": "included",
-      "decision_note": "Calibration review에서 모든 sense와 relation을 확인한 뒤 초안과 같은 editorial 결정을 포함했다.",
-      "canonical_id": "w345"
+      "decision": "corrected",
+      "decision_note": "Calibration review에서 장소와의 우연한 scene relation을 제거한 뒤 포함했다.",
+      "canonical_id": "w345",
+      "corrected_fields": [
+        "relations"
+      ]
     },
     {
       "source": "inventory",

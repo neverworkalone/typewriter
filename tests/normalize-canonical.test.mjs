@@ -43,7 +43,7 @@ test('normalizes the pilot without losing records, senses, relations, or notes',
         ),
       0,
     ),
-    467,
+    428,
   );
 
   const ids = model.records.map((record) => record.id);
