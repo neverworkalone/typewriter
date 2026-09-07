@@ -38,6 +38,12 @@ jobs:
       - name: Run dataset validator tests
         run: node --test tests/validate-dataset-integrity.test.mjs
 
+      - name: Validate M5 target inventory
+        run: node scripts/validate/target-inventory.mjs
+
+      - name: Run target inventory tests
+        run: node --test tests/target-inventory.test.mjs
+
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs
 
@@ -98,7 +104,7 @@ jobs:
           npm run test:mv3:package --
           --chrome="${{ steps.chrome.outputs.path }}"
           --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_0.3.0.zip"
+          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_1.0.0.zip"
 
       - name: Build minified release package
         env:
@@ -110,4 +116,4 @@ jobs:
           npm run test:mv3:package --
           --chrome="${{ steps.chrome.outputs.path }}"
           --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_0.3.0.zip"
+          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_1.0.0.zip"

@@ -1,6 +1,6 @@
 {
   "name": "typewriter",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs",
+    "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs && node scripts/validate/target-inventory.mjs",
+    "inventory:generate": "node scripts/inventory/generate-target-inventory.mjs",
+    "validate:inventory": "node scripts/validate/target-inventory.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",

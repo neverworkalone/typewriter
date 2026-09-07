@@ -83,5 +83,11 @@ the repository. The canonical input is limited to reviewed Typewriter JSONL. The
 deterministic build reads canonical input and produces generated SQLite; it must not
 silently pull from external services or temporary research material.
 
+M5 target-selection files under `data/inventory/` are tracked editorial planning
+artifacts, not canonical input. They may record a candidate, classification, hold,
+duplicate, or inflected-form decision, but they must not contain raw external
+responses or unreviewed drafts. The inventory validator checks its current snapshot
+against canonical data; the dictionary builder ignores the directory.
+
 See [`repository-structure.md`](repository-structure.md) for the directory and
 artifact boundaries.

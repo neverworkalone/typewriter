@@ -139,7 +139,7 @@ the exact ZIP through isolated Chrome profiles:
 npm run test:mv3:package -- \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
-  --zip=/path/to/typewriter_0.3.0.zip
+  --zip=/path/to/typewriter_1.0.0.zip
 ```
 
 It checks the popup and Settings flows, local dictionary coverage, saved settings

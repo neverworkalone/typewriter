@@ -75,7 +75,7 @@ describe('product MV3 Vue shells', () => {
 
     expect(host.querySelector('[data-product-surface="options"]')).not.toBeNull();
     expect(host.textContent).toContain('설정');
-    expect(host.querySelector('.brand-version').textContent.trim()).toBe('0.3.0');
+    expect(host.querySelector('.brand-version').textContent.trim()).toBe('1.0.0');
   });
 
   it('searches on Enter, moves through relation targets, and returns with the back control', async () => {
