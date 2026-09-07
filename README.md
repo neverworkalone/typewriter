@@ -92,6 +92,9 @@ canonical import gate are documented in
 The first M5-3 calibration batch measurements and expansion gate are recorded in
 [`docs/m5-3-calibration-report.md`](docs/m5-3-calibration-report.md).
 
+The M5-5 recalibration batch and fixed-gate decision are recorded in
+[`docs/m5-5-recalibration-report.md`](docs/m5-5-recalibration-report.md).
+
 The M5-4 relation-review, event-level measurement, and fixed bounded-expansion
 criteria are documented in [`docs/m5-expansion-gate.md`](docs/m5-expansion-gate.md).
 

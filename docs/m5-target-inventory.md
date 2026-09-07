@@ -158,6 +158,20 @@ The import advanced the seed and generated inventory from `m5-1` to `m5-2`:
 and 7 held rows. This is a calibration baseline only; it does not authorize a
 later bulk batch until the issue #7 gate is explicitly updated.
 
+## M5-5 recalibration result
+
+The recalibration selected 40 new starts (`m5-061`–`m5-100`) outside the M5-3
+selection. It imported 38 starts and four reference-only closure records after
+reviewing every candidate, sense, and relation. The batch covered all seven
+selection axes, polysemy, expression units, and reference closure. Its fixed-gate
+measurements and decision are recorded in
+[`docs/m5-5-recalibration-report.md`](m5-5-recalibration-report.md).
+
+The import advanced the seed and generated inventory from `m5-2` to `m5-3`:
+390 current starts, 42 current reference-only records, 4 remaining candidates,
+and 9 held rows. The result is `APPROVE BOUNDED` for one further bounded
+expansion under the same contract; it is not approval for 5K bulk generation.
+
 ## Validation commands
 
 Regenerate the reviewable snapshot after changing canonical input or the seed:

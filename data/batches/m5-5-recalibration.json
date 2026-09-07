@@ -1,0 +1,140 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-5-recalibration-20260907",
+  "inventory_id": "m5-core-5k",
+  "inventory_revision": "m5-2",
+  "generator": {
+    "model_id": "human-editorial-recalibration",
+    "tool_version": "typewriter-m5-5-authoring-1",
+    "prompt_version": "m5-5-recalibration-v1"
+  },
+  "generated_at": "2026-09-07T11:00:00Z",
+  "review": {
+    "status": "complete",
+    "reviewer": "typewriter-independent-recalibration-audit",
+    "completed_at": "2026-09-07T11:16:00Z"
+  },
+  "measurement": {
+    "schema_version": "1",
+    "relation_diff": {
+      "artifact": "data/batches/m5-5-recalibration-relation-diff.json",
+      "sha256": "19de584892a0d4f89a77b78d98ce563e05cae8a4cb72ff148e9904d7e90c52de"
+    },
+    "timing": {
+      "status": "complete",
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "complete",
+          "started_at": "2026-09-07T11:00:00Z",
+          "completed_at": "2026-09-07T11:01:32Z",
+          "wall_clock_seconds": 92,
+          "editor_seconds": 32,
+          "note": "새 start 40개를 E/Q/S/C/A/O/X와 polysemy·expression·reference closure 축으로 선별했다."
+        },
+        {
+          "id": "initial-review",
+          "status": "complete",
+          "started_at": "2026-09-07T11:01:32Z",
+          "completed_at": "2026-09-07T11:05:38Z",
+          "wall_clock_seconds": 246,
+          "editor_seconds": 220,
+          "note": "40개 후보의 lemma, POS, sense, writer-facing relation을 전수 검토했다."
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "complete",
+          "started_at": "2026-09-07T11:05:38Z",
+          "completed_at": "2026-09-07T11:07:19Z",
+          "wall_clock_seconds": 101,
+          "editor_seconds": 80,
+          "note": "8개 corrected decision과 relation retype·retarget를 반영하고 canonical tuple을 다시 확인했다."
+        },
+        {
+          "id": "final-audit",
+          "status": "complete",
+          "started_at": "2026-09-07T11:07:19Z",
+          "completed_at": "2026-09-07T11:09:53Z",
+          "wall_clock_seconds": 154,
+          "editor_seconds": 103,
+          "note": "unseen canonical 기준으로 import 수, sense ID, relation target, reference closure, blocker를 독립 점검했다."
+        },
+        {
+          "id": "held-rejected",
+          "status": "complete",
+          "started_at": "2026-09-07T11:09:53Z",
+          "completed_at": "2026-09-07T11:10:30Z",
+          "wall_clock_seconds": 37,
+          "editor_seconds": 20,
+          "note": "마음을 가라앉히다와 숨을 죽이다는 schema·sense 경계 backlog로 남겼다."
+        }
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "findings": [
+        {
+          "id": "m5-5-relation-noise-review",
+          "category": "relation-noise",
+          "severity": "warning",
+          "status": "resolved",
+          "note": "4개 remove event를 incidental co-occurrence, broad-common-category, generic-result-or-reaction, arbitrary-modifier-or-place로 분류하고 제거했다."
+        },
+        {
+          "id": "m5-5-reference-closure-review",
+          "category": "reference-closure",
+          "severity": "info",
+          "status": "resolved",
+          "note": "r048~r051은 각각 승인된 start에서 실제로 참조되며 orphan reference가 없다."
+        }
+      ]
+    }
+  },
+  "records": [
+    {"source":"inventory","inventory_id":"m5-061","role":"start","decision":"included","decision_note":"lemma와 단일 noun sense를 확인한 뒤 포함했다.","canonical_id":"w353"},
+    {"source":"inventory","inventory_id":"m5-062","role":"start","decision":"included","decision_note":"막막함의 정서 범위를 확인한 뒤 포함했다.","canonical_id":"w354"},
+    {"source":"inventory","inventory_id":"m5-063","role":"start","decision":"included","decision_note":"당황과 당혹감의 writer-facing 경계를 확인한 뒤 포함했다.","canonical_id":"w355"},
+    {"source":"inventory","inventory_id":"m5-064","role":"start","decision":"included","decision_note":"안쓰러움의 감정 방향을 확인한 뒤 포함했다.","canonical_id":"w356"},
+    {"source":"inventory","inventory_id":"m5-065","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"서러움의 gloss를 상실 일반 정서와 겹치지 않도록 교정한 뒤 포함했다.","canonical_id":"w357"},
+    {"source":"inventory","inventory_id":"m5-066","role":"start","decision":"included","decision_note":"애틋함의 애정·거리감 결을 확인한 뒤 포함했다.","canonical_id":"w358"},
+    {"source":"inventory","inventory_id":"m5-067","role":"start","decision":"included","decision_note":"야무지다의 writer-facing 품사와 gloss를 확인한 뒤 포함했다.","canonical_id":"w359"},
+    {"source":"inventory","inventory_id":"m5-068","role":"start","decision":"included","decision_note":"어수선하다의 공간 장면을 확인한 뒤 포함했다.","canonical_id":"w360"},
+    {"source":"inventory","inventory_id":"m5-069","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"담백하다와 담담하다의 관계를 near로 교정한 뒤 포함했다.","canonical_id":"w361"},
+    {"source":"inventory","inventory_id":"m5-070","role":"start","decision":"included","decision_note":"흐릿하다의 시각 sense와 sensory target을 확인한 뒤 포함했다.","canonical_id":"w362"},
+    {"source":"inventory","inventory_id":"m5-071","role":"start","decision":"included","decision_note":"묵직하다의 물리·비유 sense 두 개를 확인한 뒤 포함했다.","canonical_id":"w363"},
+    {"source":"inventory","inventory_id":"m5-072","role":"start","decision":"included","decision_note":"까칠하다의 표면·태도 경계를 확인한 뒤 포함했다.","canonical_id":"w364"},
+    {"source":"inventory","inventory_id":"m5-073","role":"start","decision":"included","decision_note":"쫀득하다의 촉감과 reference target을 확인한 뒤 포함했다.","canonical_id":"w365"},
+    {"source":"inventory","inventory_id":"m5-074","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"축축하다의 감각 relation을 표면 target으로 교정한 뒤 포함했다.","canonical_id":"w366"},
+    {"source":"inventory","inventory_id":"m5-075","role":"start","decision":"included","decision_note":"새콤하다의 단일 미각 sense를 확인한 뒤 포함했다.","canonical_id":"w367"},
+    {"source":"inventory","inventory_id":"m5-076","role":"start","decision":"included","decision_note":"매캐하다의 냄새와 연기 reference closure를 확인한 뒤 포함했다.","canonical_id":"w368"},
+    {"source":"inventory","inventory_id":"m5-077","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"반들거리다를 상태가 아닌 표면의 동작으로 교정한 뒤 포함했다.","canonical_id":"w369"},
+    {"source":"inventory","inventory_id":"m5-078","role":"start","decision":"included","decision_note":"차분하다의 안정된 mood 범위를 확인한 뒤 포함했다.","canonical_id":"w370"},
+    {"source":"inventory","inventory_id":"m5-079","role":"start","decision":"included","decision_note":"문간과 문틈의 scene 관계를 확인한 뒤 포함했다.","canonical_id":"w371"},
+    {"source":"inventory","inventory_id":"m5-080","role":"start","decision":"included","decision_note":"담장의 경계 장면을 확인한 뒤 포함했다.","canonical_id":"w372"},
+    {"source":"inventory","inventory_id":"m5-081","role":"start","decision":"included","decision_note":"마루의 공간 sense 두 개를 확인한 뒤 포함했다.","canonical_id":"w373"},
+    {"source":"inventory","inventory_id":"m5-082","role":"start","decision":"corrected","corrected_fields":["relations"],"decision_note":"물웅덩이에 붙은 일반적 장면 relation을 제거한 뒤 포함했다.","canonical_id":"w374"},
+    {"source":"inventory","inventory_id":"m5-083","role":"start","decision":"included","decision_note":"골목길과 발자국 reference closure를 확인한 뒤 포함했다.","canonical_id":"w375"},
+    {"source":"inventory","inventory_id":"m5-084","role":"start","decision":"included","decision_note":"귓가의 신체 장면 범위를 확인한 뒤 포함했다.","canonical_id":"w376"},
+    {"source":"inventory","inventory_id":"m5-085","role":"start","decision":"included","decision_note":"움켜쥐다의 직접 행동 sense를 확인한 뒤 포함했다.","canonical_id":"w377"},
+    {"source":"inventory","inventory_id":"m5-086","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"흘겨보다의 곁눈 행동을 direct replacement와 섞지 않도록 교정한 뒤 포함했다.","canonical_id":"w378"},
+    {"source":"inventory","inventory_id":"m5-087","role":"start","decision":"included","decision_note":"비켜서다의 공간 이동 행동을 확인한 뒤 포함했다.","canonical_id":"w379"},
+    {"source":"inventory","inventory_id":"m5-088","role":"start","decision":"included","decision_note":"내딛다의 첫 이동 장면을 확인한 뒤 포함했다.","canonical_id":"w380"},
+    {"source":"inventory","inventory_id":"m5-089","role":"start","decision":"included","decision_note":"주저앉다의 행동 sense를 확인한 뒤 포함했다.","canonical_id":"w381"},
+    {"source":"inventory","inventory_id":"m5-090","role":"start","decision":"included","decision_note":"일어서다의 신체 행동을 확인한 뒤 포함했다.","canonical_id":"w382"},
+    {"source":"inventory","inventory_id":"m5-091","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"자물쇠를 추상적 잠금 개념이 아닌 writer-facing 사물로 교정한 뒤 포함했다.","canonical_id":"w383"},
+    {"source":"inventory","inventory_id":"m5-092","role":"start","decision":"included","decision_note":"우편함의 소식·기다림 장면을 확인한 뒤 포함했다.","canonical_id":"w384"},
+    {"source":"inventory","inventory_id":"m5-093","role":"start","decision":"included","decision_note":"유리병의 투명한 사물 장면을 확인한 뒤 포함했다.","canonical_id":"w385"},
+    {"source":"inventory","inventory_id":"m5-094","role":"start","decision":"included","decision_note":"성냥의 짧은 불꽃 장면을 확인한 뒤 포함했다.","canonical_id":"w386"},
+    {"source":"inventory","inventory_id":"m5-095","role":"start","decision":"included","decision_note":"커튼의 빛·시선 조절 장면을 확인한 뒤 포함했다.","canonical_id":"w387"},
+    {"source":"inventory","inventory_id":"m5-096","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"눈을 피하다를 시선 회피 행동의 expression으로 교정한 뒤 포함했다.","canonical_id":"w388"},
+    {"source":"inventory","inventory_id":"m5-097","role":"start","decision":"included","decision_note":"발을 빼다의 관계 이탈 expression을 확인한 뒤 포함했다.","canonical_id":"w389"},
+    {"source":"inventory","inventory_id":"m5-098","role":"start","decision":"included","decision_note":"입술을 깨물다의 감정 표현 단위를 확인한 뒤 포함했다.","canonical_id":"w390"},
+    {"source":"inventory","inventory_id":"m5-099","role":"start","decision":"held","decision_note":"마음을 가라앉히다의 진정·억제 sense 경계를 다음 editorial pass로 넘겼다."},
+    {"source":"inventory","inventory_id":"m5-100","role":"start","decision":"rejected","decision_note":"숨을 죽이다의 실제 호흡과 긴장된 침묵 비유를 현재 schema에서 분리하지 못해 이번 batch에서는 반려했다."},
+    {"source":"reference-closure","role":"reference-only","decision":"included","decision_note":"문간 relation의 reference closure로 포함했다.","canonical_id":"r048","related_to":["w371"]},
+    {"source":"reference-closure","role":"reference-only","decision":"included","decision_note":"쫀득하다와 축축하다 relation의 shared reference closure로 포함했다.","canonical_id":"r049","related_to":["w365","w366"]},
+    {"source":"reference-closure","role":"reference-only","decision":"included","decision_note":"매캐하다 relation의 reference closure로 포함했다.","canonical_id":"r050","related_to":["w368"]},
+    {"source":"reference-closure","role":"reference-only","decision":"included","decision_note":"골목길 relation의 reference closure로 포함했다.","canonical_id":"r051","related_to":["w375"]}
+  ]
+}
