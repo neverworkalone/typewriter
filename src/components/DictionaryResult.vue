@@ -20,9 +20,13 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  showBack: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-const emit = defineEmits(['relation']);
+const emit = defineEmits(['relation', 'back']);
 
 const senses = computed(() => (Array.isArray(props.record.senses) ? props.record.senses : []));
 const settings = computed(() => props.settings || DEFAULT_SETTINGS);
@@ -61,6 +65,13 @@ function openRelation(relation) {
   >
     <header class="result-header">
       <h2>{{ record.lemma }}</h2>
+      <button
+        v-if="showBack"
+        class="back-button"
+        type="button"
+        aria-label="이전 결과로 돌아가기"
+        @click="emit('back')"
+      >← 뒤로</button>
     </header>
     <div class="result-divider" aria-hidden="true"></div>
 
@@ -142,7 +153,8 @@ function openRelation(relation) {
 .result-header {
   display: flex;
   min-height: 28px;
-  align-items: flex-start;
+  gap: 16px;
+  align-items: center;
   overflow: hidden;
 }
 
@@ -152,6 +164,26 @@ function openRelation(relation) {
   font-weight: 700;
   line-height: 28px;
   white-space: nowrap;
+}
+
+.back-button {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7e433e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 17px;
+  white-space: nowrap;
+}
+
+.back-button:focus-visible {
+  outline: 2px solid #7e433e;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .result-divider,
@@ -277,6 +309,11 @@ function openRelation(relation) {
 .dictionary-result.is-compact .result-header h2 {
   font-size: 17.5px;
   line-height: 24.5px;
+}
+
+.dictionary-result.is-compact .back-button {
+  font-size: 12.25px;
+  line-height: 15px;
 }
 
 .dictionary-result.is-compact .result-divider {
