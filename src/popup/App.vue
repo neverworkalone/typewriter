@@ -107,6 +107,12 @@ async function openRelation(relation) {
   dictionaryPanel.value?.focusSearch?.();
 }
 
+async function goBack() {
+  session.back?.();
+  await nextTick();
+  dictionaryPanel.value?.focusSearch?.();
+}
+
 function selectCandidate(recordId) {
   session.selectCandidate?.(recordId);
 }
@@ -174,6 +180,7 @@ onBeforeUnmount(() => {
       :error="searchState.error"
       :empty-reason="searchState.emptyReason"
       :mode="searchState.mode"
+      :can-go-back="searchState.canGoBack"
       :selected-record-id="searchState.selectedRecordId"
       :settings="settings"
       autofocus
@@ -181,6 +188,7 @@ onBeforeUnmount(() => {
       @submit="search"
       @clear="clearSearch"
       @relation="openRelation"
+      @back="goBack"
       @select-candidate="selectCandidate"
       @retry="retry"
       @open-settings="openOptions"

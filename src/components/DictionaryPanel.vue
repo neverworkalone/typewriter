@@ -33,6 +33,10 @@ const props = defineProps({
     type: String,
     default: 'idle',
   },
+  canGoBack: {
+    type: Boolean,
+    default: false,
+  },
   settings: {
     type: Object,
     default: () => DEFAULT_SETTINGS,
@@ -60,6 +64,7 @@ const emit = defineEmits([
   'submit',
   'clear',
   'relation',
+  'back',
   'retry',
   'open-settings',
   'select-candidate',
@@ -82,6 +87,13 @@ const isInitialLoading = computed(() => (
   props.status === SEARCH_STATUS.loading && props.records.length === 0
 ));
 const isRelationTarget = computed(() => isReady.value && props.mode === 'relation-target');
+const showBack = computed(() => (
+  props.interactive
+  && props.canGoBack
+  && props.status === SEARCH_STATUS.ready
+  && props.mode === SEARCH_MODES.relationTarget
+  && props.records.length > 0
+));
 const candidateListEnabled = computed(() => (
   props.interactive
   && props.mode === SEARCH_MODES.exact
@@ -314,7 +326,9 @@ defineExpose({ focusSearch });
         :settings="settings"
         :compact="compact"
         :interactive="interactive"
+        :show-back="showBack"
         @relation="emit('relation', $event)"
+        @back="emit('back')"
       />
       <ProductFooter
         :compact="compact"

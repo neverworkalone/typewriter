@@ -941,7 +941,7 @@ export async function runCftProduct({
       || popupImeTab.outlineStyle !== 'solid'
       || !popupImeShiftTab.activeIsSearchButton
       || !popupImeRelation.inputFocused
-      || popupImeRelation.hasBackButton
+      || !popupImeRelation.hasBackButton
     ) {
       throw new Error('IME/keyboard candidate CFT assertions failed: ' + JSON.stringify({ popupImeStart, popupImeEarly, popupImeKeyboard, popupImeKeyboardState, popupImeTab, popupImeShiftTab, popupImeRelation }));
     }
@@ -981,7 +981,7 @@ export async function runCftProduct({
       throw new Error('Pending popup clear CFT assertions failed: ' + JSON.stringify({ popupPendingClearFirst, popupPendingClearAfter }));
     }
     if (
-      popupRelation.hasBackButton
+      !popupRelation.hasBackButton
       || !popupRelation.isRelationTarget
       || !popupRelation.inputFocused
       || popupRelation.hasCandidateList

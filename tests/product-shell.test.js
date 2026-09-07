@@ -77,7 +77,7 @@ describe('product MV3 Vue shells', () => {
     expect(host.querySelector('.brand-version').textContent.trim()).toBe('0.3.0');
   });
 
-  it('searches on Enter and moves through relation targets without a back control', async () => {
+  it('searches on Enter, moves through relation targets, and returns with the back control', async () => {
     const records = new Map([
       ['w026', makeRecord('w026', '담담하다', 'start', [{
         position: 0,
@@ -126,10 +126,20 @@ describe('product MV3 Vue shells', () => {
     host.querySelector('[data-target-record-id="r008"]').click();
     await flush();
     expect(host.querySelector('[data-record-id="r008"]')).not.toBeNull();
-    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('.back-button')).not.toBeNull();
+    expect(host.querySelector('.back-button').textContent.trim()).toBe('← 뒤로');
     expect(host.querySelector('[data-dictionary-panel].is-relation-target')).not.toBeNull();
     expect(host.querySelector('[role="listbox"]')).toBeNull();
     expect(host.querySelectorAll('[role="option"]')).toHaveLength(0);
+    expect(document.activeElement).toBe(input);
+
+    host.querySelector('.back-button').click();
+    await flush();
+
+    expect(host.querySelector('[data-record-id="w026"]')).not.toBeNull();
+    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('[data-dictionary-panel].is-relation-target')).toBeNull();
+    expect(input.value).toBe('담담하다');
     expect(document.activeElement).toBe(input);
   });
 
@@ -288,7 +298,7 @@ describe('product MV3 Vue shells', () => {
     await flush();
     expect(host.querySelector('[data-record-id="target"]')).not.toBeNull();
     expect(document.activeElement).toBe(input);
-    expect(host.querySelector('.back-button')).toBeNull();
+    expect(host.querySelector('.back-button')).not.toBeNull();
     expect(host.querySelector('[role="option"][aria-selected="true"]')).toBeNull();
   });
 
