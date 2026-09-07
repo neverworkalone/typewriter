@@ -2,6 +2,8 @@
 
 Review with the minimum context needed to reach a reliable decision.
 
+Do not reconstruct the implementation process. Review the resulting change.
+
 ## Context-efficient review flow
 
 Use this order:
