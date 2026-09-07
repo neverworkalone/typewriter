@@ -33,6 +33,11 @@ export const TIMING_PASS_IDS = Object.freeze([
   'held-rejected',
 ]);
 
+export const OPTIONAL_TIMING_PASS_IDS = Object.freeze([
+  'post-review-audit',
+  'post-review-fixes',
+]);
+
 const DECISIONS = Object.freeze(['included', 'corrected', 'held', 'rejected']);
 
 export class BatchMetricsError extends Error {
@@ -213,12 +218,16 @@ function deriveTiming(measurement) {
     fail(`timing is missing pass(es): ${missingPasses.join(', ')}`, 'MISSING_TIMING_PASS');
   }
 
+  const measuredPassIds = [
+    ...TIMING_PASS_IDS,
+    ...OPTIONAL_TIMING_PASS_IDS.filter((id) => passById.has(id)),
+  ];
   const derivedPasses = {};
   const unmeasuredPasses = [];
   let allComplete = true;
-  let totalWallClock = 0;
-  let totalEditor = 0;
-  for (const id of TIMING_PASS_IDS) {
+  let measuredWallClock = 0;
+  let measuredEditor = 0;
+  for (const id of measuredPassIds) {
     const pass = passById.get(id);
     const wallClock = pass.wall_clock_seconds ?? null;
     const editor = pass.editor_seconds ?? null;
@@ -228,10 +237,9 @@ function deriveTiming(measurement) {
     if (!complete) {
       allComplete = false;
       unmeasuredPasses.push(id);
-    } else {
-      totalWallClock += wallClock;
-      totalEditor += editor;
     }
+    if (Number.isFinite(wallClock)) measuredWallClock += wallClock;
+    if (Number.isFinite(editor)) measuredEditor += editor;
     derivedPasses[id] = {
       status: pass.status,
       wall_clock_seconds: wallClock,
@@ -245,11 +253,14 @@ function deriveTiming(measurement) {
       'INCOMPLETE_TIMING',
     );
   }
+  const completeTiming = measurement.timing.status === 'complete' && allComplete;
   return {
-    status: allComplete ? 'complete' : 'incomplete',
+    status: completeTiming ? 'complete' : 'incomplete',
     passes: derivedPasses,
-    total_wall_clock_seconds: allComplete ? totalWallClock : null,
-    total_editor_seconds: allComplete ? totalEditor : null,
+    total_wall_clock_seconds: completeTiming ? measuredWallClock : null,
+    total_editor_seconds: completeTiming ? measuredEditor : null,
+    measured_wall_clock_seconds: measuredWallClock,
+    measured_editor_seconds: measuredEditor,
     unmeasured_passes: unmeasuredPasses,
   };
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "inventory_id": "m5-core-5k",
-  "revision": "m5-2",
+  "revision": "m5-3",
   "count_unit": "search-start",
   "canonical_scope": {
     "directory": "data/canonical",
@@ -16,9 +16,9 @@
     "data/inventory/m5-target-seed.json"
   ],
   "canonical_snapshot": {
-    "record_count": 390,
-    "start_count": 352,
-    "reference_only_count": 38
+    "record_count": 432,
+    "start_count": 390,
+    "reference_only_count": 42
   },
   "entries": [
     {
@@ -814,6 +814,90 @@
       "lemma": "속내",
       "search_forms": [
         "속내"
+      ],
+      "reason_codes": [],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "reference-closure"
+      ],
+      "decision_note": "관계 참조 완결을 위한 기존 reference-only; start로 세지 않는다."
+    },
+    {
+      "inventory_id": "canonical-r048",
+      "source": "canonical",
+      "canonical_id": "r048",
+      "status": "current",
+      "planned_role": "reference-only",
+      "record_type": "entry",
+      "lemma": "문틈",
+      "search_forms": [
+        "문틈"
+      ],
+      "reason_codes": [],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "reference-closure"
+      ],
+      "decision_note": "관계 참조 완결을 위한 기존 reference-only; start로 세지 않는다."
+    },
+    {
+      "inventory_id": "canonical-r049",
+      "source": "canonical",
+      "canonical_id": "r049",
+      "status": "current",
+      "planned_role": "reference-only",
+      "record_type": "entry",
+      "lemma": "표면",
+      "search_forms": [
+        "표면"
+      ],
+      "reason_codes": [],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "reference-closure"
+      ],
+      "decision_note": "관계 참조 완결을 위한 기존 reference-only; start로 세지 않는다."
+    },
+    {
+      "inventory_id": "canonical-r050",
+      "source": "canonical",
+      "canonical_id": "r050",
+      "status": "current",
+      "planned_role": "reference-only",
+      "record_type": "entry",
+      "lemma": "연기",
+      "search_forms": [
+        "연기"
+      ],
+      "reason_codes": [],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "reference-closure"
+      ],
+      "decision_note": "관계 참조 완결을 위한 기존 reference-only; start로 세지 않는다."
+    },
+    {
+      "inventory_id": "canonical-r051",
+      "source": "canonical",
+      "canonical_id": "r051",
+      "status": "current",
+      "planned_role": "reference-only",
+      "record_type": "entry",
+      "lemma": "발자국",
+      "search_forms": [
+        "발자국"
       ],
       "reason_codes": [],
       "pos": [
@@ -8590,6 +8674,941 @@
       "decision_note": "손의 탐색과 기억의 회상을 구별할 표현 후보."
     },
     {
+      "inventory_id": "m5-061",
+      "source": "canonical",
+      "canonical_id": "w353",
+      "promoted_from": "m5-061",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "민망함",
+      "search_forms": [
+        "민망함"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "실수나 시선 앞에서 느끼는 난처함을 수치·당황과 구분할 후보."
+    },
+    {
+      "inventory_id": "m5-062",
+      "source": "canonical",
+      "canonical_id": "w354",
+      "promoted_from": "m5-062",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "막막함",
+      "search_forms": [
+        "막막함"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "앞길이 보이지 않는 정서를 막막하다와 별도 명사 감각으로 검토할 후보."
+    },
+    {
+      "inventory_id": "m5-063",
+      "source": "canonical",
+      "canonical_id": "w355",
+      "promoted_from": "m5-063",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "당황",
+      "search_forms": [
+        "당황"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "예상 밖 상황에서 갈피를 잃는 반응을 당혹감과 비교할 후보."
+    },
+    {
+      "inventory_id": "m5-064",
+      "source": "canonical",
+      "canonical_id": "w356",
+      "promoted_from": "m5-064",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "안쓰러움",
+      "search_forms": [
+        "안쓰러움"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "상대의 처지나 모습을 가엾게 여기는 정서 후보."
+    },
+    {
+      "inventory_id": "m5-065",
+      "source": "canonical",
+      "canonical_id": "w357",
+      "promoted_from": "m5-065",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "서러움",
+      "search_forms": [
+        "서러움"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "억울함과 외로움이 겹쳐 울컥하는 정서를 분리할 후보."
+    },
+    {
+      "inventory_id": "m5-066",
+      "source": "canonical",
+      "canonical_id": "w358",
+      "promoted_from": "m5-066",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "애틋함",
+      "search_forms": [
+        "애틋함"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "가까이하고 싶지만 쉽게 닿지 않는 애정의 결을 검토할 후보."
+    },
+    {
+      "inventory_id": "m5-067",
+      "source": "canonical",
+      "canonical_id": "w359",
+      "promoted_from": "m5-067",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "야무지다",
+      "search_forms": [
+        "야무지다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "일을 빈틈없이 해내는 단단한 인상을 표현할 후보."
+    },
+    {
+      "inventory_id": "m5-068",
+      "source": "canonical",
+      "canonical_id": "w360",
+      "promoted_from": "m5-068",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "어수선하다",
+      "search_forms": [
+        "어수선",
+        "어수선하다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "정리되지 않은 공간과 마음의 분위기를 함께 살필 후보."
+    },
+    {
+      "inventory_id": "m5-069",
+      "source": "canonical",
+      "canonical_id": "w361",
+      "promoted_from": "m5-069",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "담백하다",
+      "search_forms": [
+        "담백",
+        "담백하다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "polysemy",
+      "flags": [
+        "polysemy",
+        "direct-boundary",
+        "sensory-transfer"
+      ],
+      "decision_note": "꾸밈이나 자극이 적은 맛과 태도의 결을 구분할 후보."
+    },
+    {
+      "inventory_id": "m5-070",
+      "source": "canonical",
+      "canonical_id": "w362",
+      "promoted_from": "m5-070",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "흐릿하다",
+      "search_forms": [
+        "흐릿",
+        "흐릿하다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "초점이 약한 시각과 분명하지 않은 기억을 잇는 후보."
+    },
+    {
+      "inventory_id": "m5-071",
+      "source": "canonical",
+      "canonical_id": "w363",
+      "promoted_from": "m5-071",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "묵직하다",
+      "search_forms": [
+        "묵직",
+        "묵직하다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "polysemy",
+      "flags": [
+        "polysemy",
+        "sensory-transfer"
+      ],
+      "decision_note": "실제 무게와 말·분위기의 무게를 두 sense로 나눌 후보."
+    },
+    {
+      "inventory_id": "m5-072",
+      "source": "canonical",
+      "canonical_id": "w364",
+      "promoted_from": "m5-072",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "까칠하다",
+      "search_forms": [
+        "까칠",
+        "까칠하다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "polysemy",
+      "flags": [
+        "polysemy",
+        "direct-boundary"
+      ],
+      "decision_note": "거친 표면과 날이 선 태도의 인상을 구분할 후보."
+    },
+    {
+      "inventory_id": "m5-073",
+      "source": "canonical",
+      "canonical_id": "w365",
+      "promoted_from": "m5-073",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "쫀득하다",
+      "search_forms": [
+        "쫀득",
+        "쫀득하다"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "늘어지면서도 탄력이 남는 촉감을 잡는 후보."
+    },
+    {
+      "inventory_id": "m5-074",
+      "source": "canonical",
+      "canonical_id": "w366",
+      "promoted_from": "m5-074",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "축축하다",
+      "search_forms": [
+        "축축",
+        "축축하다"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "마르지 않은 표면의 습기와 눅눅함의 정도를 구분할 후보."
+    },
+    {
+      "inventory_id": "m5-075",
+      "source": "canonical",
+      "canonical_id": "w367",
+      "promoted_from": "m5-075",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "새콤하다",
+      "search_forms": [
+        "새콤",
+        "새콤하다"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "가볍고 선명한 신맛의 인상을 표현할 후보."
+    },
+    {
+      "inventory_id": "m5-076",
+      "source": "canonical",
+      "canonical_id": "w368",
+      "promoted_from": "m5-076",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "매캐하다",
+      "search_forms": [
+        "매캐",
+        "매캐하다"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "연기나 타는 냄새가 코와 목을 자극하는 감각 후보."
+    },
+    {
+      "inventory_id": "m5-077",
+      "source": "canonical",
+      "canonical_id": "w369",
+      "promoted_from": "m5-077",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "반들거리다",
+      "search_forms": [
+        "반들거리다"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "매끈한 표면이 빛을 받아 번들번들 빛나는 장면 후보."
+    },
+    {
+      "inventory_id": "m5-078",
+      "source": "canonical",
+      "canonical_id": "w370",
+      "promoted_from": "m5-078",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "차분하다",
+      "search_forms": [
+        "차분",
+        "차분하다"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "들뜸이 가라앉고 움직임이 잔잔한 상태를 표현할 후보."
+    },
+    {
+      "inventory_id": "m5-079",
+      "source": "canonical",
+      "canonical_id": "w371",
+      "promoted_from": "m5-079",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "문간",
+      "search_forms": [
+        "문간"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "방 안과 바깥 사이에 사람이 잠시 머무는 장면의 닻 후보."
+    },
+    {
+      "inventory_id": "m5-080",
+      "source": "canonical",
+      "canonical_id": "w372",
+      "promoted_from": "m5-080",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "담장",
+      "search_forms": [
+        "담장"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "시야를 가리거나 경계를 만드는 낮은 벽의 장면 후보."
+    },
+    {
+      "inventory_id": "m5-081",
+      "source": "canonical",
+      "canonical_id": "w373",
+      "promoted_from": "m5-081",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "마루",
+      "search_forms": [
+        "마루"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "polysemy",
+      "flags": [
+        "polysemy",
+        "scene-expansion"
+      ],
+      "decision_note": "집 안의 바닥과 그 위에서 벌어지는 생활 장면을 분리할 후보."
+    },
+    {
+      "inventory_id": "m5-082",
+      "source": "canonical",
+      "canonical_id": "w374",
+      "promoted_from": "m5-082",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "물웅덩이",
+      "search_forms": [
+        "물웅덩이"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion",
+        "sensory-transfer"
+      ],
+      "decision_note": "비가 그친 뒤 바닥에 남은 작은 물의 장면을 고정할 후보."
+    },
+    {
+      "inventory_id": "m5-083",
+      "source": "canonical",
+      "canonical_id": "w375",
+      "promoted_from": "m5-083",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "골목길",
+      "search_forms": [
+        "골목길"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "큰길에서 비켜난 좁은 통로와 그 안의 생활 장면 후보."
+    },
+    {
+      "inventory_id": "m5-084",
+      "source": "canonical",
+      "canonical_id": "w376",
+      "promoted_from": "m5-084",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "귓가",
+      "search_forms": [
+        "귓가"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion",
+        "sensory-transfer"
+      ],
+      "decision_note": "소리나 숨결이 가까이 닿는 신체 주변의 장면 후보."
+    },
+    {
+      "inventory_id": "m5-085",
+      "source": "canonical",
+      "canonical_id": "w377",
+      "promoted_from": "m5-085",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "움켜쥐다",
+      "search_forms": [
+        "움켜쥐다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "손가락을 오므려 물건이나 감정을 놓지 않는 행동 후보."
+    },
+    {
+      "inventory_id": "m5-086",
+      "source": "canonical",
+      "canonical_id": "w378",
+      "promoted_from": "m5-086",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "흘겨보다",
+      "search_forms": [
+        "흘겨보다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "고개를 돌린 채 곁눈으로 살피는 시선의 행동 후보."
+    },
+    {
+      "inventory_id": "m5-087",
+      "source": "canonical",
+      "canonical_id": "w379",
+      "promoted_from": "m5-087",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "비켜서다",
+      "search_forms": [
+        "비켜서다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "진행하는 사람이나 물체를 위해 몸을 옆으로 옮기는 행동 후보."
+    },
+    {
+      "inventory_id": "m5-088",
+      "source": "canonical",
+      "canonical_id": "w380",
+      "promoted_from": "m5-088",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "내딛다",
+      "search_forms": [
+        "내딛다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "발을 앞으로 내어 첫 움직임이나 다음 단계로 나아가는 행동 후보."
+    },
+    {
+      "inventory_id": "m5-089",
+      "source": "canonical",
+      "canonical_id": "w381",
+      "promoted_from": "m5-089",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "주저앉다",
+      "search_forms": [
+        "주저앉다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction",
+        "mood-range"
+      ],
+      "decision_note": "힘이 풀리거나 결심이 꺾여 몸을 낮추는 행동 후보."
+    },
+    {
+      "inventory_id": "m5-090",
+      "source": "canonical",
+      "canonical_id": "w382",
+      "promoted_from": "m5-090",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "일어서다",
+      "search_forms": [
+        "일어서다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "앉거나 누운 상태에서 몸을 세우는 행동과 재기의 장면 후보."
+    },
+    {
+      "inventory_id": "m5-091",
+      "source": "canonical",
+      "canonical_id": "w383",
+      "promoted_from": "m5-091",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "자물쇠",
+      "search_forms": [
+        "자물쇠"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "닫힌 문이나 상자를 잠그는 작은 물건의 장면 후보."
+    },
+    {
+      "inventory_id": "m5-092",
+      "source": "canonical",
+      "canonical_id": "w384",
+      "promoted_from": "m5-092",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "우편함",
+      "search_forms": [
+        "우편함"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "도착한 소식과 기다림이 머무는 생활 사물 후보."
+    },
+    {
+      "inventory_id": "m5-093",
+      "source": "canonical",
+      "canonical_id": "w385",
+      "promoted_from": "m5-093",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "유리병",
+      "search_forms": [
+        "유리병"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "투명한 표면과 안에 담긴 것을 함께 보여 주는 사물 후보."
+    },
+    {
+      "inventory_id": "m5-094",
+      "source": "canonical",
+      "canonical_id": "w386",
+      "promoted_from": "m5-094",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "성냥",
+      "search_forms": [
+        "성냥"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer",
+        "scene-expansion"
+      ],
+      "decision_note": "짧은 마찰과 불꽃으로 순간의 빛을 만드는 사물 후보."
+    },
+    {
+      "inventory_id": "m5-095",
+      "source": "canonical",
+      "canonical_id": "w387",
+      "promoted_from": "m5-095",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "커튼",
+      "search_forms": [
+        "커튼"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "빛과 시선을 가리거나 열어 실내의 분위기를 바꾸는 사물 후보."
+    },
+    {
+      "inventory_id": "m5-096",
+      "source": "canonical",
+      "canonical_id": "w388",
+      "promoted_from": "m5-096",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "눈을 피하다",
+      "search_forms": [
+        "눈을 피하다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "expression-unit",
+        "action-direction"
+      ],
+      "decision_note": "시선을 마주치지 않거나 관심을 비켜 가는 표현 단위 후보."
+    },
+    {
+      "inventory_id": "m5-097",
+      "source": "canonical",
+      "canonical_id": "w389",
+      "promoted_from": "m5-097",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "발을 빼다",
+      "search_forms": [
+        "발을 빼다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "expression-unit",
+        "action-direction"
+      ],
+      "decision_note": "관여하던 일이나 관계에서 물러나는 행동을 표현할 후보."
+    },
+    {
+      "inventory_id": "m5-098",
+      "source": "canonical",
+      "canonical_id": "w390",
+      "promoted_from": "m5-098",
+      "status": "current",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "입술을 깨물다",
+      "search_forms": [
+        "입술을 깨물다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "expression-unit",
+        "sensory-transfer",
+        "mood-range"
+      ],
+      "decision_note": "참거나 망설이는 감정을 입술의 작은 동작으로 드러내는 표현 후보."
+    },
+    {
       "source": "editorial",
       "inventory_id": "m5-004",
       "status": "held",
@@ -8935,6 +9954,52 @@
         "scene-expansion"
       ],
       "decision_note": "빛의 실제 지시와 비유적 거리감의 sense를 검토한 뒤 결정한다."
+    },
+    {
+      "source": "editorial",
+      "inventory_id": "m5-099",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "마음을 가라앉히다",
+      "search_forms": [
+        "마음을 가라앉히다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "expression-unit",
+        "mood-range"
+      ],
+      "decision_note": "마음의 진정과 감정 억제의 경계를 추가로 검토해야 하므로 보류한다."
+    },
+    {
+      "source": "editorial",
+      "inventory_id": "m5-100",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "숨을 죽이다",
+      "search_forms": [
+        "숨을 죽이다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "expression-unit",
+        "sensory-transfer"
+      ],
+      "decision_note": "호흡을 멈추는 실제 행동과 긴장된 침묵의 비유를 분리한 뒤 결정한다."
     }
   ]
 }

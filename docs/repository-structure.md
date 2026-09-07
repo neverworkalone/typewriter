@@ -56,11 +56,12 @@ read this directory.
 `data/batches/` is a second M5 exception used for reviewable manifests, relation
 diff ledgers, and derived calibration measurements. A manifest records the target
 inventory revision, generator/model/prompt identity, review status, record
-decisions, final canonical IDs, five timing passes, and the relation-diff artifact
+decisions, final canonical IDs, five required timing passes, any post-review
+follow-up passes and their measurement status, and the relation-diff artifact
 digest. A metrics file is generated from those sources and canonical records; it
-may record counts, rates, timing totals, audit findings, and validation outcomes,
-but neither file may contain raw model responses, draft text, confidence scores,
-secrets, or local staging paths.
+may record counts, rates, timing totals or measured lower bounds, audit findings,
+and validation outcomes, but neither file may contain raw model responses, draft
+text, confidence scores, secrets, or local staging paths.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 
