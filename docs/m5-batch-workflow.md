@@ -148,9 +148,11 @@ dictionary, LLM, cloud, or network dependency to the Chrome extension.
 
 M5-4 makes the quality and measurement rules part of the batch contract. A new
 manifest should keep the generator identity in `generator.prompt_version`, and its
-`measurement` object must point to a reviewable relation-diff artifact. The artifact
-contains only relation identities and before/after fields; it is not a raw model
-response or an unreviewed draft.
+`measurement` object must point to a reviewable relation-diff artifact and its
+SHA-256 digest. The metrics command uses the declared artifact path exactly; a
+different `--relation-diff` path is rejected. The artifact contains only relation
+identities and before/after fields; it is not a raw model response or an unreviewed
+draft.
 
 The versioned draft contract is [`m5-draft-template-v1.md`](m5-draft-template-v1.md).
 The draft template/prompt must treat every relation as optional. It should ask for
@@ -220,7 +222,10 @@ npm run batch:metrics -- \
 ```
 
 To detect drift in a checked-in metrics artifact, use `--check` instead of
-`--output`. Hand-editing a derived count fails the comparison.
+`--output`. Hand-editing a source path, digest-backed relation event, or derived
+count fails the comparison. The event validator also checks that every added,
+retyped, or retargeted `after` tuple exists in the approved canonical batch and
+that every removed or changed `before` tuple is absent from the final batch.
 
 The historical M5-3 artifact is intentionally marked `timing.status: "incomplete"`:
 its 603-second initial-review wall-clock interval is retained, while feedback,

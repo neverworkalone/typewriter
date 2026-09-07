@@ -126,7 +126,7 @@ function deriveDecisions(manifest) {
   };
 }
 
-function deriveCanonicalImport(manifest, canonicalRecords) {
+function approvedCanonicalRecords(manifest, canonicalRecords) {
   const recordInfos = asRecordInfos(canonicalRecords);
   const recordsById = new Map(recordInfos.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
   const approved = manifest.records.filter(
@@ -142,6 +142,11 @@ function deriveCanonicalImport(manifest, canonicalRecords) {
     }
     return record;
   });
+  return importedRecords;
+}
+
+function deriveCanonicalImport(manifest, canonicalRecords) {
+  const importedRecords = approvedCanonicalRecords(manifest, canonicalRecords);
   const counts = countRelations(importedRecords);
   return {
     imported_start_count: importedRecords.filter(({ role }) => role === 'start').length,
@@ -152,6 +157,45 @@ function deriveCanonicalImport(manifest, canonicalRecords) {
     imported_expression_count: counts.expressionCount,
     relation_type_counts: counts.relationTypeCounts,
   };
+}
+
+function relationTupleKey(sourceSense, relation) {
+  return JSON.stringify([
+    sourceSense,
+    relation.target,
+    relation.target_sense ?? null,
+    relation.type,
+  ]);
+}
+
+function validateRelationDiffAgainstCanonical(relationDiff, importedRecords) {
+  const finalRelationTuples = new Set();
+  for (const record of importedRecords) {
+    for (const sense of record.senses) {
+      for (const relation of sense.relations ?? []) {
+        finalRelationTuples.add(relationTupleKey(sense.id, relation));
+      }
+    }
+  }
+
+  for (const event of relationDiff.events) {
+    if (event.operation === 'add' || event.operation === 'retype' || event.operation === 'retarget') {
+      if (!finalRelationTuples.has(relationTupleKey(event.source_sense, event.after))) {
+        fail(
+          `relation diff event ${event.event_id} after tuple is not present in approved canonical records`,
+          'RELATION_AFTER_NOT_CANONICAL',
+        );
+      }
+    }
+    if (event.operation === 'remove' || event.operation === 'retype' || event.operation === 'retarget') {
+      if (finalRelationTuples.has(relationTupleKey(event.source_sense, event.before))) {
+        fail(
+          `relation diff event ${event.event_id} before tuple remains in approved canonical records`,
+          'RELATION_BEFORE_REMAINS',
+        );
+      }
+    }
+  }
 }
 
 function deriveTiming(measurement) {
@@ -269,6 +313,8 @@ export function deriveBatchMetrics({ manifest, relationDiff, canonicalRecords } 
   }
   const decisions = deriveDecisions(manifest);
   const relationSummary = summarizeRelationDiff(relationDiff);
+  const importedRecords = approvedCanonicalRecords(manifest, canonicalRecords);
+  validateRelationDiffAgainstCanonical(relationDiff, importedRecords);
   const canonicalImport = deriveCanonicalImport(manifest, canonicalRecords);
   if (canonicalImport.imported_start_count !== decisions.decisions.importable_start_count) {
     fail(
@@ -344,9 +390,10 @@ export function assertMetricsMatch(expected, actual) {
     fail(`metrics batch_id mismatch: ${actual.batch_id} !== ${expected.batch_id}`, 'BATCH_ID_DRIFT');
   }
   try {
+    assert.deepEqual(actual.source, expected.source);
     assert.deepEqual(actual.derived, expected.derived);
   } catch (error) {
-    fail(`metrics derived values drift from source artifacts: ${error.message}`, 'METRICS_DRIFT');
+    fail(`metrics source or derived values drift from source artifacts: ${error.message}`, 'METRICS_DRIFT');
   }
   return actual;
 }
@@ -390,6 +437,16 @@ export async function main(argv = process.argv.slice(2)) {
     : path.resolve(REPOSITORY_DIRECTORY, manifest.measurement?.relation_diff?.artifact ?? '');
   if (!relationDiffPath || relationDiffPath === REPOSITORY_DIRECTORY) {
     fail('--relation-diff or manifest.measurement.relation_diff.artifact is required', 'MISSING_ARGUMENT');
+  }
+  const manifestRelationDiffPath = path.resolve(
+    REPOSITORY_DIRECTORY,
+    manifest.measurement.relation_diff.artifact,
+  );
+  if (relationDiffPath !== manifestRelationDiffPath) {
+    fail(
+      `relation diff path ${relationDiffPath} does not match manifest artifact ${manifestRelationDiffPath}`,
+      'RELATION_DIFF_PATH_MISMATCH',
+    );
   }
   const relationDiffText = await readFile(relationDiffPath, 'utf8');
   let relationDiff;

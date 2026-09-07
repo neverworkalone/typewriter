@@ -236,7 +236,7 @@
         "relation_diff": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["artifact"],
+          "required": ["artifact", "sha256"],
           "properties": {
             "artifact": {
               "type": "string",

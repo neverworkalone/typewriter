@@ -7,6 +7,7 @@ import {
   assertMetricsMatch,
   createMetricsArtifact,
   deriveBatchMetrics,
+  main as deriveMetricsMain,
   BatchMetricsError,
 } from '../scripts/batch/derive-metrics.mjs';
 import {
@@ -115,6 +116,13 @@ test('M5-3 metrics reproduce from manifest, relation diff, and canonical records
     () => assertMetricsMatch(derivedArtifact, tampered),
     (error) => error instanceof BatchMetricsError && error.code === 'METRICS_DRIFT',
   );
+
+  const sourceTampered = structuredClone(checkedInMetrics);
+  sourceTampered.source.relation_diff = 'data/batches/other-relation-diff.json';
+  assert.throws(
+    () => assertMetricsMatch(derivedArtifact, sourceTampered),
+    (error) => error instanceof BatchMetricsError && error.code === 'METRICS_DRIFT',
+  );
 });
 
 test('completed metrics reject incomplete timing and cannot hide audit findings', async () => {
@@ -123,6 +131,26 @@ test('completed metrics reject incomplete timing and cannot hide audit findings'
     readBatchJson('m5-3-relation-diff.json'),
     readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
   ]);
+
+  const missingDigest = structuredClone(manifest);
+  delete missingDigest.measurement.relation_diff.sha256;
+  assert.throws(
+    () => deriveBatchMetrics({
+      manifest: missingDigest,
+      relationDiff,
+      canonicalRecords: canonicalResult.records,
+    }),
+    (error) => error.code === 'MISSING_FIELD',
+  );
+
+  await assert.rejects(
+    deriveMetricsMain([
+      '--manifest=data/batches/m5-3-calibration.json',
+      '--relation-diff=/tmp/typewriter-other-relation-diff.json',
+      '--output=/tmp/typewriter-other-metrics.json',
+    ]),
+    (error) => error instanceof BatchMetricsError && error.code === 'RELATION_DIFF_PATH_MISMATCH',
+  );
 
   const incompleteTiming = structuredClone(manifest);
   incompleteTiming.measurement.timing.status = 'complete';
@@ -159,5 +187,44 @@ test('completed metrics reject incomplete timing and cannot hide audit findings'
   assert.throws(
     () => assertMetricsMatch(sourceArtifact, claimedZero),
     (error) => error instanceof BatchMetricsError && error.code === 'METRICS_DRIFT',
+  );
+});
+
+test('relation diff events must match approved canonical tuples', async () => {
+  const [manifest, relationDiff, canonicalResult] = await Promise.all([
+    readBatchJson('m5-3-calibration.json'),
+    readBatchJson('m5-3-relation-diff.json'),
+    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+  ]);
+
+  const afterTampered = structuredClone(relationDiff);
+  const changedEvent = afterTampered.events.find(
+    ({ operation }) => operation === 'retarget' || operation === 'retype' || operation === 'add',
+  );
+  changedEvent.after.target = 'w999';
+  changedEvent.after.target_sense = 'w999-s1';
+  assert.throws(
+    () => deriveBatchMetrics({
+      manifest,
+      relationDiff: afterTampered,
+      canonicalRecords: canonicalResult.records,
+    }),
+    (error) => error instanceof BatchMetricsError && error.code === 'RELATION_AFTER_NOT_CANONICAL',
+  );
+
+  const beforeTampered = structuredClone(relationDiff);
+  const removedEvent = beforeTampered.events.find(({ operation }) => operation === 'remove');
+  removedEvent.before = {
+    target: 'w227',
+    target_sense: 'w227-s1',
+    type: 'action',
+  };
+  assert.throws(
+    () => deriveBatchMetrics({
+      manifest,
+      relationDiff: beforeTampered,
+      canonicalRecords: canonicalResult.records,
+    }),
+    (error) => error instanceof BatchMetricsError && error.code === 'RELATION_BEFORE_REMAINS',
   );
 });
