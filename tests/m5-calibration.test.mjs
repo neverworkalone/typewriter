@@ -78,9 +78,23 @@ test('M5-3 calibration manifest, canonical import, and inventory transition stay
     ...numberedIds('w', 301, 352),
   ];
   assert.equal(importedIds.filter((id) => canonicalById.has(id)).length, 64);
+  const importedStartIds = new Set(numberedIds('w', 301, 352));
+  const relationTypeCounts = {};
+  let importedRelationCount = 0;
+  for (const { record } of canonical.records) {
+    if (!importedStartIds.has(record.id)) continue;
+    for (const sense of record.senses) {
+      for (const relation of sense.relations ?? []) {
+        importedRelationCount += 1;
+        relationTypeCounts[relation.type] = (relationTypeCounts[relation.type] ?? 0) + 1;
+      }
+    }
+  }
   assert.equal(metrics.canonical_import.imported_record_count, 64);
   assert.equal(metrics.canonical_import.imported_sense_count, 82);
   assert.equal(metrics.canonical_import.imported_relation_count, 88);
+  assert.equal(importedRelationCount, metrics.canonical_import.imported_relation_count);
+  assert.deepEqual(metrics.canonical_import.relation_type_counts, relationTypeCounts);
   assert.equal(metrics.decisions.correction_rate_of_selected, 41 / 60);
   assert.equal(metrics.decisions.correction_rate_of_importable, 41 / 52);
   assert.equal(metrics.post_review_audit.removed_relation_count, 51);
