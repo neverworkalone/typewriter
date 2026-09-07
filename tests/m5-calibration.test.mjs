@@ -90,18 +90,20 @@ test('M5-3 calibration manifest, canonical import, and inventory transition stay
       }
     }
   }
-  assert.equal(metrics.canonical_import.imported_record_count, 64);
-  assert.equal(metrics.canonical_import.imported_sense_count, 82);
-  assert.equal(metrics.canonical_import.imported_relation_count, 88);
-  assert.equal(importedRelationCount, metrics.canonical_import.imported_relation_count);
-  assert.deepEqual(metrics.canonical_import.relation_type_counts, relationTypeCounts);
-  assert.equal(metrics.decisions.correction_rate_of_selected, 41 / 60);
-  assert.equal(metrics.decisions.correction_rate_of_importable, 41 / 52);
-  assert.equal(metrics.post_review_audit.removed_relation_count, 51);
-  assert.equal(metrics.post_review_audit.relation_count_after_audit, 88);
-  assert.equal(metrics.post_review_audit.remaining_over_broad_relation_errors, 0);
-  assert.equal(metrics.quality_checks.reference_closure_errors, 0);
-  assert.equal(metrics.quality_checks.raw_draft_committed, false);
+  assert.equal(metrics.derived.canonical_import.imported_record_count, 64);
+  assert.equal(metrics.derived.canonical_import.imported_sense_count, 82);
+  assert.equal(metrics.derived.canonical_import.imported_relation_count, 88);
+  assert.equal(importedRelationCount, metrics.derived.canonical_import.imported_relation_count);
+  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, relationTypeCounts);
+  assert.equal(metrics.derived.decisions.correction_rate_of_selected, 41 / 60);
+  assert.equal(metrics.derived.decisions.correction_rate_of_importable, 41 / 52);
+  assert.equal(metrics.derived.relation_diff.removed_count, 51);
+  assert.equal(metrics.derived.relation_diff.retargeted_count, 4);
+  assert.equal(metrics.derived.relation_diff.retyped_count, 2);
+  assert.equal(metrics.derived.relation_diff.after_count, 88);
+  assert.equal(metrics.derived.relation_diff.noise_event_count, 51);
+  assert.equal(metrics.derived.timing.status, 'incomplete');
+  assert.equal(metrics.derived.audit.open_blocker_count, 0);
 
   assert.equal(inventory.revision, 'm5-2');
   assert.equal(inventory.canonical_snapshot.record_count, 390);

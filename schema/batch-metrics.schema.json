@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/batch-metrics.schema.json",
+  "title": "Typewriter derived batch metrics",
+  "description": "Metrics generated from a reviewed batch manifest, relation diff artifact, and canonical records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "batch_id", "source", "derived"],
+  "properties": {
+    "schema_version": { "const": "2" },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "relation_diff", "canonical_directory"],
+      "properties": {
+        "manifest": { "type": "string", "pattern": "\\S" },
+        "relation_diff": { "type": "string", "pattern": "\\S" },
+        "canonical_directory": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "derived": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selection",
+        "decisions",
+        "canonical_import",
+        "relation_diff",
+        "timing",
+        "audit"
+      ],
+      "properties": {
+        "selection": { "$ref": "#/$defs/selection" },
+        "decisions": { "$ref": "#/$defs/decisions" },
+        "canonical_import": { "$ref": "#/$defs/canonicalImport" },
+        "relation_diff": { "$ref": "#/$defs/relationDiff" },
+        "timing": { "$ref": "#/$defs/timing" },
+        "audit": { "$ref": "#/$defs/audit" }
+      }
+    }
+  },
+  "$defs": {
+    "rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected_start_count"],
+      "properties": {
+        "selected_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "included",
+        "corrected",
+        "held",
+        "rejected",
+        "importable_start_count",
+        "correction_rate_of_selected",
+        "correction_rate_of_importable",
+        "held_rate",
+        "rejected_rate",
+        "held_or_rejected_rate",
+        "sense_field_correction_count",
+        "relation_field_correction_count"
+      ],
+      "properties": {
+        "included": { "type": "integer", "minimum": 0 },
+        "corrected": { "type": "integer", "minimum": 0 },
+        "held": { "type": "integer", "minimum": 0 },
+        "rejected": { "type": "integer", "minimum": 0 },
+        "importable_start_count": { "type": "integer", "minimum": 0 },
+        "correction_rate_of_selected": { "$ref": "#/$defs/rate" },
+        "correction_rate_of_importable": { "$ref": "#/$defs/rate" },
+        "held_rate": { "$ref": "#/$defs/rate" },
+        "rejected_rate": { "$ref": "#/$defs/rate" },
+        "held_or_rejected_rate": { "$ref": "#/$defs/rate" },
+        "sense_field_correction_count": { "type": "integer", "minimum": 0 },
+        "relation_field_correction_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "canonicalImport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "imported_start_count",
+        "imported_reference_only_count",
+        "imported_record_count",
+        "imported_sense_count",
+        "imported_relation_count",
+        "imported_expression_count",
+        "relation_type_counts"
+      ],
+      "properties": {
+        "imported_start_count": { "type": "integer", "minimum": 0 },
+        "imported_reference_only_count": { "type": "integer", "minimum": 0 },
+        "imported_record_count": { "type": "integer", "minimum": 0 },
+        "imported_sense_count": { "type": "integer", "minimum": 0 },
+        "imported_relation_count": { "type": "integer", "minimum": 0 },
+        "imported_expression_count": { "type": "integer", "minimum": 0 },
+        "relation_type_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "relationDiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before_count",
+        "after_count",
+        "added_count",
+        "removed_count",
+        "retyped_count",
+        "retargeted_count",
+        "changed_count",
+        "net_removed_count",
+        "noise_event_count",
+        "noise_rate_of_before",
+        "classification_counts"
+      ],
+      "properties": {
+        "before_count": { "type": "integer", "minimum": 0 },
+        "after_count": { "type": "integer", "minimum": 0 },
+        "added_count": { "type": "integer", "minimum": 0 },
+        "removed_count": { "type": "integer", "minimum": 0 },
+        "retyped_count": { "type": "integer", "minimum": 0 },
+        "retargeted_count": { "type": "integer", "minimum": 0 },
+        "changed_count": { "type": "integer", "minimum": 0 },
+        "net_removed_count": { "type": "integer" },
+        "noise_event_count": { "type": "integer", "minimum": 0 },
+        "noise_rate_of_before": { "$ref": "#/$defs/rate" },
+        "classification_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "passes",
+        "total_wall_clock_seconds",
+        "total_editor_seconds",
+        "unmeasured_passes"
+      ],
+      "properties": {
+        "status": { "enum": ["complete", "incomplete"] },
+        "passes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/timingPass"
+          }
+        },
+        "total_wall_clock_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "total_editor_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "unmeasured_passes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "\\S" }
+        }
+      }
+    },
+    "timingPass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["complete", "partial", "unmeasured"] },
+        "wall_clock_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "editor_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "independent",
+        "finding_count",
+        "open_finding_count",
+        "open_blocker_count",
+        "finding_counts"
+      ],
+      "properties": {
+        "status": { "enum": ["complete", "incomplete"] },
+        "independent": { "type": "boolean" },
+        "finding_count": { "type": "integer", "minimum": 0 },
+        "open_finding_count": { "type": "integer", "minimum": 0 },
+        "open_blocker_count": { "type": "integer", "minimum": 0 },
+        "finding_counts": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

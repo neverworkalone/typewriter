@@ -143,3 +143,90 @@ npm run batch:import -- --manifest=/path/to/batch.json --staged-records=/tmp/rev
 
 The batch commands are workflow gates, not runtime services. They add no external
 dictionary, LLM, cloud, or network dependency to the Chrome extension.
+
+## M5-4 draft and review contract
+
+M5-4 makes the quality and measurement rules part of the batch contract. A new
+manifest should keep the generator identity in `generator.prompt_version`, and its
+`measurement` object must point to a reviewable relation-diff artifact. The artifact
+contains only relation identities and before/after fields; it is not a raw model
+response or an unreviewed draft.
+
+The versioned draft contract is [`m5-draft-template-v1.md`](m5-draft-template-v1.md).
+The draft template/prompt must treat every relation as optional. It should ask for
+the source sense, target sense, relation type, and a short writer-facing reason, but
+it must never ask an author to fill a relation quota. When the evidence is weak, the
+correct result is an empty relation list and an editorial gap. A relation is not
+admitted merely because the target co-occurs with the source or because a record
+would look more complete with another edge.
+
+The following failure types are the shared vocabulary for the draft prompt and the
+editorial review checklist:
+
+| Failure type | Review question |
+| --- | --- |
+| `incidental-co-occurrence` | Is this merely something that may appear nearby in a scene or sentence? |
+| `generic-result-or-reaction` | Is the target only a common consequence, response, trace, or aftermath? |
+| `arbitrary-modifier-or-place` | Is a place, object, modifier, or scene detail being attached without a stable writer-facing use? |
+| `broad-common-category` | Is the target a broad category or generic neighbor that does not preserve the source sense? |
+| `unsupported-cross-sensory` | Does the edge jump between senses without a concrete sensory image or explanation? |
+| `sense-target-type-error` | Are the source sense, target sense, part of speech, or relation type wrong? |
+
+The reviewer may keep a wider `scene`, `sensory`, `action`, or `association`
+relation when its note explains a stable use for the source sense. The failure type
+describes why a candidate was removed or changed; it does not turn the relation
+types into a second ranking system.
+
+### Relation diff and pass timing
+
+Each temporary relation snapshot gives every relation a stable `id` and records its
+`source_sense`, target, target sense, and type. The diff command then emits one event
+per `add`, `remove`, `retype`, or `retarget`:
+
+```sh
+npm run batch:diff -- \
+  --batch-id=m5-4-example \
+  --before=/tmp/typewriter-m5-4/draft-relations.json \
+  --after=/tmp/typewriter-m5-4/final-relations.json \
+  --output=/tmp/typewriter-m5-4/relation-diff.json
+```
+
+If a source sense changes, the old relation must be removed and a new relation
+added; changing `source_sense` under the same relation ID is rejected. This makes a
+retarget or retype measurable instead of hiding it in a rewritten final JSONL.
+The final artifact may add a controlled failure type to each reviewed event, but it
+never includes the draft prose or external source text.
+
+Five timing passes are required in every new measurement manifest:
+
+1. `target-preparation`
+2. `initial-review`
+3. `feedback-fixes`
+4. `final-audit`
+5. `held-rejected`
+
+Each pass records wall-clock seconds and editor seconds separately. A manifest may
+be marked `incomplete` while an older baseline is being repaired, but a completed
+metrics artifact is rejected if any pass is missing either measurement. The metrics
+command derives decision counts, sense/relation corrections, canonical counts,
+relation-diff counts, rates, audit findings, and timing totals from the source
+artifacts:
+
+```sh
+npm run batch:metrics -- \
+  --manifest=data/batches/m5-3-calibration.json \
+  --relation-diff=data/batches/m5-3-relation-diff.json \
+  --output=/tmp/typewriter-metrics.json
+```
+
+To detect drift in a checked-in metrics artifact, use `--check` instead of
+`--output`. Hand-editing a derived count fails the comparison.
+
+The historical M5-3 artifact is intentionally marked `timing.status: "incomplete"`:
+its 603-second initial-review wall-clock interval is retained, while feedback,
+final-audit, held/rejected, and editor-time measurements are explicitly unmeasured.
+Its reconstructed relation diff is an audit ledger, not a raw draft.
+
+The pre-defined expansion decision is documented in
+[`m5-expansion-gate.md`](m5-expansion-gate.md). A later calibration must apply that
+gate without changing its thresholds after seeing the result.

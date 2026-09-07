@@ -13,7 +13,7 @@ work areas are documented here without creating empty scaffolding.
 | --- | --- | --- | --- |
 | Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
 | M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/` | Tracked for review, but never a canonical input and never a product build input. |
-| M5 batch manifest and measurements | Review metadata, generator identity, decisions, final canonical IDs, and aggregate calibration measurements; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records and raw drafts remain outside the repository. |
+| M5 batch manifest and measurements | Review metadata, generator identity, decisions, event-level relation diffs, timing passes, and derived calibration measurements; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records, raw drafts, and external source text remain outside the repository. |
 | Unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | A temporary workspace outside this repository | Never committed. Keep only the review decision and permitted Typewriter-authored result when appropriate. |
 | Generated dictionary database | SQLite built deterministically from canonical input | Build output such as `dist/` or `artifacts/` | Generated, not hand-edited, and ignored as local output. |
@@ -53,12 +53,14 @@ artifacts, not lexical records. The validator joins its current snapshot to
 `data/canonical/` and rejects drift. The dictionary builder does not discover or
 read this directory.
 
-`data/batches/` is a second M5 exception used only for reviewable manifests and
-aggregate calibration measurements. A manifest records the target inventory
-revision, generator/model/prompt identity, review status, record decisions, and
-final canonical IDs. A measurement file may record counts, rates, timing
-baselines, and validation outcomes, but neither file may contain raw model
-responses, draft text, confidence scores, secrets, or local staging paths.
+`data/batches/` is a second M5 exception used for reviewable manifests, relation
+diff ledgers, and derived calibration measurements. A manifest records the target
+inventory revision, generator/model/prompt identity, review status, record
+decisions, final canonical IDs, five timing passes, and the relation-diff artifact
+digest. A metrics file is generated from those sources and canonical records; it
+may record counts, rates, timing totals, audit findings, and validation outcomes,
+but neither file may contain raw model responses, draft text, confidence scores,
+secrets, or local staging paths.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 

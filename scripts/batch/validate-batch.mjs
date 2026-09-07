@@ -33,6 +33,13 @@ const manifestSchemaValidator = new Ajv2020({
 
 const ROLES = Object.freeze(['start', 'reference-only']);
 const DECISIONS = Object.freeze(['included', 'held', 'rejected', 'corrected']);
+const MEASUREMENT_PASS_IDS = Object.freeze([
+  'target-preparation',
+  'initial-review',
+  'feedback-fixes',
+  'final-audit',
+  'held-rejected',
+]);
 
 export class BatchValidationError extends Error {
   constructor(message, code = 'BATCH_VALIDATION_ERROR') {
@@ -175,6 +182,48 @@ function validateManifestSchema(manifest) {
   fail(`batch manifest schema validation failed: ${detail}`, error ? schemaErrorCode(error) : 'SCHEMA_ERROR');
 }
 
+function validateMeasurement(measurement) {
+  if (!measurement) return;
+
+  const passIds = measurement.timing.passes.map((pass) => pass.id);
+  requireUnique(passIds, 'manifest.measurement.timing.passes.id');
+  const missingPasses = MEASUREMENT_PASS_IDS.filter((id) => !passIds.includes(id));
+  if (missingPasses.length > 0) {
+    fail(
+      `manifest.measurement.timing is missing pass(es): ${missingPasses.join(', ')}`,
+      'MISSING_TIMING_PASS',
+    );
+  }
+  for (const pass of measurement.timing.passes) {
+    if (Object.hasOwn(pass, 'started_at')) requireIsoDate(pass.started_at, `manifest.measurement.timing.${pass.id}.started_at`);
+    if (Object.hasOwn(pass, 'completed_at')) requireIsoDate(pass.completed_at, `manifest.measurement.timing.${pass.id}.completed_at`);
+    if (Object.hasOwn(pass, 'note')) requireString(pass.note, `manifest.measurement.timing.${pass.id}.note`);
+    if (pass.status === 'complete' && (!Number.isFinite(pass.wall_clock_seconds) || !Number.isFinite(pass.editor_seconds))) {
+      fail(
+        `manifest.measurement.timing.${pass.id} is complete but lacks wall-clock and editor seconds`,
+        'INCOMPLETE_TIMING',
+      );
+    }
+    if (pass.status === 'partial' && !Number.isFinite(pass.wall_clock_seconds)) {
+      fail(
+        `manifest.measurement.timing.${pass.id} is partial but lacks wall-clock seconds`,
+        'INCOMPLETE_TIMING',
+      );
+    }
+  }
+  if (measurement.timing.status === 'complete'
+    && measurement.timing.passes.some((pass) => pass.status !== 'complete')) {
+    fail('manifest.measurement.timing is declared complete with an unmeasured pass', 'INCOMPLETE_TIMING');
+  }
+
+  const findingIds = measurement.audit.findings.map((finding) => finding.id);
+  requireUnique(findingIds, 'manifest.measurement.audit.findings.id');
+  for (const finding of measurement.audit.findings) {
+    requireString(finding.id, `manifest.measurement.audit.findings.${finding.id}.id`);
+    requireString(finding.note, `manifest.measurement.audit.findings.${finding.id}.note`);
+  }
+}
+
 export function validateBatchManifest(manifest) {
   validateManifestSchema(manifest);
 
@@ -194,6 +243,7 @@ export function validateBatchManifest(manifest) {
   if (Object.hasOwn(manifest.review, 'completed_at')) {
     requireIsoDate(manifest.review.completed_at, 'manifest.review.completed_at');
   }
+  validateMeasurement(manifest.measurement);
 
   const inventoryIds = new Set();
   const canonicalIds = new Set();

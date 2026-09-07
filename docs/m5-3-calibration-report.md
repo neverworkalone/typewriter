@@ -4,7 +4,8 @@ Batch: `m5-3-calibration-20260907`<br>
 Reviewed inventory: `m5-core-5k`, revision `m5-1`<br>
 Post-import inventory revision: `m5-2`<br>
 Manifest: [`data/batches/m5-3-calibration.json`](../data/batches/m5-3-calibration.json)<br>
-Structured measurements: [`data/batches/m5-3-calibration-metrics.json`](../data/batches/m5-3-calibration-metrics.json)
+Structured measurements: [`data/batches/m5-3-calibration-metrics.json`](../data/batches/m5-3-calibration-metrics.json)<br>
+Relation event ledger: [`data/batches/m5-3-relation-diff.json`](../data/batches/m5-3-relation-diff.json)
 
 ## Outcome
 
@@ -63,19 +64,36 @@ Relation types in the imported records are:
 Twenty-three records corrected sense fields and 41 corrected relation fields.
 For the records whose manifest lists `relations` as corrected, the final relation
 mix is action 6, association 7, antonym 1, direct 1, mood 15, near 22, scene
-4, and sensory 10. The reviewed draft intentionally stored only candidate metadata, not
-relation bodies, so this is a final mix on corrected records rather than an
-event-level relation diff; a later calibration should instrument relation diffs
-directly.
+4, and sensory 10. The reviewed draft intentionally stored only candidate metadata,
+not relation bodies, so this final mix is not used as a relation-change metric.
+
+M5-4 reconstructs the review changes as a relation event ledger without adding a
+raw draft. The relation snapshot had 139 edges before the final admission pass and
+88 after it: 51 `remove`, 0 `add`, 2 `retype`, and 4 `retarget` events. The
+classified removal events are:
+
+| Failure type | Events |
+| --- | ---: |
+| `arbitrary-modifier-or-place` | 19 |
+| `generic-result-or-reaction` | 11 |
+| `unsupported-cross-sensory` | 11 |
+| `broad-common-category` | 8 |
+| `sense-target-type-error` | 1 |
+| `incidental-co-occurrence` | 1 |
+
+The six changed events also carry `sense-target-type-error` because they correct a
+target or relation type. Counts in this paragraph are generated from the relation
+diff artifact; the earlier narrative's aggregate “five retyped or retargeted”
+number was not an event-level measurement and is not retained as an authoritative
+metric.
 
 All three `direct` relations include an explicit sentence-slot substitution in
 the editorial note. The first feedback pass rechecked all 52 imported starts and
-82 imported senses, removed 12 broad or unsupported relation edges, retyped or
-retargeted five others, corrected the `단정하다` adjective/verb boundary, and
-removed the taste reading from the first `시큰하다` sense. A second full
-admission audit applied the same rule to the remaining 127 relations and removed
-39 more, leaving 88. Cumulatively, 51 relations were removed from the original
-139 and five were retyped or retargeted.
+82 imported senses, removed 12 broad or unsupported relation edges, corrected the
+`단정하다` adjective/verb boundary, and removed the taste reading from the first
+`시큰하다` sense. A second full admission audit applied the same rule to the
+remaining 127 relations and removed 39 more, leaving 88. The event ledger is the
+authoritative count for the final relation changes.
 
 The admission rule kept a relation only when its stable writer-facing use is
 explained by the source sense: direct/near/antonym substitution or contrast,
@@ -89,8 +107,8 @@ were the direct `w305 자부심 → r038 긍지`, near `w321 미지근하다 →
 미온`, sensory `w346 등불 → w066 빛`, and action `w352 기억을 더듬다 →
 w239 기억하다`.
 
-The final audit records zero direct-replacement errors, zero over-broad relation
-errors, and zero reference-closure errors. All 12 reference-only records are
+The final audit records zero open direct-replacement errors, zero open over-broad
+relation errors, and zero open reference-closure errors. All 12 reference-only records are
 referenced by an imported start with explicit target senses.
 
 The original batch review window remains the timing baseline below. The feedback
@@ -101,8 +119,9 @@ audit was a separate editorial pass and was not individually timed.
 The manifest interval from `2026-09-07T08:29:02Z` to
 `2026-09-07T08:39:05Z` is 603 seconds (`00:10:03`). This is 10.05 seconds per
 selected start and 11.60 seconds per imported start. Individual decision timers,
-including separate held/rejected review time, were not instrumented, so this is a
-wall-clock calibration baseline rather than a controlled editor-time study.
+feedback fixes, final audit, held/rejected review time, and editor time were not
+instrumented. The derived metrics therefore report `timing.status: "incomplete"`
+and do not claim a total actual review time.
 
 ## Import and inventory transition
 
@@ -131,7 +150,8 @@ The post-import snapshot is:
 The following checks passed for this batch:
 
 - `npm run batch:validate -- --manifest=/tmp/typewriter-m5-3-calibration/manifest.json --staged-records=/tmp/typewriter-m5-3-calibration/reviewed.jsonl --json=true`
-- `npm test` — 69 tests passed, including the M5-3 manifest/import/inventory and SQLite search regressions
+- `npm run batch:metrics -- --manifest=data/batches/m5-3-calibration.json --relation-diff=data/batches/m5-3-relation-diff.json --check=data/batches/m5-3-calibration-metrics.json`
+- `npm test` — 73 tests passed, including the M5-3 manifest/import/inventory and SQLite search regressions
 - `npm run validate` — 390 records, 468 senses, 428 relations, and inventory revision `m5-2`
 - `npm run test:unit`
 - `npm run validate:search` — existing M4 search regression corpus
@@ -149,7 +169,8 @@ the repository or product package.
 ## Gate decision
 
 This batch is the M5 calibration baseline, not approval for a later bulk batch. The
-measured correction rate, excluded decisions, relation mix, closure result, and
-timing limitation must be reviewed against issue #7 before selecting another
-large batch. No later bulk generation should begin until that gate is explicitly
+measured correction rate, excluded decisions, relation diff, closure result, and
+incomplete timing must be reviewed against the fixed criteria in
+[`m5-expansion-gate.md`](m5-expansion-gate.md) and issue #7 before selecting
+another batch. No later bulk generation should begin until that gate is explicitly
 updated.

@@ -1,0 +1,748 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-3-calibration-20260907",
+  "before_count": 139,
+  "after_count": 88,
+  "events": [
+    {
+      "event_id": "m5-3-calibration-20260907-event-0001",
+      "relation_id": "m5-3-w304-s1-r2",
+      "operation": "remove",
+      "source_sense": "w304-s1",
+      "before": {
+        "target": "w240",
+        "target_sense": "w240-s1",
+        "type": "mood"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0002",
+      "relation_id": "m5-3-w307-s1-r3",
+      "operation": "remove",
+      "source_sense": "w307-s1",
+      "before": {
+        "target": "w143",
+        "target_sense": "w143-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0003",
+      "relation_id": "m5-3-w308-s2-r2",
+      "operation": "remove",
+      "source_sense": "w308-s2",
+      "before": {
+        "target": "w278",
+        "target_sense": "w278-s1",
+        "type": "association"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0004",
+      "relation_id": "m5-3-w309-s1-r2",
+      "operation": "remove",
+      "source_sense": "w309-s1",
+      "before": {
+        "target": "w060",
+        "target_sense": "w060-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0005",
+      "relation_id": "m5-3-w310-s1-r1",
+      "operation": "remove",
+      "source_sense": "w310-s1",
+      "before": {
+        "target": "w040",
+        "target_sense": "w040-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0006",
+      "relation_id": "m5-3-w310-s2-r1",
+      "operation": "retarget",
+      "source_sense": "w310-s2",
+      "before": {
+        "target": "w032",
+        "target_sense": "w032-s1",
+        "type": "near"
+      },
+      "after": {
+        "target": "w200",
+        "target_sense": "w200-s1",
+        "type": "near"
+      },
+      "changed_fields": [
+        "target",
+        "target_sense"
+      ],
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0007",
+      "relation_id": "m5-3-w311-s1-r1",
+      "operation": "remove",
+      "source_sense": "w311-s1",
+      "before": {
+        "target": "w031",
+        "target_sense": "w031-s1",
+        "type": "mood"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0008",
+      "relation_id": "m5-3-w311-s1-r2",
+      "operation": "remove",
+      "source_sense": "w311-s1",
+      "before": {
+        "target": "w055",
+        "target_sense": "w055-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0009",
+      "relation_id": "m5-3-w312-s1-r1",
+      "operation": "remove",
+      "source_sense": "w312-s1",
+      "before": {
+        "target": "w047",
+        "target_sense": "w047-s1",
+        "type": "near"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0010",
+      "relation_id": "m5-3-w312-s1-r2",
+      "operation": "remove",
+      "source_sense": "w312-s1",
+      "before": {
+        "target": "w079",
+        "target_sense": "w079-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0011",
+      "relation_id": "m5-3-w315-s1-r1",
+      "operation": "remove",
+      "source_sense": "w315-s1",
+      "before": {
+        "target": "w054",
+        "target_sense": "w054-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0012",
+      "relation_id": "m5-3-w315-s2-r1",
+      "operation": "retype",
+      "source_sense": "w315-s2",
+      "before": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "near"
+      },
+      "after": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "antonym"
+      },
+      "changed_fields": [
+        "type"
+      ],
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0013",
+      "relation_id": "m5-3-w315-s2-r2",
+      "operation": "remove",
+      "source_sense": "w315-s2",
+      "before": {
+        "target": "w050",
+        "target_sense": "w050-s1",
+        "type": "mood"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0014",
+      "relation_id": "m5-3-w316-s2-r1",
+      "operation": "remove",
+      "source_sense": "w316-s2",
+      "before": {
+        "target": "w002",
+        "target_sense": "w002-s1",
+        "type": "mood"
+      },
+      "error_category": "incidental-co-occurrence"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0015",
+      "relation_id": "m5-3-w318-s1-r1",
+      "operation": "remove",
+      "source_sense": "w318-s1",
+      "before": {
+        "target": "w041",
+        "target_sense": "w041-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0016",
+      "relation_id": "m5-3-w318-s1-r2",
+      "operation": "remove",
+      "source_sense": "w318-s1",
+      "before": {
+        "target": "w054",
+        "target_sense": "w054-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0017",
+      "relation_id": "m5-3-w321-s1-r2",
+      "operation": "remove",
+      "source_sense": "w321-s1",
+      "before": {
+        "target": "w075",
+        "target_sense": "w075-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0018",
+      "relation_id": "m5-3-w321-s2-r2",
+      "operation": "remove",
+      "source_sense": "w321-s2",
+      "before": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0019",
+      "relation_id": "m5-3-w322-s1-r2",
+      "operation": "remove",
+      "source_sense": "w322-s1",
+      "before": {
+        "target": "w047",
+        "target_sense": "w047-s1",
+        "type": "near"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0020",
+      "relation_id": "m5-3-w323-s1-r2",
+      "operation": "remove",
+      "source_sense": "w323-s1",
+      "before": {
+        "target": "w031",
+        "target_sense": "w031-s1",
+        "type": "mood"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0021",
+      "relation_id": "m5-3-w325-s1-r2",
+      "operation": "remove",
+      "source_sense": "w325-s1",
+      "before": {
+        "target": "w118",
+        "target_sense": "w118-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0022",
+      "relation_id": "m5-3-w325-s2-r2",
+      "operation": "remove",
+      "source_sense": "w325-s2",
+      "before": {
+        "target": "w112",
+        "target_sense": "w112-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0023",
+      "relation_id": "m5-3-w326-s1-r1",
+      "operation": "retarget",
+      "source_sense": "w326-s1",
+      "before": {
+        "target": "w101",
+        "target_sense": "w101-s1",
+        "type": "sensory"
+      },
+      "after": {
+        "target": "w106",
+        "target_sense": "w106-s1",
+        "type": "near"
+      },
+      "changed_fields": [
+        "target",
+        "target_sense",
+        "type"
+      ],
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0024",
+      "relation_id": "m5-3-w326-s1-r2",
+      "operation": "remove",
+      "source_sense": "w326-s1",
+      "before": {
+        "target": "w099",
+        "target_sense": "w099-s1",
+        "type": "near"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0025",
+      "relation_id": "m5-3-w326-s2-r1",
+      "operation": "remove",
+      "source_sense": "w326-s2",
+      "before": {
+        "target": "w112",
+        "target_sense": "w112-s1",
+        "type": "sensory"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0026",
+      "relation_id": "m5-3-w326-s2-r2",
+      "operation": "retarget",
+      "source_sense": "w326-s2",
+      "before": {
+        "target": "w106",
+        "target_sense": "w106-s1",
+        "type": "near"
+      },
+      "after": {
+        "target": "w019",
+        "target_sense": "w019-s1",
+        "type": "mood"
+      },
+      "changed_fields": [
+        "target",
+        "target_sense",
+        "type"
+      ],
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0027",
+      "relation_id": "m5-3-w327-s1-r2",
+      "operation": "remove",
+      "source_sense": "w327-s1",
+      "before": {
+        "target": "w237",
+        "target_sense": "w237-s4",
+        "type": "association"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0028",
+      "relation_id": "m5-3-w329-s1-r2",
+      "operation": "remove",
+      "source_sense": "w329-s1",
+      "before": {
+        "target": "w145",
+        "target_sense": "w145-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0029",
+      "relation_id": "m5-3-w329-s2-r1",
+      "operation": "remove",
+      "source_sense": "w329-s2",
+      "before": {
+        "target": "w271",
+        "target_sense": "w271-s1",
+        "type": "association"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0030",
+      "relation_id": "m5-3-w330-s1-r2",
+      "operation": "remove",
+      "source_sense": "w330-s1",
+      "before": {
+        "target": "w151",
+        "target_sense": "w151-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0031",
+      "relation_id": "m5-3-w331-s1-r1",
+      "operation": "remove",
+      "source_sense": "w331-s1",
+      "before": {
+        "target": "w143",
+        "target_sense": "w143-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0032",
+      "relation_id": "m5-3-w332-s1-r1",
+      "operation": "retype",
+      "source_sense": "w332-s1",
+      "before": {
+        "target": "w145",
+        "target_sense": "w145-s1",
+        "type": "scene"
+      },
+      "after": {
+        "target": "w145",
+        "target_sense": "w145-s1",
+        "type": "near"
+      },
+      "changed_fields": [
+        "type"
+      ],
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0033",
+      "relation_id": "m5-3-w333-s1-r2",
+      "operation": "remove",
+      "source_sense": "w333-s1",
+      "before": {
+        "target": "w190",
+        "target_sense": "w190-s1",
+        "type": "association"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0034",
+      "relation_id": "m5-3-w335-s1-r1",
+      "operation": "remove",
+      "source_sense": "w335-s1",
+      "before": {
+        "target": "w151",
+        "target_sense": "w151-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0035",
+      "relation_id": "m5-3-w335-s1-r2",
+      "operation": "remove",
+      "source_sense": "w335-s1",
+      "before": {
+        "target": "w147",
+        "target_sense": "w147-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0036",
+      "relation_id": "m5-3-w336-s1-r2",
+      "operation": "remove",
+      "source_sense": "w336-s1",
+      "before": {
+        "target": "w140",
+        "target_sense": "w140-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0037",
+      "relation_id": "m5-3-w336-s2-r2",
+      "operation": "remove",
+      "source_sense": "w336-s2",
+      "before": {
+        "target": "w060",
+        "target_sense": "w060-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0038",
+      "relation_id": "m5-3-w338-s1-r1",
+      "operation": "remove",
+      "source_sense": "w338-s1",
+      "before": {
+        "target": "w145",
+        "target_sense": "w145-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0039",
+      "relation_id": "m5-3-w338-s1-r2",
+      "operation": "remove",
+      "source_sense": "w338-s1",
+      "before": {
+        "target": "w140",
+        "target_sense": "w140-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0040",
+      "relation_id": "m5-3-w339-s1-r2",
+      "operation": "remove",
+      "source_sense": "w339-s1",
+      "before": {
+        "target": "r045",
+        "target_sense": "r045-s1",
+        "type": "association"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0041",
+      "relation_id": "m5-3-w339-s2-r1",
+      "operation": "remove",
+      "source_sense": "w339-s2",
+      "before": {
+        "target": "w060",
+        "target_sense": "w060-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0042",
+      "relation_id": "m5-3-w339-s2-r2",
+      "operation": "retarget",
+      "source_sense": "w339-s2",
+      "before": {
+        "target": "w239",
+        "target_sense": "w239-s1",
+        "type": "association"
+      },
+      "after": {
+        "target": "w240",
+        "target_sense": "w240-s1",
+        "type": "near"
+      },
+      "changed_fields": [
+        "target",
+        "target_sense",
+        "type"
+      ],
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0043",
+      "relation_id": "m5-3-w340-s1-r2",
+      "operation": "remove",
+      "source_sense": "w340-s1",
+      "before": {
+        "target": "r044",
+        "target_sense": "r044-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0044",
+      "relation_id": "m5-3-w340-s2-r2",
+      "operation": "remove",
+      "source_sense": "w340-s2",
+      "before": {
+        "target": "w112",
+        "target_sense": "w112-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0045",
+      "relation_id": "m5-3-w341-s1-r1",
+      "operation": "remove",
+      "source_sense": "w341-s1",
+      "before": {
+        "target": "w239",
+        "target_sense": "w239-s1",
+        "type": "action"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0046",
+      "relation_id": "m5-3-w342-s1-r2",
+      "operation": "remove",
+      "source_sense": "w342-s1",
+      "before": {
+        "target": "w118",
+        "target_sense": "w118-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0047",
+      "relation_id": "m5-3-w342-s2-r2",
+      "operation": "remove",
+      "source_sense": "w342-s2",
+      "before": {
+        "target": "w272",
+        "target_sense": "w272-s1",
+        "type": "association"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0048",
+      "relation_id": "m5-3-w343-s1-r2",
+      "operation": "remove",
+      "source_sense": "w343-s1",
+      "before": {
+        "target": "w225",
+        "target_sense": "w225-s1",
+        "type": "action"
+      },
+      "error_category": "sense-target-type-error"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0049",
+      "relation_id": "m5-3-w344-s1-r3",
+      "operation": "remove",
+      "source_sense": "w344-s1",
+      "before": {
+        "target": "w190",
+        "target_sense": "w190-s1",
+        "type": "association"
+      },
+      "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0050",
+      "relation_id": "m5-3-w345-s1-r2",
+      "operation": "remove",
+      "source_sense": "w345-s1",
+      "before": {
+        "target": "w145",
+        "target_sense": "w145-s1",
+        "type": "scene"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0051",
+      "relation_id": "m5-3-w347-s1-r2",
+      "operation": "remove",
+      "source_sense": "w347-s1",
+      "before": {
+        "target": "r035",
+        "target_sense": "r035-s1",
+        "type": "association"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0052",
+      "relation_id": "m5-3-w347-s2-r1",
+      "operation": "remove",
+      "source_sense": "w347-s2",
+      "before": {
+        "target": "w060",
+        "target_sense": "w060-s1",
+        "type": "association"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0053",
+      "relation_id": "m5-3-w347-s2-r2",
+      "operation": "remove",
+      "source_sense": "w347-s2",
+      "before": {
+        "target": "r045",
+        "target_sense": "r045-s1",
+        "type": "association"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0054",
+      "relation_id": "m5-3-w349-s1-r2",
+      "operation": "remove",
+      "source_sense": "w349-s1",
+      "before": {
+        "target": "w079",
+        "target_sense": "w079-s1",
+        "type": "sensory"
+      },
+      "error_category": "unsupported-cross-sensory"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0055",
+      "relation_id": "m5-3-w349-s2-r2",
+      "operation": "remove",
+      "source_sense": "w349-s2",
+      "before": {
+        "target": "w278",
+        "target_sense": "w278-s1",
+        "type": "mood"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0056",
+      "relation_id": "m5-3-w350-s1-r2",
+      "operation": "remove",
+      "source_sense": "w350-s1",
+      "before": {
+        "target": "w112",
+        "target_sense": "w112-s1",
+        "type": "mood"
+      },
+      "error_category": "generic-result-or-reaction"
+    },
+    {
+      "event_id": "m5-3-calibration-20260907-event-0057",
+      "relation_id": "m5-3-w352-s1-r3",
+      "operation": "remove",
+      "source_sense": "w352-s1",
+      "before": {
+        "target": "w272",
+        "target_sense": "w272-s1",
+        "type": "mood"
+      },
+      "error_category": "arbitrary-modifier-or-place"
+    }
+  ],
+  "source_note": "Reconstructed from versioned M5-3 reviewed relation snapshots; raw draft bodies and external source text were not stored."
+}

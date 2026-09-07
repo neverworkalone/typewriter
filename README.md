@@ -92,6 +92,9 @@ canonical import gate are documented in
 The first M5-3 calibration batch measurements and expansion gate are recorded in
 [`docs/m5-3-calibration-report.md`](docs/m5-3-calibration-report.md).
 
+The M5-4 relation-review, event-level measurement, and fixed bounded-expansion
+criteria are documented in [`docs/m5-expansion-gate.md`](docs/m5-expansion-gate.md).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.
