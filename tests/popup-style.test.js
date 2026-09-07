@@ -11,13 +11,13 @@ describe('popup layout contract', () => {
     const css = await readFile(path.join(repositoryRoot, 'src/popup/style.css'), 'utf8');
 
     expect(css).toMatch(
-      /html,\s*\nbody,\s*\n#app\s*\{[\s\S]*?width:\s*480px;[\s\S]*?min-width:\s*480px;[\s\S]*?max-width:\s*480px;/,
+      /html,\s*\nbody,\s*\n#app\s*\{[\s\S]*?width:\s*420px;[\s\S]*?min-width:\s*420px;[\s\S]*?max-width:\s*420px;/,
     );
     expect(css).toMatch(
-      /\.popup-app\s*\{[\s\S]*?width:\s*480px;[\s\S]*?min-width:\s*480px;[\s\S]*?max-width:\s*480px;/,
+      /\.popup-app\s*\{[\s\S]*?width:\s*420px;[\s\S]*?min-width:\s*420px;[\s\S]*?max-width:\s*420px;/,
     );
     expect(css).toMatch(
-      /\.popup-app \.dictionary-panel\s*\{[\s\S]*?width:\s*480px;[\s\S]*?min-width:\s*480px;[\s\S]*?max-width:\s*480px;/,
+      /\.popup-app \.dictionary-panel\s*\{[\s\S]*?width:\s*420px;[\s\S]*?min-width:\s*420px;[\s\S]*?max-width:\s*420px;/,
     );
   });
 });
