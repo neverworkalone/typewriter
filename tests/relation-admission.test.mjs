@@ -56,7 +56,7 @@ test('relation admission regression validation does not approve a changed expect
   );
 });
 
-test('M5-6 leaves the canonical snapshot unchanged', async () => {
+test('M5-6 admission controls remain present after the M5-7 import', async () => {
   const { records } = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
   const recordValues = records.map(({ record }) => record);
   const countRelations = recordValues.reduce(
@@ -83,12 +83,12 @@ test('M5-6 leaves the canonical snapshot unchanged', async () => {
   countRelations.record_count = recordValues.length;
 
   assert.deepEqual(countRelations, {
-    record_count: 432,
-    start_count: 390,
+    record_count: 470,
+    start_count: 428,
     reference_only_count: 42,
-    sense_count: 514,
-    relation_count: 442,
-    expression_count: 20,
+    sense_count: 557,
+    relation_count: 449,
+    expression_count: 23,
   });
 });
 

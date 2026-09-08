@@ -14,15 +14,15 @@ import { normalizeCanonicalDirectory } from '../scripts/normalize/canonical.mjs'
 test('runs the complete M2 pipeline and compares canonical rows to SQLite', async () => {
   const summary = await runM2Pipeline({ allowDirty: true });
 
-  assert.equal(summary.fileCount, 3);
-  assert.equal(summary.recordCount, 432);
-  assert.equal(summary.startCount, 390);
+  assert.equal(summary.fileCount, 4);
+  assert.equal(summary.recordCount, 470);
+  assert.equal(summary.startCount, 428);
   assert.equal(summary.referenceOnlyCount, 42);
-  assert.equal(summary.candidateCount, 390);
-  assert.equal(summary.searchFormCount, 497);
-  assert.equal(summary.senseCount, 514);
-  assert.equal(summary.relationCount, 442);
-  assert.equal(summary.expressionCount, 20);
+  assert.equal(summary.candidateCount, 428);
+  assert.equal(summary.searchFormCount, 546);
+  assert.equal(summary.senseCount, 557);
+  assert.equal(summary.relationCount, 449);
+  assert.equal(summary.expressionCount, 23);
   assert.equal(summary.databaseBuilds, 2);
   assert.equal(summary.normalizationVersion, '1');
   assert.ok(['clean', 'dirty-allowed'].includes(summary.worktreeState));

@@ -259,6 +259,17 @@ metrics calculation includes it. See
 [`m5-6-relation-process.md`](m5-6-relation-process.md) for the complete
 process correction and the canonical no-change invariant.
 
+### M5-7 application and gate result
+
+M5-7 applies the v2 relation process to 40 previously unreviewed starts. The
+revision-`m5-4` selection inventory is preserved as
+`data/batches/m5-7-preimport-inventory.json`; the final inventory advances to
+revision `m5-5` after only the 38 included/corrected records are promoted.
+The batch manifest, relation diff, and derived metrics report all seven timing
+passes, including a measured re-audit and correction pass after PR feedback.
+Its fixed-gate result is `HOLD PROCESS` and is documented in
+[`m5-7-expansion-report.md`](m5-7-expansion-report.md).
+
 The pre-defined expansion decision is documented in
 [`m5-expansion-gate.md`](m5-expansion-gate.md). A later calibration must apply that
 gate without changing its thresholds after seeing the result.
