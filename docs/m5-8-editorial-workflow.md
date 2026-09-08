@@ -165,12 +165,15 @@ source/target senses, direction, type, and a concrete writer-facing use are
 recorded and checked as one tuple.
 
 Manifests that use the repaired timing contract set
-measurement.timing.contract_version to m5-9a-v1. Measured passes must have
-actual started_at/completed_at timestamps, and wall_clock_seconds must equal
-their elapsed time. An unmeasured pass cannot carry an estimated duration.
-npm run batch:timing:feedback appends the next one-based paired follow-up
-cycle and the recorded feedback timestamp; it marks timing incomplete until
-both passes are measured. Missing, duplicated, or out-of-order cycles are
+measurement.timing.contract_version to m5-9a-v1. The timing recorder's
+`batch:timing:feedback` command records the current UTC feedback event and
+appends the next one-based paired follow-up cycle. `batch:timing:start` records
+the current start timestamp for a pass, and `batch:timing:stop` records the
+current stop timestamp and derives wall-clock/editor seconds; neither command
+accepts user-supplied timestamps or durations. An unmeasured pass cannot carry
+an estimated duration. The recorder marks an unfinished session as
+`in-progress`, and the validator marks the timing incomplete until both
+follow-up passes are measured. Missing, duplicated, or out-of-order cycles are
 rejected.
 
 The repair authorization permits only #96's first 50-start validation wave

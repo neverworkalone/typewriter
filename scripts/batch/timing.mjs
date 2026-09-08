@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,18 @@ import {
 } from './validate-batch.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+const REQUIRED_PASS_IDS = Object.freeze([
+  'target-preparation',
+  'initial-review',
+  'feedback-fixes',
+  'final-audit',
+  'held-rejected',
+]);
+const OPTIONAL_PASS_IDS = Object.freeze([
+  'post-review-audit',
+  'post-review-fixes',
+]);
+const TIMING_RECORDER_SOURCE = 'timing-recorder-v1';
 
 export class TimingRecordingError extends Error {
   constructor(message, code = 'TIMING_RECORDING_ERROR') {
@@ -30,9 +43,44 @@ function requireFeedbackTimestamp(value) {
   }
 }
 
+function timestampFromClock(now, label = 'now') {
+  const value = typeof now === 'function' ? now() : now;
+  const date = value === undefined ? new Date() : new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    fail(`${label} must be a valid timestamp`, 'INVALID_TIMESTAMP');
+  }
+  const timestamp = date.toISOString();
+  requireFeedbackTimestamp(timestamp);
+  return timestamp;
+}
+
+function requirePassId(passId) {
+  if (![...REQUIRED_PASS_IDS, ...OPTIONAL_PASS_IDS].includes(passId)) {
+    fail(`unknown timing pass ${String(passId)}`, 'UNKNOWN_TIMING_PASS');
+  }
+}
+
+function requireSessionId(sessionId) {
+  const value = sessionId ?? randomUUID();
+  if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value)) {
+    fail('sessionId must be a non-empty recorder session ID', 'INVALID_SESSION_ID');
+  }
+  return value;
+}
+
+function prepareRecorderManifest(manifest) {
+  validateBatchManifest(manifest);
+  const updated = structuredClone(manifest);
+  updated.measurement.timing.contract_version = 'm5-9a-v1';
+  updated.measurement.timing.passes = prepareLegacyFollowUpCycles(
+    updated.measurement.timing.passes,
+  );
+  return updated;
+}
+
 function optionalPasses(manifest) {
   return manifest.measurement.timing.passes.filter(
-    ({ id }) => id === 'post-review-audit' || id === 'post-review-fixes',
+    ({ id }) => OPTIONAL_PASS_IDS.includes(id),
   );
 }
 
@@ -46,7 +94,7 @@ export function nextFeedbackCycle(manifest) {
 
 function prepareLegacyFollowUpCycles(passes) {
   const followUps = passes.filter(
-    ({ id }) => id === 'post-review-audit' || id === 'post-review-fixes',
+    ({ id }) => OPTIONAL_PASS_IDS.includes(id),
   );
   if (followUps.length === 0 || followUps.every((pass) => Object.hasOwn(pass, 'cycle'))) {
     return passes;
@@ -66,12 +114,16 @@ export function appendFeedbackCycle(
   manifest,
   {
     feedbackReceivedAt,
+    now,
     auditNote = 'PR feedback cycle audit is awaiting actual start/stop measurement.',
     fixesNote = 'PR feedback cycle fixes are awaiting actual start/stop measurement.',
   } = {},
 ) {
   validateBatchManifest(manifest);
-  requireFeedbackTimestamp(feedbackReceivedAt);
+  const feedbackTimestamp = feedbackReceivedAt === undefined
+    ? timestampFromClock(now, 'feedback event')
+    : feedbackReceivedAt;
+  requireFeedbackTimestamp(feedbackTimestamp);
   if (typeof auditNote !== 'string' || auditNote.trim().length === 0) {
     fail('auditNote must be a non-empty string', 'INVALID_NOTE');
   }
@@ -94,14 +146,14 @@ export function appendFeedbackCycle(
     {
       id: 'post-review-audit',
       cycle,
-      feedback_received_at: feedbackReceivedAt,
+      feedback_received_at: feedbackTimestamp,
       status: 'unmeasured',
       note: auditNote,
     },
     {
       id: 'post-review-fixes',
       cycle,
-      feedback_received_at: feedbackReceivedAt,
+      feedback_received_at: feedbackTimestamp,
       status: 'unmeasured',
       note: fixesNote,
     },
@@ -110,6 +162,191 @@ export function appendFeedbackCycle(
   updated.measurement.timing.contract_version = 'm5-9a-v1';
   updated.measurement.timing.status = 'incomplete';
   updated.measurement.timing.passes = [...preparedPasses, ...followUp];
+  validateBatchManifest(updated);
+  return updated;
+}
+
+function passLabel(pass) {
+  return Object.hasOwn(pass, 'cycle') ? `${pass.id}#${pass.cycle}` : pass.id;
+}
+
+function parseCycle(cycle) {
+  if (cycle === undefined) return undefined;
+  const value = Number(cycle);
+  if (!Number.isInteger(value) || value < 1) {
+    fail('cycle must be a positive integer', 'INVALID_TIMING_CYCLE');
+  }
+  return value;
+}
+
+function followUpPassesByCycle(passes) {
+  const byCycle = new Map();
+  for (const pass of passes.filter(({ id }) => OPTIONAL_PASS_IDS.includes(id))) {
+    const cycle = timingPassCycle(pass);
+    if (!byCycle.has(cycle)) byCycle.set(cycle, {});
+    byCycle.get(cycle)[pass.id] = pass;
+  }
+  return byCycle;
+}
+
+function latestFollowUpCycle(passes) {
+  const cycles = [...followUpPassesByCycle(passes).keys()];
+  return cycles.length === 0 ? undefined : Math.max(...cycles);
+}
+
+function findRequiredPass(passes, passId) {
+  return passes.find((pass) => pass.id === passId && !Object.hasOwn(pass, 'cycle'));
+}
+
+function findFollowUpPass(passes, passId, cycle) {
+  const matches = passes.filter((pass) => (
+    pass.id === passId
+      && (cycle === undefined || timingPassCycle(pass) === cycle)
+  ));
+  if (matches.length === 0) return undefined;
+  if (matches.length > 1) {
+    fail(`timing pass ${passId} requires an explicit cycle`, 'AMBIGUOUS_TIMING_PASS');
+  }
+  return matches[0];
+}
+
+function ensureFeedbackCycleForAudit(manifest, startedAt) {
+  const passes = manifest.measurement.timing.passes;
+  const latestCycle = latestFollowUpCycle(passes);
+  if (latestCycle === undefined) {
+    return appendFeedbackCycle(manifest, { feedbackReceivedAt: startedAt });
+  }
+
+  const latest = followUpPassesByCycle(passes).get(latestCycle);
+  const auditPass = latest['post-review-audit'];
+  const fixesPass = latest['post-review-fixes'];
+  if (!auditPass || !fixesPass) {
+    fail(`timing feedback cycle ${latestCycle} is incomplete`, 'INCOMPLETE_TIMING_CYCLE');
+  }
+  if (auditPass.status === 'in-progress') {
+    fail(`timing pass ${passLabel(auditPass)} is already running`, 'DUPLICATE_TIMING_START');
+  }
+  if (fixesPass.status === 'in-progress') {
+    fail(`timing pass ${passLabel(fixesPass)} is already running`, 'INCOMPLETE_TIMING_CYCLE');
+  }
+  if (auditPass.status === 'complete') {
+    if (fixesPass.status !== 'complete') {
+      fail(
+        `timing feedback cycle ${latestCycle} must finish its fixes before a new audit starts`,
+        'INCOMPLETE_TIMING_CYCLE',
+      );
+    }
+    return appendFeedbackCycle(manifest, { feedbackReceivedAt: startedAt });
+  }
+  if (fixesPass.status === 'complete') {
+    fail(
+      `timing feedback cycle ${latestCycle} has complete fixes but no complete audit`,
+      'INCOMPLETE_TIMING_CYCLE',
+    );
+  }
+  return manifest;
+}
+
+function timingStatusAfterStop(passes) {
+  return passes.every(({ status }) => status === 'complete') ? 'complete' : 'incomplete';
+}
+
+export function startTimingPass(
+  manifest,
+  {
+    passId,
+    now,
+    sessionId,
+  } = {},
+) {
+  requirePassId(passId);
+  const startedAt = timestampFromClock(now, 'started_at');
+  let updated = prepareRecorderManifest(manifest);
+
+  if (passId === 'post-review-audit') {
+    updated = ensureFeedbackCycleForAudit(updated, startedAt);
+  }
+
+  const cycle = OPTIONAL_PASS_IDS.includes(passId)
+    ? latestFollowUpCycle(updated.measurement.timing.passes)
+    : undefined;
+  if (passId === 'post-review-fixes' && cycle === undefined) {
+    fail('post-review-fixes cannot start before a feedback event creates a cycle', 'MISSING_TIMING_CYCLE');
+  }
+
+  const pass = OPTIONAL_PASS_IDS.includes(passId)
+    ? findFollowUpPass(updated.measurement.timing.passes, passId, cycle)
+    : findRequiredPass(updated.measurement.timing.passes, passId);
+  if (!pass) fail(`timing pass ${passId} does not exist`, 'MISSING_TIMING_PASS');
+  if (pass.status === 'in-progress') {
+    fail(`timing pass ${passLabel(pass)} is already running`, 'DUPLICATE_TIMING_START');
+  }
+  if (pass.status !== 'unmeasured') {
+    fail(`timing pass ${passLabel(pass)} is already recorded`, 'TIMING_PASS_ALREADY_RECORDED');
+  }
+  if (passId === 'post-review-fixes') {
+    const auditPass = findFollowUpPass(
+      updated.measurement.timing.passes,
+      'post-review-audit',
+      cycle,
+    );
+    if (!auditPass || auditPass.status !== 'complete') {
+      fail(
+        `timing feedback cycle ${cycle} audit must finish before fixes start`,
+        'TIMING_ORDER',
+      );
+    }
+  }
+
+  pass.status = 'in-progress';
+  pass.started_at = startedAt;
+  pass.session_id = requireSessionId(sessionId);
+  pass.recording_source = TIMING_RECORDER_SOURCE;
+  updated.measurement.timing.status = 'incomplete';
+  validateBatchManifest(updated);
+  return updated;
+}
+
+export function stopTimingPass(
+  manifest,
+  {
+    passId,
+    cycle,
+    now,
+  } = {},
+) {
+  requirePassId(passId);
+  const stopAt = timestampFromClock(now, 'completed_at');
+  const normalizedCycle = OPTIONAL_PASS_IDS.includes(passId) ? parseCycle(cycle) : undefined;
+  const updated = prepareRecorderManifest(manifest);
+  const passes = updated.measurement.timing.passes;
+  const pass = OPTIONAL_PASS_IDS.includes(passId)
+    ? findFollowUpPass(passes, passId, normalizedCycle)
+    : findRequiredPass(passes, passId);
+  if (!pass) {
+    fail(`timing pass ${passId} has no active start`, 'TIMING_NOT_STARTED');
+  }
+  if (pass.status === 'complete') {
+    fail(`timing pass ${passLabel(pass)} has already stopped`, 'DUPLICATE_TIMING_STOP');
+  }
+  if (pass.status !== 'in-progress') {
+    fail(`timing pass ${passLabel(pass)} has no active start`, 'TIMING_NOT_STARTED');
+  }
+  if (pass.recording_source !== TIMING_RECORDER_SOURCE || !pass.session_id) {
+    fail(
+      `timing pass ${passLabel(pass)} was not started by the timing recorder`,
+      'TIMING_PROVENANCE_REQUIRED',
+    );
+  }
+  if (Date.parse(stopAt) < Date.parse(pass.started_at)) {
+    fail(`timing pass ${passLabel(pass)} stop precedes its start`, 'TIMING_ORDER');
+  }
+  const elapsedSeconds = (Date.parse(stopAt) - Date.parse(pass.started_at)) / 1000;
+  pass.status = 'complete';
+  pass.completed_at = stopAt;
+  pass.wall_clock_seconds = elapsedSeconds;
+  pass.editor_seconds = elapsedSeconds;
+  updated.measurement.timing.status = timingStatusAfterStop(passes);
   validateBatchManifest(updated);
   return updated;
 }
@@ -138,19 +375,46 @@ function parseArguments(argv) {
 
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
-  if (!args.manifest || !args.output || !args['feedback-received-at']) {
-    fail('--manifest, --output, and --feedback-received-at are required', 'MISSING_ARGUMENT');
+  if (!args.manifest || !args.output) {
+    fail('--manifest and --output are required', 'MISSING_ARGUMENT');
+  }
+  for (const forbidden of [
+    'feedback-received-at',
+    'started-at',
+    'completed-at',
+    'wall-clock-seconds',
+    'editor-seconds',
+    'now',
+  ]) {
+    if (Object.hasOwn(args, forbidden)) {
+      fail(`--${forbidden} is not accepted; the timing recorder uses its current clock`, 'MANUAL_TIMING_INPUT');
+    }
   }
   const manifestPath = path.resolve(args.manifest);
   const outputPath = path.resolve(args.output);
   const manifest = await readJson(manifestPath);
-  const updated = appendFeedbackCycle(manifest, {
-    feedbackReceivedAt: args['feedback-received-at'],
-    auditNote: args['audit-note'],
-    fixesNote: args['fixes-note'],
-  });
+  const action = args.action ?? 'feedback';
+  let updated;
+  if (action === 'feedback') {
+    updated = appendFeedbackCycle(manifest, {
+      now: new Date(),
+      auditNote: args['audit-note'],
+      fixesNote: args['fixes-note'],
+    });
+  } else if (action === 'start') {
+    if (!args.pass) fail('--pass is required for a start action', 'MISSING_ARGUMENT');
+    updated = startTimingPass(manifest, { passId: args.pass });
+  } else if (action === 'stop') {
+    if (!args.pass) fail('--pass is required for a stop action', 'MISSING_ARGUMENT');
+    updated = stopTimingPass(manifest, { passId: args.pass, cycle: args.cycle });
+  } else {
+    fail(`unknown timing action ${action}`, 'INVALID_ACTION');
+  }
   await writeFile(outputPath, `${JSON.stringify(updated, null, 2)}\n`, 'utf8');
-  console.log(`Recorded feedback cycle ${nextFeedbackCycle(manifest)} for ${path.relative(REPOSITORY_DIRECTORY, manifestPath)}.`);
+  const message = action === 'feedback'
+    ? `Recorded feedback cycle ${nextFeedbackCycle(manifest)}`
+    : `${action === 'start' ? 'Started' : 'Stopped'} timing pass ${args.pass}`;
+  console.log(`${message} for ${path.relative(REPOSITORY_DIRECTORY, manifestPath)}.`);
   return updated;
 }
 

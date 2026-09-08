@@ -56,6 +56,26 @@ const EXPECTED_LADDER = Object.freeze([
   { sequence: 7, target_net_start_increase: 1000, cumulative_start_target: 5000 },
 ]);
 
+const EXPECTED_REPAIR_RESUME = Object.freeze({
+  parent_stage_id: 'm5-8-stage-02-plus-250',
+  composite_net_start_increase: 250,
+  composite_cumulative_start_target: 778,
+  wave_a: {
+    stage_id: 'm5-9a-wave-a-plus-50',
+    target_net_start_increase: 50,
+    cumulative_start_target: 578,
+    previous_stage_id: 'm5-8-stage-01-plus-100',
+    requires_repair_authorization: true,
+  },
+  wave_b: {
+    stage_id: 'm5-9a-wave-b-plus-200',
+    target_net_start_increase: 200,
+    cumulative_start_target: 778,
+    previous_wave_id: 'm5-9a-wave-a-plus-50',
+    requires_repair_authorization: false,
+  },
+});
+
 const EXPECTED_CANONICAL_BASELINE = Object.freeze({
   record_count: 470,
   start_count: 428,
@@ -156,6 +176,12 @@ export function validateExpansionPlan(plan) {
     'M5-3 relation-noise baseline drift',
     'GATE_DRIFT',
   );
+  assertEqual(
+    plan.repair_resume,
+    EXPECTED_REPAIR_RESUME,
+    'repair resume wave contract drift',
+    'REPAIR_RESUME_DRIFT',
+  );
 
   const seenSequences = new Set();
   const seenStageIds = new Set();
@@ -201,6 +227,7 @@ export function validateExpansionPlan(plan) {
       source_artifacts: [...plan.workflow.stage_report.source_artifacts],
     },
     ladder: plan.ladder.map((stage) => ({ ...stage })),
+    repair_resume: structuredClone(plan.repair_resume),
     gate: { ...plan.gate },
   };
 }
@@ -580,8 +607,51 @@ function validateLoadedStageSources(stage, sourceArtifacts) {
   );
 }
 
-async function validatePreviousStageReport(stage, plan, plannedStageIndex, visitedStageIds) {
-  if (plannedStageIndex === 0) {
+function resolveStageContext(stage, plan) {
+  const ladderIndex = plan.ladder.findIndex(({ stage_id: stageId }) => stageId === stage.stage_id);
+  if (ladderIndex !== -1) {
+    return {
+      kind: 'ladder',
+      contract: plan.ladder[ladderIndex],
+      ladderIndex,
+      previousStageId: ladderIndex === 0 ? null : plan.ladder[ladderIndex - 1].stage_id,
+      baseStartCount: ladderIndex === 0
+        ? plan.canonical_baseline.start_count
+        : plan.ladder[ladderIndex - 1].cumulative_start_target,
+    };
+  }
+
+  const parentStageIndex = plan.ladder.findIndex(
+    ({ stage_id: stageId }) => stageId === plan.repair_resume.parent_stage_id,
+  );
+  const { wave_a: waveA, wave_b: waveB } = plan.repair_resume;
+  if (stage.stage_id === waveA.stage_id) {
+    return {
+      kind: 'repair-wave-a',
+      contract: waveA,
+      ladderIndex: parentStageIndex,
+      previousStageId: waveA.previous_stage_id,
+      baseStartCount: plan.ladder[parentStageIndex - 1].cumulative_start_target,
+    };
+  }
+  if (stage.stage_id === waveB.stage_id) {
+    return {
+      kind: 'repair-wave-b',
+      contract: waveB,
+      ladderIndex: parentStageIndex,
+      previousStageId: waveB.previous_wave_id,
+      baseStartCount: waveA.cumulative_start_target,
+    };
+  }
+  assertCondition(
+    false,
+    `stage ${String(stage.stage_id)} is not in the M5-8 ladder or repair resume waves`,
+    'UNKNOWN_STAGE',
+  );
+}
+
+async function validatePreviousStageReport(stage, plan, stageContext, visitedStageIds) {
+  if (!stageContext.previousStageId) {
     assertCondition(
       !stage.input.previous_stage_report,
       `${stage.stage_id} cannot reference a previous stage report`,
@@ -616,14 +686,73 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
   );
   const previousStage = previousArtifact.value;
   validateSchema(previousStage, stageReportSchemaValidator, 'previous_stage', 'previous M5-8 stage report');
-  const expectedPreviousStage = plan.ladder[plannedStageIndex - 1];
   assertEqual(
     previousStage.stage_id,
-    expectedPreviousStage.stage_id,
+    stageContext.previousStageId,
     `${stage.stage_id} previous stage report does not match the ladder`,
     'STAGE_CHAIN_MISMATCH',
   );
-  if (previousStage.gate_status === 'pass') {
+  if (stageContext.kind === 'repair-wave-a') {
+    assertEqual(
+      previousStage.gate_status,
+      'fail',
+      `${stage.stage_id} repair wave must directly resume the failed stage`,
+      'REPAIR_PREVIOUS_STAGE_GATE_FAILURE',
+    );
+    const repairReference = stage.input.repair_authorization;
+    assertCondition(
+      repairReference,
+      `${stage.stage_id} must reference a valid repair authorization`,
+      'MISSING_REPAIR_AUTHORIZATION',
+    );
+    const repairPath = resolveSourcePath(
+      repairReference.path,
+      `${stage.stage_id}.input.repair_authorization.path`,
+    );
+    const repairAuthorization = await loadAndValidateRepairAuthorization({
+      authorizationPath: repairPath,
+      authorizationSha256: repairReference.sha256,
+      failedStage: previousStage,
+      failedStagePath: previousPath,
+      failedStageSha256: previousArtifact.sha256,
+    });
+    assertEqual(
+      stage.target.net_start_increase,
+      repairAuthorization.net_start_increase,
+      `${stage.stage_id} target exceeds the repair authorization wave scope`,
+      'REPAIR_TARGET_MISMATCH',
+    );
+    assertEqual(
+      stage.target.cumulative_start_target,
+      repairAuthorization.cumulative_start_target,
+      `${stage.stage_id} cumulative target does not match the repair authorization`,
+      'REPAIR_TARGET_MISMATCH',
+    );
+  } else if (stageContext.kind === 'repair-wave-b') {
+    assertEqual(
+      previousStage.gate_status,
+      'pass',
+      `${stage.stage_id} requires a passed Wave A report`,
+      'STAGE_CHAIN_GATE_FAILURE',
+    );
+    assertEqual(
+      previousStage.decision,
+      'APPROVE BOUNDED',
+      `${stage.stage_id} previous Wave A was not approved`,
+      'STAGE_CHAIN_GATE_FAILURE',
+    );
+    assertEqual(
+      previousStage.next_stage_authorized,
+      true,
+      `${stage.stage_id} previous Wave A did not authorize Wave B`,
+      'STAGE_CHAIN_PROMOTION_MISMATCH',
+    );
+    assertCondition(
+      !stage.input.repair_authorization,
+      `${stage.stage_id} must not reuse repair authorization after Wave A`,
+      'UNEXPECTED_REPAIR_AUTHORIZATION',
+    );
+  } else if (previousStage.gate_status === 'pass') {
     assertCondition(
       !stage.input.repair_authorization,
       `${stage.stage_id} must not use repair authorization after a passed stage`,
@@ -667,8 +796,8 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
     );
     assertEqual(
       stage.target.cumulative_start_target,
-      578,
-      `${stage.stage_id} does not target the authorized first validation wave`,
+      repairAuthorization.cumulative_start_target,
+      `${stage.stage_id} does not target the authorized repair wave`,
       'REPAIR_TARGET_MISMATCH',
     );
   }
@@ -686,8 +815,8 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
   );
 }
 
-function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArtifacts) {
-  const plannedStage = plan.ladder[plannedStageIndex];
+function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts) {
+  const plannedStage = stageContext.contract;
   validateLoadedStageSources(stage, sourceArtifacts);
 
   assertEqual(
@@ -702,16 +831,14 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
     `${stage.stage_id} cumulative target does not match the plan`,
     'CUMULATIVE_TARGET_MISMATCH',
   );
-  const expectedBaseStartCount = plannedStageIndex === 0
-    ? plan.canonical_baseline.start_count
-    : plan.ladder[plannedStageIndex - 1].cumulative_start_target;
+  const expectedBaseStartCount = stageContext.baseStartCount;
   assertEqual(
     stage.input.canonical_snapshot.start_count,
     expectedBaseStartCount,
     `${stage.stage_id} base count does not match the previous canonical target`,
     'BASE_START_MISMATCH',
   );
-  if (plannedStageIndex === 0) {
+  if (stageContext.ladderIndex === 0) {
     assertEqual(
       stage.input.inventory_revision,
       plan.base_inventory_revision,
@@ -898,13 +1025,11 @@ async function validateExpansionStageInternal(
   );
   const nextVisitedStageIds = new Set(visitedStageIds);
   nextVisitedStageIds.add(stage.stage_id);
-  const plannedStageIndex = plan.ladder.findIndex(({ stage_id: stageId }) => stageId === stage.stage_id);
-  const plannedStage = plannedStageIndex === -1 ? null : plan.ladder[plannedStageIndex];
-  assertCondition(plannedStage, `stage ${String(stage.stage_id)} is not in the M5-8 ladder`, 'UNKNOWN_STAGE');
+  const stageContext = resolveStageContext(stage, plan);
 
   const loadedSources = await loadExpansionStageSources(stage);
-  await validatePreviousStageReport(stage, plan, plannedStageIndex, nextVisitedStageIds);
-  return validateExpansionStageValues(stage, plan, plannedStageIndex, loadedSources);
+  await validatePreviousStageReport(stage, plan, stageContext, nextVisitedStageIds);
+  return validateExpansionStageValues(stage, plan, stageContext, loadedSources);
 }
 
 export async function validateExpansionStage(stage, plan) {

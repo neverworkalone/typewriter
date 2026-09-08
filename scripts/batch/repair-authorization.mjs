@@ -289,6 +289,7 @@ export function validateRepairAuthorization(
     relation_regression: { ...relationSummary },
     target_wave: authorization.authorization.target_wave,
     net_start_increase: authorization.authorization.net_start_increase,
+    cumulative_start_target: authorization.authorization.cumulative_start_target,
     decision: authorization.decision,
   };
 }

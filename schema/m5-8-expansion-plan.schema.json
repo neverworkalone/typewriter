@@ -15,6 +15,7 @@
     "canonical_baseline",
     "workflow",
     "gate",
+    "repair_resume",
     "ladder"
   ],
   "properties": {
@@ -250,7 +251,9 @@
                 "started_at",
                 "completed_at",
                 "wall_clock_seconds",
-                "editor_seconds"
+                "editor_seconds",
+                "session_id",
+                "recording_source"
               ]
             },
             "source_command": {
@@ -312,6 +315,24 @@
         "failure_decision": { "const": "HOLD PROCESS" }
       }
     },
+    "repair_resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parent_stage_id",
+        "composite_net_start_increase",
+        "composite_cumulative_start_target",
+        "wave_a",
+        "wave_b"
+      ],
+      "properties": {
+        "parent_stage_id": { "const": "m5-8-stage-02-plus-250" },
+        "composite_net_start_increase": { "const": 250 },
+        "composite_cumulative_start_target": { "const": 778 },
+        "wave_a": { "$ref": "#/$defs/repairWaveA" },
+        "wave_b": { "$ref": "#/$defs/repairWaveB" }
+      }
+    },
     "ladder": {
       "type": "array",
       "minItems": 7,
@@ -340,6 +361,44 @@
             "minimum": 1
           }
         }
+      }
+    }
+  },
+  "$defs": {
+    "repairWaveA": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "target_net_start_increase",
+        "cumulative_start_target",
+        "previous_stage_id",
+        "requires_repair_authorization"
+      ],
+      "properties": {
+        "stage_id": { "const": "m5-9a-wave-a-plus-50" },
+        "target_net_start_increase": { "const": 50 },
+        "cumulative_start_target": { "const": 578 },
+        "previous_stage_id": { "const": "m5-8-stage-01-plus-100" },
+        "requires_repair_authorization": { "const": true }
+      }
+    },
+    "repairWaveB": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "target_net_start_increase",
+        "cumulative_start_target",
+        "previous_wave_id",
+        "requires_repair_authorization"
+      ],
+      "properties": {
+        "stage_id": { "const": "m5-9a-wave-b-plus-200" },
+        "target_net_start_increase": { "const": 200 },
+        "cumulative_start_target": { "const": 778 },
+        "previous_wave_id": { "const": "m5-9a-wave-a-plus-50" },
+        "requires_repair_authorization": { "const": false }
       }
     }
   }

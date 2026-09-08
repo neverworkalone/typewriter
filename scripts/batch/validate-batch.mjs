@@ -194,17 +194,47 @@ function validateManifestSchema(manifest) {
   fail(`batch manifest schema validation failed: ${detail}`, error ? schemaErrorCode(error) : 'SCHEMA_ERROR');
 }
 
-function validateTimingDuration(pass, label) {
+function validateTimingDuration(pass, label, strict) {
   const hasWallClock = Object.hasOwn(pass, 'wall_clock_seconds');
   const hasEditorSeconds = Object.hasOwn(pass, 'editor_seconds');
   const hasStartedAt = Object.hasOwn(pass, 'started_at');
   const hasCompletedAt = Object.hasOwn(pass, 'completed_at');
+  const hasSessionId = Object.hasOwn(pass, 'session_id');
+  const hasRecordingSource = Object.hasOwn(pass, 'recording_source');
 
   if (pass.status === 'unmeasured') {
-    if (hasStartedAt || hasCompletedAt || hasWallClock || hasEditorSeconds) {
+    if (hasStartedAt || hasCompletedAt || hasWallClock || hasEditorSeconds
+      || hasSessionId || hasRecordingSource) {
       fail(
         `${label} is unmeasured but contains a timing measurement; do not estimate or backfill it`,
         'UNMEASURED_TIMING_VALUE',
+      );
+    }
+    return;
+  }
+
+  if (strict && OPTIONAL_MEASUREMENT_PASS_IDS.includes(pass.id)
+    && (!hasSessionId || !hasRecordingSource)) {
+    fail(
+      `${label} follow-up measurement must be recorded by the timing recorder`,
+      'TIMING_PROVENANCE_REQUIRED',
+    );
+  }
+
+  if (pass.status === 'in-progress') {
+    if (!hasSessionId || !hasRecordingSource) {
+      fail(
+        `${label} must be recorded by the timing recorder and carry a session ID`,
+        'TIMING_PROVENANCE_REQUIRED',
+      );
+    }
+    if (!hasStartedAt) {
+      fail(`${label} in-progress session must record started_at`, 'MISSING_TIMING_TIMESTAMP');
+    }
+    if (hasCompletedAt || hasWallClock || hasEditorSeconds) {
+      fail(
+        `${label} in-progress session cannot contain stop or duration values`,
+        'IN_PROGRESS_TIMING_VALUE',
       );
     }
     return;
@@ -281,7 +311,13 @@ export function validateTimingMeasurement(
     if (Object.hasOwn(pass, 'note')) requireString(pass.note, `${label}.note`);
     const hasStartedAt = Object.hasOwn(pass, 'started_at');
     const hasCompletedAt = Object.hasOwn(pass, 'completed_at');
-    if (hasStartedAt !== hasCompletedAt) {
+    if (pass.status === 'in-progress' && !hasStartedAt) {
+      fail(`${label} in-progress pass must provide started_at`, 'INCOMPLETE_TIMING_TIMESTAMP');
+    }
+    if (pass.status === 'in-progress' && hasCompletedAt) {
+      fail(`${label} in-progress pass cannot provide completed_at`, 'IN_PROGRESS_TIMING_VALUE');
+    }
+    if (pass.status !== 'in-progress' && hasStartedAt !== hasCompletedAt) {
       fail(`${label} must provide both started_at and completed_at when timestamps are recorded`, 'INCOMPLETE_TIMING_TIMESTAMP');
     }
     if (hasStartedAt && Date.parse(pass.completed_at) < Date.parse(pass.started_at)) {
@@ -304,7 +340,7 @@ export function validateTimingMeasurement(
         'INCOMPLETE_TIMING',
       );
     }
-    if (strict) validateTimingDuration(pass, label);
+    if (strict) validateTimingDuration(pass, label, strict);
   }
   const optionalCycles = new Set();
   for (const [id, group] of optionalPassesById) {

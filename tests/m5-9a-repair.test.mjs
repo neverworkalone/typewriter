@@ -1,27 +1,283 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import {
   appendFeedbackCycle,
+  main as timingMain,
   nextFeedbackCycle,
+  startTimingPass,
+  stopTimingPass,
 } from '../scripts/batch/timing.mjs';
 import {
   DEFAULT_RELATION_SCREEN_PATH,
   validateRelationScreen,
 } from '../scripts/batch/relation-screen.mjs';
 import {
+  hashCanonicalDirectory,
   sha256File,
   validateExpansionStage,
 } from '../scripts/batch/validate-m5-8-process.mjs';
+import { createMetricsArtifact } from '../scripts/batch/derive-metrics.mjs';
 import { validateM59Repair } from '../scripts/batch/validate-m5-9-repair.mjs';
 import { validateBatchManifest } from '../scripts/batch/validate-batch.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
+}
+
+let repairWaveFixtureSequence = 0;
+
+function syntheticWaveRecord(id, index) {
+  const lemma = `검증어${index + 1}`;
+  return {
+    id,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: id,
+    lemma,
+    search_forms: [lemma],
+    senses: [{
+      id: `${id}-s1`,
+      pos: 'noun',
+      gloss: 'Self-authored repair-wave validation fixture record.',
+    }],
+  };
+}
+
+async function createRepairWaveStageFixture() {
+  const sequence = repairWaveFixtureSequence += 1;
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-9a-wave-'));
+  const relationDiffPath = path.resolve(
+    'data/batches',
+    `m5-9a-wave-a-test-${process.pid}-${sequence}.json`,
+  );
+  try {
+    const baseCanonical = await readCanonicalRecords();
+    const syntheticRecords = Array.from({ length: 50 }, (_, index) => (
+      syntheticWaveRecord(`w${String(9001 + index)}`, index)
+    ));
+    const canonicalDirectory = path.join(directory, 'canonical');
+    await mkdir(canonicalDirectory, { recursive: true });
+    await writeFile(
+      path.join(canonicalDirectory, 'wave-a.jsonl'),
+      [
+        ...baseCanonical.records.map(({ record }) => record),
+        ...syntheticRecords,
+      ].map((record) => JSON.stringify(record)).join('\n') + '\n',
+      'utf8',
+    );
+    const canonical = await readCanonicalRecords(canonicalDirectory);
+
+    const batchId = `m5-10-wave-a-test-${process.pid}-${sequence}`;
+    const relationDiff = {
+      schema_version: '1',
+      batch_id: batchId,
+      before_count: 0,
+      after_count: 0,
+      events: [],
+      source_note: 'Self-authored repair-wave validation fixture relation diff.',
+    };
+    await writeFile(relationDiffPath, `${JSON.stringify(relationDiff, null, 2)}\n`, 'utf8');
+
+    const manifest = {
+      schema_version: '1',
+      batch_id: batchId,
+      inventory_id: 'm5-core-5k',
+      inventory_revision: 'm5-5',
+      generator: {
+        model_id: 'human-editorial-expansion',
+        tool_version: 'typewriter-m5-9a-wave-test-1',
+        prompt_version: 'm5-9a-wave-test-v1',
+      },
+      generated_at: '2026-09-08T10:00:00Z',
+      review: {
+        status: 'complete',
+        reviewer: 'typewriter-m5-9a-wave-test',
+        completed_at: '2026-09-08T11:00:00Z',
+      },
+      measurement: {
+        schema_version: '1',
+        relation_diff: {
+          artifact: `data/batches/${path.basename(relationDiffPath)}`,
+          sha256: await sha256File(relationDiffPath),
+        },
+        timing: {
+          contract_version: 'm5-9a-v1',
+          status: 'complete',
+          passes: [
+            'target-preparation',
+            'initial-review',
+            'feedback-fixes',
+            'final-audit',
+            'held-rejected',
+          ].map((id, index) => ({
+            id,
+            status: 'complete',
+            started_at: `2026-09-08T10:0${index}:00Z`,
+            completed_at: `2026-09-08T10:0${index}:30Z`,
+            wall_clock_seconds: 30,
+            editor_seconds: 20,
+            session_id: `wave-a-test-${index + 1}`,
+            recording_source: 'timing-recorder-v1',
+          })),
+        },
+        audit: {
+          status: 'complete',
+          independent: true,
+          findings: [],
+        },
+      },
+      records: [
+        ...syntheticRecords.map((record, index) => ({
+          source: 'inventory',
+          inventory_id: `m5-10-wave-a-test-${String(index + 1).padStart(3, '0')}`,
+          role: 'start',
+          decision: 'included',
+          canonical_id: record.id,
+          decision_note: 'Self-authored repair-wave validation fixture decision.',
+        })),
+        {
+          source: 'inventory',
+          inventory_id: 'm5-10-wave-a-test-051',
+          role: 'start',
+          decision: 'deferred',
+          decision_note: 'Self-authored repair-wave validation fixture reserve decision.',
+        },
+        {
+          source: 'inventory',
+          inventory_id: 'm5-10-wave-a-test-052',
+          role: 'start',
+          decision: 'deferred',
+          decision_note: 'Self-authored repair-wave validation fixture reserve decision.',
+        },
+      ],
+    };
+    const manifestPath = path.join(directory, 'manifest.json');
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+    const metrics = createMetricsArtifact({
+      manifest,
+      relationDiff,
+      canonicalRecords: canonical.records,
+      source: {
+        manifest: manifestPath,
+        relation_diff: relationDiffPath,
+        canonical_directory: canonicalDirectory,
+      },
+    });
+    const metricsPath = path.join(directory, 'metrics.json');
+    await writeFile(metricsPath, `${JSON.stringify(metrics, null, 2)}\n`, 'utf8');
+
+    const verification = {
+      schema_version: '1',
+      human_editorial_review_complete: true,
+      canonical_integrity: true,
+      deterministic_sqlite: true,
+      search_product_regression: true,
+    };
+    const verificationPath = path.join(directory, 'verification.json');
+    await writeFile(verificationPath, `${JSON.stringify(verification, null, 2)}\n`, 'utf8');
+
+    const snapshot = {
+      record_count: canonical.records.length,
+      start_count: canonical.records.filter(({ record }) => record.role === 'start').length,
+      reference_only_count: canonical.records.filter(
+        ({ record }) => record.role === 'reference-only',
+      ).length,
+      sense_count: canonical.records.reduce((count, { record }) => count + record.senses.length, 0),
+      relation_count: canonical.records.reduce((count, { record }) => (
+        count + record.senses.reduce(
+          (senseCount, sense) => senseCount + (sense.relations ?? []).length,
+          0,
+        )
+      ), 0),
+      expression_count: canonical.records.filter(
+        ({ record }) => record.record_type === 'expression',
+      ).length,
+    };
+    const failedStage = await readJson('data/batches/m5-8-stage-01-plus-100.json');
+    const stage = {
+      schema_version: '1',
+      stage_id: 'm5-9a-wave-a-plus-50',
+      input: {
+        inventory_revision: 'm5-5',
+        canonical_snapshot: structuredClone(failedStage.actual.canonical_snapshot),
+        previous_stage_report: {
+          path: 'data/batches/m5-8-stage-01-plus-100.json',
+          sha256: await sha256File('data/batches/m5-8-stage-01-plus-100.json'),
+        },
+        repair_authorization: {
+          path: 'data/batches/m5-9a-repair-authorization.json',
+          sha256: await sha256File('data/batches/m5-9a-repair-authorization.json'),
+        },
+      },
+      target: {
+        net_start_increase: 50,
+        cumulative_start_target: 578,
+        candidate_buffer: 2,
+        selected_start_count: 52,
+      },
+      decisions: {
+        included_start_count: 50,
+        corrected_start_count: 0,
+        held_start_count: 0,
+        rejected_start_count: 0,
+        deferred_start_count: 2,
+      },
+      buffer: {
+        available_count: 2,
+        used_count: 0,
+        unused_count: 2,
+      },
+      actual: {
+        canonical_snapshot: snapshot,
+        imported_start_count: 50,
+      },
+      metrics: {
+        correction_rate_of_selected: 0,
+        relation_noise_rate_of_before: 0,
+        total_wall_clock_seconds: metrics.derived.timing.total_wall_clock_seconds,
+        measured_wall_clock_seconds: metrics.derived.timing.measured_wall_clock_seconds,
+        total_editor_seconds: metrics.derived.timing.total_editor_seconds,
+        measured_editor_seconds: metrics.derived.timing.measured_editor_seconds,
+        editor_seconds_per_selected_start: 2,
+        timing_status: metrics.derived.timing.status,
+        unmeasured_timing_pass_count: metrics.derived.timing.unmeasured_passes.length,
+        audit_status: metrics.derived.audit.status,
+        audit_independent: metrics.derived.audit.independent,
+        open_audit_blocker_count: metrics.derived.audit.open_blocker_count,
+        human_editorial_review_complete: verification.human_editorial_review_complete,
+        canonical_integrity: verification.canonical_integrity,
+        deterministic_sqlite: verification.deterministic_sqlite,
+        search_product_regression: verification.search_product_regression,
+      },
+      source: {
+        manifest: manifestPath,
+        manifest_sha256: await sha256File(manifestPath),
+        metrics: metricsPath,
+        metrics_sha256: await sha256File(metricsPath),
+        relation_diff: relationDiffPath,
+        relation_diff_sha256: await sha256File(relationDiffPath),
+        canonical_directory: canonicalDirectory,
+        canonical_sha256: await hashCanonicalDirectory(canonicalDirectory),
+        verification: verificationPath,
+        verification_sha256: await sha256File(verificationPath),
+      },
+      gate_status: 'pass',
+      decision: 'APPROVE BOUNDED',
+      next_stage_created: true,
+      next_stage_authorized: true,
+    };
+    return { directory, relationDiffPath, stage };
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    await rm(relationDiffPath, { force: true });
+    throw error;
+  }
 }
 
 test('M5-9A validates the failed stage, separated relation screen, and first-50 authorization', async () => {
@@ -154,6 +410,80 @@ test('a failed stage cannot enter the next-stage validator without repair author
   );
 });
 
+test('a valid repair reference carries a Wave A +50 stage through the full validator', async () => {
+  const fixture = await createRepairWaveStageFixture();
+  try {
+    const plan = await readJson('data/batches/m5-8-expansion-plan.json');
+    const result = await validateExpansionStage(fixture.stage, plan);
+    assert.deepEqual(result, {
+      stage_id: 'm5-9a-wave-a-plus-50',
+      imported_start_count: 50,
+      candidate_buffer: 2,
+      gate_status: 'pass',
+    });
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+    await rm(fixture.relationDiffPath, { force: true });
+  }
+});
+
+test('Wave A repair authorization rejects missing, retargeted, and mismatched stage inputs', async () => {
+  const fixture = await createRepairWaveStageFixture();
+  try {
+    const plan = await readJson('data/batches/m5-8-expansion-plan.json');
+    const cases = [
+      {
+        name: 'missing authorization',
+        mutate(stage) {
+          delete stage.input.repair_authorization;
+        },
+        code: 'MISSING_REPAIR_AUTHORIZATION',
+      },
+      {
+        name: 'wrong authorization digest',
+        mutate(stage) {
+          stage.input.repair_authorization.sha256 = '0'.repeat(64);
+        },
+        code: 'AUTHORIZATION_DIGEST_MISMATCH',
+      },
+      {
+        name: 'plus-51 target',
+        mutate(stage) {
+          stage.target.net_start_increase = 51;
+        },
+        code: 'REPAIR_TARGET_MISMATCH',
+      },
+      {
+        name: 'plus-250 target',
+        mutate(stage) {
+          stage.target.net_start_increase = 250;
+        },
+        code: 'REPAIR_TARGET_MISMATCH',
+      },
+      {
+        name: 'wrong cumulative target',
+        mutate(stage) {
+          stage.target.cumulative_start_target = 579;
+        },
+        code: 'REPAIR_TARGET_MISMATCH',
+      },
+    ];
+
+    for (const { name, mutate, code } of cases) {
+      const tampered = structuredClone(fixture.stage);
+      mutate(tampered);
+      await assert.rejects(
+        validateExpansionStage(tampered, plan),
+        (error) => error.code === code,
+        `${name} must be rejected by the Wave A contract`,
+      );
+    }
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+    await rm(fixture.relationDiffPath, { force: true });
+  }
+});
+
 test('strict timing derives wall-clock duration, rejects backfill, and generates paired cycles', async () => {
   const manifest = await readJson('data/batches/m5-9-expansion.json');
   const strictManifest = structuredClone(manifest);
@@ -175,6 +505,38 @@ test('strict timing derives wall-clock duration, rejects backfill, and generates
   assert.throws(
     () => validateBatchManifest(backfilled),
     (error) => error.code === 'UNMEASURED_TIMING_VALUE',
+  );
+
+  const manuallyCompleted = structuredClone(strictManifest);
+  const manualPass = manuallyCompleted.measurement.timing.passes.find(
+    ({ id, cycle }) => id === 'post-review-audit' && cycle === 1,
+  );
+  manualPass.status = 'complete';
+  manualPass.started_at = '2026-09-08T08:00:00Z';
+  manualPass.completed_at = '2026-09-08T08:00:10Z';
+  manualPass.wall_clock_seconds = 10;
+  manualPass.editor_seconds = 10;
+  assert.throws(
+    () => validateBatchManifest(manuallyCompleted),
+    (error) => error.code === 'TIMING_PROVENANCE_REQUIRED',
+  );
+
+  const missingCycle = structuredClone(strictManifest);
+  delete missingCycle.measurement.timing.passes.find(
+    ({ id, cycle }) => id === 'post-review-audit' && cycle === 1,
+  ).cycle;
+  assert.throws(
+    () => validateBatchManifest(missingCycle),
+    (error) => error.code === 'TIMING_CYCLE_REQUIRED',
+  );
+
+  const feedbackBeforeReview = structuredClone(strictManifest);
+  for (const pass of feedbackBeforeReview.measurement.timing.passes) {
+    if (pass.cycle === 1) pass.feedback_received_at = '2026-09-08T02:00:00Z';
+  }
+  assert.throws(
+    () => validateBatchManifest(feedbackBeforeReview),
+    (error) => error.code === 'FEEDBACK_BEFORE_REVIEW',
   );
 
   assert.equal(nextFeedbackCycle(manifest), 4);
@@ -205,6 +567,195 @@ test('strict timing derives wall-clock duration, rejects backfill, and generates
     ],
   );
   assert.equal(manifest.measurement.timing.contract_version, undefined);
+});
+
+test('timing recorder owns feedback timestamps and start/stop duration transitions', async () => {
+  const manifest = await readJson('data/batches/m5-9-expansion.json');
+  const withoutFollowUps = structuredClone(manifest);
+  withoutFollowUps.measurement.timing.passes = withoutFollowUps.measurement.timing.passes
+    .filter(({ id }) => !id.startsWith('post-review-'));
+
+  const startedAudit = startTimingPass(withoutFollowUps, {
+    passId: 'post-review-audit',
+    now: '2026-09-08T08:00:00Z',
+    sessionId: 'test-audit-session',
+  });
+  const audit = startedAudit.measurement.timing.passes.find(
+    ({ id }) => id === 'post-review-audit',
+  );
+  assert.deepEqual(
+    {
+      cycle: audit.cycle,
+      feedback_received_at: audit.feedback_received_at,
+      started_at: audit.started_at,
+      status: audit.status,
+      session_id: audit.session_id,
+      recording_source: audit.recording_source,
+    },
+    {
+      cycle: 1,
+      feedback_received_at: '2026-09-08T08:00:00.000Z',
+      started_at: '2026-09-08T08:00:00.000Z',
+      status: 'in-progress',
+      session_id: 'test-audit-session',
+      recording_source: 'timing-recorder-v1',
+    },
+  );
+  assert.throws(
+    () => startTimingPass(startedAudit, {
+      passId: 'post-review-audit',
+      now: '2026-09-08T08:00:01Z',
+      sessionId: 'duplicate-session',
+    }),
+    (error) => error.code === 'DUPLICATE_TIMING_START',
+  );
+  assert.throws(
+    () => stopTimingPass(startedAudit, {
+      passId: 'post-review-audit',
+      now: '2026-09-07T23:59:59Z',
+    }),
+    (error) => error.code === 'TIMING_ORDER',
+  );
+
+  const stoppedAudit = stopTimingPass(startedAudit, {
+    passId: 'post-review-audit',
+    now: '2026-09-08T08:00:12Z',
+  });
+  const completedAudit = stoppedAudit.measurement.timing.passes.find(
+    ({ id }) => id === 'post-review-audit',
+  );
+  assert.equal(completedAudit.status, 'complete');
+  assert.equal(completedAudit.completed_at, '2026-09-08T08:00:12.000Z');
+  assert.equal(completedAudit.wall_clock_seconds, 12);
+  assert.equal(completedAudit.editor_seconds, 12);
+
+  const startedFixes = startTimingPass(stoppedAudit, {
+    passId: 'post-review-fixes',
+    now: '2026-09-08T08:00:13Z',
+    sessionId: 'test-fixes-session',
+  });
+  const stoppedFixes = stopTimingPass(startedFixes, {
+    passId: 'post-review-fixes',
+    now: '2026-09-08T08:00:20Z',
+  });
+  assert.equal(stoppedFixes.measurement.timing.status, 'complete');
+  const startedSecondAudit = startTimingPass(stoppedFixes, {
+    passId: 'post-review-audit',
+    now: '2026-09-08T08:00:21Z',
+    sessionId: 'test-second-audit-session',
+  });
+  const secondAudit = startedSecondAudit.measurement.timing.passes.find(
+    ({ id, cycle }) => id === 'post-review-audit' && cycle === 2,
+  );
+  assert.equal(secondAudit.status, 'in-progress');
+  assert.equal(secondAudit.feedback_received_at, '2026-09-08T08:00:21.000Z');
+  assert.throws(
+    () => stopTimingPass(startedSecondAudit, {
+      passId: 'post-review-audit',
+      now: '2026-09-08T08:00:22Z',
+    }),
+    (error) => error.code === 'AMBIGUOUS_TIMING_PASS',
+  );
+  assert.throws(
+    () => stopTimingPass(stoppedFixes, {
+      passId: 'post-review-fixes',
+      now: '2026-09-08T08:00:21Z',
+    }),
+    (error) => error.code === 'DUPLICATE_TIMING_STOP',
+  );
+
+  assert.throws(
+    () => startTimingPass(withoutFollowUps, {
+      passId: 'post-review-fixes',
+      now: '2026-09-08T08:00:01Z',
+      sessionId: 'missing-cycle-session',
+    }),
+    (error) => error.code === 'MISSING_TIMING_CYCLE',
+  );
+
+  const missingStart = structuredClone(withoutFollowUps);
+  const heldRejected = missingStart.measurement.timing.passes.find(
+    ({ id }) => id === 'held-rejected',
+  );
+  heldRejected.status = 'unmeasured';
+  delete heldRejected.started_at;
+  delete heldRejected.completed_at;
+  delete heldRejected.wall_clock_seconds;
+  delete heldRejected.editor_seconds;
+  assert.throws(
+    () => stopTimingPass(missingStart, {
+      passId: 'held-rejected',
+      now: '2026-09-08T08:00:01Z',
+    }),
+    (error) => error.code === 'TIMING_NOT_STARTED',
+  );
+
+  await assert.rejects(
+    timingMain([
+      '--action=feedback',
+      '--manifest=data/batches/m5-9-expansion.json',
+      '--output=/tmp/typewriter-m5-9a-manual.json',
+      '--feedback-received-at=2026-09-08T08:00:00Z',
+    ]),
+    (error) => error.code === 'MANUAL_TIMING_INPUT',
+  );
+});
+
+test('timing CLI records feedback and session timestamps from its current clock', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-9a-cli-'));
+  try {
+    const manifest = await readJson('data/batches/m5-9-expansion.json');
+    manifest.measurement.timing.passes = manifest.measurement.timing.passes
+      .filter(({ id }) => !id.startsWith('post-review-'));
+    const manifestPath = path.join(directory, 'manifest.json');
+    const feedbackPath = path.join(directory, 'feedback.json');
+    const startedPath = path.join(directory, 'started.json');
+    const stoppedPath = path.join(directory, 'stopped.json');
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+    const beforeFeedback = Date.now();
+    const feedback = await timingMain([
+      '--action=feedback',
+      `--manifest=${manifestPath}`,
+      `--output=${feedbackPath}`,
+    ]);
+    const afterFeedback = Date.now();
+    const feedbackPass = feedback.measurement.timing.passes.find(
+      ({ id, cycle }) => id === 'post-review-audit' && cycle === 1,
+    );
+    assert.ok(Date.parse(feedbackPass.feedback_received_at) >= beforeFeedback - 1000);
+    assert.ok(Date.parse(feedbackPass.feedback_received_at) <= afterFeedback + 1000);
+
+    const started = await timingMain([
+      '--action=start',
+      `--manifest=${feedbackPath}`,
+      `--output=${startedPath}`,
+      '--pass=post-review-audit',
+    ]);
+    const startedPass = started.measurement.timing.passes.find(
+      ({ id, cycle }) => id === 'post-review-audit' && cycle === 1,
+    );
+    assert.equal(startedPass.status, 'in-progress');
+    assert.equal(startedPass.recording_source, 'timing-recorder-v1');
+
+    const stopped = await timingMain([
+      '--action=stop',
+      `--manifest=${startedPath}`,
+      `--output=${stoppedPath}`,
+      '--pass=post-review-audit',
+      '--cycle=1',
+    ]);
+    const stoppedPass = stopped.measurement.timing.passes.find(
+      ({ id, cycle }) => id === 'post-review-audit' && cycle === 1,
+    );
+    assert.equal(stoppedPass.status, 'complete');
+    assert.equal(
+      stoppedPass.wall_clock_seconds,
+      (Date.parse(stoppedPass.completed_at) - Date.parse(stoppedPass.started_at)) / 1000,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('M5-9A repair leaves canonical counts unchanged', async () => {

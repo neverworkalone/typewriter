@@ -330,7 +330,7 @@
           ]
         },
         "status": {
-          "enum": ["complete", "partial", "unmeasured"]
+          "enum": ["complete", "partial", "in-progress", "unmeasured"]
         },
         "cycle": {
           "type": "integer",
@@ -357,6 +357,13 @@
         "editor_seconds": {
           "type": "number",
           "minimum": 0
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "recording_source": {
+          "const": "timing-recorder-v1"
         },
         "note": {
           "type": "string",

@@ -112,7 +112,9 @@
         "started_at",
         "completed_at",
         "wall_clock_seconds",
-        "editor_seconds"
+        "editor_seconds",
+        "session_id",
+        "recording_source"
       ],
       "source_command": "npm run batch:metrics",
       "source_artifacts": ["manifest", "relation_diff", "canonical_directory"],
@@ -140,6 +142,25 @@
     "search_product_regression_required": true,
     "exact_net_start_increase_required": true,
     "failure_decision": "HOLD PROCESS"
+  },
+  "repair_resume": {
+    "parent_stage_id": "m5-8-stage-02-plus-250",
+    "composite_net_start_increase": 250,
+    "composite_cumulative_start_target": 778,
+    "wave_a": {
+      "stage_id": "m5-9a-wave-a-plus-50",
+      "target_net_start_increase": 50,
+      "cumulative_start_target": 578,
+      "previous_stage_id": "m5-8-stage-01-plus-100",
+      "requires_repair_authorization": true
+    },
+    "wave_b": {
+      "stage_id": "m5-9a-wave-b-plus-200",
+      "target_net_start_increase": 200,
+      "cumulative_start_target": 778,
+      "previous_wave_id": "m5-9a-wave-a-plus-50",
+      "requires_repair_authorization": false
+    }
   },
   "ladder": [
     {

@@ -189,11 +189,14 @@ the first 50-start validation wave, 528 → 578. It does not authorize the remai
 200 starts or Wave B. The executable check is npm run batch:repair:check.
 
 For future batches using the repaired timing contract, set
-measurement.timing.contract_version to m5-9a-v1. The validator requires measured
-pass timestamps, derives wall-clock duration from start/stop, rejects timing
-values on unmeasured passes, and requires paired one-based follow-up cycles.
-npm run batch:timing:feedback records a new cycle from the actual feedback event
-without estimating or backfilling work.
+measurement.timing.contract_version to m5-9a-v1. The timing recorder records the
+current feedback event with `npm run batch:timing:feedback`, then records each
+session with `npm run batch:timing:start` and `npm run batch:timing:stop`.
+The stop command derives wall-clock/editor seconds from its start/stop pair;
+the CLI accepts neither user-supplied timestamps nor durations. The validator
+rejects timing values on unmeasured passes and requires paired one-based
+follow-up cycles. A session left in progress or a follow-up with missing work
+keeps the derived timing incomplete; no time is estimated or backfilled.
 
 ## M5-4 draft and review contract
 
