@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-8-process-regression.schema.json",
+  "title": "Typewriter M5-8 process regression fixture",
+  "description": "Self-authored regression metadata proving that M5-7 sense and relation failures do not pass the M5-8 workflow.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "canonical_artifact",
+    "relation_diff_artifact",
+    "sense_cases",
+    "relation_cases"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "fixture_id": { "type": "string", "pattern": "^m5-8-[a-z0-9][a-z0-9-]*$" },
+    "canonical_artifact": {
+      "const": "data/canonical/m5-7-recalibration.jsonl"
+    },
+    "relation_diff_artifact": {
+      "const": "data/batches/m5-7-recalibration-relation-diff.json"
+    },
+    "sense_cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "canonical_id",
+          "expected_sense_count",
+          "expected_pos",
+          "expected_phase"
+        ],
+        "properties": {
+          "case_id": { "type": "string", "pattern": "\\S" },
+          "canonical_id": { "type": "string", "pattern": "^w[0-9]{3,}$" },
+          "expected_sense_count": { "type": "integer", "minimum": 1 },
+          "expected_pos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "enum": ["noun", "adjective", "verb", "expression"]
+            }
+          },
+          "expected_phase": { "const": "sense-review" }
+        }
+      }
+    },
+    "relation_cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "relation_id",
+          "source_sense",
+          "before",
+          "failure_category",
+          "expected_final_relation_count",
+          "expected_phase"
+        ],
+        "properties": {
+          "case_id": { "type": "string", "pattern": "\\S" },
+          "relation_id": { "type": "string", "pattern": "\\S" },
+          "source_sense": { "type": "string", "pattern": "^w[0-9]{3,}-s[0-9]+$" },
+          "before": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "target_sense", "type"],
+            "properties": {
+              "target": { "type": "string", "pattern": "^[wr][0-9]{3,}$" },
+              "target_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+              "type": {
+                "enum": [
+                  "direct",
+                  "near",
+                  "mood",
+                  "scene",
+                  "sensory",
+                  "action",
+                  "association"
+                ]
+              }
+            }
+          },
+          "failure_category": {
+            "enum": [
+              "broad-common-category",
+              "arbitrary-modifier-or-place",
+              "incidental-co-occurrence",
+              "generic-result-or-reaction",
+              "unsupported-cross-sensory",
+              "sense-target-type-error"
+            ]
+          },
+          "expected_final_relation_count": {
+            "const": 0
+          },
+          "expected_phase": { "const": "relation-review" }
+        }
+      }
+    }
+  }
+}

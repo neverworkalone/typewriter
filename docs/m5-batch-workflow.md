@@ -51,6 +51,7 @@ Record decisions are deliberately explicit:
 | `corrected` | required | Reviewed record enters after named fields were corrected. |
 | `held` | forbidden | Review is recorded, but the record is not importable. |
 | `rejected` | forbidden | Review decision excludes the record from this batch. |
+| `deferred` | forbidden | The candidate remains in an unused reserve pool for a later selection. |
 
 `confidence` is not a manifest field. An unknown field such as `confidence` or
 `raw_response` is rejected, because editorial decisions must be represented by a
@@ -234,6 +235,17 @@ count fails the comparison. The event validator also checks that every added,
 retyped, or retargeted `after` tuple exists in the approved canonical batch and
 that every removed or changed `before` tuple is absent from the final batch.
 
+M5-8 stage reports use the same metrics artifact as a source rather than copying
+its values by hand. They additionally bind the report to the raw manifest,
+relation diff, canonical directory, and a small verification artifact through
+path and SHA-256 checks. An unused candidate-buffer slot is represented by a
+`deferred` manifest decision; it is not changed into a false `held` or
+`rejected` decision and does not enter the canonical import count. The metrics
+artifact retains the full `selected_start_count`, adds `processed_start_count`
+when deferred rows exist, and uses `included + corrected + held + rejected`
+as the denominator for correction rate and editor time per start. This keeps an
+unused reserve from making a stage appear cheaper or less correction-heavy.
+
 The historical M5-3 artifact is intentionally marked `timing.status: "incomplete"`:
 its 603-second initial-review wall-clock interval is retained, while feedback,
 final-audit, held/rejected, and editor-time measurements are explicitly unmeasured.
@@ -269,6 +281,18 @@ The batch manifest, relation diff, and derived metrics report all seven timing
 passes, including a measured re-audit and correction pass after PR feedback.
 Its fixed-gate result is `HOLD PROCESS` and is documented in
 [`m5-7-expansion-report.md`](m5-7-expansion-report.md).
+
+### M5-8 process redesign
+
+Before another data batch is selected, apply the staged workflow in
+[`m5-8-editorial-workflow.md`](m5-8-editorial-workflow.md) and validate its
+machine-readable plan with `npm run batch:process:check`. The plan separates a
+human sense/POS checkpoint from optional relation admission, keeps relation
+output empty until sense review is complete, measures actual timing events, and
+defines candidate-buffer arithmetic so `+N` means the exact canonical start
+delta. It fixes the M5-7 sense/POS and relation regressions without adding
+canonical rows or pre-creating later-stage issues. A failed quality, cost, audit,
+or exact-count gate produces `HOLD PROCESS` and blocks the next stage.
 
 The pre-defined expansion decision is documented in
 [`m5-expansion-gate.md`](m5-expansion-gate.md). A later calibration must apply that

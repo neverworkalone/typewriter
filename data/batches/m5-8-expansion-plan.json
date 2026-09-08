@@ -1,0 +1,186 @@
+{
+  "schema_version": "1",
+  "plan_id": "m5-8-editorial-workflow-v1",
+  "issue": 93,
+  "parent_issue": 7,
+  "base_inventory_revision": "m5-5",
+  "count_unit": "canonical-start-net-increase",
+  "canonical_baseline": {
+    "record_count": 470,
+    "start_count": 428,
+    "reference_only_count": 42,
+    "sense_count": 557,
+    "relation_count": 449,
+    "expression_count": 23
+  },
+  "workflow": {
+    "phase_order": [
+      "target-preparation",
+      "sense-review",
+      "relation-review",
+      "independent-audit",
+      "gate-and-promotion"
+    ],
+    "partition": {
+      "unit": "selected-start",
+      "reviewer_checkpoint": "sense-review-complete-before-relation-review",
+      "rework_boundaries": [
+        "sense-review",
+        "relation-review",
+        "independent-audit",
+        "post-review-fixes"
+      ]
+    },
+    "stage_report": {
+      "required_sections": [
+        "input",
+        "target",
+        "decisions",
+        "buffer",
+        "actual",
+        "metrics",
+        "source",
+        "gate"
+      ],
+      "source_artifacts": [
+        "manifest",
+        "metrics",
+        "relation_diff",
+        "canonical_directory",
+        "verification"
+      ]
+    },
+    "sense_review": {
+      "required_checks": [
+        "lemma-pos",
+        "sense-boundaries",
+        "literal-figurative",
+        "sensory-state-action",
+        "expression-boundary"
+      ],
+      "requires_human_editor": true,
+      "must_complete_before_relation_review": true
+    },
+    "relation_review": {
+      "default_output": "empty",
+      "zero_relations_allowed": true,
+      "quota": "none",
+      "candidate_fields": [
+        "source_sense",
+        "target_sense",
+        "direction",
+        "type",
+        "writer_use_note"
+      ],
+      "requires_sense_review": "complete",
+      "requires_human_editor": true,
+      "admission_failure_categories": [
+        "broad-common-category",
+        "arbitrary-modifier-or-place",
+        "incidental-co-occurrence",
+        "generic-result-or-reaction",
+        "unsupported-cross-sensory",
+        "sense-target-type-error"
+      ]
+    },
+    "candidate_buffer": {
+      "allowed": true,
+      "counts_toward_net_start_increase": false,
+      "selection_formula": "target_net_start_increase + candidate_buffer",
+      "import_formula": "imported_start_count = target_net_start_increase",
+      "cumulative_formula": "base_start_count + imported_start_count = cumulative_start_target",
+      "buffer_meaning": "maximum-reserve-pool",
+      "buffer_use_formula": "held_start_count + rejected_start_count <= candidate_buffer",
+      "buffer_unused_formula": "deferred_start_count = candidate_buffer - (held_start_count + rejected_start_count)",
+      "exact_import_required": true
+    },
+    "timing": {
+      "required_passes": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected"
+      ],
+      "optional_follow_up_passes": [
+        "post-review-audit",
+        "post-review-fixes"
+      ],
+      "fields": [
+        "started_at",
+        "completed_at",
+        "wall_clock_seconds",
+        "editor_seconds"
+      ],
+      "source_command": "npm run batch:metrics",
+      "source_artifacts": ["manifest", "relation_diff", "canonical_directory"],
+      "actual_event_required": true,
+      "derived_report_required": true,
+      "measured_from_actual_work": true,
+      "unmeasured_follow_up_decision": "incomplete"
+    },
+    "next_stage_policy": "create-only-after-previous-gate-pass"
+  },
+  "gate": {
+    "all_required": true,
+    "correction_rate_max": 0.5,
+    "relation_noise_rate_max": 0.25,
+    "editor_seconds_per_selected_start_max": 12,
+    "relation_noise_baseline": {
+      "noise_event_count": 51,
+      "before_count": 139
+    },
+    "relation_noise_below_m5_3_baseline_required": true,
+    "unmeasured_timing_passes_max": 0,
+    "open_audit_blockers_max": 0,
+    "canonical_integrity_required": true,
+    "deterministic_sqlite_required": true,
+    "search_product_regression_required": true,
+    "exact_net_start_increase_required": true,
+    "failure_decision": "HOLD PROCESS"
+  },
+  "ladder": [
+    {
+      "sequence": 1,
+      "stage_id": "m5-8-stage-01-plus-100",
+      "target_net_start_increase": 100,
+      "cumulative_start_target": 528
+    },
+    {
+      "sequence": 2,
+      "stage_id": "m5-8-stage-02-plus-250",
+      "target_net_start_increase": 250,
+      "cumulative_start_target": 778
+    },
+    {
+      "sequence": 3,
+      "stage_id": "m5-8-stage-03-plus-500",
+      "target_net_start_increase": 500,
+      "cumulative_start_target": 1278
+    },
+    {
+      "sequence": 4,
+      "stage_id": "m5-8-stage-04-plus-722",
+      "target_net_start_increase": 722,
+      "cumulative_start_target": 2000
+    },
+    {
+      "sequence": 5,
+      "stage_id": "m5-8-stage-05-plus-1000",
+      "target_net_start_increase": 1000,
+      "cumulative_start_target": 3000
+    },
+    {
+      "sequence": 6,
+      "stage_id": "m5-8-stage-06-plus-1000",
+      "target_net_start_increase": 1000,
+      "cumulative_start_target": 4000
+    },
+    {
+      "sequence": 7,
+      "stage_id": "m5-8-stage-07-plus-1000",
+      "target_net_start_increase": 1000,
+      "cumulative_start_target": 5000
+    }
+  ]
+}

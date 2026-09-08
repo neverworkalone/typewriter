@@ -246,6 +246,68 @@ test('M5-5 follow-up timing is a measured lower bound until the missing fix pass
   assert.equal(complete.timing.passes['post-review-fixes'].editor_seconds, 13);
 });
 
+test('deferred reserve candidates remain visible without entering canonical metrics', async () => {
+  const [manifest, relationDiff, canonicalResult] = await Promise.all([
+    readBatchJson('m5-7-recalibration.json'),
+    readBatchJson('m5-7-recalibration-relation-diff.json'),
+    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+  ]);
+  const deferredManifest = structuredClone(manifest);
+  const deferred = deferredManifest.records.find((record) => record.canonical_id === 'w401');
+  assert.ok(deferred);
+  deferred.decision = 'deferred';
+  delete deferred.canonical_id;
+
+  const derived = deriveBatchMetrics({
+    manifest: deferredManifest,
+    relationDiff,
+    canonicalRecords: canonicalResult.records,
+  });
+  assert.equal(derived.decisions.deferred, 1);
+  assert.equal(derived.decisions.importable_start_count, 37);
+  assert.equal(derived.canonical_import.imported_start_count, 37);
+  assert.equal(derived.relation_diff.after_count, 7);
+
+  const reserveManifest = structuredClone(manifest);
+  reserveManifest.records.push(...Array.from({ length: 900 }, (_, index) => ({
+    source: 'inventory',
+    inventory_id: `m5-unused-reserve-${String(index + 1).padStart(3, '0')}`,
+    role: 'start',
+    decision: 'deferred',
+    decision_note: 'Deferred for the unused candidate reserve denominator regression.',
+  })));
+  const [baseline, withUnusedReserve] = await Promise.all([
+    Promise.resolve(deriveBatchMetrics({
+      manifest,
+      relationDiff,
+      canonicalRecords: canonicalResult.records,
+    })),
+    Promise.resolve(deriveBatchMetrics({
+      manifest: reserveManifest,
+      relationDiff,
+      canonicalRecords: canonicalResult.records,
+    })),
+  ]);
+  assert.equal(withUnusedReserve.selection.selected_start_count, 940);
+  assert.equal(withUnusedReserve.selection.processed_start_count, 40);
+  assert.equal(
+    withUnusedReserve.decisions.correction_rate_of_selected,
+    baseline.decisions.correction_rate_of_selected,
+  );
+  assert.equal(
+    withUnusedReserve.decisions.correction_rate_of_selected,
+    15 / 40,
+  );
+  const baselineEditorSecondsPerProcessedStart = baseline.timing.total_editor_seconds
+    / baseline.selection.selected_start_count;
+  const reserveEditorSecondsPerProcessedStart = withUnusedReserve.timing.total_editor_seconds
+    / withUnusedReserve.selection.processed_start_count;
+  const reserveEditorSecondsPerSelectedStart = withUnusedReserve.timing.total_editor_seconds
+    / withUnusedReserve.selection.selected_start_count;
+  assert.equal(reserveEditorSecondsPerProcessedStart, baselineEditorSecondsPerProcessedStart);
+  assert.notEqual(reserveEditorSecondsPerSelectedStart, reserveEditorSecondsPerProcessedStart);
+});
+
 test('relation diff events must match approved canonical tuples', async () => {
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-3-calibration.json'),

@@ -136,7 +136,7 @@
           "pattern": "^[wr][0-9]{3,}$"
         },
         "decision": {
-          "enum": ["included", "held", "rejected", "corrected"]
+          "enum": ["included", "held", "rejected", "corrected", "deferred"]
         },
         "corrected_fields": {
           "type": "array",
@@ -198,7 +198,7 @@
         {
           "if": {
             "properties": {
-              "decision": { "enum": ["held", "rejected"] }
+              "decision": { "enum": ["held", "rejected", "deferred"] }
             }
           },
           "then": {
@@ -218,7 +218,7 @@
         {
           "if": {
             "properties": {
-              "decision": { "enum": ["included", "held", "rejected"] }
+              "decision": { "enum": ["included", "held", "rejected", "deferred"] }
             }
           },
           "then": {

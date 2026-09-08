@@ -54,7 +54,8 @@
       "additionalProperties": false,
       "required": ["selected_start_count"],
       "properties": {
-        "selected_start_count": { "type": "integer", "minimum": 0 }
+        "selected_start_count": { "type": "integer", "minimum": 0 },
+        "processed_start_count": { "type": "integer", "minimum": 0 }
       }
     },
     "decisions": {
@@ -79,6 +80,7 @@
         "corrected": { "type": "integer", "minimum": 0 },
         "held": { "type": "integer", "minimum": 0 },
         "rejected": { "type": "integer", "minimum": 0 },
+        "deferred": { "type": "integer", "minimum": 0 },
         "importable_start_count": { "type": "integer", "minimum": 0 },
         "correction_rate_of_selected": { "$ref": "#/$defs/rate" },
         "correction_rate_of_importable": { "$ref": "#/$defs/rate" },

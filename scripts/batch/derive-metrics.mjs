@@ -109,18 +109,23 @@ function deriveDecisions(manifest) {
     selected.filter((record) => record.decision === decision).length,
   ]));
   const importable = counts.included + counts.corrected;
+  const deferred = selected.filter((record) => record.decision === 'deferred').length;
+  const processed = counts.included + counts.corrected + counts.held + counts.rejected;
+  if (deferred > 0) counts.deferred = deferred;
+  const selection = {
+    selected_start_count: selected.length,
+  };
+  if (deferred > 0) selection.processed_start_count = processed;
   return {
-    selection: {
-      selected_start_count: selected.length,
-    },
+    selection,
     decisions: {
       ...counts,
       importable_start_count: importable,
-      correction_rate_of_selected: ratio(counts.corrected, selected.length),
+      correction_rate_of_selected: ratio(counts.corrected, processed),
       correction_rate_of_importable: ratio(counts.corrected, importable),
-      held_rate: ratio(counts.held, selected.length),
-      rejected_rate: ratio(counts.rejected, selected.length),
-      held_or_rejected_rate: ratio(counts.held + counts.rejected, selected.length),
+      held_rate: ratio(counts.held, processed),
+      rejected_rate: ratio(counts.rejected, processed),
+      held_or_rejected_rate: ratio(counts.held + counts.rejected, processed),
       sense_field_correction_count: selected.filter(
         (record) => record.corrected_fields?.includes('senses'),
       ).length,
