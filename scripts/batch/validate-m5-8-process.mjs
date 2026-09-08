@@ -64,6 +64,11 @@ const EXPECTED_CANONICAL_BASELINE = Object.freeze({
   expression_count: 23,
 });
 
+function isM58BaselineRecord({ record }) {
+  return record.role === 'reference-only'
+    || (record.id.startsWith('w') && Number(record.id.slice(1)) <= 428);
+}
+
 const EXPECTED_PHASE_ORDER = Object.freeze([
   'target-preparation',
   'sense-review',
@@ -1029,7 +1034,7 @@ export async function main(argv = process.argv.slice(2)) {
   const result = validateM58Process({
     plan,
     fixture,
-    canonicalRecordInfos: canonical.records,
+    canonicalRecordInfos: canonical.records.filter(isM58BaselineRecord),
     relationDiff,
   });
   console.log(
