@@ -63,27 +63,32 @@ noise was corrected. The actual A2 precondition is the separate noncanonical
 [`tests/fixtures/m5-10a-relation-generation-calibration.json`](../tests/fixtures/m5-10a-relation-generation-calibration.json).
 
 The deterministic generator in `scripts/batch/relation-generation.mjs` consumes
-that fixture and the current canonical senses. The fixture contains no expected
-action, generation basis, suppression label, or writer-use note. The generator
-judges only the observed source/target sense content, POS, relation type, and
-direction. The source-bound result accounts for all 20 unlabelled requests as
-13 raw proposals and 7 upstream suppressions; no suppressed request is counted
-as a proposal, and the raw-proposal denominator contains all proposals that
-were actually generated. None of the calibration cases is imported into
-canonical data, and every candidate tuple is checked to be absent from the
-canonical relation set and the prior Wave A/calibration selections.
+that fixture and the current canonical senses. The fixture contains only a
+source sense and its preflight evidence: it has no target, relation type,
+direction, expected action, generation basis, suppression label, or writer-use
+oracle. The generator independently selects one target and one relation type
+from actual gloss content and separate contracts for `direct`, `near`, `mood`,
+`scene`, `sensory`, `action`, and `association`. The source-bound result
+accounts for all 20 unlabelled requests as 20 raw proposals and zero upstream
+suppression; the denominator therefore cannot hide a pre-labelled bad tuple.
+None of the calibration cases is imported into canonical data, every generated
+target remains inside the pre-existing scope, and every generated tuple is
+checked to be absent from the canonical relation set.
 
 The fixed gate requires all 20 calibration cases to have record-specific,
 non-boilerplate boundary evidence. Checked evidence carries the observed
 canonical gloss and a meaning/use note; `not-applicable` evidence carries an
 explicit reason and no sense claim. The full audit reviews all 20 requests and
-all 13 raw proposals, recomputes noise, correction rate, and admission counts,
-and leaves zero open blockers. Editor time is read only from the separate
-`timing-recorder-v1` session artifact, whose generated UUID sessions, system
-clock, durations, command provenance, and proof digest are validated; handwritten
-timestamps or sessions fail. The measured time is at or below 12 editor seconds
-per processed start, with matching fixture/canonical/plan/timing digests. Run it
-before the process and repair checks:
+all 20 raw proposals, recomputes noise, correction rate, and admission counts,
+and leaves zero open blockers. The audit records a distinct auditor identity,
+audit timestamp, UUID session, and digest over the current fixture/output/timing
+inputs; `independent: true` alone is not accepted. Editor time is read only from
+the separate `timing-recorder-v1` session artifact. Each pass must be explicitly
+started and stopped through the recorder CLI, which persists an in-progress
+session; automatic waits, handwritten timestamps, and backfilled sessions fail.
+The measured time is at or below 12 editor seconds per processed start, with
+matching fixture/canonical/plan/timing digests. Run the validator before the
+process and repair checks:
 
 ```sh
 npm run batch:m5-10a:calibration:check
@@ -116,8 +121,11 @@ historical classification is not used as the calibration success metric.
 The M5-10A timing contract is `m5-10a-v1`. It measures the five required human
 editorial passes—target preparation, initial review, feedback fixes, final audit,
 and held/rejected decisions—and each recorded post-review audit/fixes pair.
-The timing recorder derives duration from its recorded start/stop timestamps and
-requires feedback timestamps for follow-up cycles.
+For the calibration artifact, run `batch:m5-10a:calibration:timing` with
+`--action=start|stop`, `--pass=<required pass>`, and persisted `--input` /
+`--output` session paths. The recorder derives duration from explicit current-clock
+start/stop events and emits the final artifact only after all five passes have
+been stopped. It still requires feedback timestamps for follow-up cycles.
 
 Mechanical count, digest, import, tuple, canonical, SQLite, search, and package
 checks are verification evidence, not editorial work. They are explicitly

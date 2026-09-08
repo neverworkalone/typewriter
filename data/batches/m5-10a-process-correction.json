@@ -184,22 +184,22 @@
     }
   },
   "candidate_generation": {
-    "process_revision": "m5-10a-relation-generation-v2",
+    "process_revision": "m5-10a-relation-generation-v3",
     "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
-    "calibration_artifact_sha256": "b5e924776d039a5ba1fd87baaabb319c755d7c5c3c73ebeadb54b546319dc55a",
+    "calibration_artifact_sha256": "b3defcb065ba6485f97705eb0b4ddc7e037839bbbb53c02f2a8a66ba6076c3d8",
     "calibration_case_count": 20,
     "request_count": 20,
-    "raw_proposal_count": 13,
-    "generation_suppressed_count": 7,
+    "raw_proposal_count": 20,
+    "generation_suppressed_count": 0,
     "pre_screen_noise_count": 0,
     "noise_rate_of_raw_proposals": 0,
-    "editor_seconds_per_processed_start": 0.25055,
+    "editor_seconds_per_processed_start": 1.3569,
     "correction_rate": 0,
     "unmeasured_pass_count": 0,
     "preflight_case_count": 20,
     "preflight_evidence_case_count": 20,
     "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
-    "timing_source_sha256": "6d25ec47a23592a6e39c1a355aa4937e013c34ce970d2543717b9122b8bb46b4",
+    "timing_source_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37",
     "fixed_gate_status": "passed"
   },
   "timing_boundary": {
@@ -247,9 +247,9 @@
     "relation_regression_screen": "data/batches/m5-9a-relation-screen.json",
     "relation_regression_screen_sha256": "7e696f9be1e71a490bf2785035530ee079771c62498e6e7436a52184f8706973",
     "relation_calibration": "data/batches/m5-10a-relation-calibration.json",
-    "relation_calibration_sha256": "b5e924776d039a5ba1fd87baaabb319c755d7c5c3c73ebeadb54b546319dc55a",
+    "relation_calibration_sha256": "b3defcb065ba6485f97705eb0b4ddc7e037839bbbb53c02f2a8a66ba6076c3d8",
     "relation_calibration_fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
-    "relation_calibration_fixture_sha256": "bff8932ef0692a70ec39fa57f1acd586d932e347f9a8a2a00a8b538effc4afa5",
+    "relation_calibration_fixture_sha256": "9ceb1d9c4da6bcc3812a1ad3556f194652f8ec79ac80437e8caff9779e2462bf",
     "sense_regression_fixture": "tests/fixtures/m5-10-wave-a-sense-regressions.json",
     "sense_regression_fixture_sha256": "ec60907c8116771a63389274778b9d9c2cdda074ec1a3dd62d89cacc4ab87fc4",
     "canonical_directory": "data/canonical",
@@ -257,7 +257,7 @@
     "wave_a_verification": "data/batches/m5-10-wave-a-verification.json",
     "wave_a_verification_sha256": "1a1efa528d8bcc57b5206ff77f48a2fe2e97098d88686ef9c63482bac496bc34",
     "relation_calibration_timing": "data/batches/m5-10a-relation-calibration-timing.json",
-    "relation_calibration_timing_sha256": "6d25ec47a23592a6e39c1a355aa4937e013c34ce970d2543717b9122b8bb46b4"
+    "relation_calibration_timing_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37"
   },
   "verification": {
     "artifact": "data/batches/m5-10a-process-verification.json",

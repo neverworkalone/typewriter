@@ -6,6 +6,10 @@ import test from 'node:test';
 
 import {
   appendFeedbackCycle,
+  createCalibrationTimingSession,
+  finalizeCalibrationTimingRecording,
+  startCalibrationTimingPass,
+  stopCalibrationTimingPass,
   startTimingPass,
 } from '../scripts/batch/timing.mjs';
 import {
@@ -23,7 +27,10 @@ import {
   validateM5A10ACalibration,
 } from '../scripts/batch/validate-m5-10a-calibration.mjs';
 import { verifyCalibrationTimingRecording } from '../scripts/batch/timing.mjs';
-import { generateRelationCandidates } from '../scripts/batch/relation-generation.mjs';
+import {
+  classifyRelationRequest,
+  generateRelationCandidates,
+} from '../scripts/batch/relation-generation.mjs';
 import {
   validateM5ARepair,
 } from '../scripts/batch/validate-m5-10a-repair.mjs';
@@ -98,13 +105,13 @@ test('M5-10A process correction and repair authorization remain source-bound', a
   });
   assert.equal(process.relation_pre_screen.pre_screen_rejected_count, 12);
   assert.deepEqual(process.candidate_generation, {
-    process_revision: 'm5-10a-relation-generation-v2',
+    process_revision: 'm5-10a-relation-generation-v3',
     calibration_artifact: 'data/batches/m5-10a-relation-calibration.json',
     calibration_artifact_sha256: process.candidate_generation.calibration_artifact_sha256,
     calibration_case_count: 20,
     request_count: 20,
-    raw_proposal_count: 13,
-    generation_suppressed_count: 7,
+    raw_proposal_count: 20,
+    generation_suppressed_count: 0,
     pre_screen_noise_count: 0,
     noise_rate_of_raw_proposals: 0,
     editor_seconds_per_processed_start: process.candidate_generation.editor_seconds_per_processed_start,
@@ -238,10 +245,10 @@ test('M5-10A calibration is an upstream fixed gate, not historical classificatio
   const calibration = await validateM5A10ACalibration({ artifactPath: DEFAULT_CALIBRATION_ARTIFACT_PATH });
   assert.equal(calibration.case_count, 20);
   assert.equal(calibration.request_count, 20);
-  assert.equal(calibration.raw_proposal_count, 13);
-  assert.equal(calibration.generation_suppressed_count, 7);
-  assert.equal(calibration.generated_candidate_count, 13);
-  assert.equal(calibration.suppressed_candidate_count, 7);
+  assert.equal(calibration.raw_proposal_count, 20);
+  assert.equal(calibration.generation_suppressed_count, 0);
+  assert.equal(calibration.generated_candidate_count, 20);
+  assert.equal(calibration.suppressed_candidate_count, 0);
   assert.equal(calibration.pre_screen_noise_count, 0);
   assert.equal(calibration.noise_rate_of_raw_proposals, 0);
   assert.ok(calibration.editor_seconds_per_processed_start > 0);
@@ -284,27 +291,84 @@ test('M5-10A calibration rejects oracle labels, unseen negatives, and canonical 
     calibrationCase.expected_action = 'emit';
     calibrationCase.generation_basis = 'sense-anchored-writer-use';
     calibrationCase.expected_suppression_category = 'incidental-co-occurrence';
+    calibrationCase.relation = {
+      target: 'w999',
+      target_sense: 'w999-s1',
+      type: 'direct',
+    };
+    calibrationCase.direction = {
+      from: 'w999-s1',
+      to: 'w998-s1',
+    };
   }
   const shuffled = structuredClone(fixture);
   shuffled.cases.reverse();
   assert.deepEqual(stable(generateRelationCandidates(labeled, canonical.records)), stable(baseline));
   assert.deepEqual(stable(generateRelationCandidates(shuffled, canonical.records)), stable(baseline));
-  assert.deepEqual(baseline.suppressed_candidates, [
-    { case_id: 'm5-10a-cal-014', category: 'incidental-co-occurrence' },
-    { case_id: 'm5-10a-cal-015', category: 'generic-result-or-reaction' },
-    { case_id: 'm5-10a-cal-016', category: 'arbitrary-modifier-or-place' },
-    { case_id: 'm5-10a-cal-017', category: 'broad-common-category' },
-    { case_id: 'm5-10a-cal-018', category: 'unsupported-cross-sensory' },
-    { case_id: 'm5-10a-cal-019', category: 'sense-target-type-error' },
-    { case_id: 'm5-10a-cal-020', category: 'direction-mismatch' },
-  ]);
+  assert.equal(baseline.generated_candidates.length, 20);
+  assert.deepEqual(baseline.suppressed_candidates, []);
   const canonicalTuples = new Set(canonical.records.flatMap(({ record }) => record.senses.flatMap((sense) => (
     (sense.relations ?? []).map((relation) => `${sense.id}\u0000${relation.target_sense}\u0000${relation.type}`)
   ))));
-  for (const calibrationCase of fixture.cases) {
-    const tuple = `${calibrationCase.source_sense}\u0000${calibrationCase.relation.target_sense}\u0000${calibrationCase.relation.type}`;
-    assert.equal(canonicalTuples.has(tuple), false, `${calibrationCase.case_id} must be noncanonical`);
+  for (const candidate of baseline.generated_candidates) {
+    const tuple = `${candidate.source_sense}\u0000${candidate.relation.target_sense}\u0000${candidate.relation.type}`;
+    assert.equal(canonicalTuples.has(tuple), false, `${candidate.case_id} must be noncanonical`);
   }
+});
+
+test('M5-10A relation contracts classify type independently from actual gloss content', async () => {
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const request = (sourceSense, target, type, direction = { from: sourceSense, to: target.target_sense }) => ({
+    source_sense: sourceSense,
+    relation: { ...target },
+    direction,
+  });
+  const unrelated = { target: 'w026', target_sense: 'w026-s1' };
+  assert.equal(
+    classifyRelationRequest(request('w015-s1', { ...unrelated, type: 'direct' }), canonical.records),
+    'incidental-co-occurrence',
+  );
+  assert.equal(
+    classifyRelationRequest(request('w015-s1', { ...unrelated, type: 'near' }), canonical.records),
+    'incidental-co-occurrence',
+  );
+
+  const sharedPair = { target: 'w021', target_sense: 'w021-s1' };
+  assert.equal(
+    classifyRelationRequest(request('w003-s1', { ...sharedPair, type: 'direct' }), canonical.records),
+    'incidental-co-occurrence',
+  );
+  assert.equal(
+    classifyRelationRequest(request('w003-s1', { ...sharedPair, type: 'near' }), canonical.records),
+    undefined,
+  );
+  assert.equal(
+    classifyRelationRequest(request('w003-s1', { ...sharedPair, type: 'mood' }), canonical.records),
+    undefined,
+  );
+
+  const unseenBroadRecord = {
+    id: 'w998',
+    lemma: '즐거움',
+    role: 'start',
+    record_type: 'entry',
+    senses: [{
+      id: 'w998-s1',
+      pos: 'noun',
+      gloss: '기분이나 감정을 포괄하는 일반적인 즐거운 마음',
+    }],
+  };
+  assert.equal(
+    classifyRelationRequest(
+      request('w003-s1', { target: 'w998', target_sense: 'w998-s1', type: 'mood' }),
+      [...canonical.records, unseenBroadRecord],
+    ),
+    'broad-common-category',
+  );
+  assert.equal(
+    classifyRelationRequest(request('w091-s1', { target: 'w061', target_sense: 'w061-s1', type: 'sensory' }), canonical.records),
+    'unsupported-cross-sensory',
+  );
 });
 
 test('M5-10A calibration rejects noise, time, audit, digest, preflight, and timing provenance tampering', async () => {
@@ -349,6 +413,45 @@ test('M5-10A calibration rejects regular boilerplate in sense evidence', async (
   assertErrorCode(
     () => validateCalibrationFixtureEvidence(mutated, canonical.records),
     'CALIBRATION_GENERIC_EVIDENCE',
+  );
+
+  const sameCaseCopy = structuredClone(fixture);
+  const sameCase = sameCaseCopy.cases[0];
+  const physical = sameCase.preflight.boundary_checks['physical-figurative'];
+  const homonym = sameCase.preflight.boundary_checks['homonym-pos'];
+  const copiedUse = physical.observed_use;
+  const originalHomonymUse = homonym.observed_use;
+  homonym.observed_use = copiedUse;
+  homonym.rationale = homonym.rationale.replace(
+    originalHomonymUse,
+    copiedUse,
+  );
+  homonym.source_note = homonym.source_note.replace(
+    originalHomonymUse,
+    copiedUse,
+  );
+  assertErrorCode(
+    () => validateCalibrationFixtureEvidence(sameCaseCopy, canonical.records),
+    'CALIBRATION_GENERIC_EVIDENCE',
+  );
+});
+
+test('calibration timing requires explicit persisted start/stop events', () => {
+  const session = createCalibrationTimingSession({ processedStartCount: 20 });
+  assert.equal(session.passes.filter(({ status }) => status === 'unmeasured').length, 5);
+  session.passes[0] = startCalibrationTimingPass({
+    passId: 'target-preparation',
+    now: '2026-09-09T00:00:00.000Z',
+  });
+  assert.equal(session.passes.filter(({ status }) => status === 'in-progress').length, 1);
+  assert.equal(session.passes.slice(1).every(({ status }) => status === 'unmeasured'), true);
+  session.passes[0] = stopCalibrationTimingPass(session.passes[0], {
+    now: '2026-09-09T00:00:01.000Z',
+  });
+  assert.equal(session.passes[0].editor_seconds, 1);
+  assert.throws(
+    () => finalizeCalibrationTimingRecording(session),
+    (error) => error?.code === 'TIMING_PROVENANCE_REQUIRED',
   );
 });
 

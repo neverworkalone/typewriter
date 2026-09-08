@@ -139,13 +139,13 @@
         "fixed_gate_status"
       ],
       "properties": {
-        "process_revision": { "const": "m5-10a-relation-generation-v2" },
+        "process_revision": { "const": "m5-10a-relation-generation-v3" },
         "calibration_artifact": { "const": "data/batches/m5-10a-relation-calibration.json" },
         "calibration_artifact_sha256": { "$ref": "#/$defs/sha256" },
         "calibration_case_count": { "const": 20 },
         "request_count": { "const": 20 },
-        "raw_proposal_count": { "const": 13 },
-        "generation_suppressed_count": { "const": 7 },
+        "raw_proposal_count": { "const": 20 },
+        "generation_suppressed_count": { "const": 0 },
         "pre_screen_noise_count": { "const": 0 },
         "noise_rate_of_raw_proposals": { "const": 0 },
         "editor_seconds_per_processed_start": { "type": "number", "minimum": 0, "maximum": 12 },

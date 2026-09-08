@@ -1,39 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration.schema.json",
-  "title": "Typewriter M5-10A relation-generation calibration result",
-  "description": "Source-bound output, human audit, and fixed-gate evidence for twenty unlabelled, noncanonical relation requests.",
+  "title": "Typewriter M5-10A source-only relation-generation calibration result",
+  "description": "Digest-bound output for twenty source-only requests. The generator selects every target and relation type from canonical sense content; an independent audit covers every generated proposal.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "artifact_id",
-    "process_revision",
-    "canonical_mutation",
-    "source",
-    "canonical_snapshot",
-    "calibration",
-    "raw_proposals",
-    "generation_suppressions"
-  ],
+  "required": ["schema_version", "artifact_id", "process_revision", "canonical_mutation", "source", "canonical_snapshot", "calibration", "raw_proposals", "generation_suppressions"],
   "properties": {
     "schema_version": { "const": "1" },
     "artifact_id": { "type": "string", "pattern": "^m5-10a-relation-calibration-[0-9]{8}$" },
-    "process_revision": { "const": "m5-10a-relation-generation-v2" },
+    "process_revision": { "const": "m5-10a-relation-generation-v3" },
     "canonical_mutation": { "const": false },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "fixture",
-        "fixture_sha256",
-        "canonical_directory",
-        "canonical_directory_sha256",
-        "expansion_plan",
-        "expansion_plan_sha256",
-        "relation_calibration_timing",
-        "relation_calibration_timing_sha256"
-      ],
+      "required": ["fixture", "fixture_sha256", "canonical_directory", "canonical_directory_sha256", "expansion_plan", "expansion_plan_sha256", "relation_calibration_timing", "relation_calibration_timing_sha256"],
       "properties": {
         "fixture": { "const": "tests/fixtures/m5-10a-relation-generation-calibration.json" },
         "fixture_sha256": { "$ref": "#/$defs/sha256" },
@@ -61,14 +42,13 @@
     },
     "raw_proposals": {
       "type": "array",
-      "minItems": 13,
-      "maxItems": 13,
+      "minItems": 20,
+      "maxItems": 20,
       "items": { "$ref": "#/$defs/generatedCandidate" }
     },
     "generation_suppressions": {
       "type": "array",
-      "minItems": 7,
-      "maxItems": 7,
+      "maxItems": 0,
       "items": { "$ref": "#/$defs/suppressedCandidate" }
     }
   },
@@ -97,20 +77,19 @@
         "evidence_case_count": { "const": 20 },
         "unresolved_boundary_count": { "const": 0 },
         "duplicate_evidence_count": { "const": 0 },
-        "checked_boundary_counts": { "$ref": "#/$defs/boundaryCounts" }
-      }
-    },
-    "boundaryCounts": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["physical-figurative", "homonym-pos", "sensory-emotion-state-action", "directional-symmetry", "compound-spaced-phrase", "word-idiom"],
-      "properties": {
-        "physical-figurative": { "type": "integer", "minimum": 1 },
-        "homonym-pos": { "type": "integer", "minimum": 1 },
-        "sensory-emotion-state-action": { "type": "integer", "minimum": 1 },
-        "directional-symmetry": { "type": "integer", "minimum": 1 },
-        "compound-spaced-phrase": { "type": "integer", "minimum": 1 },
-        "word-idiom": { "type": "integer", "minimum": 1 }
+        "checked_boundary_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["physical-figurative", "homonym-pos", "sensory-emotion-state-action", "directional-symmetry", "compound-spaced-phrase", "word-idiom"],
+          "properties": {
+            "physical-figurative": { "type": "integer", "minimum": 1 },
+            "homonym-pos": { "type": "integer", "minimum": 1 },
+            "sensory-emotion-state-action": { "type": "integer", "minimum": 1 },
+            "directional-symmetry": { "type": "integer", "minimum": 1 },
+            "compound-spaced-phrase": { "type": "integer", "minimum": 1 },
+            "word-idiom": { "type": "integer", "minimum": 1 }
+          }
+        }
       }
     },
     "generationResult": {
@@ -119,24 +98,11 @@
       "required": ["request_count", "raw_proposal_count", "generation_suppressed_count", "pre_screen_noise_count", "noise_rate_of_raw_proposals", "suppressed_category_counts"],
       "properties": {
         "request_count": { "const": 20 },
-        "raw_proposal_count": { "const": 13 },
-        "generation_suppressed_count": { "const": 7 },
+        "raw_proposal_count": { "const": 20 },
+        "generation_suppressed_count": { "const": 0 },
         "pre_screen_noise_count": { "const": 0 },
         "noise_rate_of_raw_proposals": { "const": 0 },
-        "suppressed_category_counts": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["incidental-co-occurrence", "generic-result-or-reaction", "arbitrary-modifier-or-place", "broad-common-category", "unsupported-cross-sensory", "sense-target-type-error", "direction-mismatch"],
-          "properties": {
-            "incidental-co-occurrence": { "const": 1 },
-            "generic-result-or-reaction": { "const": 1 },
-            "arbitrary-modifier-or-place": { "const": 1 },
-            "broad-common-category": { "const": 1 },
-            "unsupported-cross-sensory": { "const": 1 },
-            "sense-target-type-error": { "const": 1 },
-            "direction-mismatch": { "const": 1 }
-          }
-        }
+        "suppressed_category_counts": { "type": "object", "additionalProperties": false, "maxProperties": 0 }
       }
     },
     "timingResult": {
@@ -157,41 +123,50 @@
     "audit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "independent", "reviewed_case_count", "reviewed_raw_proposal_count", "human_admitted_count", "human_rejected_count", "correction_count", "correction_rate", "confirmed_noise_count", "open_blocker_count", "case_reviews", "findings"],
+      "required": ["status", "independent", "generator_id", "initial_review_id", "auditor_id", "audited_at", "audit_session_id", "audit_input_sha256", "reviewed_case_count", "reviewed_raw_proposal_count", "human_admitted_count", "human_rejected_count", "correction_count", "correction_rate", "confirmed_noise_count", "open_blocker_count", "case_reviews", "findings"],
       "properties": {
         "status": { "const": "complete" },
         "independent": { "const": true },
+        "generator_id": { "const": "m5-10a-relation-generation-v3" },
+        "initial_review_id": { "const": "m5-10a-initial-review" },
+        "auditor_id": { "type": "string", "pattern": "\\S" },
+        "audited_at": { "type": "string", "format": "date-time" },
+        "audit_session_id": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+        "audit_input_sha256": { "$ref": "#/$defs/sha256" },
         "reviewed_case_count": { "const": 20 },
-        "reviewed_raw_proposal_count": { "const": 13 },
-        "human_admitted_count": { "const": 13 },
+        "reviewed_raw_proposal_count": { "const": 20 },
+        "human_admitted_count": { "const": 20 },
         "human_rejected_count": { "const": 0 },
         "correction_count": { "const": 0 },
         "correction_rate": { "const": 0 },
         "confirmed_noise_count": { "const": 0 },
         "open_blocker_count": { "const": 0 },
-        "case_reviews": {
-          "type": "array",
-          "minItems": 20,
-          "maxItems": 20,
-          "items": { "$ref": "#/$defs/caseReview" }
-        },
-        "findings": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/$defs/finding" }
-        }
+        "case_reviews": { "type": "array", "minItems": 20, "maxItems": 20, "items": { "$ref": "#/$defs/caseReview" } },
+        "findings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/finding" } }
       }
     },
     "caseReview": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["case_id", "outcome", "admission", "noise_assessment", "correction", "note"],
+      "required": ["case_id", "source_sense", "target_sense", "relation_type", "direction", "outcome", "admission", "noise_assessment", "correction", "note"],
       "properties": {
         "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
-        "outcome": { "enum": ["raw-proposal", "generation-suppressed"] },
-        "admission": { "enum": ["admitted", "not-applicable", "rejected"] },
-        "noise_assessment": { "enum": ["clean", "noise", "not-a-proposal"] },
-        "correction": { "enum": ["none", "corrected"] },
+        "source_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+        "target_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+        "relation_type": { "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"] },
+        "direction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+            "to": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" }
+          }
+        },
+        "outcome": { "const": "raw-proposal" },
+        "admission": { "const": "admitted" },
+        "noise_assessment": { "const": "clean" },
+        "correction": { "const": "none" },
         "note": { "type": "string", "pattern": "\\S" }
       }
     },

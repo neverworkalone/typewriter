@@ -129,7 +129,13 @@ npm run batch:import -- \
 
 npm run batch:process:check
 npm run batch:repair:check
-npm run batch:m5-10a:calibration:timing
+# Start and stop each calibration pass explicitly; the command persists its session.
+npm run batch:m5-10a:calibration:timing -- \
+  --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json
+npm run batch:m5-10a:calibration:timing -- \
+  --action=stop --pass=target-preparation \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
 npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 npm run batch:m5-10a:repair:check

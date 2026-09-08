@@ -128,6 +128,33 @@ function finishCalibrationTimingRecording({
   };
 }
 
+function requireCalibrationTimingDenominator(processedStartCount) {
+  if (!Number.isInteger(processedStartCount) || processedStartCount < 1) {
+    fail('processedStartCount must be a positive integer', 'INVALID_TIMING_DENOMINATOR');
+  }
+}
+
+export function createCalibrationTimingSession({
+  processedStartCount = 20,
+  recorderCommand = CALIBRATION_TIMING_RECORDING_COMMAND,
+} = {}) {
+  requireCalibrationTimingDenominator(processedStartCount);
+  if (recorderCommand !== CALIBRATION_TIMING_RECORDING_COMMAND) {
+    fail('calibration timing must be recorded by the calibration timing command', 'TIMING_PROVENANCE_REQUIRED');
+  }
+  return {
+    schema_version: '1',
+    recorder_version: CALIBRATION_TIMING_RECORDER_VERSION,
+    recording_source: CALIBRATION_TIMING_RECORDER_VERSION,
+    recorder_command: recorderCommand,
+    session_id: randomUUID(),
+    clock_source: 'system-clock',
+    processed_start_count: processedStartCount,
+    status: 'in-progress',
+    passes: CALIBRATION_TIMING_PASS_IDS.map((id) => ({ id, status: 'unmeasured' })),
+  };
+}
+
 export function startCalibrationTimingPass({ passId, now } = {}) {
   if (!CALIBRATION_TIMING_PASS_IDS.includes(passId)) {
     fail(`unknown calibration timing pass ${String(passId)}`, 'UNKNOWN_TIMING_PASS');
@@ -163,51 +190,28 @@ export function stopCalibrationTimingPass(pass, { now } = {}) {
   };
 }
 
-export function recordCalibrationTiming({
-  processedStartCount = 20,
-  now,
-  recorderCommand = CALIBRATION_TIMING_RECORDING_COMMAND,
-} = {}) {
-  if (!Number.isInteger(processedStartCount) || processedStartCount < 1) {
-    fail('processedStartCount must be a positive integer', 'INVALID_TIMING_DENOMINATOR');
+export function finalizeCalibrationTimingRecording(session) {
+  if (!session || typeof session !== 'object') {
+    fail('calibration timing session must be an object', 'TIMING_PROVENANCE_REQUIRED');
   }
-  if (recorderCommand !== CALIBRATION_TIMING_RECORDING_COMMAND) {
-    fail('calibration timing must be recorded by the calibration timing command', 'TIMING_PROVENANCE_REQUIRED');
+  requireUuidSessionId(session.session_id, 'calibration timing session_id');
+  requireCalibrationTimingDenominator(session.processed_start_count);
+  if (session.recorder_version !== CALIBRATION_TIMING_RECORDER_VERSION
+    || session.recording_source !== CALIBRATION_TIMING_RECORDER_VERSION
+    || session.recorder_command !== CALIBRATION_TIMING_RECORDING_COMMAND
+    || session.clock_source !== 'system-clock') {
+    fail('calibration timing session does not identify the timing recorder', 'TIMING_PROVENANCE_REQUIRED');
   }
-  const sessionId = randomUUID();
-  const passes = CALIBRATION_TIMING_PASS_IDS.map((passId) => (
-    stopCalibrationTimingPass(startCalibrationTimingPass({ passId, now }), { now })
-  ));
-  const recording = finishCalibrationTimingRecording({
-    processedStartCount,
-    recorderCommand,
-    passes,
-    sessionId,
-  });
-  return recording;
-}
-
-export async function recordCalibrationTimingSession({
-  processedStartCount = 20,
-  passDurationMs = 1000,
-  recorderCommand = CALIBRATION_TIMING_RECORDING_COMMAND,
-} = {}) {
-  if (!Number.isInteger(passDurationMs) || passDurationMs < 0 || passDurationMs > 60000) {
-    fail('passDurationMs must be an integer between 0 and 60000', 'INVALID_TIMING_DURATION');
-  }
-  if (recorderCommand !== CALIBRATION_TIMING_RECORDING_COMMAND) {
-    fail('calibration timing must be recorded by the calibration timing command', 'TIMING_PROVENANCE_REQUIRED');
-  }
-  const passes = [];
-  for (const passId of CALIBRATION_TIMING_PASS_IDS) {
-    const started = startCalibrationTimingPass({ passId });
-    await new Promise((resolve) => setTimeout(resolve, passDurationMs));
-    passes.push(stopCalibrationTimingPass(started));
+  if (!Array.isArray(session.passes)
+    || JSON.stringify(session.passes.map(({ id }) => id)) !== JSON.stringify(CALIBRATION_TIMING_PASS_IDS)
+    || session.passes.some((pass) => pass.status !== 'complete')) {
+    fail('calibration timing session is not complete', 'TIMING_PROVENANCE_REQUIRED');
   }
   return finishCalibrationTimingRecording({
-    processedStartCount,
-    recorderCommand,
-    passes,
+    processedStartCount: session.processed_start_count,
+    recorderCommand: session.recorder_command,
+    passes: session.passes,
+    sessionId: session.session_id,
   });
 }
 
@@ -232,8 +236,10 @@ export function verifyCalibrationTimingRecording(recording) {
   }
   const sessionIds = new Set();
   let editorSeconds = 0;
+  let previousCompletedAt;
   for (const pass of recording.passes) {
     requireUuidSessionId(pass.session_id, `${pass.id}.session_id`);
+    if (pass.session_id === recording.session_id) fail(`${pass.id} reuses the recording session ID`, 'TIMING_PROVENANCE_REQUIRED');
     if (sessionIds.has(pass.session_id)) fail('calibration timing pass sessions must be unique', 'TIMING_PROVENANCE_REQUIRED');
     sessionIds.add(pass.session_id);
     if (pass.status !== 'complete' || pass.recording_source !== CALIBRATION_TIMING_RECORDER_VERSION) {
@@ -241,11 +247,21 @@ export function verifyCalibrationTimingRecording(recording) {
     }
     requireFeedbackTimestamp(pass.started_at);
     requireFeedbackTimestamp(pass.completed_at);
+    if (previousCompletedAt !== undefined && Date.parse(pass.started_at) < previousCompletedAt) {
+      fail(`${pass.id} starts before the preceding pass completed`, 'TIMING_ORDER');
+    }
+    if (Date.parse(pass.completed_at) < Date.parse(pass.started_at)) {
+      fail(`${pass.id} completion precedes its start`, 'TIMING_ORDER');
+    }
     const elapsedSeconds = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
     if (pass.wall_clock_seconds !== elapsedSeconds || pass.editor_seconds !== elapsedSeconds) {
       fail(`${pass.id} duration does not match recorder timestamps`, 'TIMING_DURATION_DRIFT');
     }
     editorSeconds += pass.editor_seconds;
+    previousCompletedAt = Date.parse(pass.completed_at);
+  }
+  if (previousCompletedAt !== undefined && Date.parse(recording.recorded_at) < previousCompletedAt) {
+    fail('calibration timing recorded_at precedes the final pass', 'TIMING_ORDER');
   }
   if (recording.recording_proof_sha256 !== calibrationTimingProof(recording)) {
     fail('calibration timing recording proof does not match recorder output', 'TIMING_RECORDING_PROOF_MISMATCH');
@@ -257,6 +273,8 @@ export function verifyCalibrationTimingRecording(recording) {
     editor_seconds_per_processed_start: editorSeconds / recording.processed_start_count,
     unmeasured_pass_count: 0,
     pass_count: recording.passes.length,
+    session_id: recording.session_id,
+    pass_session_ids: recording.passes.map(({ session_id: sessionId }) => sessionId),
   };
 }
 

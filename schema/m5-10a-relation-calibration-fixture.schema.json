@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration-fixture.schema.json",
   "title": "Typewriter M5-10A relation-generation calibration fixture",
-  "description": "Twenty unreviewed, noncanonical relation requests. Runtime classification must derive from canonical sense content and direction, not labels supplied by this fixture.",
+  "description": "Twenty unlabelled source-sense requests. Runtime generation must select target senses and relation types from canonical sense content and independent type contracts.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
   "properties": {
     "schema_version": { "const": "1" },
     "fixture_id": { "const": "m5-10a-relation-generation-calibration" },
-    "process_revision": { "const": "m5-10a-relation-generation-v2" },
+    "process_revision": { "const": "m5-10a-relation-generation-v3" },
     "canonical_artifact": { "const": "data/canonical" },
     "calibration_case_count": { "const": 20 },
     "cases": {
@@ -30,34 +30,11 @@
     "calibrationCase": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["case_id", "source_sense", "relation", "direction", "preflight"],
+      "required": ["case_id", "source_sense", "preflight"],
       "properties": {
         "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
         "source_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
-        "relation": { "$ref": "#/$defs/relation" },
-        "direction": { "$ref": "#/$defs/direction" },
         "preflight": { "$ref": "#/$defs/preflight" }
-      }
-    },
-    "relation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["target", "target_sense", "type"],
-      "properties": {
-        "target": { "type": "string", "pattern": "^[wr][0-9]{3,}$" },
-        "target_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
-        "type": {
-          "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"]
-        }
-      }
-    },
-    "direction": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["from", "to"],
-      "properties": {
-        "from": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
-        "to": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" }
       }
     },
     "preflight": {
