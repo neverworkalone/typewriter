@@ -105,17 +105,17 @@ test('M5-3 calibration manifest, canonical import, and inventory transition stay
   assert.equal(metrics.derived.timing.status, 'incomplete');
   assert.equal(metrics.derived.audit.open_blocker_count, 0);
 
-  assert.equal(inventory.revision, 'm5-6');
-  assert.equal(inventory.canonical_snapshot.record_count, 570);
-  assert.equal(inventory.canonical_snapshot.start_count, 528);
+  assert.equal(inventory.revision, 'm5-7');
+  assert.equal(inventory.canonical_snapshot.record_count, 620);
+  assert.equal(inventory.canonical_snapshot.start_count, 578);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
   assert.equal(
     inventory.entries.filter((entry) => entry.source === 'editorial' && entry.status === 'candidate').length,
-    5,
+    7,
   );
   assert.equal(
     inventory.entries.filter((entry) => entry.source === 'editorial' && entry.status === 'held').length,
-    18,
+    24,
   );
 });
 

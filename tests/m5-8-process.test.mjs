@@ -47,12 +47,12 @@ const ACTUAL_SNAPSHOT = {
 };
 
 const CURRENT_CANONICAL_SNAPSHOT = {
-  record_count: 570,
-  start_count: 528,
+  record_count: 620,
+  start_count: 578,
   reference_only_count: 42,
-  sense_count: 670,
-  relation_count: 462,
-  expression_count: 37,
+  sense_count: 743,
+  relation_count: 467,
+  expression_count: 39,
 };
 
 function isM58BaselineRecord({ record }) {

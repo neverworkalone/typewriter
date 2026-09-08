@@ -1,0 +1,90 @@
+{
+  "schema_version": "1",
+  "stage_id": "m5-9a-wave-a-plus-50",
+  "input": {
+    "inventory_revision": "m5-7",
+    "canonical_snapshot": {
+      "record_count": 570,
+      "start_count": 528,
+      "reference_only_count": 42,
+      "sense_count": 670,
+      "relation_count": 462,
+      "expression_count": 37
+    },
+    "previous_stage_report": {
+      "path": "data/batches/m5-8-stage-01-plus-100.json",
+      "sha256": "1b82e3efb6986ede8b2fb1490c57ec136b18bbad2647ed44154f668d2e8622e7"
+    },
+    "repair_authorization": {
+      "path": "data/batches/m5-9a-repair-authorization.json",
+      "sha256": "4e26fb06ef1e3a914a2ec1cf087c2d7525a6980addfdde03712bd7e72ae64c95"
+    }
+  },
+  "target": {
+    "net_start_increase": 50,
+    "cumulative_start_target": 578,
+    "candidate_buffer": 8,
+    "selected_start_count": 58
+  },
+  "decisions": {
+    "included_start_count": 28,
+    "corrected_start_count": 22,
+    "held_start_count": 3,
+    "rejected_start_count": 3,
+    "deferred_start_count": 2
+  },
+  "buffer": {
+    "available_count": 8,
+    "used_count": 6,
+    "unused_count": 2
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 620,
+      "start_count": 578,
+      "reference_only_count": 42,
+      "sense_count": 743,
+      "relation_count": 467,
+      "expression_count": 39
+    },
+    "imported_start_count": 50
+  },
+  "metrics": {
+    "correction_rate_of_selected": 0.39285714285714285,
+    "relation_noise_rate_of_before": 0,
+    "relation_noise_candidate_count": 8,
+    "relation_noise_rate_of_candidates": 0.375,
+    "total_wall_clock_seconds": 2251.026,
+    "measured_wall_clock_seconds": 2251.026,
+    "total_editor_seconds": 2251.026,
+    "measured_editor_seconds": 2251.026,
+    "editor_seconds_per_selected_start": 40.196892857142856,
+    "timing_status": "complete",
+    "unmeasured_timing_pass_count": 0,
+    "audit_status": "complete",
+    "audit_independent": true,
+    "open_audit_blocker_count": 0,
+    "human_editorial_review_complete": true,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true
+  },
+  "source": {
+    "manifest": "data/batches/m5-10-wave-a.json",
+    "manifest_sha256": "dfa26d82b83eafee4f957d6320ead3e193dce45b192845c5f84b8b35fe2d6720",
+    "metrics": "data/batches/m5-10-wave-a-metrics.json",
+    "metrics_sha256": "13dd6765b0582c7af47464dd45b9f731e6c3c6a7ef52bbf29a9309ae210205c2",
+    "relation_diff": "data/batches/m5-10-wave-a-relation-diff.json",
+    "relation_diff_sha256": "55e508094ca3b62863213b582a97fd575aa90a0fc26708cc333a33185f7d64e0",
+    "relation_screen": "data/batches/m5-10-wave-a-relation-screen.json",
+    "relation_screen_sha256": "31e39c9eaedb276193a1e039a62792a864e51033ec275717f59e8f2072570e52",
+    "canonical_directory": "data/canonical",
+    "canonical_sha256": "3f26930a626278c8c281b914dda3fcbcf2c407b71ff87464718422683ba7ed98",
+    "verification": "data/batches/m5-10-wave-a-verification.json",
+    "verification_sha256": "1a1efa528d8bcc57b5206ff77f48a2fe2e97098d88686ef9c63482bac496bc34"
+  },
+  "gate_status": "fail",
+  "decision": "HOLD PROCESS",
+  "next_stage_created": false,
+  "next_stage_authorized": false
+}

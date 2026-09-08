@@ -179,11 +179,23 @@
         "metrics_sha256": { "$ref": "#/$defs/sha256" },
         "relation_diff": { "type": "string", "pattern": "\\S" },
         "relation_diff_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_screen": { "type": "string", "pattern": "\\S" },
+        "relation_screen_sha256": { "$ref": "#/$defs/sha256" },
         "canonical_directory": { "type": "string", "pattern": "\\S" },
         "canonical_sha256": { "$ref": "#/$defs/sha256" },
         "verification": { "type": "string", "pattern": "\\S" },
         "verification_sha256": { "$ref": "#/$defs/sha256" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["relation_screen"] },
+          "then": { "required": ["relation_screen_sha256"] }
+        },
+        {
+          "if": { "required": ["relation_screen_sha256"] },
+          "then": { "required": ["relation_screen"] }
+        }
+      ]
     },
     "gate_status": { "enum": ["pass", "fail"] },
     "decision": { "enum": ["APPROVE BOUNDED", "HOLD PROCESS"] },

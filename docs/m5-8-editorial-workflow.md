@@ -190,6 +190,10 @@ Run the repair check with:
 
     npm run batch:repair:check
 
+Run a source-bound stage report check with:
+
+    npm run batch:stage:check -- --stage=data/batches/m5-9a-wave-a-plus-50.json
+
 ## Candidate buffer and exact net increase
 
 The candidate buffer is a maximum reserve pool, not a required number of failed

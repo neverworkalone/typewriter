@@ -1,0 +1,219 @@
+{
+  "schema_version": "1",
+  "fixture_id": "m5-10-wave-a-sense-regressions",
+  "canonical_artifact": "data/canonical/m5-10-wave-a.jsonl",
+  "sense_cases": [
+    {
+      "case_id": "m5-10-w535-sensory-emotional-boundary",
+      "canonical_id": "w535",
+      "expected_sense_count": 2,
+      "expected_pos": ["adjective", "adjective"],
+      "expected_glosses": [
+        "갑자기 어지럽거나 정신이 아득해질 듯하다",
+        "위험하거나 놀라운 순간에 정신이 아득하고 두렵다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w536-physical-emotional-boundary",
+      "canonical_id": "w536",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "물이나 액체가 가득해져 위로 올라오다",
+        "감정이나 기운이 마음속에 가득해지다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w542-plan-structure-boundary",
+      "canonical_id": "w542",
+      "expected_sense_count": 2,
+      "expected_pos": ["adjective", "adjective"],
+      "expected_glosses": [
+        "일의 계획이나 생각이 빈틈없이 자세하고 꼼꼼하다",
+        "조직이나 짜임이 촘촘하고 빈틈이 없다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w546-sensory-process-boundary",
+      "canonical_id": "w546",
+      "expected_sense_count": 2,
+      "expected_pos": ["adjective", "adjective"],
+      "expected_glosses": [
+        "표면이 울퉁불퉁하지 않고 반듯하게 미끄럽다",
+        "일의 진행이나 말이 막힘없이 부드럽다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w547-sensory-story-boundary",
+      "canonical_id": "w547",
+      "expected_sense_count": 2,
+      "expected_pos": ["adjective", "adjective"],
+      "expected_glosses": [
+        "씹을 때 탄력이 있고 쉽게 끊어지지 않다",
+        "이야기나 장면에 긴장감이 있어 흥미를 끈다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w548-polysemy-pos-boundary",
+      "canonical_id": "w548",
+      "expected_sense_count": 3,
+      "expected_pos": ["adjective", "adjective", "verb"],
+      "expected_glosses": [
+        "볶거나 구운 음식에서 구수하고 기름진 맛이 나다",
+        "남의 불행이나 실패를 보며 속이 시원하고 통쾌하다",
+        "피해 사실을 수사 기관에 알리고 처벌을 요구하다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w549-sensory-mood-boundary",
+      "canonical_id": "w549",
+      "expected_sense_count": 2,
+      "expected_pos": ["adjective", "adjective"],
+      "expected_glosses": [
+        "맛이나 냄새가 깊고 편안하다",
+        "말이나 사람의 분위기가 소박하고 정답다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w552-scene-decision-boundary",
+      "canonical_id": "w552",
+      "expected_sense_count": 2,
+      "expected_pos": ["noun", "noun"],
+      "expected_glosses": [
+        "한 길이 여러 방향으로 나뉘는 곳",
+        "어떤 일을 결정해야 하는 선택의 갈림 지점"
+      ]
+    },
+    {
+      "case_id": "m5-10-w556-light-state-boundary",
+      "canonical_id": "w556",
+      "expected_sense_count": 2,
+      "expected_pos": ["noun", "noun"],
+      "expected_glosses": [
+        "빛이 약해 사물이 흐릿하게 보이는 어둑한 상태",
+        "해가 뜨거나 질 무렵의 희미한 빛"
+      ]
+    },
+    {
+      "case_id": "m5-10-w558-corner-extension-boundary",
+      "canonical_id": "w558",
+      "expected_sense_count": 3,
+      "expected_pos": ["noun", "noun", "noun"],
+      "expected_glosses": [
+        "길이나 물체가 꺾이는 자리",
+        "장소나 일정한 범위에서 구석진 한 부분",
+        "일이나 시간에서 특정한 대목"
+      ]
+    },
+    {
+      "case_id": "m5-10-w559-physical-participation-boundary",
+      "canonical_id": "w559",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "무언가를 향해 몸을 날려 들어가다",
+        "어떤 일이나 분야에 적극적으로 참여하기 시작하다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w560-physical-inquiry-boundary",
+      "canonical_id": "w560",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "틈이나 깊은 곳으로 들어가다",
+        "어떤 일이나 문제를 자세히 살피며 깊이 들어가다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w561-physical-instability-boundary",
+      "canonical_id": "w561",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "몸이나 물체가 한쪽으로 흔들리며 중심을 잃다",
+        "조직이나 상황이 불안정해져 크게 흔들리다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w562-direction-attitude-boundary",
+      "canonical_id": "w562",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "높은 곳에서 아래를 바라보다",
+        "상대나 대상을 낮추어 보며 업신여기다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w563-direction-attitude-boundary",
+      "canonical_id": "w563",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "아래에서 위쪽을 바라보다",
+        "존경하는 마음으로 받들어 우러러보다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w565-physical-refusal-boundary",
+      "canonical_id": "w565",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "붙잡거나 얽매인 것을 힘주어 떼어 내다",
+        "제안이나 유혹, 요구를 단호하게 거절하다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w566-compound-idiom-boundary",
+      "canonical_id": "w566",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "수염이나 털 따위를 손으로 아래로 쓸면서 만지다",
+        "근심이나 걱정이 해결되어 안도하다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w567-physical-inquiry-boundary",
+      "canonical_id": "w567",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "여러 겹이나 틈을 들추어 안을 찾다",
+        "문제나 자료를 자세히 파헤치며 살피다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w568-physical-attitude-boundary",
+      "canonical_id": "w568",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "한쪽으로 비스듬해지다",
+        "마음이나 생각이 어느 한쪽으로 쏠리다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w569-physical-memory-boundary",
+      "canonical_id": "w569",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "무언가에 닿을 듯 말 듯 지나가다",
+        "기억이나 생각, 감정이 잠깐 떠올랐다가 지나가다"
+      ]
+    },
+    {
+      "case_id": "m5-10-w578-expression-boundary",
+      "canonical_id": "w578",
+      "expected_sense_count": 2,
+      "expected_pos": ["expression", "expression"],
+      "expected_glosses": [
+        "무언가를 잡거나 닿으려고 팔과 손을 앞으로 내밀다",
+        "도움이나 기회 따위를 얻으려고 적극적으로 나서다"
+      ]
+    }
+  ]
+}

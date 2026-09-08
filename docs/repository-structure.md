@@ -70,11 +70,18 @@ stage report by path and digest; it does not contain a candidate batch or
 canonical import rows.
 The M5-9A relation-screen and repair-authorization artifacts are also audit
 metadata. The screen separates source-bound relation proposals, tuple/semantic
-pre-screen decisions, and human admission without storing raw drafts. The
+pre-screen decisions, and human admission without storing raw drafts. The same
+screen contract is reused by the M5-10 Wave A relation-screen artifact, which is
+bound to its Wave A relation diff and stage report by path and SHA-256. The
 authorization binds the failed M5-9 report and its regression result by SHA-256
 and permits only the first #96 validation wave; it never changes canonical data.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
+
+When a later batch advances `data/canonical/`, a historical canonical directory
+may be retained under `data/batches/` when a source-bound stage report still
+needs to reproduce the earlier gate. Such a snapshot is immutable process
+evidence, not a second editable dictionary source.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event

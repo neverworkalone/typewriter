@@ -35,6 +35,7 @@ import {
 } from '../scripts/build/query.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
+const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-9-postimport-canonical');
 
 async function readJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
@@ -48,7 +49,7 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
     readJson('m5-8-stage-01-plus-100.json'),
     readJson('m5-8-expansion-plan.json'),
     readJson('m5-9-expansion-verification.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY),
     readTargetInventory(DEFAULT_INVENTORY_PATH),
     readJson('m5-9-preimport-inventory.json'),
   ]);
@@ -189,12 +190,12 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
   });
 
   const inventorySummary = await validateTargetInventory();
-  assert.equal(inventorySummary.revision, 'm5-6');
-  assert.equal(inventorySummary.inventoryEntryCount, 597);
-  assert.equal(inventorySummary.currentStartCount, 528);
-  assert.equal(inventorySummary.candidateStartCount, 5);
-  assert.equal(inventorySummary.plannedStartCount, 533);
-  assert.equal(inventorySummary.heldCount, 18);
+  assert.equal(inventorySummary.revision, 'm5-7');
+  assert.equal(inventorySummary.inventoryEntryCount, 655);
+  assert.equal(inventorySummary.currentStartCount, 578);
+  assert.equal(inventorySummary.candidateStartCount, 7);
+  assert.equal(inventorySummary.plannedStartCount, 585);
+  assert.equal(inventorySummary.heldCount, 24);
   assert.equal(preImportInventory.revision, 'm5-5');
   assert.deepEqual(preImportInventory.canonical_snapshot, {
     record_count: 470,
@@ -223,14 +224,17 @@ test('M5-9 admitted records and reserve decisions are visible in local search', 
     });
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(first.recordCount, 570);
-      assert.equal(first.metadata.start_count, '528');
+      assert.equal(first.recordCount, 620);
+      assert.equal(first.metadata.start_count, '578');
       assert.deepEqual(findRecordsByExactTerm(database, '애틋하다').map(({ id }) => id), ['w429']);
       assert.deepEqual(findRecordsByExactTerm(database, '시리다').map(({ id }) => id), ['w459']);
       assert.deepEqual(findRecordsByExactTerm(database, '개울').map(({ id }) => id), ['w475']);
       assert.deepEqual(findRecordsByExactTerm(database, '다가서다').map(({ id }) => id), ['w487']);
       assert.deepEqual(findRecordsByExactTerm(database, '장화').map(({ id }) => id), ['w501']);
       assert.deepEqual(findRecordsByExactTerm(database, '가슴이 뛰다').map(({ id }) => id), ['w515']);
+      assert.deepEqual(findRecordsByExactTerm(database, '감탄스럽다').map(({ id }) => id), ['w529']);
+      assert.deepEqual(findRecordsByExactTerm(database, '눈길을 주다').map(({ id }) => id), ['w577']);
+      assert.deepEqual(findRecordsByExactTerm(database, '손에 잡히다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '격앙되다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '폭신하다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '기어오르다'), []);

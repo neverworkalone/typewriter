@@ -83,12 +83,12 @@ test('M5-6 admission controls remain present after the M5-7 import', async () =>
   countRelations.record_count = recordValues.length;
 
   assert.deepEqual(countRelations, {
-    record_count: 570,
-    start_count: 528,
+    record_count: 620,
+    start_count: 578,
     reference_only_count: 42,
-    sense_count: 670,
-    relation_count: 462,
-    expression_count: 37,
+    sense_count: 743,
+    relation_count: 467,
+    expression_count: 39,
   });
 });
 

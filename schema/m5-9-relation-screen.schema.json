@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-9-relation-screen.schema.json",
-  "title": "Typewriter M5-9A relation candidate screen",
+  "title": "Typewriter M5 relation candidate screen",
   "description": "Source-bound relation proposals with a separate tuple/semantic pre-screen and human admission record. It contains no raw draft or external response.",
   "type": "object",
   "additionalProperties": false,
@@ -17,7 +17,7 @@
     "schema_version": { "const": "1" },
     "artifact_id": {
       "type": "string",
-      "pattern": "^m5-9a-[a-z0-9][a-z0-9-]*$"
+      "pattern": "^(?:m5-9a|m5-10-wave-a)-[a-z0-9][a-z0-9-]*$"
     },
     "process_revision": {
       "const": "m5-9a-relation-admission-v1"
@@ -28,7 +28,8 @@
       "required": ["relation_diff", "relation_diff_sha256"],
       "properties": {
         "relation_diff": {
-          "const": "data/batches/m5-9-expansion-relation-diff.json"
+          "type": "string",
+          "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
         },
         "relation_diff_sha256": {
           "$ref": "#/$defs/sha256"

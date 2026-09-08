@@ -20,6 +20,7 @@ import {
   validateBatchManifest,
 } from './validate-batch.mjs';
 import { loadAndValidateRepairAuthorization } from './repair-authorization.mjs';
+import { validateRelationScreen } from './relation-screen.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -446,18 +447,24 @@ export async function loadExpansionStageSources(stage) {
     manifest: resolveSourcePath(stage.source.manifest, 'stage.source.manifest'),
     metrics: resolveSourcePath(stage.source.metrics, 'stage.source.metrics'),
     relation_diff: resolveSourcePath(stage.source.relation_diff, 'stage.source.relation_diff'),
+    ...(stage.source.relation_screen
+      ? { relation_screen: resolveSourcePath(stage.source.relation_screen, 'stage.source.relation_screen') }
+      : {}),
     canonical_directory: resolveSourcePath(
       stage.source.canonical_directory,
       'stage.source.canonical_directory',
     ),
     verification: resolveSourcePath(stage.source.verification, 'stage.source.verification'),
   };
-  const [manifestArtifact, metricsArtifact, relationDiffArtifact, verificationArtifact, canonical] = await Promise.all([
+  const [manifestArtifact, metricsArtifact, relationDiffArtifact, verificationArtifact, canonical, relationScreenArtifact] = await Promise.all([
     readSourceJson(sourcePaths.manifest, 'stage manifest'),
     readSourceJson(sourcePaths.metrics, 'stage metrics artifact'),
     readSourceJson(sourcePaths.relation_diff, 'stage relation diff'),
     readSourceJson(sourcePaths.verification, 'stage verification artifact'),
     readCanonicalSource(sourcePaths.canonical_directory),
+    sourcePaths.relation_screen
+      ? readSourceJson(sourcePaths.relation_screen, 'stage relation screen artifact')
+      : Promise.resolve(undefined),
   ]);
 
   validateBatchManifest(manifestArtifact.value);
@@ -485,6 +492,16 @@ export async function loadExpansionStageSources(stage) {
     'relation diff digest does not match the manifest',
     'RELATION_DIFF_DIGEST_MISMATCH',
   );
+  if (relationScreenArtifact) {
+    validateRelationScreen(
+      relationScreenArtifact.value,
+      relationDiffArtifact.value,
+      {
+        relationDiffPath: path.relative(REPOSITORY_DIRECTORY, sourcePaths.relation_diff),
+        relationDiffSha256: relationDiffArtifact.sha256,
+      },
+    );
+  }
 
   const metricsSource = metricsArtifact.value.source;
   for (const [key, label] of [
@@ -515,6 +532,9 @@ export async function loadExpansionStageSources(stage) {
     canonical_sha256: canonical.sha256,
     verification_sha256: verificationArtifact.sha256,
   };
+  if (relationScreenArtifact) {
+    actualDigests.relation_screen_sha256 = relationScreenArtifact.sha256;
+  }
   for (const [key, actualDigest] of Object.entries(actualDigests)) {
     assertEqual(
       actualDigest,
@@ -571,6 +591,20 @@ function validateLoadedStageSources(stage, sourceArtifacts) {
       stage.source[key],
       sourceArtifacts.digests?.[key],
       `stage.source.${key} does not match the loaded source digest`,
+      'SOURCE_DIGEST_MISMATCH',
+    );
+  }
+  if (stage.source.relation_screen) {
+    assertEqual(
+      resolveSourcePath(stage.source.relation_screen, 'stage.source.relation_screen'),
+      resolveSourcePath(sourceArtifacts.paths?.relation_screen, 'loaded source.relation_screen'),
+      'stage.source.relation_screen does not match the loaded source path',
+      'SOURCE_PATH_MISMATCH',
+    );
+    assertEqual(
+      stage.source.relation_screen_sha256,
+      sourceArtifacts.digests?.relation_screen_sha256,
+      'stage.source.relation_screen_sha256 does not match the loaded source digest',
       'SOURCE_DIGEST_MISMATCH',
     );
   }
@@ -1242,6 +1276,18 @@ function parseArguments(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
   const planPath = path.resolve(args.plan ?? DEFAULT_PLAN_PATH);
+  if (args.stage) {
+    const [plan, stage] = await Promise.all([
+      readJson(planPath, 'M5-8 expansion plan'),
+      readJson(path.resolve(args.stage), 'M5-8 stage report'),
+    ]);
+    const result = await validateExpansionStage(stage, plan);
+    console.log(
+      `Validated ${result.stage_id}: ${result.imported_start_count} imported start(s), candidate buffer ${result.candidate_buffer}, gate ${result.gate_status}.`,
+    );
+    return result;
+  }
+
   const fixturePath = path.resolve(args.fixture ?? DEFAULT_FIXTURE_PATH);
   const canonicalDirectory = path.resolve(args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY);
   const relationDiffPath = path.resolve(args['relation-diff'] ?? DEFAULT_RELATION_DIFF_PATH);

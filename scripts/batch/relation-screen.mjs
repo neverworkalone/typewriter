@@ -207,10 +207,34 @@ function validateCandidate(candidate, sourceReview, eventByRelationId, index) {
   );
 }
 
-export function validateRelationScreen(artifact, relationDiff) {
+export function validateRelationScreen(
+  artifact,
+  relationDiff,
+  {
+    relationDiffPath,
+    relationDiffSha256,
+  } = {},
+) {
   validateSchema(artifact);
   validateRelationDiff(relationDiff);
   validatePolicy(artifact);
+
+  if (relationDiffPath !== undefined) {
+    assertEqual(
+      artifact.source.relation_diff,
+      relationDiffPath,
+      'relation screen source path does not match the loaded relation diff',
+      'SOURCE_PATH_MISMATCH',
+    );
+  }
+  if (relationDiffSha256 !== undefined) {
+    assertEqual(
+      artifact.source.relation_diff_sha256,
+      relationDiffSha256,
+      'relation screen source digest does not match the loaded relation diff',
+      'SOURCE_DIGEST_MISMATCH',
+    );
+  }
 
   if (!relationDiff.candidate_reviews) {
     fail('relation screen source must contain candidate_reviews', 'MISSING_SOURCE_CANDIDATES');

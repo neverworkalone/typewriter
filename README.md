@@ -113,6 +113,11 @@ pre-screen from human admission, and limits resume authorization to #96's first
 50-start validation wave. Run npm run batch:repair:check to verify its
 digest-bound artifacts.
 
+The #96 Wave A result is recorded in
+[`docs/m5-10-wave-a-report.md`](docs/m5-10-wave-a-report.md); it reaches 578
+starts but remains `HOLD PROCESS` because relation noise is 3/8 and the measured
+editor-time gate is above the fixed limit, so Wave B is not authorized.
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.
