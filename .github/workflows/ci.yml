@@ -107,7 +107,7 @@ jobs:
           npm run test:mv3:package --
           --chrome="${{ steps.chrome.outputs.path }}"
           --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_1.0.0.zip"
+          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_1.0.zip"
 
       - name: Build minified release package
         env:
@@ -119,4 +119,4 @@ jobs:
           npm run test:mv3:package --
           --chrome="${{ steps.chrome.outputs.path }}"
           --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_1.0.0.zip"
+          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_1.0.zip"
