@@ -19,8 +19,11 @@ import {
 } from '../scripts/batch/validate-m5-10a-process.mjs';
 import {
   DEFAULT_CALIBRATION_ARTIFACT_PATH,
+  validateCalibrationFixtureEvidence,
   validateM5A10ACalibration,
 } from '../scripts/batch/validate-m5-10a-calibration.mjs';
+import { verifyCalibrationTimingRecording } from '../scripts/batch/timing.mjs';
+import { generateRelationCandidates } from '../scripts/batch/relation-generation.mjs';
 import {
   validateM5ARepair,
 } from '../scripts/batch/validate-m5-10a-repair.mjs';
@@ -95,20 +98,26 @@ test('M5-10A process correction and repair authorization remain source-bound', a
   });
   assert.equal(process.relation_pre_screen.pre_screen_rejected_count, 12);
   assert.deepEqual(process.candidate_generation, {
-    process_revision: 'm5-10a-relation-generation-v1',
+    process_revision: 'm5-10a-relation-generation-v2',
     calibration_artifact: 'data/batches/m5-10a-relation-calibration.json',
     calibration_artifact_sha256: process.candidate_generation.calibration_artifact_sha256,
     calibration_case_count: 20,
-    generated_candidate_count: 15,
-    suppressed_candidate_count: 5,
+    request_count: 20,
+    raw_proposal_count: 13,
+    generation_suppressed_count: 7,
     pre_screen_noise_count: 0,
-    noise_rate_of_emitted_candidates: 0,
-    editor_seconds_per_processed_start: 8,
+    noise_rate_of_raw_proposals: 0,
+    editor_seconds_per_processed_start: process.candidate_generation.editor_seconds_per_processed_start,
+    correction_rate: 0,
     unmeasured_pass_count: 0,
     preflight_case_count: 20,
     preflight_evidence_case_count: 20,
+    timing_source: 'data/batches/m5-10a-relation-calibration-timing.json',
+    timing_source_sha256: process.candidate_generation.timing_source_sha256,
     fixed_gate_status: 'passed',
   });
+  assert.ok(process.candidate_generation.editor_seconds_per_processed_start > 0);
+  assert.ok(process.candidate_generation.editor_seconds_per_processed_start <= 12);
   assert.equal(process.timing.unmeasured_pass_count, 0);
   assert.deepEqual(process.verification, {
     canonical_integrity: true,
@@ -228,23 +237,79 @@ test('sense preflight records every selected start and preserves canonical sense
 test('M5-10A calibration is an upstream fixed gate, not historical classification', async () => {
   const calibration = await validateM5A10ACalibration({ artifactPath: DEFAULT_CALIBRATION_ARTIFACT_PATH });
   assert.equal(calibration.case_count, 20);
-  assert.equal(calibration.generated_candidate_count, 15);
-  assert.equal(calibration.suppressed_candidate_count, 5);
+  assert.equal(calibration.request_count, 20);
+  assert.equal(calibration.raw_proposal_count, 13);
+  assert.equal(calibration.generation_suppressed_count, 7);
+  assert.equal(calibration.generated_candidate_count, 13);
+  assert.equal(calibration.suppressed_candidate_count, 7);
   assert.equal(calibration.pre_screen_noise_count, 0);
-  assert.equal(calibration.noise_rate_of_emitted_candidates, 0);
-  assert.equal(calibration.editor_seconds_per_processed_start, 8);
+  assert.equal(calibration.noise_rate_of_raw_proposals, 0);
+  assert.ok(calibration.editor_seconds_per_processed_start > 0);
+  assert.ok(calibration.editor_seconds_per_processed_start <= 12);
+  assert.equal(calibration.correction_rate, 0);
   assert.equal(calibration.unmeasured_pass_count, 0);
   assert.deepEqual(calibration.preflight, {
+    status: 'complete',
     case_count: 20,
     evidence_case_count: 20,
     unresolved_boundary_count: 0,
     duplicate_evidence_count: 0,
+    checked_boundary_counts: {
+      'physical-figurative': 8,
+      'homonym-pos': 7,
+      'sensory-emotion-state-action': 15,
+      'directional-symmetry': 7,
+      'compound-spaced-phrase': 5,
+      'word-idiom': 5,
+    },
   });
 });
 
-test('M5-10A calibration rejects noise, time, audit, digest, and preflight tampering', async () => {
+test('M5-10A calibration rejects oracle labels, unseen negatives, and canonical tuple reuse', async () => {
+  const fixture = await readJson('tests/fixtures/m5-10a-relation-generation-calibration.json');
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const baseline = generateRelationCandidates(fixture, canonical.records);
+  const stable = (result) => ({
+    request_count: result.request_count,
+    raw_proposal_count: result.raw_proposal_count,
+    generation_suppressed_count: result.generation_suppressed_count,
+    pre_screen_noise_count: result.pre_screen_noise_count,
+    noise_rate_of_raw_proposals: result.noise_rate_of_raw_proposals,
+    suppressed_category_counts: result.suppressed_category_counts,
+    generated_candidates: [...result.generated_candidates].sort((a, b) => a.case_id.localeCompare(b.case_id)),
+    suppressed_candidates: [...result.suppressed_candidates].sort((a, b) => a.case_id.localeCompare(b.case_id)),
+  });
+  const labeled = structuredClone(fixture);
+  for (const calibrationCase of labeled.cases) {
+    calibrationCase.expected_action = 'emit';
+    calibrationCase.generation_basis = 'sense-anchored-writer-use';
+    calibrationCase.expected_suppression_category = 'incidental-co-occurrence';
+  }
+  const shuffled = structuredClone(fixture);
+  shuffled.cases.reverse();
+  assert.deepEqual(stable(generateRelationCandidates(labeled, canonical.records)), stable(baseline));
+  assert.deepEqual(stable(generateRelationCandidates(shuffled, canonical.records)), stable(baseline));
+  assert.deepEqual(baseline.suppressed_candidates, [
+    { case_id: 'm5-10a-cal-014', category: 'incidental-co-occurrence' },
+    { case_id: 'm5-10a-cal-015', category: 'generic-result-or-reaction' },
+    { case_id: 'm5-10a-cal-016', category: 'arbitrary-modifier-or-place' },
+    { case_id: 'm5-10a-cal-017', category: 'broad-common-category' },
+    { case_id: 'm5-10a-cal-018', category: 'unsupported-cross-sensory' },
+    { case_id: 'm5-10a-cal-019', category: 'sense-target-type-error' },
+    { case_id: 'm5-10a-cal-020', category: 'direction-mismatch' },
+  ]);
+  const canonicalTuples = new Set(canonical.records.flatMap(({ record }) => record.senses.flatMap((sense) => (
+    (sense.relations ?? []).map((relation) => `${sense.id}\u0000${relation.target_sense}\u0000${relation.type}`)
+  ))));
+  for (const calibrationCase of fixture.cases) {
+    const tuple = `${calibrationCase.source_sense}\u0000${calibrationCase.relation.target_sense}\u0000${calibrationCase.relation.type}`;
+    assert.equal(canonicalTuples.has(tuple), false, `${calibrationCase.case_id} must be noncanonical`);
+  }
+});
+
+test('M5-10A calibration rejects noise, time, audit, digest, preflight, and timing provenance tampering', async () => {
   const mutations = [
-    ['noise', (artifact) => { artifact.calibration.generation.noise_rate_of_emitted_candidates = 0.5; }],
+    ['noise', (artifact) => { artifact.calibration.generation.noise_rate_of_raw_proposals = 0.5; }],
     ['time', (artifact) => { artifact.calibration.timing.editor_seconds = 260; }],
     ['audit', (artifact) => { artifact.calibration.audit.open_blocker_count = 1; }],
     ['digest', (artifact) => { artifact.source.fixture_sha256 = '0'.repeat(64); }],
@@ -267,6 +332,24 @@ test('M5-10A calibration rejects noise, time, audit, digest, and preflight tampe
       await rm(directory, { recursive: true, force: true });
     }
   }
+  const timing = await readJson('data/batches/m5-10a-relation-calibration-timing.json');
+  timing.session_id = 'm5-10a-hand-written-session';
+  assertErrorCode(() => verifyCalibrationTimingRecording(timing), 'TIMING_PROVENANCE_REQUIRED');
+});
+
+test('M5-10A calibration rejects regular boilerplate in sense evidence', async () => {
+  const fixture = await readJson('tests/fixtures/m5-10a-relation-generation-calibration.json');
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const mutated = structuredClone(fixture);
+  const first = mutated.cases[0].preflight.boundary_checks['physical-figurative'];
+  const second = mutated.cases[1].preflight.boundary_checks['physical-figurative'];
+  second.observed_use = first.observed_use;
+  second.rationale = `${mutated.cases[1].case_id} physical-figurative ${mutated.cases[1].source_sense}: ${second.observed_use}; observed canonical meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” was checked before relation screening.`;
+  second.source_note = `${mutated.cases[1].case_id} physical-figurative source note: ${second.observed_use}; canonical sense ${mutated.cases[1].source_sense} means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, providing a meaning/use observation for this boundary.`;
+  assertErrorCode(
+    () => validateCalibrationFixtureEvidence(mutated, canonical.records),
+    'CALIBRATION_GENERIC_EVIDENCE',
+  );
 });
 
 test('timing recorder adopts the M5-10A contract when preflight is present', async () => {

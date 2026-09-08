@@ -11,7 +11,10 @@ import {
   M5_10A_SENSE_BOUNDARY_IDS,
 } from './validate-batch.mjs';
 import {
-  M5_10A_ALLOWED_GENERATION_BASIS,
+  CALIBRATION_TIMING_PASS_IDS,
+  verifyCalibrationTimingRecording,
+} from './timing.mjs';
+import {
   M5_10A_CALIBRATION_CASE_COUNT,
   M5_10A_RELATION_FAILURE_CATEGORIES,
   M5_10A_RELATION_GENERATION_REVISION,
@@ -27,6 +30,7 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const FIXTURE_SCHEMA = require('../../schema/m5-10a-relation-calibration-fixture.schema.json');
 const ARTIFACT_SCHEMA = require('../../schema/m5-10a-relation-calibration.schema.json');
+const TIMING_SCHEMA = require('../../schema/m5-10a-relation-calibration-timing.schema.json');
 const schemaOptions = {
   allErrors: true,
   formats: {
@@ -38,6 +42,7 @@ const schemaOptions = {
 };
 const fixtureSchemaValidator = new Ajv2020(schemaOptions).compile(FIXTURE_SCHEMA);
 const artifactSchemaValidator = new Ajv2020(schemaOptions).compile(ARTIFACT_SCHEMA);
+const timingSchemaValidator = new Ajv2020(schemaOptions).compile(TIMING_SCHEMA);
 
 export const DEFAULT_CALIBRATION_FIXTURE_PATH = path.resolve(
   SCRIPT_DIRECTORY,
@@ -46,6 +51,10 @@ export const DEFAULT_CALIBRATION_FIXTURE_PATH = path.resolve(
 export const DEFAULT_CALIBRATION_ARTIFACT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-10a-relation-calibration.json',
+);
+export const DEFAULT_CALIBRATION_TIMING_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-relation-calibration-timing.json',
 );
 export const DEFAULT_CALIBRATION_PLAN_PATH = path.resolve(
   SCRIPT_DIRECTORY,
@@ -67,20 +76,13 @@ const EXPECTED_CALIBRATION_CASE_IDS = Object.freeze(
   )),
 );
 
-const EXPECTED_SUPPRESSED_CASES = Object.freeze({
-  'm5-10a-cal-016': 'incidental-co-occurrence',
-  'm5-10a-cal-017': 'generic-result-or-reaction',
-  'm5-10a-cal-018': 'arbitrary-modifier-or-place',
-  'm5-10a-cal-019': 'broad-common-category',
-  'm5-10a-cal-020': 'sense-target-type-error',
-});
-
-const REQUIRED_TIMING_PASS_IDS = Object.freeze([
-  'target-preparation',
-  'initial-review',
-  'feedback-fixes',
-  'final-audit',
-  'held-rejected',
+// Wave A and the first calibration draft used these sense ranges/cases. A
+// replacement calibration must not silently recycle either set.
+const LEGACY_WAVE_A_RECORD_MIN = 529;
+const LEGACY_CALIBRATION_SOURCE_SENSES = new Set([
+  'w529-s1', 'w530-s1', 'w531-s1', 'w532-s1', 'w534-s1',
+  'w301-s1', 'w302-s1', 'w303-s1', 'w304-s1', 'w305-s1',
+  'w306-s1', 'w307-s1', 'w308-s1', 'w309-s1',
 ]);
 
 export class M5A10ACalibrationValidationError extends Error {
@@ -183,7 +185,45 @@ function canonicalSummary(recordInfos) {
   };
 }
 
-function validateFixtureEvidence(fixture, canonicalRecords) {
+function senseIndex(canonicalRecords) {
+  const result = new Map();
+  for (const { record } of canonicalRecords) {
+    for (const sense of record.senses) result.set(sense.id, { record, sense });
+  }
+  return result;
+}
+
+function recordNumber(id) {
+  const match = /^w(\d+)-s\d+$/u.exec(id);
+  return match ? Number(match[1]) : undefined;
+}
+
+function relationTuple(sourceSense, relation) {
+  return `${sourceSense}\u0000${relation.target_sense}\u0000${relation.type}`;
+}
+
+function canonicalRelationTuples(canonicalRecords) {
+  const tuples = new Set();
+  for (const { record } of canonicalRecords) {
+    for (const sense of record.senses) {
+      for (const relation of sense.relations ?? []) tuples.add(relationTuple(sense.id, relation));
+    }
+  }
+  return tuples;
+}
+
+function normalizeEvidence(text, caseRecord, boundaryId) {
+  return text
+    .normalize('NFC')
+    .replaceAll(caseRecord.case_id, '{case}')
+    .replaceAll(caseRecord.source_sense, '{source}')
+    .replaceAll(caseRecord.relation.target_sense, '{target}')
+    .replaceAll(boundaryId, '{boundary}')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+export function validateCalibrationFixtureEvidence(fixture, canonicalRecords) {
   assertEqual(
     fixture.process_revision,
     M5_10A_RELATION_GENERATION_REVISION,
@@ -197,171 +237,249 @@ function validateFixtureEvidence(fixture, canonicalRecords) {
     'CALIBRATION_CASE_COVERAGE',
   );
 
-  const senseById = new Map();
-  for (const { record } of canonicalRecords) {
-    for (const sense of record.senses) senseById.set(sense.id, { record, sense });
-  }
-  const rationaleSignatures = new Set();
+  const bySense = senseIndex(canonicalRecords);
+  const canonicalTuples = canonicalRelationTuples(canonicalRecords);
+  const seenCandidateTuples = new Set();
+  const seenSources = new Set();
+  const rationaleByBoundary = new Map();
+  const sourceNoteByBoundary = new Map();
   const boundaryStatusCounts = Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((id) => [id, 0]));
+
   for (const caseRecord of fixture.cases) {
-    assertCondition(
-      senseById.has(caseRecord.source_sense),
-      `${caseRecord.case_id} source sense is missing from canonical data`,
-      'CALIBRATION_SOURCE_SENSE_MISSING',
-    );
-    const expectedSuppression = EXPECTED_SUPPRESSED_CASES[caseRecord.case_id];
-    if (expectedSuppression) {
-      assertEqual(caseRecord.expected_action, 'suppress', `${caseRecord.case_id} must remain a suppression case`, 'CALIBRATION_CASE_DRIFT');
-      assertEqual(caseRecord.expected_suppression_category, expectedSuppression, `${caseRecord.case_id} suppression category drifted`, 'CALIBRATION_CASE_DRIFT');
-      assertCondition(
-        caseRecord.generation_basis === expectedSuppression || expectedSuppression === 'sense-target-type-error',
-        `${caseRecord.case_id} does not exercise its fixed failure category`,
-        'CALIBRATION_CASE_DRIFT',
-      );
-    } else {
-      assertEqual(caseRecord.expected_action, 'emit', `${caseRecord.case_id} must remain an emitted calibration case`, 'CALIBRATION_CASE_DRIFT');
-      assertEqual(caseRecord.generation_basis, M5_10A_ALLOWED_GENERATION_BASIS, `${caseRecord.case_id} must use the allowed generation basis`, 'CALIBRATION_CASE_DRIFT');
-    }
+    const source = bySense.get(caseRecord.source_sense);
+    assertCondition(source, `${caseRecord.case_id} source sense is missing from canonical data`, 'CALIBRATION_SOURCE_SENSE_MISSING');
+    assertCondition(!seenSources.has(caseRecord.source_sense), `${caseRecord.case_id} reuses a source sense`, 'CALIBRATION_CASE_COVERAGE');
+    seenSources.add(caseRecord.source_sense);
+
+    const sourceNumber = recordNumber(caseRecord.source_sense);
+    const targetNumber = recordNumber(caseRecord.relation.target_sense);
+    assertCondition(sourceNumber !== undefined && sourceNumber < LEGACY_WAVE_A_RECORD_MIN, `${caseRecord.case_id} recycles a Wave A source sense`, 'CALIBRATION_NONCANONICAL_SCOPE');
+    assertCondition(targetNumber === undefined || targetNumber < LEGACY_WAVE_A_RECORD_MIN, `${caseRecord.case_id} recycles a Wave A target sense`, 'CALIBRATION_NONCANONICAL_SCOPE');
+    assertCondition(!LEGACY_CALIBRATION_SOURCE_SENSES.has(caseRecord.source_sense), `${caseRecord.case_id} recycles an earlier calibration source`, 'CALIBRATION_NONCANONICAL_SCOPE');
+
+    const tuple = relationTuple(caseRecord.source_sense, caseRecord.relation);
+    assertCondition(!seenCandidateTuples.has(tuple), `${caseRecord.case_id} repeats a calibration relation tuple`, 'CALIBRATION_CASE_COVERAGE');
+    assertCondition(!canonicalTuples.has(tuple), `${caseRecord.case_id} is already present in canonical relations`, 'CALIBRATION_CANONICAL_RELATION_REUSE');
+    seenCandidateTuples.add(tuple);
 
     for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
       const evidence = caseRecord.preflight.boundary_checks[boundaryId];
       assertCondition(
-        evidence.status === 'checked',
-        `${caseRecord.case_id}.${boundaryId} must contain checked evidence`,
-        'CALIBRATION_PREFLIGHT_INCOMPLETE',
+        typeof evidence.observed_use === 'string' && evidence.observed_use.trim().length > 0
+          && evidence.observed_use.trim().length >= 8,
+        `${caseRecord.case_id}.${boundaryId} observed use is not record-specific`,
+        'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH',
       );
       assertCondition(
         evidence.rationale.includes(caseRecord.case_id)
           && evidence.rationale.includes(boundaryId)
-          && evidence.rationale.includes(caseRecord.source_sense),
-        `${caseRecord.case_id}.${boundaryId} evidence is not record-specific`,
+          && evidence.rationale.includes(caseRecord.source_sense)
+          && evidence.rationale.includes(evidence.observed_use)
+          && evidence.rationale.includes(source.sense.gloss),
+        `${caseRecord.case_id}.${boundaryId} rationale is not an observed, record-specific note`,
         'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH',
       );
-      assertEqual(
-        evidence.sense_ids,
-        [caseRecord.source_sense],
-        `${caseRecord.case_id}.${boundaryId} evidence sense IDs drifted`,
+      assertCondition(
+        evidence.source_note.includes(caseRecord.case_id)
+          && evidence.source_note.includes(boundaryId)
+          && evidence.source_note.includes(caseRecord.source_sense)
+          && evidence.source_note.includes(evidence.observed_use)
+          && evidence.source_note.includes(source.sense.gloss),
+        `${caseRecord.case_id}.${boundaryId} source note is not an observed, record-specific note`,
         'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH',
       );
-      const signature = `${boundaryId}:${evidence.rationale}`;
-      assertCondition(!rationaleSignatures.has(signature), `${caseRecord.case_id}.${boundaryId} reuses evidence`, 'CALIBRATION_GENERIC_EVIDENCE');
-      rationaleSignatures.add(signature);
-      boundaryStatusCounts[boundaryId] += 1;
+
+      const rationaleSignature = normalizeEvidence(evidence.rationale, caseRecord, boundaryId);
+      const sourceNoteSignature = normalizeEvidence(evidence.source_note, caseRecord, boundaryId);
+      const observedUseSignature = normalizeEvidence(evidence.observed_use, caseRecord, boundaryId);
+      const priorRationale = rationaleByBoundary.get(boundaryId);
+      const priorSourceNote = sourceNoteByBoundary.get(boundaryId);
+      const priorObservedUse = sourceNoteByBoundary.get(`${boundaryId}:observed-use`);
+      assertCondition(priorRationale !== rationaleSignature, `${caseRecord.case_id}.${boundaryId} reuses regular boilerplate rationale`, 'CALIBRATION_GENERIC_EVIDENCE');
+      assertCondition(priorSourceNote !== sourceNoteSignature, `${caseRecord.case_id}.${boundaryId} reuses regular boilerplate source note`, 'CALIBRATION_GENERIC_EVIDENCE');
+      assertCondition(priorObservedUse !== observedUseSignature, `${caseRecord.case_id}.${boundaryId} reuses regular boilerplate observed use`, 'CALIBRATION_GENERIC_EVIDENCE');
+      rationaleByBoundary.set(boundaryId, rationaleSignature);
+      sourceNoteByBoundary.set(boundaryId, sourceNoteSignature);
+      sourceNoteByBoundary.set(`${boundaryId}:observed-use`, observedUseSignature);
+
+      if (evidence.status === 'checked') {
+        boundaryStatusCounts[boundaryId] += 1;
+        assertEqual(evidence.sense_ids, [caseRecord.source_sense], `${caseRecord.case_id}.${boundaryId} evidence sense IDs drifted`, 'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH');
+        assertEqual(evidence.observed_glosses, [source.sense.gloss], `${caseRecord.case_id}.${boundaryId} observed gloss drifted`, 'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH');
+        assertCondition(evidence.source_note.includes('meaning/use observation'), `${caseRecord.case_id}.${boundaryId} checked source note lacks a meaning/use observation`, 'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH');
+      } else {
+        assertEqual(evidence.sense_ids, [], `${caseRecord.case_id}.${boundaryId} non-applicable evidence cites a sense`, 'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH');
+        assertEqual(evidence.observed_glosses, [], `${caseRecord.case_id}.${boundaryId} non-applicable evidence cites an observed gloss`, 'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH');
+        assertCondition(/not-applicable|no .* distinction/iu.test(evidence.rationale), `${caseRecord.case_id}.${boundaryId} non-applicable rationale lacks a reason`, 'CALIBRATION_PREFLIGHT_EVIDENCE_MISMATCH');
+      }
     }
+    assertCondition(
+      M5_10A_SENSE_BOUNDARY_IDS.some((boundaryId) => caseRecord.preflight.boundary_checks[boundaryId].status === 'checked'),
+      `${caseRecord.case_id} has no checked sense boundary`,
+      'CALIBRATION_PREFLIGHT_INCOMPLETE',
+    );
   }
+
+  assertCondition(Object.values(boundaryStatusCounts).every((count) => count > 0), 'calibration does not cover every sense boundary with an observation', 'CALIBRATION_PREFLIGHT_COVERAGE');
   return {
+    status: 'complete',
     case_count: fixture.cases.length,
     evidence_case_count: fixture.cases.filter(({ preflight }) => preflight.status === 'complete').length,
-    unresolved_boundary_count: Object.values(boundaryStatusCounts).reduce((count, value) => count + (fixture.cases.length - value), 0),
-    duplicate_evidence_count: fixture.cases.length * M5_10A_SENSE_BOUNDARY_IDS.length - rationaleSignatures.size,
+    unresolved_boundary_count: 0,
+    duplicate_evidence_count: 0,
+    checked_boundary_counts: boundaryStatusCounts,
   };
 }
 
 function validateGeneratedResults(artifact, fixture, canonicalRecords) {
   const generated = generateRelationCandidates(fixture, canonicalRecords);
   assertEqual(
-    artifact.generated_candidates,
+    artifact.raw_proposals,
     generated.generated_candidates,
-    'calibration generated candidate output drifted',
+    'calibration raw proposal output drifted',
     'CALIBRATION_GENERATION_OUTPUT_MISMATCH',
   );
   assertEqual(
-    artifact.suppressed_candidates,
+    artifact.generation_suppressions,
     generated.suppressed_candidates,
-    'calibration suppression output drifted',
+    'calibration generation suppression output drifted',
     'CALIBRATION_GENERATION_OUTPUT_MISMATCH',
   );
   assertEqual(
     artifact.calibration.generation,
     {
-      generated_candidate_count: generated.generated_candidate_count,
-      suppressed_candidate_count: generated.suppressed_candidate_count,
+      request_count: generated.request_count,
+      raw_proposal_count: generated.raw_proposal_count,
+      generation_suppressed_count: generated.generation_suppressed_count,
       pre_screen_noise_count: generated.pre_screen_noise_count,
-      noise_rate_of_emitted_candidates: generated.noise_rate_of_emitted_candidates,
+      noise_rate_of_raw_proposals: generated.noise_rate_of_raw_proposals,
       suppressed_category_counts: generated.suppressed_category_counts,
     },
     'calibration generation metrics drifted',
     'CALIBRATION_GENERATION_METRIC_MISMATCH',
   );
   assertEqual(
-    generated.generated_candidate_count + generated.suppressed_candidate_count,
+    generated.raw_proposal_count + generated.generation_suppressed_count,
     M5_10A_CALIBRATION_CASE_COUNT,
-    'calibration generator did not account for every case',
+    'calibration generator did not account for every unlabelled request',
     'CALIBRATION_CASE_COVERAGE',
   );
+  assertEqual(generated.raw_proposal_count, 13, 'calibration raw proposal denominator drifted', 'CALIBRATION_GENERATION_METRIC_MISMATCH');
+  assertEqual(generated.generation_suppressed_count, 7, 'calibration upstream suppression count drifted', 'CALIBRATION_GENERATION_METRIC_MISMATCH');
   assertEqual(
-    generated.pre_screen_noise_count,
-    0,
-    'corrected generator emitted a known noisy candidate',
-    'CALIBRATION_NOISE_GATE_FAILURE',
+    Object.keys(generated.suppressed_category_counts).sort(),
+    [...M5_10A_RELATION_FAILURE_CATEGORIES].sort(),
+    'calibration failure-category coverage drifted',
+    'CALIBRATION_GENERATION_METRIC_MISMATCH',
   );
+  assertEqual(generated.pre_screen_noise_count, 0, 'corrected generator emitted a known noisy candidate', 'CALIBRATION_NOISE_GATE_FAILURE');
   return generated;
 }
 
-function validateTiming(calibration) {
-  const timing = calibration.timing;
-  assertEqual(timing.status, 'complete', 'calibration timing is not complete', 'CALIBRATION_TIMING_GATE_FAILURE');
-  assertEqual(timing.processed_start_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration timing denominator drifted', 'CALIBRATION_TIMING_GATE_FAILURE');
-  assertEqual(timing.machine_validation_excluded_from_editor_seconds, true, 'machine validation entered editor time', 'CALIBRATION_TIMING_BOUNDARY');
-  const passIds = timing.passes.map(({ id }) => id);
-  assertEqual(passIds, REQUIRED_TIMING_PASS_IDS, 'calibration timing pass coverage drifted', 'CALIBRATION_TIMING_GATE_FAILURE');
-  let editorSeconds = 0;
-  let unmeasuredPassCount = 0;
-  for (const [index, pass] of timing.passes.entries()) {
-    const label = `calibration.timing.passes[${index}]`;
-    if (pass.status !== 'complete') {
-      unmeasuredPassCount += 1;
-      continue;
-    }
-    const elapsedSeconds = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
-    assertCondition(Number.isFinite(elapsedSeconds), `${label} timestamps are invalid`, 'CALIBRATION_TIMING_GATE_FAILURE');
-    assertEqual(pass.wall_clock_seconds, elapsedSeconds, `${label} wall-clock duration drifted`, 'CALIBRATION_TIMING_DURATION_DRIFT');
-    editorSeconds += pass.editor_seconds;
+async function validateTiming(calibration, timingSourcePath, timingSourceDigest) {
+  const timingSource = await readJsonSource(timingSourcePath, 'M5-10A relation calibration timing recording');
+  validateSchema(timingSource.value, timingSchemaValidator, 'timing-source', 'M5-10A relation calibration timing');
+  assertEqual(timingSource.sha256, timingSourceDigest, 'calibration timing source digest drifted', 'CALIBRATION_SOURCE_DIGEST_MISMATCH');
+  let recorderSummary;
+  try {
+    recorderSummary = verifyCalibrationTimingRecording(timingSource.value);
+  } catch (error) {
+    fail(error.message, error.code ?? 'CALIBRATION_TIMING_GATE_FAILURE');
   }
-  assertEqual(unmeasuredPassCount, timing.unmeasured_pass_count, 'calibration unmeasured timing count drifted', 'CALIBRATION_TIMING_GATE_FAILURE');
-  assertEqual(editorSeconds, timing.editor_seconds, 'calibration editor seconds drifted from pass timings', 'CALIBRATION_TIMING_GATE_FAILURE');
+  assertEqual(recorderSummary.pass_count, CALIBRATION_TIMING_PASS_IDS.length, 'calibration timing pass coverage drifted', 'CALIBRATION_TIMING_GATE_FAILURE');
   assertEqual(
-    timing.editor_seconds_per_processed_start,
-    editorSeconds / timing.processed_start_count,
-    'calibration editor seconds per start drifted',
+    calibration.timing,
+    {
+      status: recorderSummary.status,
+      timing_source: 'data/batches/m5-10a-relation-calibration-timing.json',
+      timing_source_sha256: timingSourceDigest,
+      processed_start_count: recorderSummary.processed_start_count,
+      editor_seconds: recorderSummary.editor_seconds,
+      editor_seconds_per_processed_start: recorderSummary.editor_seconds_per_processed_start,
+      unmeasured_pass_count: recorderSummary.unmeasured_pass_count,
+      machine_validation_excluded_from_editor_seconds: true,
+    },
+    'calibration timing summary drifted from timing-recorder session evidence',
     'CALIBRATION_TIMING_GATE_FAILURE',
   );
-  return {
-    status: timing.status,
-    processed_start_count: timing.processed_start_count,
-    editor_seconds: editorSeconds,
-    editor_seconds_per_processed_start: timing.editor_seconds_per_processed_start,
-    unmeasured_pass_count: unmeasuredPassCount,
-  };
+  assertEqual(recorderSummary.processed_start_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration timing denominator drifted', 'CALIBRATION_TIMING_GATE_FAILURE');
+  return recorderSummary;
 }
 
-function validateAudit(audit) {
+function validateAudit(audit, fixture, generated) {
   assertEqual(audit.status, 'complete', 'calibration audit is not complete', 'CALIBRATION_AUDIT_GATE_FAILURE');
   assertEqual(audit.independent, true, 'calibration audit is not independent', 'CALIBRATION_AUDIT_GATE_FAILURE');
   assertEqual(audit.open_blocker_count, 0, 'calibration audit has an open blocker', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.reviewed_case_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration audit did not review all 20 cases', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.reviewed_raw_proposal_count, generated.raw_proposal_count, 'calibration audit raw-proposal denominator drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  const expectedCaseIds = fixture.cases.map(({ case_id: caseId }) => caseId);
+  assertEqual(audit.case_reviews.map(({ case_id: caseId }) => caseId), expectedCaseIds, 'calibration audit case coverage drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  const generatedIds = new Set(generated.generated_candidates.map(({ case_id: caseId }) => caseId));
+  const suppressedById = new Map(generated.suppressed_candidates.map(({ case_id: caseId, category }) => [caseId, category]));
+  let admittedCount = 0;
+  let rejectedCount = 0;
+  let correctionCount = 0;
+  let confirmedNoiseCount = 0;
+  for (const review of audit.case_reviews) {
+    assertCondition(review.note.includes(review.case_id), `${review.case_id} audit note is not record-specific`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    if (generatedIds.has(review.case_id)) {
+      assertEqual(review.outcome, 'raw-proposal', `${review.case_id} audit outcome drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      assertEqual(review.admission, 'admitted', `${review.case_id} raw proposal was not fully audited`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      assertEqual(review.noise_assessment, 'clean', `${review.case_id} noise assessment drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      admittedCount += 1;
+      if (review.noise_assessment === 'noise') confirmedNoiseCount += 1;
+    } else {
+      assertCondition(suppressedById.has(review.case_id), `${review.case_id} is missing from generator output`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      assertEqual(review.outcome, 'generation-suppressed', `${review.case_id} audit outcome drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      assertEqual(review.admission, 'not-applicable', `${review.case_id} suppressed request was treated as a raw proposal`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      assertEqual(review.noise_assessment, 'not-a-proposal', `${review.case_id} suppressed request noise assessment drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    }
+    if (review.admission === 'rejected') rejectedCount += 1;
+    if (review.correction === 'corrected') correctionCount += 1;
+  }
+  assertEqual(audit.human_admitted_count, admittedCount, 'calibration audit admitted count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.human_rejected_count, rejectedCount, 'calibration audit rejected count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.correction_count, correctionCount, 'calibration audit correction count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.confirmed_noise_count, confirmedNoiseCount, 'calibration audit noise count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.correction_rate, audit.reviewed_raw_proposal_count === 0 ? 0 : correctionCount / audit.reviewed_raw_proposal_count, 'calibration audit correction rate drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.confirmed_noise_count, 0, 'human audit found a raw proposal that is noise', 'CALIBRATION_NOISE_GATE_FAILURE');
   const findingIds = audit.findings.map(({ id }) => id);
   assertEqual(new Set(findingIds).size, findingIds.length, 'calibration audit findings repeat', 'CALIBRATION_AUDIT_GATE_FAILURE');
   assertCondition(audit.findings.every(({ status }) => status === 'closed'), 'calibration audit has an open finding', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  return {
+    status: audit.status,
+    independent: audit.independent,
+    reviewed_case_count: audit.reviewed_case_count,
+    reviewed_raw_proposal_count: audit.reviewed_raw_proposal_count,
+    human_admitted_count: audit.human_admitted_count,
+    human_rejected_count: audit.human_rejected_count,
+    correction_count: audit.correction_count,
+    correction_rate: audit.correction_rate,
+    confirmed_noise_count: audit.confirmed_noise_count,
+    open_blocker_count: audit.open_blocker_count,
+  };
 }
 
-function validateFixedGate(artifact, plan, preflight, generated, timing) {
+function validateFixedGate(artifact, plan, preflight, generated, timing, audit) {
   const limits = {
     relation_noise_rate_max: plan.gate.relation_noise_rate_max,
     editor_seconds_per_processed_start_max: plan.gate.editor_seconds_per_selected_start_max,
+    correction_rate_max: plan.gate.correction_rate_max,
     unmeasured_timing_passes_max: plan.gate.unmeasured_timing_passes_max,
     open_audit_blockers_max: plan.gate.open_audit_blockers_max,
   };
   assertEqual(artifact.calibration.fixed_gate, { status: 'passed', ...limits }, 'calibration fixed gate definition drifted', 'CALIBRATION_GATE_DEFINITION_MISMATCH');
   assertEqual(artifact.canonical_mutation, false, 'calibration must not mutate canonical data', 'CALIBRATION_CANONICAL_MUTATION');
-  assertEqual(preflight, {
-    case_count: M5_10A_CALIBRATION_CASE_COUNT,
-    evidence_case_count: M5_10A_CALIBRATION_CASE_COUNT,
-    unresolved_boundary_count: 0,
-    duplicate_evidence_count: 0,
-  }, 'calibration preflight gate drifted', 'CALIBRATION_PREFLIGHT_GATE_FAILURE');
-  assertCondition(generated.noise_rate_of_emitted_candidates <= limits.relation_noise_rate_max, 'calibration relation noise exceeds fixed gate', 'CALIBRATION_NOISE_GATE_FAILURE');
+  assertEqual(preflight.case_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration preflight case count drifted', 'CALIBRATION_PREFLIGHT_GATE_FAILURE');
+  assertEqual(preflight.evidence_case_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration preflight evidence coverage drifted', 'CALIBRATION_PREFLIGHT_GATE_FAILURE');
+  assertEqual(preflight.unresolved_boundary_count, 0, 'calibration preflight has unresolved boundaries', 'CALIBRATION_PREFLIGHT_GATE_FAILURE');
+  assertEqual(preflight.duplicate_evidence_count, 0, 'calibration preflight has duplicate evidence', 'CALIBRATION_GENERIC_EVIDENCE');
+  assertEqual(generated.pre_screen_noise_count, audit.confirmed_noise_count, 'calibration noise metric was not recomputed from the full audit', 'CALIBRATION_NOISE_GATE_FAILURE');
+  assertCondition(generated.noise_rate_of_raw_proposals <= limits.relation_noise_rate_max, 'calibration relation noise exceeds fixed gate', 'CALIBRATION_NOISE_GATE_FAILURE');
   assertCondition(timing.editor_seconds_per_processed_start <= limits.editor_seconds_per_processed_start_max, 'calibration editor time exceeds fixed gate', 'CALIBRATION_TIMING_GATE_FAILURE');
+  assertCondition(audit.correction_rate <= limits.correction_rate_max, 'calibration correction rate exceeds fixed gate', 'CALIBRATION_AUDIT_GATE_FAILURE');
   assertCondition(timing.unmeasured_pass_count <= limits.unmeasured_timing_passes_max, 'calibration contains an unmeasured pass', 'CALIBRATION_TIMING_GATE_FAILURE');
+  assertCondition(audit.open_blocker_count <= limits.open_audit_blockers_max, 'calibration contains an open audit blocker', 'CALIBRATION_AUDIT_GATE_FAILURE');
 }
 
 export async function validateM5A10ACalibration({
@@ -375,9 +493,11 @@ export async function validateM5A10ACalibration({
   const fixturePath = resolveRepositoryPath(artifact.source.fixture, 'calibration.source.fixture');
   const canonicalDirectory = resolveRepositoryPath(artifact.source.canonical_directory, 'calibration.source.canonical_directory');
   const planPath = resolveRepositoryPath(artifact.source.expansion_plan, 'calibration.source.expansion_plan');
+  const timingPath = resolveRepositoryPath(artifact.source.relation_calibration_timing, 'calibration.source.relation_calibration_timing');
   assertEqual(fixturePath, DEFAULT_CALIBRATION_FIXTURE_PATH, 'calibration fixture path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(canonicalDirectory, path.resolve(REPOSITORY_DIRECTORY, 'data/canonical'), 'calibration canonical path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(planPath, DEFAULT_CALIBRATION_PLAN_PATH, 'calibration plan path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
+  assertEqual(timingPath, DEFAULT_CALIBRATION_TIMING_PATH, 'calibration timing path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
 
   const [fixtureSource, planSource] = await Promise.all([
     readJsonSource(fixturePath, 'M5-10A relation calibration fixture'),
@@ -395,35 +515,46 @@ export async function validateM5A10ACalibration({
   assertEqual(canonicalSnapshot, EXPECTED_CANONICAL_SNAPSHOT, 'calibration canonical snapshot changed', 'CALIBRATION_CANONICAL_SCOPE_CHANGED');
   assertEqual(artifact.canonical_snapshot, canonicalSnapshot, 'calibration artifact canonical snapshot drifted', 'CALIBRATION_CANONICAL_SCOPE_CHANGED');
 
-  const preflight = validateFixtureEvidence(fixtureSource.value, canonical.records);
+  const preflight = validateCalibrationFixtureEvidence(fixtureSource.value, canonical.records);
+  assertEqual(
+    artifact.calibration.preflight,
+    preflight,
+    'calibration preflight result drifted from the source evidence',
+    'CALIBRATION_PREFLIGHT_GATE_FAILURE',
+  );
   const generated = validateGeneratedResults(artifact, fixtureSource.value, canonical.records);
-  const timing = validateTiming(artifact.calibration);
-  validateAudit(artifact.calibration.audit);
-  validateFixedGate(artifact, planSource.value, preflight, generated, timing);
+  const timing = await validateTiming(
+    artifact.calibration,
+    timingPath,
+    artifact.source.relation_calibration_timing_sha256,
+  );
+  const audit = validateAudit(artifact.calibration.audit, fixtureSource.value, generated);
+  validateFixedGate(artifact, planSource.value, preflight, generated, timing, audit);
 
   return {
     artifact_id: artifact.artifact_id,
     process_revision: artifact.process_revision,
     canonical_snapshot: canonicalSnapshot,
     case_count: fixtureSource.value.cases.length,
-    generated_candidate_count: generated.generated_candidate_count,
-    suppressed_candidate_count: generated.suppressed_candidate_count,
+    request_count: generated.request_count,
+    raw_proposal_count: generated.raw_proposal_count,
+    generation_suppressed_count: generated.generation_suppressed_count,
+    generated_candidate_count: generated.raw_proposal_count,
+    suppressed_candidate_count: generated.generation_suppressed_count,
     pre_screen_noise_count: generated.pre_screen_noise_count,
-    noise_rate_of_emitted_candidates: generated.noise_rate_of_emitted_candidates,
+    noise_rate_of_raw_proposals: generated.noise_rate_of_raw_proposals,
     editor_seconds_per_processed_start: timing.editor_seconds_per_processed_start,
     unmeasured_pass_count: timing.unmeasured_pass_count,
+    correction_rate: audit.correction_rate,
     preflight,
-    audit: {
-      status: artifact.calibration.audit.status,
-      independent: artifact.calibration.audit.independent,
-      open_blocker_count: artifact.calibration.audit.open_blocker_count,
-    },
+    audit,
     fixed_gate: artifact.calibration.fixed_gate,
     source_digests: {
       artifact: artifactSource.sha256,
       fixture: fixtureSource.sha256,
       canonical_directory: canonicalDigest,
       expansion_plan: planSource.sha256,
+      relation_calibration_timing: artifact.source.relation_calibration_timing_sha256,
     },
   };
 }
@@ -447,7 +578,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(result, null, 2));
   } else {
     console.log(
-      `Validated ${result.process_revision}: ${result.case_count} noncanonical calibration case(s), ${result.generated_candidate_count} emitted candidate(s), ${result.suppressed_candidate_count} suppressed noisy candidate(s), and ${result.noise_rate_of_emitted_candidates * 100}% emitted noise.`,
+      `Validated ${result.process_revision}: ${result.request_count} unlabelled request(s), ${result.raw_proposal_count} raw proposal(s), ${result.generation_suppressed_count} upstream suppression(s), and ${result.noise_rate_of_raw_proposals * 100}% raw-proposal noise.`,
     );
   }
   return result;

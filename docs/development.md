@@ -129,6 +129,7 @@ npm run batch:import -- \
 
 npm run batch:process:check
 npm run batch:repair:check
+npm run batch:m5-10a:calibration:timing
 npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 npm run batch:m5-10a:repair:check

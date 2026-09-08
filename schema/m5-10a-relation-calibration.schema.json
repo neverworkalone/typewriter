@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration.schema.json",
   "title": "Typewriter M5-10A relation-generation calibration result",
-  "description": "Deterministic output and fixed-gate evidence for the noncanonical relation-generation calibration set.",
+  "description": "Source-bound output, human audit, and fixed-gate evidence for twenty unlabelled, noncanonical relation requests.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,13 +13,13 @@
     "source",
     "canonical_snapshot",
     "calibration",
-    "generated_candidates",
-    "suppressed_candidates"
+    "raw_proposals",
+    "generation_suppressions"
   ],
   "properties": {
     "schema_version": { "const": "1" },
     "artifact_id": { "type": "string", "pattern": "^m5-10a-relation-calibration-[0-9]{8}$" },
-    "process_revision": { "const": "m5-10a-relation-generation-v1" },
+    "process_revision": { "const": "m5-10a-relation-generation-v2" },
     "canonical_mutation": { "const": false },
     "source": {
       "type": "object",
@@ -30,7 +30,9 @@
         "canonical_directory",
         "canonical_directory_sha256",
         "expansion_plan",
-        "expansion_plan_sha256"
+        "expansion_plan_sha256",
+        "relation_calibration_timing",
+        "relation_calibration_timing_sha256"
       ],
       "properties": {
         "fixture": { "const": "tests/fixtures/m5-10a-relation-generation-calibration.json" },
@@ -38,7 +40,9 @@
         "canonical_directory": { "const": "data/canonical" },
         "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
         "expansion_plan": { "const": "data/batches/m5-8-expansion-plan.json" },
-        "expansion_plan_sha256": { "$ref": "#/$defs/sha256" }
+        "expansion_plan_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_calibration_timing": { "const": "data/batches/m5-10a-relation-calibration-timing.json" },
+        "relation_calibration_timing_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
@@ -55,16 +59,16 @@
         "fixed_gate": { "$ref": "#/$defs/fixedGate" }
       }
     },
-    "generated_candidates": {
+    "raw_proposals": {
       "type": "array",
-      "minItems": 15,
-      "maxItems": 15,
+      "minItems": 13,
+      "maxItems": 13,
       "items": { "$ref": "#/$defs/generatedCandidate" }
     },
-    "suppressed_candidates": {
+    "generation_suppressions": {
       "type": "array",
-      "minItems": 5,
-      "maxItems": 5,
+      "minItems": 7,
+      "maxItems": 7,
       "items": { "$ref": "#/$defs/suppressedCandidate" }
     }
   },
@@ -86,34 +90,51 @@
     "preflightResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "case_count", "evidence_case_count", "unresolved_boundary_count", "duplicate_evidence_count"],
+      "required": ["status", "case_count", "evidence_case_count", "unresolved_boundary_count", "duplicate_evidence_count", "checked_boundary_counts"],
       "properties": {
         "status": { "const": "complete" },
         "case_count": { "const": 20 },
         "evidence_case_count": { "const": 20 },
         "unresolved_boundary_count": { "const": 0 },
-        "duplicate_evidence_count": { "const": 0 }
+        "duplicate_evidence_count": { "const": 0 },
+        "checked_boundary_counts": { "$ref": "#/$defs/boundaryCounts" }
+      }
+    },
+    "boundaryCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["physical-figurative", "homonym-pos", "sensory-emotion-state-action", "directional-symmetry", "compound-spaced-phrase", "word-idiom"],
+      "properties": {
+        "physical-figurative": { "type": "integer", "minimum": 1 },
+        "homonym-pos": { "type": "integer", "minimum": 1 },
+        "sensory-emotion-state-action": { "type": "integer", "minimum": 1 },
+        "directional-symmetry": { "type": "integer", "minimum": 1 },
+        "compound-spaced-phrase": { "type": "integer", "minimum": 1 },
+        "word-idiom": { "type": "integer", "minimum": 1 }
       }
     },
     "generationResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["generated_candidate_count", "suppressed_candidate_count", "pre_screen_noise_count", "noise_rate_of_emitted_candidates", "suppressed_category_counts"],
+      "required": ["request_count", "raw_proposal_count", "generation_suppressed_count", "pre_screen_noise_count", "noise_rate_of_raw_proposals", "suppressed_category_counts"],
       "properties": {
-        "generated_candidate_count": { "const": 15 },
-        "suppressed_candidate_count": { "const": 5 },
+        "request_count": { "const": 20 },
+        "raw_proposal_count": { "const": 13 },
+        "generation_suppressed_count": { "const": 7 },
         "pre_screen_noise_count": { "const": 0 },
-        "noise_rate_of_emitted_candidates": { "const": 0 },
+        "noise_rate_of_raw_proposals": { "const": 0 },
         "suppressed_category_counts": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["incidental-co-occurrence", "generic-result-or-reaction", "arbitrary-modifier-or-place", "broad-common-category", "sense-target-type-error"],
+          "required": ["incidental-co-occurrence", "generic-result-or-reaction", "arbitrary-modifier-or-place", "broad-common-category", "unsupported-cross-sensory", "sense-target-type-error", "direction-mismatch"],
           "properties": {
             "incidental-co-occurrence": { "const": 1 },
             "generic-result-or-reaction": { "const": 1 },
             "arbitrary-modifier-or-place": { "const": 1 },
             "broad-common-category": { "const": 1 },
-            "sense-target-type-error": { "const": 1 }
+            "unsupported-cross-sensory": { "const": 1 },
+            "sense-target-type-error": { "const": 1 },
+            "direction-mismatch": { "const": 1 }
           }
         }
       }
@@ -121,50 +142,57 @@
     "timingResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "processed_start_count", "editor_seconds", "editor_seconds_per_processed_start", "unmeasured_pass_count", "machine_validation_excluded_from_editor_seconds", "passes"],
+      "required": ["status", "timing_source", "timing_source_sha256", "processed_start_count", "editor_seconds", "editor_seconds_per_processed_start", "unmeasured_pass_count", "machine_validation_excluded_from_editor_seconds"],
       "properties": {
         "status": { "const": "complete" },
+        "timing_source": { "const": "data/batches/m5-10a-relation-calibration-timing.json" },
+        "timing_source_sha256": { "$ref": "#/$defs/sha256" },
         "processed_start_count": { "const": 20 },
-        "editor_seconds": { "const": 160 },
-        "editor_seconds_per_processed_start": { "const": 8 },
-        "unmeasured_pass_count": { "const": 0 },
-        "machine_validation_excluded_from_editor_seconds": { "const": true },
-        "passes": {
-          "type": "array",
-          "minItems": 5,
-          "maxItems": 5,
-          "items": { "$ref": "#/$defs/timingPass" }
-        }
-      }
-    },
-    "timingPass": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "status", "started_at", "completed_at", "wall_clock_seconds", "editor_seconds", "session_id", "recording_source"],
-      "properties": {
-        "id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-audit", "held-rejected"] },
-        "status": { "const": "complete" },
-        "started_at": { "type": "string", "format": "date-time" },
-        "completed_at": { "type": "string", "format": "date-time" },
-        "wall_clock_seconds": { "type": "number", "minimum": 0 },
         "editor_seconds": { "type": "number", "minimum": 0 },
-        "session_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$" },
-        "recording_source": { "const": "timing-recorder-v1" }
+        "editor_seconds_per_processed_start": { "type": "number", "minimum": 0, "maximum": 12 },
+        "unmeasured_pass_count": { "const": 0 },
+        "machine_validation_excluded_from_editor_seconds": { "const": true }
       }
     },
     "audit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "independent", "open_blocker_count", "findings"],
+      "required": ["status", "independent", "reviewed_case_count", "reviewed_raw_proposal_count", "human_admitted_count", "human_rejected_count", "correction_count", "correction_rate", "confirmed_noise_count", "open_blocker_count", "case_reviews", "findings"],
       "properties": {
         "status": { "const": "complete" },
         "independent": { "const": true },
+        "reviewed_case_count": { "const": 20 },
+        "reviewed_raw_proposal_count": { "const": 13 },
+        "human_admitted_count": { "const": 13 },
+        "human_rejected_count": { "const": 0 },
+        "correction_count": { "const": 0 },
+        "correction_rate": { "const": 0 },
+        "confirmed_noise_count": { "const": 0 },
         "open_blocker_count": { "const": 0 },
+        "case_reviews": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/caseReview" }
+        },
         "findings": {
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/finding" }
         }
+      }
+    },
+    "caseReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "outcome", "admission", "noise_assessment", "correction", "note"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
+        "outcome": { "enum": ["raw-proposal", "generation-suppressed"] },
+        "admission": { "enum": ["admitted", "not-applicable", "rejected"] },
+        "noise_assessment": { "enum": ["clean", "noise", "not-a-proposal"] },
+        "correction": { "enum": ["none", "corrected"] },
+        "note": { "type": "string", "pattern": "\\S" }
       }
     },
     "finding": {
@@ -180,11 +208,12 @@
     "fixedGate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "relation_noise_rate_max", "editor_seconds_per_processed_start_max", "unmeasured_timing_passes_max", "open_audit_blockers_max"],
+      "required": ["status", "relation_noise_rate_max", "editor_seconds_per_processed_start_max", "correction_rate_max", "unmeasured_timing_passes_max", "open_audit_blockers_max"],
       "properties": {
         "status": { "const": "passed" },
         "relation_noise_rate_max": { "const": 0.25 },
         "editor_seconds_per_processed_start_max": { "const": 12 },
+        "correction_rate_max": { "const": 0.5 },
         "unmeasured_timing_passes_max": { "const": 0 },
         "open_audit_blockers_max": { "const": 0 }
       }
@@ -192,13 +221,12 @@
     "generatedCandidate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["case_id", "source_sense", "relation", "direction", "writer_use_note"],
+      "required": ["case_id", "source_sense", "relation", "direction"],
       "properties": {
         "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
         "source_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
         "relation": { "$ref": "#/$defs/relation" },
-        "direction": { "$ref": "#/$defs/direction" },
-        "writer_use_note": { "type": "string", "pattern": "\\S" }
+        "direction": { "$ref": "#/$defs/direction" }
       }
     },
     "suppressedCandidate": {
@@ -207,7 +235,7 @@
       "required": ["case_id", "category"],
       "properties": {
         "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
-        "category": { "enum": ["incidental-co-occurrence", "generic-result-or-reaction", "arbitrary-modifier-or-place", "broad-common-category", "unsupported-cross-sensory", "sense-target-type-error"] }
+        "category": { "enum": ["incidental-co-occurrence", "generic-result-or-reaction", "arbitrary-modifier-or-place", "broad-common-category", "unsupported-cross-sensory", "sense-target-type-error", "direction-mismatch"] }
       }
     },
     "relation": {

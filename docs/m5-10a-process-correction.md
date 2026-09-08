@@ -63,17 +63,26 @@ noise was corrected. The actual A2 precondition is the separate noncanonical
 [`tests/fixtures/m5-10a-relation-generation-calibration.json`](../tests/fixtures/m5-10a-relation-generation-calibration.json).
 
 The deterministic generator in `scripts/batch/relation-generation.mjs` consumes
-that fixture and the current canonical senses. It emits only
-`sense-anchored-writer-use` candidates and suppresses fixed regressions for
-incidental co-occurrence, generic result/reaction, arbitrary modifier/place,
-broad common category, and source/target sense errors. The source-bound result
-records 15 emitted candidates, 5 suppressed candidates, and 0 emitted noise;
-none of the calibration cases is imported into canonical data.
+that fixture and the current canonical senses. The fixture contains no expected
+action, generation basis, suppression label, or writer-use note. The generator
+judges only the observed source/target sense content, POS, relation type, and
+direction. The source-bound result accounts for all 20 unlabelled requests as
+13 raw proposals and 7 upstream suppressions; no suppressed request is counted
+as a proposal, and the raw-proposal denominator contains all proposals that
+were actually generated. None of the calibration cases is imported into
+canonical data, and every candidate tuple is checked to be absent from the
+canonical relation set and the prior Wave A/calibration selections.
 
 The fixed gate requires all 20 calibration cases to have record-specific,
-non-boilerplate boundary evidence, complete measured timing at or below 12
-editor seconds per processed start, zero unmeasured passes, an independent audit
-with zero open blockers, and matching fixture/canonical/plan digests. Run it
+non-boilerplate boundary evidence. Checked evidence carries the observed
+canonical gloss and a meaning/use note; `not-applicable` evidence carries an
+explicit reason and no sense claim. The full audit reviews all 20 requests and
+all 13 raw proposals, recomputes noise, correction rate, and admission counts,
+and leaves zero open blockers. Editor time is read only from the separate
+`timing-recorder-v1` session artifact, whose generated UUID sessions, system
+clock, durations, command provenance, and proof digest are validated; handwritten
+timestamps or sessions fail. The measured time is at or below 12 editor seconds
+per processed start, with matching fixture/canonical/plan/timing digests. Run it
 before the process and repair checks:
 
 ```sh
@@ -119,8 +128,9 @@ incomplete and fails the gate; no time is estimated or backfilled.
 
 `data/batches/m5-10a-process-correction.json` binds the historical stage,
 Wave A manifest/metrics, historical relation artifacts, the 20-case calibration
-fixture and dry-run, regression fixture, canonical directory digest, and machine
-verification artifact. Validate the calibration and process contract with:
+fixture and dry-run, its timing-recorder session artifact, regression fixture,
+canonical directory digest, and machine verification artifact. Validate the
+calibration and process contract with:
 
 ```sh
 npm run batch:m5-10a:calibration:check

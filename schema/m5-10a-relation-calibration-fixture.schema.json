@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration-fixture.schema.json",
   "title": "Typewriter M5-10A relation-generation calibration fixture",
-  "description": "A noncanonical, source-bound calibration set for the corrected relation candidate generator.",
+  "description": "Twenty unreviewed, noncanonical relation requests. Runtime classification must derive from canonical sense content and direction, not labels supplied by this fixture.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,7 +16,7 @@
   "properties": {
     "schema_version": { "const": "1" },
     "fixture_id": { "const": "m5-10a-relation-generation-calibration" },
-    "process_revision": { "const": "m5-10a-relation-generation-v1" },
+    "process_revision": { "const": "m5-10a-relation-generation-v2" },
     "canonical_artifact": { "const": "data/canonical" },
     "calibration_case_count": { "const": 20 },
     "cases": {
@@ -30,56 +30,14 @@
     "calibrationCase": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "case_id",
-        "source_sense",
-        "relation",
-        "direction",
-        "generation_basis",
-        "writer_use_note",
-        "expected_action",
-        "preflight"
-      ],
+      "required": ["case_id", "source_sense", "relation", "direction", "preflight"],
       "properties": {
         "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
         "source_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
         "relation": { "$ref": "#/$defs/relation" },
         "direction": { "$ref": "#/$defs/direction" },
-        "generation_basis": {
-          "enum": [
-            "sense-anchored-writer-use",
-            "incidental-co-occurrence",
-            "generic-result-or-reaction",
-            "arbitrary-modifier-or-place",
-            "broad-common-category",
-            "unsupported-cross-sensory",
-            "sense-target-type-error"
-          ]
-        },
-        "writer_use_note": { "type": "string", "pattern": "\\S" },
-        "expected_action": { "enum": ["emit", "suppress"] },
-        "expected_suppression_category": {
-          "enum": [
-            "incidental-co-occurrence",
-            "generic-result-or-reaction",
-            "arbitrary-modifier-or-place",
-            "broad-common-category",
-            "unsupported-cross-sensory",
-            "sense-target-type-error"
-          ]
-        },
         "preflight": { "$ref": "#/$defs/preflight" }
-      },
-      "allOf": [
-        {
-          "if": { "properties": { "expected_action": { "const": "suppress" } } },
-          "then": { "required": ["expected_suppression_category"] }
-        },
-        {
-          "if": { "properties": { "expected_action": { "const": "emit" } } },
-          "then": { "not": { "required": ["expected_suppression_category"] } }
-        }
-      ]
+      }
     },
     "relation": {
       "type": "object",
@@ -133,7 +91,7 @@
     "boundaryEvidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "rationale", "sense_ids"],
+      "required": ["status", "rationale", "sense_ids", "observed_glosses", "observed_use", "source_note"],
       "properties": {
         "status": { "enum": ["checked", "not-applicable"] },
         "rationale": { "type": "string", "pattern": "\\S" },
@@ -141,16 +99,32 @@
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" }
-        }
+        },
+        "observed_glosses": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "observed_use": { "type": "string", "pattern": "\\S" },
+        "source_note": { "type": "string", "pattern": "\\S" }
       },
       "allOf": [
         {
           "if": { "properties": { "status": { "const": "checked" } } },
-          "then": { "properties": { "sense_ids": { "type": "array", "minItems": 1 } } }
+          "then": {
+            "properties": {
+              "sense_ids": { "type": "array", "minItems": 1 },
+              "observed_glosses": { "type": "array", "minItems": 1 }
+            }
+          }
         },
         {
           "if": { "properties": { "status": { "const": "not-applicable" } } },
-          "then": { "properties": { "sense_ids": { "type": "array", "maxItems": 0 } } }
+          "then": {
+            "properties": {
+              "sense_ids": { "type": "array", "maxItems": 0 },
+              "observed_glosses": { "type": "array", "maxItems": 0 }
+            }
+          }
         }
       ]
     }

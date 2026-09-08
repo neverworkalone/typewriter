@@ -1,412 +1,1515 @@
 {
   "schema_version": "1",
   "fixture_id": "m5-10a-relation-generation-calibration",
-  "process_revision": "m5-10a-relation-generation-v1",
+  "process_revision": "m5-10a-relation-generation-v2",
   "canonical_artifact": "data/canonical",
   "calibration_case_count": 20,
   "cases": [
     {
       "case_id": "m5-10a-cal-001",
-      "source_sense": "w529-s1",
-      "relation": { "target": "w307", "target_sense": "w307-s1", "type": "mood" },
-      "direction": { "from": "w529-s1", "to": "w307-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "감탄의 뛰어남에서 경외의 거리감으로 정서 온도를 넓혀 탐색한다.",
-      "expected_action": "emit",
+      "source_sense": "w003-s1",
+      "relation": {
+        "target": "w021",
+        "target_sense": "w021-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w003-s1",
+        "to": "w021-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-001 physical-figurative: w529-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w529-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-001 homonym-pos: w529-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w529-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-001 sensory-emotion-state-action: w529-s1을 정서 의미로 확인했다.", "sense_ids": ["w529-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-001 directional-symmetry: w529-s1에서 w307-s1로의 방향을 확인했다.", "sense_ids": ["w529-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-001 compound-spaced-phrase: w529-s1의 표제어 경계를 확인했다.", "sense_ids": ["w529-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-001 word-idiom: w529-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w529-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-001 physical-figurative w003-s1: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; observed canonical meaning “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” was checked before relation screening.",
+            "sense_ids": [
+              "w003-s1"
+            ],
+            "observed_glosses": [
+              "좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌"
+            ],
+            "observed_use": "기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻",
+            "source_note": "m5-10a-cal-001 physical-figurative source note: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; canonical sense w003-s1 means “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-001 homonym-pos w003-s1: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; observed meaning “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻",
+            "source_note": "m5-10a-cal-001 homonym-pos source note: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; canonical sense w003-s1 means “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-001 sensory-emotion-state-action w003-s1: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; observed canonical meaning “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” was checked before relation screening.",
+            "sense_ids": [
+              "w003-s1"
+            ],
+            "observed_glosses": [
+              "좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌"
+            ],
+            "observed_use": "기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻",
+            "source_note": "m5-10a-cal-001 sensory-emotion-state-action source note: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; canonical sense w003-s1 means “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-001 directional-symmetry w003-s1: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; observed canonical meaning “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” was checked before relation screening.",
+            "sense_ids": [
+              "w003-s1"
+            ],
+            "observed_glosses": [
+              "좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌"
+            ],
+            "observed_use": "기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻",
+            "source_note": "m5-10a-cal-001 directional-symmetry source note: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; canonical sense w003-s1 means “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-001 compound-spaced-phrase w003-s1: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; observed meaning “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻",
+            "source_note": "m5-10a-cal-001 compound-spaced-phrase source note: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; canonical sense w003-s1 means “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-001 word-idiom w003-s1: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; observed meaning “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻",
+            "source_note": "m5-10a-cal-001 word-idiom source note: 기다리는 동안 마음이 들뜨는 정서로 사용되는 뜻; canonical sense w003-s1 means “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-002",
-      "source_sense": "w530-s1",
-      "relation": { "target": "w305", "target_sense": "w305-s1", "type": "near" },
-      "direction": { "from": "w530-s1", "to": "w305-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "해낸 뒤 차오르는 마음에서 자신을 가치 있게 보는 마음으로 이동한다.",
-      "expected_action": "emit",
+      "source_sense": "w006-s1",
+      "relation": {
+        "target": "w019",
+        "target_sense": "w019-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w006-s1",
+        "to": "w019-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-002 physical-figurative: w530-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w530-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-002 homonym-pos: w530-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w530-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-002 sensory-emotion-state-action: w530-s1을 정서 의미로 확인했다.", "sense_ids": ["w530-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-002 directional-symmetry: w530-s1에서 w305-s1로의 방향을 확인했다.", "sense_ids": ["w530-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-002 compound-spaced-phrase: w530-s1의 표제어 경계를 확인했다.", "sense_ids": ["w530-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-002 word-idiom: w530-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w530-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-002 physical-figurative w006-s1: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; observed meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻",
+            "source_note": "m5-10a-cal-002 physical-figurative source note: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; canonical sense w006-s1 means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-002 homonym-pos w006-s1: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; observed canonical meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” was checked before relation screening.",
+            "sense_ids": [
+              "w006-s1"
+            ],
+            "observed_glosses": [
+              "곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌"
+            ],
+            "observed_use": "곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻",
+            "source_note": "m5-10a-cal-002 homonym-pos source note: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; canonical sense w006-s1 means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-002 sensory-emotion-state-action w006-s1: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; observed canonical meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” was checked before relation screening.",
+            "sense_ids": [
+              "w006-s1"
+            ],
+            "observed_glosses": [
+              "곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌"
+            ],
+            "observed_use": "곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻",
+            "source_note": "m5-10a-cal-002 sensory-emotion-state-action source note: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; canonical sense w006-s1 means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-002 directional-symmetry w006-s1: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; observed meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻",
+            "source_note": "m5-10a-cal-002 directional-symmetry source note: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; canonical sense w006-s1 means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-002 compound-spaced-phrase w006-s1: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; observed meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻",
+            "source_note": "m5-10a-cal-002 compound-spaced-phrase source note: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; canonical sense w006-s1 means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-002 word-idiom w006-s1: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; observed meaning “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻",
+            "source_note": "m5-10a-cal-002 word-idiom source note: 곁에 사람이 없을 때 생기는 허전함을 가리키는 뜻; canonical sense w006-s1 means “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-003",
-      "source_sense": "w531-s1",
-      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
-      "direction": { "from": "w531-s1", "to": "w018-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "따뜻하고 잔잔한 만족에서 더 넓은 긍정 정서로 탐색 범위를 넓힌다.",
-      "expected_action": "emit",
+      "source_sense": "w008-s1",
+      "relation": {
+        "target": "w021",
+        "target_sense": "w021-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w008-s1",
+        "to": "w021-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-003 physical-figurative: w531-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w531-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-003 homonym-pos: w531-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w531-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-003 sensory-emotion-state-action: w531-s1을 정서 의미로 확인했다.", "sense_ids": ["w531-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-003 directional-symmetry: w531-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w531-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-003 compound-spaced-phrase: w531-s1의 표제어 경계를 확인했다.", "sense_ids": ["w531-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-003 word-idiom: w531-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w531-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-003 physical-figurative w008-s1: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; observed meaning “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-003 physical-figurative source note: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; canonical sense w008-s1 means “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-003 homonym-pos w008-s1: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; observed meaning “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-003 homonym-pos source note: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; canonical sense w008-s1 means “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-003 sensory-emotion-state-action w008-s1: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; observed canonical meaning “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” was checked before relation screening.",
+            "sense_ids": [
+              "w008-s1"
+            ],
+            "observed_glosses": [
+              "걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태"
+            ],
+            "observed_use": "위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-003 sensory-emotion-state-action source note: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; canonical sense w008-s1 means “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-003 directional-symmetry w008-s1: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; observed meaning “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-003 directional-symmetry source note: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; canonical sense w008-s1 means “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-003 compound-spaced-phrase w008-s1: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; observed canonical meaning “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” was checked before relation screening.",
+            "sense_ids": [
+              "w008-s1"
+            ],
+            "observed_glosses": [
+              "걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태"
+            ],
+            "observed_use": "위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-003 compound-spaced-phrase source note: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; canonical sense w008-s1 means “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태”, providing a meaning/use observation for this boundary."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-003 word-idiom w008-s1: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; observed meaning “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-003 word-idiom source note: 위험을 넘긴 뒤 마음이 놓이는 상태로 사용되는 뜻; canonical sense w008-s1 means “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-004",
-      "source_sense": "w532-s1",
-      "relation": { "target": "w005", "target_sense": "w005-s1", "type": "near" },
-      "direction": { "from": "w532-s1", "to": "w005-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "기대한 배려가 어긋난 초점과 서운함의 넓은 감정을 구분해 함께 탐색한다.",
-      "expected_action": "emit",
+      "source_sense": "w010-s1",
+      "relation": {
+        "target": "w028",
+        "target_sense": "w028-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w010-s1",
+        "to": "w028-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-004 physical-figurative: w532-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w532-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-004 homonym-pos: w532-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w532-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-004 sensory-emotion-state-action: w532-s1을 정서 의미로 확인했다.", "sense_ids": ["w532-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-004 directional-symmetry: w532-s1에서 w005-s1로의 방향을 확인했다.", "sense_ids": ["w532-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-004 compound-spaced-phrase: w532-s1의 표제어 경계를 확인했다.", "sense_ids": ["w532-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-004 word-idiom: w532-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w532-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-004 physical-figurative w010-s1: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; observed canonical meaning “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w010-s1"
+            ],
+            "observed_glosses": [
+              "결정이나 행동을 바로 하지 못하고 머뭇거리는 마음"
+            ],
+            "observed_use": "결정 앞에서 머뭇거리는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-004 physical-figurative source note: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; canonical sense w010-s1 means “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-004 homonym-pos w010-s1: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; observed meaning “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결정 앞에서 머뭇거리는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-004 homonym-pos source note: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; canonical sense w010-s1 means “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-004 sensory-emotion-state-action w010-s1: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; observed canonical meaning “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w010-s1"
+            ],
+            "observed_glosses": [
+              "결정이나 행동을 바로 하지 못하고 머뭇거리는 마음"
+            ],
+            "observed_use": "결정 앞에서 머뭇거리는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-004 sensory-emotion-state-action source note: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; canonical sense w010-s1 means “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-004 directional-symmetry w010-s1: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; observed meaning “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결정 앞에서 머뭇거리는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-004 directional-symmetry source note: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; canonical sense w010-s1 means “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-004 compound-spaced-phrase w010-s1: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; observed meaning “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결정 앞에서 머뭇거리는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-004 compound-spaced-phrase source note: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; canonical sense w010-s1 means “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-004 word-idiom w010-s1: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; observed canonical meaning “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w010-s1"
+            ],
+            "observed_glosses": [
+              "결정이나 행동을 바로 하지 못하고 머뭇거리는 마음"
+            ],
+            "observed_use": "결정 앞에서 머뭇거리는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-004 word-idiom source note: 결정 앞에서 머뭇거리는 마음을 가리키는 뜻; canonical sense w010-s1 means “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음”, providing a meaning/use observation for this boundary."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-005",
-      "source_sense": "w534-s1",
-      "relation": { "target": "w432", "target_sense": "w432-s1", "type": "near" },
-      "direction": { "from": "w534-s1", "to": "w432-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "당장의 멋쩍음과 자기 평가에 가까운 부끄러움을 나란히 비교한다.",
-      "expected_action": "emit",
+      "source_sense": "w014-s1",
+      "relation": {
+        "target": "w019",
+        "target_sense": "w019-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w014-s1",
+        "to": "w019-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-005 physical-figurative: w534-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w534-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-005 homonym-pos: w534-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w534-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-005 sensory-emotion-state-action: w534-s1을 정서 의미로 확인했다.", "sense_ids": ["w534-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-005 directional-symmetry: w534-s1에서 w432-s1로의 방향을 확인했다.", "sense_ids": ["w534-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-005 compound-spaced-phrase: w534-s1의 표제어 경계를 확인했다.", "sense_ids": ["w534-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-005 word-idiom: w534-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w534-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-005 physical-figurative w014-s1: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; observed meaning “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "상처 준 대상을 탓하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-005 physical-figurative source note: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; canonical sense w014-s1 means “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-005 homonym-pos w014-s1: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; observed canonical meaning “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w014-s1"
+            ],
+            "observed_glosses": [
+              "부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음"
+            ],
+            "observed_use": "상처 준 대상을 탓하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-005 homonym-pos source note: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; canonical sense w014-s1 means “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-005 sensory-emotion-state-action w014-s1: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; observed canonical meaning “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w014-s1"
+            ],
+            "observed_glosses": [
+              "부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음"
+            ],
+            "observed_use": "상처 준 대상을 탓하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-005 sensory-emotion-state-action source note: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; canonical sense w014-s1 means “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-005 directional-symmetry w014-s1: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; observed meaning “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "상처 준 대상을 탓하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-005 directional-symmetry source note: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; canonical sense w014-s1 means “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-005 compound-spaced-phrase w014-s1: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; observed meaning “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "상처 준 대상을 탓하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-005 compound-spaced-phrase source note: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; canonical sense w014-s1 means “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-005 word-idiom w014-s1: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; observed meaning “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "상처 준 대상을 탓하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-005 word-idiom source note: 상처 준 대상을 탓하는 감정으로 사용되는 뜻; canonical sense w014-s1 means “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-006",
-      "source_sense": "w301-s1",
-      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "near" },
-      "direction": { "from": "w301-s1", "to": "w018-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "현재 감정의 중심과 더 넓은 긍정 정서를 구분해 대체 가능성을 낮춘다.",
-      "expected_action": "emit",
+      "source_sense": "w022-s1",
+      "relation": {
+        "target": "w024",
+        "target_sense": "w024-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w022-s1",
+        "to": "w024-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-006 physical-figurative: w301-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w301-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-006 homonym-pos: w301-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w301-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-006 sensory-emotion-state-action: w301-s1을 정서 의미로 확인했다.", "sense_ids": ["w301-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-006 directional-symmetry: w301-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w301-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-006 compound-spaced-phrase: w301-s1의 표제어 경계를 확인했다.", "sense_ids": ["w301-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-006 word-idiom: w301-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w301-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-006 physical-figurative w022-s1: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; observed meaning “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-006 physical-figurative source note: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; canonical sense w022-s1 means “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-006 homonym-pos w022-s1: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; observed meaning “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-006 homonym-pos source note: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; canonical sense w022-s1 means “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-006 sensory-emotion-state-action w022-s1: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; observed canonical meaning “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w022-s1"
+            ],
+            "observed_glosses": [
+              "앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음"
+            ],
+            "observed_use": "원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-006 sensory-emotion-state-action source note: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; canonical sense w022-s1 means “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-006 directional-symmetry w022-s1: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; observed canonical meaning “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w022-s1"
+            ],
+            "observed_glosses": [
+              "앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음"
+            ],
+            "observed_use": "원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-006 directional-symmetry source note: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; canonical sense w022-s1 means “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-006 compound-spaced-phrase w022-s1: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; observed meaning “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-006 compound-spaced-phrase source note: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; canonical sense w022-s1 means “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-006 word-idiom w022-s1: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; observed meaning “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-006 word-idiom source note: 원하는 결과를 믿고 기다리는 마음으로 사용되는 뜻; canonical sense w022-s1 means “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-007",
-      "source_sense": "w302-s1",
-      "relation": { "target": "w002", "target_sense": "w002-s1", "type": "near" },
-      "direction": { "from": "w302-s1", "to": "w002-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "출발 정서와 불안의 인접한 결을 비교하되 동일어로 취급하지 않는다.",
-      "expected_action": "emit",
+      "source_sense": "w026-s1",
+      "relation": {
+        "target": "w039",
+        "target_sense": "w039-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w026-s1",
+        "to": "w039-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-007 physical-figurative: w302-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w302-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-007 homonym-pos: w302-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w302-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-007 sensory-emotion-state-action: w302-s1을 정서 의미로 확인했다.", "sense_ids": ["w302-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-007 directional-symmetry: w302-s1에서 w002-s1로의 방향을 확인했다.", "sense_ids": ["w302-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-007 compound-spaced-phrase: w302-s1의 표제어 경계를 확인했다.", "sense_ids": ["w302-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-007 word-idiom: w302-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w302-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-007 physical-figurative w026-s1: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; observed canonical meaning “감정의 흔들림을 크게 드러내지 않고 차분하다” was checked before relation screening.",
+            "sense_ids": [
+              "w026-s1"
+            ],
+            "observed_glosses": [
+              "감정의 흔들림을 크게 드러내지 않고 차분하다"
+            ],
+            "observed_use": "감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-007 physical-figurative source note: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; canonical sense w026-s1 means “감정의 흔들림을 크게 드러내지 않고 차분하다”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-007 homonym-pos w026-s1: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; observed meaning “감정의 흔들림을 크게 드러내지 않고 차분하다” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-007 homonym-pos source note: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; canonical sense w026-s1 means “감정의 흔들림을 크게 드러내지 않고 차분하다”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-007 sensory-emotion-state-action w026-s1: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; observed canonical meaning “감정의 흔들림을 크게 드러내지 않고 차분하다” was checked before relation screening.",
+            "sense_ids": [
+              "w026-s1"
+            ],
+            "observed_glosses": [
+              "감정의 흔들림을 크게 드러내지 않고 차분하다"
+            ],
+            "observed_use": "감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-007 sensory-emotion-state-action source note: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; canonical sense w026-s1 means “감정의 흔들림을 크게 드러내지 않고 차분하다”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-007 directional-symmetry w026-s1: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; observed meaning “감정의 흔들림을 크게 드러내지 않고 차분하다” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-007 directional-symmetry source note: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; canonical sense w026-s1 means “감정의 흔들림을 크게 드러내지 않고 차분하다”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-007 compound-spaced-phrase w026-s1: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; observed meaning “감정의 흔들림을 크게 드러내지 않고 차분하다” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-007 compound-spaced-phrase source note: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; canonical sense w026-s1 means “감정의 흔들림을 크게 드러내지 않고 차분하다”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-007 word-idiom w026-s1: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; observed meaning “감정의 흔들림을 크게 드러내지 않고 차분하다” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-007 word-idiom source note: 감정의 흔들림을 낮춘 차분한 상태로 사용되는 뜻; canonical sense w026-s1 means “감정의 흔들림을 크게 드러내지 않고 차분하다”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-008",
-      "source_sense": "w302-s1",
-      "relation": { "target": "w028", "target_sense": "w028-s1", "type": "mood" },
-      "direction": { "from": "w302-s1", "to": "w028-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "같은 출발 sense에서 다른 정서 온도로 이동하는 선택지를 독립적으로 기록한다.",
-      "expected_action": "emit",
+      "source_sense": "w037-s1",
+      "relation": {
+        "target": "w039",
+        "target_sense": "w039-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w037-s1",
+        "to": "w039-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-008 physical-figurative: w302-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w302-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-008 homonym-pos: w302-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w302-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-008 sensory-emotion-state-action: w302-s1을 정서 의미로 확인했다.", "sense_ids": ["w302-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-008 directional-symmetry: w302-s1에서 w028-s1로의 방향을 확인했다.", "sense_ids": ["w302-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-008 compound-spaced-phrase: w302-s1의 표제어 경계를 확인했다.", "sense_ids": ["w302-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-008 word-idiom: w302-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w302-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-008 physical-figurative w037-s1: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; observed meaning “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "억지스럽지 않은 장면의 흐름을 가리키는 뜻",
+            "source_note": "m5-10a-cal-008 physical-figurative source note: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; canonical sense w037-s1 means “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-008 homonym-pos w037-s1: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; observed canonical meaning “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” was checked before relation screening.",
+            "sense_ids": [
+              "w037-s1"
+            ],
+            "observed_glosses": [
+              "사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다"
+            ],
+            "observed_use": "억지스럽지 않은 장면의 흐름을 가리키는 뜻",
+            "source_note": "m5-10a-cal-008 homonym-pos source note: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; canonical sense w037-s1 means “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-008 sensory-emotion-state-action w037-s1: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; observed meaning “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” gives no sensory-emotion-state-action distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "억지스럽지 않은 장면의 흐름을 가리키는 뜻",
+            "source_note": "m5-10a-cal-008 sensory-emotion-state-action source note: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; canonical sense w037-s1 means “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다”, and no sensory-emotion-state-action distinction is implicated by this candidate."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-008 directional-symmetry w037-s1: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; observed meaning “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "억지스럽지 않은 장면의 흐름을 가리키는 뜻",
+            "source_note": "m5-10a-cal-008 directional-symmetry source note: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; canonical sense w037-s1 means “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-008 compound-spaced-phrase w037-s1: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; observed canonical meaning “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” was checked before relation screening.",
+            "sense_ids": [
+              "w037-s1"
+            ],
+            "observed_glosses": [
+              "사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다"
+            ],
+            "observed_use": "억지스럽지 않은 장면의 흐름을 가리키는 뜻",
+            "source_note": "m5-10a-cal-008 compound-spaced-phrase source note: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; canonical sense w037-s1 means “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다”, providing a meaning/use observation for this boundary."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-008 word-idiom w037-s1: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; observed meaning “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "억지스럽지 않은 장면의 흐름을 가리키는 뜻",
+            "source_note": "m5-10a-cal-008 word-idiom source note: 억지스럽지 않은 장면의 흐름을 가리키는 뜻; canonical sense w037-s1 means “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-009",
-      "source_sense": "w303-s1",
-      "relation": { "target": "w029", "target_sense": "w029-s1", "type": "mood" },
-      "direction": { "from": "w303-s1", "to": "w029-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "불편한 정서에서 외롭고 빈 듯한 정서로 장면의 결을 넓혀 본다.",
-      "expected_action": "emit",
+      "source_sense": "w040-s1",
+      "relation": {
+        "target": "w066",
+        "target_sense": "w066-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w040-s1",
+        "to": "w066-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-009 physical-figurative: w303-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w303-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-009 homonym-pos: w303-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w303-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-009 sensory-emotion-state-action: w303-s1을 정서 의미로 확인했다.", "sense_ids": ["w303-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-009 directional-symmetry: w303-s1에서 w029-s1로의 방향을 확인했다.", "sense_ids": ["w303-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-009 compound-spaced-phrase: w303-s1의 표제어 경계를 확인했다.", "sense_ids": ["w303-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-009 word-idiom: w303-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w303-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-009 physical-figurative w040-s1: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; observed canonical meaning “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” was checked before relation screening.",
+            "sense_ids": [
+              "w040-s1"
+            ],
+            "observed_glosses": [
+              "빛깔이나 윤곽이 흐리지 않고 뚜렷하다"
+            ],
+            "observed_use": "빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-009 physical-figurative source note: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; canonical sense w040-s1 means “빛깔이나 윤곽이 흐리지 않고 뚜렷하다”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-009 homonym-pos w040-s1: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; observed meaning “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-009 homonym-pos source note: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; canonical sense w040-s1 means “빛깔이나 윤곽이 흐리지 않고 뚜렷하다”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-009 sensory-emotion-state-action w040-s1: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; observed canonical meaning “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” was checked before relation screening.",
+            "sense_ids": [
+              "w040-s1"
+            ],
+            "observed_glosses": [
+              "빛깔이나 윤곽이 흐리지 않고 뚜렷하다"
+            ],
+            "observed_use": "빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-009 sensory-emotion-state-action source note: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; canonical sense w040-s1 means “빛깔이나 윤곽이 흐리지 않고 뚜렷하다”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-009 directional-symmetry w040-s1: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; observed canonical meaning “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” was checked before relation screening.",
+            "sense_ids": [
+              "w040-s1"
+            ],
+            "observed_glosses": [
+              "빛깔이나 윤곽이 흐리지 않고 뚜렷하다"
+            ],
+            "observed_use": "빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-009 directional-symmetry source note: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; canonical sense w040-s1 means “빛깔이나 윤곽이 흐리지 않고 뚜렷하다”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-009 compound-spaced-phrase w040-s1: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; observed meaning “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-009 compound-spaced-phrase source note: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; canonical sense w040-s1 means “빛깔이나 윤곽이 흐리지 않고 뚜렷하다”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-009 word-idiom w040-s1: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; observed meaning “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-009 word-idiom source note: 빛깔이나 윤곽이 뚜렷한 시각적 상태로 사용되는 뜻; canonical sense w040-s1 means “빛깔이나 윤곽이 흐리지 않고 뚜렷하다”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-010",
-      "source_sense": "w304-s1",
-      "relation": { "target": "w227", "target_sense": "w227-s1", "type": "action" },
-      "direction": { "from": "w304-s1", "to": "w227-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "정서가 행동으로 드러나는 구체적 경로를 찾아 장면화한다.",
-      "expected_action": "emit",
+      "source_sense": "w062-s1",
+      "relation": {
+        "target": "w065",
+        "target_sense": "w065-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w062-s1",
+        "to": "w065-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-010 physical-figurative: w304-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w304-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-010 homonym-pos: w304-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w304-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-010 sensory-emotion-state-action: w304-s1을 행동 의미로 확인했다.", "sense_ids": ["w304-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-010 directional-symmetry: w304-s1에서 w227-s1로의 방향을 확인했다.", "sense_ids": ["w304-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-010 compound-spaced-phrase: w304-s1의 표제어 경계를 확인했다.", "sense_ids": ["w304-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-010 word-idiom: w304-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w304-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-010 physical-figurative w062-s1: 코로 맡는 냄새의 성질을 가리키는 뜻; observed meaning “코로 맡아 느끼는 기운이나 향의 성질” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "코로 맡는 냄새의 성질을 가리키는 뜻",
+            "source_note": "m5-10a-cal-010 physical-figurative source note: 코로 맡는 냄새의 성질을 가리키는 뜻; canonical sense w062-s1 means “코로 맡아 느끼는 기운이나 향의 성질”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-010 homonym-pos w062-s1: 코로 맡는 냄새의 성질을 가리키는 뜻; observed meaning “코로 맡아 느끼는 기운이나 향의 성질” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "코로 맡는 냄새의 성질을 가리키는 뜻",
+            "source_note": "m5-10a-cal-010 homonym-pos source note: 코로 맡는 냄새의 성질을 가리키는 뜻; canonical sense w062-s1 means “코로 맡아 느끼는 기운이나 향의 성질”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-010 sensory-emotion-state-action w062-s1: 코로 맡는 냄새의 성질을 가리키는 뜻; observed canonical meaning “코로 맡아 느끼는 기운이나 향의 성질” was checked before relation screening.",
+            "sense_ids": [
+              "w062-s1"
+            ],
+            "observed_glosses": [
+              "코로 맡아 느끼는 기운이나 향의 성질"
+            ],
+            "observed_use": "코로 맡는 냄새의 성질을 가리키는 뜻",
+            "source_note": "m5-10a-cal-010 sensory-emotion-state-action source note: 코로 맡는 냄새의 성질을 가리키는 뜻; canonical sense w062-s1 means “코로 맡아 느끼는 기운이나 향의 성질”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-010 directional-symmetry w062-s1: 코로 맡는 냄새의 성질을 가리키는 뜻; observed meaning “코로 맡아 느끼는 기운이나 향의 성질” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "코로 맡는 냄새의 성질을 가리키는 뜻",
+            "source_note": "m5-10a-cal-010 directional-symmetry source note: 코로 맡는 냄새의 성질을 가리키는 뜻; canonical sense w062-s1 means “코로 맡아 느끼는 기운이나 향의 성질”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-010 compound-spaced-phrase w062-s1: 코로 맡는 냄새의 성질을 가리키는 뜻; observed meaning “코로 맡아 느끼는 기운이나 향의 성질” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "코로 맡는 냄새의 성질을 가리키는 뜻",
+            "source_note": "m5-10a-cal-010 compound-spaced-phrase source note: 코로 맡는 냄새의 성질을 가리키는 뜻; canonical sense w062-s1 means “코로 맡아 느끼는 기운이나 향의 성질”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-010 word-idiom w062-s1: 코로 맡는 냄새의 성질을 가리키는 뜻; observed canonical meaning “코로 맡아 느끼는 기운이나 향의 성질” was checked before relation screening.",
+            "sense_ids": [
+              "w062-s1"
+            ],
+            "observed_glosses": [
+              "코로 맡아 느끼는 기운이나 향의 성질"
+            ],
+            "observed_use": "코로 맡는 냄새의 성질을 가리키는 뜻",
+            "source_note": "m5-10a-cal-010 word-idiom source note: 코로 맡는 냄새의 성질을 가리키는 뜻; canonical sense w062-s1 means “코로 맡아 느끼는 기운이나 향의 성질”, providing a meaning/use observation for this boundary."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-011",
-      "source_sense": "w305-s1",
-      "relation": { "target": "w021", "target_sense": "w021-s1", "type": "mood" },
-      "direction": { "from": "w305-s1", "to": "w021-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "자기 평가가 안정된 긍지와 인접한 정서임을 설명해 탐색한다.",
-      "expected_action": "emit",
+      "source_sense": "w086-s1",
+      "relation": {
+        "target": "w088",
+        "target_sense": "w088-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w086-s1",
+        "to": "w088-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-011 physical-figurative: w305-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w305-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-011 homonym-pos: w305-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w305-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-011 sensory-emotion-state-action: w305-s1을 정서 의미로 확인했다.", "sense_ids": ["w305-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-011 directional-symmetry: w305-s1에서 w021-s1로의 방향을 확인했다.", "sense_ids": ["w305-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-011 compound-spaced-phrase: w305-s1의 표제어 경계를 확인했다.", "sense_ids": ["w305-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-011 word-idiom: w305-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w305-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-011 physical-figurative w086-s1: 귀로 느끼는 울림을 가리키는 뜻; observed meaning “물체의 움직임이나 목소리에서 귀로 느끼는 울림” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "귀로 느끼는 울림을 가리키는 뜻",
+            "source_note": "m5-10a-cal-011 physical-figurative source note: 귀로 느끼는 울림을 가리키는 뜻; canonical sense w086-s1 means “물체의 움직임이나 목소리에서 귀로 느끼는 울림”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-011 homonym-pos w086-s1: 귀로 느끼는 울림을 가리키는 뜻; observed canonical meaning “물체의 움직임이나 목소리에서 귀로 느끼는 울림” was checked before relation screening.",
+            "sense_ids": [
+              "w086-s1"
+            ],
+            "observed_glosses": [
+              "물체의 움직임이나 목소리에서 귀로 느끼는 울림"
+            ],
+            "observed_use": "귀로 느끼는 울림을 가리키는 뜻",
+            "source_note": "m5-10a-cal-011 homonym-pos source note: 귀로 느끼는 울림을 가리키는 뜻; canonical sense w086-s1 means “물체의 움직임이나 목소리에서 귀로 느끼는 울림”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-011 sensory-emotion-state-action w086-s1: 귀로 느끼는 울림을 가리키는 뜻; observed canonical meaning “물체의 움직임이나 목소리에서 귀로 느끼는 울림” was checked before relation screening.",
+            "sense_ids": [
+              "w086-s1"
+            ],
+            "observed_glosses": [
+              "물체의 움직임이나 목소리에서 귀로 느끼는 울림"
+            ],
+            "observed_use": "귀로 느끼는 울림을 가리키는 뜻",
+            "source_note": "m5-10a-cal-011 sensory-emotion-state-action source note: 귀로 느끼는 울림을 가리키는 뜻; canonical sense w086-s1 means “물체의 움직임이나 목소리에서 귀로 느끼는 울림”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-011 directional-symmetry w086-s1: 귀로 느끼는 울림을 가리키는 뜻; observed meaning “물체의 움직임이나 목소리에서 귀로 느끼는 울림” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "귀로 느끼는 울림을 가리키는 뜻",
+            "source_note": "m5-10a-cal-011 directional-symmetry source note: 귀로 느끼는 울림을 가리키는 뜻; canonical sense w086-s1 means “물체의 움직임이나 목소리에서 귀로 느끼는 울림”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-011 compound-spaced-phrase w086-s1: 귀로 느끼는 울림을 가리키는 뜻; observed meaning “물체의 움직임이나 목소리에서 귀로 느끼는 울림” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "귀로 느끼는 울림을 가리키는 뜻",
+            "source_note": "m5-10a-cal-011 compound-spaced-phrase source note: 귀로 느끼는 울림을 가리키는 뜻; canonical sense w086-s1 means “물체의 움직임이나 목소리에서 귀로 느끼는 울림”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-011 word-idiom w086-s1: 귀로 느끼는 울림을 가리키는 뜻; observed meaning “물체의 움직임이나 목소리에서 귀로 느끼는 울림” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "귀로 느끼는 울림을 가리키는 뜻",
+            "source_note": "m5-10a-cal-011 word-idiom source note: 귀로 느끼는 울림을 가리키는 뜻; canonical sense w086-s1 means “물체의 움직임이나 목소리에서 귀로 느끼는 울림”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-012",
-      "source_sense": "w306-s1",
-      "relation": { "target": "w019", "target_sense": "w019-s1", "type": "mood" },
-      "direction": { "from": "w306-s1", "to": "w019-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "긴장과 불안이 겹치되 몸의 압력과 앞일의 흔들림을 구분한다.",
-      "expected_action": "emit",
+      "source_sense": "w077-s1",
+      "relation": {
+        "target": "w084",
+        "target_sense": "w084-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w077-s1",
+        "to": "w084-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-012 physical-figurative: w306-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w306-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-012 homonym-pos: w306-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w306-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-012 sensory-emotion-state-action: w306-s1을 정서 의미로 확인했다.", "sense_ids": ["w306-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-012 directional-symmetry: w306-s1에서 w019-s1로의 방향을 확인했다.", "sense_ids": ["w306-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-012 compound-spaced-phrase: w306-s1의 표제어 경계를 확인했다.", "sense_ids": ["w306-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-012 word-idiom: w306-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w306-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-012 physical-figurative w077-s1: 공기나 물체의 축축한 수분을 가리키는 뜻; observed canonical meaning “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” was checked before relation screening.",
+            "sense_ids": [
+              "w077-s1"
+            ],
+            "observed_glosses": [
+              "공기나 물체에 포함되어 눅눅하게 느껴지는 수분"
+            ],
+            "observed_use": "공기나 물체의 축축한 수분을 가리키는 뜻",
+            "source_note": "m5-10a-cal-012 physical-figurative source note: 공기나 물체의 축축한 수분을 가리키는 뜻; canonical sense w077-s1 means “공기나 물체에 포함되어 눅눅하게 느껴지는 수분”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-012 homonym-pos w077-s1: 공기나 물체의 축축한 수분을 가리키는 뜻; observed meaning “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "공기나 물체의 축축한 수분을 가리키는 뜻",
+            "source_note": "m5-10a-cal-012 homonym-pos source note: 공기나 물체의 축축한 수분을 가리키는 뜻; canonical sense w077-s1 means “공기나 물체에 포함되어 눅눅하게 느껴지는 수분”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-012 sensory-emotion-state-action w077-s1: 공기나 물체의 축축한 수분을 가리키는 뜻; observed canonical meaning “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” was checked before relation screening.",
+            "sense_ids": [
+              "w077-s1"
+            ],
+            "observed_glosses": [
+              "공기나 물체에 포함되어 눅눅하게 느껴지는 수분"
+            ],
+            "observed_use": "공기나 물체의 축축한 수분을 가리키는 뜻",
+            "source_note": "m5-10a-cal-012 sensory-emotion-state-action source note: 공기나 물체의 축축한 수분을 가리키는 뜻; canonical sense w077-s1 means “공기나 물체에 포함되어 눅눅하게 느껴지는 수분”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-012 directional-symmetry w077-s1: 공기나 물체의 축축한 수분을 가리키는 뜻; observed meaning “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "공기나 물체의 축축한 수분을 가리키는 뜻",
+            "source_note": "m5-10a-cal-012 directional-symmetry source note: 공기나 물체의 축축한 수분을 가리키는 뜻; canonical sense w077-s1 means “공기나 물체에 포함되어 눅눅하게 느껴지는 수분”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-012 compound-spaced-phrase w077-s1: 공기나 물체의 축축한 수분을 가리키는 뜻; observed canonical meaning “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” was checked before relation screening.",
+            "sense_ids": [
+              "w077-s1"
+            ],
+            "observed_glosses": [
+              "공기나 물체에 포함되어 눅눅하게 느껴지는 수분"
+            ],
+            "observed_use": "공기나 물체의 축축한 수분을 가리키는 뜻",
+            "source_note": "m5-10a-cal-012 compound-spaced-phrase source note: 공기나 물체의 축축한 수분을 가리키는 뜻; canonical sense w077-s1 means “공기나 물체에 포함되어 눅눅하게 느껴지는 수분”, providing a meaning/use observation for this boundary."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-012 word-idiom w077-s1: 공기나 물체의 축축한 수분을 가리키는 뜻; observed meaning “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "공기나 물체의 축축한 수분을 가리키는 뜻",
+            "source_note": "m5-10a-cal-012 word-idiom source note: 공기나 물체의 축축한 수분을 가리키는 뜻; canonical sense w077-s1 means “공기나 물체에 포함되어 눅눅하게 느껴지는 수분”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-013",
-      "source_sense": "w307-s1",
-      "relation": { "target": "w016", "target_sense": "w016-s1", "type": "mood" },
-      "direction": { "from": "w307-s1", "to": "w016-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "존경 어린 경외에서 대상의 큰 인상으로 정서의 초점을 이동한다.",
-      "expected_action": "emit",
+      "source_sense": "w020-s1",
+      "relation": {
+        "target": "w227",
+        "target_sense": "w227-s1",
+        "type": "action"
+      },
+      "direction": {
+        "from": "w020-s1",
+        "to": "w227-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-013 physical-figurative: w307-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w307-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-013 homonym-pos: w307-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w307-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-013 sensory-emotion-state-action: w307-s1을 정서 의미로 확인했다.", "sense_ids": ["w307-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-013 directional-symmetry: w307-s1에서 w016-s1로의 방향을 확인했다.", "sense_ids": ["w307-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-013 compound-spaced-phrase: w307-s1의 표제어 경계를 확인했다.", "sense_ids": ["w307-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-013 word-idiom: w307-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w307-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-013 physical-figurative w020-s1: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; observed meaning “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻",
+            "source_note": "m5-10a-cal-013 physical-figurative source note: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; canonical sense w020-s1 means “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-013 homonym-pos w020-s1: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; observed meaning “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻",
+            "source_note": "m5-10a-cal-013 homonym-pos source note: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; canonical sense w020-s1 means “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-013 sensory-emotion-state-action w020-s1: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; observed canonical meaning “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w020-s1"
+            ],
+            "observed_glosses": [
+              "바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음"
+            ],
+            "observed_use": "희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻",
+            "source_note": "m5-10a-cal-013 sensory-emotion-state-action source note: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; canonical sense w020-s1 means “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-013 directional-symmetry w020-s1: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; observed canonical meaning “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w020-s1"
+            ],
+            "observed_glosses": [
+              "바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음"
+            ],
+            "observed_use": "희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻",
+            "source_note": "m5-10a-cal-013 directional-symmetry source note: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; canonical sense w020-s1 means “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-013 compound-spaced-phrase w020-s1: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; observed meaning “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻",
+            "source_note": "m5-10a-cal-013 compound-spaced-phrase source note: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; canonical sense w020-s1 means “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-013 word-idiom w020-s1: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; observed canonical meaning “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w020-s1"
+            ],
+            "observed_glosses": [
+              "바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음"
+            ],
+            "observed_use": "희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻",
+            "source_note": "m5-10a-cal-013 word-idiom source note: 희망을 잃고 더 이어 가지 않기로 하는 행동의 계기로 사용되는 뜻; canonical sense w020-s1 means “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음”, providing a meaning/use observation for this boundary."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-014",
-      "source_sense": "w308-s1",
-      "relation": { "target": "w004", "target_sense": "w004-s1", "type": "mood" },
-      "direction": { "from": "w308-s1", "to": "w004-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "관계의 결핍에서 떠난 대상을 향한 마음으로 장면의 정서를 확장한다.",
-      "expected_action": "emit",
+      "source_sense": "w015-s1",
+      "relation": {
+        "target": "w061",
+        "target_sense": "w061-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w015-s1",
+        "to": "w061-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-014 physical-figurative: w308-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w308-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-014 homonym-pos: w308-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w308-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-014 sensory-emotion-state-action: w308-s1을 정서 의미로 확인했다.", "sense_ids": ["w308-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-014 directional-symmetry: w308-s1에서 w004-s1로의 방향을 확인했다.", "sense_ids": ["w308-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-014 compound-spaced-phrase: w308-s1의 표제어 경계를 확인했다.", "sense_ids": ["w308-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-014 word-idiom: w308-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w308-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-014 physical-figurative w015-s1: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; observed canonical meaning “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w015-s1"
+            ],
+            "observed_glosses": [
+              "다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음"
+            ],
+            "observed_use": "사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-014 physical-figurative source note: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; canonical sense w015-s1 means “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-014 homonym-pos w015-s1: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; observed canonical meaning “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w015-s1"
+            ],
+            "observed_glosses": [
+              "다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음"
+            ],
+            "observed_use": "사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-014 homonym-pos source note: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; canonical sense w015-s1 means “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-014 sensory-emotion-state-action w015-s1: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; observed meaning “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” gives no sensory-emotion-state-action distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-014 sensory-emotion-state-action source note: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; canonical sense w015-s1 means “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음”, and no sensory-emotion-state-action distinction is implicated by this candidate."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-014 directional-symmetry w015-s1: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; observed meaning “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-014 directional-symmetry source note: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; canonical sense w015-s1 means “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-014 compound-spaced-phrase w015-s1: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; observed meaning “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-014 compound-spaced-phrase source note: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; canonical sense w015-s1 means “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-014 word-idiom w015-s1: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; observed meaning “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-014 word-idiom source note: 사랑이나 관심을 빼앗길까 불편한 감정으로 사용되는 뜻; canonical sense w015-s1 means “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-015",
-      "source_sense": "w309-s1",
-      "relation": { "target": "w019", "target_sense": "w019-s1", "type": "near" },
-      "direction": { "from": "w309-s1", "to": "w019-s1" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "불안한 정서의 가까운 표현을 찾되 각각의 중심 상황은 보존한다.",
-      "expected_action": "emit",
+      "source_sense": "w063-s1",
+      "relation": {
+        "target": "w019",
+        "target_sense": "w019-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w063-s1",
+        "to": "w019-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-015 physical-figurative: w309-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w309-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-015 homonym-pos: w309-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w309-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-015 sensory-emotion-state-action: w309-s1을 정서 의미로 확인했다.", "sense_ids": ["w309-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-015 directional-symmetry: w309-s1에서 w019-s1로의 방향을 확인했다.", "sense_ids": ["w309-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-015 compound-spaced-phrase: w309-s1의 표제어 경계를 확인했다.", "sense_ids": ["w309-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-015 word-idiom: w309-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w309-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-015 physical-figurative w063-s1: 불쾌하고 역한 냄새를 가리키는 뜻; observed meaning “불쾌하고 역하게 느껴지는 냄새” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "불쾌하고 역한 냄새를 가리키는 뜻",
+            "source_note": "m5-10a-cal-015 physical-figurative source note: 불쾌하고 역한 냄새를 가리키는 뜻; canonical sense w063-s1 means “불쾌하고 역하게 느껴지는 냄새”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-015 homonym-pos w063-s1: 불쾌하고 역한 냄새를 가리키는 뜻; observed canonical meaning “불쾌하고 역하게 느껴지는 냄새” was checked before relation screening.",
+            "sense_ids": [
+              "w063-s1"
+            ],
+            "observed_glosses": [
+              "불쾌하고 역하게 느껴지는 냄새"
+            ],
+            "observed_use": "불쾌하고 역한 냄새를 가리키는 뜻",
+            "source_note": "m5-10a-cal-015 homonym-pos source note: 불쾌하고 역한 냄새를 가리키는 뜻; canonical sense w063-s1 means “불쾌하고 역하게 느껴지는 냄새”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-015 sensory-emotion-state-action w063-s1: 불쾌하고 역한 냄새를 가리키는 뜻; observed canonical meaning “불쾌하고 역하게 느껴지는 냄새” was checked before relation screening.",
+            "sense_ids": [
+              "w063-s1"
+            ],
+            "observed_glosses": [
+              "불쾌하고 역하게 느껴지는 냄새"
+            ],
+            "observed_use": "불쾌하고 역한 냄새를 가리키는 뜻",
+            "source_note": "m5-10a-cal-015 sensory-emotion-state-action source note: 불쾌하고 역한 냄새를 가리키는 뜻; canonical sense w063-s1 means “불쾌하고 역하게 느껴지는 냄새”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-015 directional-symmetry w063-s1: 불쾌하고 역한 냄새를 가리키는 뜻; observed meaning “불쾌하고 역하게 느껴지는 냄새” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "불쾌하고 역한 냄새를 가리키는 뜻",
+            "source_note": "m5-10a-cal-015 directional-symmetry source note: 불쾌하고 역한 냄새를 가리키는 뜻; canonical sense w063-s1 means “불쾌하고 역하게 느껴지는 냄새”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-015 compound-spaced-phrase w063-s1: 불쾌하고 역한 냄새를 가리키는 뜻; observed canonical meaning “불쾌하고 역하게 느껴지는 냄새” was checked before relation screening.",
+            "sense_ids": [
+              "w063-s1"
+            ],
+            "observed_glosses": [
+              "불쾌하고 역하게 느껴지는 냄새"
+            ],
+            "observed_use": "불쾌하고 역한 냄새를 가리키는 뜻",
+            "source_note": "m5-10a-cal-015 compound-spaced-phrase source note: 불쾌하고 역한 냄새를 가리키는 뜻; canonical sense w063-s1 means “불쾌하고 역하게 느껴지는 냄새”, providing a meaning/use observation for this boundary."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-015 word-idiom w063-s1: 불쾌하고 역한 냄새를 가리키는 뜻; observed meaning “불쾌하고 역하게 느껴지는 냄새” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "불쾌하고 역한 냄새를 가리키는 뜻",
+            "source_note": "m5-10a-cal-015 word-idiom source note: 불쾌하고 역한 냄새를 가리키는 뜻; canonical sense w063-s1 means “불쾌하고 역하게 느껴지는 냄새”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-016",
-      "source_sense": "w430-s1",
-      "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
-      "direction": { "from": "w430-s1", "to": "w060-s1" },
-      "generation_basis": "incidental-co-occurrence",
-      "writer_use_note": "두 말이 같은 문장에 함께 나타난다는 관찰만으로 후보를 만들려는 신호다.",
-      "expected_action": "suppress",
-      "expected_suppression_category": "incidental-co-occurrence",
+      "source_sense": "w024-s1",
+      "relation": {
+        "target": "w155",
+        "target_sense": "w155-s1",
+        "type": "scene"
+      },
+      "direction": {
+        "from": "w024-s1",
+        "to": "w155-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-016 physical-figurative: w430-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w430-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-016 homonym-pos: w430-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w430-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-016 sensory-emotion-state-action: w430-s1을 정서 의미로 확인했다.", "sense_ids": ["w430-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-016 directional-symmetry: w430-s1에서 w060-s1로의 방향을 확인했다.", "sense_ids": ["w430-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-016 compound-spaced-phrase: w430-s1의 표제어 경계를 확인했다.", "sense_ids": ["w430-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-016 word-idiom: w430-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w430-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-016 physical-figurative w024-s1: 사람이나 사실을 믿는 마음을 가리키는 뜻; observed canonical meaning “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w024-s1"
+            ],
+            "observed_glosses": [
+              "사람이나 사실을 의심하지 않고 옳다고 여기는 마음"
+            ],
+            "observed_use": "사람이나 사실을 믿는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-016 physical-figurative source note: 사람이나 사실을 믿는 마음을 가리키는 뜻; canonical sense w024-s1 means “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-016 homonym-pos w024-s1: 사람이나 사실을 믿는 마음을 가리키는 뜻; observed meaning “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사람이나 사실을 믿는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-016 homonym-pos source note: 사람이나 사실을 믿는 마음을 가리키는 뜻; canonical sense w024-s1 means “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-016 sensory-emotion-state-action w024-s1: 사람이나 사실을 믿는 마음을 가리키는 뜻; observed meaning “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” gives no sensory-emotion-state-action distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사람이나 사실을 믿는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-016 sensory-emotion-state-action source note: 사람이나 사실을 믿는 마음을 가리키는 뜻; canonical sense w024-s1 means “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”, and no sensory-emotion-state-action distinction is implicated by this candidate."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-016 directional-symmetry w024-s1: 사람이나 사실을 믿는 마음을 가리키는 뜻; observed canonical meaning “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w024-s1"
+            ],
+            "observed_glosses": [
+              "사람이나 사실을 의심하지 않고 옳다고 여기는 마음"
+            ],
+            "observed_use": "사람이나 사실을 믿는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-016 directional-symmetry source note: 사람이나 사실을 믿는 마음을 가리키는 뜻; canonical sense w024-s1 means “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-016 compound-spaced-phrase w024-s1: 사람이나 사실을 믿는 마음을 가리키는 뜻; observed meaning “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사람이나 사실을 믿는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-016 compound-spaced-phrase source note: 사람이나 사실을 믿는 마음을 가리키는 뜻; canonical sense w024-s1 means “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-016 word-idiom w024-s1: 사람이나 사실을 믿는 마음을 가리키는 뜻; observed meaning “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "사람이나 사실을 믿는 마음을 가리키는 뜻",
+            "source_note": "m5-10a-cal-016 word-idiom source note: 사람이나 사실을 믿는 마음을 가리키는 뜻; canonical sense w024-s1 means “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-017",
-      "source_sense": "w435-s1",
-      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
-      "direction": { "from": "w435-s1", "to": "w018-s1" },
-      "generation_basis": "generic-result-or-reaction",
-      "writer_use_note": "원인이 무엇이든 좋은 결과가 될 수 있다는 일반 반응만으로 연결하려는 신호다.",
-      "expected_action": "suppress",
-      "expected_suppression_category": "generic-result-or-reaction",
+      "source_sense": "w011-s1",
+      "relation": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w011-s1",
+        "to": "w018-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-017 physical-figurative: w435-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w435-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-017 homonym-pos: w435-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w435-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-017 sensory-emotion-state-action: w435-s1을 정서 의미로 확인했다.", "sense_ids": ["w435-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-017 directional-symmetry: w435-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w435-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-017 compound-spaced-phrase: w435-s1의 표제어 경계를 확인했다.", "sense_ids": ["w435-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-017 word-idiom: w435-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w435-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-017 physical-figurative w011-s1: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; observed meaning “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "지난 선택을 아쉬워하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-017 physical-figurative source note: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; canonical sense w011-s1 means “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-017 homonym-pos w011-s1: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; observed meaning “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "지난 선택을 아쉬워하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-017 homonym-pos source note: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; canonical sense w011-s1 means “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-017 sensory-emotion-state-action w011-s1: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; observed canonical meaning “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w011-s1"
+            ],
+            "observed_glosses": [
+              "지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음"
+            ],
+            "observed_use": "지난 선택을 아쉬워하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-017 sensory-emotion-state-action source note: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; canonical sense w011-s1 means “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-017 directional-symmetry w011-s1: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; observed meaning “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "지난 선택을 아쉬워하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-017 directional-symmetry source note: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; canonical sense w011-s1 means “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-017 compound-spaced-phrase w011-s1: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; observed meaning “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "지난 선택을 아쉬워하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-017 compound-spaced-phrase source note: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; canonical sense w011-s1 means “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-017 word-idiom w011-s1: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; observed canonical meaning “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” was checked before relation screening.",
+            "sense_ids": [
+              "w011-s1"
+            ],
+            "observed_glosses": [
+              "지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음"
+            ],
+            "observed_use": "지난 선택을 아쉬워하는 감정으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-017 word-idiom source note: 지난 선택을 아쉬워하는 감정으로 사용되는 뜻; canonical sense w011-s1 means “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음”, providing a meaning/use observation for this boundary."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-018",
-      "source_sense": "w473-s1",
-      "relation": { "target": "w155", "target_sense": "w155-s1", "type": "scene" },
-      "direction": { "from": "w473-s1", "to": "w155-s1" },
-      "generation_basis": "arbitrary-modifier-or-place",
-      "writer_use_note": "출발 의미와 직접 근거 없이 장소나 수식어를 붙여 장면을 만들려는 신호다.",
-      "expected_action": "suppress",
-      "expected_suppression_category": "arbitrary-modifier-or-place",
+      "source_sense": "w091-s1",
+      "relation": {
+        "target": "w061",
+        "target_sense": "w061-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w091-s1",
+        "to": "w061-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-018 physical-figurative: w473-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w473-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-018 homonym-pos: w473-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w473-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-018 sensory-emotion-state-action: w473-s1을 상태 의미로 확인했다.", "sense_ids": ["w473-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-018 directional-symmetry: w473-s1에서 w155-s1로의 방향을 확인했다.", "sense_ids": ["w473-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-018 compound-spaced-phrase: w473-s1의 표제어 경계를 확인했다.", "sense_ids": ["w473-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-018 word-idiom: w473-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w473-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-018 physical-figurative w091-s1: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; observed meaning “비가 내릴 때 이어지는 물방울의 소리” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻",
+            "source_note": "m5-10a-cal-018 physical-figurative source note: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; canonical sense w091-s1 means “비가 내릴 때 이어지는 물방울의 소리”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-018 homonym-pos w091-s1: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; observed canonical meaning “비가 내릴 때 이어지는 물방울의 소리” was checked before relation screening.",
+            "sense_ids": [
+              "w091-s1"
+            ],
+            "observed_glosses": [
+              "비가 내릴 때 이어지는 물방울의 소리"
+            ],
+            "observed_use": "비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻",
+            "source_note": "m5-10a-cal-018 homonym-pos source note: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; canonical sense w091-s1 means “비가 내릴 때 이어지는 물방울의 소리”, providing a meaning/use observation for this boundary."
+          },
+          "sensory-emotion-state-action": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-018 sensory-emotion-state-action w091-s1: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; observed canonical meaning “비가 내릴 때 이어지는 물방울의 소리” was checked before relation screening.",
+            "sense_ids": [
+              "w091-s1"
+            ],
+            "observed_glosses": [
+              "비가 내릴 때 이어지는 물방울의 소리"
+            ],
+            "observed_use": "비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻",
+            "source_note": "m5-10a-cal-018 sensory-emotion-state-action source note: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; canonical sense w091-s1 means “비가 내릴 때 이어지는 물방울의 소리”, providing a meaning/use observation for this boundary."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-018 directional-symmetry w091-s1: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; observed canonical meaning “비가 내릴 때 이어지는 물방울의 소리” was checked before relation screening.",
+            "sense_ids": [
+              "w091-s1"
+            ],
+            "observed_glosses": [
+              "비가 내릴 때 이어지는 물방울의 소리"
+            ],
+            "observed_use": "비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻",
+            "source_note": "m5-10a-cal-018 directional-symmetry source note: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; canonical sense w091-s1 means “비가 내릴 때 이어지는 물방울의 소리”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-018 compound-spaced-phrase w091-s1: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; observed meaning “비가 내릴 때 이어지는 물방울의 소리” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻",
+            "source_note": "m5-10a-cal-018 compound-spaced-phrase source note: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; canonical sense w091-s1 means “비가 내릴 때 이어지는 물방울의 소리”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-018 word-idiom w091-s1: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; observed meaning “비가 내릴 때 이어지는 물방울의 소리” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻",
+            "source_note": "m5-10a-cal-018 word-idiom source note: 비가 내릴 때 이어지는 물방울의 소리를 가리키는 뜻; canonical sense w091-s1 means “비가 내릴 때 이어지는 물방울의 소리”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-019",
-      "source_sense": "w501-s1",
-      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
-      "direction": { "from": "w501-s1", "to": "w018-s1" },
-      "generation_basis": "broad-common-category",
-      "writer_use_note": "모든 긍정 정서를 하나의 넓은 공통 범주로 묶으려는 신호다.",
-      "expected_action": "suppress",
-      "expected_suppression_category": "broad-common-category",
+      "source_sense": "w025-s1",
+      "relation": {
+        "target": "w031",
+        "target_sense": "w031-s999",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w025-s1",
+        "to": "w031-s999"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-019 physical-figurative: w501-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w501-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-019 homonym-pos: w501-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w501-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-019 sensory-emotion-state-action: w501-s1을 정서 의미로 확인했다.", "sense_ids": ["w501-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-019 directional-symmetry: w501-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w501-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-019 compound-spaced-phrase: w501-s1의 표제어 경계를 확인했다.", "sense_ids": ["w501-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-019 word-idiom: w501-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w501-s1"] }
+          "physical-figurative": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-019 physical-figurative w025-s1: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; observed canonical meaning “관심이나 감정을 겉으로 드러내지 않고 지나치다” was checked before relation screening.",
+            "sense_ids": [
+              "w025-s1"
+            ],
+            "observed_glosses": [
+              "관심이나 감정을 겉으로 드러내지 않고 지나치다"
+            ],
+            "observed_use": "관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-019 physical-figurative source note: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; canonical sense w025-s1 means “관심이나 감정을 겉으로 드러내지 않고 지나치다”, providing a meaning/use observation for this boundary."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-019 homonym-pos w025-s1: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; observed meaning “관심이나 감정을 겉으로 드러내지 않고 지나치다” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-019 homonym-pos source note: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; canonical sense w025-s1 means “관심이나 감정을 겉으로 드러내지 않고 지나치다”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-019 sensory-emotion-state-action w025-s1: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; observed meaning “관심이나 감정을 겉으로 드러내지 않고 지나치다” gives no sensory-emotion-state-action distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-019 sensory-emotion-state-action source note: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; canonical sense w025-s1 means “관심이나 감정을 겉으로 드러내지 않고 지나치다”, and no sensory-emotion-state-action distinction is implicated by this candidate."
+          },
+          "directional-symmetry": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-019 directional-symmetry w025-s1: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; observed meaning “관심이나 감정을 겉으로 드러내지 않고 지나치다” gives no directional-symmetry distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-019 directional-symmetry source note: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; canonical sense w025-s1 means “관심이나 감정을 겉으로 드러내지 않고 지나치다”, and no directional-symmetry distinction is implicated by this candidate."
+          },
+          "compound-spaced-phrase": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-019 compound-spaced-phrase w025-s1: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; observed canonical meaning “관심이나 감정을 겉으로 드러내지 않고 지나치다” was checked before relation screening.",
+            "sense_ids": [
+              "w025-s1"
+            ],
+            "observed_glosses": [
+              "관심이나 감정을 겉으로 드러내지 않고 지나치다"
+            ],
+            "observed_use": "관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-019 compound-spaced-phrase source note: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; canonical sense w025-s1 means “관심이나 감정을 겉으로 드러내지 않고 지나치다”, providing a meaning/use observation for this boundary."
+          },
+          "word-idiom": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-019 word-idiom w025-s1: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; observed meaning “관심이나 감정을 겉으로 드러내지 않고 지나치다” gives no word-idiom distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻",
+            "source_note": "m5-10a-cal-019 word-idiom source note: 관심이나 감정을 겉으로 드러내지 않는 행동 양식으로 사용되는 뜻; canonical sense w025-s1 means “관심이나 감정을 겉으로 드러내지 않고 지나치다”, and no word-idiom distinction is implicated by this candidate."
+          }
         }
       }
     },
     {
       "case_id": "m5-10a-cal-020",
-      "source_sense": "w450-s1",
-      "relation": { "target": "w031", "target_sense": "w031-s999", "type": "near" },
-      "direction": { "from": "w450-s1", "to": "w031-s999" },
-      "generation_basis": "sense-anchored-writer-use",
-      "writer_use_note": "target 표면형만 맞추고 실제 target sense를 확인하지 않은 신호다.",
-      "expected_action": "suppress",
-      "expected_suppression_category": "sense-target-type-error",
+      "source_sense": "w027-s1",
+      "relation": {
+        "target": "w030",
+        "target_sense": "w030-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w030-s1",
+        "to": "w027-s1"
+      },
       "preflight": {
         "status": "complete",
         "boundary_checks": {
-          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-020 physical-figurative: w450-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w450-s1"] },
-          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-020 homonym-pos: w450-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w450-s1"] },
-          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-020 sensory-emotion-state-action: w450-s1을 감각 의미로 확인했다.", "sense_ids": ["w450-s1"] },
-          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-020 directional-symmetry: w450-s1에서 w031-s999로의 방향 오류를 확인했다.", "sense_ids": ["w450-s1"] },
-          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-020 compound-spaced-phrase: w450-s1의 표제어 경계를 확인했다.", "sense_ids": ["w450-s1"] },
-          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-020 word-idiom: w450-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w450-s1"] }
+          "physical-figurative": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-020 physical-figurative w027-s1: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; observed meaning “결과를 기다리며 마음이 급하고 불안한 상태” gives no physical-figurative distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결과를 기다리며 급하고 불안한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-020 physical-figurative source note: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; canonical sense w027-s1 means “결과를 기다리며 마음이 급하고 불안한 상태”, and no physical-figurative distinction is implicated by this candidate."
+          },
+          "homonym-pos": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-020 homonym-pos w027-s1: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; observed meaning “결과를 기다리며 마음이 급하고 불안한 상태” gives no homonym-pos distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결과를 기다리며 급하고 불안한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-020 homonym-pos source note: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; canonical sense w027-s1 means “결과를 기다리며 마음이 급하고 불안한 상태”, and no homonym-pos distinction is implicated by this candidate."
+          },
+          "sensory-emotion-state-action": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-020 sensory-emotion-state-action w027-s1: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; observed meaning “결과를 기다리며 마음이 급하고 불안한 상태” gives no sensory-emotion-state-action distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결과를 기다리며 급하고 불안한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-020 sensory-emotion-state-action source note: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; canonical sense w027-s1 means “결과를 기다리며 마음이 급하고 불안한 상태”, and no sensory-emotion-state-action distinction is implicated by this candidate."
+          },
+          "directional-symmetry": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-020 directional-symmetry w027-s1: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; observed canonical meaning “결과를 기다리며 마음이 급하고 불안한 상태” was checked before relation screening.",
+            "sense_ids": [
+              "w027-s1"
+            ],
+            "observed_glosses": [
+              "결과를 기다리며 마음이 급하고 불안한 상태"
+            ],
+            "observed_use": "결과를 기다리며 급하고 불안한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-020 directional-symmetry source note: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; canonical sense w027-s1 means “결과를 기다리며 마음이 급하고 불안한 상태”, providing a meaning/use observation for this boundary."
+          },
+          "compound-spaced-phrase": {
+            "status": "not-applicable",
+            "rationale": "m5-10a-cal-020 compound-spaced-phrase w027-s1: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; observed meaning “결과를 기다리며 마음이 급하고 불안한 상태” gives no compound-spaced-phrase distinction, so this boundary is not-applicable.",
+            "sense_ids": [],
+            "observed_glosses": [],
+            "observed_use": "결과를 기다리며 급하고 불안한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-020 compound-spaced-phrase source note: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; canonical sense w027-s1 means “결과를 기다리며 마음이 급하고 불안한 상태”, and no compound-spaced-phrase distinction is implicated by this candidate."
+          },
+          "word-idiom": {
+            "status": "checked",
+            "rationale": "m5-10a-cal-020 word-idiom w027-s1: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; observed canonical meaning “결과를 기다리며 마음이 급하고 불안한 상태” was checked before relation screening.",
+            "sense_ids": [
+              "w027-s1"
+            ],
+            "observed_glosses": [
+              "결과를 기다리며 마음이 급하고 불안한 상태"
+            ],
+            "observed_use": "결과를 기다리며 급하고 불안한 상태로 사용되는 뜻",
+            "source_note": "m5-10a-cal-020 word-idiom source note: 결과를 기다리며 급하고 불안한 상태로 사용되는 뜻; canonical sense w027-s1 means “결과를 기다리며 마음이 급하고 불안한 상태”, providing a meaning/use observation for this boundary."
+          }
         }
       }
     }

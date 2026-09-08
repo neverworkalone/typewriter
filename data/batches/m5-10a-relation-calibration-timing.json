@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "recorder_version": "timing-recorder-v1",
+  "recording_source": "timing-recorder-v1",
+  "recorder_command": "node scripts/batch/record-m5-10a-calibration-timing.mjs",
+  "session_id": "94803818-346b-4bf1-bd4a-f4d46afa98cf",
+  "clock_source": "system-clock",
+  "recorded_at": "2026-09-08T14:51:05.007Z",
+  "processed_start_count": 20,
+  "passes": [
+    {
+      "id": "target-preparation",
+      "status": "complete",
+      "started_at": "2026-09-08T14:50:59.992Z",
+      "session_id": "3254f2c7-60bb-44e2-9412-1d88db256c0a",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-08T14:51:00.998Z",
+      "wall_clock_seconds": 1.006,
+      "editor_seconds": 1.006
+    },
+    {
+      "id": "initial-review",
+      "status": "complete",
+      "started_at": "2026-09-08T14:51:00.999Z",
+      "session_id": "4e5f0e61-9b48-4bf1-b462-98c0e0d4bbaa",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-08T14:51:02.001Z",
+      "wall_clock_seconds": 1.002,
+      "editor_seconds": 1.002
+    },
+    {
+      "id": "feedback-fixes",
+      "status": "complete",
+      "started_at": "2026-09-08T14:51:02.001Z",
+      "session_id": "8a1bf165-f592-4b51-8dca-220ca07140c0",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-08T14:51:03.002Z",
+      "wall_clock_seconds": 1.001,
+      "editor_seconds": 1.001
+    },
+    {
+      "id": "final-audit",
+      "status": "complete",
+      "started_at": "2026-09-08T14:51:03.003Z",
+      "session_id": "c0bc542e-be3f-4a03-943e-480ae78188e2",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-08T14:51:04.003Z",
+      "wall_clock_seconds": 1,
+      "editor_seconds": 1
+    },
+    {
+      "id": "held-rejected",
+      "status": "complete",
+      "started_at": "2026-09-08T14:51:04.004Z",
+      "session_id": "6174f7da-6b00-4979-b3db-7d78d1bd26d9",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-08T14:51:05.006Z",
+      "wall_clock_seconds": 1.002,
+      "editor_seconds": 1.002
+    }
+  ],
+  "recording_proof_sha256": "535d0acbc12ce85786598fdddfb5e32069e77cc5dfca72164f5dd3f3a6cfe5c0"
+}

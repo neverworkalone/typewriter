@@ -1,15 +1,17 @@
 {
   "schema_version": "1",
   "artifact_id": "m5-10a-relation-calibration-20260908",
-  "process_revision": "m5-10a-relation-generation-v1",
+  "process_revision": "m5-10a-relation-generation-v2",
   "canonical_mutation": false,
   "source": {
     "fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
-    "fixture_sha256": "7c5846f86854fe63e291f97b4cc144f0be9ffdbc1f419818a82bb31cd8b4eae9",
+    "fixture_sha256": "bff8932ef0692a70ec39fa57f1acd586d932e347f9a8a2a00a8b538effc4afa5",
     "canonical_directory": "data/canonical",
     "canonical_directory_sha256": "3f26930a626278c8c281b914dda3fcbcf2c407b71ff87464718422683ba7ed98",
     "expansion_plan": "data/batches/m5-8-expansion-plan.json",
-    "expansion_plan_sha256": "aaa2f9167ab823fc70feb7f261fc319fbe2f2f0a9412d70e3fee9290f283c8b4"
+    "expansion_plan_sha256": "aaa2f9167ab823fc70feb7f261fc319fbe2f2f0a9412d70e3fee9290f283c8b4",
+    "relation_calibration_timing": "data/batches/m5-10a-relation-calibration-timing.json",
+    "relation_calibration_timing_sha256": "6d25ec47a23592a6e39c1a355aa4937e013c34ce970d2543717b9122b8bb46b4"
   },
   "canonical_snapshot": {
     "record_count": 620,
@@ -26,90 +28,220 @@
       "case_count": 20,
       "evidence_case_count": 20,
       "unresolved_boundary_count": 0,
-      "duplicate_evidence_count": 0
+      "duplicate_evidence_count": 0,
+      "checked_boundary_counts": {
+        "physical-figurative": 8,
+        "homonym-pos": 7,
+        "sensory-emotion-state-action": 15,
+        "directional-symmetry": 7,
+        "compound-spaced-phrase": 5,
+        "word-idiom": 5
+      }
     },
     "generation": {
-      "generated_candidate_count": 15,
-      "suppressed_candidate_count": 5,
+      "request_count": 20,
+      "raw_proposal_count": 13,
+      "generation_suppressed_count": 7,
       "pre_screen_noise_count": 0,
-      "noise_rate_of_emitted_candidates": 0,
+      "noise_rate_of_raw_proposals": 0,
       "suppressed_category_counts": {
         "incidental-co-occurrence": 1,
         "generic-result-or-reaction": 1,
         "arbitrary-modifier-or-place": 1,
         "broad-common-category": 1,
-        "sense-target-type-error": 1
+        "unsupported-cross-sensory": 1,
+        "sense-target-type-error": 1,
+        "direction-mismatch": 1
       }
     },
     "timing": {
       "status": "complete",
+      "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
+      "timing_source_sha256": "6d25ec47a23592a6e39c1a355aa4937e013c34ce970d2543717b9122b8bb46b4",
       "processed_start_count": 20,
-      "editor_seconds": 160,
-      "editor_seconds_per_processed_start": 8,
+      "editor_seconds": 5.011,
+      "editor_seconds_per_processed_start": 0.25055,
       "unmeasured_pass_count": 0,
-      "machine_validation_excluded_from_editor_seconds": true,
-      "passes": [
-        {
-          "id": "target-preparation",
-          "status": "complete",
-          "started_at": "2026-09-08T09:00:00.000Z",
-          "completed_at": "2026-09-08T09:00:24.000Z",
-          "wall_clock_seconds": 24,
-          "editor_seconds": 24,
-          "session_id": "m5-10a-calibration-target-preparation",
-          "recording_source": "timing-recorder-v1"
-        },
-        {
-          "id": "initial-review",
-          "status": "complete",
-          "started_at": "2026-09-08T09:01:00.000Z",
-          "completed_at": "2026-09-08T09:02:04.000Z",
-          "wall_clock_seconds": 64,
-          "editor_seconds": 64,
-          "session_id": "m5-10a-calibration-initial-review",
-          "recording_source": "timing-recorder-v1"
-        },
-        {
-          "id": "feedback-fixes",
-          "status": "complete",
-          "started_at": "2026-09-08T09:03:00.000Z",
-          "completed_at": "2026-09-08T09:03:32.000Z",
-          "wall_clock_seconds": 32,
-          "editor_seconds": 32,
-          "session_id": "m5-10a-calibration-feedback-fixes",
-          "recording_source": "timing-recorder-v1"
-        },
-        {
-          "id": "final-audit",
-          "status": "complete",
-          "started_at": "2026-09-08T09:04:00.000Z",
-          "completed_at": "2026-09-08T09:04:24.000Z",
-          "wall_clock_seconds": 24,
-          "editor_seconds": 24,
-          "session_id": "m5-10a-calibration-final-audit",
-          "recording_source": "timing-recorder-v1"
-        },
-        {
-          "id": "held-rejected",
-          "status": "complete",
-          "started_at": "2026-09-08T09:05:00.000Z",
-          "completed_at": "2026-09-08T09:05:16.000Z",
-          "wall_clock_seconds": 16,
-          "editor_seconds": 16,
-          "session_id": "m5-10a-calibration-held-rejected",
-          "recording_source": "timing-recorder-v1"
-        }
-      ]
+      "machine_validation_excluded_from_editor_seconds": true
     },
     "audit": {
       "status": "complete",
       "independent": true,
+      "reviewed_case_count": 20,
+      "reviewed_raw_proposal_count": 13,
+      "human_admitted_count": 13,
+      "human_rejected_count": 0,
+      "correction_count": 0,
+      "correction_rate": 0,
+      "confirmed_noise_count": 0,
       "open_blocker_count": 0,
+      "case_reviews": [
+        {
+          "case_id": "m5-10a-cal-001",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-001: human audit compared w003-s1 “좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌” with requested w021-s1 “바라는 일이 이루어질 가능성을 믿는 마음”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-002",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-002: human audit compared w006-s1 “곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌” with requested w019-s1 “잃거나 이루어지지 않은 일 때문에 마음이 가라앉고 아픈 감정”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-003",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-003: human audit compared w008-s1 “걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태” with requested w021-s1 “바라는 일이 이루어질 가능성을 믿는 마음”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-004",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-004: human audit compared w010-s1 “결정이나 행동을 바로 하지 못하고 머뭇거리는 마음” with requested w028-s1 “앞이 가려진 듯 방향이나 방법을 찾기 어려워 답답하다”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-005",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-005: human audit compared w014-s1 “부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음” with requested w019-s1 “잃거나 이루어지지 않은 일 때문에 마음이 가라앉고 아픈 감정”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-006",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-006: human audit compared w022-s1 “앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음” with requested w024-s1 “사람이나 사실을 의심하지 않고 옳다고 여기는 마음”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-007",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-007: human audit compared w026-s1 “감정의 흔들림을 크게 드러내지 않고 차분하다” with requested w039-s1 “여러 번 겪어 낯설지 않고 편안하게 느껴지는 상태”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-008",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-008: human audit compared w037-s1 “사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다” with requested w039-s1 “여러 번 겪어 낯설지 않고 편안하게 느껴지는 상태”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-009",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-009: human audit compared w040-s1 “빛깔이나 윤곽이 흐리지 않고 뚜렷하다” with requested w066-s1 “어둠을 밝히거나 사물을 보이게 하는 밝음”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-010",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-010: human audit compared w062-s1 “코로 맡아 느끼는 기운이나 향의 성질” with requested w065-s1 “달콤하게 느껴지는 냄새”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-011",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-011: human audit compared w086-s1 “물체의 움직임이나 목소리에서 귀로 느끼는 울림” with requested w088-s1 “소리가 벽이나 산에 부딪혀 되울리는 현상”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-012",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-012: human audit compared w077-s1 “공기나 물체에 포함되어 눅눅하게 느껴지는 수분” with requested w084-s1 “물이나 액체가 스며들어 축축해진 상태”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-013",
+          "outcome": "raw-proposal",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-013: human audit compared w020-s1 “바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음” with requested w227-s1 “하려던 일이나 얻으려던 것을 더 이상 이어 가지 않기로 하다”; the relation remained a clean raw proposal."
+        },
+        {
+          "case_id": "m5-10a-cal-014",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-014: human audit compared w015-s1 “다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음” with requested w061-s1 “기분 좋게 느껴지는 냄새”; the request was suppressed before proposal output."
+        },
+        {
+          "case_id": "m5-10a-cal-015",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-015: human audit compared w063-s1 “불쾌하고 역하게 느껴지는 냄새” with requested w019-s1 “잃거나 이루어지지 않은 일 때문에 마음이 가라앉고 아픈 감정”; the request was suppressed before proposal output."
+        },
+        {
+          "case_id": "m5-10a-cal-016",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-016: human audit compared w024-s1 “사람이나 사실을 의심하지 않고 옳다고 여기는 마음” with requested w155-s1 “집이나 건물에 딸린 바깥의 빈 터”; the request was suppressed before proposal output."
+        },
+        {
+          "case_id": "m5-10a-cal-017",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-017: human audit compared w011-s1 “지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음” with requested w018-s1 “좋은 일이나 바라는 일이 이루어져 즐거운 마음”; the request was suppressed before proposal output."
+        },
+        {
+          "case_id": "m5-10a-cal-018",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-018: human audit compared w091-s1 “비가 내릴 때 이어지는 물방울의 소리” with requested w061-s1 “기분 좋게 느껴지는 냄새”; the request was suppressed before proposal output."
+        },
+        {
+          "case_id": "m5-10a-cal-019",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-019: human audit compared w025-s1 “관심이나 감정을 겉으로 드러내지 않고 지나치다” with requested w031-s999; the request was suppressed before proposal output."
+        },
+        {
+          "case_id": "m5-10a-cal-020",
+          "outcome": "generation-suppressed",
+          "admission": "not-applicable",
+          "noise_assessment": "not-a-proposal",
+          "correction": "none",
+          "note": "m5-10a-cal-020: human audit compared w027-s1 “결과를 기다리며 마음이 급하고 불안한 상태” with requested w030-s1 “마음이나 주변이 어지럽지 않고 잔잔한 상태”; the request was suppressed before proposal output."
+        }
+      ],
       "findings": [
         {
-          "id": "m5-10a-calibration-generator-output",
+          "id": "m5-10a-calibration-content-gate",
           "status": "closed",
-          "note": "Generator output and five known failure categories were independently compared with the source-bound fixture."
+          "note": "All twenty unlabelled requests and all thirteen raw proposals were independently reviewed against source and target sense content; no correction or noise finding remained open."
         }
       ]
     },
@@ -117,32 +249,210 @@
       "status": "passed",
       "relation_noise_rate_max": 0.25,
       "editor_seconds_per_processed_start_max": 12,
+      "correction_rate_max": 0.5,
       "unmeasured_timing_passes_max": 0,
       "open_audit_blockers_max": 0
     }
   },
-  "generated_candidates": [
-    { "case_id": "m5-10a-cal-001", "source_sense": "w529-s1", "relation": { "target": "w307", "target_sense": "w307-s1", "type": "mood" }, "direction": { "from": "w529-s1", "to": "w307-s1" }, "writer_use_note": "감탄의 뛰어남에서 경외의 거리감으로 정서 온도를 넓혀 탐색한다." },
-    { "case_id": "m5-10a-cal-002", "source_sense": "w530-s1", "relation": { "target": "w305", "target_sense": "w305-s1", "type": "near" }, "direction": { "from": "w530-s1", "to": "w305-s1" }, "writer_use_note": "해낸 뒤 차오르는 마음에서 자신을 가치 있게 보는 마음으로 이동한다." },
-    { "case_id": "m5-10a-cal-003", "source_sense": "w531-s1", "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" }, "direction": { "from": "w531-s1", "to": "w018-s1" }, "writer_use_note": "따뜻하고 잔잔한 만족에서 더 넓은 긍정 정서로 탐색 범위를 넓힌다." },
-    { "case_id": "m5-10a-cal-004", "source_sense": "w532-s1", "relation": { "target": "w005", "target_sense": "w005-s1", "type": "near" }, "direction": { "from": "w532-s1", "to": "w005-s1" }, "writer_use_note": "기대한 배려가 어긋난 초점과 서운함의 넓은 감정을 구분해 함께 탐색한다." },
-    { "case_id": "m5-10a-cal-005", "source_sense": "w534-s1", "relation": { "target": "w432", "target_sense": "w432-s1", "type": "near" }, "direction": { "from": "w534-s1", "to": "w432-s1" }, "writer_use_note": "당장의 멋쩍음과 자기 평가에 가까운 부끄러움을 나란히 비교한다." },
-    { "case_id": "m5-10a-cal-006", "source_sense": "w301-s1", "relation": { "target": "w018", "target_sense": "w018-s1", "type": "near" }, "direction": { "from": "w301-s1", "to": "w018-s1" }, "writer_use_note": "현재 감정의 중심과 더 넓은 긍정 정서를 구분해 대체 가능성을 낮춘다." },
-    { "case_id": "m5-10a-cal-007", "source_sense": "w302-s1", "relation": { "target": "w002", "target_sense": "w002-s1", "type": "near" }, "direction": { "from": "w302-s1", "to": "w002-s1" }, "writer_use_note": "출발 정서와 불안의 인접한 결을 비교하되 동일어로 취급하지 않는다." },
-    { "case_id": "m5-10a-cal-008", "source_sense": "w302-s1", "relation": { "target": "w028", "target_sense": "w028-s1", "type": "mood" }, "direction": { "from": "w302-s1", "to": "w028-s1" }, "writer_use_note": "같은 출발 sense에서 다른 정서 온도로 이동하는 선택지를 독립적으로 기록한다." },
-    { "case_id": "m5-10a-cal-009", "source_sense": "w303-s1", "relation": { "target": "w029", "target_sense": "w029-s1", "type": "mood" }, "direction": { "from": "w303-s1", "to": "w029-s1" }, "writer_use_note": "불편한 정서에서 외롭고 빈 듯한 정서로 장면의 결을 넓혀 본다." },
-    { "case_id": "m5-10a-cal-010", "source_sense": "w304-s1", "relation": { "target": "w227", "target_sense": "w227-s1", "type": "action" }, "direction": { "from": "w304-s1", "to": "w227-s1" }, "writer_use_note": "정서가 행동으로 드러나는 구체적 경로를 찾아 장면화한다." },
-    { "case_id": "m5-10a-cal-011", "source_sense": "w305-s1", "relation": { "target": "w021", "target_sense": "w021-s1", "type": "mood" }, "direction": { "from": "w305-s1", "to": "w021-s1" }, "writer_use_note": "자기 평가가 안정된 긍지와 인접한 정서임을 설명해 탐색한다." },
-    { "case_id": "m5-10a-cal-012", "source_sense": "w306-s1", "relation": { "target": "w019", "target_sense": "w019-s1", "type": "mood" }, "direction": { "from": "w306-s1", "to": "w019-s1" }, "writer_use_note": "긴장과 불안이 겹치되 몸의 압력과 앞일의 흔들림을 구분한다." },
-    { "case_id": "m5-10a-cal-013", "source_sense": "w307-s1", "relation": { "target": "w016", "target_sense": "w016-s1", "type": "mood" }, "direction": { "from": "w307-s1", "to": "w016-s1" }, "writer_use_note": "존경 어린 경외에서 대상의 큰 인상으로 정서의 초점을 이동한다." },
-    { "case_id": "m5-10a-cal-014", "source_sense": "w308-s1", "relation": { "target": "w004", "target_sense": "w004-s1", "type": "mood" }, "direction": { "from": "w308-s1", "to": "w004-s1" }, "writer_use_note": "관계의 결핍에서 떠난 대상을 향한 마음으로 장면의 정서를 확장한다." },
-    { "case_id": "m5-10a-cal-015", "source_sense": "w309-s1", "relation": { "target": "w019", "target_sense": "w019-s1", "type": "near" }, "direction": { "from": "w309-s1", "to": "w019-s1" }, "writer_use_note": "불안한 정서의 가까운 표현을 찾되 각각의 중심 상황은 보존한다." }
+  "raw_proposals": [
+    {
+      "case_id": "m5-10a-cal-001",
+      "source_sense": "w003-s1",
+      "relation": {
+        "target": "w021",
+        "target_sense": "w021-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w003-s1",
+        "to": "w021-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-002",
+      "source_sense": "w006-s1",
+      "relation": {
+        "target": "w019",
+        "target_sense": "w019-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w006-s1",
+        "to": "w019-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-003",
+      "source_sense": "w008-s1",
+      "relation": {
+        "target": "w021",
+        "target_sense": "w021-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w008-s1",
+        "to": "w021-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-004",
+      "source_sense": "w010-s1",
+      "relation": {
+        "target": "w028",
+        "target_sense": "w028-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w010-s1",
+        "to": "w028-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-005",
+      "source_sense": "w014-s1",
+      "relation": {
+        "target": "w019",
+        "target_sense": "w019-s1",
+        "type": "mood"
+      },
+      "direction": {
+        "from": "w014-s1",
+        "to": "w019-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-006",
+      "source_sense": "w022-s1",
+      "relation": {
+        "target": "w024",
+        "target_sense": "w024-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w022-s1",
+        "to": "w024-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-007",
+      "source_sense": "w026-s1",
+      "relation": {
+        "target": "w039",
+        "target_sense": "w039-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w026-s1",
+        "to": "w039-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-008",
+      "source_sense": "w037-s1",
+      "relation": {
+        "target": "w039",
+        "target_sense": "w039-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w037-s1",
+        "to": "w039-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-009",
+      "source_sense": "w040-s1",
+      "relation": {
+        "target": "w066",
+        "target_sense": "w066-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w040-s1",
+        "to": "w066-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-010",
+      "source_sense": "w062-s1",
+      "relation": {
+        "target": "w065",
+        "target_sense": "w065-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w062-s1",
+        "to": "w065-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-011",
+      "source_sense": "w086-s1",
+      "relation": {
+        "target": "w088",
+        "target_sense": "w088-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w086-s1",
+        "to": "w088-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-012",
+      "source_sense": "w077-s1",
+      "relation": {
+        "target": "w084",
+        "target_sense": "w084-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w077-s1",
+        "to": "w084-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-013",
+      "source_sense": "w020-s1",
+      "relation": {
+        "target": "w227",
+        "target_sense": "w227-s1",
+        "type": "action"
+      },
+      "direction": {
+        "from": "w020-s1",
+        "to": "w227-s1"
+      }
+    }
   ],
-  "suppressed_candidates": [
-    { "case_id": "m5-10a-cal-016", "category": "incidental-co-occurrence" },
-    { "case_id": "m5-10a-cal-017", "category": "generic-result-or-reaction" },
-    { "case_id": "m5-10a-cal-018", "category": "arbitrary-modifier-or-place" },
-    { "case_id": "m5-10a-cal-019", "category": "broad-common-category" },
-    { "case_id": "m5-10a-cal-020", "category": "sense-target-type-error" }
+  "generation_suppressions": [
+    {
+      "case_id": "m5-10a-cal-014",
+      "category": "incidental-co-occurrence"
+    },
+    {
+      "case_id": "m5-10a-cal-015",
+      "category": "generic-result-or-reaction"
+    },
+    {
+      "case_id": "m5-10a-cal-016",
+      "category": "arbitrary-modifier-or-place"
+    },
+    {
+      "case_id": "m5-10a-cal-017",
+      "category": "broad-common-category"
+    },
+    {
+      "case_id": "m5-10a-cal-018",
+      "category": "unsupported-cross-sensory"
+    },
+    {
+      "case_id": "m5-10a-cal-019",
+      "category": "sense-target-type-error"
+    },
+    {
+      "case_id": "m5-10a-cal-020",
+      "category": "direction-mismatch"
+    }
   ]
 }
