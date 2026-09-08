@@ -30,6 +30,7 @@ async function readJson(filePath) {
 }
 
 let repairWaveFixtureSequence = 0;
+const HISTORICAL_CANONICAL_DIRECTORY = path.resolve('data/batches/m5-9-postimport-canonical');
 
 function syntheticWaveRecord(id, index) {
   const lemma = `검증어${index + 1}`;
@@ -56,7 +57,7 @@ async function createRepairWaveStageFixture() {
     `m5-9a-wave-a-test-${process.pid}-${sequence}.json`,
   );
   try {
-    const baseCanonical = await readCanonicalRecords();
+    const baseCanonical = await readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY);
     const syntheticRecords = Array.from({ length: 50 }, (_, index) => (
       syntheticWaveRecord(`w${String(9001 + index)}`, index)
     ));
@@ -1090,7 +1091,7 @@ test('timing CLI records feedback and session timestamps from its current clock'
 
 test('M5-9A repair leaves canonical counts unchanged', async () => {
   const { records } = await readCanonicalRecords();
-  assert.equal(records.length, 570);
-  assert.equal(records.filter(({ record }) => record.role === 'start').length, 528);
+  assert.equal(records.length, 620);
+  assert.equal(records.filter(({ record }) => record.role === 'start').length, 578);
   assert.equal(records.filter(({ record }) => record.role === 'reference-only').length, 42);
 });

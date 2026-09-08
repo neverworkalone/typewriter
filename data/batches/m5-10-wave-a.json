@@ -1,0 +1,609 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-a-20260908",
+  "inventory_id": "m5-core-5k",
+  "inventory_revision": "m5-7",
+  "generator": {
+    "model_id": "human-editorial-expansion",
+    "tool_version": "typewriter-m5-10-wave-a-1",
+    "prompt_version": "m5-10-wave-a-v1"
+  },
+  "generated_at": "2026-09-08T10:33:12Z",
+  "review": {
+    "status": "complete",
+    "reviewer": "typewriter-wave-a-editorial-review",
+    "completed_at": "2026-09-08T10:33:12Z"
+  },
+  "sense_review": {
+    "status": "complete",
+    "reviewed_start_count": 50,
+    "scoped_single_sense_count": 45,
+    "split_record_count": 5,
+    "split_canonical_ids": [
+      "w535",
+      "w536",
+      "w546",
+      "w556",
+      "w568"
+    ],
+    "note": "50개 importable start의 lemma/POS, literal·figurative 경계, 감각·상태·행동 구분, expression 단위를 전수 검토했다. 다섯 record는 독립된 sense 두 개로 분리했다."
+  },
+  "measurement": {
+    "schema_version": "1",
+    "relation_diff": {
+      "artifact": "data/batches/m5-10-wave-a-relation-diff.json",
+      "sha256": "f245ac56cc7dc0b7968d805a4f63d689134cfc1d8b812c4a6b77ffbaabdf3243"
+    },
+    "timing": {
+      "contract_version": "m5-9a-v1",
+      "status": "complete",
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "complete",
+          "note": "Wave A 후보 50개와 reserve buffer 8개를 선언하고 pre-import inventory를 생성하는 실제 작업을 timing recorder로 측정한다.",
+          "started_at": "2026-09-08T10:35:18.711Z",
+          "session_id": "72f9060e-6f5e-4f15-a3d6-87e47f7a5f28",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T10:35:46.313Z",
+          "wall_clock_seconds": 27.602,
+          "editor_seconds": 27.602
+        },
+        {
+          "id": "initial-review",
+          "status": "complete",
+          "note": "선정 start의 lemma/POS와 sense 경계를 전수 검토하는 실제 작업을 timing recorder로 측정한다.",
+          "started_at": "2026-09-08T10:36:04.700Z",
+          "session_id": "e663fe41-ff7c-4ba6-859d-aa532e68a84b",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T10:37:49.660Z",
+          "wall_clock_seconds": 104.96,
+          "editor_seconds": 104.96
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "complete",
+          "note": "초기 검토에서 발견된 수정 사항을 반영하는 실제 작업을 timing recorder로 측정한다.",
+          "started_at": "2026-09-08T10:39:13.437Z",
+          "session_id": "3fb4ed39-e2ab-4513-a6e0-2acd29d1349c",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T10:40:12.168Z",
+          "wall_clock_seconds": 58.731,
+          "editor_seconds": 58.731
+        },
+        {
+          "id": "final-audit",
+          "status": "complete",
+          "note": "canonical import, 관계 tuple, exact count를 독립 기준으로 재검산하는 실제 작업을 timing recorder로 측정한다.",
+          "started_at": "2026-09-08T10:42:23.116Z",
+          "session_id": "d93da7b3-1e64-49da-8740-b92ab44bb793",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T10:56:21.159Z",
+          "wall_clock_seconds": 838.043,
+          "editor_seconds": 838.043
+        },
+        {
+          "id": "held-rejected",
+          "status": "complete",
+          "note": "buffer의 held/rejected/deferred 결정을 닫는 실제 작업을 timing recorder로 측정한다.",
+          "started_at": "2026-09-08T10:40:34.134Z",
+          "session_id": "02bb1233-ebe9-4a12-a86d-2278e3dbd36f",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T10:41:39.846Z",
+          "wall_clock_seconds": 65.712,
+          "editor_seconds": 65.712
+        }
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "findings": [
+        {
+          "id": "m5-10-wave-a-sense-pos",
+          "category": "sense",
+          "severity": "warning",
+          "status": "resolved",
+          "note": "신규 importable 50개를 다시 확인해 다섯 개의 물리·비유 또는 상태·행동 경계를 별도 sense로 유지했다."
+        },
+        {
+          "id": "m5-10-wave-a-relation-admission",
+          "category": "relation-noise",
+          "severity": "warning",
+          "status": "resolved",
+          "note": "8개 relation candidate를 tuple과 writer-facing use 기준으로 전수 대조하고 6개 admit, 2개 reject를 확인했다."
+        },
+        {
+          "id": "m5-10-wave-a-direct-replacement",
+          "category": "direct-replacement",
+          "severity": "info",
+          "status": "resolved",
+          "note": "직접 대체를 주장하지 않는 near/mood 관계만 canonical에 남겼다."
+        },
+        {
+          "id": "m5-10-wave-a-reference-closure",
+          "category": "reference-closure",
+          "severity": "info",
+          "status": "resolved",
+          "note": "이번 Wave A는 기존 canonical target만 사용하며 신규 reference-only closure가 없음을 확인했다."
+        }
+      ]
+    }
+  },
+  "records": [
+    {
+      "source": "inventory",
+      "inventory_id": "m5-249",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w529",
+      "decision_note": "lemma/POS와 단일 감탄 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-250",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w530",
+      "decision_note": "성취 뒤 차오르는 정서의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-251",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w531",
+      "decision_note": "만족과 따뜻한 기쁨의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-252",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w532",
+      "decision_note": "기대가 어긋난 정서의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-253",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w533",
+      "decision_note": "부당함에서 오는 분함의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-254",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w534",
+      "decision_note": "당장의 멋쩍음에 초점을 둔 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-255",
+      "role": "start",
+      "decision": "corrected",
+      "canonical_id": "w535",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "몸의 어지러움과 위험 앞의 아득함을 두 sense로 분리해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-256",
+      "role": "start",
+      "decision": "corrected",
+      "canonical_id": "w536",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "액체의 상승과 감정의 충만을 두 sense로 분리해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-257",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w537",
+      "decision_note": "서두르지 않는 판단 태도의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-258",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w538",
+      "decision_note": "부드럽고 순한 성질의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-259",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w539",
+      "decision_note": "뜻밖의 일에도 겉으로 흔들리지 않는 태도를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-260",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w540",
+      "decision_note": "얌전한 품위에 초점을 둔 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-261",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w541",
+      "decision_note": "낭비하지 않는 생활 태도의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-262",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w542",
+      "decision_note": "빈틈없이 짜인 계획과 생각의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-263",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w543",
+      "decision_note": "숨김없이 드러내는 태도의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-264",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w544",
+      "decision_note": "느린 움직임과 여유의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-265",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w545",
+      "decision_note": "물기 없이 마른 표면 감각의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-266",
+      "role": "start",
+      "decision": "corrected",
+      "canonical_id": "w546",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "표면의 매끄러움과 순조로운 진행을 두 sense로 분리해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-267",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w547",
+      "decision_note": "탄력 있는 음식 질감의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-268",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w548",
+      "decision_note": "볶거나 구운 음식의 깊은 맛을 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-269",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w549",
+      "decision_note": "맛과 냄새의 편안한 깊이에 초점을 둔 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-270",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w550",
+      "decision_note": "입맛을 깨우는 알맞은 매운맛의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-271",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w551",
+      "decision_note": "집 뒤편의 작은 뜰이라는 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-272",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w552",
+      "decision_note": "방향이 나뉘는 길의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-273",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w553",
+      "decision_note": "산이나 언덕 가장자리의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-274",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w554",
+      "decision_note": "넓고 평평한 바위의 구체 장면을 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-275",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w555",
+      "decision_note": "돌을 쌓아 만든 경계의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-276",
+      "role": "start",
+      "decision": "corrected",
+      "canonical_id": "w556",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "희미한 어둠과 해 뜨고 지는 때의 빛을 두 sense로 분리해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-277",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w557",
+      "decision_note": "해가 넘어가는 시간 장면의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-278",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w558",
+      "decision_note": "길이나 방이 꺾이는 자리의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-279",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w559",
+      "decision_note": "몸을 날려 안으로 들어가는 움직임의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-280",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w560",
+      "decision_note": "틈이나 깊은 곳으로 들어가는 방향의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-281",
+      "role": "start",
+      "decision": "corrected",
+      "canonical_id": "w561",
+      "corrected_fields": [
+        "gloss"
+      ],
+      "decision_note": "몸이나 물체가 흔들리며 중심을 잃는다는 gloss로 보정해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-282",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w562",
+      "decision_note": "높은 곳에서 아래로 보는 방향의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-283",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w563",
+      "decision_note": "아래에서 위로 시선을 드는 방향의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-284",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w564",
+      "decision_note": "바닥의 대상을 집어 올리는 동작의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-285",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w565",
+      "decision_note": "붙잡힌 것에서 벗어나는 동작의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-286",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w566",
+      "decision_note": "위에서 아래로 훑는 동작의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-287",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w567",
+      "decision_note": "겹친 것을 들추어 안을 찾는 동작의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-288",
+      "role": "start",
+      "decision": "corrected",
+      "canonical_id": "w568",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "물체의 기울기와 생각의 쏠림을 두 sense로 분리해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-289",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w569",
+      "decision_note": "닿을 듯 말 듯 지나가는 움직임의 단일 sense를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-290",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w570",
+      "decision_note": "바닥에 펴는 생활 도구의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-291",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w571",
+      "decision_note": "불을 피우려고 말린 나무의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-292",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w572",
+      "decision_note": "불과 온기를 담는 그릇의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-293",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w573",
+      "decision_note": "마찰에서 불꽃을 일으키는 도구의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-294",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w574",
+      "decision_note": "유약 없이 구운 흙그릇의 생활 장면을 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-295",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w575",
+      "decision_note": "곡식이나 양념을 찧는 도구의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-296",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w576",
+      "decision_note": "곡식을 가는 묵직한 도구의 장면 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-297",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w577",
+      "decision_note": "관심이나 시선을 보내는 표현 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-298",
+      "role": "start",
+      "decision": "included",
+      "canonical_id": "w578",
+      "decision_note": "닿거나 잡으려 손을 앞으로 내미는 표현 단위를 확인해 포함했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-299",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "실제 시야와 기억의 잔상이라는 expression 경계를 먼저 확정해야 하므로 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-300",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "말하기 행동과 어휘 선택의 expression 경계를 더 확인해야 하므로 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-301",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "실제 청취와 비유적 수용을 현재 expression 범위에서 안정적으로 분리하지 못해 거절했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-302",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "호흡 동작과 놀람 반응의 경계가 불명확해 이번 Wave A에서는 거절했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-303",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "실제 손동작과 안도감 관용 표현의 경계를 더 확인해야 하므로 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-304",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "방향 전환의 동작과 떠남·회피의 비유를 현재 expression 범위에서 분리하지 못해 거절했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-305",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "사용하지 않은 reserve capacity로 남기며 이번 Wave A에서는 처리하지 않았다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-306",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "사용하지 않은 reserve capacity로 남기며 이번 Wave A에서는 처리하지 않았다."
+    }
+  ]
+}

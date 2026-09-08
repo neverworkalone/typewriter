@@ -1,0 +1,175 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-a-20260908",
+  "before_count": 0,
+  "after_count": 6,
+  "candidate_reviews": [
+    {
+      "candidate_id": "m5-10-relation-candidate-0001",
+      "relation_id": "m5-10-w529-s1-r1",
+      "source_sense": "w529-s1",
+      "relation": {
+        "target": "w307",
+        "target_sense": "w307-s1",
+        "type": "mood"
+      },
+      "decision": "admit",
+      "review_note": "감탄스럽다는 대상의 뛰어남에 대한 감탄을 드러내고 경외감은 그 감탄에 거리와 두려움이 더해진 정서라 mood 관계로 인정했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0002",
+      "relation_id": "m5-10-w530-s1-r1",
+      "source_sense": "w530-s1",
+      "relation": {
+        "target": "w305",
+        "target_sense": "w305-s1",
+        "type": "near"
+      },
+      "decision": "admit",
+      "review_note": "뿌듯하다는 해낸 일 뒤 마음이 차오르는 상태이고 자부심은 자신이나 자신의 일을 가치 있게 평가하는 마음이라 near로 인정했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0003",
+      "relation_id": "m5-10-w531-s1-r1",
+      "source_sense": "w531-s1",
+      "relation": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      },
+      "decision": "admit",
+      "review_note": "흐뭇함은 만족에서 오는 따뜻하고 잔잔한 기쁨이라 넓은 기쁨의 정서적 색을 찾는 mood 관계로 인정했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0004",
+      "relation_id": "m5-10-w532-s1-r1",
+      "source_sense": "w532-s1",
+      "relation": {
+        "target": "w005",
+        "target_sense": "w005-s1",
+        "type": "near"
+      },
+      "decision": "admit",
+      "review_note": "섭섭하다는 기대한 마음이나 배려가 어긋난 상태로 서운함과 같은 관계 방향을 가지지만 문맥의 강도와 초점이 달라 near로 인정했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0005",
+      "relation_id": "m5-10-w534-s1-r1",
+      "source_sense": "w534-s1",
+      "relation": {
+        "target": "w432",
+        "target_sense": "w432-s1",
+        "type": "near"
+      },
+      "decision": "admit",
+      "review_note": "무안함과 수치심은 부끄러움이 드러난 상황에서 겹치지만 무안함은 당장의 멋쩍음에 수치심은 자기 평가에 더 가깝기 때문에 near로 인정했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0006",
+      "relation_id": "m5-10-w535-s2-r1",
+      "source_sense": "w535-s2",
+      "relation": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "mood"
+      },
+      "decision": "admit",
+      "review_note": "위험 앞에서 아찔한 감각은 몸과 마음에 힘이 모이는 긴장된 장면을 만들 수 있으나 두 표현은 직접 대체가 아니므로 mood로 인정했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0007",
+      "relation_id": "m5-10-w547-s1-r1",
+      "source_sense": "w547-s1",
+      "relation": {
+        "target": "w470",
+        "target_sense": "w470-s1",
+        "type": "direct"
+      },
+      "decision": "reject",
+      "error_category": "broad-common-category",
+      "review_note": "쫄깃하다와 미끈하다는 모두 촉감 형용사라는 넓은 공통점만 있어 직접 대체할 수 없으므로 broad-common-category로 거절했다."
+    },
+    {
+      "candidate_id": "m5-10-relation-candidate-0008",
+      "relation_id": "m5-10-w548-s1-r1",
+      "source_sense": "w548-s1",
+      "relation": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      },
+      "decision": "reject",
+      "error_category": "generic-result-or-reaction",
+      "review_note": "고소한 맛이 기분을 좋게 할 수 있다는 설명은 일반적인 반응일 뿐 기쁨과의 안정적인 writer-facing 관계를 증명하지 못하므로 거절했다."
+    }
+  ],
+  "events": [
+    {
+      "event_id": "m5-10-wave-a-20260908-event-0001",
+      "relation_id": "m5-10-w529-s1-r1",
+      "operation": "add",
+      "source_sense": "w529-s1",
+      "after": {
+        "target": "w307",
+        "target_sense": "w307-s1",
+        "type": "mood"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a-20260908-event-0002",
+      "relation_id": "m5-10-w530-s1-r1",
+      "operation": "add",
+      "source_sense": "w530-s1",
+      "after": {
+        "target": "w305",
+        "target_sense": "w305-s1",
+        "type": "near"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a-20260908-event-0003",
+      "relation_id": "m5-10-w531-s1-r1",
+      "operation": "add",
+      "source_sense": "w531-s1",
+      "after": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a-20260908-event-0004",
+      "relation_id": "m5-10-w532-s1-r1",
+      "operation": "add",
+      "source_sense": "w532-s1",
+      "after": {
+        "target": "w005",
+        "target_sense": "w005-s1",
+        "type": "near"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a-20260908-event-0005",
+      "relation_id": "m5-10-w534-s1-r1",
+      "operation": "add",
+      "source_sense": "w534-s1",
+      "after": {
+        "target": "w432",
+        "target_sense": "w432-s1",
+        "type": "near"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a-20260908-event-0006",
+      "relation_id": "m5-10-w535-s2-r1",
+      "operation": "add",
+      "source_sense": "w535-s2",
+      "after": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "mood"
+      }
+    }
+  ],
+  "source_note": "관계 검토는 sense/POS 검토 완료 뒤 진행했다. 8개 source-bound tuple을 전수 기록하고 6개만 writer-facing use와 정확한 source/target sense를 확인해 admit했으며 2개 noise 후보는 canonical에 넣지 않았다. raw draft와 외부 원문은 저장하지 않았다."
+}

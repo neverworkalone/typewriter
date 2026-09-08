@@ -191,6 +191,28 @@ unambiguous +200 continuation needed to complete the composite 778 target; the
 +500 ladder stage may rejoin through Wave B only after that wave passes and
 proves the 778 output. The executable check is npm run batch:repair:check.
 
+## M5-10 Wave A validation result
+
+The first #96 wave is recorded independently in
+[`data/batches/m5-10-wave-a.json`](../data/batches/m5-10-wave-a.json), with its
+reviewed relation diff, separate relation screen, derived metrics, canonical
+import, verification result, and source-bound stage report. It starts from the historical M5-9 output of 528
+starts and imports exactly 50 reviewed starts, reaching 620 records / 578 starts
+/ 42 reference-only records / 725 senses / 468 relations / 39 expressions.
+
+The wave selected 58 starts: 44 included, 6 corrected, 3 held, 3 rejected, and
+2 deferred. The 8 relation candidates were screened separately from human
+admission; 6 were admitted and 2 rejected, for a candidate noise rate of 2/8 =
+25%. All five timing passes are recorder-measured and the independent audit has
+no open blockers. The exact source-derived report nevertheless records
+`HOLD PROCESS`: total editor time was 1,095.048 seconds, or
+19.5544 seconds per processed start, above the fixed 12-second limit.
+
+Wave B was not started and the Wave A stage report keeps
+`next_stage_authorized: false`. The historical M5-9 canonical source is retained
+under `data/batches/m5-9-postimport-canonical/` so its failed report remains
+reproducible after the current canonical directory advances.
+
 For future batches using the repaired timing contract, set
 measurement.timing.contract_version to m5-9a-v1. The timing recorder records the
 current feedback event with `npm run batch:timing:feedback`, then records each

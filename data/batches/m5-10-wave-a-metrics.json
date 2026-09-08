@@ -1,0 +1,124 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-10-wave-a-20260908",
+  "source": {
+    "manifest": "data/batches/m5-10-wave-a.json",
+    "relation_diff": "data/batches/m5-10-wave-a-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 58,
+      "processed_start_count": 56
+    },
+    "decisions": {
+      "included": 44,
+      "corrected": 6,
+      "held": 3,
+      "rejected": 3,
+      "deferred": 2,
+      "importable_start_count": 50,
+      "correction_rate_of_selected": 0.10714285714285714,
+      "correction_rate_of_importable": 0.12,
+      "held_rate": 0.05357142857142857,
+      "rejected_rate": 0.05357142857142857,
+      "held_or_rejected_rate": 0.10714285714285714,
+      "sense_field_correction_count": 5,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 50,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 50,
+      "imported_sense_count": 55,
+      "imported_relation_count": 6,
+      "imported_expression_count": 2,
+      "relation_type_counts": {
+        "mood": 3,
+        "near": 3
+      }
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 6,
+      "added_count": 6,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": -6,
+      "noise_event_count": 2,
+      "noise_rate_of_before": 0,
+      "classification_counts": {
+        "broad-common-category": 1,
+        "generic-result-or-reaction": 1
+      },
+      "candidate_count": 8,
+      "admitted_candidate_count": 6,
+      "rejected_candidate_count": 2,
+      "noise_denominator_count": 8,
+      "noise_rate_of_candidates": 0.25
+    },
+    "timing": {
+      "status": "complete",
+      "passes": {
+        "target-preparation": {
+          "status": "complete",
+          "wall_clock_seconds": 27.602,
+          "editor_seconds": 27.602
+        },
+        "initial-review": {
+          "status": "complete",
+          "wall_clock_seconds": 104.96,
+          "editor_seconds": 104.96
+        },
+        "feedback-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 58.731,
+          "editor_seconds": 58.731
+        },
+        "final-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 838.043,
+          "editor_seconds": 838.043
+        },
+        "held-rejected": {
+          "status": "complete",
+          "wall_clock_seconds": 65.712,
+          "editor_seconds": 65.712
+        }
+      },
+      "total_wall_clock_seconds": 1095.048,
+      "total_editor_seconds": 1095.048,
+      "measured_wall_clock_seconds": 1095.048,
+      "measured_editor_seconds": 1095.048,
+      "unmeasured_passes": []
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 4,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {
+        "sense": 1,
+        "relation-noise": 1,
+        "direct-replacement": 1,
+        "reference-closure": 1
+      }
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 50,
+      "scoped_single_sense_count": 45,
+      "split_record_count": 5,
+      "split_canonical_ids": [
+        "w535",
+        "w536",
+        "w546",
+        "w556",
+        "w568"
+      ]
+    }
+  }
+}
