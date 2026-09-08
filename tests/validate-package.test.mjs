@@ -32,13 +32,22 @@ test('collects manifest entrypoints without treating wildcard resources as files
   );
 });
 
-test('rejects a product/package version mismatch', async () => {
+test('allows independent product and package versions', async () => {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-package-version-'));
   try {
-    await writeFile(path.join(temporaryDirectory, 'package.json'), JSON.stringify({ version: '0.2.0' }));
+    await writeFile(path.join(temporaryDirectory, 'package.json'), JSON.stringify({ version: '1.0.0' }));
     await writeFile(
       path.join(temporaryDirectory, 'manifest.json'),
-      JSON.stringify({ manifest_version: 3, version: '0.3.0' }),
+      JSON.stringify({
+        manifest_version: 3,
+        version: '1.0',
+        permissions: ['storage'],
+        action: { default_popup: 'popup.html' },
+        options_ui: { page: 'options.html' },
+        content_security_policy: {
+          extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+        },
+      }),
     );
 
     const result = validatePackageDirectory({
@@ -46,7 +55,7 @@ test('rejects a product/package version mismatch', async () => {
       projectRoot: temporaryDirectory,
     });
 
-    assert.match(result.errors.join('\n'), /Product\/package version must match/);
+    assert.equal(result.errors.some((error) => /version/i.test(error)), false);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
