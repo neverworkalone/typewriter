@@ -174,6 +174,33 @@ does not authorize the next bounded ladder stage. Deferred reserve rows are visi
 in the manifest and metrics, but never inflate the import count or make editor cost
 appear lower.
 
+## M5-9A repair and resume boundary
+
+Issue #104 records the repair boundary after the failed M5-9 stage. The tracked
+data/batches/m5-9a-relation-screen.json artifact keeps all 25 M5-9 relation
+proposals in a pre-screen denominator, rejects the known 12 failure cases before
+human admission, and records the remaining 13 human-admitted tuples separately.
+It is source-bound to the historical relation diff; it contains no raw draft or
+external response.
+
+data/batches/m5-9a-repair-authorization.json binds that screen and the unchanged
+failed stage report by SHA-256. Its scope is deliberately limited to #96 Wave A:
+the first 50-start validation wave, 528 → 578. It does not authorize the remaining
+200 starts or Wave B. The expansion plan nevertheless records Wave B as the
+unambiguous +200 continuation needed to complete the composite 778 target; the
++500 ladder stage may rejoin through Wave B only after that wave passes and
+proves the 778 output. The executable check is npm run batch:repair:check.
+
+For future batches using the repaired timing contract, set
+measurement.timing.contract_version to m5-9a-v1. The timing recorder records the
+current feedback event with `npm run batch:timing:feedback`, then records each
+session with `npm run batch:timing:start` and `npm run batch:timing:stop`.
+The stop command derives wall-clock/editor seconds from its start/stop pair;
+the CLI accepts neither user-supplied timestamps nor durations. The validator
+rejects timing values on unmeasured passes and requires paired one-based
+follow-up cycles. A session left in progress or a follow-up with missing work
+keeps the derived timing incomplete; no time is estimated or backfilled.
+
 ## M5-4 draft and review contract
 
 M5-4 makes the quality and measurement rules part of the batch contract. A new

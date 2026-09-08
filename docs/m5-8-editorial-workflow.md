@@ -147,6 +147,49 @@ counts, correction rates, relation noise, canonical import counts, audit status,
 and timing totals. The manifest's relation-diff path and digest continue to bind
 the event ledger to that calculation.
 
+## M5-9A repair authorization
+
+M5-9 ended at HOLD PROCESS; its stage report and canonical result remain
+historical records. The repair contract in issue #104 does not rewrite that
+failure or add canonical data. It binds the failed stage report by SHA-256 to
+data/batches/m5-9a-repair-authorization.json and binds the 25 source candidates
+to the separate data/batches/m5-9a-relation-screen.json artifact.
+
+The relation screen retains all 25 proposals in its pre-screen denominator. It
+records 12 tuple/semantic pre-screen rejections and passes 13 candidates to a
+separate human-admission record; only those 13 admitted tuples remain final
+relations. The source-bound regression is checked against M5-9's 12 rejected
+candidate reviews and 13 add events. The policy keeps relation output empty by
+default and uses no quota. A candidate is not rejected by a keyword list:
+source/target senses, direction, type, and a concrete writer-facing use are
+recorded and checked as one tuple.
+
+Manifests that use the repaired timing contract set
+measurement.timing.contract_version to m5-9a-v1. The timing recorder's
+`batch:timing:feedback` command records the current UTC feedback event and
+appends the next one-based paired follow-up cycle. `batch:timing:start` records
+the current start timestamp for a pass, and `batch:timing:stop` records the
+current stop timestamp and derives wall-clock/editor seconds; neither command
+accepts user-supplied timestamps or durations. An unmeasured pass cannot carry
+an estimated duration. The recorder marks an unfinished session as
+`in-progress`, and the validator marks the timing incomplete until both
+follow-up passes are measured. Missing, duplicated, or out-of-order cycles are
+rejected.
+
+The repair authorization permits only #96's first 50-start validation wave
+(528 → 578). It does not authorize the remaining 200 starts or Wave B. A later
+stage that follows a failed report must reference both that report and a valid
+digest-bound repair authorization; a passed stage still requires the ordinary
+passed-report chain. The expansion plan models the remaining repair path
+explicitly: a passed Wave B (578 → 778) may be used as the previous report for
+the +500 stage, but only after Wave B itself passes and its output proves the
+composite stage-2 target of 778. The ordinary stage-2 → stage-3 chain remains
+valid for a non-repair run.
+
+Run the repair check with:
+
+    npm run batch:repair:check
+
 ## Candidate buffer and exact net increase
 
 The candidate buffer is a maximum reserve pool, not a required number of failed

@@ -128,11 +128,31 @@ npm run batch:import -- \
   --output=/tmp/typewriter-m5-2/canonical-import.jsonl
 
 npm run batch:process:check
+npm run batch:repair:check
+npm run batch:timing:feedback -- \
+  --manifest=/tmp/typewriter-wave/manifest.json \
+  --output=/tmp/typewriter-wave/feedback.json
+npm run batch:timing:start -- \
+  --manifest=/tmp/typewriter-wave/feedback.json \
+  --output=/tmp/typewriter-wave/audit-started.json \
+  --pass=post-review-audit
+npm run batch:timing:stop -- \
+  --manifest=/tmp/typewriter-wave/audit-started.json \
+  --output=/tmp/typewriter-wave/audit-complete.json \
+  --pass=post-review-audit
 ```
 
 The import helper never edits `data/canonical/`; it only emits validated rows outside
 the repository. See [`m5-batch-workflow.md`](m5-batch-workflow.md) for the manifest,
 ID allocation, reference-closure, and reproducibility contract.
+
+When a review event creates a follow-up cycle, run
+`npm run batch:timing:feedback` at the event. It records the current UTC clock,
+generates the paired cycle automatically, and writes a new manifest to the
+`--output` path. Use `batch:timing:start` and `batch:timing:stop` around every
+editorial session; stop derives wall-clock and editor seconds from the recorded
+start/stop timestamps. The CLI does not accept user-supplied timestamps or
+durations and does not estimate or backfill work.
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
 files. It does not scan `data/draft/`, `data/reference/`, generated output, or test

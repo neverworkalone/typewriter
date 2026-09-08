@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-9-relation-screen.schema.json",
+  "title": "Typewriter M5-9A relation candidate screen",
+  "description": "Source-bound relation proposals with a separate tuple/semantic pre-screen and human admission record. It contains no raw draft or external response.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "process_revision",
+    "source",
+    "policy",
+    "candidates"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^m5-9a-[a-z0-9][a-z0-9-]*$"
+    },
+    "process_revision": {
+      "const": "m5-9a-relation-admission-v1"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation_diff", "relation_diff_sha256"],
+      "properties": {
+        "relation_diff": {
+          "const": "data/batches/m5-9-expansion-relation-diff.json"
+        },
+        "relation_diff_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "default_relation_output",
+        "quota",
+        "candidate_fields",
+        "pre_screen_method",
+        "pre_screen_failure_categories",
+        "human_admission_required"
+      ],
+      "properties": {
+        "default_relation_output": { "const": "empty" },
+        "quota": { "const": "none" },
+        "candidate_fields": {
+          "const": [
+            "source_sense",
+            "target_sense",
+            "direction",
+            "type",
+            "writer_use_note"
+          ]
+        },
+        "pre_screen_method": { "const": "tuple-and-semantic-review" },
+        "pre_screen_failure_categories": {
+          "const": [
+            "incidental-co-occurrence",
+            "generic-result-or-reaction",
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "unsupported-cross-sensory",
+            "sense-target-type-error"
+          ]
+        },
+        "human_admission_required": { "const": true }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/candidate" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "canonicalSense": {
+      "type": "string",
+      "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+    },
+    "canonicalRecord": {
+      "type": "string",
+      "pattern": "^[wr][0-9]{3,}$"
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "target_sense", "type"],
+      "properties": {
+        "target": { "$ref": "#/$defs/canonicalRecord" },
+        "target_sense": { "$ref": "#/$defs/canonicalSense" },
+        "type": {
+          "enum": [
+            "direct",
+            "near",
+            "antonym",
+            "mood",
+            "scene",
+            "sensory",
+            "action",
+            "association"
+          ]
+        }
+      }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "$ref": "#/$defs/canonicalSense" },
+        "to": { "$ref": "#/$defs/canonicalSense" }
+      }
+    },
+    "preScreen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "method",
+        "source_sense_locked",
+        "target_sense_locked",
+        "semantic_result",
+        "reason"
+      ],
+      "properties": {
+        "decision": { "enum": ["pass", "reject"] },
+        "method": { "const": "tuple-and-semantic-review" },
+        "source_sense_locked": { "const": true },
+        "target_sense_locked": { "const": true },
+        "semantic_result": {
+          "enum": ["stable-writer-use", "not-stable-writer-use"]
+        },
+        "error_category": {
+          "enum": [
+            "incidental-co-occurrence",
+            "generic-result-or-reaction",
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "unsupported-cross-sensory",
+            "sense-target-type-error"
+          ]
+        },
+        "reason": { "type": "string", "pattern": "\\S" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "decision": { "const": "reject" } } },
+          "then": { "required": ["error_category"] }
+        },
+        {
+          "if": { "properties": { "decision": { "const": "pass" } } },
+          "then": { "not": { "required": ["error_category"] } }
+        }
+      ]
+    },
+    "humanAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "decision", "reason"],
+      "properties": {
+        "status": { "enum": ["not-reviewed", "reviewed"] },
+        "decision": { "enum": ["not-reviewed", "admit", "reject"] },
+        "error_category": {
+          "enum": [
+            "incidental-co-occurrence",
+            "generic-result-or-reaction",
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "unsupported-cross-sensory",
+            "sense-target-type-error"
+          ]
+        },
+        "reason": { "type": "string", "pattern": "\\S" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "not-reviewed" } } },
+          "then": {
+            "properties": { "decision": { "const": "not-reviewed" } },
+            "not": { "required": ["error_category"] }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "reviewed" } } },
+          "then": {
+            "properties": { "decision": { "enum": ["admit", "reject"] } }
+          }
+        },
+        {
+          "if": { "properties": { "decision": { "const": "reject" } } },
+          "then": { "required": ["error_category"] }
+        },
+        {
+          "if": { "properties": { "decision": { "enum": ["not-reviewed", "admit"] } } },
+          "then": { "not": { "required": ["error_category"] } }
+        }
+      ]
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "relation_id",
+        "source_sense",
+        "relation",
+        "direction",
+        "writer_use_note",
+        "pre_screen",
+        "human_admission"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "relation_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "source_sense": { "$ref": "#/$defs/canonicalSense" },
+        "relation": { "$ref": "#/$defs/relation" },
+        "direction": { "$ref": "#/$defs/direction" },
+        "writer_use_note": { "type": "string", "pattern": "\\S" },
+        "pre_screen": { "$ref": "#/$defs/preScreen" },
+        "human_admission": { "$ref": "#/$defs/humanAdmission" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "pre_screen": {
+                "type": "object",
+                "properties": { "decision": { "const": "reject" } }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "human_admission": {
+                "type": "object",
+                "properties": {
+                  "status": { "const": "not-reviewed" },
+                  "decision": { "const": "not-reviewed" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "pre_screen": {
+                "type": "object",
+                "properties": { "decision": { "const": "pass" } }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "human_admission": {
+                "type": "object",
+                "properties": {
+                  "status": { "const": "reviewed" },
+                  "decision": { "enum": ["admit", "reject"] }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

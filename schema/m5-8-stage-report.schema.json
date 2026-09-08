@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-8-stage-report.schema.json",
   "title": "Typewriter M5-8 stage result report",
-  "description": "Source-bound result contract for one M5-8 expansion stage. It records process metadata only and is not canonical dictionary data.",
+  "description": "Source-bound result contract for one M5-8 expansion stage or M5-9A repair resume wave. It records process metadata only and is not canonical dictionary data.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -24,7 +24,7 @@
     "schema_version": { "const": "1" },
     "stage_id": {
       "type": "string",
-      "pattern": "^m5-8-stage-[0-9]{2}-plus-[0-9]+$"
+      "pattern": "^(?:m5-8-stage-[0-9]{2}-plus-[0-9]+|m5-9a-wave-[ab]-plus-[0-9]+)$"
     },
     "input": {
       "type": "object",
@@ -36,7 +36,8 @@
           "pattern": "^m5-[a-z0-9][a-z0-9-]*$"
         },
         "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
-        "previous_stage_report": { "$ref": "#/$defs/reportReference" }
+        "previous_stage_report": { "$ref": "#/$defs/reportReference" },
+        "repair_authorization": { "$ref": "#/$defs/reportReference" }
       }
     },
     "target": {
