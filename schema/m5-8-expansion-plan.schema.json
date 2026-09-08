@@ -99,6 +99,7 @@
                 "input",
                 "target",
                 "decisions",
+                "buffer",
                 "actual",
                 "metrics",
                 "source",
@@ -106,7 +107,13 @@
               ]
             },
             "source_artifacts": {
-              "const": ["manifest", "metrics", "canonical_directory"]
+              "const": [
+                "manifest",
+                "metrics",
+                "relation_diff",
+                "canonical_directory",
+                "verification"
+              ]
             }
           }
         },
@@ -180,6 +187,9 @@
             "selection_formula",
             "import_formula",
             "cumulative_formula",
+            "buffer_meaning",
+            "buffer_use_formula",
+            "buffer_unused_formula",
             "exact_import_required"
           ],
           "properties": {
@@ -193,6 +203,15 @@
             },
             "cumulative_formula": {
               "const": "base_start_count + imported_start_count = cumulative_start_target"
+            },
+            "buffer_meaning": {
+              "const": "maximum-reserve-pool"
+            },
+            "buffer_use_formula": {
+              "const": "held_start_count + rejected_start_count <= candidate_buffer"
+            },
+            "buffer_unused_formula": {
+              "const": "deferred_start_count = candidate_buffer - (held_start_count + rejected_start_count)"
             },
             "exact_import_required": { "const": true }
           }

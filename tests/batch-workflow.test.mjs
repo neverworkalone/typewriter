@@ -231,6 +231,12 @@ async function createIdBoundaryFixture() {
 test('uses the batch JSON Schema conditional rules as the executable manifest contract', () => {
   assert.equal(validateBatchManifest(createManifest()).batch_id, 'm5-2-fixture');
 
+  const deferredManifest = structuredClone(createManifest());
+  deferredManifest.records[0].decision = 'deferred';
+  delete deferredManifest.records[0].canonical_id;
+  delete deferredManifest.records[0].corrected_fields;
+  assert.equal(validateBatchManifest(deferredManifest).records[0].decision, 'deferred');
+
   const invalidCases = [
     ['inventory rows require inventory_id', (manifest) => {
       delete manifest.records[0].inventory_id;

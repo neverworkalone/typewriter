@@ -537,6 +537,8 @@ export async function validateBatch({
     decision,
     manifest.records.filter((record) => record.decision === decision).length,
   ]));
+  const deferredCount = manifest.records.filter((record) => record.decision === 'deferred').length;
+  if (deferredCount > 0) counts.deferred = deferredCount;
   const referenceClosureCount = manifest.records.filter(
     (record) => record.source === 'reference-closure' && (record.decision === 'included' || record.decision === 'corrected'),
   ).length;

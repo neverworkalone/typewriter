@@ -109,6 +109,8 @@ function deriveDecisions(manifest) {
     selected.filter((record) => record.decision === decision).length,
   ]));
   const importable = counts.included + counts.corrected;
+  const deferred = selected.filter((record) => record.decision === 'deferred').length;
+  if (deferred > 0) counts.deferred = deferred;
   return {
     selection: {
       selected_start_count: selected.length,

@@ -51,6 +51,7 @@ Record decisions are deliberately explicit:
 | `corrected` | required | Reviewed record enters after named fields were corrected. |
 | `held` | forbidden | Review is recorded, but the record is not importable. |
 | `rejected` | forbidden | Review decision excludes the record from this batch. |
+| `deferred` | forbidden | The candidate remains in an unused reserve pool for a later selection. |
 
 `confidence` is not a manifest field. An unknown field such as `confidence` or
 `raw_response` is rejected, because editorial decisions must be represented by a
@@ -233,6 +234,13 @@ To detect drift in a checked-in metrics artifact, use `--check` instead of
 count fails the comparison. The event validator also checks that every added,
 retyped, or retargeted `after` tuple exists in the approved canonical batch and
 that every removed or changed `before` tuple is absent from the final batch.
+
+M5-8 stage reports use the same metrics artifact as a source rather than copying
+its values by hand. They additionally bind the report to the raw manifest,
+relation diff, canonical directory, and a small verification artifact through
+path and SHA-256 checks. An unused candidate-buffer slot is represented by a
+`deferred` manifest decision; it is not changed into a false `held` or
+`rejected` decision and does not enter the canonical import count.
 
 The historical M5-3 artifact is intentionally marked `timing.status: "incomplete"`:
 its 603-second initial-review wall-clock interval is retained, while feedback,

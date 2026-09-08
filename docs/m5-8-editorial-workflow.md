@@ -28,8 +28,16 @@ thresholds, and the allowed `+N` ladder. It is a plan, not a batch manifest,
 candidate list, or promise that all future stages will be opened.
 Each executed stage must additionally produce the source-bound shape defined by
 [`schema/m5-8-stage-report.schema.json`](../schema/m5-8-stage-report.schema.json):
-input revision/snapshot, target and buffer, included/corrected/held/rejected
-decisions, actual canonical count, source-derived metrics, and gate decision.
+input revision/snapshot, target and buffer, included/corrected/held/rejected/
+deferred decisions, actual canonical count, source-derived metrics, and gate
+decision. The report must point to the manifest, derived metrics artifact,
+relation diff, canonical directory, and verification artifact, with a SHA-256
+digest for each. The verification artifact uses
+[`schema/m5-8-stage-verification.schema.json`](../schema/m5-8-stage-verification.schema.json).
+The validator loads those artifacts and rejects a report whose
+paths, digests, decisions, metrics, or canonical snapshot drift from them. A
+stage after the first also names and digests the previous stage's passed report;
+its input snapshot must equal that report's actual output snapshot.
 
 ## Invariant and counting unit
 
@@ -135,22 +143,26 @@ the event ledger to that calculation.
 
 ## Candidate buffer and exact net increase
 
-The candidate buffer absorbs held or rejected selections without pretending that
-they became canonical starts. For a stage with target `N` and buffer `B`:
+The candidate buffer is a maximum reserve pool, not a required number of failed
+decisions. It absorbs held or rejected selections without pretending that they
+became canonical starts. For a stage with target `N` and buffer `B`, where `D`
+is the actual held-plus-rejected count:
 
 ```text
 selected starts       = N + B
 imported starts        = N
-held/rejected starts   = B
+held/rejected starts   = D, where D <= B
+unused buffer          = B - D (recorded as deferred)
 new cumulative starts  = base starts + N
 ```
 
 The buffer is declared before selection and is not part of the cumulative target.
 The stage validator rejects a count where the buffer is imported, where the
-selected count does not include it, or where held/rejected decisions do not
-account for it. For example, from the current 428 starts, a `+100` stage with a
-12-start buffer selects 112, imports exactly 100, leaves 12 held/rejected, and
-ends at exactly 528 starts.
+selected count does not include it, or where actual held/rejected decisions
+exceed it. Unused capacity is not falsely converted into a rejection and is not
+imported. For example, from the current 428 starts, a `+100` stage with a
+12-start buffer selects 112; if seven candidates are held/rejected, five are
+recorded as deferred and exactly 100 starts are imported, ending at 528.
 
 ## Fixed promotion ladder
 
@@ -186,11 +198,11 @@ Every stage must pass all of the following:
 - exact `+N` canonical start increase and cumulative target.
 
 The stage report's `included + corrected` count must equal the target net
-increase, `held + rejected` must equal the candidate buffer, and its actual
-canonical snapshot must report the planned cumulative start count. Its gate
-decision is derived from the report's correction, noise, timing, audit, and
-regression fields; a manually declared pass that disagrees with those values is
-invalid.
+increase, `held + rejected` must not exceed the candidate buffer, and
+`deferred` must be the unused buffer. Its actual canonical snapshot must report
+the planned cumulative start count. Its gate decision is derived from the
+source-loaded correction, noise, timing, audit, and regression fields; a
+manually declared pass that disagrees with those values is invalid.
 
 If one criterion fails, the result is `HOLD PROCESS`. Record the failed cause as
 process backlog, repair the process, and stop. Do not change the threshold,

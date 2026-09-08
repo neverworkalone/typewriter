@@ -246,6 +246,29 @@ test('M5-5 follow-up timing is a measured lower bound until the missing fix pass
   assert.equal(complete.timing.passes['post-review-fixes'].editor_seconds, 13);
 });
 
+test('deferred reserve candidates remain visible without entering canonical metrics', async () => {
+  const [manifest, relationDiff, canonicalResult] = await Promise.all([
+    readBatchJson('m5-7-recalibration.json'),
+    readBatchJson('m5-7-recalibration-relation-diff.json'),
+    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+  ]);
+  const deferredManifest = structuredClone(manifest);
+  const deferred = deferredManifest.records.find((record) => record.canonical_id === 'w401');
+  assert.ok(deferred);
+  deferred.decision = 'deferred';
+  delete deferred.canonical_id;
+
+  const derived = deriveBatchMetrics({
+    manifest: deferredManifest,
+    relationDiff,
+    canonicalRecords: canonicalResult.records,
+  });
+  assert.equal(derived.decisions.deferred, 1);
+  assert.equal(derived.decisions.importable_start_count, 37);
+  assert.equal(derived.canonical_import.imported_start_count, 37);
+  assert.equal(derived.relation_diff.after_count, 7);
+});
+
 test('relation diff events must match approved canonical tuples', async () => {
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-3-calibration.json'),

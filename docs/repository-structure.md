@@ -63,8 +63,11 @@ may record counts, rates, timing totals or measured lower bounds, audit findings
 and validation outcomes, but neither file may contain raw model responses, draft
 text, confidence scores, secrets, or local staging paths.
 The M5-8 expansion plan and stage-report schema are also process metadata: they
-define the fixed phase/ladder contract and source-bound per-stage results, but
-they do not contain a candidate batch or canonical import rows.
+define the fixed phase/ladder contract and source-bound per-stage results. A
+stage result binds its manifest, derived metrics, relation diff, canonical
+directory, verification artifact, and (after the first stage) previous passed
+stage report by path and digest; it does not contain a candidate batch or
+canonical import rows.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 

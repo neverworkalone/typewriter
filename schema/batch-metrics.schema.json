@@ -79,6 +79,7 @@
         "corrected": { "type": "integer", "minimum": 0 },
         "held": { "type": "integer", "minimum": 0 },
         "rejected": { "type": "integer", "minimum": 0 },
+        "deferred": { "type": "integer", "minimum": 0 },
         "importable_start_count": { "type": "integer", "minimum": 0 },
         "correction_rate_of_selected": { "$ref": "#/$defs/rate" },
         "correction_rate_of_importable": { "$ref": "#/$defs/rate" },

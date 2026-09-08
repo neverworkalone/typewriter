@@ -36,12 +36,19 @@
         "input",
         "target",
         "decisions",
+        "buffer",
         "actual",
         "metrics",
         "source",
         "gate"
       ],
-      "source_artifacts": ["manifest", "metrics", "canonical_directory"]
+      "source_artifacts": [
+        "manifest",
+        "metrics",
+        "relation_diff",
+        "canonical_directory",
+        "verification"
+      ]
     },
     "sense_review": {
       "required_checks": [
@@ -82,6 +89,9 @@
       "selection_formula": "target_net_start_increase + candidate_buffer",
       "import_formula": "imported_start_count = target_net_start_increase",
       "cumulative_formula": "base_start_count + imported_start_count = cumulative_start_target",
+      "buffer_meaning": "maximum-reserve-pool",
+      "buffer_use_formula": "held_start_count + rejected_start_count <= candidate_buffer",
+      "buffer_unused_formula": "deferred_start_count = candidate_buffer - (held_start_count + rejected_start_count)",
       "exact_import_required": true
     },
     "timing": {

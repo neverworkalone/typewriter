@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,17 +10,26 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import {
+  assertMetricsMatch,
+  createMetricsArtifact,
+} from './derive-metrics.mjs';
 import { validateRelationDiff } from './relation-diff.mjs';
-import { REPOSITORY_DIRECTORY } from './validate-batch.mjs';
+import {
+  REPOSITORY_DIRECTORY,
+  validateBatchManifest,
+} from './validate-batch.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const PLAN_SCHEMA = require('../../schema/m5-8-expansion-plan.schema.json');
 const REGRESSION_SCHEMA = require('../../schema/m5-8-process-regression.schema.json');
 const STAGE_REPORT_SCHEMA = require('../../schema/m5-8-stage-report.schema.json');
+const STAGE_VERIFICATION_SCHEMA = require('../../schema/m5-8-stage-verification.schema.json');
 const planSchemaValidator = new Ajv2020({ allErrors: true }).compile(PLAN_SCHEMA);
 const regressionSchemaValidator = new Ajv2020({ allErrors: true }).compile(REGRESSION_SCHEMA);
 const stageReportSchemaValidator = new Ajv2020({ allErrors: true }).compile(STAGE_REPORT_SCHEMA);
+const stageVerificationSchemaValidator = new Ajv2020({ allErrors: true }).compile(STAGE_VERIFICATION_SCHEMA);
 
 export const DEFAULT_PLAN_PATH = path.resolve(
   SCRIPT_DIRECTORY,
@@ -33,6 +43,7 @@ export const DEFAULT_RELATION_DIFF_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-7-recalibration-relation-diff.json',
 );
+export const SOURCE_ARTIFACT_VALIDATION_VERSION = 'm5-8-source-artifacts-v1';
 
 const EXPECTED_LADDER = Object.freeze([
   { sequence: 1, target_net_start_increase: 100, cumulative_start_target: 528 },
@@ -236,12 +247,397 @@ export function validateReviewCheckpoint(checkpoint) {
   };
 }
 
-export function validateExpansionStage(stage, plan) {
+function sha256Bytes(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+export async function sha256File(filePath) {
+  return sha256Bytes(await readFile(filePath));
+}
+
+function resolveSourcePath(sourcePath, label) {
+  assertCondition(
+    typeof sourcePath === 'string' && sourcePath.trim().length > 0,
+    `${label} must be a non-empty path`,
+    'SOURCE_PATH_MISMATCH',
+  );
+  return path.resolve(REPOSITORY_DIRECTORY, sourcePath);
+}
+
+async function readSourceFile(filePath, label) {
+  try {
+    return await readFile(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(`${label} does not exist: ${filePath}`, 'MISSING_SOURCE_ARTIFACT');
+    }
+    if (error.code === 'EISDIR') {
+      fail(`${label} must be a file: ${filePath}`, 'INVALID_SOURCE_ARTIFACT');
+    }
+    throw error;
+  }
+}
+
+async function readSourceJson(filePath, label) {
+  const bytes = await readSourceFile(filePath, label);
+  let value;
+  try {
+    value = JSON.parse(bytes.toString('utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      fail(`${label} is not valid JSON: ${error.message}`, 'INVALID_SOURCE_JSON');
+    }
+    throw error;
+  }
+  return { value, sha256: sha256Bytes(bytes) };
+}
+
+async function collectCanonicalFiles(directory) {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(`canonical directory does not exist: ${directory}`, 'MISSING_SOURCE_ARTIFACT');
+    }
+    throw error;
+  }
+
+  const files = [];
+  for (const entry of entries) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectCanonicalFiles(entryPath)));
+    } else if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+export async function hashCanonicalDirectory(directory) {
+  let directoryStat;
+  try {
+    directoryStat = await stat(directory);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(`canonical directory does not exist: ${directory}`, 'MISSING_SOURCE_ARTIFACT');
+    }
+    throw error;
+  }
+  if (!directoryStat.isDirectory()) {
+    fail(`canonical source is not a directory: ${directory}`, 'INVALID_SOURCE_ARTIFACT');
+  }
+
+  const files = (await collectCanonicalFiles(directory)).sort();
+  const digest = createHash('sha256');
+  for (const filePath of files) {
+    const relativePath = path.relative(directory, filePath);
+    digest.update(relativePath, 'utf8');
+    digest.update(Buffer.from([0]));
+    digest.update(await readSourceFile(filePath, `canonical file ${relativePath}`));
+    digest.update(Buffer.from([0]));
+  }
+  return digest.digest('hex');
+}
+
+async function readCanonicalSource(directory) {
+  const canonicalSha256 = await hashCanonicalDirectory(directory);
+  let canonicalResult;
+  try {
+    canonicalResult = await readCanonicalRecords(directory);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(`canonical directory does not exist: ${directory}`, 'MISSING_SOURCE_ARTIFACT');
+    }
+    throw error;
+  }
+  return { ...canonicalResult, sha256: canonicalSha256 };
+}
+
+function stageMetricsFromArtifacts(metricsArtifact, verification) {
+  const { decisions, relation_diff: relationDiff, timing, audit } = metricsArtifact.derived;
+  const selectedStartCount = metricsArtifact.derived.selection.selected_start_count;
+  const totalEditorSeconds = timing.total_editor_seconds;
+  return {
+    correction_rate_of_selected: decisions.correction_rate_of_selected,
+    relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
+    total_wall_clock_seconds: timing.total_wall_clock_seconds,
+    measured_wall_clock_seconds: timing.measured_wall_clock_seconds,
+    total_editor_seconds: totalEditorSeconds,
+    measured_editor_seconds: timing.measured_editor_seconds,
+    editor_seconds_per_selected_start: totalEditorSeconds === null || selectedStartCount === 0
+      ? null
+      : totalEditorSeconds / selectedStartCount,
+    timing_status: timing.status,
+    unmeasured_timing_pass_count: timing.unmeasured_passes.length,
+    audit_status: audit.status,
+    audit_independent: audit.independent,
+    open_audit_blocker_count: audit.open_blocker_count,
+    human_editorial_review_complete: verification.human_editorial_review_complete,
+    canonical_integrity: verification.canonical_integrity,
+    deterministic_sqlite: verification.deterministic_sqlite,
+    search_product_regression: verification.search_product_regression,
+  };
+}
+
+function stageDecisionsFromArtifacts(metricsArtifact) {
+  const { decisions } = metricsArtifact.derived;
+  return {
+    included_start_count: decisions.included,
+    corrected_start_count: decisions.corrected,
+    held_start_count: decisions.held,
+    rejected_start_count: decisions.rejected,
+    deferred_start_count: decisions.deferred ?? 0,
+  };
+}
+
+export async function loadExpansionStageSources(stage) {
   validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
-  validateExpansionPlan(plan);
-  const plannedStageIndex = plan.ladder.findIndex(({ stage_id: stageId }) => stageId === stage.stage_id);
-  const plannedStage = plannedStageIndex === -1 ? null : plan.ladder[plannedStageIndex];
-  assertCondition(plannedStage, `stage ${String(stage.stage_id)} is not in the M5-8 ladder`, 'UNKNOWN_STAGE');
+
+  const sourcePaths = {
+    manifest: resolveSourcePath(stage.source.manifest, 'stage.source.manifest'),
+    metrics: resolveSourcePath(stage.source.metrics, 'stage.source.metrics'),
+    relation_diff: resolveSourcePath(stage.source.relation_diff, 'stage.source.relation_diff'),
+    canonical_directory: resolveSourcePath(
+      stage.source.canonical_directory,
+      'stage.source.canonical_directory',
+    ),
+    verification: resolveSourcePath(stage.source.verification, 'stage.source.verification'),
+  };
+  const [manifestArtifact, metricsArtifact, relationDiffArtifact, verificationArtifact, canonical] = await Promise.all([
+    readSourceJson(sourcePaths.manifest, 'stage manifest'),
+    readSourceJson(sourcePaths.metrics, 'stage metrics artifact'),
+    readSourceJson(sourcePaths.relation_diff, 'stage relation diff'),
+    readSourceJson(sourcePaths.verification, 'stage verification artifact'),
+    readCanonicalSource(sourcePaths.canonical_directory),
+  ]);
+
+  validateBatchManifest(manifestArtifact.value);
+  validateRelationDiff(relationDiffArtifact.value);
+  validateSchema(
+    verificationArtifact.value,
+    stageVerificationSchemaValidator,
+    'stage verification',
+    'M5-8 stage verification',
+  );
+
+  const manifestRelationDiffPath = resolveSourcePath(
+    manifestArtifact.value.measurement?.relation_diff?.artifact,
+    'manifest.measurement.relation_diff.artifact',
+  );
+  assertEqual(
+    manifestRelationDiffPath,
+    sourcePaths.relation_diff,
+    'stage relation diff path does not match the manifest artifact',
+    'SOURCE_PATH_MISMATCH',
+  );
+  assertEqual(
+    relationDiffArtifact.sha256,
+    manifestArtifact.value.measurement.relation_diff.sha256,
+    'relation diff digest does not match the manifest',
+    'RELATION_DIFF_DIGEST_MISMATCH',
+  );
+
+  const metricsSource = metricsArtifact.value.source;
+  for (const [key, label] of [
+    ['manifest', 'metrics.source.manifest'],
+    ['relation_diff', 'metrics.source.relation_diff'],
+    ['canonical_directory', 'metrics.source.canonical_directory'],
+  ]) {
+    assertEqual(
+      resolveSourcePath(metricsSource[key], label),
+      sourcePaths[key],
+      `${label} does not match the stage source`,
+      'SOURCE_PATH_MISMATCH',
+    );
+  }
+
+  const regeneratedMetrics = createMetricsArtifact({
+    manifest: manifestArtifact.value,
+    relationDiff: relationDiffArtifact.value,
+    canonicalRecords: canonical.records,
+    source: metricsSource,
+  });
+  assertMetricsMatch(metricsArtifact.value, regeneratedMetrics);
+
+  const actualDigests = {
+    manifest_sha256: manifestArtifact.sha256,
+    metrics_sha256: metricsArtifact.sha256,
+    relation_diff_sha256: relationDiffArtifact.sha256,
+    canonical_sha256: canonical.sha256,
+    verification_sha256: verificationArtifact.sha256,
+  };
+  for (const [key, actualDigest] of Object.entries(actualDigests)) {
+    assertEqual(
+      actualDigest,
+      stage.source[key],
+      `${key} does not match the stage source artifact`,
+      'SOURCE_DIGEST_MISMATCH',
+    );
+  }
+
+  return {
+    validation: SOURCE_ARTIFACT_VALIDATION_VERSION,
+    paths: sourcePaths,
+    digests: actualDigests,
+    inventory_revision: manifestArtifact.value.inventory_revision,
+    selected_start_count: metricsArtifact.value.derived.selection.selected_start_count,
+    decisions: stageDecisionsFromArtifacts(metricsArtifact.value),
+    imported_start_count: metricsArtifact.value.derived.canonical_import.imported_start_count,
+    canonical_snapshot: canonicalSummary(canonical.records),
+    metrics: stageMetricsFromArtifacts(metricsArtifact.value, verificationArtifact.value),
+  };
+}
+
+function validateLoadedStageSources(stage, sourceArtifacts) {
+  assertCondition(
+    sourceArtifacts && typeof sourceArtifacts === 'object',
+    'stage source artifacts must be loaded and validated before stage arithmetic',
+    'SOURCE_ARTIFACTS_REQUIRED',
+  );
+  assertEqual(
+    sourceArtifacts.validation,
+    SOURCE_ARTIFACT_VALIDATION_VERSION,
+    'stage source artifacts were not validated by the M5-8 source loader',
+    'SOURCE_ARTIFACTS_UNVERIFIED',
+  );
+
+  for (const key of ['manifest', 'metrics', 'relation_diff', 'canonical_directory', 'verification']) {
+    assertEqual(
+      resolveSourcePath(stage.source[key], `stage.source.${key}`),
+      resolveSourcePath(sourceArtifacts.paths?.[key], `loaded source.${key}`),
+      `stage.source.${key} does not match the loaded source path`,
+      'SOURCE_PATH_MISMATCH',
+    );
+  }
+  for (const key of [
+    'manifest_sha256',
+    'metrics_sha256',
+    'relation_diff_sha256',
+    'canonical_sha256',
+    'verification_sha256',
+  ]) {
+    assertEqual(
+      stage.source[key],
+      sourceArtifacts.digests?.[key],
+      `stage.source.${key} does not match the loaded source digest`,
+      'SOURCE_DIGEST_MISMATCH',
+    );
+  }
+
+  assertEqual(
+    stage.input.inventory_revision,
+    sourceArtifacts.inventory_revision,
+    `${stage.stage_id} input inventory revision drifted from the manifest`,
+    'SOURCE_INVENTORY_REVISION_MISMATCH',
+  );
+  assertEqual(
+    stage.target.selected_start_count,
+    sourceArtifacts.selected_start_count,
+    `${stage.stage_id} selected count drifted from the manifest metrics`,
+    'SOURCE_SELECTION_DRIFT',
+  );
+  assertEqual(
+    stage.decisions,
+    sourceArtifacts.decisions,
+    `${stage.stage_id} decisions drifted from the manifest metrics`,
+    'SOURCE_DECISION_DRIFT',
+  );
+  assertEqual(
+    stage.actual.imported_start_count,
+    sourceArtifacts.imported_start_count,
+    `${stage.stage_id} imported start count drifted from the canonical import`,
+    'SOURCE_IMPORT_DRIFT',
+  );
+  assertEqual(
+    stage.actual.canonical_snapshot,
+    sourceArtifacts.canonical_snapshot,
+    `${stage.stage_id} canonical snapshot drifted from the canonical directory`,
+    'SOURCE_CANONICAL_SNAPSHOT_DRIFT',
+  );
+  assertEqual(
+    stage.metrics,
+    sourceArtifacts.metrics,
+    `${stage.stage_id} metrics drifted from source artifacts`,
+    'SOURCE_METRIC_DRIFT',
+  );
+}
+
+async function validatePreviousStageReport(stage, plan, plannedStageIndex, visitedStageIds) {
+  if (plannedStageIndex === 0) {
+    assertCondition(
+      !stage.input.previous_stage_report,
+      `${stage.stage_id} cannot reference a previous stage report`,
+      'UNEXPECTED_PREVIOUS_STAGE',
+    );
+    return;
+  }
+
+  const reference = stage.input.previous_stage_report;
+  assertCondition(
+    reference,
+    `${stage.stage_id} must reference the previous stage report`,
+    'MISSING_PREVIOUS_STAGE',
+  );
+  const previousPath = resolveSourcePath(reference.path, `${stage.stage_id}.input.previous_stage_report.path`);
+  assertCondition(
+    !visitedStageIds.has(previousPath),
+    `${stage.stage_id} previous-stage report chain contains a cycle`,
+    'STAGE_CHAIN_CYCLE',
+  );
+  const previousArtifact = await readSourceJson(previousPath, 'previous stage report');
+  assertEqual(
+    previousArtifact.sha256,
+    reference.sha256,
+    `${stage.stage_id} previous stage report digest mismatch`,
+    'STAGE_CHAIN_DIGEST_MISMATCH',
+  );
+  const previousStage = previousArtifact.value;
+  validateSchema(previousStage, stageReportSchemaValidator, 'previous_stage', 'previous M5-8 stage report');
+  const expectedPreviousStage = plan.ladder[plannedStageIndex - 1];
+  assertEqual(
+    previousStage.stage_id,
+    expectedPreviousStage.stage_id,
+    `${stage.stage_id} previous stage report does not match the ladder`,
+    'STAGE_CHAIN_MISMATCH',
+  );
+  assertEqual(
+    previousStage.gate_status,
+    'pass',
+    `${stage.stage_id} cannot follow a failed previous stage`,
+    'STAGE_CHAIN_GATE_FAILURE',
+  );
+  assertEqual(
+    previousStage.decision,
+    'APPROVE BOUNDED',
+    `${stage.stage_id} previous stage was not approved`,
+    'STAGE_CHAIN_GATE_FAILURE',
+  );
+  assertEqual(
+    previousStage.next_stage_created,
+    true,
+    `${stage.stage_id} previous stage did not authorize the next stage`,
+    'STAGE_CHAIN_PROMOTION_MISMATCH',
+  );
+  assertEqual(
+    previousStage.actual.canonical_snapshot,
+    stage.input.canonical_snapshot,
+    `${stage.stage_id} input snapshot does not match the previous stage output`,
+    'STAGE_CHAIN_INPUT_MISMATCH',
+  );
+
+  await validateExpansionStageInternal(
+    previousStage,
+    plan,
+    null,
+    new Set([...visitedStageIds, previousPath]),
+  );
+}
+
+function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArtifacts) {
+  const plannedStage = plan.ladder[plannedStageIndex];
+  validateLoadedStageSources(stage, sourceArtifacts);
 
   assertEqual(
     stage.target.net_start_increase,
@@ -290,17 +686,34 @@ export function validateExpansionStage(stage, plan) {
     `${stage.stage_id} included/corrected starts must equal the target net increase`,
     'NET_START_INCREASE_MISMATCH',
   );
+  const usedBuffer = stage.decisions.held_start_count + stage.decisions.rejected_start_count;
+  assertCondition(
+    usedBuffer <= stage.target.candidate_buffer,
+    `${stage.stage_id} held/rejected decisions exceed the maximum candidate buffer`,
+    'BUFFER_EXHAUSTED',
+  );
   assertEqual(
-    stage.decisions.held_start_count + stage.decisions.rejected_start_count,
-    stage.target.candidate_buffer,
-    `${stage.stage_id} held/rejected decisions must account for the candidate buffer`,
-    'BUFFER_DECISION_MISMATCH',
+    stage.decisions.deferred_start_count,
+    stage.target.candidate_buffer - usedBuffer,
+    `${stage.stage_id} deferred count must equal the unused candidate buffer`,
+    'BUFFER_UNUSED_MISMATCH',
+  );
+  assertEqual(
+    stage.buffer,
+    {
+      available_count: stage.target.candidate_buffer,
+      used_count: usedBuffer,
+      unused_count: stage.decisions.deferred_start_count,
+    },
+    `${stage.stage_id} buffer accounting is inconsistent`,
+    'BUFFER_ACCOUNTING_MISMATCH',
   );
   assertEqual(
     stage.decisions.included_start_count
       + stage.decisions.corrected_start_count
       + stage.decisions.held_start_count
-      + stage.decisions.rejected_start_count,
+      + stage.decisions.rejected_start_count
+      + stage.decisions.deferred_start_count,
     stage.target.selected_start_count,
     `${stage.stage_id} decisions must account for every selected start`,
     'DECISION_COUNT_MISMATCH',
@@ -329,12 +742,21 @@ export function validateExpansionStage(stage, plan) {
     `${stage.stage_id} correction rate is not derived from decisions`,
     'METRIC_DRIFT',
   );
-  assertNear(
-    stage.metrics.editor_seconds_per_selected_start,
-    stage.metrics.total_editor_seconds / stage.target.selected_start_count,
-    `${stage.stage_id} editor time per selected start is not derived from total editor time`,
-    'METRIC_DRIFT',
-  );
+  if (stage.metrics.total_editor_seconds === null) {
+    assertEqual(
+      stage.metrics.editor_seconds_per_selected_start,
+      null,
+      `${stage.stage_id} incomplete timing must not report a complete editor rate`,
+      'METRIC_DRIFT',
+    );
+  } else {
+    assertNear(
+      stage.metrics.editor_seconds_per_selected_start,
+      stage.metrics.total_editor_seconds / stage.target.selected_start_count,
+      `${stage.stage_id} editor time per selected start is not derived from total editor time`,
+      'METRIC_DRIFT',
+    );
+  }
 
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
@@ -343,7 +765,8 @@ export function validateExpansionStage(stage, plan) {
     stage.metrics.relation_noise_rate_of_before <= plan.gate.relation_noise_rate_max,
     !plan.gate.relation_noise_below_m5_3_baseline_required
       || stage.metrics.relation_noise_rate_of_before < baselineRate,
-    stage.metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
+    Number.isFinite(stage.metrics.editor_seconds_per_selected_start)
+      && stage.metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
     stage.metrics.timing_status === 'complete',
     stage.metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
     stage.metrics.audit_status === 'complete',
@@ -382,6 +805,39 @@ export function validateExpansionStage(stage, plan) {
     candidate_buffer: stage.target.candidate_buffer,
     gate_status: stage.gate_status,
   };
+}
+
+async function validateExpansionStageInternal(
+  stage,
+  plan,
+  sourceArtifacts = null,
+  visitedStageIds = new Set(),
+) {
+  validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
+  validateExpansionPlan(plan);
+  assertCondition(
+    !visitedStageIds.has(stage.stage_id),
+    `${stage.stage_id} stage report chain contains a cycle`,
+    'STAGE_CHAIN_CYCLE',
+  );
+  const nextVisitedStageIds = new Set(visitedStageIds);
+  nextVisitedStageIds.add(stage.stage_id);
+  const plannedStageIndex = plan.ladder.findIndex(({ stage_id: stageId }) => stageId === stage.stage_id);
+  const plannedStage = plannedStageIndex === -1 ? null : plan.ladder[plannedStageIndex];
+  assertCondition(plannedStage, `stage ${String(stage.stage_id)} is not in the M5-8 ladder`, 'UNKNOWN_STAGE');
+
+  const loadedSources = sourceArtifacts ?? await loadExpansionStageSources(stage);
+  await validatePreviousStageReport(stage, plan, plannedStageIndex, nextVisitedStageIds);
+  return validateExpansionStageValues(stage, plan, plannedStageIndex, loadedSources);
+}
+
+/**
+ * Validate a stage after loading its source artifacts. The optional third
+ * argument is only for a caller that has already received the validated
+ * projection from loadExpansionStageSources; ordinary validation omits it.
+ */
+export async function validateExpansionStage(stage, plan, sourceArtifacts = null) {
+  return validateExpansionStageInternal(stage, plan, sourceArtifacts);
 }
 
 function canonicalSummary(recordInfos) {

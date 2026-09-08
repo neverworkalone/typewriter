@@ -11,6 +11,7 @@
     "input",
     "target",
     "decisions",
+    "buffer",
     "actual",
     "metrics",
     "source",
@@ -33,7 +34,8 @@
           "type": "string",
           "pattern": "^m5-[a-z0-9][a-z0-9-]*$"
         },
-        "canonical_snapshot": { "$ref": "#/$defs/snapshot" }
+        "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
+        "previous_stage_report": { "$ref": "#/$defs/reportReference" }
       }
     },
     "target": {
@@ -59,13 +61,25 @@
         "included_start_count",
         "corrected_start_count",
         "held_start_count",
-        "rejected_start_count"
+        "rejected_start_count",
+        "deferred_start_count"
       ],
       "properties": {
         "included_start_count": { "type": "integer", "minimum": 0 },
         "corrected_start_count": { "type": "integer", "minimum": 0 },
         "held_start_count": { "type": "integer", "minimum": 0 },
-        "rejected_start_count": { "type": "integer", "minimum": 0 }
+        "rejected_start_count": { "type": "integer", "minimum": 0 },
+        "deferred_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "buffer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available_count", "used_count", "unused_count"],
+      "properties": {
+        "available_count": { "type": "integer", "minimum": 0 },
+        "used_count": { "type": "integer", "minimum": 0 },
+        "unused_count": { "type": "integer", "minimum": 0 }
       }
     },
     "actual": {
@@ -107,10 +121,18 @@
           "minimum": 0,
           "maximum": 1
         },
-        "total_wall_clock_seconds": { "type": "number", "minimum": 0 },
-        "total_editor_seconds": { "type": "number", "minimum": 0 },
+        "total_wall_clock_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "measured_wall_clock_seconds": { "type": "number", "minimum": 0 },
+        "total_editor_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "measured_editor_seconds": { "type": "number", "minimum": 0 },
         "editor_seconds_per_selected_start": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0
         },
         "timing_status": { "enum": ["complete", "incomplete"] },
@@ -127,11 +149,29 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["manifest", "metrics", "canonical_directory"],
+      "required": [
+        "manifest",
+        "manifest_sha256",
+        "metrics",
+        "metrics_sha256",
+        "relation_diff",
+        "relation_diff_sha256",
+        "canonical_directory",
+        "canonical_sha256",
+        "verification",
+        "verification_sha256"
+      ],
       "properties": {
         "manifest": { "type": "string", "pattern": "\\S" },
+        "manifest_sha256": { "$ref": "#/$defs/sha256" },
         "metrics": { "type": "string", "pattern": "\\S" },
-        "canonical_directory": { "type": "string", "pattern": "\\S" }
+        "metrics_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_diff": { "type": "string", "pattern": "\\S" },
+        "relation_diff_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_directory": { "type": "string", "pattern": "\\S" },
+        "canonical_sha256": { "$ref": "#/$defs/sha256" },
+        "verification": { "type": "string", "pattern": "\\S" },
+        "verification_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "gate_status": { "enum": ["pass", "fail"] },
@@ -139,6 +179,19 @@
     "next_stage_created": { "type": "boolean" }
   },
   "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reportReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "pattern": "\\S" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "snapshot": {
       "type": "object",
       "additionalProperties": false,
