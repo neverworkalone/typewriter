@@ -9,6 +9,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 
 import {
   REPOSITORY_DIRECTORY,
+  timingPassKey,
   validateBatchManifest,
 } from './validate-batch.mjs';
 import {
@@ -259,29 +260,23 @@ function validateRelationDiffAgainstCanonical(relationDiff, importedRecords) {
 function deriveTiming(measurement) {
   if (!measurement?.timing) fail('manifest.measurement.timing is required', 'MISSING_TIMING');
   const passes = measurement.timing.passes;
-  const passById = new Map();
-  for (const pass of passes) {
-    if (passById.has(pass.id)) {
-      fail(`timing contains duplicate pass ${pass.id}`, 'DUPLICATE_TIMING_PASS');
-    }
-    passById.set(pass.id, pass);
-  }
+  const passEntries = passes.map((pass) => ({ pass, key: timingPassKey(pass) }));
+  const passById = new Map(
+    passEntries
+      .filter(({ pass }) => TIMING_PASS_IDS.includes(pass.id))
+      .map(({ pass }) => [pass.id, pass]),
+  );
   const missingPasses = TIMING_PASS_IDS.filter((id) => !passById.has(id));
   if (missingPasses.length > 0) {
     fail(`timing is missing pass(es): ${missingPasses.join(', ')}`, 'MISSING_TIMING_PASS');
   }
 
-  const measuredPassIds = [
-    ...TIMING_PASS_IDS,
-    ...OPTIONAL_TIMING_PASS_IDS.filter((id) => passById.has(id)),
-  ];
   const derivedPasses = {};
   const unmeasuredPasses = [];
   let allComplete = true;
   let measuredWallClock = 0;
   let measuredEditor = 0;
-  for (const id of measuredPassIds) {
-    const pass = passById.get(id);
+  for (const { pass, key } of passEntries) {
     const wallClock = pass.wall_clock_seconds ?? null;
     const editor = pass.editor_seconds ?? null;
     const complete = pass.status === 'complete'
@@ -289,11 +284,11 @@ function deriveTiming(measurement) {
       && Number.isFinite(editor);
     if (!complete) {
       allComplete = false;
-      unmeasuredPasses.push(id);
+      unmeasuredPasses.push(key);
     }
     if (Number.isFinite(wallClock)) measuredWallClock += wallClock;
     if (Number.isFinite(editor)) measuredEditor += editor;
-    derivedPasses[id] = {
+    derivedPasses[key] = {
       status: pass.status,
       wall_clock_seconds: wallClock,
       editor_seconds: editor,

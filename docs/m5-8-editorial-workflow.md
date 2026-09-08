@@ -129,12 +129,18 @@ Each batch manifest must measure these required passes:
 4. `final-audit`
 5. `held-rejected`
 
-If review feedback arrives after the initial review, add separate
-`post-review-audit` and `post-review-fixes` passes. Every measured pass records
-`started_at`, `completed_at`, `wall_clock_seconds`, and `editor_seconds`. The
-timestamps and durations cover the actual work event; they are not estimates or
-backfilled values. An unmeasured follow-up leaves timing `incomplete`, exposes
-only a measured lower bound, and fails the cost gate.
+If review feedback arrives after the initial review, add a paired
+`post-review-audit` and `post-review-fixes` entry for every feedback cycle. The
+optional entries use a one-based `cycle` when more than one cycle is present and
+bind both entries to the recorded `feedback_received_at`. The metrics artifact
+uses keys such as `post-review-fixes#2` so repeated work cannot overwrite an
+earlier cycle. Every measured pass records `started_at`, `completed_at`,
+`wall_clock_seconds`, and `editor_seconds`; a measured follow-up cannot start
+before its feedback was received. The timestamps and durations cover the actual
+work event; they are not estimates or backfilled values. If a follow-up was not
+instrumented, both entries for that cycle remain `unmeasured`, the timing status
+is `incomplete`, and only the measured lower bound is exposed. Missing cycles,
+unpaired follow-up entries, and stale pre-feedback timestamps are invalid.
 
 `npm run batch:metrics` remains the source-derived calculation for decision
 counts, correction rates, relation noise, canonical import counts, audit status,

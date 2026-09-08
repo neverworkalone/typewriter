@@ -211,10 +211,12 @@ reference-only records, and 5 remaining candidates. The canonical snapshot is
 570 records / 670 senses / 462 relations, with 37 expression records. The four
 held and three rejected M5-9 reserve decisions add to the existing held rows for
 18 held rows total. The source-bound stage report and fixed-gate result are
-recorded in docs/m5-9-expansion-report.md: all required timing passes are
-measured, relation candidate noise is 12/25 = 48%, editor time is 11.87 seconds per
-processed start, and the result is HOLD PROCESS. No next stage is authorized until
-relation admission is repaired and re-audited.
+recorded in docs/m5-9-expansion-report.md: relation candidate noise is 12/25 =
+48%, and three post-review feedback cycles have six unmeasured follow-up passes.
+Timing is therefore incomplete; the measured required-pass editor time is 1,090
+seconds but no complete per-start cost is claimed. The result is HOLD PROCESS.
+No next stage is authorized until relation admission and timing measurement are
+repaired and re-audited.
 
 ## Validation commands
 

@@ -329,6 +329,16 @@
         "status": {
           "enum": ["complete", "partial", "unmeasured"]
         },
+        "cycle": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based feedback cycle number for repeated post-review passes. Omit it for the first legacy follow-up pass."
+        },
+        "feedback_received_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The recorded time when the review feedback that triggered this follow-up cycle arrived."
+        },
         "started_at": {
           "type": "string",
           "format": "date-time"

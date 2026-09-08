@@ -118,9 +118,18 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
       action: 1,
     },
   });
-  assert.equal(metrics.derived.timing.status, 'complete');
-  assert.equal(metrics.derived.timing.total_editor_seconds, 1270);
-  assert.deepEqual(metrics.derived.timing.unmeasured_passes, []);
+  assert.equal(metrics.derived.timing.status, 'incomplete');
+  assert.equal(metrics.derived.timing.total_editor_seconds, null);
+  assert.equal(metrics.derived.timing.measured_wall_clock_seconds, 2100);
+  assert.equal(metrics.derived.timing.measured_editor_seconds, 1090);
+  assert.deepEqual(metrics.derived.timing.unmeasured_passes, [
+    'post-review-audit#1',
+    'post-review-fixes#1',
+    'post-review-audit#2',
+    'post-review-fixes#2',
+    'post-review-audit#3',
+    'post-review-fixes#3',
+  ]);
   assert.equal(metrics.derived.audit.open_blocker_count, 0);
   assert.deepEqual(metrics.derived.sense_review, {
     status: 'complete',
@@ -152,6 +161,10 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
   });
   assert.equal(stage.next_stage_created, true);
   assert.equal(stage.next_stage_authorized, false);
+  assert.equal(stage.metrics.timing_status, 'incomplete');
+  assert.equal(stage.metrics.total_editor_seconds, null);
+  assert.equal(stage.metrics.measured_editor_seconds, 1090);
+  assert.equal(stage.metrics.unmeasured_timing_pass_count, 6);
 
   assert.deepEqual({
     record_count: canonicalResult.records.length,

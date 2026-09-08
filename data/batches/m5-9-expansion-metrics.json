@@ -63,7 +63,7 @@
       "noise_rate_of_candidates": 0.48
     },
     "timing": {
-      "status": "complete",
+      "status": "incomplete",
       "passes": {
         "target-preparation": {
           "status": "complete",
@@ -90,22 +90,49 @@
           "wall_clock_seconds": 240,
           "editor_seconds": 100
         },
-        "post-review-audit": {
-          "status": "complete",
-          "wall_clock_seconds": 540,
-          "editor_seconds": 90
+        "post-review-audit#1": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         },
-        "post-review-fixes": {
-          "status": "complete",
-          "wall_clock_seconds": 540,
-          "editor_seconds": 90
+        "post-review-fixes#1": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-audit#2": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-fixes#2": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-audit#3": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-fixes#3": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         }
       },
-      "total_wall_clock_seconds": 3180,
-      "total_editor_seconds": 1270,
-      "measured_wall_clock_seconds": 3180,
-      "measured_editor_seconds": 1270,
-      "unmeasured_passes": []
+      "total_wall_clock_seconds": null,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 2100,
+      "measured_editor_seconds": 1090,
+      "unmeasured_passes": [
+        "post-review-audit#1",
+        "post-review-fixes#1",
+        "post-review-audit#2",
+        "post-review-fixes#2",
+        "post-review-audit#3",
+        "post-review-fixes#3"
+      ]
     },
     "audit": {
       "status": "complete",

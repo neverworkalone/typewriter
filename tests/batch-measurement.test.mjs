@@ -358,6 +358,80 @@ test('M5-5 follow-up timing is a measured lower bound until the missing fix pass
   assert.equal(complete.timing.passes['post-review-fixes'].editor_seconds, 13);
 });
 
+test('repeated follow-up timing binds every cycle and rejects stale or missing feedback work', async () => {
+  const [manifest, relationDiff, canonicalResult] = await Promise.all([
+    readBatchJson('m5-5-recalibration.json'),
+    readBatchJson('m5-5-recalibration-relation-diff.json'),
+    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+  ]);
+
+  const repeatedManifest = structuredClone(manifest);
+  const requiredPasses = repeatedManifest.measurement.timing.passes.filter(
+    ({ id }) => !['post-review-audit', 'post-review-fixes'].includes(id),
+  );
+  const followUpPasses = [1, 2].flatMap((cycle) => {
+    const feedbackReceivedAt = cycle === 1
+      ? '2026-09-08T06:29:10Z'
+      : '2026-09-08T07:11:30Z';
+    return ['post-review-audit', 'post-review-fixes'].map((id) => ({
+      id,
+      cycle,
+      feedback_received_at: feedbackReceivedAt,
+      status: 'unmeasured',
+      note: `Feedback cycle ${cycle} was not instrumented.`,
+    }));
+  });
+  repeatedManifest.measurement.timing.status = 'incomplete';
+  repeatedManifest.measurement.timing.passes = [...requiredPasses, ...followUpPasses];
+
+  const repeated = deriveBatchMetrics({
+    manifest: repeatedManifest,
+    relationDiff,
+    canonicalRecords: canonicalResult.records,
+  });
+  assert.equal(repeated.timing.status, 'incomplete');
+  assert.equal(repeated.timing.measured_editor_seconds, 455);
+  assert.deepEqual(repeated.timing.unmeasured_passes, [
+    'post-review-audit#1',
+    'post-review-fixes#1',
+    'post-review-audit#2',
+    'post-review-fixes#2',
+  ]);
+  assert.equal(repeated.timing.passes['post-review-audit#2'].status, 'unmeasured');
+
+  const missingCyclePass = structuredClone(repeatedManifest);
+  missingCyclePass.measurement.timing.passes = missingCyclePass.measurement.timing.passes.filter(
+    (pass) => !(pass.id === 'post-review-fixes' && pass.cycle === 2),
+  );
+  assert.throws(
+    () => deriveBatchMetrics({
+      manifest: missingCyclePass,
+      relationDiff,
+      canonicalRecords: canonicalResult.records,
+    }),
+    (error) => error.code === 'INCOMPLETE_TIMING_CYCLE',
+  );
+
+  const staleCycleTimestamp = structuredClone(repeatedManifest);
+  staleCycleTimestamp.measurement.timing.passes = staleCycleTimestamp.measurement.timing.passes.map((pass) => (
+    pass.id === 'post-review-audit' && pass.cycle === 2
+      ? {
+        ...pass,
+        started_at: '2026-09-08T07:00:00Z',
+        completed_at: '2026-09-08T07:01:00Z',
+      }
+      : pass
+  ));
+  assert.throws(
+    () => deriveBatchMetrics({
+      manifest: staleCycleTimestamp,
+      relationDiff,
+      canonicalRecords: canonicalResult.records,
+    }),
+    (error) => error.code === 'TIMING_BEFORE_FEEDBACK',
+  );
+});
+
 test('deferred reserve candidates remain visible without entering canonical metrics', async () => {
   const [manifest, relationDiff, canonicalResult] = await Promise.all([
     readBatchJson('m5-7-recalibration.json'),

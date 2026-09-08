@@ -64,6 +64,25 @@ It records the 25 source-bound relation candidates and their admit/reject decisi
 12/25 = 48%, above the fixed 25% ceiling. Its SHA-256 is
 `b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153`.
 
+## Timing record
+
+The five required editorial passes have measured totals of 2,100 wall-clock
+seconds and 1,090 editor seconds across 107 processed starts. The follow-up work
+was not instrumented, so its former 02:35–02:53Z entries are not retained as
+measurements. The manifest's `review.completed_at` remains the end of the initial
+editorial review; the later PR feedback cycles are recorded explicitly:
+
+| Cycle | Feedback received | Audit | Fixes |
+| ---: | --- | --- | --- |
+| 1 | 2026-09-08T06:29:10Z | unmeasured | unmeasured |
+| 2 | 2026-09-08T07:11:30Z | unmeasured | unmeasured |
+| 3 | 2026-09-08T07:35:52Z | unmeasured | unmeasured |
+
+The derived metrics use `post-review-audit#N` and `post-review-fixes#N` keys for
+these repeated entries. Because six follow-up passes are unmeasured, timing is
+`incomplete`; 1,090 editor seconds is only a measured lower bound and is not used
+as a complete per-start cost.
+
 ## Gate result
 
 The derived metrics are data/batches/m5-9-expansion-metrics.json.
@@ -73,9 +92,9 @@ The independent verification flags are data/batches/m5-9-expansion-verification.
 | --- | --- |
 | All new senses and relations reviewed | PASS |
 | Correction rate | PASS: 18/107 = 16.82% (max 50%) |
-| Relation noise | FAIL: 12/25 = 48% (max 25%, below 51/139) |
-| Editor time | PASS: 1,270/107 = 11.87 sec/processed start (max 12 sec) |
-| Required timing passes | PASS: all required passes complete; no unmeasured pass |
+| Relation noise | FAIL: 12/25 = 48% (max 25%; M5-3 baseline 51/139 = 36.69%) |
+| Editor time | FAIL: follow-up work was not instrumented; 1,090 sec is only a measured lower bound |
+| Required and follow-up timing passes | FAIL: six unmeasured passes across three feedback cycles |
 | Independent audit | PASS: complete, open blockers 0 |
 | Canonical integrity | PASS |
 | Deterministic SQLite | PASS |
