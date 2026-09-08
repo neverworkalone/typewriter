@@ -1,0 +1,1015 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-9-expansion-20260908",
+  "inventory_id": "m5-core-5k",
+  "inventory_revision": "m5-5",
+  "generator": {
+    "model_id": "human-editorial-expansion",
+    "tool_version": "typewriter-m5-9-authoring-1",
+    "prompt_version": "m5-8-staged-review-v1"
+  },
+  "generated_at": "2026-09-08T02:00:00Z",
+  "review": {
+    "status": "complete",
+    "reviewer": "typewriter-independent-expansion-audit",
+    "completed_at": "2026-09-08T02:35:00Z"
+  },
+  "measurement": {
+    "schema_version": "1",
+    "relation_diff": {
+      "artifact": "data/batches/m5-9-expansion-relation-diff.json",
+        "sha256": "87183d0e5bbacd9b7c935abd30da767b5b314f3e6a78a2aa885f86fc405d252b"
+    },
+    "timing": {
+      "status": "complete",
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "complete",
+          "started_at": "2026-09-08T02:00:00Z",
+          "completed_at": "2026-09-08T02:05:00Z",
+          "wall_clock_seconds": 300,
+          "editor_seconds": 180,
+          "note": "기존 canonical 검색어와 충돌하지 않는 112개 후보를 E/Q/S/C/A/O/X 축으로 선별하고 12개 reserve pool을 선언했다."
+        },
+        {
+          "id": "initial-review",
+          "status": "complete",
+          "started_at": "2026-09-08T02:05:00Z",
+          "completed_at": "2026-09-08T02:20:00Z",
+          "wall_clock_seconds": 900,
+          "editor_seconds": 520,
+          "note": "선정된 start의 lemma, POS, sense 경계, expression 단위를 전수 검토했다."
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "complete",
+          "started_at": "2026-09-08T02:20:00Z",
+          "completed_at": "2026-09-08T02:25:00Z",
+          "wall_clock_seconds": 300,
+          "editor_seconds": 150,
+          "note": "7개 corrected start의 sense/POS 경계를 보정하고 admitted relation tuple의 target과 type을 좁혔다."
+        },
+        {
+          "id": "final-audit",
+          "status": "complete",
+          "started_at": "2026-09-08T02:25:00Z",
+          "completed_at": "2026-09-08T02:31:00Z",
+          "wall_clock_seconds": 360,
+          "editor_seconds": 140,
+          "note": "ID, search form, canonical import 범위, relation target, exact start delta를 독립 기준으로 재검산했다."
+        },
+        {
+          "id": "held-rejected",
+          "status": "complete",
+          "started_at": "2026-09-08T02:31:00Z",
+          "completed_at": "2026-09-08T02:35:00Z",
+          "wall_clock_seconds": 240,
+          "editor_seconds": 100,
+          "note": "reserve pool에서 4개 held와 3개 rejected를 기록하고 남은 5개는 deferred로 분리했다."
+        }
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "findings": [
+        {
+          "id": "m5-9-sense-pos-review",
+          "category": "sense",
+          "severity": "warning",
+          "status": "resolved",
+          "note": "신규 100개 canonical start의 lemma와 POS를 전수 확인하고 corrected 7개의 sense 경계를 반영했다."
+        },
+        {
+          "id": "m5-9-relation-admission",
+          "category": "relation-noise",
+          "severity": "warning",
+          "status": "resolved",
+          "note": "25개 admitted relation의 source sense, target sense, type, writer-use note를 확인했으며 generic noise는 추가하지 않았다."
+        },
+        {
+          "id": "m5-9-direct-replacement-review",
+          "category": "direct-replacement",
+          "severity": "info",
+          "status": "resolved",
+          "note": "직접 대체를 과장하지 않고 near, mood, sensory, scene, action 관계만 필요한 곳에 한정했다."
+        },
+        {
+          "id": "m5-9-reference-closure-review",
+          "category": "reference-closure",
+          "severity": "info",
+          "status": "resolved",
+          "note": "모든 relation target이 기존 또는 이번에 승인된 canonical record로 닫히며 신규 reference-only closure가 필요 없음을 확인했다."
+        }
+      ]
+    }
+  },
+  "records": [
+    {
+      "source": "inventory",
+      "inventory_id": "m5-137",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "애틋하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w429"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-138",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "쓸쓸하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w430"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-139",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "초조하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w431"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-140",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "수치심의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w432"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-141",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "동경의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w433"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-142",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "애잔하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w434"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-143",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "통쾌하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w435"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-144",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "아련하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w436"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-145",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "공허하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w437"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-146",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "비통하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w438"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-147",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "회한의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w439"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-148",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "시샘의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w440"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-149",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "애달프다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w441"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-150",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "망연하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w442"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-151",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "허망하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w443"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-152",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "체념하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w444"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-153",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "강인하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w445"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-154",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "정갈하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w446"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-155",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "단호하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w447"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-156",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "섣부르다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w448"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-157",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "무던하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w449"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-158",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "자상하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w450"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-159",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "허술하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w451"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-160",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "끈질기다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w452"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-161",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "우직하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w453"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-162",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "성급하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w454"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-163",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "나긋하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w455"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-164",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "살뜰하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w456"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-165",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "무기력하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w457"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-166",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "반듯하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w458"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-167",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "시리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w459"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-168",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "따스하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w460"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-169",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "바삭하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w461"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-170",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "씁쓸하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w462"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-171",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "아삭하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w463"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-172",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "웅웅거리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w464"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-173",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "얼얼하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w465"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-174",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "따끔하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w466"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-175",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "시큼하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w467"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-176",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "떫다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w468"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-177",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "끈적하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w469"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-178",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "미끈하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w470"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-179",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "말캉하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w471"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-180",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "상쾌하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w472"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-181",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "우물의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w473"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-182",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "장독대의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w474"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-183",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "개울의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w475"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-184",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "고갯길의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w476"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-185",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "나들목의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w477"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-186",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "나절의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w478"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-187",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "해질녘의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w479"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-188",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "그늘의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w480"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-189",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "새참의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w481"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-190",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "저물녘의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w482"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-191",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "동네의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w483"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-192",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "샛길의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w484"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-193",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "논밭의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w485"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-194",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "개울가의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w486"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-195",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "다가서다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w487"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-196",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "물러서다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w488"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-197",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "흘러내리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w489"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-198",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "멈춰서다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w490"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-199",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "끌어안다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w491"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-200",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "다가붙다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w492"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-201",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "비껴가다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w493"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-202",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "기어가다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w494"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-203",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "뒷걸음치다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w495"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-204",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "서성거리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w496"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-205",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "두리번거리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w497"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-206",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "따라가다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w498"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-207",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "쫓아가다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w499"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-208",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "허우적거리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w500"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-209",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "장화의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w501"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-210",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "빗자루의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w502"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-211",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "대문의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w503"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-212",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "잔의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w504"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-213",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "그릇의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w505"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-214",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "이불의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w506"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-215",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "베개의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w507"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-216",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "창틀의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w508"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-217",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "등잔의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w509"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-218",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "문고리의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w510"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-219",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "걸쇠의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w511"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-220",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "빨래줄의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w512"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-221",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "보자기의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w513"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-222",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "소쿠리의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w514"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-223",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "가슴이 뛰다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w515"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-224",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "마음을 졸이다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w516"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-225",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "눈길을 끌다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w517"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-226",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "발걸음을 떼다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w518"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-227",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "숨을 돌리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w519"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-228",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "고개를 숙이다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w520"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-229",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "눈을 감다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "canonical_id": "w521"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-230",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "마음이 무겁다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w522"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-231",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "마음이 가볍다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w523"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-232",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "기억에 남다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w524"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-233",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "눈앞이 캄캄하다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w525"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-234",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "한숨을 돌리다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w526"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-235",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "고개를 들다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w527"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-236",
+      "role": "start",
+      "decision": "corrected",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "발을 내딛다의 sense/POS 경계를 보정하고 표현 단위를 확인한 뒤 포함했다.",
+      "canonical_id": "w528"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-237",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "격앙되다의 감정 강도와 흥분의 상태 경계를 추가 검토하기 위해 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-238",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "기막히다의 놀람·감탄·어이없음이 한 sense에 섞이는 경계를 추가 검토하기 위해 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-239",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "묵묵하다의 침묵과 성실한 태도 쓰임을 분리할 수 있는지 추가 검토하기 위해 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-240",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "짭짤하다의 맛 감각과 비유적 정서 전이 범위를 추가 검토하기 위해 보류했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-241",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "폭신하다의 촉감 범위와 기존 부드러움 계열의 경계를 이번 배치에서 확정하지 못해 반려했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-242",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "능선의 지형 장면과 추상적 비유 확장 범위를 이번 배치에서 확정하지 못해 반려했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-243",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "들머리의 공간 의미와 표현 단위 경계를 이번 배치에서 확정하지 못해 반려했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-244",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "기어오르다는 최대 reserve pool의 미사용 슬롯으로 남겨 다음 단계 후보로 deferred 처리했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-245",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "가로막다는 최대 reserve pool의 미사용 슬롯으로 남겨 다음 단계 후보로 deferred 처리했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-246",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "호미는 최대 reserve pool의 미사용 슬롯으로 남겨 다음 단계 후보로 deferred 처리했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-247",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "말을 잃다는 최대 reserve pool의 미사용 슬롯으로 남겨 다음 단계 후보로 deferred 처리했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-248",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "한데 모이다는 최대 reserve pool의 미사용 슬롯으로 남겨 다음 단계 후보로 deferred 처리했다."
+    }
+  ]
+}

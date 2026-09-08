@@ -46,6 +46,20 @@ const ACTUAL_SNAPSHOT = {
   expression_count: 23,
 };
 
+const CURRENT_CANONICAL_SNAPSHOT = {
+  record_count: 570,
+  start_count: 528,
+  reference_only_count: 42,
+  sense_count: 657,
+  relation_count: 474,
+  expression_count: 37,
+};
+
+function isM58BaselineRecord({ record }) {
+  return record.role === 'reference-only'
+    || (record.id.startsWith('w') && Number(record.id.slice(1)) <= 428);
+}
+
 function makeValidStage({
   included = 95,
   corrected = 5,
@@ -171,12 +185,13 @@ async function createStageFixture({
     const canonicalDirectory = path.join(directory, 'canonical');
     await mkdir(canonicalDirectory, { recursive: true });
     const baseCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+    const baselineRecords = baseCanonical.records.filter(isM58BaselineRecord);
     const approvedCount = included + corrected;
     const syntheticIds = Array.from({ length: approvedCount }, (_, index) => (
       `w${String(1000 + index).padStart(3, '0')}`
     ));
     const canonicalRecords = [
-      ...baseCanonical.records.map(({ record }) => record),
+      ...baselineRecords.map(({ record }) => record),
       ...syntheticIds.map((id) => syntheticCanonicalRecord(id)),
     ];
     await writeFile(
@@ -587,6 +602,7 @@ test('stage source loading binds metrics and verification to real artifacts', as
     }, null, 2)}\n`, 'utf8');
 
     const stage = makeValidStage();
+    stage.actual.canonical_snapshot = structuredClone(CURRENT_CANONICAL_SNAPSHOT);
     stage.source = {
       manifest: manifestPath,
       manifest_sha256: await sha256File(manifestPath),
@@ -611,7 +627,7 @@ test('stage source loading binds metrics and verification to real artifacts', as
       deferred_start_count: 0,
     });
     assert.equal(loaded.imported_start_count, 38);
-    assert.deepEqual(loaded.canonical_snapshot, BASELINE_SNAPSHOT);
+    assert.deepEqual(loaded.canonical_snapshot, CURRENT_CANONICAL_SNAPSHOT);
 
     const tamperedMetrics = await readJson(metricsPath);
     tamperedMetrics.derived.decisions.included += 1;
@@ -676,12 +692,16 @@ test('follow-up stages require a digest-bound previous passed report', async () 
 });
 
 test('M5-7 sense/POS and relation failures are regressions with no canonical count change', async () => {
-  const [plan, fixture, relationDiff, canonical] = await Promise.all([
+  const [plan, fixture, relationDiff, canonicalResult] = await Promise.all([
     readJson(PLAN_PATH),
     readJson(FIXTURE_PATH),
     readJson(RELATION_DIFF_PATH),
     readCanonicalRecords(),
   ]);
+  const canonical = {
+    ...canonicalResult,
+    records: canonicalResult.records.filter(isM58BaselineRecord),
+  };
 
   const result = validateM58Process({
     plan,

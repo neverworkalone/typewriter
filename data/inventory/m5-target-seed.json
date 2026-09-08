@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "inventory_id": "m5-core-5k",
-  "revision": "m5-5",
+  "revision": "m5-6",
   "targets": [
     {
       "inventory_id": "m5-001",
@@ -1993,6 +1993,2458 @@
       "sense_profile": "expression",
       "flags": ["expression-unit", "action-direction"],
       "decision_note": "실제 손의 동작과 일·관계를 포기하는 비유를 분리할 후보."
-    }
+    },
+{
+      "inventory_id": "m5-137",
+      "status": "promoted",
+      "canonical_id": "w429",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "애틋하다",
+  "search_forms": [
+    "애틋하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "애틋하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-138",
+      "status": "promoted",
+      "canonical_id": "w430",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "쓸쓸하다",
+  "search_forms": [
+    "쓸쓸하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "쓸쓸하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-139",
+      "status": "promoted",
+      "canonical_id": "w431",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "초조하다",
+  "search_forms": [
+    "초조하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "초조하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-140",
+      "status": "promoted",
+      "canonical_id": "w432",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "수치심",
+  "search_forms": [
+    "수치심"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "수치심의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-141",
+      "status": "promoted",
+      "canonical_id": "w433",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "동경",
+  "search_forms": [
+    "동경"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "동경의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-142",
+      "status": "promoted",
+      "canonical_id": "w434",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "애잔하다",
+  "search_forms": [
+    "애잔하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "애잔하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-143",
+      "status": "promoted",
+      "canonical_id": "w435",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "통쾌하다",
+  "search_forms": [
+    "통쾌하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "통쾌하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-144",
+      "status": "promoted",
+      "canonical_id": "w436",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "아련하다",
+  "search_forms": [
+    "아련하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "아련하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-145",
+      "status": "promoted",
+      "canonical_id": "w437",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "공허하다",
+  "search_forms": [
+    "공허하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "공허하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-146",
+      "status": "promoted",
+      "canonical_id": "w438",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "비통하다",
+  "search_forms": [
+    "비통하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "비통하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-147",
+      "status": "promoted",
+      "canonical_id": "w439",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "회한",
+  "search_forms": [
+    "회한"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "회한의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-148",
+      "status": "promoted",
+      "canonical_id": "w440",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "시샘",
+  "search_forms": [
+    "시샘"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "시샘의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-149",
+      "status": "promoted",
+      "canonical_id": "w441",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "애달프다",
+  "search_forms": [
+    "애달프다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "애달프다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-150",
+      "status": "promoted",
+      "canonical_id": "w442",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "망연하다",
+  "search_forms": [
+    "망연하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "망연하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-151",
+      "status": "promoted",
+      "canonical_id": "w443",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "허망하다",
+  "search_forms": [
+    "허망하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "허망하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-152",
+      "status": "promoted",
+      "canonical_id": "w444",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "체념하다",
+  "search_forms": [
+    "체념하다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "체념하다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-153",
+      "status": "promoted",
+      "canonical_id": "w445",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "강인하다",
+  "search_forms": [
+    "강인하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "강인하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-154",
+      "status": "promoted",
+      "canonical_id": "w446",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "정갈하다",
+  "search_forms": [
+    "정갈하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "정갈하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-155",
+      "status": "promoted",
+      "canonical_id": "w447",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "단호하다",
+  "search_forms": [
+    "단호하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "단호하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-156",
+      "status": "promoted",
+      "canonical_id": "w448",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "섣부르다",
+  "search_forms": [
+    "섣부르다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "섣부르다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-157",
+      "status": "promoted",
+      "canonical_id": "w449",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "무던하다",
+  "search_forms": [
+    "무던하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "무던하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-158",
+      "status": "promoted",
+      "canonical_id": "w450",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "자상하다",
+  "search_forms": [
+    "자상하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "자상하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-159",
+      "status": "promoted",
+      "canonical_id": "w451",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "허술하다",
+  "search_forms": [
+    "허술하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "허술하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-160",
+      "status": "promoted",
+      "canonical_id": "w452",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "끈질기다",
+  "search_forms": [
+    "끈질기다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "끈질기다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-161",
+      "status": "promoted",
+      "canonical_id": "w453",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "우직하다",
+  "search_forms": [
+    "우직하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "우직하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-162",
+      "status": "promoted",
+      "canonical_id": "w454",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "성급하다",
+  "search_forms": [
+    "성급하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "성급하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-163",
+      "status": "promoted",
+      "canonical_id": "w455",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "나긋하다",
+  "search_forms": [
+    "나긋하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "나긋하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-164",
+      "status": "promoted",
+      "canonical_id": "w456",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "살뜰하다",
+  "search_forms": [
+    "살뜰하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "살뜰하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-165",
+      "status": "promoted",
+      "canonical_id": "w457",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "무기력하다",
+  "search_forms": [
+    "무기력하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "무기력하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-166",
+      "status": "promoted",
+      "canonical_id": "w458",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "반듯하다",
+  "search_forms": [
+    "반듯하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "반듯하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-167",
+      "status": "promoted",
+      "canonical_id": "w459",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "시리다",
+  "search_forms": [
+    "시리다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "시리다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-168",
+      "status": "promoted",
+      "canonical_id": "w460",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "따스하다",
+  "search_forms": [
+    "따스하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "따스하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-169",
+      "status": "promoted",
+      "canonical_id": "w461",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "바삭하다",
+  "search_forms": [
+    "바삭하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "바삭하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-170",
+      "status": "promoted",
+      "canonical_id": "w462",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "씁쓸하다",
+  "search_forms": [
+    "씁쓸하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "씁쓸하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-171",
+      "status": "promoted",
+      "canonical_id": "w463",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "아삭하다",
+  "search_forms": [
+    "아삭하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "아삭하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-172",
+      "status": "promoted",
+      "canonical_id": "w464",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "웅웅거리다",
+  "search_forms": [
+    "웅웅거리다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "웅웅거리다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-173",
+      "status": "promoted",
+      "canonical_id": "w465",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "얼얼하다",
+  "search_forms": [
+    "얼얼하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "얼얼하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-174",
+      "status": "promoted",
+      "canonical_id": "w466",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "따끔하다",
+  "search_forms": [
+    "따끔하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "따끔하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-175",
+      "status": "promoted",
+      "canonical_id": "w467",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "시큼하다",
+  "search_forms": [
+    "시큼하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "시큼하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-176",
+      "status": "promoted",
+      "canonical_id": "w468",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "떫다",
+  "search_forms": [
+    "떫다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "떫다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-177",
+      "status": "promoted",
+      "canonical_id": "w469",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "끈적하다",
+  "search_forms": [
+    "끈적하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "끈적하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-178",
+      "status": "promoted",
+      "canonical_id": "w470",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "미끈하다",
+  "search_forms": [
+    "미끈하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "미끈하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-179",
+      "status": "promoted",
+      "canonical_id": "w471",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "말캉하다",
+  "search_forms": [
+    "말캉하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "말캉하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-180",
+      "status": "promoted",
+      "canonical_id": "w472",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "상쾌하다",
+  "search_forms": [
+    "상쾌하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "상쾌하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-181",
+      "status": "promoted",
+      "canonical_id": "w473",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "우물",
+  "search_forms": [
+    "우물"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "우물가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-182",
+      "status": "promoted",
+      "canonical_id": "w474",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "장독대",
+  "search_forms": [
+    "장독대"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "장독대가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-183",
+      "status": "promoted",
+      "canonical_id": "w475",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "개울",
+  "search_forms": [
+    "개울"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "개울가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-184",
+      "status": "promoted",
+      "canonical_id": "w476",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "고갯길",
+  "search_forms": [
+    "고갯길"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "고갯길가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-185",
+      "status": "promoted",
+      "canonical_id": "w477",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "나들목",
+  "search_forms": [
+    "나들목"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "나들목가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-186",
+      "status": "promoted",
+      "canonical_id": "w478",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "나절",
+  "search_forms": [
+    "나절"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "나절가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-187",
+      "status": "promoted",
+      "canonical_id": "w479",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "해질녘",
+  "search_forms": [
+    "해질녘"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "해질녘가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-188",
+      "status": "promoted",
+      "canonical_id": "w480",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "그늘",
+  "search_forms": [
+    "그늘"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "그늘가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-189",
+      "status": "promoted",
+      "canonical_id": "w481",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "새참",
+  "search_forms": [
+    "새참"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "새참가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-190",
+      "status": "promoted",
+      "canonical_id": "w482",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "저물녘",
+  "search_forms": [
+    "저물녘"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "저물녘가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-191",
+      "status": "promoted",
+      "canonical_id": "w483",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "동네",
+  "search_forms": [
+    "동네"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "동네가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-192",
+      "status": "promoted",
+      "canonical_id": "w484",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "샛길",
+  "search_forms": [
+    "샛길"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "샛길가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-193",
+      "status": "promoted",
+      "canonical_id": "w485",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "논밭",
+  "search_forms": [
+    "논밭"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "논밭가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-194",
+      "status": "promoted",
+      "canonical_id": "w486",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "개울가",
+  "search_forms": [
+    "개울가"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "개울가가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-195",
+      "status": "promoted",
+      "canonical_id": "w487",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "다가서다",
+  "search_forms": [
+    "다가서다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "다가서다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-196",
+      "status": "promoted",
+      "canonical_id": "w488",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "물러서다",
+  "search_forms": [
+    "물러서다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "물러서다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-197",
+      "status": "promoted",
+      "canonical_id": "w489",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "흘러내리다",
+  "search_forms": [
+    "흘러내리다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "흘러내리다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-198",
+      "status": "promoted",
+      "canonical_id": "w490",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "멈춰서다",
+  "search_forms": [
+    "멈춰서다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "멈춰서다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-199",
+      "status": "promoted",
+      "canonical_id": "w491",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "끌어안다",
+  "search_forms": [
+    "끌어안다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "끌어안다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-200",
+      "status": "promoted",
+      "canonical_id": "w492",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "다가붙다",
+  "search_forms": [
+    "다가붙다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "다가붙다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-201",
+      "status": "promoted",
+      "canonical_id": "w493",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "비껴가다",
+  "search_forms": [
+    "비껴가다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "비껴가다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-202",
+      "status": "promoted",
+      "canonical_id": "w494",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "기어가다",
+  "search_forms": [
+    "기어가다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "기어가다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-203",
+      "status": "promoted",
+      "canonical_id": "w495",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "뒷걸음치다",
+  "search_forms": [
+    "뒷걸음치다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "뒷걸음치다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-204",
+      "status": "promoted",
+      "canonical_id": "w496",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "서성거리다",
+  "search_forms": [
+    "서성거리다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "서성거리다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-205",
+      "status": "promoted",
+      "canonical_id": "w497",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "두리번거리다",
+  "search_forms": [
+    "두리번거리다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "두리번거리다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-206",
+      "status": "promoted",
+      "canonical_id": "w498",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "따라가다",
+  "search_forms": [
+    "따라가다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "따라가다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-207",
+      "status": "promoted",
+      "canonical_id": "w499",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "쫓아가다",
+  "search_forms": [
+    "쫓아가다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "쫓아가다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-208",
+      "status": "promoted",
+      "canonical_id": "w500",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "허우적거리다",
+  "search_forms": [
+    "허우적거리다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "허우적거리다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+      "inventory_id": "m5-209",
+      "status": "promoted",
+      "canonical_id": "w501",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "장화",
+  "search_forms": [
+    "장화"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "장화의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-210",
+      "status": "promoted",
+      "canonical_id": "w502",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "빗자루",
+  "search_forms": [
+    "빗자루"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "빗자루의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-211",
+      "status": "promoted",
+      "canonical_id": "w503",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "대문",
+  "search_forms": [
+    "대문"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "대문의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-212",
+      "status": "promoted",
+      "canonical_id": "w504",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "잔",
+  "search_forms": [
+    "잔"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "잔의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-213",
+      "status": "promoted",
+      "canonical_id": "w505",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "그릇",
+  "search_forms": [
+    "그릇"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "그릇의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-214",
+      "status": "promoted",
+      "canonical_id": "w506",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "이불",
+  "search_forms": [
+    "이불"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "이불의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-215",
+      "status": "promoted",
+      "canonical_id": "w507",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "베개",
+  "search_forms": [
+    "베개"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "베개의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-216",
+      "status": "promoted",
+      "canonical_id": "w508",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "창틀",
+  "search_forms": [
+    "창틀"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "창틀의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-217",
+      "status": "promoted",
+      "canonical_id": "w509",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "등잔",
+  "search_forms": [
+    "등잔"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "등잔의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-218",
+      "status": "promoted",
+      "canonical_id": "w510",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "문고리",
+  "search_forms": [
+    "문고리"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "문고리의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-219",
+      "status": "promoted",
+      "canonical_id": "w511",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "걸쇠",
+  "search_forms": [
+    "걸쇠"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "걸쇠의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-220",
+      "status": "promoted",
+      "canonical_id": "w512",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "빨래줄",
+  "search_forms": [
+    "빨래줄"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "빨래줄의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-221",
+      "status": "promoted",
+      "canonical_id": "w513",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "보자기",
+  "search_forms": [
+    "보자기"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "보자기의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-222",
+      "status": "promoted",
+      "canonical_id": "w514",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "소쿠리",
+  "search_forms": [
+    "소쿠리"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "소쿠리의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+      "inventory_id": "m5-223",
+      "status": "promoted",
+      "canonical_id": "w515",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "가슴이 뛰다",
+  "search_forms": [
+    "가슴이 뛰다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "가슴이 뛰다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-224",
+      "status": "promoted",
+      "canonical_id": "w516",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "마음을 졸이다",
+  "search_forms": [
+    "마음을 졸이다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "마음을 졸이다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-225",
+      "status": "promoted",
+      "canonical_id": "w517",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "눈길을 끌다",
+  "search_forms": [
+    "눈길을 끌다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "눈길을 끌다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-226",
+      "status": "promoted",
+      "canonical_id": "w518",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "발걸음을 떼다",
+  "search_forms": [
+    "발걸음을 떼다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "발걸음을 떼다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-227",
+      "status": "promoted",
+      "canonical_id": "w519",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "숨을 돌리다",
+  "search_forms": [
+    "숨을 돌리다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "숨을 돌리다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-228",
+      "status": "promoted",
+      "canonical_id": "w520",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "고개를 숙이다",
+  "search_forms": [
+    "고개를 숙이다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "고개를 숙이다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-229",
+      "status": "promoted",
+      "canonical_id": "w521",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "눈을 감다",
+  "search_forms": [
+    "눈을 감다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "눈을 감다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-230",
+      "status": "promoted",
+      "canonical_id": "w522",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "마음이 무겁다",
+  "search_forms": [
+    "마음이 무겁다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "마음이 무겁다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-231",
+      "status": "promoted",
+      "canonical_id": "w523",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "마음이 가볍다",
+  "search_forms": [
+    "마음이 가볍다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "마음이 가볍다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-232",
+      "status": "promoted",
+      "canonical_id": "w524",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "기억에 남다",
+  "search_forms": [
+    "기억에 남다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "기억에 남다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-233",
+      "status": "promoted",
+      "canonical_id": "w525",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "눈앞이 캄캄하다",
+  "search_forms": [
+    "눈앞이 캄캄하다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "눈앞이 캄캄하다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-234",
+      "status": "promoted",
+      "canonical_id": "w526",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "한숨을 돌리다",
+  "search_forms": [
+    "한숨을 돌리다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "한숨을 돌리다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-235",
+      "status": "promoted",
+      "canonical_id": "w527",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "고개를 들다",
+  "search_forms": [
+    "고개를 들다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "고개를 들다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-236",
+      "status": "promoted",
+      "canonical_id": "w528",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "발을 내딛다",
+  "search_forms": [
+    "발을 내딛다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "발을 내딛다를 독립된 표현 단위로 검토할 후보."
+},
+{
+      "inventory_id": "m5-237",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "격앙되다",
+  "search_forms": [
+    "격앙되다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "격앙되다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-238",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "기막히다",
+  "search_forms": [
+    "기막히다"
+  ],
+  "reason_codes": [
+    "E"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "mood-range"
+  ],
+      "decision_note": "기막히다의 감정 온도와 방향을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-239",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "묵묵하다",
+  "search_forms": [
+    "묵묵하다"
+  ],
+  "reason_codes": [
+    "Q"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "direct-boundary"
+  ],
+      "decision_note": "묵묵하다의 태도와 결을 writer-facing 대안으로 살필 후보."
+},
+{
+      "inventory_id": "m5-240",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "짭짤하다",
+  "search_forms": [
+    "짭짤하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "짭짤하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-241",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "폭신하다",
+  "search_forms": [
+    "폭신하다"
+  ],
+  "reason_codes": [
+    "S"
+  ],
+  "pos": [
+    "adjective"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "sensory-transfer"
+  ],
+      "decision_note": "폭신하다의 감각 강도와 표면을 장면화할 후보."
+},
+{
+      "inventory_id": "m5-242",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "능선",
+  "search_forms": [
+    "능선"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "능선가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+      "inventory_id": "m5-243",
+      "status": "held",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "들머리",
+  "search_forms": [
+    "들머리"
+  ],
+  "reason_codes": [
+    "C"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "들머리가 놓이는 시간·공간 장면을 구체화할 후보."
+},
+{
+  "inventory_id": "m5-244",
+  "status": "candidate",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "기어오르다",
+  "search_forms": [
+    "기어오르다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "기어오르다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+  "inventory_id": "m5-245",
+  "status": "candidate",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "가로막다",
+  "search_forms": [
+    "가로막다"
+  ],
+  "reason_codes": [
+    "A"
+  ],
+  "pos": [
+    "verb"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "action-direction"
+  ],
+      "decision_note": "가로막다가 만드는 움직임의 방향과 속도를 살필 후보."
+},
+{
+  "inventory_id": "m5-246",
+  "status": "candidate",
+  "planned_role": "start",
+  "record_type": "entry",
+  "lemma": "호미",
+  "search_forms": [
+    "호미"
+  ],
+  "reason_codes": [
+    "O"
+  ],
+  "pos": [
+    "noun"
+  ],
+  "sense_profile": "single",
+  "flags": [
+    "scene-expansion"
+  ],
+      "decision_note": "호미의 손에 잡히는 사물 이미지를 확장할 후보."
+},
+{
+  "inventory_id": "m5-247",
+  "status": "candidate",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "말을 잃다",
+  "search_forms": [
+    "말을 잃다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+      "decision_note": "말을 잃다를 독립된 표현 단위로 검토할 후보."
+},
+{
+  "inventory_id": "m5-248",
+  "status": "candidate",
+  "planned_role": "start",
+  "record_type": "expression",
+  "lemma": "한데 모이다",
+  "search_forms": [
+    "한데 모이다"
+  ],
+  "reason_codes": [
+    "X"
+  ],
+  "pos": [
+    "expression"
+  ],
+  "sense_profile": "expression",
+  "flags": [
+    "expression-unit"
+  ],
+  "decision_note": "한데 모이다를 독립된 표현 단위로 검토할 후보."
+}
   ]
 }

@@ -20,10 +20,6 @@ import {
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import {
-  DEFAULT_INVENTORY_PATH,
-  readTargetInventory,
-} from '../scripts/validate/target-inventory.mjs';
-import {
   findRecordsByExactTerm,
   getRecord,
 } from '../scripts/build/query.mjs';
@@ -40,7 +36,7 @@ test('M5-5 recalibration artifacts record the fixed gate result', async () => {
     readJson('m5-5-recalibration-relation-diff.json'),
     readJson('m5-5-recalibration-metrics.json'),
     readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
-    readTargetInventory(DEFAULT_INVENTORY_PATH),
+    readJson('m5-9-preimport-inventory.json'),
   ]);
 
   validateBatchManifest(manifest);
@@ -101,7 +97,7 @@ test('M5-5 recalibration artifacts record the fixed gate result', async () => {
   assert.equal(gate.audit.independent, true);
   assert.equal(gate.audit.open_blocker_count, 0);
 
-  const { inventory } = inventoryResult;
+  const inventory = inventoryResult;
   assert.equal(inventory.revision, 'm5-5');
   assert.deepEqual(inventory.canonical_snapshot, {
     record_count: 470,
@@ -161,7 +157,7 @@ test('M5-7 new 40-start batch reproduces the updated expansion gate result', asy
     readJson('m5-7-recalibration-relation-diff.json'),
     readJson('m5-7-recalibration-metrics.json'),
     readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
-    readTargetInventory(DEFAULT_INVENTORY_PATH),
+    readJson('m5-9-preimport-inventory.json'),
     readFile(path.join(BATCH_DIRECTORY, 'm5-7-preimport-inventory.json'), 'utf8').then(JSON.parse),
   ]);
 
@@ -249,7 +245,7 @@ test('M5-7 new 40-start batch reproduces the updated expansion gate result', asy
     40,
   );
 
-  const { inventory } = inventoryResult;
+  const inventory = inventoryResult;
   assert.equal(inventory.revision, 'm5-5');
   assert.deepEqual(inventory.canonical_snapshot, {
     record_count: 470,
@@ -264,7 +260,7 @@ test('M5-7 new 40-start batch reproduces the updated expansion gate result', asy
     [...Array(38).fill('current'), 'held', 'held'],
   );
 
-  assert.equal(canonicalResult.records.length, 470);
+  assert.equal(canonicalResult.records.length, 570);
 });
 
 test('M5-7 imported starts and expressions are searchable while held rows stay out', async () => {

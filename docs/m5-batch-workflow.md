@@ -145,6 +145,32 @@ npm run batch:import -- --manifest=/path/to/batch.json --staged-records=/tmp/rev
 The batch commands are workflow gates, not runtime services. They add no external
 dictionary, LLM, cloud, or network dependency to the Chrome extension.
 
+## M5-9 staged expansion application
+
+M5-9 applies the M5-8 staged workflow to a real +100 canonical-start batch. The
+pre-import inventory is preserved at
+data/batches/m5-9-preimport-inventory.json with revision m5-5; it contains the
+112 selected candidates before promotion. The final seed advances to m5-6,
+promotes only the 100 included/corrected rows, retains seven held/rejected
+decisions outside canonical, and leaves five unused reserve rows as candidates.
+
+The checked-in artifacts are:
+
+- data/batches/m5-9-expansion.json: 112 explicit decisions and five complete
+  timing passes;
+- data/batches/m5-9-expansion-relation-diff.json: 25 admitted relation additions
+  with zero classified noise;
+- data/batches/m5-9-expansion-metrics.json: source-derived counts, rates, timing,
+  and audit summary;
+- data/batches/m5-8-stage-01-plus-100.json: path- and SHA-256-bound stage result;
+  and
+- docs/m5-9-expansion-report.md: the gate decision and validation record.
+
+The stage reports the exact 428 → 528 canonical-start transition and authorizes
+the next bounded ladder stage only after its gate passes. Deferred reserve rows
+are visible in the manifest and metrics, but never inflate the import count or
+make editor cost appear lower.
+
 ## M5-4 draft and review contract
 
 M5-4 makes the quality and measurement rules part of the batch contract. A new
