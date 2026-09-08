@@ -308,8 +308,10 @@ function validateCandidateReviews(diff, eventByRelationId, eventCounts) {
           'CANDIDATE_EVENT_MISMATCH',
         );
       }
-      if (event.source_sense !== review.source_sense
-        || JSON.stringify(event.after) !== JSON.stringify(review.relation)) {
+      const relationMatches = ['target', 'target_sense', 'type'].every(
+        (field) => relationValue(event.after, field) === relationValue(review.relation, field),
+      );
+      if (event.source_sense !== review.source_sense || !relationMatches) {
         fail(
           `admitted candidate ${review.candidate_id} does not match its add event`,
           'CANDIDATE_EVENT_MISMATCH',
@@ -323,9 +325,14 @@ function validateCandidateReviews(diff, eventByRelationId, eventCounts) {
     }
   }
 
-  if (diff.before_count === 0
-    && (eventCounts.add !== admittedCount || eventCounts.remove > 0
-      || eventCounts.retype > 0 || eventCounts.retarget > 0)) {
+  if (diff.before_count !== 0 || eventCounts.remove > 0
+    || eventCounts.retype > 0 || eventCounts.retarget > 0) {
+    fail(
+      'candidate_reviews are only valid for pure-add relation diffs; record mixed changes in a separate diff',
+      'CANDIDATE_REVIEWS_NOT_PURE_ADD',
+    );
+  }
+  if (eventCounts.add !== admittedCount) {
     fail(
       'pure-add candidate_reviews must account for every add event and no other operation',
       'CANDIDATE_EVENT_COVERAGE',

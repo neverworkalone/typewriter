@@ -36,7 +36,7 @@
       "start_count": 528,
       "reference_only_count": 42,
       "sense_count": 670,
-      "relation_count": 466,
+      "relation_count": 462,
       "expression_count": 37
     },
     "imported_start_count": 100
@@ -45,7 +45,7 @@
     "correction_rate_of_selected": 0.16822429906542055,
     "relation_noise_rate_of_before": 0,
     "relation_noise_candidate_count": 25,
-    "relation_noise_rate_of_candidates": 0.32,
+    "relation_noise_rate_of_candidates": 0.48,
     "total_wall_clock_seconds": 3180,
     "measured_wall_clock_seconds": 3180,
     "total_editor_seconds": 1270,
@@ -63,17 +63,18 @@
   },
   "source": {
     "manifest": "data/batches/m5-9-expansion.json",
-    "manifest_sha256": "b750b938465478e03c7b40d7d3a2b54bfc66a582e3f886af5c77aa73b682edef",
+    "manifest_sha256": "14637e04afa7b6718a356cfee4f3f2fefb0f7036ae2e0007818e5ed0b8146a35",
     "metrics": "data/batches/m5-9-expansion-metrics.json",
-    "metrics_sha256": "58e3b4c0991142e91ef46af22c683b1641de7024d2996430181ab507be226c9b",
+    "metrics_sha256": "c93841f5d134f105fa1f6d42b475db53a223329753c98aeeac2e391af132dd3a",
     "relation_diff": "data/batches/m5-9-expansion-relation-diff.json",
-    "relation_diff_sha256": "2b262f32a75e5a531452c436fc333d27c636ac3bb2c2f5a6ce850d3926843e58",
+    "relation_diff_sha256": "b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153",
     "canonical_directory": "data/canonical",
-    "canonical_sha256": "993e4b6cf315e4f5f102f2d53af3d2edb5fbb24543895fab76350f6005e461c9",
+    "canonical_sha256": "83b709cb89666bd2abd45f0dd3ce5e5490d43da322999d2d5781f38dd176c85e",
     "verification": "data/batches/m5-9-expansion-verification.json",
     "verification_sha256": "1a1efa528d8bcc57b5206ff77f48a2fe2e97098d88686ef9c63482bac496bc34"
   },
   "gate_status": "fail",
   "decision": "HOLD PROCESS",
-  "next_stage_created": false
+  "next_stage_created": true,
+  "next_stage_authorized": false
 }

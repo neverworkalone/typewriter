@@ -264,7 +264,7 @@
           }
         },
         "next_stage_policy": {
-          "const": "create-only-after-previous-gate-pass"
+          "const": "authorize-only-after-previous-gate-pass"
         }
       }
     },

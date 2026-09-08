@@ -2,15 +2,16 @@
   "schema_version": "1",
   "batch_id": "m5-9-expansion-20260908",
   "before_count": 0,
-  "after_count": 17,
+  "after_count": 13,
   "candidate_reviews": [
     {
       "candidate_id": "m5-9-relation-candidate-0001",
       "relation_id": "m5-9-w429-s1-r1",
       "source_sense": "w429-s1",
       "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
-      "decision": "admit",
-      "review_note": "애틋한 감정이 사건 뒤에도 남는 정서적 여운을 mood 관계로 인정했다."
+      "decision": "reject",
+      "error_category": "generic-result-or-reaction",
+      "review_note": "애틋한 감정이 사건 뒤 남는다는 설명은 가능한 aftermath일 뿐 여운과의 stable relation 근거가 아니다."
     },
     {
       "candidate_id": "m5-9-relation-candidate-0002",
@@ -42,16 +43,18 @@
       "relation_id": "m5-9-w433-s1-r1",
       "source_sense": "w433-s1",
       "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
-      "decision": "admit",
-      "review_note": "동경과 애틋함은 닿기 어려운 대상을 오래 바라보는 지속 정서를 공유해 mood로 인정했다."
+      "decision": "reject",
+      "error_category": "generic-result-or-reaction",
+      "review_note": "동경이 오래 남는다는 점은 source 정서의 가능한 지속 결과일 뿐 여운과의 stable relation 근거가 아니다."
     },
     {
       "candidate_id": "m5-9-relation-candidate-0006",
       "relation_id": "m5-9-w434-s1-r1",
       "source_sense": "w434-s1",
       "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
-      "decision": "admit",
-      "review_note": "애잔함과 애틋함은 가엾고 오래 남는 정서의 결을 공유해 mood로 인정했다."
+      "decision": "reject",
+      "error_category": "generic-result-or-reaction",
+      "review_note": "애잔한 감정이 사건 뒤 이어진다는 설명은 일반적인 aftermath일 뿐 여운으로의 stable relation이 아니다."
     },
     {
       "candidate_id": "m5-9-relation-candidate-0007",
@@ -209,24 +212,14 @@
       "relation_id": "m5-9-w515-s1-r1",
       "source_sense": "w515-s1",
       "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
-      "decision": "admit",
-      "review_note": "가슴이 뛰는 표현은 기대와 긴장이 몸에 나타난 반응이고 기쁨은 그중 긍정 정서의 한 방향이라 mood로 인정했다."
+      "decision": "reject",
+      "error_category": "generic-result-or-reaction",
+      "review_note": "가슴이 뛰는 표현에서 기쁨은 가능한 정서 방향 중 하나일 뿐 source expression에 안정적으로 수반되는 relation이 아니다."
     }
   ],
   "events": [
     {
       "event_id": "m5-9-expansion-20260908-event-0001",
-      "relation_id": "m5-9-w429-s1-r1",
-      "operation": "add",
-      "source_sense": "w429-s1",
-      "after": {
-        "target": "w060",
-        "target_sense": "w060-s1",
-        "type": "mood"
-      }
-    },
-    {
-      "event_id": "m5-9-expansion-20260908-event-0002",
       "relation_id": "m5-9-w430-s1-r1",
       "operation": "add",
       "source_sense": "w430-s1",
@@ -237,7 +230,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0003",
+      "event_id": "m5-9-expansion-20260908-event-0002",
       "relation_id": "m5-9-w431-s1-r1",
       "operation": "add",
       "source_sense": "w431-s1",
@@ -248,29 +241,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0004",
-      "relation_id": "m5-9-w433-s1-r1",
-      "operation": "add",
-      "source_sense": "w433-s1",
-      "after": {
-        "target": "w060",
-        "target_sense": "w060-s1",
-        "type": "mood"
-      }
-    },
-    {
-      "event_id": "m5-9-expansion-20260908-event-0005",
-      "relation_id": "m5-9-w434-s1-r1",
-      "operation": "add",
-      "source_sense": "w434-s1",
-      "after": {
-        "target": "w060",
-        "target_sense": "w060-s1",
-        "type": "mood"
-      }
-    },
-    {
-      "event_id": "m5-9-expansion-20260908-event-0006",
+      "event_id": "m5-9-expansion-20260908-event-0003",
       "relation_id": "m5-9-w435-s1-r1",
       "operation": "add",
       "source_sense": "w435-s1",
@@ -281,7 +252,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0007",
+      "event_id": "m5-9-expansion-20260908-event-0004",
       "relation_id": "m5-9-w445-s1-r1",
       "operation": "add",
       "source_sense": "w445-s1",
@@ -292,7 +263,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0008",
+      "event_id": "m5-9-expansion-20260908-event-0005",
       "relation_id": "m5-9-w446-s1-r1",
       "operation": "add",
       "source_sense": "w446-s1",
@@ -303,7 +274,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0009",
+      "event_id": "m5-9-expansion-20260908-event-0006",
       "relation_id": "m5-9-w448-s1-r1",
       "operation": "add",
       "source_sense": "w448-s1",
@@ -314,7 +285,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0010",
+      "event_id": "m5-9-expansion-20260908-event-0007",
       "relation_id": "m5-9-w449-s1-r1",
       "operation": "add",
       "source_sense": "w449-s1",
@@ -325,7 +296,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0011",
+      "event_id": "m5-9-expansion-20260908-event-0008",
       "relation_id": "m5-9-w450-s1-r1",
       "operation": "add",
       "source_sense": "w450-s1",
@@ -336,7 +307,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0012",
+      "event_id": "m5-9-expansion-20260908-event-0009",
       "relation_id": "m5-9-w459-s1-r1",
       "operation": "add",
       "source_sense": "w459-s1",
@@ -347,7 +318,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0013",
+      "event_id": "m5-9-expansion-20260908-event-0010",
       "relation_id": "m5-9-w460-s1-r1",
       "operation": "add",
       "source_sense": "w460-s1",
@@ -358,7 +329,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0014",
+      "event_id": "m5-9-expansion-20260908-event-0011",
       "relation_id": "m5-9-w461-s1-r1",
       "operation": "add",
       "source_sense": "w461-s1",
@@ -369,7 +340,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0015",
+      "event_id": "m5-9-expansion-20260908-event-0012",
       "relation_id": "m5-9-w462-s1-r1",
       "operation": "add",
       "source_sense": "w462-s1",
@@ -380,7 +351,7 @@
       }
     },
     {
-      "event_id": "m5-9-expansion-20260908-event-0016",
+      "event_id": "m5-9-expansion-20260908-event-0013",
       "relation_id": "m5-9-w487-s1-r1",
       "operation": "add",
       "source_sense": "w487-s1",
@@ -389,18 +360,7 @@
         "target_sense": "w181-s1",
         "type": "action"
       }
-    },
-    {
-      "event_id": "m5-9-expansion-20260908-event-0017",
-      "relation_id": "m5-9-w515-s1-r1",
-      "operation": "add",
-      "source_sense": "w515-s1",
-      "after": {
-        "target": "w018",
-        "target_sense": "w018-s1",
-        "type": "mood"
-      }
     }
   ],
-  "source_note": "관계 검토는 sense/POS 검토 완료 뒤 진행했다. candidate_reviews에 실제 검수 전 25개 tuple의 admit/reject 결정과 근거를 남기고, admitted 17개만 canonical after snapshot과 events에 보존했다. raw draft와 외부 원문은 저장하지 않았다."
+  "source_note": "관계 검토는 sense/POS 검토 완료 뒤 진행했다. candidate_reviews에 실제 검수 전 25개 tuple의 admit/reject 결정과 근거를 남기고, admitted 13개만 canonical after snapshot과 events에 보존했다. raw draft와 외부 원문은 저장하지 않았다."
 }

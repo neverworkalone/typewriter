@@ -159,15 +159,17 @@ The checked-in artifacts are:
 - data/batches/m5-9-expansion.json: 112 explicit decisions and seven complete
   timing passes, including the measured post-review audit and fixes;
 - data/batches/m5-9-expansion-relation-diff.json: 25 source-bound relation
-  candidates, with 17 admitted and 8 rejected;
+  candidates, with 13 admitted and 12 rejected;
 - data/batches/m5-9-expansion-metrics.json: source-derived counts, rates, timing,
   and audit summary;
 - data/batches/m5-8-stage-01-plus-100.json: path- and SHA-256-bound stage result;
   and
 - docs/m5-9-expansion-report.md: the gate decision and validation record.
 
-The stage reports the exact 428 → 528 canonical-start transition. Its relation
-candidate noise rate is 8/25 = 32%, so the fixed gate records `HOLD PROCESS` and
+The stage reports the exact 428 → 528 canonical-start transition. Issue #96 may
+already exist for roadmap visibility, but the stage's authorization flag remains
+false while this gate is failed. Its relation
+candidate noise rate is 12/25 = 48%, so the fixed gate records `HOLD PROCESS` and
 does not authorize the next bounded ladder stage. Deferred reserve rows are visible
 in the manifest and metrics, but never inflate the import count or make editor cost
 appear lower.

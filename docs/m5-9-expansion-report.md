@@ -43,7 +43,7 @@ expression boundaries for all 100 importable starts: 87 remained deliberately sc
 to one sense and 13 were split into separate senses (`w456`, `w458`, `w459`, `w460`,
 `w462`, `w472`, `w481`, `w517`, `w518`, `w519`, `w520`, `w527`, `w528`). Fourteen
 are expression records. Relation review ran only after the sense/POS checkpoint:
-25 source-bound candidates were reviewed, 17 admitted and 8 rejected. The remaining
+25 source-bound candidates were reviewed, 13 admitted and 12 rejected. The remaining
 records intentionally have empty relation lists. No relation quota was applied.
 
 ## Canonical snapshot
@@ -54,15 +54,15 @@ records intentionally have empty relation lists. No relation quota was applied.
 | start records | 428 | 528 |
 | reference-only records | 42 | 42 |
 | Senses | 557 | 670 |
-| Relations | 449 | 466 |
+| Relations | 449 | 462 |
 | Expression records | 23 | 37 |
 
 The relation artifact is data/batches/m5-9-expansion-relation-diff.json.
 It records the 25 source-bound relation candidates and their admit/reject decisions;
-17 admitted additions remain in the canonical result (`before_count: 0`,
-`after_count: 17`). The eight rejected candidates are the actual noise denominator:
-8/25 = 32%, above the fixed 25% ceiling. Its SHA-256 is recorded in the stage
-report: `2b262f32a75e5a531452c436fc333d27c636ac3bb2c2f5a6ce850d3926843e58`.
+13 admitted additions remain in the canonical result (`before_count: 0`,
+`after_count: 13`). The 12 rejected candidates are the actual noise denominator:
+12/25 = 48%, above the fixed 25% ceiling. Its SHA-256 is
+`b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153`.
 
 ## Gate result
 
@@ -73,7 +73,7 @@ The independent verification flags are data/batches/m5-9-expansion-verification.
 | --- | --- |
 | All new senses and relations reviewed | PASS |
 | Correction rate | PASS: 18/107 = 16.82% (max 50%) |
-| Relation noise | FAIL: 8/25 = 32% (max 25%, below 51/139) |
+| Relation noise | FAIL: 12/25 = 48% (max 25%, below 51/139) |
 | Editor time | PASS: 1,270/107 = 11.87 sec/processed start (max 12 sec) |
 | Required timing passes | PASS: all required passes complete; no unmeasured pass |
 | Independent audit | PASS: complete, open blockers 0 |

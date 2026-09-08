@@ -64,25 +64,25 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
   assertMetricsMatch(metrics, regeneratedMetrics);
   assert.deepEqual(summarizeRelationDiff(relationDiff), {
     before_count: 0,
-    after_count: 17,
-    added_count: 17,
+    after_count: 13,
+    added_count: 13,
     removed_count: 0,
     retyped_count: 0,
     retargeted_count: 0,
     changed_count: 0,
-    net_removed_count: -17,
-    noise_event_count: 8,
+    net_removed_count: -13,
+    noise_event_count: 12,
     noise_rate_of_before: 0,
     classification_counts: {
       'broad-common-category': 2,
-      'generic-result-or-reaction': 3,
+      'generic-result-or-reaction': 7,
       'arbitrary-modifier-or-place': 3,
     },
     candidate_count: 25,
-    admitted_candidate_count: 17,
-    rejected_candidate_count: 8,
+    admitted_candidate_count: 13,
+    rejected_candidate_count: 12,
     noise_denominator_count: 25,
-    noise_rate_of_candidates: 8 / 25,
+    noise_rate_of_candidates: 12 / 25,
   });
 
   assert.deepEqual(metrics.derived.selection, {
@@ -109,10 +109,10 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
     imported_reference_only_count: 0,
     imported_record_count: 100,
     imported_sense_count: 113,
-    imported_relation_count: 17,
+    imported_relation_count: 13,
     imported_expression_count: 14,
     relation_type_counts: {
-      mood: 7,
+      mood: 3,
       near: 5,
       sensory: 4,
       action: 1,
@@ -150,7 +150,8 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
     candidate_buffer: 12,
     gate_status: 'fail',
   });
-  assert.equal(stage.next_stage_created, false);
+  assert.equal(stage.next_stage_created, true);
+  assert.equal(stage.next_stage_authorized, false);
 
   assert.deepEqual({
     record_count: canonicalResult.records.length,
@@ -170,7 +171,7 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
     start_count: 528,
     reference_only_count: 42,
     sense_count: 670,
-    relation_count: 466,
+    relation_count: 462,
     expression_count: 37,
   });
 
@@ -220,7 +221,7 @@ test('M5-9 admitted records and reserve decisions are visible in local search', 
       assert.deepEqual(findRecordsByExactTerm(database, '격앙되다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '폭신하다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '기어오르다'), []);
-      assert.equal(getRecord(database, 'w429').senses[0].relations[0].target, 'w060');
+      assert.equal(getRecord(database, 'w430').senses[0].relations[0].target, 'w029');
       assert.deepEqual(getRecord(database, 'w447').senses[0].relations, []);
       assert.deepEqual(getRecord(database, 'w501').senses[0].relations, []);
     } finally {

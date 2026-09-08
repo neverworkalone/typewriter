@@ -155,6 +155,54 @@ test('pure-add relation diffs require a source-bound candidate denominator', () 
     noise_denominator_count: 2,
     noise_rate_of_candidates: 0.5,
   });
+
+  const mixedDiff = {
+    schema_version: '1',
+    batch_id: 'm5-4-mixed-diff-fixture',
+    before_count: 1,
+    after_count: 1,
+    candidate_reviews: [{
+      candidate_id: 'candidate-mixed-admit',
+      relation_id: 'rel-mixed-add',
+      source_sense: 'w001-s1',
+      relation: {
+        target: 'w002',
+        target_sense: 'w002-s1',
+        type: 'near',
+      },
+      decision: 'admit',
+      review_note: 'The candidate belongs to the newly reviewed pure-add set.',
+    }],
+    events: [
+      {
+        event_id: 'm5-4-mixed-diff-fixture-event-0001',
+        relation_id: 'rel-mixed-remove',
+        operation: 'remove',
+        source_sense: 'w001-s1',
+        before: {
+          target: 'w004',
+          target_sense: 'w004-s1',
+          type: 'near',
+        },
+        error_category: 'broad-common-category',
+      },
+      {
+        event_id: 'm5-4-mixed-diff-fixture-event-0002',
+        relation_id: 'rel-mixed-add',
+        operation: 'add',
+        source_sense: 'w001-s1',
+        after: {
+          target: 'w002',
+          target_sense: 'w002-s1',
+          type: 'near',
+        },
+      },
+    ],
+  };
+  assert.throws(
+    () => validateRelationDiff(mixedDiff),
+    (error) => error instanceof RelationDiffError && error.code === 'CANDIDATE_REVIEWS_NOT_PURE_ADD',
+  );
 });
 
 test('M5-3 metrics reproduce from manifest, relation diff, and canonical records', async () => {

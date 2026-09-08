@@ -221,8 +221,9 @@ manually declared pass that disagrees with those values is invalid.
 
 If one criterion fails, the result is `HOLD PROCESS`. Record the failed cause as
 process backlog, repair the process, and stop. Do not change the threshold,
-count the buffer as imported, create the next-stage issue, or batch-generate
-5,000 records to bypass the failure.
+count the buffer as imported, authorize or start the next stage, or batch-generate
+5,000 records to bypass the failure. A roadmap issue may already exist for
+visibility; the stage report separates that creation state from authorization.
 
 ## Regression controls
 

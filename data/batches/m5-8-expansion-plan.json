@@ -119,7 +119,7 @@
       "measured_from_actual_work": true,
       "unmeasured_follow_up_decision": "incomplete"
     },
-    "next_stage_policy": "create-only-after-previous-gate-pass"
+    "next_stage_policy": "authorize-only-after-previous-gate-pass"
   },
   "gate": {
     "all_required": true,

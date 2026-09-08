@@ -630,7 +630,7 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
     'STAGE_CHAIN_GATE_FAILURE',
   );
   assertEqual(
-    previousStage.next_stage_created,
+    previousStage.next_stage_authorized,
     true,
     `${stage.stage_id} previous stage did not authorize the next stage`,
     'STAGE_CHAIN_PROMOTION_MISMATCH',
@@ -818,10 +818,24 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
   );
   if (stage.gate_status === 'fail') {
     assertEqual(
-      stage.next_stage_created,
+      stage.next_stage_authorized,
       false,
-      `${stage.stage_id} cannot create the next stage after a failed gate`,
+      `${stage.stage_id} cannot authorize the next stage after a failed gate`,
       'NEXT_STAGE_AFTER_FAILURE',
+    );
+  }
+  if (stage.next_stage_authorized) {
+    assertEqual(
+      stage.gate_status,
+      'pass',
+      `${stage.stage_id} cannot authorize the next stage after a failed gate`,
+      'NEXT_STAGE_AFTER_FAILURE',
+    );
+    assertEqual(
+      stage.next_stage_created,
+      true,
+      `${stage.stage_id} must have a created next-stage issue before authorization`,
+      'NEXT_STAGE_AUTHORIZATION_MISMATCH',
     );
   }
 

@@ -40,7 +40,7 @@
     "schema_version": "1",
     "relation_diff": {
       "artifact": "data/batches/m5-9-expansion-relation-diff.json",
-      "sha256": "2b262f32a75e5a531452c436fc333d27c636ac3bb2c2f5a6ce850d3926843e58"
+      "sha256": "b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153"
     },
     "timing": {
       "status": "complete",
@@ -106,7 +106,7 @@
           "completed_at": "2026-09-08T02:53:00Z",
           "wall_clock_seconds": 540,
           "editor_seconds": 90,
-          "note": "13개 record의 sense를 split하고 8개 noisy relation을 canonical에서 제거했으며 candidate admission/rejection artifact를 반영했다."
+          "note": "13개 record의 sense를 split하고 최종 12개 noisy relation candidate를 canonical에서 제거했으며 candidate admission/rejection artifact를 갱신했다."
         }
       ]
     },
@@ -126,14 +126,14 @@
           "category": "relation-noise",
           "severity": "warning",
           "status": "resolved",
-          "note": "25개 relation candidate의 admission/rejection을 다시 전수 확인해 17개만 admit하고 8개 noise를 reject했다. candidate 분모 25에서 noise rate 32%가 계산되므로 다음 단계는 승인하지 않았다."
+          "note": "25개 relation candidate의 admission/rejection을 전수 재확인해 13개만 admit하고 12개 noise를 reject했다. candidate 분모 25에서 noise rate 48%가 계산되므로 다음 단계는 승인하지 않았다."
         },
         {
           "id": "m5-9-direct-replacement-review",
           "category": "direct-replacement",
           "severity": "info",
           "status": "resolved",
-          "note": "직접 대체를 과장하지 않고 near, mood, sensory, scene, action 관계 중 검수된 17개만 canonical에 남겼다."
+          "note": "직접 대체를 과장하지 않고 near, mood, sensory, action 관계 중 검수된 13개만 canonical에 남겼다."
         },
         {
           "id": "m5-9-reference-closure-review",

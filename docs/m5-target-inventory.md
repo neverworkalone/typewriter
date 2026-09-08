@@ -208,11 +208,11 @@ they are excluded from both canonical import and the processed-start denominator
 
 The final inventory advances to revision m5-6: 528 current starts, 42 current
 reference-only records, and 5 remaining candidates. The canonical snapshot is
-570 records / 670 senses / 466 relations, with 37 expression records. The four
+570 records / 670 senses / 462 relations, with 37 expression records. The four
 held and three rejected M5-9 reserve decisions add to the existing held rows for
 18 held rows total. The source-bound stage report and fixed-gate result are
 recorded in docs/m5-9-expansion-report.md: all required timing passes are
-measured, relation candidate noise is 8/25 = 32%, editor time is 11.87 seconds per
+measured, relation candidate noise is 12/25 = 48%, editor time is 11.87 seconds per
 processed start, and the result is HOLD PROCESS. No next stage is authorized until
 relation admission is repaired and re-audited.
 
