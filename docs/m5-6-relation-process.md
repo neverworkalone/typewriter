@@ -39,7 +39,9 @@ an edge. A zero-relation sense passes the structural workflow without penalty.
 
 ## Measurement workflow
 
-The existing manifest timing IDs remain stable and are interpreted as follows:
+The existing manifest timing IDs remain stable and are interpreted as follows.
+When reviewer feedback produces more than one follow-up, each audit/fix pair is
+recorded with a one-based cycle number so no later pass replaces an earlier one:
 
 | Work segment | Manifest pass | Requirement |
 | --- | --- | --- |
@@ -51,12 +53,15 @@ The existing manifest timing IDs remain stable and are interpreted as follows:
 | review follow-up audit | `post-review-audit` | Add when feedback arrives after the initial five passes. |
 | review follow-up fixes | `post-review-fixes` | Add and measure the actual correction work; never backfill it. |
 
-When a follow-up occurs, `post-review-audit` and `post-review-fixes` are separate
-ledger entries. If either is unmeasured, the derived artifact remains
+When a follow-up occurs, `post-review-audit` and `post-review-fixes` are paired
+ledger entries with the same `cycle` and `feedback_received_at`. Repeated entries
+are keyed in derived metrics as `post-review-audit#2` and
+`post-review-fixes#2`. If either entry is unmeasured, the derived artifact remains
 `incomplete`, exposes measured wall-clock/editor seconds as a lower bound, and
-does not claim a complete total. When the pass is later recorded, the existing
-metrics derivation includes it deterministically. The fixed expansion gate and
-its thresholds are unchanged.
+does not claim a complete total. A follow-up timestamp before the recorded
+feedback or a missing cycle pair is invalid. When a pass is later measured, the
+existing metrics derivation includes it deterministically. The fixed expansion
+gate and its thresholds are unchanged.
 
 The manifest's relation-diff path and SHA-256 digest bind the event ledger to
 the metrics run. Derived decision counts, relation counts, timing totals, and

@@ -1,0 +1,172 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-9-expansion-20260908",
+  "source": {
+    "manifest": "data/batches/m5-9-expansion.json",
+    "relation_diff": "data/batches/m5-9-expansion-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 112,
+      "processed_start_count": 107
+    },
+    "decisions": {
+      "included": 82,
+      "corrected": 18,
+      "held": 4,
+      "rejected": 3,
+      "deferred": 5,
+      "importable_start_count": 100,
+      "correction_rate_of_selected": 0.16822429906542055,
+      "correction_rate_of_importable": 0.18,
+      "held_rate": 0.037383177570093455,
+      "rejected_rate": 0.028037383177570093,
+      "held_or_rejected_rate": 0.06542056074766354,
+      "sense_field_correction_count": 18,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 100,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 100,
+      "imported_sense_count": 113,
+      "imported_relation_count": 13,
+      "imported_expression_count": 14,
+      "relation_type_counts": {
+        "mood": 3,
+        "near": 5,
+        "sensory": 4,
+        "action": 1
+      }
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 13,
+      "added_count": 13,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": -13,
+      "noise_event_count": 12,
+      "noise_rate_of_before": 0,
+      "classification_counts": {
+        "generic-result-or-reaction": 7,
+        "broad-common-category": 2,
+        "arbitrary-modifier-or-place": 3
+      },
+      "candidate_count": 25,
+      "admitted_candidate_count": 13,
+      "rejected_candidate_count": 12,
+      "noise_denominator_count": 25,
+      "noise_rate_of_candidates": 0.48
+    },
+    "timing": {
+      "status": "incomplete",
+      "passes": {
+        "target-preparation": {
+          "status": "complete",
+          "wall_clock_seconds": 300,
+          "editor_seconds": 180
+        },
+        "initial-review": {
+          "status": "complete",
+          "wall_clock_seconds": 900,
+          "editor_seconds": 520
+        },
+        "feedback-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 300,
+          "editor_seconds": 150
+        },
+        "final-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 360,
+          "editor_seconds": 140
+        },
+        "held-rejected": {
+          "status": "complete",
+          "wall_clock_seconds": 240,
+          "editor_seconds": 100
+        },
+        "post-review-audit#1": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-fixes#1": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-audit#2": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-fixes#2": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-audit#3": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "post-review-fixes#3": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        }
+      },
+      "total_wall_clock_seconds": null,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 2100,
+      "measured_editor_seconds": 1090,
+      "unmeasured_passes": [
+        "post-review-audit#1",
+        "post-review-fixes#1",
+        "post-review-audit#2",
+        "post-review-fixes#2",
+        "post-review-audit#3",
+        "post-review-fixes#3"
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 4,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {
+        "sense": 1,
+        "relation-noise": 1,
+        "direct-replacement": 1,
+        "reference-closure": 1
+      }
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 100,
+      "scoped_single_sense_count": 87,
+      "split_record_count": 13,
+      "split_canonical_ids": [
+        "w456",
+        "w458",
+        "w459",
+        "w460",
+        "w462",
+        "w472",
+        "w481",
+        "w517",
+        "w518",
+        "w519",
+        "w520",
+        "w527",
+        "w528"
+      ]
+    }
+  }
+}

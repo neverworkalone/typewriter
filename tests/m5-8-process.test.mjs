@@ -46,6 +46,20 @@ const ACTUAL_SNAPSHOT = {
   expression_count: 23,
 };
 
+const CURRENT_CANONICAL_SNAPSHOT = {
+  record_count: 570,
+  start_count: 528,
+  reference_only_count: 42,
+  sense_count: 670,
+  relation_count: 462,
+  expression_count: 37,
+};
+
+function isM58BaselineRecord({ record }) {
+  return record.role === 'reference-only'
+    || (record.id.startsWith('w') && Number(record.id.slice(1)) <= 428);
+}
+
 function makeValidStage({
   included = 95,
   corrected = 5,
@@ -53,6 +67,7 @@ function makeValidStage({
   rejected = 3,
   deferred = 12 - held - rejected,
   nextStageCreated = false,
+  nextStageAuthorized = false,
 } = {}) {
   const selectedStartCount = 112;
   const processedStartCount = selectedStartCount - deferred;
@@ -118,6 +133,7 @@ function makeValidStage({
     gate_status: 'pass',
     decision: 'APPROVE BOUNDED',
     next_stage_created: nextStageCreated,
+    next_stage_authorized: nextStageAuthorized,
   };
 }
 
@@ -165,18 +181,20 @@ async function createStageFixture({
   deferred = 12 - held - rejected,
   verificationOverrides = {},
   nextStageCreated = false,
+  nextStageAuthorized = false,
 } = {}) {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-8-stage-fixture-'));
   try {
     const canonicalDirectory = path.join(directory, 'canonical');
     await mkdir(canonicalDirectory, { recursive: true });
     const baseCanonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+    const baselineRecords = baseCanonical.records.filter(isM58BaselineRecord);
     const approvedCount = included + corrected;
     const syntheticIds = Array.from({ length: approvedCount }, (_, index) => (
       `w${String(1000 + index).padStart(3, '0')}`
     ));
     const canonicalRecords = [
-      ...baseCanonical.records.map(({ record }) => record),
+      ...baselineRecords.map(({ record }) => record),
       ...syntheticIds.map((id) => syntheticCanonicalRecord(id)),
     ];
     await writeFile(
@@ -364,6 +382,7 @@ async function createStageFixture({
       gate_status: gatePass ? 'pass' : 'fail',
       decision: gatePass ? 'APPROVE BOUNDED' : 'HOLD PROCESS',
       next_stage_created: nextStageCreated,
+      next_stage_authorized: nextStageAuthorized,
     };
     return { directory, stage };
   } catch (error) {
@@ -538,8 +557,17 @@ test('candidate buffers are maximum reserve pools and failed gates stop promotio
       nextStageCreated: true,
     });
     fixtureDirectories.push(failedFixture.directory);
+    assert.deepEqual(await validateExpansionStage(failedFixture.stage, plan), {
+      stage_id: 'm5-8-stage-01-plus-100',
+      imported_start_count: 100,
+      candidate_buffer: 12,
+      gate_status: 'fail',
+    });
     await assert.rejects(
-      validateExpansionStage(failedFixture.stage, plan),
+      validateExpansionStage({
+        ...failedFixture.stage,
+        next_stage_authorized: true,
+      }, plan),
       (error) => error.code === 'NEXT_STAGE_AFTER_FAILURE',
     );
     await assert.rejects(
@@ -587,6 +615,7 @@ test('stage source loading binds metrics and verification to real artifacts', as
     }, null, 2)}\n`, 'utf8');
 
     const stage = makeValidStage();
+    stage.actual.canonical_snapshot = structuredClone(CURRENT_CANONICAL_SNAPSHOT);
     stage.source = {
       manifest: manifestPath,
       manifest_sha256: await sha256File(manifestPath),
@@ -611,7 +640,7 @@ test('stage source loading binds metrics and verification to real artifacts', as
       deferred_start_count: 0,
     });
     assert.equal(loaded.imported_start_count, 38);
-    assert.deepEqual(loaded.canonical_snapshot, BASELINE_SNAPSHOT);
+    assert.deepEqual(loaded.canonical_snapshot, CURRENT_CANONICAL_SNAPSHOT);
 
     const tamperedMetrics = await readJson(metricsPath);
     tamperedMetrics.derived.decisions.included += 1;
@@ -644,6 +673,7 @@ test('follow-up stages require a digest-bound previous passed report', async () 
     fixtureDirectories.push(currentFixture.directory);
     const previousStage = structuredClone(currentFixture.stage);
     previousStage.next_stage_created = true;
+    previousStage.next_stage_authorized = true;
     const previousPath = path.join(directory, 'stage-01.json');
     await writeFile(previousPath, `${JSON.stringify(previousStage, null, 2)}\n`, 'utf8');
 
@@ -676,12 +706,16 @@ test('follow-up stages require a digest-bound previous passed report', async () 
 });
 
 test('M5-7 sense/POS and relation failures are regressions with no canonical count change', async () => {
-  const [plan, fixture, relationDiff, canonical] = await Promise.all([
+  const [plan, fixture, relationDiff, canonicalResult] = await Promise.all([
     readJson(PLAN_PATH),
     readJson(FIXTURE_PATH),
     readJson(RELATION_DIFF_PATH),
     readCanonicalRecords(),
   ]);
+  const canonical = {
+    ...canonicalResult,
+    records: canonicalResult.records.filter(isM58BaselineRecord),
+  };
 
   const result = validateM58Process({
     plan,

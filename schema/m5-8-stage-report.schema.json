@@ -17,7 +17,8 @@
     "source",
     "gate_status",
     "decision",
-    "next_stage_created"
+    "next_stage_created",
+    "next_stage_authorized"
   ],
   "properties": {
     "schema_version": { "const": "1" },
@@ -121,6 +122,15 @@
           "minimum": 0,
           "maximum": 1
         },
+        "relation_noise_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "relation_noise_rate_of_candidates": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "total_wall_clock_seconds": {
           "type": ["number", "null"],
           "minimum": 0
@@ -176,7 +186,14 @@
     },
     "gate_status": { "enum": ["pass", "fail"] },
     "decision": { "enum": ["APPROVE BOUNDED", "HOLD PROCESS"] },
-    "next_stage_created": { "type": "boolean" }
+    "next_stage_created": {
+      "type": "boolean",
+      "description": "Whether the roadmap issue or stage placeholder already exists; this may be true before the gate passes."
+    },
+    "next_stage_authorized": {
+      "type": "boolean",
+      "description": "Whether the next stage is permitted to start after this gate."
+    }
   },
   "$defs": {
     "sha256": {

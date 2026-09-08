@@ -64,6 +64,11 @@ const EXPECTED_CANONICAL_BASELINE = Object.freeze({
   expression_count: 23,
 });
 
+function isM58BaselineRecord({ record }) {
+  return record.role === 'reference-only'
+    || (record.id.startsWith('w') && Number(record.id.slice(1)) <= 428);
+}
+
 const EXPECTED_PHASE_ORDER = Object.freeze([
   'target-preparation',
   'sense-review',
@@ -360,9 +365,15 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
   const processedStartCount = metricsArtifact.derived.selection.processed_start_count
     ?? metricsArtifact.derived.selection.selected_start_count;
   const totalEditorSeconds = timing.total_editor_seconds;
-  return {
+  const metrics = {
     correction_rate_of_selected: decisions.correction_rate_of_selected,
     relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
+    ...(relationDiff.candidate_count !== undefined
+      ? {
+        relation_noise_candidate_count: relationDiff.candidate_count,
+        relation_noise_rate_of_candidates: relationDiff.noise_rate_of_candidates,
+      }
+      : {}),
     total_wall_clock_seconds: timing.total_wall_clock_seconds,
     measured_wall_clock_seconds: timing.measured_wall_clock_seconds,
     total_editor_seconds: totalEditorSeconds,
@@ -380,6 +391,7 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
   };
+  return metrics;
 }
 
 function stageDecisionsFromArtifacts(metricsArtifact) {
@@ -618,7 +630,7 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
     'STAGE_CHAIN_GATE_FAILURE',
   );
   assertEqual(
-    previousStage.next_stage_created,
+    previousStage.next_stage_authorized,
     true,
     `${stage.stage_id} previous stage did not authorize the next stage`,
     'STAGE_CHAIN_PROMOTION_MISMATCH',
@@ -770,13 +782,15 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
     );
   }
 
+  const relationNoiseRate = stage.metrics.relation_noise_rate_of_candidates
+    ?? stage.metrics.relation_noise_rate_of_before;
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = [
     stage.metrics.correction_rate_of_selected <= plan.gate.correction_rate_max,
-    stage.metrics.relation_noise_rate_of_before <= plan.gate.relation_noise_rate_max,
+    relationNoiseRate <= plan.gate.relation_noise_rate_max,
     !plan.gate.relation_noise_below_m5_3_baseline_required
-      || stage.metrics.relation_noise_rate_of_before < baselineRate,
+      || relationNoiseRate < baselineRate,
     Number.isFinite(stage.metrics.editor_seconds_per_selected_start)
       && stage.metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
     stage.metrics.timing_status === 'complete',
@@ -804,10 +818,24 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
   );
   if (stage.gate_status === 'fail') {
     assertEqual(
-      stage.next_stage_created,
+      stage.next_stage_authorized,
       false,
-      `${stage.stage_id} cannot create the next stage after a failed gate`,
+      `${stage.stage_id} cannot authorize the next stage after a failed gate`,
       'NEXT_STAGE_AFTER_FAILURE',
+    );
+  }
+  if (stage.next_stage_authorized) {
+    assertEqual(
+      stage.gate_status,
+      'pass',
+      `${stage.stage_id} cannot authorize the next stage after a failed gate`,
+      'NEXT_STAGE_AFTER_FAILURE',
+    );
+    assertEqual(
+      stage.next_stage_created,
+      true,
+      `${stage.stage_id} must have a created next-stage issue before authorization`,
+      'NEXT_STAGE_AUTHORIZATION_MISMATCH',
     );
   }
 
@@ -1029,7 +1057,7 @@ export async function main(argv = process.argv.slice(2)) {
   const result = validateM58Process({
     plan,
     fixture,
-    canonicalRecordInfos: canonical.records,
+    canonicalRecordInfos: canonical.records.filter(isM58BaselineRecord),
     relationDiff,
   });
   console.log(

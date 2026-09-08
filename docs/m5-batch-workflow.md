@@ -145,6 +145,35 @@ npm run batch:import -- --manifest=/path/to/batch.json --staged-records=/tmp/rev
 The batch commands are workflow gates, not runtime services. They add no external
 dictionary, LLM, cloud, or network dependency to the Chrome extension.
 
+## M5-9 staged expansion application
+
+M5-9 applies the M5-8 staged workflow to a real +100 canonical-start batch. The
+pre-import inventory is preserved at
+data/batches/m5-9-preimport-inventory.json with revision m5-5; it contains the
+112 selected candidates before promotion. The final seed advances to m5-6,
+promotes only the 100 included/corrected rows, retains seven held/rejected
+decisions outside canonical, and leaves five unused reserve rows as candidates.
+
+The checked-in artifacts are:
+
+- data/batches/m5-9-expansion.json: 112 explicit decisions and seven complete
+  timing passes, including the measured post-review audit and fixes;
+- data/batches/m5-9-expansion-relation-diff.json: 25 source-bound relation
+  candidates, with 13 admitted and 12 rejected;
+- data/batches/m5-9-expansion-metrics.json: source-derived counts, rates, timing,
+  and audit summary;
+- data/batches/m5-8-stage-01-plus-100.json: path- and SHA-256-bound stage result;
+  and
+- docs/m5-9-expansion-report.md: the gate decision and validation record.
+
+The stage reports the exact 428 → 528 canonical-start transition. Issue #96 may
+already exist for roadmap visibility, but the stage's authorization flag remains
+false while this gate is failed. Its relation
+candidate noise rate is 12/25 = 48%, so the fixed gate records `HOLD PROCESS` and
+does not authorize the next bounded ladder stage. Deferred reserve rows are visible
+in the manifest and metrics, but never inflate the import count or make editor cost
+appear lower.
+
 ## M5-4 draft and review contract
 
 M5-4 makes the quality and measurement rules part of the batch contract. A new
@@ -213,11 +242,15 @@ Each pass records wall-clock seconds and editor seconds separately. A manifest m
 be marked `incomplete` while an older baseline is being repaired, but a completed
 metrics artifact is rejected if any required pass is missing either measurement.
 When reviewer feedback arrives after the five-pass review has ended, the manifest
-may add the controlled `post-review-audit` and `post-review-fixes` passes. The
-audit pass must be measured from the actual follow-up work; it must not backfill
-or estimate an earlier pass. If the feedback-fix edit time was not instrumented,
-`post-review-fixes` must remain `unmeasured`, the timing status must be
-`incomplete`, and the derived metrics expose measured timing as a lower bound.
+adds a paired `post-review-audit` and `post-review-fixes` entry for that feedback
+cycle. Repeated cycles carry a one-based `cycle` and both entries carry the same
+`feedback_received_at`; derived metrics key them as `post-review-audit#2` and
+`post-review-fixes#2`. The audit and fixes passes must be measured from their
+actual follow-up work and cannot backfill or estimate an earlier pass. If a
+follow-up edit time was not instrumented, both entries for that cycle remain
+`unmeasured`, the timing status is `incomplete`, and the derived metrics expose
+measured timing only as a lower bound. Missing cycles or timestamps before the
+recorded feedback are rejected.
 The metrics command derives decision counts, sense/relation corrections,
 canonical counts, relation-diff counts, rates, audit findings, and timing totals
 from the source artifacts:

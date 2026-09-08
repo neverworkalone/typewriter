@@ -128,6 +128,7 @@ export function compareRelationSnapshots({
   before,
   after,
   sourceNote,
+  candidateReviews,
 } = {}) {
   requireString(batchId, 'batchId');
   const beforeRelations = normalizeSnapshot(before, 'before');
@@ -196,6 +197,9 @@ export function compareRelationSnapshots({
     requireString(sourceNote, 'sourceNote');
     diff.source_note = sourceNote;
   }
+  if (candidateReviews !== undefined) {
+    diff.candidate_reviews = structuredClone(candidateReviews);
+  }
   validateRelationDiff(diff);
   return diff;
 }
@@ -230,6 +234,109 @@ function validateRelationDiffSchema(diff) {
 function requireEventRelation(event, field, operation) {
   if (!event[field]) {
     fail(`${operation} event requires ${field}`, 'MISSING_RELATION_SIDE');
+  }
+}
+
+function validateCandidateRelation(relation, index) {
+  if (!relation || typeof relation !== 'object' || Array.isArray(relation)) {
+    fail(`candidate_reviews[${index}].relation must be an object`, 'INVALID_RELATION');
+  }
+  requireString(relation.target, `candidate_reviews[${index}].relation.target`);
+  if (!/^[wr][0-9]{3,}$/u.test(relation.target)) {
+    fail(
+      `candidate_reviews[${index}].relation.target must be a canonical record ID`,
+      'INVALID_TARGET',
+    );
+  }
+  requireRelationType(relation.type, `candidate_reviews[${index}].relation.type`);
+  if (Object.hasOwn(relation, 'target_sense')) {
+    requireString(
+      relation.target_sense,
+      `candidate_reviews[${index}].relation.target_sense`,
+    );
+    if (!/^[wr][0-9]{3,}-s[1-9][0-9]*$/u.test(relation.target_sense)) {
+      fail(
+        `candidate_reviews[${index}].relation.target_sense must be a canonical sense ID`,
+        'INVALID_TARGET_SENSE',
+      );
+    }
+  }
+}
+
+function validateCandidateReviews(diff, eventByRelationId, eventCounts) {
+  const reviews = diff.candidate_reviews;
+  if (!reviews) {
+    if (diff.before_count === 0 && diff.after_count > 0) {
+      fail(
+        'pure-add relation diffs require source-bound candidate_reviews',
+        'MISSING_CANDIDATE_REVIEWS',
+      );
+    }
+    return;
+  }
+
+  const candidateIds = new Set();
+  const relationIds = new Set();
+  let admittedCount = 0;
+  for (const [index, review] of reviews.entries()) {
+    if (candidateIds.has(review.candidate_id)) {
+      fail(
+        `candidate_reviews contains duplicate candidate_id ${review.candidate_id}`,
+        'DUPLICATE_CANDIDATE_ID',
+      );
+    }
+    candidateIds.add(review.candidate_id);
+    if (relationIds.has(review.relation_id)) {
+      fail(
+        `candidate_reviews contains duplicate relation_id ${review.relation_id}`,
+        'DUPLICATE_CANDIDATE_RELATION_ID',
+      );
+    }
+    relationIds.add(review.relation_id);
+    requireString(review.candidate_id, `candidate_reviews[${index}].candidate_id`);
+    requireString(review.relation_id, `candidate_reviews[${index}].relation_id`);
+    relationSourceSense(review.source_sense, `candidate_reviews[${index}].source_sense`);
+    validateCandidateRelation(review.relation, index);
+    requireString(review.review_note, `candidate_reviews[${index}].review_note`);
+
+    const event = eventByRelationId.get(review.relation_id);
+    if (review.decision === 'admit') {
+      admittedCount += 1;
+      if (!event || event.operation !== 'add') {
+        fail(
+          `admitted candidate ${review.candidate_id} must map to an add event`,
+          'CANDIDATE_EVENT_MISMATCH',
+        );
+      }
+      const relationMatches = ['target', 'target_sense', 'type'].every(
+        (field) => relationValue(event.after, field) === relationValue(review.relation, field),
+      );
+      if (event.source_sense !== review.source_sense || !relationMatches) {
+        fail(
+          `admitted candidate ${review.candidate_id} does not match its add event`,
+          'CANDIDATE_EVENT_MISMATCH',
+        );
+      }
+    } else if (event) {
+      fail(
+        `rejected candidate ${review.candidate_id} must not appear in relation events`,
+        'REJECTED_CANDIDATE_EVENT',
+      );
+    }
+  }
+
+  if (diff.before_count !== 0 || eventCounts.remove > 0
+    || eventCounts.retype > 0 || eventCounts.retarget > 0) {
+    fail(
+      'candidate_reviews are only valid for pure-add relation diffs; record mixed changes in a separate diff',
+      'CANDIDATE_REVIEWS_NOT_PURE_ADD',
+    );
+  }
+  if (eventCounts.add !== admittedCount) {
+    fail(
+      'pure-add candidate_reviews must account for every add event and no other operation',
+      'CANDIDATE_EVENT_COVERAGE',
+    );
   }
 }
 
@@ -292,6 +399,8 @@ export function validateRelationDiff(diff) {
       'COUNT_MISMATCH',
     );
   }
+  const eventByRelationId = new Map(diff.events.map((event) => [event.relation_id, event]));
+  validateCandidateReviews(diff, eventByRelationId, counts);
   return diff;
 }
 
@@ -309,10 +418,21 @@ export function summarizeRelationDiff(diff) {
       classificationCounts[event.error_category] = (classificationCounts[event.error_category] ?? 0) + 1;
     }
   }
-  const classifiedNoiseCount = diff.events.filter(
+  const classifiedEventNoiseCount = diff.events.filter(
     (event) => event.operation === 'remove' && event.error_category,
   ).length;
-  return {
+  const rejectedCandidateCount = diff.candidate_reviews?.filter(
+    ({ decision }) => decision === 'reject',
+  ).length ?? 0;
+  for (const review of diff.candidate_reviews ?? []) {
+    if (review.decision === 'reject') {
+      classificationCounts[review.error_category] = (classificationCounts[review.error_category] ?? 0) + 1;
+    }
+  }
+  const noiseEventCount = diff.candidate_reviews
+    ? rejectedCandidateCount
+    : classifiedEventNoiseCount;
+  const summary = {
     before_count: diff.before_count,
     after_count: diff.after_count,
     added_count: counts.add,
@@ -321,12 +441,25 @@ export function summarizeRelationDiff(diff) {
     retargeted_count: counts.retarget,
     changed_count: counts.retype + counts.retarget,
     net_removed_count: counts.remove - counts.add,
-    noise_event_count: classifiedNoiseCount,
+    noise_event_count: noiseEventCount,
     noise_rate_of_before: diff.before_count === 0
       ? 0
-      : classifiedNoiseCount / diff.before_count,
+      : classifiedEventNoiseCount / diff.before_count,
     classification_counts: classificationCounts,
   };
+  if (diff.candidate_reviews) {
+    const admittedCandidateCount = diff.candidate_reviews.filter(
+      ({ decision }) => decision === 'admit',
+    ).length;
+    summary.candidate_count = diff.candidate_reviews.length;
+    summary.admitted_candidate_count = admittedCandidateCount;
+    summary.rejected_candidate_count = rejectedCandidateCount;
+    summary.noise_denominator_count = diff.candidate_reviews.length;
+    summary.noise_rate_of_candidates = diff.candidate_reviews.length === 0
+      ? 0
+      : rejectedCandidateCount / diff.candidate_reviews.length;
+  }
+  return summary;
 }
 
 async function readJson(filePath, label) {

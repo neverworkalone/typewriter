@@ -40,6 +40,10 @@ const MEASUREMENT_PASS_IDS = Object.freeze([
   'final-audit',
   'held-rejected',
 ]);
+const OPTIONAL_MEASUREMENT_PASS_IDS = Object.freeze([
+  'post-review-audit',
+  'post-review-fixes',
+]);
 
 export class BatchValidationError extends Error {
   constructor(message, code = 'BATCH_VALIDATION_ERROR') {
@@ -81,6 +85,14 @@ function requireIsoDate(value, label) {
   if (!Number.isFinite(Date.parse(value))) {
     fail(`${label} must be a valid timestamp`, 'INVALID_TIMESTAMP');
   }
+}
+
+export function timingPassCycle(pass) {
+  return pass.cycle ?? 1;
+}
+
+export function timingPassKey(pass) {
+  return Object.hasOwn(pass, 'cycle') ? `${pass.id}#${pass.cycle}` : pass.id;
 }
 
 function isInside(directory, candidate) {
@@ -185,34 +197,121 @@ function validateManifestSchema(manifest) {
 function validateMeasurement(measurement) {
   if (!measurement) return;
 
-  const passIds = measurement.timing.passes.map((pass) => pass.id);
-  requireUnique(passIds, 'manifest.measurement.timing.passes.id');
-  const missingPasses = MEASUREMENT_PASS_IDS.filter((id) => !passIds.includes(id));
+  const passes = measurement.timing.passes;
+  const requiredPassIds = passes
+    .filter((pass) => MEASUREMENT_PASS_IDS.includes(pass.id))
+    .map((pass) => pass.id);
+  requireUnique(requiredPassIds, 'manifest.measurement.timing.passes.id');
+  const missingPasses = MEASUREMENT_PASS_IDS.filter((id) => !requiredPassIds.includes(id));
   if (missingPasses.length > 0) {
     fail(
       `manifest.measurement.timing is missing pass(es): ${missingPasses.join(', ')}`,
       'MISSING_TIMING_PASS',
     );
   }
-  for (const pass of measurement.timing.passes) {
-    if (Object.hasOwn(pass, 'started_at')) requireIsoDate(pass.started_at, `manifest.measurement.timing.${pass.id}.started_at`);
-    if (Object.hasOwn(pass, 'completed_at')) requireIsoDate(pass.completed_at, `manifest.measurement.timing.${pass.id}.completed_at`);
-    if (Object.hasOwn(pass, 'note')) requireString(pass.note, `manifest.measurement.timing.${pass.id}.note`);
+  const optionalPassesById = new Map(
+    OPTIONAL_MEASUREMENT_PASS_IDS.map((id) => [id, []]),
+  );
+  const passKeys = new Set();
+  for (const pass of passes) {
+    const isOptional = OPTIONAL_MEASUREMENT_PASS_IDS.includes(pass.id);
+    if (!isOptional && Object.hasOwn(pass, 'cycle')) {
+      fail(
+        `manifest.measurement.timing.${pass.id} cannot declare a feedback cycle`,
+        'INVALID_TIMING_CYCLE',
+      );
+    }
+    if (!isOptional && Object.hasOwn(pass, 'feedback_received_at')) {
+      fail(
+        `manifest.measurement.timing.${pass.id} cannot declare feedback_received_at`,
+        'INVALID_TIMING_CYCLE',
+      );
+    }
+    const key = timingPassKey(pass);
+    if (passKeys.has(key)) {
+      fail(`manifest.measurement.timing contains duplicate pass ${key}`, 'DUPLICATE_TIMING_PASS');
+    }
+    passKeys.add(key);
+    if (isOptional) optionalPassesById.get(pass.id).push(pass);
+
+    const label = `manifest.measurement.timing.${key}`;
+    if (Object.hasOwn(pass, 'feedback_received_at')) requireIsoDate(pass.feedback_received_at, `${label}.feedback_received_at`);
+    if (Object.hasOwn(pass, 'started_at')) requireIsoDate(pass.started_at, `${label}.started_at`);
+    if (Object.hasOwn(pass, 'completed_at')) requireIsoDate(pass.completed_at, `${label}.completed_at`);
+    if (Object.hasOwn(pass, 'note')) requireString(pass.note, `${label}.note`);
+    const hasStartedAt = Object.hasOwn(pass, 'started_at');
+    const hasCompletedAt = Object.hasOwn(pass, 'completed_at');
+    if (hasStartedAt !== hasCompletedAt) {
+      fail(`${label} must provide both started_at and completed_at when timestamps are recorded`, 'INCOMPLETE_TIMING_TIMESTAMP');
+    }
+    if (hasStartedAt && Date.parse(pass.completed_at) < Date.parse(pass.started_at)) {
+      fail(`${label} completed_at must not precede started_at`, 'TIMING_ORDER');
+    }
+    if (Object.hasOwn(pass, 'feedback_received_at')
+      && hasStartedAt
+      && Date.parse(pass.started_at) < Date.parse(pass.feedback_received_at)) {
+      fail(`${label} started_at must not precede feedback_received_at`, 'TIMING_BEFORE_FEEDBACK');
+    }
     if (pass.status === 'complete' && (!Number.isFinite(pass.wall_clock_seconds) || !Number.isFinite(pass.editor_seconds))) {
       fail(
-        `manifest.measurement.timing.${pass.id} is complete but lacks wall-clock and editor seconds`,
+        `${label} is complete but lacks wall-clock and editor seconds`,
         'INCOMPLETE_TIMING',
       );
     }
     if (pass.status === 'partial' && !Number.isFinite(pass.wall_clock_seconds)) {
       fail(
-        `manifest.measurement.timing.${pass.id} is partial but lacks wall-clock seconds`,
+        `${label} is partial but lacks wall-clock seconds`,
         'INCOMPLETE_TIMING',
       );
     }
   }
+  const optionalCycles = new Set();
+  for (const [id, group] of optionalPassesById) {
+    if (group.length === 0) continue;
+    if (group.length > 1 && group.some((pass) => !Object.hasOwn(pass, 'cycle'))) {
+      fail(
+        `repeated ${id} timing passes must declare cycle numbers`,
+        'TIMING_CYCLE_REQUIRED',
+      );
+    }
+    for (const pass of group) optionalCycles.add(timingPassCycle(pass));
+  }
+  if (optionalCycles.size > 0) {
+    const maxCycle = Math.max(...optionalCycles);
+    for (let cycle = 1; cycle <= maxCycle; cycle += 1) {
+      if (!optionalCycles.has(cycle)) {
+        fail(`timing is missing feedback cycle ${cycle}`, 'MISSING_TIMING_CYCLE');
+      }
+      for (const id of OPTIONAL_MEASUREMENT_PASS_IDS) {
+        const group = optionalPassesById.get(id);
+        if (!group.some((pass) => timingPassCycle(pass) === cycle)) {
+          fail(`timing feedback cycle ${cycle} is missing ${id}`, 'INCOMPLETE_TIMING_CYCLE');
+        }
+      }
+    }
+
+    for (let cycle = 1; cycle <= maxCycle; cycle += 1) {
+      const auditPass = optionalPassesById.get('post-review-audit')
+        .find((pass) => timingPassCycle(pass) === cycle);
+      const fixesPass = optionalPassesById.get('post-review-fixes')
+        .find((pass) => timingPassCycle(pass) === cycle);
+      const feedbackTimes = [auditPass, fixesPass]
+        .filter((pass) => Object.hasOwn(pass, 'feedback_received_at'))
+        .map((pass) => pass.feedback_received_at);
+      if (feedbackTimes.length === 1) {
+        fail(`timing feedback cycle ${cycle} must bind both follow-up passes to feedback_received_at`, 'INCOMPLETE_TIMING_CYCLE');
+      }
+      if (feedbackTimes.length === 2 && feedbackTimes[0] !== feedbackTimes[1]) {
+        fail(`timing feedback cycle ${cycle} has inconsistent feedback_received_at values`, 'TIMING_FEEDBACK_MISMATCH');
+      }
+      if (Object.hasOwn(auditPass, 'completed_at') && Object.hasOwn(fixesPass, 'started_at')
+        && Date.parse(fixesPass.started_at) < Date.parse(auditPass.completed_at)) {
+        fail(`timing feedback cycle ${cycle} fixes must follow the audit pass`, 'TIMING_ORDER');
+      }
+    }
+  }
   if (measurement.timing.status === 'complete'
-    && measurement.timing.passes.some((pass) => pass.status !== 'complete')) {
+    && passes.some((pass) => pass.status !== 'complete')) {
     fail('manifest.measurement.timing is declared complete with an unmeasured pass', 'INCOMPLETE_TIMING');
   }
 
@@ -221,6 +320,50 @@ function validateMeasurement(measurement) {
   for (const finding of measurement.audit.findings) {
     requireString(finding.id, `manifest.measurement.audit.findings.${finding.id}.id`);
     requireString(finding.note, `manifest.measurement.audit.findings.${finding.id}.note`);
+  }
+}
+
+function validateSenseReview(review, manifest) {
+  if (!review) return;
+
+  requireString(review.note, 'manifest.sense_review.note');
+  requireUnique(review.split_canonical_ids, 'manifest.sense_review.split_canonical_ids');
+  if (review.status !== 'complete') return;
+
+  const importableStarts = manifest.records.filter(
+    (record) => record.source === 'inventory'
+      && record.role === 'start'
+      && (record.decision === 'included' || record.decision === 'corrected'),
+  );
+  const correctedSenseIds = importableStarts
+    .filter((record) => record.corrected_fields?.includes('senses'))
+    .map((record) => record.canonical_id)
+    .sort();
+  const declaredSplitIds = [...review.split_canonical_ids].sort();
+  if (review.reviewed_start_count !== importableStarts.length) {
+    fail(
+      `manifest.sense_review.reviewed_start_count must equal importable starts (${importableStarts.length})`,
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+  }
+  if (review.split_record_count !== declaredSplitIds.length) {
+    fail(
+      'manifest.sense_review.split_record_count must equal split_canonical_ids length',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+  }
+  if (review.scoped_single_sense_count + review.split_record_count !== review.reviewed_start_count) {
+    fail(
+      'manifest.sense_review counts must account for every reviewed start',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+  }
+  const correctedSenseIdSet = new Set(correctedSenseIds);
+  if (declaredSplitIds.some((canonicalId) => !correctedSenseIdSet.has(canonicalId))) {
+    fail(
+      'manifest.sense_review.split_canonical_ids must be corrected sense records',
+      'SENSE_REVIEW_CORRECTION_MISMATCH',
+    );
   }
 }
 
@@ -244,6 +387,7 @@ export function validateBatchManifest(manifest) {
     requireIsoDate(manifest.review.completed_at, 'manifest.review.completed_at');
   }
   validateMeasurement(manifest.measurement);
+  validateSenseReview(manifest.sense_review, manifest);
 
   const inventoryIds = new Set();
   const canonicalIds = new Set();

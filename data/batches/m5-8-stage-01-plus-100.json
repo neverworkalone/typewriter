@@ -1,0 +1,80 @@
+{
+  "schema_version": "1",
+  "stage_id": "m5-8-stage-01-plus-100",
+  "input": {
+    "inventory_revision": "m5-5",
+    "canonical_snapshot": {
+      "record_count": 470,
+      "start_count": 428,
+      "reference_only_count": 42,
+      "sense_count": 557,
+      "relation_count": 449,
+      "expression_count": 23
+    }
+  },
+  "target": {
+    "net_start_increase": 100,
+    "cumulative_start_target": 528,
+    "candidate_buffer": 12,
+    "selected_start_count": 112
+  },
+  "decisions": {
+    "included_start_count": 82,
+    "corrected_start_count": 18,
+    "held_start_count": 4,
+    "rejected_start_count": 3,
+    "deferred_start_count": 5
+  },
+  "buffer": {
+    "available_count": 12,
+    "used_count": 7,
+    "unused_count": 5
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 570,
+      "start_count": 528,
+      "reference_only_count": 42,
+      "sense_count": 670,
+      "relation_count": 462,
+      "expression_count": 37
+    },
+    "imported_start_count": 100
+  },
+  "metrics": {
+    "correction_rate_of_selected": 0.16822429906542055,
+    "relation_noise_rate_of_before": 0,
+    "relation_noise_candidate_count": 25,
+    "relation_noise_rate_of_candidates": 0.48,
+    "total_wall_clock_seconds": null,
+    "measured_wall_clock_seconds": 2100,
+    "total_editor_seconds": null,
+    "measured_editor_seconds": 1090,
+    "editor_seconds_per_selected_start": null,
+    "timing_status": "incomplete",
+    "unmeasured_timing_pass_count": 6,
+    "audit_status": "complete",
+    "audit_independent": true,
+    "open_audit_blocker_count": 0,
+    "human_editorial_review_complete": true,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true
+  },
+  "source": {
+    "manifest": "data/batches/m5-9-expansion.json",
+    "manifest_sha256": "236325006a4adab62b7ca5dd420dfa5b7dbb0b5633ca29091ae448019b80fa7d",
+    "metrics": "data/batches/m5-9-expansion-metrics.json",
+    "metrics_sha256": "7491ba418f88e526222ea10f64bcba7c1c6cf06637d08a29b7de3f61b5e60d1f",
+    "relation_diff": "data/batches/m5-9-expansion-relation-diff.json",
+    "relation_diff_sha256": "b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153",
+    "canonical_directory": "data/canonical",
+    "canonical_sha256": "83b709cb89666bd2abd45f0dd3ce5e5490d43da322999d2d5781f38dd176c85e",
+    "verification": "data/batches/m5-9-expansion-verification.json",
+    "verification_sha256": "1a1efa528d8bcc57b5206ff77f48a2fe2e97098d88686ef9c63482bac496bc34"
+  },
+  "gate_status": "fail",
+  "decision": "HOLD PROCESS",
+  "next_stage_created": true,
+  "next_stage_authorized": false
+}

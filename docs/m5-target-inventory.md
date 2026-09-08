@@ -195,6 +195,29 @@ is 30%, measured editor time is 19.55 seconds per selected start, and both
 exceed their unchanged ceilings. This is not a 5K bulk-generation or
 M5-complete decision.
 
+## M5-9 expansion result
+
+M5-9 selected 100 new Typewriter-authored starts plus a declared maximum reserve
+pool of 12. The revision-m5-5 selection snapshot is preserved in
+data/batches/m5-9-preimport-inventory.json. After sense/POS review and optional
+relation admission, 82 starts were included, 18 corrected, 4 held, and 3 rejected.
+A follow-up audit split 13 importable records into separate literal/figurative or
+expression senses and scoped the other 87 to one sense.
+The five unused reserve slots remain candidate rows and are recorded as deferred;
+they are excluded from both canonical import and the processed-start denominator.
+
+The final inventory advances to revision m5-6: 528 current starts, 42 current
+reference-only records, and 5 remaining candidates. The canonical snapshot is
+570 records / 670 senses / 462 relations, with 37 expression records. The four
+held and three rejected M5-9 reserve decisions add to the existing held rows for
+18 held rows total. The source-bound stage report and fixed-gate result are
+recorded in docs/m5-9-expansion-report.md: relation candidate noise is 12/25 =
+48%, and three post-review feedback cycles have six unmeasured follow-up passes.
+Timing is therefore incomplete; the measured required-pass editor time is 1,090
+seconds but no complete per-start cost is claimed. The result is HOLD PROCESS.
+No next stage is authorized until relation admission and timing measurement are
+repaired and re-audited.
+
 ## Validation commands
 
 Regenerate the reviewable snapshot after changing canonical input or the seed:

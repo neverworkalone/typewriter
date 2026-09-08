@@ -245,6 +245,8 @@
             },
             "fields": {
               "const": [
+                "cycle",
+                "feedback_received_at",
                 "started_at",
                 "completed_at",
                 "wall_clock_seconds",
@@ -264,7 +266,7 @@
           }
         },
         "next_stage_policy": {
-          "const": "create-only-after-previous-gate-pass"
+          "const": "authorize-only-after-previous-gate-pass"
         }
       }
     },

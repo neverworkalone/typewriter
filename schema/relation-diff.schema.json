@@ -26,6 +26,12 @@
       "type": "integer",
       "minimum": 0
     },
+    "candidate_reviews": {
+      "description": "Source-bound admission decisions for a pure-add candidate set. Mixed relation changes use a separate diff artifact.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/candidateReview" }
+    },
     "events": {
       "type": "array",
       "items": { "$ref": "#/$defs/event" }
@@ -62,6 +68,62 @@
           ]
         }
       }
+    },
+    "candidateReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "relation_id",
+        "source_sense",
+        "relation",
+        "decision",
+        "review_note"
+      ],
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "relation_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "source_sense": {
+          "type": "string",
+          "pattern": "^[wr][0-9]{3,}-s[1-9][0-9]*$"
+        },
+        "relation": { "$ref": "#/$defs/relation" },
+        "decision": { "enum": ["admit", "reject"] },
+        "error_category": {
+          "enum": [
+            "incidental-co-occurrence",
+            "generic-result-or-reaction",
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "unsupported-cross-sensory",
+            "sense-target-type-error"
+          ]
+        },
+        "review_note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "decision": { "const": "reject" } }
+          },
+          "then": { "required": ["error_category"] }
+        },
+        {
+          "if": {
+            "properties": { "decision": { "const": "admit" } }
+          },
+          "then": { "not": { "required": ["error_category"] } }
+        }
+      ]
     },
     "event": {
       "type": "object",
