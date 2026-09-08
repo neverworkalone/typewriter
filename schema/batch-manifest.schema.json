@@ -111,6 +111,35 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "required": ["measurement"],
+        "properties": {
+          "measurement": {
+            "type": "object",
+            "required": ["timing"],
+            "properties": {
+              "timing": {
+                "type": "object",
+                "required": ["contract_version"],
+                "properties": {
+                  "contract_version": { "const": "m5-10a-v1" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["sense_review"],
+        "properties": {
+          "sense_review": {
+            "type": "object",
+            "required": ["preflight"]
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -254,7 +283,8 @@
             "pattern": "^[wr][0-9]{3,}$"
           }
         },
-        "note": { "type": "string", "pattern": "\\S" }
+        "note": { "type": "string", "pattern": "\\S" },
+        "preflight": { "$ref": "#/$defs/sensePreflight" }
       }
     },
     "measurement": {
@@ -287,7 +317,7 @@
               "enum": ["complete", "incomplete"]
             },
             "contract_version": {
-              "const": "m5-9a-v1"
+              "enum": ["m5-9a-v1", "m5-10a-v1"]
             },
             "passes": {
               "type": "array",
@@ -396,6 +426,103 @@
           "type": "string",
           "pattern": "\\S"
         }
+      }
+    },
+    "sensePreflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["process_revision", "boundary_ids", "record_checkpoints"],
+      "properties": {
+        "process_revision": {
+          "const": "m5-10a-process-correction-v1"
+        },
+        "boundary_ids": {
+          "const": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ]
+        },
+        "record_checkpoints": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/senseRecordCheckpoint" }
+        }
+      }
+    },
+    "senseRecordCheckpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventory_id",
+        "status",
+        "lemma_pos",
+        "observed_sense_count",
+        "observed_pos",
+        "boundary_checks",
+        "missing_boundary_ids",
+        "note"
+      ],
+      "properties": {
+        "inventory_id": { "type": "string", "pattern": "\\S" },
+        "canonical_id": {
+          "type": "string",
+          "pattern": "^w[0-9]{3,}$"
+        },
+        "status": {
+          "enum": ["complete", "held", "rejected", "deferred"]
+        },
+        "lemma_pos": {
+          "enum": ["checked", "not-reviewed"]
+        },
+        "observed_sense_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observed_pos": {
+          "type": "array",
+          "items": {
+            "enum": ["noun", "adjective", "verb", "expression"]
+          }
+        },
+        "boundary_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "properties": {
+            "physical-figurative": { "enum": ["checked", "not-applicable", "not-reviewed"] },
+            "homonym-pos": { "enum": ["checked", "not-applicable", "not-reviewed"] },
+            "sensory-emotion-state-action": { "enum": ["checked", "not-applicable", "not-reviewed"] },
+            "directional-symmetry": { "enum": ["checked", "not-applicable", "not-reviewed"] },
+            "compound-spaced-phrase": { "enum": ["checked", "not-applicable", "not-reviewed"] },
+            "word-idiom": { "enum": ["checked", "not-applicable", "not-reviewed"] }
+          }
+        },
+        "missing_boundary_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "physical-figurative",
+              "homonym-pos",
+              "sensory-emotion-state-action",
+              "directional-symmetry",
+              "compound-spaced-phrase",
+              "word-idiom"
+            ]
+          }
+        },
+        "note": { "type": "string", "pattern": "\\S" }
       }
     }
   }

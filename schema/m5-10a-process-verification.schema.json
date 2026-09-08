@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-process-verification.schema.json",
+  "title": "Typewriter M5-10A process verification",
+  "description": "Machine-validation results for the M5-10A process correction. These checks are not editor-time measurements.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "process_revision",
+    "canonical_snapshot",
+    "machine_validation_excluded_from_editor_seconds",
+    "checks"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^m5-10a-process-verification-[0-9]{8}$"
+    },
+    "process_revision": { "const": "m5-10a-process-correction-v1" },
+    "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
+    "machine_validation_excluded_from_editor_seconds": { "const": true },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_integrity",
+        "deterministic_sqlite",
+        "search_product_regression",
+        "package"
+      ],
+      "properties": {
+        "canonical_integrity": { "$ref": "#/$defs/commandCheck" },
+        "deterministic_sqlite": { "$ref": "#/$defs/commandCheck" },
+        "search_product_regression": { "$ref": "#/$defs/commandCheck" },
+        "package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "non_minified", "minified"],
+          "properties": {
+            "status": { "const": "passed" },
+            "non_minified": { "$ref": "#/$defs/packageCheck" },
+            "minified": { "$ref": "#/$defs/packageCheck" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_count",
+        "start_count",
+        "reference_only_count",
+        "sense_count",
+        "relation_count",
+        "expression_count"
+      ],
+      "properties": {
+        "record_count": { "type": "integer", "minimum": 0 },
+        "start_count": { "type": "integer", "minimum": 0 },
+        "reference_only_count": { "type": "integer", "minimum": 0 },
+        "sense_count": { "type": "integer", "minimum": 0 },
+        "relation_count": { "type": "integer", "minimum": 0 },
+        "expression_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "commandCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "command"],
+      "properties": {
+        "status": { "const": "passed" },
+        "command": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "packageCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "command", "unpacked_file_count", "dictionary_snapshot"],
+      "properties": {
+        "status": { "const": "passed" },
+        "command": { "type": "string", "pattern": "\\S" },
+        "unpacked_file_count": { "const": 23 },
+        "dictionary_snapshot": { "$ref": "#/$defs/snapshot" }
+      }
+    }
+  }
+}

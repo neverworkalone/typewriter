@@ -1,0 +1,123 @@
+{
+  "schema_version": "1",
+  "authorization_id": "m5-10a-repair-authorization-20260908",
+  "issue": 107,
+  "parent_issue": 7,
+  "process_revision": "m5-10a-process-correction-v1",
+  "source": {
+    "failed_stage_report": "data/batches/m5-9a-wave-a-plus-50.json",
+    "failed_stage_report_sha256": "070526553c12b73055a98aa243d5142b46b2e6a9f21da31c2a915160491cc487",
+    "process_correction": "data/batches/m5-10a-process-correction.json",
+    "process_correction_sha256": "3f6c3ea4e3c5135aa86575cd9efc21b66c9e1551e881f6bee76a1fc78d214795"
+  },
+  "failed_stage": {
+    "stage_id": "m5-9a-wave-a-plus-50",
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "next_stage_authorized": false,
+    "canonical_snapshot": {
+      "record_count": 620,
+      "start_count": 578,
+      "reference_only_count": 42,
+      "sense_count": 743,
+      "relation_count": 467,
+      "expression_count": 39
+    },
+    "failure_metrics": {
+      "relation_noise_candidate_count": 8,
+      "relation_noise_rate_of_candidates": 0.375,
+      "editor_seconds_per_processed_start": 40.196892857142856
+    }
+  },
+  "relation_regression": {
+    "proposal_count": 25,
+    "pre_screened_count": 25,
+    "pre_screen_pass_count": 13,
+    "pre_screen_rejected_count": 12,
+    "human_admission_denominator": 13,
+    "human_admission_reviewed_count": 13,
+    "human_admitted_count": 13,
+    "human_rejected_count": 0,
+    "final_relation_count": 13,
+    "failure_category_counts": {
+      "arbitrary-modifier-or-place": 3,
+      "broad-common-category": 2,
+      "generic-result-or-reaction": 7
+    }
+  },
+  "timing_contract": {
+    "contract_version": "m5-10a-v1",
+    "required_passes": [
+      "target-preparation",
+      "initial-review",
+      "feedback-fixes",
+      "final-audit",
+      "held-rejected"
+    ],
+    "follow_up_passes": ["post-review-audit", "post-review-fixes"],
+    "duration_source": "completed_at-minus-started_at",
+    "feedback_timestamp_source": "recorded-review-event",
+    "unmeasured_result": "timing-incomplete-and-gate-fails",
+    "machine_validation_excluded_from_editor_seconds": true
+  },
+  "audit": {
+    "status": "complete",
+    "independent": true,
+    "open_blocker_count": 0,
+    "findings": [
+      {
+        "id": "m5-10a-sense-preflight",
+        "category": "sense-boundary-checkpoint",
+        "status": "closed",
+        "note": "Six sense boundaries are explicit in the new manifest preflight contract and the Wave A omission fixture is bound by digest."
+      },
+      {
+        "id": "m5-10a-relation-regression",
+        "category": "relation-pre-screen",
+        "status": "closed",
+        "note": "All 25 relation proposals remain in the denominator; 12 pre-screen rejects and the 13-entry human-admission denominator are independently reproducible."
+      },
+      {
+        "id": "m5-10a-timing-contract",
+        "category": "timing-measurement",
+        "status": "closed",
+        "note": "Human semantic review timing and machine validation results are separate, and any unmeasured pass fails the timing gate without estimation or backfill."
+      },
+      {
+        "id": "m5-10a-canonical-boundary",
+        "category": "canonical-boundary",
+        "status": "closed",
+        "note": "The authorization does not mutate canonical data and preserves the failed Wave A snapshot at 578 starts."
+      },
+      {
+        "id": "m5-10a-wave-scope",
+        "category": "authorization-scope",
+        "status": "closed",
+        "note": "Only #96 Wave A2 +50 is authorized; Wave B +150 remains unauthorized until an independent Wave A2 pass."
+      }
+    ]
+  },
+  "canonical_snapshot": {
+    "record_count": 620,
+    "start_count": 578,
+    "reference_only_count": 42,
+    "sense_count": 743,
+    "relation_count": 467,
+    "expression_count": 39
+  },
+  "authorization": {
+    "target_issue": 96,
+    "target_wave": "wave-a2-plus-50-validation",
+    "base_start_count": 578,
+    "net_start_increase": 50,
+    "cumulative_start_target": 628,
+    "max_net_start_increase": 50,
+    "candidate_buffer_policy": "declare-before-selection",
+    "canonical_mutation": false,
+    "wave_a2_authorized": true,
+    "wave_b_net_start_increase": 150,
+    "wave_b_authorized": false,
+    "requires_wave_a2_pass_before_wave_b": true
+  },
+  "decision": "AUTHORIZE ONLY WAVE A2"
+}

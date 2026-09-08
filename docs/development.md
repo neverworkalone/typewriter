@@ -129,6 +129,8 @@ npm run batch:import -- \
 
 npm run batch:process:check
 npm run batch:repair:check
+npm run batch:m5-10a:process:check
+npm run batch:m5-10a:repair:check
 npm run batch:timing:feedback -- \
   --manifest=/tmp/typewriter-wave/manifest.json \
   --output=/tmp/typewriter-wave/feedback.json
@@ -188,12 +190,14 @@ package, integrated audit, and regression commands as the local workflow:
 8. `node scripts/verify/m2-pipeline.mjs`
 9. `node --test tests/*.test.mjs`
 10. `node --test tests/batch-workflow.test.mjs`
-11. `npm run test:unit`
-12. `npm run build`
-13. `npm run package`
-14. Chrome verification of the non-minified product package
-15. `npm run package:minify`
-16. Chrome verification of the minified product package
+11. `npm run batch:m5-10a:process:check`
+12. `npm run batch:m5-10a:repair:check`
+13. `npm run test:unit`
+14. `npm run build`
+15. `npm run package`
+16. Chrome verification of the non-minified product package
+17. `npm run package:minify`
+18. Chrome verification of the minified product package
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
 reproducibility, integrated audit, product package, and both Chrome-loaded release

@@ -118,6 +118,11 @@ The #96 Wave A result is recorded in
 starts but remains `HOLD PROCESS` because relation noise is 3/8 and the measured
 editor-time gate is above the fixed limit, so Wave B is not authorized.
 
+The #107 process correction and digest-bound repair authorization are documented in
+[`docs/m5-10a-process-correction.md`](docs/m5-10a-process-correction.md). They add
+record-level sense preflight and independent relation/timing checkpoints without
+changing the 578-start canonical snapshot, and authorize only #96 Wave A2 (+50).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

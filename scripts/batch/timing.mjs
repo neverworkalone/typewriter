@@ -22,6 +22,9 @@ const OPTIONAL_PASS_IDS = Object.freeze([
   'post-review-fixes',
 ]);
 const TIMING_RECORDER_SOURCE = 'timing-recorder-v1';
+const LEGACY_TIMING_CONTRACT_VERSION = 'm5-9a-v1';
+const M5_10A_TIMING_CONTRACT_VERSION = 'm5-10a-v1';
+const M5_10A_PROCESS_REVISION = 'm5-10a-process-correction-v1';
 
 export class TimingRecordingError extends Error {
   constructor(message, code = 'TIMING_RECORDING_ERROR') {
@@ -68,10 +71,16 @@ function requireSessionId(sessionId) {
   return value;
 }
 
+function timingContractVersion(manifest) {
+  return manifest.sense_review?.preflight?.process_revision === M5_10A_PROCESS_REVISION
+    ? M5_10A_TIMING_CONTRACT_VERSION
+    : LEGACY_TIMING_CONTRACT_VERSION;
+}
+
 function prepareRecorderManifest(manifest) {
   validateBatchManifest(manifest);
   const updated = structuredClone(manifest);
-  updated.measurement.timing.contract_version = 'm5-9a-v1';
+  updated.measurement.timing.contract_version = timingContractVersion(updated);
   updated.measurement.timing.passes = prepareLegacyFollowUpCycles(
     updated.measurement.timing.passes,
   );
@@ -159,7 +168,7 @@ export function appendFeedbackCycle(
     },
   ];
   const updated = structuredClone(manifest);
-  updated.measurement.timing.contract_version = 'm5-9a-v1';
+  updated.measurement.timing.contract_version = timingContractVersion(updated);
   updated.measurement.timing.status = 'incomplete';
   updated.measurement.timing.passes = [...preparedPasses, ...followUp];
   validateBatchManifest(updated);
