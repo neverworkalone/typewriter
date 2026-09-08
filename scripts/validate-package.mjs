@@ -130,26 +130,6 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, 'utf8'));
 }
 
-function validateProductVersion(projectRoot, manifest) {
-  const errors = [];
-  const packageJsonPath = path.join(projectRoot, 'package.json');
-  if (!existsSync(packageJsonPath)) {
-    errors.push('Project package.json is missing; product/package version cannot be verified.');
-    return errors;
-  }
-  try {
-    const packageVersion = readJson(packageJsonPath).version;
-    if (packageVersion !== manifest.version) {
-      errors.push(
-        `Product/package version must match manifest version ${JSON.stringify(manifest.version)}, received ${JSON.stringify(packageVersion)}.`,
-      );
-    }
-  } catch (error) {
-    errors.push(`Project package.json is not valid JSON: ${error.message}`);
-  }
-  return errors;
-}
-
 function collectBuildReferences(packageDir, actualFiles) {
   const references = new Set();
   const buildPathPattern = /(?:^|[/'"`])((?:assets|chunks|_locales)\/[A-Za-z0-9._/-]+)/g;
@@ -174,7 +154,7 @@ function validateManifest(manifest) {
   if (manifest.manifest_version !== 3) {
     errors.push(`manifest_version must be 3, received ${JSON.stringify(manifest.manifest_version)}.`);
   }
-  if (typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+(?:[-+].*)?$/.test(manifest.version)) {
+  if (typeof manifest.version !== 'string' || !/^\d+\.\d+(?:\.\d+)?(?:[-+].*)?$/.test(manifest.version)) {
     errors.push(`Manifest version is invalid: ${JSON.stringify(manifest.version)}.`);
   }
   if (JSON.stringify(manifest.permissions) !== JSON.stringify(['storage'])) {
@@ -365,7 +345,6 @@ export function validatePackageDirectory({ packageDir, projectRoot = path.resolv
   }
 
   errors.push(...validateManifest(manifest));
-  errors.push(...validateProductVersion(projectRoot, manifest));
   errors.push(...validateRemoteCode(packageDir, actualFiles));
   errors.push(...validateFileModes(packageDir, actualFiles));
   errors.push(...validateRuntimeAssets(packageDir, actualFiles));

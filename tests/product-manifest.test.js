@@ -16,6 +16,7 @@ describe('product MV3 manifest', () => {
     const manifest = await readRepositoryJson('public/manifest.json');
 
     expect(manifest.manifest_version).toBe(3);
+    expect(manifest.version).toBe('1.0');
     expect(manifest.action.default_popup).toBe('popup.html');
     expect(manifest.options_ui.page).toBe('options.html');
     expect(manifest.permissions).toEqual(['storage']);
@@ -24,6 +25,14 @@ describe('product MV3 manifest', () => {
     expect(manifest.content_security_policy.extension_pages).toBe(
       "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
     );
+  });
+
+  it('keeps the Chrome manifest version independent from the npm package version', async () => {
+    const packageJson = await readRepositoryJson('package.json');
+    const manifest = await readRepositoryJson('public/manifest.json');
+
+    expect(manifest.version).toBe('1.0');
+    expect(packageJson.version).toBe('1.0.0');
   });
 
   it('keeps both declared HTML entrypoints in the product source', async () => {

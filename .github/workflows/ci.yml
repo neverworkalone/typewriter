@@ -26,6 +26,18 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Read manifest version
+        id: manifest
+        shell: bash
+        run: |
+          manifest_version="$(node -e '
+            const fs = require("node:fs");
+            const manifest = JSON.parse(fs.readFileSync("public/manifest.json", "utf8"));
+            if (typeof manifest.version !== "string" || manifest.version.length === 0) process.exit(1);
+            process.stdout.write(manifest.version);
+          ')"
+          echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
+
       - name: Validate canonical JSONL
         run: node scripts/validate/canonical-jsonl.mjs
 
@@ -107,7 +119,7 @@ jobs:
           npm run test:mv3:package --
           --chrome="${{ steps.chrome.outputs.path }}"
           --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_1.0.0.zip"
+          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_${{ steps.manifest.outputs.version }}.zip"
 
       - name: Build minified release package
         env:
@@ -119,4 +131,4 @@ jobs:
           npm run test:mv3:package --
           --chrome="${{ steps.chrome.outputs.path }}"
           --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_1.0.0.zip"
+          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_${{ steps.manifest.outputs.version }}.zip"
