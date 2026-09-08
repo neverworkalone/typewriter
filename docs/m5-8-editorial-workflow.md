@@ -156,6 +156,20 @@ unused buffer          = B - D (recorded as deferred)
 new cumulative starts  = base starts + N
 ```
 
+Selection and processing are separate denominators. Let `P` be the number of
+processed starts:
+
+```text
+processed starts       = included + corrected + held + rejected
+deferred starts        = selected starts - processed starts
+```
+
+The metrics artifact keeps `selected_start_count` for the full selection scope
+and records `processed_start_count` when deferred candidates exist. The
+correction-rate and editor-time gate fields retain their historical
+`*_selected_start` names, but their denominators are `P`; deferred reserve
+capacity cannot dilute either gate.
+
 The buffer is declared before selection and is not part of the cumulative target.
 The stage validator rejects a count where the buffer is imported, where the
 selected count does not include it, or where actual held/rejected decisions
@@ -189,9 +203,10 @@ of candidates selected or the number of rows drafted.
 Every stage must pass all of the following:
 
 - every new sense and relation received human editorial review;
-- selected-start correction rate `≤ 50%`;
+- processed-start correction rate `≤ 50%` (the report field is
+  `correction_rate_of_selected`);
 - relation noise `≤ 25%` and below the reconstructed M5-3 baseline;
-- complete measured editor time `≤ 12 seconds/selected start`;
+- complete measured editor time `≤ 12 seconds/processed start`;
 - zero unmeasured timing passes;
 - independent audit complete with zero open blockers;
 - canonical integrity, deterministic SQLite, and M4 search/product regression;

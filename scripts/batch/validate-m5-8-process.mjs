@@ -43,7 +43,7 @@ export const DEFAULT_RELATION_DIFF_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-7-recalibration-relation-diff.json',
 );
-export const SOURCE_ARTIFACT_VALIDATION_VERSION = 'm5-8-source-artifacts-v1';
+const SOURCE_ARTIFACT_VALIDATION_VERSION = 'm5-8-source-artifacts-v1';
 
 const EXPECTED_LADDER = Object.freeze([
   { sequence: 1, target_net_start_increase: 100, cumulative_start_target: 528 },
@@ -357,7 +357,8 @@ async function readCanonicalSource(directory) {
 
 function stageMetricsFromArtifacts(metricsArtifact, verification) {
   const { decisions, relation_diff: relationDiff, timing, audit } = metricsArtifact.derived;
-  const selectedStartCount = metricsArtifact.derived.selection.selected_start_count;
+  const processedStartCount = metricsArtifact.derived.selection.processed_start_count
+    ?? metricsArtifact.derived.selection.selected_start_count;
   const totalEditorSeconds = timing.total_editor_seconds;
   return {
     correction_rate_of_selected: decisions.correction_rate_of_selected,
@@ -366,9 +367,9 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     measured_wall_clock_seconds: timing.measured_wall_clock_seconds,
     total_editor_seconds: totalEditorSeconds,
     measured_editor_seconds: timing.measured_editor_seconds,
-    editor_seconds_per_selected_start: totalEditorSeconds === null || selectedStartCount === 0
+    editor_seconds_per_selected_start: totalEditorSeconds === null || processedStartCount === 0
       ? null
-      : totalEditorSeconds / selectedStartCount,
+      : totalEditorSeconds / processedStartCount,
     timing_status: timing.status,
     unmeasured_timing_pass_count: timing.unmeasured_passes.length,
     audit_status: audit.status,
@@ -483,6 +484,8 @@ export async function loadExpansionStageSources(stage) {
     digests: actualDigests,
     inventory_revision: manifestArtifact.value.inventory_revision,
     selected_start_count: metricsArtifact.value.derived.selection.selected_start_count,
+    processed_start_count: metricsArtifact.value.derived.selection.processed_start_count
+      ?? metricsArtifact.value.derived.selection.selected_start_count,
     decisions: stageDecisionsFromArtifacts(metricsArtifact.value),
     imported_start_count: metricsArtifact.value.derived.canonical_import.imported_start_count,
     canonical_snapshot: canonicalSummary(canonical.records),
@@ -630,7 +633,6 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
   await validateExpansionStageInternal(
     previousStage,
     plan,
-    null,
     new Set([...visitedStageIds, previousPath]),
   );
 }
@@ -718,6 +720,16 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
     `${stage.stage_id} decisions must account for every selected start`,
     'DECISION_COUNT_MISMATCH',
   );
+  const processedStartCount = stage.decisions.included_start_count
+    + stage.decisions.corrected_start_count
+    + stage.decisions.held_start_count
+    + stage.decisions.rejected_start_count;
+  assertEqual(
+    processedStartCount,
+    sourceArtifacts.processed_start_count,
+    `${stage.stage_id} processed start count drifted from the manifest metrics`,
+    'SOURCE_DECISION_DRIFT',
+  );
   assertEqual(
     stage.actual.imported_start_count,
     stage.decisions.included_start_count + stage.decisions.corrected_start_count,
@@ -738,8 +750,8 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
   );
   assertEqual(
     stage.metrics.correction_rate_of_selected,
-    (stage.decisions.corrected_start_count / stage.target.selected_start_count),
-    `${stage.stage_id} correction rate is not derived from decisions`,
+    (stage.decisions.corrected_start_count / processedStartCount),
+    `${stage.stage_id} correction rate is not derived from processed decisions`,
     'METRIC_DRIFT',
   );
   if (stage.metrics.total_editor_seconds === null) {
@@ -752,8 +764,8 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
   } else {
     assertNear(
       stage.metrics.editor_seconds_per_selected_start,
-      stage.metrics.total_editor_seconds / stage.target.selected_start_count,
-      `${stage.stage_id} editor time per selected start is not derived from total editor time`,
+      stage.metrics.total_editor_seconds / processedStartCount,
+      `${stage.stage_id} editor time per processed start is not derived from total editor time`,
       'METRIC_DRIFT',
     );
   }
@@ -810,7 +822,6 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
 async function validateExpansionStageInternal(
   stage,
   plan,
-  sourceArtifacts = null,
   visitedStageIds = new Set(),
 ) {
   validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
@@ -826,18 +837,13 @@ async function validateExpansionStageInternal(
   const plannedStage = plannedStageIndex === -1 ? null : plan.ladder[plannedStageIndex];
   assertCondition(plannedStage, `stage ${String(stage.stage_id)} is not in the M5-8 ladder`, 'UNKNOWN_STAGE');
 
-  const loadedSources = sourceArtifacts ?? await loadExpansionStageSources(stage);
+  const loadedSources = await loadExpansionStageSources(stage);
   await validatePreviousStageReport(stage, plan, plannedStageIndex, nextVisitedStageIds);
   return validateExpansionStageValues(stage, plan, plannedStageIndex, loadedSources);
 }
 
-/**
- * Validate a stage after loading its source artifacts. The optional third
- * argument is only for a caller that has already received the validated
- * projection from loadExpansionStageSources; ordinary validation omits it.
- */
-export async function validateExpansionStage(stage, plan, sourceArtifacts = null) {
-  return validateExpansionStageInternal(stage, plan, sourceArtifacts);
+export async function validateExpansionStage(stage, plan) {
+  return validateExpansionStageInternal(stage, plan);
 }
 
 function canonicalSummary(recordInfos) {

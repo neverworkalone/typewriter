@@ -240,7 +240,11 @@ its values by hand. They additionally bind the report to the raw manifest,
 relation diff, canonical directory, and a small verification artifact through
 path and SHA-256 checks. An unused candidate-buffer slot is represented by a
 `deferred` manifest decision; it is not changed into a false `held` or
-`rejected` decision and does not enter the canonical import count.
+`rejected` decision and does not enter the canonical import count. The metrics
+artifact retains the full `selected_start_count`, adds `processed_start_count`
+when deferred rows exist, and uses `included + corrected + held + rejected`
+as the denominator for correction rate and editor time per start. This keeps an
+unused reserve from making a stage appear cheaper or less correction-heavy.
 
 The historical M5-3 artifact is intentionally marked `timing.status: "incomplete"`:
 its 603-second initial-review wall-clock interval is retained, while feedback,
