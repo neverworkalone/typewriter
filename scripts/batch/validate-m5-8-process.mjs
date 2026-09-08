@@ -74,6 +74,12 @@ const EXPECTED_REPAIR_RESUME = Object.freeze({
     previous_wave_id: 'm5-9a-wave-a-plus-50',
     requires_repair_authorization: false,
   },
+  rejoin_stage: {
+    stage_id: 'm5-8-stage-03-plus-500',
+    previous_stage_id: 'm5-9a-wave-b-plus-200',
+    required_previous_cumulative_start_target: 778,
+    requires_wave_b_pass: true,
+  },
 });
 
 const EXPECTED_CANONICAL_BASELINE = Object.freeze({
@@ -610,11 +616,20 @@ function validateLoadedStageSources(stage, sourceArtifacts) {
 function resolveStageContext(stage, plan) {
   const ladderIndex = plan.ladder.findIndex(({ stage_id: stageId }) => stageId === stage.stage_id);
   if (ladderIndex !== -1) {
+    const previousStageId = ladderIndex === 0 ? null : plan.ladder[ladderIndex - 1].stage_id;
+    const isRepairRejoin = stage.stage_id === plan.repair_resume.rejoin_stage.stage_id;
     return {
-      kind: 'ladder',
+      kind: isRepairRejoin ? 'ladder-rejoin' : 'ladder',
       contract: plan.ladder[ladderIndex],
       ladderIndex,
-      previousStageId: ladderIndex === 0 ? null : plan.ladder[ladderIndex - 1].stage_id,
+      previousStageId,
+      previousStageIds: previousStageId === null
+        ? []
+        : [
+          previousStageId,
+          ...(isRepairRejoin ? [plan.repair_resume.rejoin_stage.previous_stage_id] : []),
+        ],
+      repairRejoin: isRepairRejoin ? plan.repair_resume.rejoin_stage : undefined,
       baseStartCount: ladderIndex === 0
         ? plan.canonical_baseline.start_count
         : plan.ladder[ladderIndex - 1].cumulative_start_target,
@@ -631,6 +646,7 @@ function resolveStageContext(stage, plan) {
       contract: waveA,
       ladderIndex: parentStageIndex,
       previousStageId: waveA.previous_stage_id,
+      previousStageIds: [waveA.previous_stage_id],
       baseStartCount: plan.ladder[parentStageIndex - 1].cumulative_start_target,
     };
   }
@@ -640,6 +656,7 @@ function resolveStageContext(stage, plan) {
       contract: waveB,
       ladderIndex: parentStageIndex,
       previousStageId: waveB.previous_wave_id,
+      previousStageIds: [waveB.previous_wave_id],
       baseStartCount: waveA.cumulative_start_target,
     };
   }
@@ -686,10 +703,9 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
   );
   const previousStage = previousArtifact.value;
   validateSchema(previousStage, stageReportSchemaValidator, 'previous_stage', 'previous M5-8 stage report');
-  assertEqual(
-    previousStage.stage_id,
-    stageContext.previousStageId,
-    `${stage.stage_id} previous stage report does not match the ladder`,
+  assertCondition(
+    stageContext.previousStageIds.includes(previousStage.stage_id),
+    `${stage.stage_id} previous stage report does not match the allowed process chain`,
     'STAGE_CHAIN_MISMATCH',
   );
   if (stageContext.kind === 'repair-wave-a') {
@@ -750,6 +766,43 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
     assertCondition(
       !stage.input.repair_authorization,
       `${stage.stage_id} must not reuse repair authorization after Wave A`,
+      'UNEXPECTED_REPAIR_AUTHORIZATION',
+    );
+  } else if (stageContext.repairRejoin
+    && previousStage.stage_id === stageContext.repairRejoin.previous_stage_id) {
+    assertEqual(
+      previousStage.gate_status,
+      'pass',
+      `${stage.stage_id} requires a passed Wave B report before rejoining the ladder`,
+      'REPAIR_REJOIN_GATE_FAILURE',
+    );
+    assertEqual(
+      previousStage.decision,
+      'APPROVE BOUNDED',
+      `${stage.stage_id} cannot rejoin after an unapproved Wave B report`,
+      'REPAIR_REJOIN_GATE_FAILURE',
+    );
+    assertEqual(
+      previousStage.next_stage_authorized,
+      true,
+      `${stage.stage_id} requires Wave B to authorize ladder re-entry`,
+      'REPAIR_REJOIN_PROMOTION_MISMATCH',
+    );
+    assertEqual(
+      previousStage.target.cumulative_start_target,
+      stageContext.repairRejoin.required_previous_cumulative_start_target,
+      `${stage.stage_id} Wave B target does not complete the composite stage-2 target`,
+      'REPAIR_REJOIN_TARGET_MISMATCH',
+    );
+    assertEqual(
+      previousStage.actual.canonical_snapshot.start_count,
+      stageContext.repairRejoin.required_previous_cumulative_start_target,
+      `${stage.stage_id} Wave B output does not complete the composite stage-2 target`,
+      'REPAIR_REJOIN_TARGET_MISMATCH',
+    );
+    assertCondition(
+      !stage.input.repair_authorization,
+      `${stage.stage_id} must not carry repair authorization after Wave B`,
       'UNEXPECTED_REPAIR_AUTHORIZATION',
     );
   } else if (previousStage.gate_status === 'pass') {

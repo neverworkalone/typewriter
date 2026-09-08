@@ -186,7 +186,10 @@ external response.
 data/batches/m5-9a-repair-authorization.json binds that screen and the unchanged
 failed stage report by SHA-256. Its scope is deliberately limited to #96 Wave A:
 the first 50-start validation wave, 528 → 578. It does not authorize the remaining
-200 starts or Wave B. The executable check is npm run batch:repair:check.
+200 starts or Wave B. The expansion plan nevertheless records Wave B as the
+unambiguous +200 continuation needed to complete the composite 778 target; the
++500 ladder stage may rejoin through Wave B only after that wave passes and
+proves the 778 output. The executable check is npm run batch:repair:check.
 
 For future batches using the repaired timing contract, set
 measurement.timing.contract_version to m5-9a-v1. The timing recorder records the

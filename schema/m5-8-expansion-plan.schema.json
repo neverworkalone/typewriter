@@ -323,14 +323,16 @@
         "composite_net_start_increase",
         "composite_cumulative_start_target",
         "wave_a",
-        "wave_b"
+        "wave_b",
+        "rejoin_stage"
       ],
       "properties": {
         "parent_stage_id": { "const": "m5-8-stage-02-plus-250" },
         "composite_net_start_increase": { "const": 250 },
         "composite_cumulative_start_target": { "const": 778 },
         "wave_a": { "$ref": "#/$defs/repairWaveA" },
-        "wave_b": { "$ref": "#/$defs/repairWaveB" }
+        "wave_b": { "$ref": "#/$defs/repairWaveB" },
+        "rejoin_stage": { "$ref": "#/$defs/repairRejoinStage" }
       }
     },
     "ladder": {
@@ -399,6 +401,22 @@
         "cumulative_start_target": { "const": 778 },
         "previous_wave_id": { "const": "m5-9a-wave-a-plus-50" },
         "requires_repair_authorization": { "const": false }
+      }
+    },
+    "repairRejoinStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "previous_stage_id",
+        "required_previous_cumulative_start_target",
+        "requires_wave_b_pass"
+      ],
+      "properties": {
+        "stage_id": { "const": "m5-8-stage-03-plus-500" },
+        "previous_stage_id": { "const": "m5-9a-wave-b-plus-200" },
+        "required_previous_cumulative_start_target": { "const": 778 },
+        "requires_wave_b_pass": { "const": true }
       }
     }
   }

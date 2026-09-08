@@ -272,9 +272,260 @@ async function createRepairWaveStageFixture() {
       next_stage_created: true,
       next_stage_authorized: true,
     };
-    return { directory, relationDiffPath, stage };
+    return {
+      directory,
+      relationDiffPath,
+      stage,
+      canonicalRecords: canonical.records.map(({ record }) => record),
+      syntheticRecords,
+    };
   } catch (error) {
     await rm(directory, { recursive: true, force: true });
+    await rm(relationDiffPath, { force: true });
+    throw error;
+  }
+}
+
+function canonicalSnapshotFromRecords(records) {
+  return {
+    record_count: records.length,
+    start_count: records.filter((record) => record.role === 'start').length,
+    reference_only_count: records.filter((record) => record.role === 'reference-only').length,
+    sense_count: records.reduce((count, record) => count + record.senses.length, 0),
+    relation_count: records.reduce((count, record) => (
+      count + record.senses.reduce(
+        (senseCount, sense) => senseCount + (sense.relations ?? []).length,
+        0,
+      )
+    ), 0),
+    expression_count: records.filter((record) => record.record_type === 'expression').length,
+  };
+}
+
+function stageMetricsFromFixture(metrics, verification) {
+  const { decisions, relation_diff: relationDiff, timing, audit } = metrics.derived;
+  return {
+    correction_rate_of_selected: decisions.correction_rate_of_selected,
+    relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
+    total_wall_clock_seconds: timing.total_wall_clock_seconds,
+    measured_wall_clock_seconds: timing.measured_wall_clock_seconds,
+    total_editor_seconds: timing.total_editor_seconds,
+    measured_editor_seconds: timing.measured_editor_seconds,
+    editor_seconds_per_selected_start: timing.total_editor_seconds === null
+      ? null
+      : timing.total_editor_seconds / (
+        metrics.derived.selection.processed_start_count
+          ?? metrics.derived.selection.selected_start_count
+      ),
+    timing_status: timing.status,
+    unmeasured_timing_pass_count: timing.unmeasured_passes.length,
+    audit_status: audit.status,
+    audit_independent: audit.independent,
+    open_audit_blocker_count: audit.open_blocker_count,
+    human_editorial_review_complete: verification.human_editorial_review_complete,
+    canonical_integrity: verification.canonical_integrity,
+    deterministic_sqlite: verification.deterministic_sqlite,
+    search_product_regression: verification.search_product_regression,
+  };
+}
+
+async function createFollowOnStageFixture({
+  directory,
+  previousStage,
+  previousStagePath,
+  baseCanonicalRecords,
+  addedRecords,
+  stageId,
+  stageLabel,
+  targetNetStartIncrease,
+  cumulativeStartTarget,
+}) {
+  const sequence = repairWaveFixtureSequence += 1;
+  const stageDirectory = path.join(directory, stageLabel);
+  const relationDiffPath = path.resolve(
+    'data/batches',
+    `m5-9a-repair-chain-${process.pid}-${sequence}.json`,
+  );
+  try {
+    const canonicalDirectory = path.join(stageDirectory, 'canonical');
+    await mkdir(canonicalDirectory, { recursive: true });
+    const allCanonicalRecords = [...baseCanonicalRecords, ...addedRecords];
+    await writeFile(
+      path.join(canonicalDirectory, 'stage.jsonl'),
+      `${allCanonicalRecords.map((record) => JSON.stringify(record)).join('\n')}\n`,
+      'utf8',
+    );
+    const canonical = await readCanonicalRecords(canonicalDirectory);
+    const batchId = `m5-10-${stageLabel}-${process.pid}-${sequence}`;
+    const relationDiff = {
+      schema_version: '1',
+      batch_id: batchId,
+      before_count: 0,
+      after_count: 0,
+      events: [],
+      source_note: `Self-authored ${stageLabel} repair-chain validation fixture relation diff.`,
+    };
+    await writeFile(relationDiffPath, `${JSON.stringify(relationDiff, null, 2)}\n`, 'utf8');
+
+    const manifest = {
+      schema_version: '1',
+      batch_id: batchId,
+      inventory_id: 'm5-core-5k',
+      inventory_revision: 'm5-5',
+      generator: {
+        model_id: 'human-editorial-expansion',
+        tool_version: `typewriter-m5-9a-${stageLabel}-test-1`,
+        prompt_version: `m5-9a-${stageLabel}-test-v1`,
+      },
+      generated_at: '2026-09-08T10:00:00Z',
+      review: {
+        status: 'complete',
+        reviewer: `typewriter-m5-9a-${stageLabel}-test`,
+        completed_at: '2026-09-08T11:00:00Z',
+      },
+      measurement: {
+        schema_version: '1',
+        relation_diff: {
+          artifact: `data/batches/${path.basename(relationDiffPath)}`,
+          sha256: await sha256File(relationDiffPath),
+        },
+        timing: {
+          contract_version: 'm5-9a-v1',
+          status: 'complete',
+          passes: [
+            'target-preparation',
+            'initial-review',
+            'feedback-fixes',
+            'final-audit',
+            'held-rejected',
+          ].map((id, index) => ({
+            id,
+            status: 'complete',
+            started_at: `2026-09-08T10:0${index}:00Z`,
+            completed_at: `2026-09-08T10:0${index}:30Z`,
+            wall_clock_seconds: 30,
+            editor_seconds: 20,
+            session_id: `${stageLabel}-test-${index + 1}`,
+            recording_source: 'timing-recorder-v1',
+          })),
+        },
+        audit: {
+          status: 'complete',
+          independent: true,
+          findings: [],
+        },
+      },
+      records: [
+        ...addedRecords.map((record, index) => ({
+          source: 'inventory',
+          inventory_id: `${batchId}-inventory-${String(index + 1).padStart(3, '0')}`,
+          role: 'start',
+          decision: 'included',
+          canonical_id: record.id,
+          decision_note: `Self-authored ${stageLabel} repair-chain validation fixture decision.`,
+        })),
+        {
+          source: 'inventory',
+          inventory_id: `${batchId}-inventory-${String(addedRecords.length + 1).padStart(3, '0')}`,
+          role: 'start',
+          decision: 'deferred',
+          decision_note: `Self-authored ${stageLabel} repair-chain validation fixture reserve decision.`,
+        },
+        {
+          source: 'inventory',
+          inventory_id: `${batchId}-inventory-${String(addedRecords.length + 2).padStart(3, '0')}`,
+          role: 'start',
+          decision: 'deferred',
+          decision_note: `Self-authored ${stageLabel} repair-chain validation fixture reserve decision.`,
+        },
+      ],
+    };
+    const manifestPath = path.join(stageDirectory, 'manifest.json');
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    const metrics = createMetricsArtifact({
+      manifest,
+      relationDiff,
+      canonicalRecords: canonical.records,
+      source: {
+        manifest: manifestPath,
+        relation_diff: relationDiffPath,
+        canonical_directory: canonicalDirectory,
+      },
+    });
+    const metricsPath = path.join(stageDirectory, 'metrics.json');
+    await writeFile(metricsPath, `${JSON.stringify(metrics, null, 2)}\n`, 'utf8');
+    const verification = {
+      schema_version: '1',
+      human_editorial_review_complete: true,
+      canonical_integrity: true,
+      deterministic_sqlite: true,
+      search_product_regression: true,
+    };
+    const verificationPath = path.join(stageDirectory, 'verification.json');
+    await writeFile(verificationPath, `${JSON.stringify(verification, null, 2)}\n`, 'utf8');
+    const stage = {
+      schema_version: '1',
+      stage_id: stageId,
+      input: {
+        inventory_revision: 'm5-5',
+        canonical_snapshot: structuredClone(previousStage.actual.canonical_snapshot),
+        previous_stage_report: {
+          path: previousStagePath,
+          sha256: await sha256File(previousStagePath),
+        },
+      },
+      target: {
+        net_start_increase: targetNetStartIncrease,
+        cumulative_start_target: cumulativeStartTarget,
+        candidate_buffer: 2,
+        selected_start_count: targetNetStartIncrease + 2,
+      },
+      decisions: {
+        included_start_count: targetNetStartIncrease,
+        corrected_start_count: 0,
+        held_start_count: 0,
+        rejected_start_count: 0,
+        deferred_start_count: 2,
+      },
+      buffer: {
+        available_count: 2,
+        used_count: 0,
+        unused_count: 2,
+      },
+      actual: {
+        canonical_snapshot: canonicalSnapshotFromRecords(
+          canonical.records.map(({ record }) => record),
+        ),
+        imported_start_count: targetNetStartIncrease,
+      },
+      metrics: stageMetricsFromFixture(metrics, verification),
+      source: {
+        manifest: manifestPath,
+        manifest_sha256: await sha256File(manifestPath),
+        metrics: metricsPath,
+        metrics_sha256: await sha256File(metricsPath),
+        relation_diff: relationDiffPath,
+        relation_diff_sha256: await sha256File(relationDiffPath),
+        canonical_directory: canonicalDirectory,
+        canonical_sha256: await hashCanonicalDirectory(canonicalDirectory),
+        verification: verificationPath,
+        verification_sha256: await sha256File(verificationPath),
+      },
+      gate_status: 'pass',
+      decision: 'APPROVE BOUNDED',
+      next_stage_created: true,
+      next_stage_authorized: true,
+    };
+    const stagePath = path.join(stageDirectory, 'stage.json');
+    await writeFile(stagePath, `${JSON.stringify(stage, null, 2)}\n`, 'utf8');
+    return {
+      stage,
+      stagePath,
+      relationDiffPath,
+      canonicalRecords: allCanonicalRecords,
+    };
+  } catch (error) {
+    await rm(stageDirectory, { recursive: true, force: true });
     await rm(relationDiffPath, { force: true });
     throw error;
   }
@@ -481,6 +732,85 @@ test('Wave A repair authorization rejects missing, retargeted, and mismatched st
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
     await rm(fixture.relationDiffPath, { force: true });
+  }
+});
+
+test('repair waves rejoin stage 3 only after a passed Wave B', async () => {
+  const fixture = await createRepairWaveStageFixture();
+  const relationDiffPaths = [fixture.relationDiffPath];
+  try {
+    const plan = await readJson('data/batches/m5-8-expansion-plan.json');
+    const waveAStagePath = path.join(fixture.directory, 'wave-a-stage.json');
+    await writeFile(waveAStagePath, `${JSON.stringify(fixture.stage, null, 2)}\n`, 'utf8');
+
+    const waveB = await createFollowOnStageFixture({
+      directory: fixture.directory,
+      previousStage: fixture.stage,
+      previousStagePath: waveAStagePath,
+      baseCanonicalRecords: fixture.canonicalRecords,
+      addedRecords: Array.from({ length: 200 }, (_, index) => (
+        syntheticWaveRecord(`w${9051 + index}`, index + 50)
+      )),
+      stageId: 'm5-9a-wave-b-plus-200',
+      stageLabel: 'wave-b',
+      targetNetStartIncrease: 200,
+      cumulativeStartTarget: 778,
+    });
+    relationDiffPaths.push(waveB.relationDiffPath);
+
+    const stage3 = await createFollowOnStageFixture({
+      directory: fixture.directory,
+      previousStage: waveB.stage,
+      previousStagePath: waveB.stagePath,
+      baseCanonicalRecords: waveB.canonicalRecords,
+      addedRecords: Array.from({ length: 500 }, (_, index) => (
+        syntheticWaveRecord(`w${9251 + index}`, index + 250)
+      )),
+      stageId: 'm5-8-stage-03-plus-500',
+      stageLabel: 'stage-3',
+      targetNetStartIncrease: 500,
+      cumulativeStartTarget: 1278,
+    });
+    relationDiffPaths.push(stage3.relationDiffPath);
+
+    const result = await validateExpansionStage(stage3.stage, plan);
+    assert.deepEqual(result, {
+      stage_id: 'm5-8-stage-03-plus-500',
+      imported_start_count: 500,
+      candidate_buffer: 2,
+      gate_status: 'pass',
+    });
+
+    const waveAOnly = structuredClone(stage3.stage);
+    waveAOnly.input.previous_stage_report = {
+      path: waveAStagePath,
+      sha256: await sha256File(waveAStagePath),
+    };
+    await assert.rejects(
+      validateExpansionStage(waveAOnly, plan),
+      (error) => error.code === 'STAGE_CHAIN_MISMATCH',
+    );
+
+    const heldWaveB = structuredClone(waveB.stage);
+    heldWaveB.gate_status = 'fail';
+    heldWaveB.decision = 'HOLD PROCESS';
+    heldWaveB.next_stage_authorized = false;
+    const heldWaveBPath = path.join(fixture.directory, 'wave-b-held-stage.json');
+    await writeFile(heldWaveBPath, `${JSON.stringify(heldWaveB, null, 2)}\n`, 'utf8');
+    const blockedStage3 = structuredClone(stage3.stage);
+    blockedStage3.input.previous_stage_report = {
+      path: heldWaveBPath,
+      sha256: await sha256File(heldWaveBPath),
+    };
+    await assert.rejects(
+      validateExpansionStage(blockedStage3, plan),
+      (error) => error.code === 'REPAIR_REJOIN_GATE_FAILURE',
+    );
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+    for (const relationDiffPath of relationDiffPaths) {
+      await rm(relationDiffPath, { force: true });
+    }
   }
 });
 

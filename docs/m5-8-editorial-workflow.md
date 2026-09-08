@@ -180,7 +180,11 @@ The repair authorization permits only #96's first 50-start validation wave
 (528 → 578). It does not authorize the remaining 200 starts or Wave B. A later
 stage that follows a failed report must reference both that report and a valid
 digest-bound repair authorization; a passed stage still requires the ordinary
-passed-report chain.
+passed-report chain. The expansion plan models the remaining repair path
+explicitly: a passed Wave B (578 → 778) may be used as the previous report for
+the +500 stage, but only after Wave B itself passes and its output proves the
+composite stage-2 target of 778. The ordinary stage-2 → stage-3 chain remains
+valid for a non-repair run.
 
 Run the repair check with:
 
