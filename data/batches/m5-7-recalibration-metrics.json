@@ -11,46 +11,46 @@
       "selected_start_count": 40
     },
     "decisions": {
-      "included": 28,
-      "corrected": 10,
+      "included": 23,
+      "corrected": 15,
       "held": 1,
       "rejected": 1,
       "importable_start_count": 38,
-      "correction_rate_of_selected": 0.25,
-      "correction_rate_of_importable": 0.2631578947368421,
+      "correction_rate_of_selected": 0.375,
+      "correction_rate_of_importable": 0.39473684210526316,
       "held_rate": 0.025,
       "rejected_rate": 0.025,
       "held_or_rejected_rate": 0.05,
-      "sense_field_correction_count": 5,
+      "sense_field_correction_count": 10,
       "relation_field_correction_count": 5
     },
     "canonical_import": {
       "imported_start_count": 38,
       "imported_reference_only_count": 0,
       "imported_record_count": 38,
-      "imported_sense_count": 38,
-      "imported_relation_count": 9,
+      "imported_sense_count": 43,
+      "imported_relation_count": 7,
       "imported_expression_count": 3,
       "relation_type_counts": {
         "near": 2,
         "scene": 1,
-        "sensory": 1,
-        "mood": 5
+        "mood": 4
       }
     },
     "relation_diff": {
       "before_count": 10,
-      "after_count": 9,
+      "after_count": 7,
       "added_count": 0,
-      "removed_count": 1,
+      "removed_count": 3,
       "retyped_count": 0,
       "retargeted_count": 0,
       "changed_count": 0,
-      "net_removed_count": 1,
-      "noise_event_count": 1,
-      "noise_rate_of_before": 0.1,
+      "net_removed_count": 3,
+      "noise_event_count": 3,
+      "noise_rate_of_before": 0.3,
       "classification_counts": {
-        "broad-common-category": 1
+        "broad-common-category": 2,
+        "incidental-co-occurrence": 1
       }
     },
     "timing": {
@@ -83,19 +83,19 @@
         },
         "post-review-audit": {
           "status": "complete",
-          "wall_clock_seconds": 36,
-          "editor_seconds": 20
+          "wall_clock_seconds": 16,
+          "editor_seconds": 16
         },
         "post-review-fixes": {
           "status": "complete",
-          "wall_clock_seconds": 45,
-          "editor_seconds": 30
+          "wall_clock_seconds": 344,
+          "editor_seconds": 344
         }
       },
-      "total_wall_clock_seconds": 678,
-      "total_editor_seconds": 472,
-      "measured_wall_clock_seconds": 678,
-      "measured_editor_seconds": 472,
+      "total_wall_clock_seconds": 957,
+      "total_editor_seconds": 782,
+      "measured_wall_clock_seconds": 957,
+      "measured_editor_seconds": 782,
       "unmeasured_passes": []
     },
     "audit": {

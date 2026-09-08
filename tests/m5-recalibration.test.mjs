@@ -155,7 +155,7 @@ test('M5-5 recalibration records and reference closure are searchable', async ()
   }
 });
 
-test('M5-7 new 40-start batch reproduces the fixed expansion gate', async () => {
+test('M5-7 new 40-start batch reproduces the updated expansion gate result', async () => {
   const [manifest, relationDiff, metrics, canonicalResult, inventoryResult, preImportInventory] = await Promise.all([
     readJson('m5-7-recalibration.json'),
     readJson('m5-7-recalibration-relation-diff.json'),
@@ -185,13 +185,13 @@ test('M5-7 new 40-start batch reproduces the fixed expansion gate', async () => 
         ).length,
       ]),
     ),
-    { included: 28, corrected: 10, held: 1, rejected: 1 },
+    { included: 23, corrected: 15, held: 1, rejected: 1 },
   );
   assert.equal(metrics.derived.selection.selected_start_count, 40);
   assert.equal(metrics.derived.canonical_import.imported_start_count, 38);
   assert.equal(metrics.derived.canonical_import.imported_reference_only_count, 0);
-  assert.equal(metrics.derived.canonical_import.imported_sense_count, 38);
-  assert.equal(metrics.derived.canonical_import.imported_relation_count, 9);
+  assert.equal(metrics.derived.canonical_import.imported_sense_count, 43);
+  assert.equal(metrics.derived.canonical_import.imported_relation_count, 7);
   assert.equal(metrics.derived.canonical_import.imported_expression_count, 3);
 
   assert.deepEqual(
@@ -202,15 +202,21 @@ test('M5-7 new 40-start batch reproduces the fixed expansion gate', async () => 
       noise: metrics.derived.relation_diff.noise_event_count,
       noise_rate: metrics.derived.relation_diff.noise_rate_of_before,
     },
-    { before: 10, after: 9, removed: 1, noise: 1, noise_rate: 0.1 },
+    { before: 10, after: 7, removed: 3, noise: 3, noise_rate: 0.3 },
   );
   assert.deepEqual(metrics.derived.relation_diff.classification_counts, {
-    'broad-common-category': 1,
+    'broad-common-category': 2,
+    'incidental-co-occurrence': 1,
+  });
+  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {
+    mood: 4,
+    near: 2,
+    scene: 1,
   });
 
   assert.equal(metrics.derived.timing.status, 'complete');
-  assert.equal(metrics.derived.timing.total_wall_clock_seconds, 678);
-  assert.equal(metrics.derived.timing.total_editor_seconds, 472);
+  assert.equal(metrics.derived.timing.total_wall_clock_seconds, 957);
+  assert.equal(metrics.derived.timing.total_editor_seconds, 782);
   assert.deepEqual(metrics.derived.timing.unmeasured_passes, []);
   assert.deepEqual(
     Object.keys(metrics.derived.timing.passes).sort(),
@@ -224,7 +230,9 @@ test('M5-7 new 40-start batch reproduces the fixed expansion gate', async () => 
       'target-preparation',
     ],
   );
-  assert.ok(metrics.derived.timing.total_editor_seconds / 40 <= 12);
+  assert.ok(metrics.derived.timing.total_editor_seconds / 40 > 12);
+  assert.equal(metrics.derived.decisions.correction_rate_of_selected, 0.375);
+  assert.ok(metrics.derived.relation_diff.noise_rate_of_before > 0.25);
   assert.equal(metrics.derived.audit.independent, true);
   assert.equal(metrics.derived.audit.open_blocker_count, 0);
 
@@ -278,6 +286,11 @@ test('M5-7 imported starts and expressions are searchable while held rows stay o
       assert.deepEqual(findRecordsByExactTerm(database, '눈에 밟히다').map(({ id }) => id), ['w428']);
       assert.deepEqual(findRecordsByExactTerm(database, '말문이 막히다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '손을 놓다'), []);
+      assert.equal(getRecord(database, 'w405').senses.length, 2);
+      assert.deepEqual(getRecord(database, 'w406').senses.map(({ pos }) => pos), ['verb']);
+      assert.equal(getRecord(database, 'w410').senses.length, 3);
+      assert.equal(getRecord(database, 'w420').senses.length, 2);
+      assert.equal(getRecord(database, 'w421').senses.length, 2);
       assert.equal(getRecord(database, 'w394').record_type, 'expression');
       assert.equal(getRecord(database, 'w395').senses[0].relations[0].target, 'w018');
       assert.deepEqual(getRecord(database, 'w400').senses[0].relations, []);

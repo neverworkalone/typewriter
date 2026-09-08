@@ -181,17 +181,19 @@ the process backlog is repaired and re-audited.
 
 M5-7 added 36 Typewriter-authored candidates to the four remaining unreviewed
 rows and selected 40 new starts across all seven axes. It imported 38 starts,
-held one expression, and rejected one expression after complete review. The
-selection, source-bound relation diff, measured follow-up passes, and fixed-gate
-decision are recorded in
+held one expression, and rejected one expression after complete review. A PR
+follow-up re-audited all 38 imported records, corrected five sense/POS issues,
+and removed two additional relation-noise candidates. The selection, source-
+bound relation diff, measured follow-up passes, and fixed-gate decision are
+recorded in
 [`docs/m5-7-expansion-report.md`](m5-7-expansion-report.md).
 
 The post-import inventory is revision `m5-5`: 428 current starts, 42 current
-reference-only records, and no remaining candidates. The fixed gate passes with
-10% relation noise, 25% selected-start correction, 11.8 editor seconds per
-selected start, zero unmeasured passes, and zero independent-audit blockers.
-The result is `APPROVE BOUNDED`; this is not a 5K bulk-generation or M5-complete
-decision.
+reference-only records, and no remaining candidates. After the re-audit it has
+557 senses and 449 relations. The fixed gate is `HOLD PROCESS`: relation noise
+is 30%, measured editor time is 19.55 seconds per selected start, and both
+exceed their unchanged ceilings. This is not a 5K bulk-generation or
+M5-complete decision.
 
 ## Validation commands
 

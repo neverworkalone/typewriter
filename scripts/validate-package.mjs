@@ -42,8 +42,8 @@ const EXPECTED_METADATA = Object.freeze({
   reference_only_count: '42',
   candidate_count: '428',
   search_form_count: '546',
-  sense_count: '552',
-  relation_count: '451',
+  sense_count: '557',
+  relation_count: '449',
   expression_count: '23',
 });
 

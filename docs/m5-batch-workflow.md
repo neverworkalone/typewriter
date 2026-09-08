@@ -266,8 +266,9 @@ revision-`m5-4` selection inventory is preserved as
 `data/batches/m5-7-preimport-inventory.json`; the final inventory advances to
 revision `m5-5` after only the 38 included/corrected records are promoted.
 The batch manifest, relation diff, and derived metrics report all seven timing
-passes, including measured post-review audit and fixes. Its fixed-gate result is
-documented in [`m5-7-expansion-report.md`](m5-7-expansion-report.md).
+passes, including a measured re-audit and correction pass after PR feedback.
+Its fixed-gate result is `HOLD PROCESS` and is documented in
+[`m5-7-expansion-report.md`](m5-7-expansion-report.md).
 
 The pre-defined expansion decision is documented in
 [`m5-expansion-gate.md`](m5-expansion-gate.md). A later calibration must apply that

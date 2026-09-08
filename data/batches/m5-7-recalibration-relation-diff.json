@@ -2,7 +2,7 @@
   "schema_version": "1",
   "batch_id": "m5-7-recalibration-20260907",
   "before_count": 10,
-  "after_count": 9,
+  "after_count": 7,
   "events": [
     {
       "event_id": "m5-7-recalibration-20260907-event-0001",
@@ -15,7 +15,31 @@
         "type": "mood"
       },
       "error_category": "broad-common-category"
+    },
+    {
+      "event_id": "m5-7-recalibration-20260907-event-0002",
+      "relation_id": "m5-7-w393-s1-r1",
+      "operation": "remove",
+      "source_sense": "w393-s1",
+      "before": {
+        "target": "w118",
+        "target_sense": "w118-s1",
+        "type": "sensory"
+      },
+      "error_category": "incidental-co-occurrence"
+    },
+    {
+      "event_id": "m5-7-recalibration-20260907-event-0003",
+      "relation_id": "m5-7-w398-s1-r1",
+      "operation": "remove",
+      "source_sense": "w398-s1",
+      "before": {
+        "target": "w031",
+        "target_sense": "w031-s1",
+        "type": "mood"
+      },
+      "error_category": "broad-common-category"
     }
   ],
-  "source_note": "Reviewed relation snapshots for the new 40-start batch; raw drafts remain outside the repository."
+  "source_note": "Re-audited the reviewed relation snapshot after PR feedback; raw drafts remain outside the repository."
 }

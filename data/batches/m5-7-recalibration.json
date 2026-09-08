@@ -12,13 +12,13 @@
   "review": {
     "status": "complete",
     "reviewer": "typewriter-independent-expansion-audit",
-    "completed_at": "2026-09-07T15:32:00Z"
+    "completed_at": "2026-09-08T01:44:56Z"
   },
   "measurement": {
     "schema_version": "1",
     "relation_diff": {
       "artifact": "data/batches/m5-7-recalibration-relation-diff.json",
-      "sha256": "431d14b8be6caabbea192acd6bc244d31c6dd683a7a00d6ce495f20588727d2a"
+      "sha256": "c91d8332935b7ea1d972c13d30f5dad8ed13e5976af13c2a34e941e6cf6a62c9"
     },
     "timing": {
       "status": "complete",
@@ -71,20 +71,20 @@
         {
           "id": "post-review-audit",
           "status": "complete",
-          "started_at": "2026-09-07T15:30:00Z",
-          "completed_at": "2026-09-07T15:30:36Z",
-          "wall_clock_seconds": 36,
-          "editor_seconds": 20,
-          "note": "리뷰 후 확인 요청을 반영한 canonical·relation diff·count를 후속 감사했다."
+          "started_at": "2026-09-08T01:38:56Z",
+          "completed_at": "2026-09-08T01:39:12Z",
+          "wall_clock_seconds": 16,
+          "editor_seconds": 16,
+          "note": "PR feedback 이후 신규 38개 canonical record를 전수 점검하고 다섯 개 sense/POS 보정과 세 개 relation noise 후보를 확인했다."
         },
         {
           "id": "post-review-fixes",
           "status": "complete",
-          "started_at": "2026-09-07T15:30:36Z",
-          "completed_at": "2026-09-07T15:31:21Z",
-          "wall_clock_seconds": 45,
-          "editor_seconds": 30,
-          "note": "후속 검토에서 확인된 note와 relation admission 기록을 실제 수정 시간으로 반영했다."
+          "started_at": "2026-09-08T01:39:12Z",
+          "completed_at": "2026-09-08T01:44:56Z",
+          "wall_clock_seconds": 344,
+          "editor_seconds": 344,
+          "note": "PR feedback에서 확인된 다섯 개 canonical sense/POS 오류와 두 개 추가 relation noise를 실제 수정 시간으로 기록했으며 이전 측정값을 backfill하지 않았다."
         }
       ]
     },
@@ -97,14 +97,14 @@
           "category": "relation-noise",
           "severity": "warning",
           "status": "resolved",
-          "note": "불쾌감에 붙은 broad-common-category 후보를 admission 단계에서 제외해 1/10 noise event로 기록했다."
+          "note": "단추의 일반적인 손 조작, 고마움과 다정함의 broad category, 불쾌감과 분노의 broad category를 admission에서 제외해 3/10 noise events로 기록했다."
         },
         {
           "id": "m5-7-sense-boundary-review",
           "category": "sense",
           "severity": "warning",
           "status": "resolved",
-          "note": "표현 4개와 감정·감각 표제어의 source sense 경계를 독립적으로 확인했다."
+          "note": "신규 38개 전체를 재감사하고, 섬세하다·은은하다·내려앉다·되돌아가다의 물리·비유·감각 쓰임을 분리했으며 서걱하다의 source sense POS를 verb로 교정했다."
         },
         {
           "id": "m5-7-direct-replacement-review",
@@ -138,12 +138,12 @@
     {"source":"inventory","inventory_id":"m5-108","role":"start","decision":"included","decision_note":"담대하다의 두려움 앞 태도를 확인해 포함했다.","canonical_id":"w402"},
     {"source":"inventory","inventory_id":"m5-109","role":"start","decision":"included","decision_note":"소심하다의 위축되는 태도를 확인해 포함했다.","canonical_id":"w403"},
     {"source":"inventory","inventory_id":"m5-110","role":"start","decision":"included","decision_note":"거침없다의 이동과 태도 결을 확인해 포함했다.","canonical_id":"w404"},
-    {"source":"inventory","inventory_id":"m5-111","role":"start","decision":"included","decision_note":"섬세하다의 차이를 살피는 품질을 확인해 포함했다.","canonical_id":"w405"},
-    {"source":"inventory","inventory_id":"m5-112","role":"start","decision":"included","decision_note":"서걱하다의 소리·촉감 이미지를 확인해 포함했다.","canonical_id":"w406"},
+    {"source":"inventory","inventory_id":"m5-111","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"섬세하다의 물리적 성질과 세밀한 태도를 별도 sense로 나눠 포함했다.","canonical_id":"w405"},
+    {"source":"inventory","inventory_id":"m5-112","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"서걱하다를 소리를 내는 동작의 verb sense로 바로잡아 포함했다.","canonical_id":"w406"},
     {"source":"inventory","inventory_id":"m5-113","role":"start","decision":"included","decision_note":"보드랍다의 촉감 sense를 확인해 포함했다.","canonical_id":"w407"},
     {"source":"inventory","inventory_id":"m5-114","role":"start","decision":"included","decision_note":"알싸하다의 맛·냄새 감각을 확인해 포함했다.","canonical_id":"w408"},
     {"source":"inventory","inventory_id":"m5-115","role":"start","decision":"included","decision_note":"눅진하다의 습기와 무게가 겹친 촉감을 확인해 포함했다.","canonical_id":"w409"},
-    {"source":"inventory","inventory_id":"m5-116","role":"start","decision":"included","decision_note":"은은하다의 약하지만 오래 남는 감각을 확인해 포함했다.","canonical_id":"w410"},
+    {"source":"inventory","inventory_id":"m5-116","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"은은하다의 빛·소리·향 쓰임을 별도 sense로 나눠 포함했다.","canonical_id":"w410"},
     {"source":"inventory","inventory_id":"m5-117","role":"start","decision":"included","decision_note":"나루의 이동 경계 장면을 확인해 포함했다.","canonical_id":"w411"},
     {"source":"inventory","inventory_id":"m5-118","role":"start","decision":"included","decision_note":"둔치의 강 가장자리 장면을 확인해 포함했다.","canonical_id":"w412"},
     {"source":"inventory","inventory_id":"m5-119","role":"start","decision":"included","decision_note":"고샅의 생활 공간 장면을 확인해 포함했다.","canonical_id":"w413"},
@@ -153,8 +153,8 @@
     {"source":"inventory","inventory_id":"m5-123","role":"start","decision":"included","decision_note":"돌진하다의 방향과 속도를 확인해 포함했다.","canonical_id":"w417"},
     {"source":"inventory","inventory_id":"m5-124","role":"start","decision":"included","decision_note":"비틀거리다의 중심 상실 행동을 확인해 포함했다.","canonical_id":"w418"},
     {"source":"inventory","inventory_id":"m5-125","role":"start","decision":"included","decision_note":"주춤하다의 기세 후퇴를 확인해 포함했다.","canonical_id":"w419"},
-    {"source":"inventory","inventory_id":"m5-126","role":"start","decision":"included","decision_note":"내려앉다의 몸과 기세 변화 범위를 확인해 포함했다.","canonical_id":"w420"},
-    {"source":"inventory","inventory_id":"m5-127","role":"start","decision":"included","decision_note":"되돌아가다의 방향 전환 행동을 확인해 포함했다.","canonical_id":"w421"},
+    {"source":"inventory","inventory_id":"m5-126","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"내려앉다의 물리적 하강과 비유적 기세 하강을 별도 sense로 나눠 포함했다.","canonical_id":"w420"},
+    {"source":"inventory","inventory_id":"m5-127","role":"start","decision":"corrected","corrected_fields":["senses"],"decision_note":"되돌아가다의 실제 방향 회귀와 이전 상태 복귀를 별도 sense로 나눠 포함했다.","canonical_id":"w421"},
     {"source":"inventory","inventory_id":"m5-128","role":"start","decision":"included","decision_note":"호롱불의 작은 불빛 장면을 확인해 포함했다.","canonical_id":"w422"},
     {"source":"inventory","inventory_id":"m5-129","role":"start","decision":"included","decision_note":"대야의 낮은 생활 사물 이미지를 확인해 포함했다.","canonical_id":"w423"},
     {"source":"inventory","inventory_id":"m5-130","role":"start","decision":"included","decision_note":"주전자의 손동작과 김 장면을 확인해 포함했다.","canonical_id":"w424"},

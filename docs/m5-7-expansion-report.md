@@ -1,4 +1,4 @@
-# M5-7 new 40-start recalibration and expansion gate
+# M5-7 new 40-start recalibration and expansion gate re-audit
 
 Issue: #89<br>
 Batch: `m5-7-recalibration-20260907`<br>
@@ -20,49 +20,62 @@ start from M5-3 or M5-5. The selection covered the seven writer-facing axes:
 | Selected starts | 6 | 6 | 5 | 6 | 6 | 6 | 5 |
 
 Every selected sense, expression, and relation candidate received an editorial
-decision. Ten records were corrected, 28 included without correction, one held,
-and one rejected. Only the 38 included/corrected records were imported as
+decision. Fifteen records were corrected, 23 included without correction, one
+held, and one rejected. Only the 38 included/corrected records were imported as
 `w391`–`w428`; the two excluded expression targets remain held in the seed and
 have no canonical IDs. No new reference-only closure was necessary because all
 admitted relations target existing canonical records.
 
+The PR review re-audited all 38 imported records. `섬세하다` was split into
+physical and attitudinal senses, `은은하다` into light/sound/scent senses,
+`내려앉다` into physical and figurative senses, and `되돌아가다` into physical
+return and prior-state return senses. `서걱하다` was corrected from adjective to
+verb. These five decisions are represented as canonical changes and manifest
+`corrected` decisions, rather than as a narrow one-example fix.
+
 | Decision | Count | Rate of selected starts |
 | --- | ---: | ---: |
-| `included` | 28 | 70.00% |
-| `corrected` | 10 | 25.00% |
+| `included` | 23 | 57.50% |
+| `corrected` | 15 | 37.50% |
 | `held` | 1 | 2.50% |
 | `rejected` | 1 | 2.50% |
 | Importable starts | 38 | 95.00% |
 
-The import contains 38 senses, nine relations, and three expression records.
+The import contains 43 senses, seven relations, and three expression records.
 Zero-relation results remain valid; most new records intentionally have no
 relation because no additional writer-facing edge survived admission.
 
 ## Relation quality
 
 The temporary relation snapshot contained ten candidates and the reviewed final
-snapshot contains nine. One `불쾌감 → 분노` candidate was omitted as
-`broad-common-category`; the event is recorded in the relation diff and is not
-hidden in a rewritten canonical row.
+snapshot contains seven. The `단추 → 손끝` candidate was omitted as
+`incidental-co-occurrence`, `고마움 → 다정하다` as
+`broad-common-category`, and `불쾌감 → 분노` as
+`broad-common-category`; all three events are recorded in the relation diff and
+are not hidden in rewritten canonical rows.
 
 | Measure | Result |
 | --- | ---: |
 | Before relation candidates | 10 |
-| Final relations | 9 |
-| Removed relation events | 1 |
-| Classified relation noise | 1/10 = 10.00% |
+| Final relations | 7 |
+| Removed relation events | 3 |
+| Classified relation noise | 3/10 = 30.00% |
 | M5-3 reconstructed baseline | 51/139 = 36.69% |
 
-The relation-noise result is below both the unchanged 25% gate and the M5-3
-baseline. Relation types in the final import are two `near`, one `scene`, one
-`sensory`, and five `mood` edges. No relation quota or automatic semantic
-approval was used.
+The re-audit shows that the relation-noise result is above the unchanged 25%
+ceiling, even though it remains below the M5-3 baseline. Relation types in the
+final import are two `near`, one `scene`, and four `mood` edges. No relation
+quota or automatic semantic approval was used.
 
 ## Review cost
 
-All five required passes and both follow-up passes were measured. The editor-time
-total is 472 seconds, or `472 / 40 = 11.8` seconds per selected start. Wall-clock
-time is retained separately as 678 seconds. There are no unmeasured passes.
+All five required passes and both follow-up passes are measured. The original
+post-review timestamps were discarded because they were written after the
+commit that first introduced them and therefore could not be evidence for that
+commit. The re-audit and correction work below was measured after the review
+feedback arrived and before this corrective commit. The revised editor-time
+total is 782 seconds, or `782 / 40 = 19.55` seconds per selected start. Wall-clock
+time is retained separately as 957 seconds. There are no unmeasured passes.
 
 | Pass | Wall-clock seconds | Editor seconds |
 | --- | ---: | ---: |
@@ -71,11 +84,12 @@ time is retained separately as 678 seconds. There are no unmeasured passes.
 | Feedback fixes | 105 | 80 |
 | Final audit | 120 | 60 |
 | Held/rejected | 38 | 24 |
-| Post-review audit | 36 | 20 |
-| Post-review fixes | 45 | 30 |
-| **Total** | **678** | **472** |
+| Post-review audit | 16 | 16 |
+| Post-review fixes | 344 | 344 |
+| **Total** | **957** | **782** |
 
-The manifest records the actual follow-up passes separately. The metrics
+The manifest records the actual follow-up passes separately and notes that the
+old post-review measurements were replaced rather than backfilled. The metrics
 artifact derives these totals from the manifest and refuses source drift when
 the relation-diff path, digest, canonical import, or derived values are changed.
 
@@ -87,15 +101,17 @@ changed.
 | Criterion | Result |
 | --- | --- |
 | Independent audit complete, open blockers 0 | PASS |
-| Relation noise ≤ 25% and below M5-3 | PASS: 10.00% |
-| Selected-start correction ≤ 50% | PASS: 25.00% |
-| Complete measured cost, editor time ≤ 12 sec/start | PASS: 11.8 sec/start; all passes measured |
+| Relation noise ≤ 25% and below M5-3 | FAIL: 30.00% |
+| Selected-start correction ≤ 50% | PASS: 37.50% |
+| Complete measured cost, editor time ≤ 12 sec/start | FAIL: 19.55 sec/start; all passes measured |
 | Canonical integrity and deterministic build | PASS |
 | M4 search/product regression | PASS |
 
-Decision: **APPROVE BOUNDED**. This permits selecting the size and scope of one
-bounded expansion batch after this result; it does not authorize 5K bulk
-generation, change the gate, declare M5 complete, or start M6.
+Decision: **HOLD PROCESS**. The re-audit exposed relation-admission noise above
+the fixed ceiling and a measured review cost above the fixed ceiling. Repair the
+relation admission and review-cost process, then re-audit before another bounded
+expansion; this does not authorize 5K bulk generation, change the gate, declare
+M5 complete, or start M6.
 
 ## Post-import snapshot
 
@@ -104,8 +120,8 @@ generation, change the gate, declare M5 complete, or start M6.
 | Canonical records | 470 |
 | Current starts | 428 |
 | Current `reference-only` | 42 |
-| Current senses | 552 |
-| Current relations | 451 |
+| Current senses | 557 |
+| Current relations | 449 |
 | Current expression records | 23 |
 | Remaining candidate starts | 0 |
 | Held rows | 11 |

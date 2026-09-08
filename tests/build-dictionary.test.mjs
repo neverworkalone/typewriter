@@ -42,8 +42,8 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     assert.equal(summary.recordCount, 470);
     assert.equal(summary.searchFormCount, 546);
-    assert.equal(summary.senseCount, 552);
-    assert.equal(summary.relationCount, 451);
+    assert.equal(summary.senseCount, 557);
+    assert.equal(summary.relationCount, 449);
     assert.equal(summary.metadata.schema_version, '1');
     assert.equal(summary.metadata.normalization_version, '1');
 
@@ -51,8 +51,8 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     try {
       assert.equal(countRows(database, 'records'), 470);
       assert.equal(countRows(database, 'search_forms'), 546);
-      assert.equal(countRows(database, 'senses'), 552);
-      assert.equal(countRows(database, 'relations'), 451);
+      assert.equal(countRows(database, 'senses'), 557);
+      assert.equal(countRows(database, 'relations'), 449);
       assert.deepEqual(getMetadata(database), summary.metadata);
 
       assert.deepEqual(findRecordsByExactTerm(database, '담담'), [
