@@ -224,6 +224,50 @@ function validateMeasurement(measurement) {
   }
 }
 
+function validateSenseReview(review, manifest) {
+  if (!review) return;
+
+  requireString(review.note, 'manifest.sense_review.note');
+  requireUnique(review.split_canonical_ids, 'manifest.sense_review.split_canonical_ids');
+  if (review.status !== 'complete') return;
+
+  const importableStarts = manifest.records.filter(
+    (record) => record.source === 'inventory'
+      && record.role === 'start'
+      && (record.decision === 'included' || record.decision === 'corrected'),
+  );
+  const correctedSenseIds = importableStarts
+    .filter((record) => record.corrected_fields?.includes('senses'))
+    .map((record) => record.canonical_id)
+    .sort();
+  const declaredSplitIds = [...review.split_canonical_ids].sort();
+  if (review.reviewed_start_count !== importableStarts.length) {
+    fail(
+      `manifest.sense_review.reviewed_start_count must equal importable starts (${importableStarts.length})`,
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+  }
+  if (review.split_record_count !== declaredSplitIds.length) {
+    fail(
+      'manifest.sense_review.split_record_count must equal split_canonical_ids length',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+  }
+  if (review.scoped_single_sense_count + review.split_record_count !== review.reviewed_start_count) {
+    fail(
+      'manifest.sense_review counts must account for every reviewed start',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+  }
+  const correctedSenseIdSet = new Set(correctedSenseIds);
+  if (declaredSplitIds.some((canonicalId) => !correctedSenseIdSet.has(canonicalId))) {
+    fail(
+      'manifest.sense_review.split_canonical_ids must be corrected sense records',
+      'SENSE_REVIEW_CORRECTION_MISMATCH',
+    );
+  }
+}
+
 export function validateBatchManifest(manifest) {
   validateManifestSchema(manifest);
 
@@ -244,6 +288,7 @@ export function validateBatchManifest(manifest) {
     requireIsoDate(manifest.review.completed_at, 'manifest.review.completed_at');
   }
   validateMeasurement(manifest.measurement);
+  validateSenseReview(manifest.sense_review, manifest);
 
   const inventoryIds = new Set();
   const canonicalIds = new Set();

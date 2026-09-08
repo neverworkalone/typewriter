@@ -12,13 +12,35 @@
   "review": {
     "status": "complete",
     "reviewer": "typewriter-independent-expansion-audit",
-    "completed_at": "2026-09-08T02:35:00Z"
+    "completed_at": "2026-09-08T02:53:00Z"
+  },
+  "sense_review": {
+    "status": "complete",
+    "reviewed_start_count": 100,
+    "scoped_single_sense_count": 87,
+    "split_record_count": 13,
+    "split_canonical_ids": [
+      "w456",
+      "w458",
+      "w459",
+      "w460",
+      "w462",
+      "w472",
+      "w481",
+      "w517",
+      "w518",
+      "w519",
+      "w520",
+      "w527",
+      "w528"
+    ],
+    "note": "신규 importable start 100개에 literal/figurative와 expression 경계를 전수 적용했으며, 13개는 서로 다른 쓰임을 별도 sense로 분리하고 나머지는 단일 writer-facing sense로 범위를 고정했다."
   },
   "measurement": {
     "schema_version": "1",
     "relation_diff": {
       "artifact": "data/batches/m5-9-expansion-relation-diff.json",
-        "sha256": "87183d0e5bbacd9b7c935abd30da767b5b314f3e6a78a2aa885f86fc405d252b"
+      "sha256": "2b262f32a75e5a531452c436fc333d27c636ac3bb2c2f5a6ce850d3926843e58"
     },
     "timing": {
       "status": "complete",
@@ -48,7 +70,7 @@
           "completed_at": "2026-09-08T02:25:00Z",
           "wall_clock_seconds": 300,
           "editor_seconds": 150,
-          "note": "7개 corrected start의 sense/POS 경계를 보정하고 admitted relation tuple의 target과 type을 좁혔다."
+          "note": "초기 검수에서 7개 corrected start의 sense/POS 경계를 보정하고 admitted relation tuple의 target과 type을 좁혔다."
         },
         {
           "id": "final-audit",
@@ -67,6 +89,24 @@
           "wall_clock_seconds": 240,
           "editor_seconds": 100,
           "note": "reserve pool에서 4개 held와 3개 rejected를 기록하고 남은 5개는 deferred로 분리했다."
+        },
+        {
+          "id": "post-review-audit",
+          "status": "complete",
+          "started_at": "2026-09-08T02:35:00Z",
+          "completed_at": "2026-09-08T02:44:00Z",
+          "wall_clock_seconds": 540,
+          "editor_seconds": 90,
+          "note": "리뷰 피드백에 따라 신규 importable start 100개의 literal/figurative·expression 경계를 다시 전수 대조하고 relation candidate 25개를 재감사했다."
+        },
+        {
+          "id": "post-review-fixes",
+          "status": "complete",
+          "started_at": "2026-09-08T02:44:00Z",
+          "completed_at": "2026-09-08T02:53:00Z",
+          "wall_clock_seconds": 540,
+          "editor_seconds": 90,
+          "note": "13개 record의 sense를 split하고 8개 noisy relation을 canonical에서 제거했으며 candidate admission/rejection artifact를 반영했다."
         }
       ]
     },
@@ -79,21 +119,21 @@
           "category": "sense",
           "severity": "warning",
           "status": "resolved",
-          "note": "신규 100개 canonical start의 lemma와 POS를 전수 확인하고 corrected 7개의 sense 경계를 반영했다."
+          "note": "신규 100개 canonical start의 lemma와 POS를 다시 전수 확인하고 13개 record의 literal/figurative·expression sense 경계를 분리했다."
         },
         {
           "id": "m5-9-relation-admission",
           "category": "relation-noise",
           "severity": "warning",
           "status": "resolved",
-          "note": "25개 admitted relation의 source sense, target sense, type, writer-use note를 확인했으며 generic noise는 추가하지 않았다."
+          "note": "25개 relation candidate의 admission/rejection을 다시 전수 확인해 17개만 admit하고 8개 noise를 reject했다. candidate 분모 25에서 noise rate 32%가 계산되므로 다음 단계는 승인하지 않았다."
         },
         {
           "id": "m5-9-direct-replacement-review",
           "category": "direct-replacement",
           "severity": "info",
           "status": "resolved",
-          "note": "직접 대체를 과장하지 않고 near, mood, sensory, scene, action 관계만 필요한 곳에 한정했다."
+          "note": "직접 대체를 과장하지 않고 near, mood, sensory, scene, action 관계 중 검수된 17개만 canonical에 남겼다."
         },
         {
           "id": "m5-9-reference-closure-review",
@@ -326,8 +366,9 @@
       "source": "inventory",
       "inventory_id": "m5-164",
       "role": "start",
-      "decision": "included",
-      "decision_note": "살뜰하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "살뜰하다의 사람을 돌보는 쓰임과 살림을 꾸리는 쓰임을 두 sense로 분리해 포함했다.",
       "canonical_id": "w456"
     },
     {
@@ -342,24 +383,27 @@
       "source": "inventory",
       "inventory_id": "m5-166",
       "role": "start",
-      "decision": "included",
-      "decision_note": "반듯하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "반듯하다의 모양·자세와 태도·생활을 두 sense로 분리해 포함했다.",
       "canonical_id": "w458"
     },
     {
       "source": "inventory",
       "inventory_id": "m5-167",
       "role": "start",
-      "decision": "included",
-      "decision_note": "시리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "시리다의 신체 감각과 슬픔·그리움의 figurative 쓰임을 두 sense로 분리해 포함했다.",
       "canonical_id": "w459"
     },
     {
       "source": "inventory",
       "inventory_id": "m5-168",
       "role": "start",
-      "decision": "included",
-      "decision_note": "따스하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "따스하다의 온도 감각과 다정한 태도의 쓰임을 두 sense로 분리해 포함했다.",
       "canonical_id": "w460"
     },
     {
@@ -374,8 +418,9 @@
       "source": "inventory",
       "inventory_id": "m5-170",
       "role": "start",
-      "decision": "included",
-      "decision_note": "씁쓸하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "씁쓸하다의 쓴맛과 기대가 어긋난 감정의 쓰임을 두 sense로 분리해 포함했다.",
       "canonical_id": "w462"
     },
     {
@@ -454,8 +499,9 @@
       "source": "inventory",
       "inventory_id": "m5-180",
       "role": "start",
-      "decision": "included",
-      "decision_note": "상쾌하다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "상쾌하다의 신체적 개운함과 마음의 산뜻함을 두 sense로 분리해 포함했다.",
       "canonical_id": "w472"
     },
     {
@@ -526,8 +572,9 @@
       "source": "inventory",
       "inventory_id": "m5-189",
       "role": "start",
-      "decision": "included",
-      "decision_note": "새참의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "새참의 먹는 음식과 쉬는 시간의 쓰임을 두 sense로 분리해 포함했다.",
       "canonical_id": "w481"
     },
     {
@@ -814,32 +861,36 @@
       "source": "inventory",
       "inventory_id": "m5-225",
       "role": "start",
-      "decision": "included",
-      "decision_note": "눈길을 끌다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "눈길을 끌다의 실제 시선과 비유적 관심을 두 expression sense로 분리해 포함했다.",
       "canonical_id": "w517"
     },
     {
       "source": "inventory",
       "inventory_id": "m5-226",
       "role": "start",
-      "decision": "included",
-      "decision_note": "발걸음을 떼다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "발걸음을 떼다의 실제 보행과 일·관계의 시작을 두 expression sense로 분리해 포함했다.",
       "canonical_id": "w518"
     },
     {
       "source": "inventory",
       "inventory_id": "m5-227",
       "role": "start",
-      "decision": "included",
-      "decision_note": "숨을 돌리다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "숨을 돌리다의 호흡 회복과 긴장 완화를 두 expression sense로 분리해 포함했다.",
       "canonical_id": "w519"
     },
     {
       "source": "inventory",
       "inventory_id": "m5-228",
       "role": "start",
-      "decision": "included",
-      "decision_note": "고개를 숙이다의 lemma와 POS를 확인하고 writer-facing 단일 sense로 확정해 포함했다.",
+      "decision": "corrected",
+      "corrected_fields": ["senses"],
+      "decision_note": "고개를 숙이다의 실제 고개 동작과 굴복·기세 저하를 두 expression sense로 분리해 포함했다.",
       "canonical_id": "w520"
     },
     {

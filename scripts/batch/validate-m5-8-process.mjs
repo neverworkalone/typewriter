@@ -365,9 +365,15 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
   const processedStartCount = metricsArtifact.derived.selection.processed_start_count
     ?? metricsArtifact.derived.selection.selected_start_count;
   const totalEditorSeconds = timing.total_editor_seconds;
-  return {
+  const metrics = {
     correction_rate_of_selected: decisions.correction_rate_of_selected,
     relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
+    ...(relationDiff.candidate_count !== undefined
+      ? {
+        relation_noise_candidate_count: relationDiff.candidate_count,
+        relation_noise_rate_of_candidates: relationDiff.noise_rate_of_candidates,
+      }
+      : {}),
     total_wall_clock_seconds: timing.total_wall_clock_seconds,
     measured_wall_clock_seconds: timing.measured_wall_clock_seconds,
     total_editor_seconds: totalEditorSeconds,
@@ -385,6 +391,7 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
   };
+  return metrics;
 }
 
 function stageDecisionsFromArtifacts(metricsArtifact) {
@@ -775,13 +782,15 @@ function validateExpansionStageValues(stage, plan, plannedStageIndex, sourceArti
     );
   }
 
+  const relationNoiseRate = stage.metrics.relation_noise_rate_of_candidates
+    ?? stage.metrics.relation_noise_rate_of_before;
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = [
     stage.metrics.correction_rate_of_selected <= plan.gate.correction_rate_max,
-    stage.metrics.relation_noise_rate_of_before <= plan.gate.relation_noise_rate_max,
+    relationNoiseRate <= plan.gate.relation_noise_rate_max,
     !plan.gate.relation_noise_below_m5_3_baseline_required
-      || stage.metrics.relation_noise_rate_of_before < baselineRate,
+      || relationNoiseRate < baselineRate,
     Number.isFinite(stage.metrics.editor_seconds_per_selected_start)
       && stage.metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
     stage.metrics.timing_status === 'complete',

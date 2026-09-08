@@ -136,6 +136,54 @@ function deriveDecisions(manifest) {
   };
 }
 
+function deriveSenseReview(manifest, canonicalRecords) {
+  const review = manifest.sense_review;
+  if (!review) return undefined;
+
+  const recordById = new Map(
+    asRecordInfos(canonicalRecords).map(({ record }) => [record.id, record]),
+  );
+  const importableStarts = manifest.records.filter(
+    (record) => record.source === 'inventory'
+      && record.role === 'start'
+      && (record.decision === 'included' || record.decision === 'corrected'),
+  );
+  const splitIds = new Set(review.split_canonical_ids);
+  const importableIds = new Set(importableStarts.map(({ canonical_id: canonicalId }) => canonicalId));
+  for (const canonicalId of splitIds) {
+    if (!importableIds.has(canonicalId)) {
+      fail(
+        `sense review split canonical_id ${canonicalId} is not an importable start`,
+        'SENSE_REVIEW_CANONICAL_MISMATCH',
+      );
+    }
+  }
+  for (const manifestRecord of importableStarts) {
+    const canonicalRecord = recordById.get(manifestRecord.canonical_id);
+    if (!canonicalRecord) {
+      fail(
+        `sense review canonical_id ${manifestRecord.canonical_id} is missing from canonical records`,
+        'MISSING_CANONICAL_RECORD',
+      );
+    }
+    const senseCount = canonicalRecord.senses.length;
+    if (splitIds.has(manifestRecord.canonical_id) ? senseCount < 2 : senseCount !== 1) {
+      fail(
+        `sense review scope for ${manifestRecord.canonical_id} does not match canonical sense count ${senseCount}`,
+        'SENSE_REVIEW_CANONICAL_MISMATCH',
+      );
+    }
+  }
+
+  return {
+    status: review.status,
+    reviewed_start_count: review.reviewed_start_count,
+    scoped_single_sense_count: review.scoped_single_sense_count,
+    split_record_count: review.split_record_count,
+    split_canonical_ids: [...review.split_canonical_ids],
+  };
+}
+
 function approvedCanonicalRecords(manifest, canonicalRecords) {
   const recordInfos = asRecordInfos(canonicalRecords);
   const recordsById = new Map(recordInfos.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
@@ -363,6 +411,17 @@ export function deriveBatchMetrics({ manifest, relationDiff, canonicalRecords } 
     timing: deriveTiming(manifest.measurement),
     audit: deriveAudit(manifest.measurement),
   };
+  if (relationSummary.candidate_count !== undefined) {
+    Object.assign(derived.relation_diff, {
+      candidate_count: relationSummary.candidate_count,
+      admitted_candidate_count: relationSummary.admitted_candidate_count,
+      rejected_candidate_count: relationSummary.rejected_candidate_count,
+      noise_denominator_count: relationSummary.noise_denominator_count,
+      noise_rate_of_candidates: relationSummary.noise_rate_of_candidates,
+    });
+  }
+  const senseReview = deriveSenseReview(manifest, canonicalRecords);
+  if (senseReview) derived.sense_review = senseReview;
   const metrics = {
     schema_version: '2',
     batch_id: manifest.batch_id,

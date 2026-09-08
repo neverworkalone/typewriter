@@ -38,6 +38,7 @@
         "decisions": { "$ref": "#/$defs/decisions" },
         "canonical_import": { "$ref": "#/$defs/canonicalImport" },
         "relation_diff": { "$ref": "#/$defs/relationDiff" },
+        "sense_review": { "$ref": "#/$defs/senseReview" },
         "timing": { "$ref": "#/$defs/timing" },
         "audit": { "$ref": "#/$defs/audit" }
       }
@@ -143,9 +144,39 @@
         "net_removed_count": { "type": "integer" },
         "noise_event_count": { "type": "integer", "minimum": 0 },
         "noise_rate_of_before": { "$ref": "#/$defs/rate" },
+        "candidate_count": { "type": "integer", "minimum": 0 },
+        "admitted_candidate_count": { "type": "integer", "minimum": 0 },
+        "rejected_candidate_count": { "type": "integer", "minimum": 0 },
+        "noise_denominator_count": { "type": "integer", "minimum": 0 },
+        "noise_rate_of_candidates": { "$ref": "#/$defs/rate" },
         "classification_counts": {
           "type": "object",
           "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "senseReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reviewed_start_count",
+        "scoped_single_sense_count",
+        "split_record_count",
+        "split_canonical_ids"
+      ],
+      "properties": {
+        "status": { "enum": ["complete", "incomplete"] },
+        "reviewed_start_count": { "type": "integer", "minimum": 0 },
+        "scoped_single_sense_count": { "type": "integer", "minimum": 0 },
+        "split_record_count": { "type": "integer", "minimum": 0 },
+        "split_canonical_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[wr][0-9]{3,}$"
+          }
         }
       }
     },

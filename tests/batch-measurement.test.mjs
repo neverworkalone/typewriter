@@ -93,6 +93,70 @@ test('source-sense changes cannot hide inside a retarget event', () => {
   );
 });
 
+test('pure-add relation diffs require a source-bound candidate denominator', () => {
+  const admitted = relation('rel-admit', 'w001-s1', 'w002', 'near');
+  assert.throws(
+    () => compareRelationSnapshots({
+      batchId: 'm5-4-pure-add-without-review-fixture',
+      before: [],
+      after: [admitted],
+    }),
+    (error) => error instanceof RelationDiffError && error.code === 'MISSING_CANDIDATE_REVIEWS',
+  );
+
+  const diff = compareRelationSnapshots({
+    batchId: 'm5-4-pure-add-with-review-fixture',
+    before: [],
+    after: [admitted],
+    candidateReviews: [
+      {
+        candidate_id: 'candidate-admit',
+        relation_id: 'rel-admit',
+        source_sense: admitted.source_sense,
+        relation: {
+          target: admitted.target,
+          target_sense: admitted.target_sense,
+          type: admitted.type,
+        },
+        decision: 'admit',
+        review_note: 'The target preserves the source sense in a writer-facing lookup.',
+      },
+      {
+        candidate_id: 'candidate-reject',
+        relation_id: 'rel-reject',
+        source_sense: 'w001-s1',
+        relation: {
+          target: 'w003',
+          target_sense: 'w003-s1',
+          type: 'association',
+        },
+        decision: 'reject',
+        error_category: 'broad-common-category',
+        review_note: 'The target is only a broad neighboring category.',
+      },
+    ],
+  });
+
+  assert.deepEqual(summarizeRelationDiff(diff), {
+    before_count: 0,
+    after_count: 1,
+    added_count: 1,
+    removed_count: 0,
+    retyped_count: 0,
+    retargeted_count: 0,
+    changed_count: 0,
+    net_removed_count: -1,
+    noise_event_count: 1,
+    noise_rate_of_before: 0,
+    classification_counts: { 'broad-common-category': 1 },
+    candidate_count: 2,
+    admitted_candidate_count: 1,
+    rejected_candidate_count: 1,
+    noise_denominator_count: 2,
+    noise_rate_of_candidates: 0.5,
+  });
+});
+
 test('M5-3 metrics reproduce from manifest, relation diff, and canonical records', async () => {
   const [manifest, relationDiff, checkedInMetrics, canonicalResult] = await Promise.all([
     readBatchJson('m5-3-calibration.json'),

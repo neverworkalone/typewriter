@@ -24,8 +24,8 @@ The pre-import inventory declares 112 new editorial start candidates:
 | Net canonical start target | 100 |
 | Maximum reserve pool | 12 |
 | Selected starts | 112 |
-| Included | 93 |
-| Corrected | 7 |
+| Included | 82 |
+| Corrected | 18 |
 | Held | 4 |
 | Rejected | 3 |
 | Deferred unused reserve | 5 |
@@ -38,10 +38,13 @@ manifest. Deferred rows are neither canonical data nor part of the processed-sta
 denominator.
 
 All 100 imported records received a reviewed lemma, POS, deterministic sense ID, and
-short Typewriter-authored gloss. Fourteen are expression records. Relation review
-ran only after the sense/POS checkpoint and admitted 25 exact source-sense/target-
-sense tuples; the remaining records intentionally have empty relation lists. No
-relation quota was applied.
+short Typewriter-authored gloss. The follow-up audit rechecked literal/figurative and
+expression boundaries for all 100 importable starts: 87 remained deliberately scoped
+to one sense and 13 were split into separate senses (`w456`, `w458`, `w459`, `w460`,
+`w462`, `w472`, `w481`, `w517`, `w518`, `w519`, `w520`, `w527`, `w528`). Fourteen
+are expression records. Relation review ran only after the sense/POS checkpoint:
+25 source-bound candidates were reviewed, 17 admitted and 8 rejected. The remaining
+records intentionally have empty relation lists. No relation quota was applied.
 
 ## Canonical snapshot
 
@@ -50,14 +53,16 @@ relation quota was applied.
 | Canonical records | 470 | 570 |
 | start records | 428 | 528 |
 | reference-only records | 42 | 42 |
-| Senses | 557 | 657 |
-| Relations | 449 | 474 |
+| Senses | 557 | 670 |
+| Relations | 449 | 466 |
 | Expression records | 23 | 37 |
 
 The relation artifact is data/batches/m5-9-expansion-relation-diff.json.
-It records 25 admitted additions for this batch (before_count: 0,
-after_count: 25) and zero classified noise events. Its SHA-256 is
-87183d0e5bbacd9b7c935abd30da767b5b314f3e6a78a2aa885f86fc405d252b.
+It records the 25 source-bound relation candidates and their admit/reject decisions;
+17 admitted additions remain in the canonical result (`before_count: 0`,
+`after_count: 17`). The eight rejected candidates are the actual noise denominator:
+8/25 = 32%, above the fixed 25% ceiling. Its SHA-256 is recorded in the stage
+report: `2b262f32a75e5a531452c436fc333d27c636ac3bb2c2f5a6ce850d3926843e58`.
 
 ## Gate result
 
@@ -67,19 +72,19 @@ The independent verification flags are data/batches/m5-9-expansion-verification.
 | Criterion | Result |
 | --- | --- |
 | All new senses and relations reviewed | PASS |
-| Correction rate | PASS: 7/107 = 6.54% (max 50%) |
-| Relation noise | PASS: 0/0 = 0% (max 25%, below 51/139) |
-| Editor time | PASS: 1,090/107 = 10.19 sec/processed start (max 12 sec) |
-| Required timing passes | PASS: all five complete; no unmeasured pass |
+| Correction rate | PASS: 18/107 = 16.82% (max 50%) |
+| Relation noise | FAIL: 8/25 = 32% (max 25%, below 51/139) |
+| Editor time | PASS: 1,270/107 = 11.87 sec/processed start (max 12 sec) |
+| Required timing passes | PASS: all required passes complete; no unmeasured pass |
 | Independent audit | PASS: complete, open blockers 0 |
 | Canonical integrity | PASS |
 | Deterministic SQLite | PASS |
 | M4 search/product regression | PASS |
 | Exact canonical start delta | PASS: 428 → 528 |
 
-Decision: **APPROVE BOUNDED**. The next +250 stage is authorized only within the
-same review gate and source-bound process. The five deferred reserve candidates are
-not silently counted as imported starts.
+Decision: **HOLD PROCESS**. The relation admission process must be repaired and
+re-audited before another bounded stage or bulk expansion is authorized. The five
+deferred reserve candidates are not silently counted as imported starts.
 
 ## Reproduction and validation
 

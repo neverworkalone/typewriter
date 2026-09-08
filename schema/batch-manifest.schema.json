@@ -59,6 +59,9 @@
         }
       }
     },
+    "sense_review": {
+      "$ref": "#/$defs/senseReview"
+    },
     "measurement": {
       "$ref": "#/$defs/measurement"
     },
@@ -226,6 +229,33 @@
           }
         }
       ]
+    },
+    "senseReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reviewed_start_count",
+        "scoped_single_sense_count",
+        "split_record_count",
+        "split_canonical_ids",
+        "note"
+      ],
+      "properties": {
+        "status": { "enum": ["complete", "incomplete"] },
+        "reviewed_start_count": { "type": "integer", "minimum": 0 },
+        "scoped_single_sense_count": { "type": "integer", "minimum": 0 },
+        "split_record_count": { "type": "integer", "minimum": 0 },
+        "split_canonical_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[wr][0-9]{3,}$"
+          }
+        },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
     },
     "measurement": {
       "type": "object",

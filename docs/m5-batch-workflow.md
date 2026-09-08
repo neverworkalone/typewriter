@@ -156,20 +156,21 @@ decisions outside canonical, and leaves five unused reserve rows as candidates.
 
 The checked-in artifacts are:
 
-- data/batches/m5-9-expansion.json: 112 explicit decisions and five complete
-  timing passes;
-- data/batches/m5-9-expansion-relation-diff.json: 25 admitted relation additions
-  with zero classified noise;
+- data/batches/m5-9-expansion.json: 112 explicit decisions and seven complete
+  timing passes, including the measured post-review audit and fixes;
+- data/batches/m5-9-expansion-relation-diff.json: 25 source-bound relation
+  candidates, with 17 admitted and 8 rejected;
 - data/batches/m5-9-expansion-metrics.json: source-derived counts, rates, timing,
   and audit summary;
 - data/batches/m5-8-stage-01-plus-100.json: path- and SHA-256-bound stage result;
   and
 - docs/m5-9-expansion-report.md: the gate decision and validation record.
 
-The stage reports the exact 428 → 528 canonical-start transition and authorizes
-the next bounded ladder stage only after its gate passes. Deferred reserve rows
-are visible in the manifest and metrics, but never inflate the import count or
-make editor cost appear lower.
+The stage reports the exact 428 → 528 canonical-start transition. Its relation
+candidate noise rate is 8/25 = 32%, so the fixed gate records `HOLD PROCESS` and
+does not authorize the next bounded ladder stage. Deferred reserve rows are visible
+in the manifest and metrics, but never inflate the import count or make editor cost
+appear lower.
 
 ## M5-4 draft and review contract
 

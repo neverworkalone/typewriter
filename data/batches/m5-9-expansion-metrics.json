@@ -12,47 +12,55 @@
       "processed_start_count": 107
     },
     "decisions": {
-      "included": 93,
-      "corrected": 7,
+      "included": 82,
+      "corrected": 18,
       "held": 4,
       "rejected": 3,
       "deferred": 5,
       "importable_start_count": 100,
-      "correction_rate_of_selected": 0.06542056074766354,
-      "correction_rate_of_importable": 0.07,
+      "correction_rate_of_selected": 0.16822429906542055,
+      "correction_rate_of_importable": 0.18,
       "held_rate": 0.037383177570093455,
       "rejected_rate": 0.028037383177570093,
       "held_or_rejected_rate": 0.06542056074766354,
-      "sense_field_correction_count": 7,
+      "sense_field_correction_count": 18,
       "relation_field_correction_count": 0
     },
     "canonical_import": {
       "imported_start_count": 100,
       "imported_reference_only_count": 0,
       "imported_record_count": 100,
-      "imported_sense_count": 100,
-      "imported_relation_count": 25,
+      "imported_sense_count": 113,
+      "imported_relation_count": 17,
       "imported_expression_count": 14,
       "relation_type_counts": {
-        "mood": 8,
+        "mood": 7,
         "near": 5,
-        "action": 3,
         "sensory": 4,
-        "scene": 5
+        "action": 1
       }
     },
     "relation_diff": {
       "before_count": 0,
-      "after_count": 25,
-      "added_count": 25,
+      "after_count": 17,
+      "added_count": 17,
       "removed_count": 0,
       "retyped_count": 0,
       "retargeted_count": 0,
       "changed_count": 0,
-      "net_removed_count": -25,
-      "noise_event_count": 0,
+      "net_removed_count": -17,
+      "noise_event_count": 8,
       "noise_rate_of_before": 0,
-      "classification_counts": {}
+      "classification_counts": {
+        "broad-common-category": 2,
+        "generic-result-or-reaction": 3,
+        "arbitrary-modifier-or-place": 3
+      },
+      "candidate_count": 25,
+      "admitted_candidate_count": 17,
+      "rejected_candidate_count": 8,
+      "noise_denominator_count": 25,
+      "noise_rate_of_candidates": 0.32
     },
     "timing": {
       "status": "complete",
@@ -81,12 +89,22 @@
           "status": "complete",
           "wall_clock_seconds": 240,
           "editor_seconds": 100
+        },
+        "post-review-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 540,
+          "editor_seconds": 90
+        },
+        "post-review-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 540,
+          "editor_seconds": 90
         }
       },
-      "total_wall_clock_seconds": 2100,
-      "total_editor_seconds": 1090,
-      "measured_wall_clock_seconds": 2100,
-      "measured_editor_seconds": 1090,
+      "total_wall_clock_seconds": 3180,
+      "total_editor_seconds": 1270,
+      "measured_wall_clock_seconds": 3180,
+      "measured_editor_seconds": 1270,
       "unmeasured_passes": []
     },
     "audit": {
@@ -101,6 +119,27 @@
         "direct-replacement": 1,
         "reference-closure": 1
       }
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 100,
+      "scoped_single_sense_count": 87,
+      "split_record_count": 13,
+      "split_canonical_ids": [
+        "w456",
+        "w458",
+        "w459",
+        "w460",
+        "w462",
+        "w472",
+        "w481",
+        "w517",
+        "w518",
+        "w519",
+        "w520",
+        "w527",
+        "w528"
+      ]
     }
   }
 }

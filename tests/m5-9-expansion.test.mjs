@@ -40,7 +40,7 @@ async function readJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
 }
 
-test('M5-9 imports exactly 100 reviewed starts and passes the source-bound gate', async () => {
+test('M5-9 imports exactly 100 reviewed starts and records the failed source-bound gate', async () => {
   const [manifest, relationDiff, metrics, stage, plan, verification, canonicalResult, inventoryResult, preImportInventory] = await Promise.all([
     readJson('m5-9-expansion.json'),
     readJson('m5-9-expansion-relation-diff.json'),
@@ -64,16 +64,25 @@ test('M5-9 imports exactly 100 reviewed starts and passes the source-bound gate'
   assertMetricsMatch(metrics, regeneratedMetrics);
   assert.deepEqual(summarizeRelationDiff(relationDiff), {
     before_count: 0,
-    after_count: 25,
-    added_count: 25,
+    after_count: 17,
+    added_count: 17,
     removed_count: 0,
     retyped_count: 0,
     retargeted_count: 0,
     changed_count: 0,
-    net_removed_count: -25,
-    noise_event_count: 0,
+    net_removed_count: -17,
+    noise_event_count: 8,
     noise_rate_of_before: 0,
-    classification_counts: {},
+    classification_counts: {
+      'broad-common-category': 2,
+      'generic-result-or-reaction': 3,
+      'arbitrary-modifier-or-place': 3,
+    },
+    candidate_count: 25,
+    admitted_candidate_count: 17,
+    rejected_candidate_count: 8,
+    noise_denominator_count: 25,
+    noise_rate_of_candidates: 8 / 25,
   });
 
   assert.deepEqual(metrics.derived.selection, {
@@ -81,47 +90,67 @@ test('M5-9 imports exactly 100 reviewed starts and passes the source-bound gate'
     processed_start_count: 107,
   });
   assert.deepEqual(metrics.derived.decisions, {
-    included: 93,
-    corrected: 7,
+    included: 82,
+    corrected: 18,
     held: 4,
     rejected: 3,
     deferred: 5,
     importable_start_count: 100,
-    correction_rate_of_selected: 7 / 107,
-    correction_rate_of_importable: 7 / 100,
+    correction_rate_of_selected: 18 / 107,
+    correction_rate_of_importable: 18 / 100,
     held_rate: 4 / 107,
     rejected_rate: 3 / 107,
     held_or_rejected_rate: 7 / 107,
-    sense_field_correction_count: 7,
+    sense_field_correction_count: 18,
     relation_field_correction_count: 0,
   });
   assert.deepEqual(metrics.derived.canonical_import, {
     imported_start_count: 100,
     imported_reference_only_count: 0,
     imported_record_count: 100,
-    imported_sense_count: 100,
-    imported_relation_count: 25,
+    imported_sense_count: 113,
+    imported_relation_count: 17,
     imported_expression_count: 14,
     relation_type_counts: {
-      mood: 8,
+      mood: 7,
       near: 5,
-      action: 3,
       sensory: 4,
-      scene: 5,
+      action: 1,
     },
   });
   assert.equal(metrics.derived.timing.status, 'complete');
-  assert.equal(metrics.derived.timing.total_editor_seconds, 1090);
+  assert.equal(metrics.derived.timing.total_editor_seconds, 1270);
   assert.deepEqual(metrics.derived.timing.unmeasured_passes, []);
   assert.equal(metrics.derived.audit.open_blocker_count, 0);
+  assert.deepEqual(metrics.derived.sense_review, {
+    status: 'complete',
+    reviewed_start_count: 100,
+    scoped_single_sense_count: 87,
+    split_record_count: 13,
+    split_canonical_ids: [
+      'w456',
+      'w458',
+      'w459',
+      'w460',
+      'w462',
+      'w472',
+      'w481',
+      'w517',
+      'w518',
+      'w519',
+      'w520',
+      'w527',
+      'w528',
+    ],
+  });
 
   assert.deepEqual(await validateExpansionStage(stage, plan), {
     stage_id: 'm5-8-stage-01-plus-100',
     imported_start_count: 100,
     candidate_buffer: 12,
-    gate_status: 'pass',
+    gate_status: 'fail',
   });
-  assert.equal(stage.next_stage_created, true);
+  assert.equal(stage.next_stage_created, false);
 
   assert.deepEqual({
     record_count: canonicalResult.records.length,
@@ -140,8 +169,8 @@ test('M5-9 imports exactly 100 reviewed starts and passes the source-bound gate'
     record_count: 570,
     start_count: 528,
     reference_only_count: 42,
-    sense_count: 657,
-    relation_count: 474,
+    sense_count: 670,
+    relation_count: 466,
     expression_count: 37,
   });
 
@@ -192,8 +221,8 @@ test('M5-9 admitted records and reserve decisions are visible in local search', 
       assert.deepEqual(findRecordsByExactTerm(database, '폭신하다'), []);
       assert.deepEqual(findRecordsByExactTerm(database, '기어오르다'), []);
       assert.equal(getRecord(database, 'w429').senses[0].relations[0].target, 'w060');
-      assert.equal(getRecord(database, 'w447').senses[0].relations[0].type, 'action');
-      assert.equal(getRecord(database, 'w447').senses[0].relations[0].target, 'w218');
+      assert.deepEqual(getRecord(database, 'w447').senses[0].relations, []);
+      assert.deepEqual(getRecord(database, 'w501').senses[0].relations, []);
     } finally {
       database.close();
     }

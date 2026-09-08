@@ -121,6 +121,15 @@
           "minimum": 0,
           "maximum": 1
         },
+        "relation_noise_candidate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "relation_noise_rate_of_candidates": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "total_wall_clock_seconds": {
           "type": ["number", "null"],
           "minimum": 0
