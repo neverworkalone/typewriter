@@ -12,52 +12,52 @@
       "processed_start_count": 56
     },
     "decisions": {
-      "included": 44,
-      "corrected": 6,
+      "included": 31,
+      "corrected": 19,
       "held": 3,
       "rejected": 3,
       "deferred": 2,
       "importable_start_count": 50,
-      "correction_rate_of_selected": 0.10714285714285714,
-      "correction_rate_of_importable": 0.12,
+      "correction_rate_of_selected": 0.3392857142857143,
+      "correction_rate_of_importable": 0.38,
       "held_rate": 0.05357142857142857,
       "rejected_rate": 0.05357142857142857,
       "held_or_rejected_rate": 0.10714285714285714,
-      "sense_field_correction_count": 5,
-      "relation_field_correction_count": 0
+      "sense_field_correction_count": 18,
+      "relation_field_correction_count": 1
     },
     "canonical_import": {
       "imported_start_count": 50,
       "imported_reference_only_count": 0,
       "imported_record_count": 50,
-      "imported_sense_count": 55,
-      "imported_relation_count": 6,
+      "imported_sense_count": 69,
+      "imported_relation_count": 5,
       "imported_expression_count": 2,
       "relation_type_counts": {
-        "mood": 3,
+        "mood": 2,
         "near": 3
       }
     },
     "relation_diff": {
       "before_count": 0,
-      "after_count": 6,
-      "added_count": 6,
+      "after_count": 5,
+      "added_count": 5,
       "removed_count": 0,
       "retyped_count": 0,
       "retargeted_count": 0,
       "changed_count": 0,
-      "net_removed_count": -6,
-      "noise_event_count": 2,
+      "net_removed_count": -5,
+      "noise_event_count": 3,
       "noise_rate_of_before": 0,
       "classification_counts": {
-        "broad-common-category": 1,
-        "generic-result-or-reaction": 1
+        "generic-result-or-reaction": 2,
+        "broad-common-category": 1
       },
       "candidate_count": 8,
-      "admitted_candidate_count": 6,
-      "rejected_candidate_count": 2,
+      "admitted_candidate_count": 5,
+      "rejected_candidate_count": 3,
       "noise_denominator_count": 8,
-      "noise_rate_of_candidates": 0.25
+      "noise_rate_of_candidates": 0.375
     },
     "timing": {
       "status": "complete",
@@ -86,12 +86,22 @@
           "status": "complete",
           "wall_clock_seconds": 65.712,
           "editor_seconds": 65.712
+        },
+        "post-review-audit#1": {
+          "status": "complete",
+          "wall_clock_seconds": 570.927,
+          "editor_seconds": 570.927
+        },
+        "post-review-fixes#1": {
+          "status": "complete",
+          "wall_clock_seconds": 374.209,
+          "editor_seconds": 374.209
         }
       },
-      "total_wall_clock_seconds": 1095.048,
-      "total_editor_seconds": 1095.048,
-      "measured_wall_clock_seconds": 1095.048,
-      "measured_editor_seconds": 1095.048,
+      "total_wall_clock_seconds": 2040.184,
+      "total_editor_seconds": 2040.184,
+      "measured_wall_clock_seconds": 2040.184,
+      "measured_editor_seconds": 2040.184,
       "unmeasured_passes": []
     },
     "audit": {
@@ -110,14 +120,27 @@
     "sense_review": {
       "status": "complete",
       "reviewed_start_count": 50,
-      "scoped_single_sense_count": 45,
-      "split_record_count": 5,
+      "scoped_single_sense_count": 32,
+      "split_record_count": 18,
       "split_canonical_ids": [
         "w535",
         "w536",
+        "w542",
         "w546",
+        "w547",
+        "w548",
+        "w549",
+        "w552",
         "w556",
-        "w568"
+        "w559",
+        "w560",
+        "w561",
+        "w562",
+        "w565",
+        "w567",
+        "w568",
+        "w569",
+        "w578"
       ]
     }
   }

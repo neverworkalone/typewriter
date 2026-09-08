@@ -4,7 +4,7 @@
   "process_revision": "m5-9a-relation-admission-v1",
   "source": {
     "relation_diff": "data/batches/m5-10-wave-a-relation-diff.json",
-    "relation_diff_sha256": "f245ac56cc7dc0b7968d805a4f63d689134cfc1d8b812c4a6b77ffbaabdf3243"
+    "relation_diff_sha256": "55e508094ca3b62863213b582a97fd575aa90a0fc26708cc333a33185f7d64e0"
   },
   "policy": {
     "default_relation_output": "empty",
@@ -76,19 +76,19 @@
       "source_sense": "w531-s1",
       "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
       "direction": { "from": "w531-s1", "to": "w018-s1" },
-      "writer_use_note": "흐뭇함은 만족에서 오는 따뜻하고 잔잔한 기쁨이라 넓은 기쁨의 정서적 색을 찾을 때 쓸 수 있다.",
+      "writer_use_note": "흐뭇함은 만족에서 비롯된 따뜻하고 잔잔한 기쁨이고 기쁨은 더 넓은 긍정 정서라, 정서의 온도를 넓혀 탐색하는 데 쓰인다.",
       "pre_screen": {
         "decision": "pass",
         "method": "tuple-and-semantic-review",
         "source_sense_locked": true,
         "target_sense_locked": true,
         "semantic_result": "stable-writer-use",
-        "reason": "만족에서 오는 따뜻하고 잔잔한 기쁨이라는 정서적 색이 넓은 기쁨과 안정적으로 연결된다."
+        "reason": "만족에서 비롯된 따뜻하고 잔잔한 기쁨이라는 구분 가능한 정서적 색이 더 넓은 긍정 정서인 기쁨과 안정적으로 연결된다."
       },
       "human_admission": {
         "status": "reviewed",
         "decision": "admit",
-        "reason": "흐뭇함은 만족에서 오는 따뜻하고 잔잔한 기쁨이라 넓은 기쁨의 정서적 색을 찾는 mood 관계로 인정했다."
+        "reason": "흐뭇함은 만족에서 비롯된 따뜻하고 잔잔한 기쁨이고 기쁨은 더 넓은 긍정 정서이므로, 정서의 온도를 넓혀 탐색하는 mood 관계로 인정했다."
       }
     },
     {
@@ -139,19 +139,20 @@
       "source_sense": "w535-s2",
       "relation": { "target": "w009", "target_sense": "w009-s1", "type": "mood" },
       "direction": { "from": "w535-s2", "to": "w009-s1" },
-      "writer_use_note": "위험 앞에서 아찔한 감각은 몸과 마음에 힘이 모이는 긴장된 장면을 만들어 공포와 인접한 mood가 된다.",
+      "writer_use_note": "아찔하다의 위험·놀람 sense와 긴장의 target sense 사이에 안정적인 writer-facing mood 이동 근거가 없다.",
       "pre_screen": {
-        "decision": "pass",
+        "decision": "reject",
         "method": "tuple-and-semantic-review",
         "source_sense_locked": true,
         "target_sense_locked": true,
-        "semantic_result": "stable-writer-use",
-        "reason": "위험 앞의 아찔함과 공포는 긴장된 장면의 정서적 색으로 연결되지만 직접 대체가 아닌 mood 후보다."
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "target인 긴장 w009-s1의 의미를 평가하지 않고 아찔함과 공포를 비교했으며, 긴장된 장면을 만들 수 있다는 설명은 일반적인 결과·동시 출현 가능성이라 pre-screen을 통과할 수 없다."
       },
       "human_admission": {
-        "status": "reviewed",
-        "decision": "admit",
-        "reason": "위험 앞에서 아찔한 감각은 몸과 마음에 힘이 모이는 긴장된 장면을 만들 수 있으나 두 표현은 직접 대체가 아니므로 mood로 인정했다."
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "generic-result-or-reaction으로 pre-screen 제외했으며 human admission 분모 밖임을 기록했다."
       }
     },
     {

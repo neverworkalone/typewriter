@@ -12,27 +12,40 @@
   "review": {
     "status": "complete",
     "reviewer": "typewriter-wave-a-editorial-review",
-    "completed_at": "2026-09-08T10:33:12Z"
+    "completed_at": "2026-09-08T11:42:51.000Z"
   },
   "sense_review": {
     "status": "complete",
     "reviewed_start_count": 50,
-    "scoped_single_sense_count": 45,
-    "split_record_count": 5,
+    "scoped_single_sense_count": 32,
+    "split_record_count": 18,
     "split_canonical_ids": [
       "w535",
       "w536",
+      "w542",
       "w546",
+      "w547",
+      "w548",
+      "w549",
+      "w552",
       "w556",
-      "w568"
+      "w559",
+      "w560",
+      "w561",
+      "w562",
+      "w565",
+      "w567",
+      "w568",
+      "w569",
+      "w578"
     ],
-    "note": "50개 importable start의 lemma/POS, literal·figurative 경계, 감각·상태·행동 구분, expression 단위를 전수 검토했다. 다섯 record는 독립된 sense 두 개로 분리했다."
+    "note": "PR feedback cycle 1에서 importable start 50개 전부를 물리·비유, 동음이의 POS, 감각·정서 축으로 다시 검수했다. 18개 record는 독립된 sense로 분리했고 고소하다는 adjective 2개와 verb 1개로 정리했다."
   },
   "measurement": {
     "schema_version": "1",
     "relation_diff": {
       "artifact": "data/batches/m5-10-wave-a-relation-diff.json",
-      "sha256": "f245ac56cc7dc0b7968d805a4f63d689134cfc1d8b812c4a6b77ffbaabdf3243"
+      "sha256": "55e508094ca3b62863213b582a97fd575aa90a0fc26708cc333a33185f7d64e0"
     },
     "timing": {
       "contract_version": "m5-9a-v1",
@@ -92,6 +105,32 @@
           "completed_at": "2026-09-08T10:41:39.846Z",
           "wall_clock_seconds": 65.712,
           "editor_seconds": 65.712
+        },
+        {
+          "id": "post-review-audit",
+          "cycle": 1,
+          "feedback_received_at": "2026-09-08T11:33:03.696Z",
+          "status": "complete",
+          "note": "PR feedback semantic audit: re-check all 50 imported starts across physical/figurative, homonymous POS, and sensory/emotional boundaries.",
+          "started_at": "2026-09-08T11:33:09.573Z",
+          "session_id": "0e2ed6d5-e585-40c5-ac60-e0af022a2edc",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T11:42:40.500Z",
+          "wall_clock_seconds": 570.927,
+          "editor_seconds": 570.927
+        },
+        {
+          "id": "post-review-fixes",
+          "cycle": 1,
+          "feedback_received_at": "2026-09-08T11:33:03.696Z",
+          "status": "complete",
+          "note": "PR feedback fixes: correct sense boundaries, relation admission, canonical data, metrics, stage report, and regression coverage.",
+          "started_at": "2026-09-08T11:42:46.151Z",
+          "session_id": "b3e185e2-8109-4e4e-936d-94a96453f793",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T11:49:00.360Z",
+          "wall_clock_seconds": 374.209,
+          "editor_seconds": 374.209
         }
       ]
     },
@@ -104,14 +143,14 @@
           "category": "sense",
           "severity": "warning",
           "status": "resolved",
-          "note": "신규 importable 50개를 다시 확인해 다섯 개의 물리·비유 또는 상태·행동 경계를 별도 sense로 유지했다."
+          "note": "PR feedback cycle 1에서 신규 importable 50개를 물리·비유, 동음이의 POS, 감각·정서 축으로 전수 재검수하고 18개 record의 sense 경계를 별도로 유지했다."
         },
         {
           "id": "m5-10-wave-a-relation-admission",
           "category": "relation-noise",
           "severity": "warning",
           "status": "resolved",
-          "note": "8개 relation candidate를 tuple과 writer-facing use 기준으로 전수 대조하고 6개 admit, 2개 reject를 확인했다."
+          "note": "8개 relation candidate를 실제 source/target sense와 writer-facing use 기준으로 전수 재대조하고 5개 admit, 3개 reject를 확인했다. 아찔하다 → 긴장은 generic result/reaction으로 제외했다."
         },
         {
           "id": "m5-10-wave-a-direct-replacement",
@@ -186,9 +225,10 @@
       "decision": "corrected",
       "canonical_id": "w535",
       "corrected_fields": [
-        "senses"
+        "senses",
+        "relations"
       ],
-      "decision_note": "몸의 어지러움과 위험 앞의 아득함을 두 sense로 분리해 포함했다."
+      "decision_note": "몸의 어지러움과 위험 앞의 아득함을 두 sense로 분리하고 긴장 relation은 generic reaction으로 제거해 포함했다."
     },
     {
       "source": "inventory",
@@ -245,9 +285,12 @@
       "source": "inventory",
       "inventory_id": "m5-262",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w542",
-      "decision_note": "빈틈없이 짜인 계획과 생각의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "계획·생각의 치밀함과 조직·짜임의 촘촘함을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -288,25 +331,34 @@
       "source": "inventory",
       "inventory_id": "m5-267",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w547",
-      "decision_note": "탄력 있는 음식 질감의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "음식의 탄력과 이야기·장면의 긴장감 있는 흥미를 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
       "inventory_id": "m5-268",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w548",
-      "decision_note": "볶거나 구운 음식의 깊은 맛을 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "음식 맛, 남의 불행을 보며 느끼는 통쾌함, 고발하는 동사의 세 sense와 품사 경계를 분리해 포함했다."
     },
     {
       "source": "inventory",
       "inventory_id": "m5-269",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w549",
-      "decision_note": "맛과 냄새의 편안한 깊이에 초점을 둔 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "맛·냄새의 감각과 말·사람의 소박하고 정다운 분위기를 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -328,17 +380,23 @@
       "source": "inventory",
       "inventory_id": "m5-272",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w552",
-      "decision_note": "방향이 나뉘는 길의 장면 단위를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "실제 길이 나뉘는 장면과 선택의 기로라는 비유적 sense를 분리해 포함했다."
     },
     {
       "source": "inventory",
       "inventory_id": "m5-273",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w553",
-      "decision_note": "산이나 언덕 가장자리의 장면 단위를 확인해 포함했다."
+      "corrected_fields": [
+        "gloss"
+      ],
+      "decision_note": "기슭의 핵심 위치를 산이나 언덕의 아래쪽 비탈진 부분으로 바로잡아 포함했다."
     },
     {
       "source": "inventory",
@@ -387,17 +445,23 @@
       "source": "inventory",
       "inventory_id": "m5-279",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w559",
-      "decision_note": "몸을 날려 안으로 들어가는 움직임의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "몸을 날려 들어가는 물리 동작과 일·분야에 참여하는 비유적 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
       "inventory_id": "m5-280",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w560",
-      "decision_note": "틈이나 깊은 곳으로 들어가는 방향의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "틈이나 깊은 곳으로 들어가는 물리 동작과 문제를 깊이 살피는 비유적 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -406,17 +470,21 @@
       "decision": "corrected",
       "canonical_id": "w561",
       "corrected_fields": [
-        "gloss"
+        "gloss",
+        "senses"
       ],
-      "decision_note": "몸이나 물체가 흔들리며 중심을 잃는다는 gloss로 보정해 포함했다."
+      "decision_note": "몸·물체의 흔들림과 조직·상황의 불안정한 흔들림을 나누고 물리 gloss를 보정해 포함했다."
     },
     {
       "source": "inventory",
       "inventory_id": "m5-282",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w562",
-      "decision_note": "높은 곳에서 아래로 보는 방향의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "높은 곳에서 아래를 보는 물리 방향과 대상을 낮춰 보는 비유적 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -438,9 +506,12 @@
       "source": "inventory",
       "inventory_id": "m5-285",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w565",
-      "decision_note": "붙잡힌 것에서 벗어나는 동작의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "붙잡힌 것을 떼는 물리 동작과 제안·유혹·요구를 거절하는 비유적 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -454,9 +525,12 @@
       "source": "inventory",
       "inventory_id": "m5-287",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w567",
-      "decision_note": "겹친 것을 들추어 안을 찾는 동작의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "겹친 것을 들추는 물리 동작과 문제·자료를 파헤치는 비유적 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -473,9 +547,12 @@
       "source": "inventory",
       "inventory_id": "m5-289",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w569",
-      "decision_note": "닿을 듯 말 듯 지나가는 움직임의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "스치듯 지나가는 물리 움직임과 기억·생각·감정이 잠깐 떠오르는 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -545,9 +622,12 @@
       "source": "inventory",
       "inventory_id": "m5-298",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w578",
-      "decision_note": "닿거나 잡으려 손을 앞으로 내미는 표현 단위를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "손을 실제로 내미는 장면과 도움·기회를 얻으려 나서는 표현 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",

@@ -2,7 +2,7 @@
   "schema_version": "1",
   "batch_id": "m5-10-wave-a-20260908",
   "before_count": 0,
-  "after_count": 6,
+  "after_count": 5,
   "candidate_reviews": [
     {
       "candidate_id": "m5-10-relation-candidate-0001",
@@ -38,7 +38,7 @@
         "type": "mood"
       },
       "decision": "admit",
-      "review_note": "흐뭇함은 만족에서 오는 따뜻하고 잔잔한 기쁨이라 넓은 기쁨의 정서적 색을 찾는 mood 관계로 인정했다."
+      "review_note": "흐뭇함은 만족에서 비롯된 따뜻하고 잔잔한 기쁨이고 기쁨은 더 넓은 긍정 정서이므로, 정서의 온도를 넓혀 탐색하는 mood 관계로 인정했다."
     },
     {
       "candidate_id": "m5-10-relation-candidate-0004",
@@ -73,8 +73,9 @@
         "target_sense": "w009-s1",
         "type": "mood"
       },
-      "decision": "admit",
-      "review_note": "위험 앞에서 아찔한 감각은 몸과 마음에 힘이 모이는 긴장된 장면을 만들 수 있으나 두 표현은 직접 대체가 아니므로 mood로 인정했다."
+      "decision": "reject",
+      "error_category": "generic-result-or-reaction",
+      "review_note": "target 긴장의 실제 sense를 평가하지 않고 아찔함과 공포를 비교했으며, 긴장된 장면을 만들 수 있다는 설명도 일반적인 결과·동시 출현 가능성일 뿐 안정적인 writer-facing 관계가 아니므로 거절했다."
     },
     {
       "candidate_id": "m5-10-relation-candidate-0007",
@@ -158,18 +159,7 @@
         "target_sense": "w432-s1",
         "type": "near"
       }
-    },
-    {
-      "event_id": "m5-10-wave-a-20260908-event-0006",
-      "relation_id": "m5-10-w535-s2-r1",
-      "operation": "add",
-      "source_sense": "w535-s2",
-      "after": {
-        "target": "w009",
-        "target_sense": "w009-s1",
-        "type": "mood"
-      }
     }
   ],
-  "source_note": "관계 검토는 sense/POS 검토 완료 뒤 진행했다. 8개 source-bound tuple을 전수 기록하고 6개만 writer-facing use와 정확한 source/target sense를 확인해 admit했으며 2개 noise 후보는 canonical에 넣지 않았다. raw draft와 외부 원문은 저장하지 않았다."
+  "source_note": "관계 검토는 sense/POS 검토 완료 뒤 진행했다. 8개 source-bound tuple을 실제 source/target sense와 writer-facing use 기준으로 전수 재대조하고 5개만 admit했으며 3개 noise 후보는 canonical에 넣지 않았다. 아찔하다 → 긴장은 target mismatch와 generic result/reaction 근거로 제외했다. raw draft와 외부 원문은 저장하지 않았다."
 }

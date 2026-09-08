@@ -13300,11 +13300,12 @@
       "pos": [
         "adjective"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "direct-boundary"
       ],
-      "decision_note": "계획과 생각이 빈틈없이 짜인 정도를 살필 후보."
+      "decision_note": "계획의 꼼꼼함과 조직·짜임의 촘촘함을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-263",
@@ -13422,11 +13423,13 @@
       "pos": [
         "adjective"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
-        "sensory-transfer"
+        "polysemy",
+        "sensory-transfer",
+        "mood-range"
       ],
-      "decision_note": "씹을 때 탄력 있게 버티는 음식의 질감을 살필 후보."
+      "decision_note": "음식의 탄력 있는 질감과 이야기의 긴장감 있는 흥미를 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-268",
@@ -13444,13 +13447,16 @@
         "S"
       ],
       "pos": [
-        "adjective"
+        "adjective",
+        "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "boundary",
       "flags": [
-        "sensory-transfer"
+        "polysemy",
+        "sensory-transfer",
+        "pos-boundary"
       ],
-      "decision_note": "볶거나 구운 음식의 기름지고 깊은 맛을 살필 후보."
+      "decision_note": "음식의 맛, 남의 불행을 보고 느끼는 통쾌함, 고발하는 동사의 품사·sense 경계를 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-269",
@@ -13470,12 +13476,13 @@
       "pos": [
         "adjective"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "sensory-transfer",
         "mood-range"
       ],
-      "decision_note": "맛과 냄새에서 소박하고 편안한 깊이가 느껴지는 결을 살필 후보."
+      "decision_note": "맛·냄새의 깊이와 말·사람의 소박하고 정다운 분위기를 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-270",
@@ -13543,11 +13550,12 @@
       "pos": [
         "noun"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "scene-expansion"
       ],
-      "decision_note": "한 길이 여러 방향으로 나뉘는 선택의 장면을 살필 후보."
+      "decision_note": "실제 길이 나뉘는 장면과 선택의 기로라는 비유적 sense를 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-273",
@@ -13571,7 +13579,7 @@
       "flags": [
         "scene-expansion"
       ],
-      "decision_note": "산이나 언덕이 낮아지며 끝나는 비탈의 가장자리를 살필 후보."
+      "decision_note": "산이나 언덕 아래쪽의 비탈진 부분이라는 장면 단위를 살필 후보."
     },
     {
       "inventory_id": "m5-274",
@@ -13713,11 +13721,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "어떤 공간이나 상황을 향해 몸을 날려 들어가는 움직임을 살필 후보."
+      "decision_note": "몸을 날려 들어가는 물리 동작과 일·분야에 참여하는 비유적 용법을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-280",
@@ -13737,11 +13746,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "틈이나 깊은 곳을 향해 안쪽으로 들어가는 움직임을 살필 후보."
+      "decision_note": "틈으로 들어가는 물리 동작과 문제를 깊이 살피는 비유적 용법을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-281",
@@ -13761,11 +13771,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "몸이 한쪽으로 흔들리며 중심을 잃는 걸음의 움직임을 살필 후보."
+      "decision_note": "몸·물체의 흔들림과 조직·상황의 불안정한 흔들림을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-282",
@@ -13785,11 +13796,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "높은 자리에서 아래로 시선을 보내는 방향을 살필 후보."
+      "decision_note": "높은 곳에서 아래를 보는 물리 방향과 대상을 낮춰 보는 비유적 용법을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-283",
@@ -13857,11 +13869,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "붙잡힌 것에서 힘을 주어 벗어나는 동작을 살필 후보."
+      "decision_note": "붙잡힌 것을 떼는 물리 동작과 제안·유혹을 거절하는 비유적 용법을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-286",
@@ -13905,11 +13918,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "겹친 것이나 틈을 들추어 안쪽을 찾는 동작을 살필 후보."
+      "decision_note": "겹친 것을 들추는 물리 동작과 문제·자료를 파헤치는 비유적 용법을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-288",
@@ -13954,11 +13968,12 @@
       "pos": [
         "verb"
       ],
-      "sense_profile": "single",
+      "sense_profile": "polysemy",
       "flags": [
+        "polysemy",
         "action-direction"
       ],
-      "decision_note": "닿을 듯 말 듯 지나가며 순간적으로 흔적을 남기는 움직임을 살필 후보."
+      "decision_note": "스치듯 지나가는 물리 움직임과 기억·생각·감정이 잠깐 떠오르는 용법을 나눠 살필 후보."
     },
     {
       "inventory_id": "m5-290",
@@ -14172,9 +14187,10 @@
       ],
       "sense_profile": "expression",
       "flags": [
-        "expression-unit"
+        "expression-unit",
+        "polysemy"
       ],
-      "decision_note": "무언가에 닿거나 잡으려 팔과 손을 앞으로 내미는 표현 단위로 검토할 후보."
+      "decision_note": "손을 실제로 내미는 장면과 도움·기회를 얻으려 나서는 표현 용법을 나눠 살필 후보."
     },
     {
       "source": "editorial",

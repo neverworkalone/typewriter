@@ -198,15 +198,18 @@ The first #96 wave is recorded independently in
 reviewed relation diff, separate relation screen, derived metrics, canonical
 import, verification result, and source-bound stage report. It starts from the historical M5-9 output of 528
 starts and imports exactly 50 reviewed starts, reaching 620 records / 578 starts
-/ 42 reference-only records / 725 senses / 468 relations / 39 expressions.
+/ 42 reference-only records / 739 senses / 467 relations / 39 expressions.
 
-The wave selected 58 starts: 44 included, 6 corrected, 3 held, 3 rejected, and
-2 deferred. The 8 relation candidates were screened separately from human
-admission; 6 were admitted and 2 rejected, for a candidate noise rate of 2/8 =
-25%. All five timing passes are recorder-measured and the independent audit has
-no open blockers. The exact source-derived report nevertheless records
-`HOLD PROCESS`: total editor time was 1,095.048 seconds, or
-19.5544 seconds per processed start, above the fixed 12-second limit.
+The wave selected 58 starts: 31 included, 19 corrected, 3 held, 3 rejected, and
+2 deferred. All 50 importable starts were re-audited for physical/figurative,
+homonymous-POS, and sensory/emotional boundaries; 18 records were split. The 8
+relation candidates were screened separately from human admission; 5 passed and
+were admitted while 3 were rejected, for a candidate noise rate of 3/8 = 37.5%.
+All five timing passes and both cycle-1 post-review passes are recorder-measured
+and the independent audit has no open blockers. The exact source-derived report
+nevertheless records `HOLD PROCESS`: total editor time was 2,040.184 seconds,
+or 36.4319 seconds per processed start, above the fixed 12-second limit; the
+relation noise gate also fails.
 
 Wave B was not started and the Wave A stage report keeps
 `next_stage_authorized: false`. The historical M5-9 canonical source is retained
@@ -222,6 +225,10 @@ the CLI accepts neither user-supplied timestamps nor durations. The validator
 rejects timing values on unmeasured passes and requires paired one-based
 follow-up cycles. A session left in progress or a follow-up with missing work
 keeps the derived timing incomplete; no time is estimated or backfilled.
+`final-audit` and post-review audit time must include the human semantic checks
+they claim. CI's mechanical count/digest/import/tuple checks are validation
+evidence and must not be used to reduce editor seconds; representative semantic
+regressions should run before the full-sample audit.
 
 ## M5-4 draft and review contract
 
