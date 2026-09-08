@@ -23,7 +23,8 @@ Every selected inventory start in a future M5-10A manifest must have exactly one
 - `inventory_id` and the importability `status`;
 - whether lemma/POS review was completed;
 - observed sense count and POS values;
-- the result of all six boundary checks;
+- six boundary evidence objects, each with `status`, record-specific `rationale`,
+  and `sense_ids`;
 - `missing_boundary_ids`; and
 - a human-readable note.
 
@@ -39,9 +40,12 @@ The six boundary IDs are fixed in the process revision
 
 An `included` or `corrected` record maps to a `complete` checkpoint and must
 carry its canonical ID, observed sense/POS facts, completed lemma/POS review,
-and no unreviewed boundary. A `held`, `rejected`, or `deferred` record cannot
-carry a canonical ID. Any boundary marked `not-reviewed` must be repeated in
-`missing_boundary_ids`; that omission blocks relation review for the record.
+at least one checked boundary, and no unreviewed boundary. A `held`, `rejected`,
+or `deferred` record cannot carry a canonical ID. Checked evidence cites senses
+belonging to that canonical record and identifies the inventory record in its
+rationale; `not-applicable` and `not-reviewed` cite no senses. Any boundary
+marked `not-reviewed` must be repeated in `missing_boundary_ids`; that omission
+blocks relation review for the record. Reused or generic rationale is rejected.
 
 The self-authored regression fixture
 [`tests/fixtures/m5-10-wave-a-sense-regressions.json`](../tests/fixtures/m5-10-wave-a-sense-regressions.json)
@@ -50,7 +54,33 @@ values, and their required boundary IDs. The process validator checks the exact
 case set, canonical values, and boundary coverage before the next sample is
 reviewed.
 
-## Relation admission
+## Relation candidate-generation calibration
+
+The historical M5-9A `25 → 13 + 12` relation regression is retained only to
+preserve the failed denominator. It is not evidence that candidate-generation
+noise was corrected. The actual A2 precondition is the separate noncanonical
+20-case calibration in
+[`tests/fixtures/m5-10a-relation-generation-calibration.json`](../tests/fixtures/m5-10a-relation-generation-calibration.json).
+
+The deterministic generator in `scripts/batch/relation-generation.mjs` consumes
+that fixture and the current canonical senses. It emits only
+`sense-anchored-writer-use` candidates and suppresses fixed regressions for
+incidental co-occurrence, generic result/reaction, arbitrary modifier/place,
+broad common category, and source/target sense errors. The source-bound result
+records 15 emitted candidates, 5 suppressed candidates, and 0 emitted noise;
+none of the calibration cases is imported into canonical data.
+
+The fixed gate requires all 20 calibration cases to have record-specific,
+non-boilerplate boundary evidence, complete measured timing at or below 12
+editor seconds per processed start, zero unmeasured passes, an independent audit
+with zero open blockers, and matching fixture/canonical/plan digests. Run it
+before the process and repair checks:
+
+```sh
+npm run batch:m5-10a:calibration:check
+```
+
+## Historical relation admission
 
 Relation output starts empty. Candidates are not admitted merely because they
 co-occur, could be a result or reaction, name a nearby object/place/modifier,
@@ -66,10 +96,11 @@ separate and reproducible. The bound 25-proposal regression has:
 
 The known pre-screen rejection categories are `generic-result-or-reaction` (7),
 `arbitrary-modifier-or-place` (3), and `broad-common-category` (2). The existing
-M5-9A relation-screen artifact is retained as the source-bound regression; the
-historical Wave A relation screen is validated independently. The controlled
-pre-screen vocabulary also includes incidental co-occurrence, unsupported
-cross-sensory jumps, and source/target sense or type errors.
+M5-9A relation-screen artifact is retained as the source-bound historical
+regression; the historical Wave A relation screen is validated independently.
+The controlled pre-screen vocabulary also includes incidental co-occurrence,
+unsupported cross-sensory jumps, and source/target sense or type errors. This
+historical classification is not used as the calibration success metric.
 
 ## Timing boundary
 
@@ -87,10 +118,12 @@ incomplete and fails the gate; no time is estimated or backfilled.
 ## Source-bound authorization
 
 `data/batches/m5-10a-process-correction.json` binds the historical stage,
-Wave A manifest/metrics, relation artifacts, regression fixture, canonical
-directory digest, and machine verification artifact. Validate it with:
+Wave A manifest/metrics, historical relation artifacts, the 20-case calibration
+fixture and dry-run, regression fixture, canonical directory digest, and machine
+verification artifact. Validate the calibration and process contract with:
 
 ```sh
+npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 ```
 

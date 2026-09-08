@@ -22,6 +22,7 @@
     "batch:stage:check": "node scripts/batch/validate-m5-8-process.mjs",
     "batch:repair:check": "node scripts/batch/validate-m5-9-repair.mjs",
     "batch:m5-10a:process:check": "node scripts/batch/validate-m5-10a-process.mjs",
+    "batch:m5-10a:calibration:check": "node scripts/batch/validate-m5-10a-calibration.mjs",
     "batch:m5-10a:repair:check": "node scripts/batch/validate-m5-10a-repair.mjs",
     "batch:timing:feedback": "node scripts/batch/timing.mjs --action=feedback",
     "batch:timing:start": "node scripts/batch/timing.mjs --action=start",

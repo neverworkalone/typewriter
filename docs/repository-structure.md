@@ -77,10 +77,11 @@ authorization binds the failed M5-9 report and its regression result by SHA-256
 and permits only the first #96 validation wave; it never changes canonical data.
 The M5-10A process-correction and repair-authorization artifacts extend that audit
 boundary after the failed Wave A result. They bind the six sense-preflight
-boundaries, record-level checkpoints, relation pre-screen denominator, separate
-human-admission denominator, timing contract, and machine verification results by
-path and SHA-256. The authorization is limited to #96 Wave A2 (+50 from 578 to
-628); it explicitly leaves Wave B (+150) unauthorized and does not change the
+boundaries, record-level evidence checkpoints, the noncanonical 20-case
+candidate-generation calibration, historical relation pre-screen denominator,
+separate human-admission denominator, timing contract, and machine verification
+results by path and SHA-256. The authorization is limited to #96 Wave A2 (+50
+from 578 to 628); it explicitly leaves Wave B (+150) unauthorized and does not change the
 canonical source.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.

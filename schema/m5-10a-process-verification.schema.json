@@ -29,12 +29,14 @@
         "canonical_integrity",
         "deterministic_sqlite",
         "search_product_regression",
+        "candidate_generation_calibration",
         "package"
       ],
       "properties": {
         "canonical_integrity": { "$ref": "#/$defs/commandCheck" },
         "deterministic_sqlite": { "$ref": "#/$defs/commandCheck" },
         "search_product_regression": { "$ref": "#/$defs/commandCheck" },
+        "candidate_generation_calibration": { "$ref": "#/$defs/commandCheck" },
         "package": {
           "type": "object",
           "additionalProperties": false,

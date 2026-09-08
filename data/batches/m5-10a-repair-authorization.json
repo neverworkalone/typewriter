@@ -8,7 +8,7 @@
     "failed_stage_report": "data/batches/m5-9a-wave-a-plus-50.json",
     "failed_stage_report_sha256": "070526553c12b73055a98aa243d5142b46b2e6a9f21da31c2a915160491cc487",
     "process_correction": "data/batches/m5-10a-process-correction.json",
-    "process_correction_sha256": "3f6c3ea4e3c5135aa86575cd9efc21b66c9e1551e881f6bee76a1fc78d214795"
+    "process_correction_sha256": "ea37e56d88b0815f874981e9017b64ae000cd6b5c0fa598103f879ecdb8de374"
   },
   "failed_stage": {
     "stage_id": "m5-9a-wave-a-plus-50",
@@ -45,6 +45,21 @@
       "generic-result-or-reaction": 7
     }
   },
+  "candidate_generation": {
+    "process_revision": "m5-10a-relation-generation-v1",
+    "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
+    "calibration_artifact_sha256": "2cb755e3d24269bdda2beb9e6f6736a68f9b625ab65664bc5872772a48d9a091",
+    "calibration_case_count": 20,
+    "generated_candidate_count": 15,
+    "suppressed_candidate_count": 5,
+    "pre_screen_noise_count": 0,
+    "noise_rate_of_emitted_candidates": 0,
+    "editor_seconds_per_processed_start": 8,
+    "unmeasured_pass_count": 0,
+    "preflight_case_count": 20,
+    "preflight_evidence_case_count": 20,
+    "fixed_gate_status": "passed"
+  },
   "timing_contract": {
     "contract_version": "m5-10a-v1",
     "required_passes": [
@@ -75,7 +90,13 @@
         "id": "m5-10a-relation-regression",
         "category": "relation-pre-screen",
         "status": "closed",
-        "note": "All 25 relation proposals remain in the denominator; 12 pre-screen rejects and the 13-entry human-admission denominator are independently reproducible."
+        "note": "The historical 25-proposal regression remains only as failure-preservation evidence; A2 authorization derives from the separate 20-case upstream calibration gate."
+      },
+      {
+        "id": "m5-10a-candidate-generation-calibration",
+        "category": "relation-candidate-generation",
+        "status": "closed",
+        "note": "The source-bound 20-case calibration emits 15 candidates, suppresses five known-noise cases before proposal output, and passes its fixed noise, time, audit, digest, and preflight checks."
       },
       {
         "id": "m5-10a-timing-contract",

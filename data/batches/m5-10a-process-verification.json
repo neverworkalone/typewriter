@@ -24,6 +24,10 @@
       "status": "passed",
       "command": "npm run validate:search"
     },
+    "candidate_generation_calibration": {
+      "status": "passed",
+      "command": "npm run batch:m5-10a:calibration:check"
+    },
     "package": {
       "status": "passed",
       "non_minified": {

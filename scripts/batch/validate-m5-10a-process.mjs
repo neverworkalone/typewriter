@@ -15,6 +15,7 @@ import {
 import { validateRelationDiff } from './relation-diff.mjs';
 import { validateRelationScreen } from './relation-screen.mjs';
 import { validateWaveARelationScreen } from './validate-wave-a-relation-screen.mjs';
+import { validateM5A10ACalibration } from './validate-m5-10a-calibration.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
   hashCanonicalDirectory,
@@ -304,6 +305,31 @@ function validateRelationRegression(process, relationScreen, relationDiff, sourc
   return summary;
 }
 
+function validateCandidateGeneration(process, calibrationResult) {
+  const expected = {
+    process_revision: calibrationResult.process_revision,
+    calibration_artifact: process.source.relation_calibration,
+    calibration_artifact_sha256: process.source.relation_calibration_sha256,
+    calibration_case_count: calibrationResult.case_count,
+    generated_candidate_count: calibrationResult.generated_candidate_count,
+    suppressed_candidate_count: calibrationResult.suppressed_candidate_count,
+    pre_screen_noise_count: calibrationResult.pre_screen_noise_count,
+    noise_rate_of_emitted_candidates: calibrationResult.noise_rate_of_emitted_candidates,
+    editor_seconds_per_processed_start: calibrationResult.editor_seconds_per_processed_start,
+    unmeasured_pass_count: calibrationResult.unmeasured_pass_count,
+    preflight_case_count: calibrationResult.preflight.case_count,
+    preflight_evidence_case_count: calibrationResult.preflight.evidence_case_count,
+    fixed_gate_status: calibrationResult.fixed_gate.status,
+  };
+  assertEqual(
+    process.candidate_generation,
+    expected,
+    'process candidate-generation calibration gate drifted',
+    'CALIBRATION_GATE_MISMATCH',
+  );
+  return expected;
+}
+
 function validateTimingBoundary(process, waveAManifest, waveAMetrics) {
   assertEqual(
     process.timing_boundary.contract_version,
@@ -393,6 +419,7 @@ function validateVerification(verification, canonicalSnapshot) {
     canonical_integrity: verification.checks.canonical_integrity.status === 'passed',
     deterministic_sqlite: verification.checks.deterministic_sqlite.status === 'passed',
     search_product_regression: verification.checks.search_product_regression.status === 'passed',
+    candidate_generation_calibration: verification.checks.candidate_generation_calibration.status === 'passed',
     package: verification.checks.package.status === 'passed',
   };
 }
@@ -455,6 +482,11 @@ export async function validateM5AProcess({
     'process canonical scope drifted',
     'CANONICAL_SCOPE_CHANGED',
   );
+
+  const candidateGenerationResult = await validateM5A10ACalibration({
+    artifactPath: sourcePaths.relation_calibration,
+  });
+  const candidateGeneration = validateCandidateGeneration(process, candidateGenerationResult);
 
   const planSource = await readJsonSource(path.resolve(planPath), 'M5-8 expansion plan');
   const actualPlan = planSource.value;
@@ -566,6 +598,7 @@ export async function validateM5AProcess({
       required_boundary_coverage: senseRegression.required_boundary_coverage,
     },
     relation_pre_screen: relationSummary,
+    candidate_generation: candidateGeneration,
     wave_a: {
       stage_id: stage.stage_id,
       gate_status: stage.gate_status,

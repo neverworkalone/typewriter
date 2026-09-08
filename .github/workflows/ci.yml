@@ -65,6 +65,9 @@ jobs:
       - name: Validate M5-9A repair authorization
         run: npm run batch:repair:check
 
+      - name: Validate M5-10A candidate-generation calibration
+        run: npm run batch:m5-10a:calibration:check
+
       - name: Validate M5-10A process correction
         run: npm run batch:m5-10a:process:check
 

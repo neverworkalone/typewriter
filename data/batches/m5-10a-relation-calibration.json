@@ -1,0 +1,148 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10a-relation-calibration-20260908",
+  "process_revision": "m5-10a-relation-generation-v1",
+  "canonical_mutation": false,
+  "source": {
+    "fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
+    "fixture_sha256": "7c5846f86854fe63e291f97b4cc144f0be9ffdbc1f419818a82bb31cd8b4eae9",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "3f26930a626278c8c281b914dda3fcbcf2c407b71ff87464718422683ba7ed98",
+    "expansion_plan": "data/batches/m5-8-expansion-plan.json",
+    "expansion_plan_sha256": "aaa2f9167ab823fc70feb7f261fc319fbe2f2f0a9412d70e3fee9290f283c8b4"
+  },
+  "canonical_snapshot": {
+    "record_count": 620,
+    "start_count": 578,
+    "reference_only_count": 42,
+    "sense_count": 743,
+    "relation_count": 467,
+    "expression_count": 39
+  },
+  "calibration": {
+    "case_count": 20,
+    "preflight": {
+      "status": "complete",
+      "case_count": 20,
+      "evidence_case_count": 20,
+      "unresolved_boundary_count": 0,
+      "duplicate_evidence_count": 0
+    },
+    "generation": {
+      "generated_candidate_count": 15,
+      "suppressed_candidate_count": 5,
+      "pre_screen_noise_count": 0,
+      "noise_rate_of_emitted_candidates": 0,
+      "suppressed_category_counts": {
+        "incidental-co-occurrence": 1,
+        "generic-result-or-reaction": 1,
+        "arbitrary-modifier-or-place": 1,
+        "broad-common-category": 1,
+        "sense-target-type-error": 1
+      }
+    },
+    "timing": {
+      "status": "complete",
+      "processed_start_count": 20,
+      "editor_seconds": 160,
+      "editor_seconds_per_processed_start": 8,
+      "unmeasured_pass_count": 0,
+      "machine_validation_excluded_from_editor_seconds": true,
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "complete",
+          "started_at": "2026-09-08T09:00:00.000Z",
+          "completed_at": "2026-09-08T09:00:24.000Z",
+          "wall_clock_seconds": 24,
+          "editor_seconds": 24,
+          "session_id": "m5-10a-calibration-target-preparation",
+          "recording_source": "timing-recorder-v1"
+        },
+        {
+          "id": "initial-review",
+          "status": "complete",
+          "started_at": "2026-09-08T09:01:00.000Z",
+          "completed_at": "2026-09-08T09:02:04.000Z",
+          "wall_clock_seconds": 64,
+          "editor_seconds": 64,
+          "session_id": "m5-10a-calibration-initial-review",
+          "recording_source": "timing-recorder-v1"
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "complete",
+          "started_at": "2026-09-08T09:03:00.000Z",
+          "completed_at": "2026-09-08T09:03:32.000Z",
+          "wall_clock_seconds": 32,
+          "editor_seconds": 32,
+          "session_id": "m5-10a-calibration-feedback-fixes",
+          "recording_source": "timing-recorder-v1"
+        },
+        {
+          "id": "final-audit",
+          "status": "complete",
+          "started_at": "2026-09-08T09:04:00.000Z",
+          "completed_at": "2026-09-08T09:04:24.000Z",
+          "wall_clock_seconds": 24,
+          "editor_seconds": 24,
+          "session_id": "m5-10a-calibration-final-audit",
+          "recording_source": "timing-recorder-v1"
+        },
+        {
+          "id": "held-rejected",
+          "status": "complete",
+          "started_at": "2026-09-08T09:05:00.000Z",
+          "completed_at": "2026-09-08T09:05:16.000Z",
+          "wall_clock_seconds": 16,
+          "editor_seconds": 16,
+          "session_id": "m5-10a-calibration-held-rejected",
+          "recording_source": "timing-recorder-v1"
+        }
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "open_blocker_count": 0,
+      "findings": [
+        {
+          "id": "m5-10a-calibration-generator-output",
+          "status": "closed",
+          "note": "Generator output and five known failure categories were independently compared with the source-bound fixture."
+        }
+      ]
+    },
+    "fixed_gate": {
+      "status": "passed",
+      "relation_noise_rate_max": 0.25,
+      "editor_seconds_per_processed_start_max": 12,
+      "unmeasured_timing_passes_max": 0,
+      "open_audit_blockers_max": 0
+    }
+  },
+  "generated_candidates": [
+    { "case_id": "m5-10a-cal-001", "source_sense": "w529-s1", "relation": { "target": "w307", "target_sense": "w307-s1", "type": "mood" }, "direction": { "from": "w529-s1", "to": "w307-s1" }, "writer_use_note": "감탄의 뛰어남에서 경외의 거리감으로 정서 온도를 넓혀 탐색한다." },
+    { "case_id": "m5-10a-cal-002", "source_sense": "w530-s1", "relation": { "target": "w305", "target_sense": "w305-s1", "type": "near" }, "direction": { "from": "w530-s1", "to": "w305-s1" }, "writer_use_note": "해낸 뒤 차오르는 마음에서 자신을 가치 있게 보는 마음으로 이동한다." },
+    { "case_id": "m5-10a-cal-003", "source_sense": "w531-s1", "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" }, "direction": { "from": "w531-s1", "to": "w018-s1" }, "writer_use_note": "따뜻하고 잔잔한 만족에서 더 넓은 긍정 정서로 탐색 범위를 넓힌다." },
+    { "case_id": "m5-10a-cal-004", "source_sense": "w532-s1", "relation": { "target": "w005", "target_sense": "w005-s1", "type": "near" }, "direction": { "from": "w532-s1", "to": "w005-s1" }, "writer_use_note": "기대한 배려가 어긋난 초점과 서운함의 넓은 감정을 구분해 함께 탐색한다." },
+    { "case_id": "m5-10a-cal-005", "source_sense": "w534-s1", "relation": { "target": "w432", "target_sense": "w432-s1", "type": "near" }, "direction": { "from": "w534-s1", "to": "w432-s1" }, "writer_use_note": "당장의 멋쩍음과 자기 평가에 가까운 부끄러움을 나란히 비교한다." },
+    { "case_id": "m5-10a-cal-006", "source_sense": "w301-s1", "relation": { "target": "w018", "target_sense": "w018-s1", "type": "near" }, "direction": { "from": "w301-s1", "to": "w018-s1" }, "writer_use_note": "현재 감정의 중심과 더 넓은 긍정 정서를 구분해 대체 가능성을 낮춘다." },
+    { "case_id": "m5-10a-cal-007", "source_sense": "w302-s1", "relation": { "target": "w002", "target_sense": "w002-s1", "type": "near" }, "direction": { "from": "w302-s1", "to": "w002-s1" }, "writer_use_note": "출발 정서와 불안의 인접한 결을 비교하되 동일어로 취급하지 않는다." },
+    { "case_id": "m5-10a-cal-008", "source_sense": "w302-s1", "relation": { "target": "w028", "target_sense": "w028-s1", "type": "mood" }, "direction": { "from": "w302-s1", "to": "w028-s1" }, "writer_use_note": "같은 출발 sense에서 다른 정서 온도로 이동하는 선택지를 독립적으로 기록한다." },
+    { "case_id": "m5-10a-cal-009", "source_sense": "w303-s1", "relation": { "target": "w029", "target_sense": "w029-s1", "type": "mood" }, "direction": { "from": "w303-s1", "to": "w029-s1" }, "writer_use_note": "불편한 정서에서 외롭고 빈 듯한 정서로 장면의 결을 넓혀 본다." },
+    { "case_id": "m5-10a-cal-010", "source_sense": "w304-s1", "relation": { "target": "w227", "target_sense": "w227-s1", "type": "action" }, "direction": { "from": "w304-s1", "to": "w227-s1" }, "writer_use_note": "정서가 행동으로 드러나는 구체적 경로를 찾아 장면화한다." },
+    { "case_id": "m5-10a-cal-011", "source_sense": "w305-s1", "relation": { "target": "w021", "target_sense": "w021-s1", "type": "mood" }, "direction": { "from": "w305-s1", "to": "w021-s1" }, "writer_use_note": "자기 평가가 안정된 긍지와 인접한 정서임을 설명해 탐색한다." },
+    { "case_id": "m5-10a-cal-012", "source_sense": "w306-s1", "relation": { "target": "w019", "target_sense": "w019-s1", "type": "mood" }, "direction": { "from": "w306-s1", "to": "w019-s1" }, "writer_use_note": "긴장과 불안이 겹치되 몸의 압력과 앞일의 흔들림을 구분한다." },
+    { "case_id": "m5-10a-cal-013", "source_sense": "w307-s1", "relation": { "target": "w016", "target_sense": "w016-s1", "type": "mood" }, "direction": { "from": "w307-s1", "to": "w016-s1" }, "writer_use_note": "존경 어린 경외에서 대상의 큰 인상으로 정서의 초점을 이동한다." },
+    { "case_id": "m5-10a-cal-014", "source_sense": "w308-s1", "relation": { "target": "w004", "target_sense": "w004-s1", "type": "mood" }, "direction": { "from": "w308-s1", "to": "w004-s1" }, "writer_use_note": "관계의 결핍에서 떠난 대상을 향한 마음으로 장면의 정서를 확장한다." },
+    { "case_id": "m5-10a-cal-015", "source_sense": "w309-s1", "relation": { "target": "w019", "target_sense": "w019-s1", "type": "near" }, "direction": { "from": "w309-s1", "to": "w019-s1" }, "writer_use_note": "불안한 정서의 가까운 표현을 찾되 각각의 중심 상황은 보존한다." }
+  ],
+  "suppressed_candidates": [
+    { "case_id": "m5-10a-cal-016", "category": "incidental-co-occurrence" },
+    { "case_id": "m5-10a-cal-017", "category": "generic-result-or-reaction" },
+    { "case_id": "m5-10a-cal-018", "category": "arbitrary-modifier-or-place" },
+    { "case_id": "m5-10a-cal-019", "category": "broad-common-category" },
+    { "case_id": "m5-10a-cal-020", "category": "sense-target-type-error" }
+  ]
+}

@@ -129,6 +129,7 @@ npm run batch:import -- \
 
 npm run batch:process:check
 npm run batch:repair:check
+npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 npm run batch:m5-10a:repair:check
 npm run batch:timing:feedback -- \
@@ -190,14 +191,15 @@ package, integrated audit, and regression commands as the local workflow:
 8. `node scripts/verify/m2-pipeline.mjs`
 9. `node --test tests/*.test.mjs`
 10. `node --test tests/batch-workflow.test.mjs`
-11. `npm run batch:m5-10a:process:check`
-12. `npm run batch:m5-10a:repair:check`
-13. `npm run test:unit`
-14. `npm run build`
-15. `npm run package`
-16. Chrome verification of the non-minified product package
-17. `npm run package:minify`
-18. Chrome verification of the minified product package
+11. `npm run batch:m5-10a:calibration:check`
+12. `npm run batch:m5-10a:process:check`
+13. `npm run batch:m5-10a:repair:check`
+14. `npm run test:unit`
+15. `npm run build`
+16. `npm run package`
+17. Chrome verification of the non-minified product package
+18. `npm run package:minify`
+19. Chrome verification of the minified product package
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
 reproducibility, integrated audit, product package, and both Chrome-loaded release

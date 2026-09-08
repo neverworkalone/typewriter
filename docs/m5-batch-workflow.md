@@ -227,7 +227,8 @@ and its executable check is `npm run batch:m5-10a:process:check`.
 The next sense review must record one `sense_review.preflight.record_checkpoints`
 entry for every selected inventory start. Each checkpoint records the inventory
 ID, importability status, lemma/POS review state, observed sense count and POS
-values, all six boundary checks, omitted boundary IDs, and a note. The six
+values, six boundary evidence objects (`status`, record-specific `rationale`,
+and `sense_ids`), omitted boundary IDs, and a note. The six
 boundaries are:
 
 1. physical versus figurative usage;
@@ -238,19 +239,20 @@ boundaries are:
 6. ordinary word versus idiom.
 
 An importable checkpoint is complete only when its canonical ID, observed sense
-facts, lemma/POS review, and boundary checks are complete. A missing boundary is
-explicitly listed and blocks relation review for that record. The regression
-fixture contains 21 known Wave A sense-boundary cases; its exact case IDs and
-boundary coverage are digest-bound to the process artifact.
+facts, lemma/POS review, at least one checked boundary, and all boundary evidence
+are complete. Checked evidence must cite a sense from that record; `not-applicable`
+and `not-reviewed` cite no sense, and copied or generic rationale is rejected. A
+missing boundary is explicitly listed and blocks relation review for that record.
+The regression fixture contains 21 known Wave A sense-boundary cases; its exact
+case IDs and boundary coverage are digest-bound to the process artifact.
 
 Relation admission keeps the relation list empty until sense preflight is complete.
-The deterministic proposal count, pre-screen pass/reject count, and human
-admission denominator are recorded as separate values. The known 25-proposal
-regression remains 13 pre-screen passes and 12 pre-screen rejections; only those
-13 pass cases form the human denominator. Incidental co-occurrence, generic
-result/reaction, arbitrary modifier/place, broad common-category candidates,
-unsupported cross-sensory jumps, and source/target sense or type errors are
-rejected before that human denominator.
+The historical 25-proposal regression remains 13 pre-screen passes and 12
+pre-screen rejections for failure reproducibility only. Upstream correction is
+proven separately by the source-bound, noncanonical 20-case calibration dry-run:
+its fixed generator emits zero known-noise candidates and must stay below the
+25% relation-noise and 12 editor-seconds-per-processed-start gates. Run
+`npm run batch:m5-10a:calibration:check` before the process and repair checks.
 
 The M5-10A timing contract distinguishes human editorial passes from mechanical
 count, digest, import, tuple, SQLite, search, and package checks. Mechanical

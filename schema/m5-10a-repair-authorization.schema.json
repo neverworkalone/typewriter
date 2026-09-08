@@ -14,6 +14,7 @@
     "source",
     "failed_stage",
     "relation_regression",
+    "candidate_generation",
     "timing_contract",
     "audit",
     "canonical_snapshot",
@@ -113,6 +114,40 @@
             "generic-result-or-reaction": { "const": 7 }
           }
         }
+      }
+    },
+    "candidate_generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "process_revision",
+        "calibration_artifact",
+        "calibration_artifact_sha256",
+        "calibration_case_count",
+        "generated_candidate_count",
+        "suppressed_candidate_count",
+        "pre_screen_noise_count",
+        "noise_rate_of_emitted_candidates",
+        "editor_seconds_per_processed_start",
+        "unmeasured_pass_count",
+        "preflight_case_count",
+        "preflight_evidence_case_count",
+        "fixed_gate_status"
+      ],
+      "properties": {
+        "process_revision": { "const": "m5-10a-relation-generation-v1" },
+        "calibration_artifact": { "const": "data/batches/m5-10a-relation-calibration.json" },
+        "calibration_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "calibration_case_count": { "const": 20 },
+        "generated_candidate_count": { "const": 15 },
+        "suppressed_candidate_count": { "const": 5 },
+        "pre_screen_noise_count": { "const": 0 },
+        "noise_rate_of_emitted_candidates": { "const": 0 },
+        "editor_seconds_per_processed_start": { "const": 8 },
+        "unmeasured_pass_count": { "const": 0 },
+        "preflight_case_count": { "const": 20 },
+        "preflight_evidence_case_count": { "const": 20 },
+        "fixed_gate_status": { "const": "passed" }
       }
     },
     "timing_contract": {

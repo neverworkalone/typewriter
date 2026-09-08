@@ -221,6 +221,21 @@ function validateRelationRegression(authorization, processResult) {
   );
 }
 
+function validateCandidateGeneration(authorization, processResult) {
+  assertEqual(
+    authorization.candidate_generation,
+    processResult.candidate_generation,
+    'repair authorization candidate-generation gate drifted',
+    'CALIBRATION_GATE_MISMATCH',
+  );
+  assertEqual(
+    authorization.candidate_generation.fixed_gate_status,
+    'passed',
+    'repair authorization cannot derive from a failed calibration gate',
+    'CALIBRATION_GATE_FAILURE',
+  );
+}
+
 function validateTimingContract(authorization, process) {
   assertEqual(
     authorization.timing_contract,
@@ -296,6 +311,7 @@ export async function validateM5ARepair({
   validateFailedStage(authorization, failedStageSource.value, processResult);
   validateScope(authorization, processResult);
   validateRelationRegression(authorization, processResult);
+  validateCandidateGeneration(authorization, processResult);
   validateTimingContract(authorization, processSource.value);
 
   return {
@@ -308,6 +324,7 @@ export async function validateM5ARepair({
     },
     canonical_snapshot: authorization.canonical_snapshot,
     relation_regression: authorization.relation_regression,
+    candidate_generation: authorization.candidate_generation,
     authorization: authorization.authorization,
     source_digests: {
       authorization: authorizationSource.sha256,

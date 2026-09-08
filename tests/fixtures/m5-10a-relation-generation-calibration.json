@@ -1,0 +1,414 @@
+{
+  "schema_version": "1",
+  "fixture_id": "m5-10a-relation-generation-calibration",
+  "process_revision": "m5-10a-relation-generation-v1",
+  "canonical_artifact": "data/canonical",
+  "calibration_case_count": 20,
+  "cases": [
+    {
+      "case_id": "m5-10a-cal-001",
+      "source_sense": "w529-s1",
+      "relation": { "target": "w307", "target_sense": "w307-s1", "type": "mood" },
+      "direction": { "from": "w529-s1", "to": "w307-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "감탄의 뛰어남에서 경외의 거리감으로 정서 온도를 넓혀 탐색한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-001 physical-figurative: w529-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w529-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-001 homonym-pos: w529-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w529-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-001 sensory-emotion-state-action: w529-s1을 정서 의미로 확인했다.", "sense_ids": ["w529-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-001 directional-symmetry: w529-s1에서 w307-s1로의 방향을 확인했다.", "sense_ids": ["w529-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-001 compound-spaced-phrase: w529-s1의 표제어 경계를 확인했다.", "sense_ids": ["w529-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-001 word-idiom: w529-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w529-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-002",
+      "source_sense": "w530-s1",
+      "relation": { "target": "w305", "target_sense": "w305-s1", "type": "near" },
+      "direction": { "from": "w530-s1", "to": "w305-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "해낸 뒤 차오르는 마음에서 자신을 가치 있게 보는 마음으로 이동한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-002 physical-figurative: w530-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w530-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-002 homonym-pos: w530-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w530-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-002 sensory-emotion-state-action: w530-s1을 정서 의미로 확인했다.", "sense_ids": ["w530-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-002 directional-symmetry: w530-s1에서 w305-s1로의 방향을 확인했다.", "sense_ids": ["w530-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-002 compound-spaced-phrase: w530-s1의 표제어 경계를 확인했다.", "sense_ids": ["w530-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-002 word-idiom: w530-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w530-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-003",
+      "source_sense": "w531-s1",
+      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
+      "direction": { "from": "w531-s1", "to": "w018-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "따뜻하고 잔잔한 만족에서 더 넓은 긍정 정서로 탐색 범위를 넓힌다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-003 physical-figurative: w531-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w531-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-003 homonym-pos: w531-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w531-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-003 sensory-emotion-state-action: w531-s1을 정서 의미로 확인했다.", "sense_ids": ["w531-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-003 directional-symmetry: w531-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w531-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-003 compound-spaced-phrase: w531-s1의 표제어 경계를 확인했다.", "sense_ids": ["w531-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-003 word-idiom: w531-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w531-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-004",
+      "source_sense": "w532-s1",
+      "relation": { "target": "w005", "target_sense": "w005-s1", "type": "near" },
+      "direction": { "from": "w532-s1", "to": "w005-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "기대한 배려가 어긋난 초점과 서운함의 넓은 감정을 구분해 함께 탐색한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-004 physical-figurative: w532-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w532-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-004 homonym-pos: w532-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w532-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-004 sensory-emotion-state-action: w532-s1을 정서 의미로 확인했다.", "sense_ids": ["w532-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-004 directional-symmetry: w532-s1에서 w005-s1로의 방향을 확인했다.", "sense_ids": ["w532-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-004 compound-spaced-phrase: w532-s1의 표제어 경계를 확인했다.", "sense_ids": ["w532-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-004 word-idiom: w532-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w532-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-005",
+      "source_sense": "w534-s1",
+      "relation": { "target": "w432", "target_sense": "w432-s1", "type": "near" },
+      "direction": { "from": "w534-s1", "to": "w432-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "당장의 멋쩍음과 자기 평가에 가까운 부끄러움을 나란히 비교한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-005 physical-figurative: w534-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w534-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-005 homonym-pos: w534-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w534-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-005 sensory-emotion-state-action: w534-s1을 정서 의미로 확인했다.", "sense_ids": ["w534-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-005 directional-symmetry: w534-s1에서 w432-s1로의 방향을 확인했다.", "sense_ids": ["w534-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-005 compound-spaced-phrase: w534-s1의 표제어 경계를 확인했다.", "sense_ids": ["w534-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-005 word-idiom: w534-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w534-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-006",
+      "source_sense": "w301-s1",
+      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "near" },
+      "direction": { "from": "w301-s1", "to": "w018-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "현재 감정의 중심과 더 넓은 긍정 정서를 구분해 대체 가능성을 낮춘다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-006 physical-figurative: w301-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w301-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-006 homonym-pos: w301-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w301-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-006 sensory-emotion-state-action: w301-s1을 정서 의미로 확인했다.", "sense_ids": ["w301-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-006 directional-symmetry: w301-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w301-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-006 compound-spaced-phrase: w301-s1의 표제어 경계를 확인했다.", "sense_ids": ["w301-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-006 word-idiom: w301-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w301-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-007",
+      "source_sense": "w302-s1",
+      "relation": { "target": "w002", "target_sense": "w002-s1", "type": "near" },
+      "direction": { "from": "w302-s1", "to": "w002-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "출발 정서와 불안의 인접한 결을 비교하되 동일어로 취급하지 않는다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-007 physical-figurative: w302-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w302-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-007 homonym-pos: w302-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w302-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-007 sensory-emotion-state-action: w302-s1을 정서 의미로 확인했다.", "sense_ids": ["w302-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-007 directional-symmetry: w302-s1에서 w002-s1로의 방향을 확인했다.", "sense_ids": ["w302-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-007 compound-spaced-phrase: w302-s1의 표제어 경계를 확인했다.", "sense_ids": ["w302-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-007 word-idiom: w302-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w302-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-008",
+      "source_sense": "w302-s1",
+      "relation": { "target": "w028", "target_sense": "w028-s1", "type": "mood" },
+      "direction": { "from": "w302-s1", "to": "w028-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "같은 출발 sense에서 다른 정서 온도로 이동하는 선택지를 독립적으로 기록한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-008 physical-figurative: w302-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w302-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-008 homonym-pos: w302-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w302-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-008 sensory-emotion-state-action: w302-s1을 정서 의미로 확인했다.", "sense_ids": ["w302-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-008 directional-symmetry: w302-s1에서 w028-s1로의 방향을 확인했다.", "sense_ids": ["w302-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-008 compound-spaced-phrase: w302-s1의 표제어 경계를 확인했다.", "sense_ids": ["w302-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-008 word-idiom: w302-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w302-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-009",
+      "source_sense": "w303-s1",
+      "relation": { "target": "w029", "target_sense": "w029-s1", "type": "mood" },
+      "direction": { "from": "w303-s1", "to": "w029-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "불편한 정서에서 외롭고 빈 듯한 정서로 장면의 결을 넓혀 본다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-009 physical-figurative: w303-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w303-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-009 homonym-pos: w303-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w303-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-009 sensory-emotion-state-action: w303-s1을 정서 의미로 확인했다.", "sense_ids": ["w303-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-009 directional-symmetry: w303-s1에서 w029-s1로의 방향을 확인했다.", "sense_ids": ["w303-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-009 compound-spaced-phrase: w303-s1의 표제어 경계를 확인했다.", "sense_ids": ["w303-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-009 word-idiom: w303-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w303-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-010",
+      "source_sense": "w304-s1",
+      "relation": { "target": "w227", "target_sense": "w227-s1", "type": "action" },
+      "direction": { "from": "w304-s1", "to": "w227-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "정서가 행동으로 드러나는 구체적 경로를 찾아 장면화한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-010 physical-figurative: w304-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w304-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-010 homonym-pos: w304-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w304-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-010 sensory-emotion-state-action: w304-s1을 행동 의미로 확인했다.", "sense_ids": ["w304-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-010 directional-symmetry: w304-s1에서 w227-s1로의 방향을 확인했다.", "sense_ids": ["w304-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-010 compound-spaced-phrase: w304-s1의 표제어 경계를 확인했다.", "sense_ids": ["w304-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-010 word-idiom: w304-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w304-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-011",
+      "source_sense": "w305-s1",
+      "relation": { "target": "w021", "target_sense": "w021-s1", "type": "mood" },
+      "direction": { "from": "w305-s1", "to": "w021-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "자기 평가가 안정된 긍지와 인접한 정서임을 설명해 탐색한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-011 physical-figurative: w305-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w305-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-011 homonym-pos: w305-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w305-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-011 sensory-emotion-state-action: w305-s1을 정서 의미로 확인했다.", "sense_ids": ["w305-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-011 directional-symmetry: w305-s1에서 w021-s1로의 방향을 확인했다.", "sense_ids": ["w305-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-011 compound-spaced-phrase: w305-s1의 표제어 경계를 확인했다.", "sense_ids": ["w305-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-011 word-idiom: w305-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w305-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-012",
+      "source_sense": "w306-s1",
+      "relation": { "target": "w019", "target_sense": "w019-s1", "type": "mood" },
+      "direction": { "from": "w306-s1", "to": "w019-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "긴장과 불안이 겹치되 몸의 압력과 앞일의 흔들림을 구분한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-012 physical-figurative: w306-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w306-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-012 homonym-pos: w306-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w306-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-012 sensory-emotion-state-action: w306-s1을 정서 의미로 확인했다.", "sense_ids": ["w306-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-012 directional-symmetry: w306-s1에서 w019-s1로의 방향을 확인했다.", "sense_ids": ["w306-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-012 compound-spaced-phrase: w306-s1의 표제어 경계를 확인했다.", "sense_ids": ["w306-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-012 word-idiom: w306-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w306-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-013",
+      "source_sense": "w307-s1",
+      "relation": { "target": "w016", "target_sense": "w016-s1", "type": "mood" },
+      "direction": { "from": "w307-s1", "to": "w016-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "존경 어린 경외에서 대상의 큰 인상으로 정서의 초점을 이동한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-013 physical-figurative: w307-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w307-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-013 homonym-pos: w307-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w307-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-013 sensory-emotion-state-action: w307-s1을 정서 의미로 확인했다.", "sense_ids": ["w307-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-013 directional-symmetry: w307-s1에서 w016-s1로의 방향을 확인했다.", "sense_ids": ["w307-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-013 compound-spaced-phrase: w307-s1의 표제어 경계를 확인했다.", "sense_ids": ["w307-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-013 word-idiom: w307-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w307-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-014",
+      "source_sense": "w308-s1",
+      "relation": { "target": "w004", "target_sense": "w004-s1", "type": "mood" },
+      "direction": { "from": "w308-s1", "to": "w004-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "관계의 결핍에서 떠난 대상을 향한 마음으로 장면의 정서를 확장한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-014 physical-figurative: w308-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w308-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-014 homonym-pos: w308-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w308-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-014 sensory-emotion-state-action: w308-s1을 정서 의미로 확인했다.", "sense_ids": ["w308-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-014 directional-symmetry: w308-s1에서 w004-s1로의 방향을 확인했다.", "sense_ids": ["w308-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-014 compound-spaced-phrase: w308-s1의 표제어 경계를 확인했다.", "sense_ids": ["w308-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-014 word-idiom: w308-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w308-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-015",
+      "source_sense": "w309-s1",
+      "relation": { "target": "w019", "target_sense": "w019-s1", "type": "near" },
+      "direction": { "from": "w309-s1", "to": "w019-s1" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "불안한 정서의 가까운 표현을 찾되 각각의 중심 상황은 보존한다.",
+      "expected_action": "emit",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-015 physical-figurative: w309-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w309-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-015 homonym-pos: w309-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w309-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-015 sensory-emotion-state-action: w309-s1을 정서 의미로 확인했다.", "sense_ids": ["w309-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-015 directional-symmetry: w309-s1에서 w019-s1로의 방향을 확인했다.", "sense_ids": ["w309-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-015 compound-spaced-phrase: w309-s1의 표제어 경계를 확인했다.", "sense_ids": ["w309-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-015 word-idiom: w309-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w309-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-016",
+      "source_sense": "w430-s1",
+      "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
+      "direction": { "from": "w430-s1", "to": "w060-s1" },
+      "generation_basis": "incidental-co-occurrence",
+      "writer_use_note": "두 말이 같은 문장에 함께 나타난다는 관찰만으로 후보를 만들려는 신호다.",
+      "expected_action": "suppress",
+      "expected_suppression_category": "incidental-co-occurrence",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-016 physical-figurative: w430-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w430-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-016 homonym-pos: w430-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w430-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-016 sensory-emotion-state-action: w430-s1을 정서 의미로 확인했다.", "sense_ids": ["w430-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-016 directional-symmetry: w430-s1에서 w060-s1로의 방향을 확인했다.", "sense_ids": ["w430-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-016 compound-spaced-phrase: w430-s1의 표제어 경계를 확인했다.", "sense_ids": ["w430-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-016 word-idiom: w430-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w430-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-017",
+      "source_sense": "w435-s1",
+      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
+      "direction": { "from": "w435-s1", "to": "w018-s1" },
+      "generation_basis": "generic-result-or-reaction",
+      "writer_use_note": "원인이 무엇이든 좋은 결과가 될 수 있다는 일반 반응만으로 연결하려는 신호다.",
+      "expected_action": "suppress",
+      "expected_suppression_category": "generic-result-or-reaction",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-017 physical-figurative: w435-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w435-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-017 homonym-pos: w435-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w435-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-017 sensory-emotion-state-action: w435-s1을 정서 의미로 확인했다.", "sense_ids": ["w435-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-017 directional-symmetry: w435-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w435-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-017 compound-spaced-phrase: w435-s1의 표제어 경계를 확인했다.", "sense_ids": ["w435-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-017 word-idiom: w435-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w435-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-018",
+      "source_sense": "w473-s1",
+      "relation": { "target": "w155", "target_sense": "w155-s1", "type": "scene" },
+      "direction": { "from": "w473-s1", "to": "w155-s1" },
+      "generation_basis": "arbitrary-modifier-or-place",
+      "writer_use_note": "출발 의미와 직접 근거 없이 장소나 수식어를 붙여 장면을 만들려는 신호다.",
+      "expected_action": "suppress",
+      "expected_suppression_category": "arbitrary-modifier-or-place",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-018 physical-figurative: w473-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w473-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-018 homonym-pos: w473-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w473-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-018 sensory-emotion-state-action: w473-s1을 상태 의미로 확인했다.", "sense_ids": ["w473-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-018 directional-symmetry: w473-s1에서 w155-s1로의 방향을 확인했다.", "sense_ids": ["w473-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-018 compound-spaced-phrase: w473-s1의 표제어 경계를 확인했다.", "sense_ids": ["w473-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-018 word-idiom: w473-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w473-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-019",
+      "source_sense": "w501-s1",
+      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
+      "direction": { "from": "w501-s1", "to": "w018-s1" },
+      "generation_basis": "broad-common-category",
+      "writer_use_note": "모든 긍정 정서를 하나의 넓은 공통 범주로 묶으려는 신호다.",
+      "expected_action": "suppress",
+      "expected_suppression_category": "broad-common-category",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-019 physical-figurative: w501-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w501-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-019 homonym-pos: w501-s1의 형식과 noun 품사를 확인했다.", "sense_ids": ["w501-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-019 sensory-emotion-state-action: w501-s1을 정서 의미로 확인했다.", "sense_ids": ["w501-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-019 directional-symmetry: w501-s1에서 w018-s1로의 방향을 확인했다.", "sense_ids": ["w501-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-019 compound-spaced-phrase: w501-s1의 표제어 경계를 확인했다.", "sense_ids": ["w501-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-019 word-idiom: w501-s1이 일반 명사 의미임을 확인했다.", "sense_ids": ["w501-s1"] }
+        }
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-020",
+      "source_sense": "w450-s1",
+      "relation": { "target": "w031", "target_sense": "w031-s999", "type": "near" },
+      "direction": { "from": "w450-s1", "to": "w031-s999" },
+      "generation_basis": "sense-anchored-writer-use",
+      "writer_use_note": "target 표면형만 맞추고 실제 target sense를 확인하지 않은 신호다.",
+      "expected_action": "suppress",
+      "expected_suppression_category": "sense-target-type-error",
+      "preflight": {
+        "status": "complete",
+        "boundary_checks": {
+          "physical-figurative": { "status": "checked", "rationale": "m5-10a-cal-020 physical-figurative: w450-s1 의미를 물리·비유 경계에서 확인했다.", "sense_ids": ["w450-s1"] },
+          "homonym-pos": { "status": "checked", "rationale": "m5-10a-cal-020 homonym-pos: w450-s1의 형식과 adjective 품사를 확인했다.", "sense_ids": ["w450-s1"] },
+          "sensory-emotion-state-action": { "status": "checked", "rationale": "m5-10a-cal-020 sensory-emotion-state-action: w450-s1을 감각 의미로 확인했다.", "sense_ids": ["w450-s1"] },
+          "directional-symmetry": { "status": "checked", "rationale": "m5-10a-cal-020 directional-symmetry: w450-s1에서 w031-s999로의 방향 오류를 확인했다.", "sense_ids": ["w450-s1"] },
+          "compound-spaced-phrase": { "status": "checked", "rationale": "m5-10a-cal-020 compound-spaced-phrase: w450-s1의 표제어 경계를 확인했다.", "sense_ids": ["w450-s1"] },
+          "word-idiom": { "status": "checked", "rationale": "m5-10a-cal-020 word-idiom: w450-s1이 일반 형용사 의미임을 확인했다.", "sense_ids": ["w450-s1"] }
+        }
+      }
+    }
+  ]
+}

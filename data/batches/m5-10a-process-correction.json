@@ -91,7 +91,8 @@
         "note"
       ],
       "status_mapping": "included-or-corrected=complete; held=held; rejected=rejected; deferred=deferred",
-      "complete_rule": "complete requires lemma_pos=checked, observed sense/POS values, and no missing boundary",
+      "complete_rule": "complete requires lemma_pos=checked, observed sense/POS values, at least one checked boundary, and no missing boundary",
+      "evidence_rule": "every boundary_checks entry requires status, record-specific rationale, and sense_ids; checked cites a real sense and not-applicable/not-reviewed cite none",
       "missing_boundary_rule": "missing_boundary_ids equals every boundary_checks entry marked not-reviewed",
       "relation_gate_rule": "relation review may start only for a complete checkpoint with zero missing boundaries"
     },
@@ -135,6 +136,7 @@
   },
   "relation_pre_screen": {
     "process_revision": "m5-9a-relation-admission-v1",
+    "evidence_role": "historical-failure-preservation-only",
     "policy": {
       "default_relation_output": "empty",
       "quota": "none",
@@ -155,7 +157,8 @@
         "unsupported-cross-sensory",
         "sense-target-type-error"
       ],
-      "sense_preflight_required": true
+      "sense_preflight_required": true,
+      "success_evidence": "candidate_generation.calibration"
     },
     "source": {
       "relation_screen": "data/batches/m5-9a-relation-screen.json",
@@ -179,6 +182,21 @@
       "broad-common-category": 2,
       "generic-result-or-reaction": 7
     }
+  },
+  "candidate_generation": {
+    "process_revision": "m5-10a-relation-generation-v1",
+    "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
+    "calibration_artifact_sha256": "2cb755e3d24269bdda2beb9e6f6736a68f9b625ab65664bc5872772a48d9a091",
+    "calibration_case_count": 20,
+    "generated_candidate_count": 15,
+    "suppressed_candidate_count": 5,
+    "pre_screen_noise_count": 0,
+    "noise_rate_of_emitted_candidates": 0,
+    "editor_seconds_per_processed_start": 8,
+    "unmeasured_pass_count": 0,
+    "preflight_case_count": 20,
+    "preflight_evidence_case_count": 20,
+    "fixed_gate_status": "passed"
   },
   "timing_boundary": {
     "contract_version": "m5-10a-v1",
@@ -221,6 +239,10 @@
     "wave_a_relation_screen_sha256": "31e39c9eaedb276193a1e039a62792a864e51033ec275717f59e8f2072570e52",
     "relation_regression_screen": "data/batches/m5-9a-relation-screen.json",
     "relation_regression_screen_sha256": "7e696f9be1e71a490bf2785035530ee079771c62498e6e7436a52184f8706973",
+    "relation_calibration": "data/batches/m5-10a-relation-calibration.json",
+    "relation_calibration_sha256": "2cb755e3d24269bdda2beb9e6f6736a68f9b625ab65664bc5872772a48d9a091",
+    "relation_calibration_fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
+    "relation_calibration_fixture_sha256": "7c5846f86854fe63e291f97b4cc144f0be9ffdbc1f419818a82bb31cd8b4eae9",
     "sense_regression_fixture": "tests/fixtures/m5-10-wave-a-sense-regressions.json",
     "sense_regression_fixture_sha256": "ec60907c8116771a63389274778b9d9c2cdda074ec1a3dd62d89cacc4ab87fc4",
     "canonical_directory": "data/canonical",
@@ -230,7 +252,7 @@
   },
   "verification": {
     "artifact": "data/batches/m5-10a-process-verification.json",
-    "sha256": "149b497256a024b12bb5a08ee6511c662ff58bd3b36528945452c652f32976d8"
+    "sha256": "a99363242e63c27cd52de173185f5f2aca05a29dad8af598090532f103e4f5a7"
   },
   "audit": {
     "status": "complete",
@@ -241,13 +263,19 @@
         "id": "m5-10a-sense-preflight",
         "category": "sense-boundary-checkpoint",
         "status": "closed",
-        "note": "6개 boundary를 record별 checkpoint와 missing_boundary_ids로 기록하고, Wave A에서 발견된 21개 split 사례를 회귀 fixture로 묶었다."
+        "note": "6개 boundary를 record별 evidence checkpoint와 missing_boundary_ids로 기록하고, Wave A에서 발견된 21개 split 사례를 회귀 fixture로 묶었다."
       },
       {
         "id": "m5-10a-relation-denominator",
         "category": "relation-pre-screen",
         "status": "closed",
-        "note": "25개 proposal 전체를 유지하면서 13개 human-admission 분모와 12개 pre-screen reject를 독립 source artifact에서 재현한다."
+        "note": "25개 historical proposal 전체를 유지하면서 13개 human-admission 분모와 12개 pre-screen reject를 재현한다. 이는 실패 보존용이며 upstream correction 성공 증거가 아니다."
+      },
+      {
+        "id": "m5-10a-candidate-generation-calibration",
+        "category": "relation-candidate-generation",
+        "status": "closed",
+        "note": "비정규 20개 calibration을 실제 generator로 dry-run해 15개만 emit하고 알려진 noise 5개를 proposal 단계에서 억제했으며, noise/time/audit/digest/preflight gate 변조 테스트를 통과했다."
       },
       {
         "id": "m5-10a-timing-boundary",

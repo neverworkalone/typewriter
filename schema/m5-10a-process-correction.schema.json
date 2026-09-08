@@ -14,6 +14,7 @@
     "canonical_scope",
     "sense_preflight",
     "relation_pre_screen",
+    "candidate_generation",
     "timing_boundary",
     "source",
     "verification",
@@ -110,6 +111,7 @@
             "required_record_fields",
             "status_mapping",
             "complete_rule",
+            "evidence_rule",
             "missing_boundary_rule",
             "relation_gate_rule"
           ],
@@ -132,7 +134,10 @@
               "const": "included-or-corrected=complete; held=held; rejected=rejected; deferred=deferred"
             },
             "complete_rule": {
-              "const": "complete requires lemma_pos=checked, observed sense/POS values, and no missing boundary"
+              "const": "complete requires lemma_pos=checked, observed sense/POS values, at least one checked boundary, and no missing boundary"
+            },
+            "evidence_rule": {
+              "const": "every boundary_checks entry requires status, record-specific rationale, and sense_ids; checked cites a real sense and not-applicable/not-reviewed cite none"
             },
             "missing_boundary_rule": {
               "const": "missing_boundary_ids equals every boundary_checks entry marked not-reviewed"
@@ -191,9 +196,10 @@
     "relation_pre_screen": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["process_revision", "policy", "source", "denominator", "failure_category_counts"],
+      "required": ["process_revision", "evidence_role", "policy", "source", "denominator", "failure_category_counts"],
       "properties": {
         "process_revision": { "const": "m5-9a-relation-admission-v1" },
+        "evidence_role": { "const": "historical-failure-preservation-only" },
         "policy": {
           "type": "object",
           "additionalProperties": false,
@@ -204,7 +210,8 @@
             "method",
             "human_admission_required",
             "pre_screen_failure_categories",
-            "sense_preflight_required"
+            "sense_preflight_required",
+            "success_evidence"
           ],
           "properties": {
             "default_relation_output": { "const": "empty" },
@@ -224,7 +231,8 @@
                 "sense-target-type-error"
               ]
             },
-            "sense_preflight_required": { "const": true }
+            "sense_preflight_required": { "const": true },
+            "success_evidence": { "const": "candidate_generation.calibration" }
           }
         },
         "source": {
@@ -274,6 +282,40 @@
             "generic-result-or-reaction": { "const": 7 }
           }
         }
+      }
+    },
+    "candidate_generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "process_revision",
+        "calibration_artifact",
+        "calibration_artifact_sha256",
+        "calibration_case_count",
+        "generated_candidate_count",
+        "suppressed_candidate_count",
+        "pre_screen_noise_count",
+        "noise_rate_of_emitted_candidates",
+        "editor_seconds_per_processed_start",
+        "unmeasured_pass_count",
+        "preflight_case_count",
+        "preflight_evidence_case_count",
+        "fixed_gate_status"
+      ],
+      "properties": {
+        "process_revision": { "const": "m5-10a-relation-generation-v1" },
+        "calibration_artifact": { "const": "data/batches/m5-10a-relation-calibration.json" },
+        "calibration_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "calibration_case_count": { "const": 20 },
+        "generated_candidate_count": { "const": 15 },
+        "suppressed_candidate_count": { "const": 5 },
+        "pre_screen_noise_count": { "const": 0 },
+        "noise_rate_of_emitted_candidates": { "const": 0 },
+        "editor_seconds_per_processed_start": { "const": 8 },
+        "unmeasured_pass_count": { "const": 0 },
+        "preflight_case_count": { "const": 20 },
+        "preflight_evidence_case_count": { "const": 20 },
+        "fixed_gate_status": { "const": "passed" }
       }
     },
     "timing_boundary": {
@@ -337,6 +379,10 @@
         "wave_a_relation_screen_sha256",
         "relation_regression_screen",
         "relation_regression_screen_sha256",
+        "relation_calibration",
+        "relation_calibration_sha256",
+        "relation_calibration_fixture",
+        "relation_calibration_fixture_sha256",
         "sense_regression_fixture",
         "sense_regression_fixture_sha256",
         "canonical_directory",
@@ -357,6 +403,10 @@
         "wave_a_relation_screen_sha256": { "$ref": "#/$defs/sha256" },
         "relation_regression_screen": { "const": "data/batches/m5-9a-relation-screen.json" },
         "relation_regression_screen_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_calibration": { "const": "data/batches/m5-10a-relation-calibration.json" },
+        "relation_calibration_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_calibration_fixture": { "const": "tests/fixtures/m5-10a-relation-generation-calibration.json" },
+        "relation_calibration_fixture_sha256": { "$ref": "#/$defs/sha256" },
         "sense_regression_fixture": { "const": "tests/fixtures/m5-10-wave-a-sense-regressions.json" },
         "sense_regression_fixture_sha256": { "$ref": "#/$defs/sha256" },
         "canonical_directory": { "const": "data/canonical" },

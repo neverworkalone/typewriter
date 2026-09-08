@@ -530,6 +530,7 @@ export function validateSensePreflight(preflight, manifest) {
     'PREFLIGHT_COVERAGE_MISMATCH',
   );
 
+  const rationaleOwners = new Map();
   for (const [index, checkpoint] of preflight.record_checkpoints.entries()) {
     const label = `manifest.sense_review.preflight.record_checkpoints[${index}]`;
     const manifestRecord = selectedByInventoryId.get(checkpoint.inventory_id);
@@ -559,8 +560,9 @@ export function validateSensePreflight(preflight, manifest) {
       fail(`${label} non-importable checkpoint must not carry canonical_id`, 'PREFLIGHT_CANONICAL_MISMATCH');
     }
 
+    let checkedBoundaryCount = 0;
     const missingBoundaryIds = M5_10A_SENSE_BOUNDARY_IDS.filter(
-      (boundaryId) => checkpoint.boundary_checks[boundaryId] === 'not-reviewed',
+      (boundaryId) => checkpoint.boundary_checks[boundaryId].status === 'not-reviewed',
     );
     assertJsonEqual(
       [...checkpoint.missing_boundary_ids].sort(),
@@ -569,9 +571,59 @@ export function validateSensePreflight(preflight, manifest) {
       'PREFLIGHT_BOUNDARY_MISMATCH',
     );
     for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
-      if (!PREFLIGHT_BOUNDARY_STATUSES.includes(checkpoint.boundary_checks[boundaryId])) {
+      const evidence = checkpoint.boundary_checks[boundaryId];
+      if (!PREFLIGHT_BOUNDARY_STATUSES.includes(evidence.status)) {
         fail(`${label}.boundary_checks.${boundaryId} has an invalid status`, 'PREFLIGHT_BOUNDARY_MISMATCH');
       }
+      requireString(
+        evidence.rationale,
+        `${label}.boundary_checks.${boundaryId}.rationale`,
+      );
+      if (!evidence.rationale.includes(checkpoint.inventory_id)) {
+        fail(
+          `${label}.boundary_checks.${boundaryId}.rationale must identify the inventory record`,
+          'PREFLIGHT_EVIDENCE_MISMATCH',
+        );
+      }
+      const evidenceOwner = rationaleOwners.get(evidence.rationale);
+      if (evidenceOwner && evidenceOwner !== checkpoint.inventory_id) {
+        fail(
+          `${label}.boundary_checks.${boundaryId}.rationale is reused across records`,
+          'PREFLIGHT_GENERIC_EVIDENCE',
+        );
+      }
+      rationaleOwners.set(evidence.rationale, checkpoint.inventory_id);
+      if (evidence.status === 'checked') {
+        checkedBoundaryCount += 1;
+        if (evidence.sense_ids.length < 1) {
+          fail(
+            `${label}.boundary_checks.${boundaryId} checked evidence must cite at least one sense`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+        if (checkpoint.status === 'complete' && evidence.sense_ids.some(
+          (senseId) => !senseId.startsWith(`${checkpoint.canonical_id}-s`),
+        )) {
+          fail(
+            `${label}.boundary_checks.${boundaryId} cites a sense outside its canonical record`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+        if (evidence.sense_ids.some((senseId) => !evidence.rationale.includes(senseId))) {
+          fail(
+            `${label}.boundary_checks.${boundaryId}.rationale must cite every checked sense`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+      } else if (evidence.sense_ids.length > 0) {
+        fail(
+          `${label}.boundary_checks.${boundaryId} non-checked evidence must not cite senses`,
+          'PREFLIGHT_EVIDENCE_MISMATCH',
+        );
+      }
+    }
+    if (checkpoint.status === 'complete' && checkedBoundaryCount === 0) {
+      fail(`${label} must contain at least one checked sense boundary`, 'PREFLIGHT_INCOMPLETE');
     }
     if (checkpoint.status === 'complete' && missingBoundaryIds.length > 0) {
       fail(`${label} cannot be complete while a sense boundary is not reviewed`, 'PREFLIGHT_INCOMPLETE');
@@ -585,6 +637,14 @@ export function validateSensePreflightRecords(manifest, recordInfos) {
 
   const recordsById = new Map(
     recordInfos.map(({ record }) => [record.id, record]),
+  );
+  const manifestByCanonicalId = new Map(
+    manifest.records
+      .filter((record) => Object.hasOwn(record, 'canonical_id'))
+      .map((record) => [record.canonical_id, record]),
+  );
+  const checkpointsByInventoryId = new Map(
+    preflight.record_checkpoints.map((checkpoint) => [checkpoint.inventory_id, checkpoint]),
   );
   for (const checkpoint of preflight.record_checkpoints) {
     if (checkpoint.status !== 'complete') continue;
@@ -607,6 +667,48 @@ export function validateSensePreflightRecords(manifest, recordInfos) {
       `preflight checkpoint ${checkpoint.inventory_id} POS values drifted`,
       'PREFLIGHT_CANONICAL_MISMATCH',
     );
+    const recordSenseIds = new Set(record.senses.map(({ id }) => id));
+    for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+      const evidence = checkpoint.boundary_checks[boundaryId];
+      if (evidence.status !== 'checked') continue;
+      for (const senseId of evidence.sense_ids) {
+        if (!recordSenseIds.has(senseId)) {
+          fail(
+            `preflight checkpoint ${checkpoint.inventory_id} ${boundaryId} cites a missing sense`,
+            'PREFLIGHT_CANONICAL_MISMATCH',
+          );
+        }
+        if (!evidence.rationale.includes(senseId)) {
+          fail(
+            `preflight checkpoint ${checkpoint.inventory_id} ${boundaryId} evidence does not explain its sense`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+      }
+    }
+  }
+
+  for (const { record } of recordInfos) {
+    if (record.role !== 'start' || !record.senses.some(({ relations }) => (relations?.length ?? 0) > 0)) continue;
+    const manifestRecord = manifestByCanonicalId.get(record.id);
+    const checkpoint = manifestRecord
+      ? checkpointsByInventoryId.get(manifestRecord.inventory_id)
+      : undefined;
+    if (!checkpoint || checkpoint.status !== 'complete' || checkpoint.missing_boundary_ids.length > 0) {
+      fail(
+        `relation-bearing record ${record.id} lacks a complete sense preflight checkpoint`,
+        'PREFLIGHT_RELATION_GATE',
+      );
+    }
+    for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+      const evidence = checkpoint.boundary_checks[boundaryId];
+      if (evidence.status === 'not-reviewed') {
+        fail(
+          `relation-bearing record ${record.id} lacks evidence for ${boundaryId}`,
+          'PREFLIGHT_RELATION_GATE',
+        );
+      }
+    }
   }
 }
 
