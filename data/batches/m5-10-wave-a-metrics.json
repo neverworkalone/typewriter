@@ -12,25 +12,25 @@
       "processed_start_count": 56
     },
     "decisions": {
-      "included": 31,
-      "corrected": 19,
+      "included": 28,
+      "corrected": 22,
       "held": 3,
       "rejected": 3,
       "deferred": 2,
       "importable_start_count": 50,
-      "correction_rate_of_selected": 0.3392857142857143,
-      "correction_rate_of_importable": 0.38,
+      "correction_rate_of_selected": 0.39285714285714285,
+      "correction_rate_of_importable": 0.44,
       "held_rate": 0.05357142857142857,
       "rejected_rate": 0.05357142857142857,
       "held_or_rejected_rate": 0.10714285714285714,
-      "sense_field_correction_count": 18,
+      "sense_field_correction_count": 21,
       "relation_field_correction_count": 1
     },
     "canonical_import": {
       "imported_start_count": 50,
       "imported_reference_only_count": 0,
       "imported_record_count": 50,
-      "imported_sense_count": 69,
+      "imported_sense_count": 73,
       "imported_relation_count": 5,
       "imported_expression_count": 2,
       "relation_type_counts": {
@@ -96,12 +96,22 @@
           "status": "complete",
           "wall_clock_seconds": 374.209,
           "editor_seconds": 374.209
+        },
+        "post-review-audit#2": {
+          "status": "complete",
+          "wall_clock_seconds": 116.78,
+          "editor_seconds": 116.78
+        },
+        "post-review-fixes#2": {
+          "status": "complete",
+          "wall_clock_seconds": 94.062,
+          "editor_seconds": 94.062
         }
       },
-      "total_wall_clock_seconds": 2040.184,
-      "total_editor_seconds": 2040.184,
-      "measured_wall_clock_seconds": 2040.184,
-      "measured_editor_seconds": 2040.184,
+      "total_wall_clock_seconds": 2251.026,
+      "total_editor_seconds": 2251.026,
+      "measured_wall_clock_seconds": 2251.026,
+      "measured_editor_seconds": 2251.026,
       "unmeasured_passes": []
     },
     "audit": {
@@ -120,8 +130,8 @@
     "sense_review": {
       "status": "complete",
       "reviewed_start_count": 50,
-      "scoped_single_sense_count": 32,
-      "split_record_count": 18,
+      "scoped_single_sense_count": 29,
+      "split_record_count": 21,
       "split_canonical_ids": [
         "w535",
         "w536",
@@ -132,11 +142,14 @@
         "w549",
         "w552",
         "w556",
+        "w558",
         "w559",
         "w560",
         "w561",
         "w562",
+        "w563",
         "w565",
+        "w566",
         "w567",
         "w568",
         "w569",

@@ -58,7 +58,7 @@ test('two independent builds have the same logical snapshot and provenance', asy
     assert.equal(first.metadata.reference_only_count, '42');
     assert.equal(first.metadata.candidate_count, '578');
     assert.equal(first.metadata.search_form_count, '696');
-    assert.equal(first.metadata.sense_count, '739');
+    assert.equal(first.metadata.sense_count, '743');
     assert.equal(first.metadata.relation_count, '467');
     assert.equal(first.metadata.expression_count, '39');
     assert.equal(first.metadata.worktree_state, second.metadata.worktree_state);

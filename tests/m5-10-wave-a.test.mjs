@@ -97,18 +97,18 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     processed_start_count: 56,
   });
   assert.deepEqual(metrics.derived.decisions, {
-    included: 31,
-    corrected: 19,
+    included: 28,
+    corrected: 22,
     held: 3,
     rejected: 3,
     deferred: 2,
     importable_start_count: 50,
-    correction_rate_of_selected: 19 / 56,
-    correction_rate_of_importable: 19 / 50,
+    correction_rate_of_selected: 22 / 56,
+    correction_rate_of_importable: 22 / 50,
     held_rate: 3 / 56,
     rejected_rate: 3 / 56,
     held_or_rejected_rate: 6 / 56,
-    sense_field_correction_count: 18,
+    sense_field_correction_count: 21,
     relation_field_correction_count: 1,
   });
   assert.deepEqual(metrics.derived.relation_diff, {
@@ -135,8 +135,8 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
   assert.deepEqual(metrics.derived.sense_review, {
     status: 'complete',
     reviewed_start_count: 50,
-    scoped_single_sense_count: 32,
-    split_record_count: 18,
+    scoped_single_sense_count: 29,
+    split_record_count: 21,
     split_canonical_ids: senseRegression.sense_cases.map(({ canonical_id }) => canonical_id),
   });
   assert.equal(metrics.derived.timing.status, 'complete');
@@ -159,7 +159,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     record_count: 620,
     start_count: 578,
     reference_only_count: 42,
-    sense_count: 739,
+    sense_count: 743,
     relation_count: 467,
     expression_count: 39,
   });
@@ -207,10 +207,10 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     assert.equal(summary.targetCount, 58);
     assert.equal(summary.referenceClosureCount, 0);
     assert.deepEqual(summary.counts, {
-      included: 31,
+      included: 28,
       held: 3,
       rejected: 3,
-      corrected: 19,
+      corrected: 22,
       deferred: 2,
     });
 

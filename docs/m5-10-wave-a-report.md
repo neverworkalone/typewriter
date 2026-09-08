@@ -16,19 +16,19 @@ quality and fixed editor-time gates failed.
 | Snapshot | Records | Starts | Reference-only | Senses | Relations | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Input (M5-9 output) | 570 | 528 | 42 | 670 | 462 | 37 |
-| Wave A output | 620 | 578 | 42 | 739 | 467 | 39 |
-| Net change | +50 | +50 | 0 | +69 | +5 | +2 |
+| Wave A output | 620 | 578 | 42 | 743 | 467 | 39 |
+| Net change | +50 | +50 | 0 | +73 | +5 | +2 |
 
-The selected-start decisions were 31 `included`, 19 `corrected`, 3 `held`, 3
+The selected-start decisions were 28 `included`, 22 `corrected`, 3 `held`, 3
 `rejected`, and 2 `deferred`. The buffer was 8, of which 6 were used by held or
 rejected decisions and 2 remained deferred. Deferred rows are not canonical and
 are not part of the processed-start denominator.
 
 ## Quality and measurement
 
-- All 50 importable starts received a second human sense/POS review across
-  physical/figurative, homonymous-POS, and sensory/emotional boundaries; 32
-  remained single sense and 18 were split into independently usable senses.
+- All 50 importable starts received repeated human sense/POS review across
+  physical/figurative, homonymous-POS, and sensory/emotional boundaries; 29
+  remained single sense and 21 were split into independently usable senses.
   The representative regression fixture is
   [`tests/fixtures/m5-10-wave-a-sense-regressions.json`](../tests/fixtures/m5-10-wave-a-sense-regressions.json).
 - The independent relation-screen artifact records all 8 candidates: 5 passed
@@ -37,22 +37,24 @@ are not part of the processed-start denominator.
   candidates; candidate noise is 3/8 = 37.5%, above the fixed 25% gate. The
   `아찔하다 → 긴장` candidate was rejected as `generic-result-or-reaction`;
   `흐뭇하다 → 기쁨` remains admitted with a concrete mood distinction.
-- All five required timing passes and both cycle-1 post-review passes were
-  recorded by `timing-recorder-v1`.
+- All five required timing passes and both cycle-1 and cycle-2 post-review pass
+  pairs were recorded by `timing-recorder-v1`.
 - The independent audit is complete with zero open blockers.
 - Canonical schema/integrity, deterministic SQLite, M4 search regression, and
   package checks are part of the verification result.
 
-The measured editor total is 2,040.184 seconds across 56 processed starts,
-36.4319 seconds per processed start. This exceeds the fixed 12-second gate, and
+The measured editor total is 2,251.026 seconds across 56 processed starts,
+40.1969 seconds per processed start. This exceeds the fixed 12-second gate, and
 the 3/8 relation noise rate also exceeds its fixed maximum, so the stage remains
 correctly held even though the exact +50 canonical count, sense review, audit,
 and deterministic validation checks pass. Cycle 1 separately measured the
 human semantic re-audit at 570.927 seconds and the resulting fixes/fixture work
-at 374.209 seconds; CI count/digest/import/tuple checks are validation evidence,
-not an unmeasured editor-time shortcut. The original 1,095.048-second baseline
-is preserved as recorded; it is not retroactively reclassified or subtracted,
-while this correction cycle makes the human semantic audit and fixes explicit.
+at 374.209 seconds; cycle 2 measured the additional semantic re-audit at 116.780
+seconds and fixes at 94.062 seconds. CI count/digest/import/tuple checks are
+validation evidence, not an unmeasured editor-time shortcut. The original
+1,095.048-second baseline is preserved as recorded; it is not retroactively
+reclassified or subtracted, while both correction cycles make the human semantic
+audit and fixes explicit.
 
 ## Source artifacts
 

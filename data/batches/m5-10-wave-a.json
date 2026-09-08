@@ -12,13 +12,13 @@
   "review": {
     "status": "complete",
     "reviewer": "typewriter-wave-a-editorial-review",
-    "completed_at": "2026-09-08T11:42:51.000Z"
+    "completed_at": "2026-09-08T12:06:22.000Z"
   },
   "sense_review": {
     "status": "complete",
     "reviewed_start_count": 50,
-    "scoped_single_sense_count": 32,
-    "split_record_count": 18,
+    "scoped_single_sense_count": 29,
+    "split_record_count": 21,
     "split_canonical_ids": [
       "w535",
       "w536",
@@ -29,17 +29,20 @@
       "w549",
       "w552",
       "w556",
+      "w558",
       "w559",
       "w560",
       "w561",
       "w562",
+      "w563",
       "w565",
+      "w566",
       "w567",
       "w568",
       "w569",
       "w578"
     ],
-    "note": "PR feedback cycle 1에서 importable start 50개 전부를 물리·비유, 동음이의 POS, 감각·정서 축으로 다시 검수했다. 18개 record는 독립된 sense로 분리했고 고소하다는 adjective 2개와 verb 1개로 정리했다."
+    "note": "PR feedback cycle 1·2에서 importable start 50개 전부를 물리·비유, 동음이의 POS, 감각·정서 축으로 다시 검수했다. 21개 record는 독립된 sense로 분리했고 고소하다는 adjective 2개와 verb 1개로 정리했다. 방향 대칭, 붙여 쓰는 합성어와 띄어 쓰는 구의 경계도 추가로 확인했다."
   },
   "measurement": {
     "schema_version": "1",
@@ -131,6 +134,32 @@
           "completed_at": "2026-09-08T11:49:00.360Z",
           "wall_clock_seconds": 374.209,
           "editor_seconds": 374.209
+        },
+        {
+          "id": "post-review-audit",
+          "cycle": 2,
+          "feedback_received_at": "2026-09-08T12:02:56.917Z",
+          "status": "complete",
+          "note": "PR feedback cycle 2 semantic audit: re-check all 50 imported starts, including directional symmetry, compound-versus-spaced verb boundaries, and writer-facing polysemy.",
+          "started_at": "2026-09-08T12:03:03.641Z",
+          "session_id": "672f35dd-50e8-401c-9240-3c4a7ed2b095",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T12:05:00.421Z",
+          "wall_clock_seconds": 116.78,
+          "editor_seconds": 116.78
+        },
+        {
+          "id": "post-review-fixes",
+          "cycle": 2,
+          "feedback_received_at": "2026-09-08T12:02:56.917Z",
+          "status": "complete",
+          "note": "PR feedback cycle 2 fixes: add omitted senses, update canonical/inventory artifacts, expand regression coverage, and re-derive metrics and stage digests.",
+          "started_at": "2026-09-08T12:05:06.614Z",
+          "session_id": "8816367c-9b16-4c7a-8c81-a71ed7ac93e7",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-08T12:06:40.676Z",
+          "wall_clock_seconds": 94.062,
+          "editor_seconds": 94.062
         }
       ]
     },
@@ -143,7 +172,7 @@
           "category": "sense",
           "severity": "warning",
           "status": "resolved",
-          "note": "PR feedback cycle 1에서 신규 importable 50개를 물리·비유, 동음이의 POS, 감각·정서 축으로 전수 재검수하고 18개 record의 sense 경계를 별도로 유지했다."
+          "note": "PR feedback cycle 1·2에서 신규 importable 50개를 물리·비유, 동음이의 POS, 감각·정서 축으로 전수 재검수하고 21개 record의 sense 경계를 별도로 유지했다. 방향 대칭과 합성어 경계를 포함한 독립 의미 감사를 수행했다."
         },
         {
           "id": "m5-10-wave-a-relation-admission",
@@ -437,9 +466,12 @@
       "source": "inventory",
       "inventory_id": "m5-278",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w558",
-      "decision_note": "길이나 방이 꺾이는 자리의 장면 단위를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "길이나 물체가 꺾이는 자리, 구석진 범위의 일부, 일·시간의 대목을 세 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -490,9 +522,12 @@
       "source": "inventory",
       "inventory_id": "m5-283",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w563",
-      "decision_note": "아래에서 위로 시선을 드는 방향의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "아래에서 위를 보는 물리 방향과 존경하는 마음으로 우러러보는 비유적 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",
@@ -517,9 +552,12 @@
       "source": "inventory",
       "inventory_id": "m5-286",
       "role": "start",
-      "decision": "included",
+      "decision": "corrected",
       "canonical_id": "w566",
-      "decision_note": "위에서 아래로 훑는 동작의 단일 sense를 확인해 포함했다."
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "띄어 쓰는 구 구성과 구별해 수염·털을 쓸어내리는 동작 및 근심이 풀려 안도하는 용법을 두 sense로 분리해 포함했다."
     },
     {
       "source": "inventory",

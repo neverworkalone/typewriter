@@ -198,17 +198,17 @@ The first #96 wave is recorded independently in
 reviewed relation diff, separate relation screen, derived metrics, canonical
 import, verification result, and source-bound stage report. It starts from the historical M5-9 output of 528
 starts and imports exactly 50 reviewed starts, reaching 620 records / 578 starts
-/ 42 reference-only records / 739 senses / 467 relations / 39 expressions.
+/ 42 reference-only records / 743 senses / 467 relations / 39 expressions.
 
-The wave selected 58 starts: 31 included, 19 corrected, 3 held, 3 rejected, and
+The wave selected 58 starts: 28 included, 22 corrected, 3 held, 3 rejected, and
 2 deferred. All 50 importable starts were re-audited for physical/figurative,
-homonymous-POS, and sensory/emotional boundaries; 18 records were split. The 8
+homonymous-POS, and sensory/emotional boundaries; 21 records were split. The 8
 relation candidates were screened separately from human admission; 5 passed and
 were admitted while 3 were rejected, for a candidate noise rate of 3/8 = 37.5%.
-All five timing passes and both cycle-1 post-review passes are recorder-measured
-and the independent audit has no open blockers. The exact source-derived report
-nevertheless records `HOLD PROCESS`: total editor time was 2,040.184 seconds,
-or 36.4319 seconds per processed start, above the fixed 12-second limit; the
+All five timing passes and both cycle-1 and cycle-2 post-review pass pairs are
+recorder-measured and the independent audit has no open blockers. The exact source-derived report
+nevertheless records `HOLD PROCESS`: total editor time was 2,251.026 seconds,
+or 40.1969 seconds per processed start, above the fixed 12-second limit; the
 relation noise gate also fails.
 
 Wave B was not started and the Wave A stage report keeps

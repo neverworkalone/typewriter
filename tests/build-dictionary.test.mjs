@@ -42,7 +42,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     assert.equal(summary.recordCount, 620);
     assert.equal(summary.searchFormCount, 696);
-    assert.equal(summary.senseCount, 739);
+    assert.equal(summary.senseCount, 743);
     assert.equal(summary.relationCount, 467);
     assert.equal(summary.metadata.schema_version, '1');
     assert.equal(summary.metadata.normalization_version, '1');
@@ -51,7 +51,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     try {
       assert.equal(countRows(database, 'records'), 620);
       assert.equal(countRows(database, 'search_forms'), 696);
-      assert.equal(countRows(database, 'senses'), 739);
+      assert.equal(countRows(database, 'senses'), 743);
       assert.equal(countRows(database, 'relations'), 467);
       assert.deepEqual(getMetadata(database), summary.metadata);
 

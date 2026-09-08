@@ -50,7 +50,7 @@ const CURRENT_CANONICAL_SNAPSHOT = {
   record_count: 620,
   start_count: 578,
   reference_only_count: 42,
-  sense_count: 739,
+  sense_count: 743,
   relation_count: 467,
   expression_count: 39,
 };

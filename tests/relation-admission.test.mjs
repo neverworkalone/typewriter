@@ -86,7 +86,7 @@ test('M5-6 admission controls remain present after the M5-7 import', async () =>
     record_count: 620,
     start_count: 578,
     reference_only_count: 42,
-    sense_count: 739,
+    sense_count: 743,
     relation_count: 467,
     expression_count: 39,
   });
