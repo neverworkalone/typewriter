@@ -128,11 +128,17 @@ npm run batch:import -- \
   --output=/tmp/typewriter-m5-2/canonical-import.jsonl
 
 npm run batch:process:check
+npm run batch:repair:check
 ```
 
 The import helper never edits `data/canonical/`; it only emits validated rows outside
 the repository. See [`m5-batch-workflow.md`](m5-batch-workflow.md) for the manifest,
 ID allocation, reference-closure, and reproducibility contract.
+
+When a review event creates a follow-up cycle, record its actual timestamp and
+generate the paired timing entries with npm run batch:timing:feedback. The command
+requires --feedback-received-at and writes a new manifest to the --output path; it
+does not estimate or backfill work.
 
 The first command scans only `data/canonical/` and recursively visits its `.jsonl`
 files. It does not scan `data/draft/`, `data/reference/`, generated output, or test

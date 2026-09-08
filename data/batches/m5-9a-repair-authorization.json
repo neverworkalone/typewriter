@@ -1,0 +1,109 @@
+{
+  "schema_version": "1",
+  "authorization_id": "m5-9a-repair-authorization-20260908",
+  "issue": 104,
+  "parent_issue": 7,
+  "process_revision": "m5-9a-relation-admission-v1",
+  "source": {
+    "failed_stage_report": "data/batches/m5-8-stage-01-plus-100.json",
+    "failed_stage_report_sha256": "ca906528aa3f045626390bc16680952337f169290ad6edc45e75473faee9ed1a",
+    "relation_screen": "data/batches/m5-9a-relation-screen.json",
+    "relation_screen_sha256": "7e696f9be1e71a490bf2785035530ee079771c62498e6e7436a52184f8706973"
+  },
+  "failed_stage": {
+    "stage_id": "m5-8-stage-01-plus-100",
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "next_stage_authorized": false,
+    "canonical_snapshot": {
+      "record_count": 570,
+      "start_count": 528,
+      "reference_only_count": 42,
+      "sense_count": 670,
+      "relation_count": 462,
+      "expression_count": 37
+    }
+  },
+  "relation_regression": {
+    "proposal_count": 25,
+    "pre_screened_count": 25,
+    "pre_screen_pass_count": 13,
+    "pre_screen_rejected_count": 12,
+    "human_admission_denominator": 13,
+    "human_admission_reviewed_count": 13,
+    "human_admitted_count": 13,
+    "human_rejected_count": 0,
+    "final_relation_count": 13,
+    "failure_category_counts": {
+      "arbitrary-modifier-or-place": 3,
+      "broad-common-category": 2,
+      "generic-result-or-reaction": 7
+    }
+  },
+  "timing_contract": {
+    "required_passes": [
+      "target-preparation",
+      "initial-review",
+      "feedback-fixes",
+      "final-audit",
+      "held-rejected"
+    ],
+    "follow_up_passes": [
+      "post-review-audit",
+      "post-review-fixes"
+    ],
+    "cycle_numbering": "automatic-one-based-paired",
+    "feedback_timestamp_source": "recorded-review-event",
+    "duration_source": "completed_at-minus-started_at",
+    "missing_follow_up_result": "timing-incomplete",
+    "reject_pre_review_timestamp": true,
+    "reject_duplicate_or_missing_cycle": true,
+    "reject_manual_duration_drift": true,
+    "allow_estimation_or_backfill": false
+  },
+  "audit": {
+    "status": "complete",
+    "independent": true,
+    "open_blocker_count": 0,
+    "findings": [
+      {
+        "id": "m5-9a-relation-regression",
+        "category": "relation-candidate-quality",
+        "status": "closed",
+        "note": "#95의 25개 source-bound 후보를 tuple/semantic pre-screen과 human admission으로 분리하고, 12개 failure를 admission 전에 reject하도록 고정했다."
+      },
+      {
+        "id": "m5-9a-timing-contract",
+        "category": "timing-measurement",
+        "status": "closed",
+        "note": "각 measured pass의 start/stop과 wall-clock 산식을 검증하고, feedback cycle 누락·중복·미측정은 incomplete로 남기도록 고정했다."
+      },
+      {
+        "id": "m5-9a-canonical-boundary",
+        "category": "canonical-boundary",
+        "status": "closed",
+        "note": "repair authorization은 canonical record를 변경하지 않으며 #96 Wave A의 첫 50-start 검증만 대상으로 한다."
+      }
+    ]
+  },
+  "canonical_snapshot": {
+    "record_count": 570,
+    "start_count": 528,
+    "reference_only_count": 42,
+    "sense_count": 670,
+    "relation_count": 462,
+    "expression_count": 37
+  },
+  "authorization": {
+    "target_issue": 96,
+    "target_wave": "wave-a-plus-50-validation",
+    "base_start_count": 528,
+    "net_start_increase": 50,
+    "cumulative_start_target": 578,
+    "max_net_start_increase": 50,
+    "canonical_mutation": false,
+    "bulk_250_authorized": false,
+    "wave_b_authorized": false
+  },
+  "decision": "AUTHORIZE FIRST 50-START VALIDATION WAVE"
+}

@@ -18,6 +18,8 @@
     "batch:metrics": "node scripts/batch/derive-metrics.mjs",
     "batch:admission:check": "node scripts/batch/validate-relation-admission.mjs",
     "batch:process:check": "node scripts/batch/validate-m5-8-process.mjs",
+    "batch:repair:check": "node scripts/batch/validate-m5-9-repair.mjs",
+    "batch:timing:feedback": "node scripts/batch/timing.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",

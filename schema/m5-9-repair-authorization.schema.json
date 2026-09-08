@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-9-repair-authorization.schema.json",
+  "title": "Typewriter M5-9A repair authorization",
+  "description": "Digest-bound process authorization that preserves a failed M5-9 stage and permits only the first #96 validation wave.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "issue",
+    "parent_issue",
+    "process_revision",
+    "source",
+    "failed_stage",
+    "relation_regression",
+    "timing_contract",
+    "audit",
+    "canonical_snapshot",
+    "authorization",
+    "decision"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "^m5-9a-repair-authorization-[0-9]{8}$"
+    },
+    "issue": { "const": 104 },
+    "parent_issue": { "const": 7 },
+    "process_revision": { "const": "m5-9a-relation-admission-v1" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "failed_stage_report",
+        "failed_stage_report_sha256",
+        "relation_screen",
+        "relation_screen_sha256"
+      ],
+      "properties": {
+        "failed_stage_report": {
+          "const": "data/batches/m5-8-stage-01-plus-100.json"
+        },
+        "failed_stage_report_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_screen": {
+          "const": "data/batches/m5-9a-relation-screen.json"
+        },
+        "relation_screen_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "failed_stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "gate_status",
+        "decision",
+        "next_stage_authorized",
+        "canonical_snapshot"
+      ],
+      "properties": {
+        "stage_id": { "const": "m5-8-stage-01-plus-100" },
+        "gate_status": { "const": "fail" },
+        "decision": { "const": "HOLD PROCESS" },
+        "next_stage_authorized": { "const": false },
+        "canonical_snapshot": { "$ref": "#/$defs/snapshot" }
+      }
+    },
+    "relation_regression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal_count",
+        "pre_screened_count",
+        "pre_screen_pass_count",
+        "pre_screen_rejected_count",
+        "human_admission_denominator",
+        "human_admission_reviewed_count",
+        "human_admitted_count",
+        "human_rejected_count",
+        "final_relation_count",
+        "failure_category_counts"
+      ],
+      "properties": {
+        "proposal_count": { "const": 25 },
+        "pre_screened_count": { "const": 25 },
+        "pre_screen_pass_count": { "const": 13 },
+        "pre_screen_rejected_count": { "const": 12 },
+        "human_admission_denominator": { "const": 13 },
+        "human_admission_reviewed_count": { "const": 13 },
+        "human_admitted_count": { "const": 13 },
+        "human_rejected_count": { "const": 0 },
+        "final_relation_count": { "const": 13 },
+        "failure_category_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "arbitrary-modifier-or-place",
+            "broad-common-category",
+            "generic-result-or-reaction"
+          ],
+          "properties": {
+            "arbitrary-modifier-or-place": { "const": 3 },
+            "broad-common-category": { "const": 2 },
+            "generic-result-or-reaction": { "const": 7 }
+          }
+        }
+      }
+    },
+    "timing_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_passes",
+        "follow_up_passes",
+        "cycle_numbering",
+        "feedback_timestamp_source",
+        "duration_source",
+        "missing_follow_up_result",
+        "reject_pre_review_timestamp",
+        "reject_duplicate_or_missing_cycle",
+        "reject_manual_duration_drift",
+        "allow_estimation_or_backfill"
+      ],
+      "properties": {
+        "required_passes": {
+          "const": [
+            "target-preparation",
+            "initial-review",
+            "feedback-fixes",
+            "final-audit",
+            "held-rejected"
+          ]
+        },
+        "follow_up_passes": {
+          "const": ["post-review-audit", "post-review-fixes"]
+        },
+        "cycle_numbering": { "const": "automatic-one-based-paired" },
+        "feedback_timestamp_source": { "const": "recorded-review-event" },
+        "duration_source": { "const": "completed_at-minus-started_at" },
+        "missing_follow_up_result": { "const": "timing-incomplete" },
+        "reject_pre_review_timestamp": { "const": true },
+        "reject_duplicate_or_missing_cycle": { "const": true },
+        "reject_manual_duration_drift": { "const": true },
+        "allow_estimation_or_backfill": { "const": false }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "independent", "open_blocker_count", "findings"],
+      "properties": {
+        "status": { "const": "complete" },
+        "independent": { "const": true },
+        "open_blocker_count": { "const": 0 },
+        "findings": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/finding" }
+        }
+      }
+    },
+    "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_issue",
+        "target_wave",
+        "base_start_count",
+        "net_start_increase",
+        "cumulative_start_target",
+        "max_net_start_increase",
+        "canonical_mutation",
+        "bulk_250_authorized",
+        "wave_b_authorized"
+      ],
+      "properties": {
+        "target_issue": { "const": 96 },
+        "target_wave": { "const": "wave-a-plus-50-validation" },
+        "base_start_count": { "const": 528 },
+        "net_start_increase": { "const": 50 },
+        "cumulative_start_target": { "const": 578 },
+        "max_net_start_increase": { "const": 50 },
+        "canonical_mutation": { "const": false },
+        "bulk_250_authorized": { "const": false },
+        "wave_b_authorized": { "const": false }
+      }
+    },
+    "decision": { "const": "AUTHORIZE FIRST 50-START VALIDATION WAVE" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_count",
+        "start_count",
+        "reference_only_count",
+        "sense_count",
+        "relation_count",
+        "expression_count"
+      ],
+      "properties": {
+        "record_count": { "type": "integer", "minimum": 0 },
+        "start_count": { "type": "integer", "minimum": 0 },
+        "reference_only_count": { "type": "integer", "minimum": 0 },
+        "sense_count": { "type": "integer", "minimum": 0 },
+        "relation_count": { "type": "integer", "minimum": 0 },
+        "expression_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "category", "status", "note"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "category": { "type": "string", "pattern": "\\S" },
+        "status": { "const": "closed" },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

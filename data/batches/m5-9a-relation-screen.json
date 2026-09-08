@@ -1,0 +1,569 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-9a-relation-screen-20260908",
+  "process_revision": "m5-9a-relation-admission-v1",
+  "source": {
+    "relation_diff": "data/batches/m5-9-expansion-relation-diff.json",
+    "relation_diff_sha256": "b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153"
+  },
+  "policy": {
+    "default_relation_output": "empty",
+    "quota": "none",
+    "candidate_fields": [
+      "source_sense",
+      "target_sense",
+      "direction",
+      "type",
+      "writer_use_note"
+    ],
+    "pre_screen_method": "tuple-and-semantic-review",
+    "pre_screen_failure_categories": [
+      "incidental-co-occurrence",
+      "generic-result-or-reaction",
+      "arbitrary-modifier-or-place",
+      "broad-common-category",
+      "unsupported-cross-sensory",
+      "sense-target-type-error"
+    ],
+    "human_admission_required": true
+  },
+  "candidates": [
+    {
+      "candidate_id": "m5-9-relation-candidate-0001",
+      "relation_id": "m5-9-w429-s1-r1",
+      "source_sense": "w429-s1",
+      "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
+      "direction": { "from": "w429-s1", "to": "w060-s1" },
+      "writer_use_note": "애틋한 감정이 사건 뒤 남는다는 설명은 가능한 aftermath일 뿐 여운과의 stable relation 근거가 아니다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "source 정서에서 target이 안정적으로 파생되는 관계가 아니라 가능한 aftermath를 가리킨다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "pre-screen에서 가능한 aftermath로 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0002",
+      "relation_id": "m5-9-w430-s1-r1",
+      "source_sense": "w430-s1",
+      "relation": { "target": "w029", "target_sense": "w029-s1", "type": "mood" },
+      "direction": { "from": "w430-s1", "to": "w029-s1" },
+      "writer_use_note": "쓸쓸함과 허전함이 만드는 빈자리의 정서적 색을 mood 관계로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "두 sense가 빈자리의 정서적 색을 공유하며 source에서 target으로 읽는 방향과 mood type이 구체적이다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "쓸쓸함과 허전함이 만드는 빈자리의 정서적 색을 mood 관계로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0003",
+      "relation_id": "m5-9-w431-s1-r1",
+      "source_sense": "w431-s1",
+      "relation": { "target": "w009", "target_sense": "w009-s1", "type": "near" },
+      "direction": { "from": "w431-s1", "to": "w009-s1" },
+      "writer_use_note": "초조함과 긴장은 기다림의 압력을 공유하지만 직접 대체가 아니므로 near로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "기다림의 압력이라는 구체적 writer use가 source와 target sense를 잇고 near 방향이 명확하다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "초조함과 긴장은 기다림의 압력을 공유하지만 직접 대체가 아니므로 near로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0004",
+      "relation_id": "m5-9-w432-s1-r1",
+      "source_sense": "w432-s1",
+      "relation": { "target": "w005", "target_sense": "w005-s1", "type": "mood" },
+      "direction": { "from": "w432-s1", "to": "w005-s1" },
+      "writer_use_note": "수치심과 서운함은 모두 불편한 감정이라는 넓은 공통점만 있어 stable semantic relation으로 인정하지 않았다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "broad-common-category",
+        "reason": "불편한 감정이라는 넓은 공통 범주만 있고 source sense에서 target으로 쓸 구체적 방향이 없다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "broad-common-category로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0005",
+      "relation_id": "m5-9-w433-s1-r1",
+      "source_sense": "w433-s1",
+      "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
+      "direction": { "from": "w433-s1", "to": "w060-s1" },
+      "writer_use_note": "동경이 오래 남는다는 점은 source 정서의 가능한 지속 결과일 뿐 여운과의 stable relation 근거가 아니다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "source 정서가 오래 남을 수 있다는 결과를 target sense와의 안정된 관계로 오인했다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "가능한 지속 결과로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0006",
+      "relation_id": "m5-9-w434-s1-r1",
+      "source_sense": "w434-s1",
+      "relation": { "target": "w060", "target_sense": "w060-s1", "type": "mood" },
+      "direction": { "from": "w434-s1", "to": "w060-s1" },
+      "writer_use_note": "애잔한 감정이 사건 뒤 이어진다는 설명은 일반적인 aftermath일 뿐 여운으로의 stable relation이 아니다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "사건 뒤 이어지는 일반적 aftermath를 stable mood relation으로 승인하지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "일반적인 aftermath로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0007",
+      "relation_id": "m5-9-w435-s1-r1",
+      "source_sense": "w435-s1",
+      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
+      "direction": { "from": "w435-s1", "to": "w018-s1" },
+      "writer_use_note": "통쾌함은 일이 풀릴 때 솟는 시원한 긍정 정서라 기쁨과 mood로 연결했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "일이 풀릴 때 솟는 시원한 긍정 정서라는 writer use가 두 mood sense를 구체적으로 연결한다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "통쾌함은 일이 풀릴 때 솟는 시원한 긍정 정서라 기쁨과 mood로 연결했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0008",
+      "relation_id": "m5-9-w445-s1-r1",
+      "source_sense": "w445-s1",
+      "relation": { "target": "w402", "target_sense": "w402-s1", "type": "near" },
+      "direction": { "from": "w445-s1", "to": "w402-s1" },
+      "writer_use_note": "강인함은 견디는 힘에, 담대함은 두려움 앞에서 나아가는 태도에 초점이 있어 near로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "견디는 힘과 두려움 앞에서 나아가는 태도를 구분해 쓸 수 있어 near 방향과 근거가 안정적이다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "강인함은 견디는 힘에, 담대함은 두려움 앞에서 나아가는 태도에 초점이 있어 near로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0009",
+      "relation_id": "m5-9-w446-s1-r1",
+      "source_sense": "w446-s1",
+      "relation": { "target": "w310", "target_sense": "w310-s1", "type": "near" },
+      "direction": { "from": "w446-s1", "to": "w310-s1" },
+      "writer_use_note": "정갈함은 깨끗하고 가지런한 상태에, 단정함은 모양과 태도의 정돈에 초점이 있어 near로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "깨끗하고 가지런한 상태와 모양·태도의 정돈을 구분하는 writer use가 명확하다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "정갈함은 깨끗하고 가지런한 상태에, 단정함은 모양과 태도의 정돈에 초점이 있어 near로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0010",
+      "relation_id": "m5-9-w447-s1-r1",
+      "source_sense": "w447-s1",
+      "relation": { "target": "w218", "target_sense": "w218-s1", "type": "action" },
+      "direction": { "from": "w447-s1", "to": "w218-s1" },
+      "writer_use_note": "단호한 태도가 거절로 나타날 수는 있지만 거절은 가능한 결과·행동 중 하나일 뿐 stable relation이 아니다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "단호한 태도에서 거절이 나타날 수 있다는 가능한 결과를 stable action relation으로 인정하지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "가능한 결과·행동으로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0011",
+      "relation_id": "m5-9-w448-s1-r1",
+      "source_sense": "w448-s1",
+      "relation": { "target": "w454", "target_sense": "w454-s1", "type": "near" },
+      "direction": { "from": "w448-s1", "to": "w454-s1" },
+      "writer_use_note": "섣부름은 살핌 부족에, 성급함은 기다리지 못하는 급함에 초점이 있어 near로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "살핌 부족과 기다리지 못하는 급함이라는 구분 가능한 writer use가 near 관계를 지지한다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "섣부름은 살핌 부족에, 성급함은 기다리지 못하는 급함에 초점이 있어 near로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0012",
+      "relation_id": "m5-9-w449-s1-r1",
+      "source_sense": "w449-s1",
+      "relation": { "target": "w026", "target_sense": "w026-s1", "type": "near" },
+      "direction": { "from": "w449-s1", "to": "w026-s1" },
+      "writer_use_note": "무던함은 자극과 결함을 너그럽게 넘기는 성향이고 담담함은 감정 절제에 초점이 있어 near로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "자극을 넘기는 성향과 감정 절제를 구분해 사용할 수 있어 near 방향이 구체적이다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "무던함은 자극과 결함을 너그럽게 넘기는 성향이고 담담함은 감정 절제에 초점이 있어 near로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0013",
+      "relation_id": "m5-9-w450-s1-r1",
+      "source_sense": "w450-s1",
+      "relation": { "target": "w031", "target_sense": "w031-s1", "type": "mood" },
+      "direction": { "from": "w450-s1", "to": "w031-s1" },
+      "writer_use_note": "자상함의 세심한 돌봄과 다정함의 따뜻한 정서적 결을 mood로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "세심한 돌봄과 따뜻한 정서적 결이라는 writer-facing mood 사용이 source에서 target으로 이어진다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "자상함의 세심한 돌봄과 다정함의 따뜻한 정서적 결을 mood로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0014",
+      "relation_id": "m5-9-w459-s1-r1",
+      "source_sense": "w459-s1",
+      "relation": { "target": "w083", "target_sense": "w083-s1", "type": "sensory" },
+      "direction": { "from": "w459-s1", "to": "w083-s1" },
+      "writer_use_note": "신체의 시린 감각과 서늘함의 낮은 온도 감각이 직접 닿아 sensory로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "신체의 시린 감각과 낮은 온도 감각이 직접 연결되는 구체적 sensory use다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "신체의 시린 감각과 서늘함의 낮은 온도 감각이 직접 닿아 sensory로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0015",
+      "relation_id": "m5-9-w460-s1-r1",
+      "source_sense": "w460-s1",
+      "relation": { "target": "w323", "target_sense": "w323-s1", "type": "sensory" },
+      "direction": { "from": "w460-s1", "to": "w323-s1" },
+      "writer_use_note": "몸으로 느끼는 따스한 온기와 포근함의 감각적 방향이 닿아 sensory로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "몸으로 느끼는 따스한 온기와 포근함이라는 sensory direction이 양쪽 sense에서 유지된다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "몸으로 느끼는 따스한 온기와 포근함의 감각적 방향이 닿아 sensory로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0016",
+      "relation_id": "m5-9-w461-s1-r1",
+      "source_sense": "w461-s1",
+      "relation": { "target": "w406", "target_sense": "w406-s1", "type": "sensory" },
+      "direction": { "from": "w461-s1", "to": "w406-s1" },
+      "writer_use_note": "바삭함과 서걱함은 마르고 단단한 것이 부서질 때의 청각·촉각을 공유해 sensory로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "마르고 단단한 것이 부서질 때의 청각·촉각이라는 공통 sensory use가 구체적이다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "바삭함과 서걱함은 마르고 단단한 것이 부서질 때의 청각·촉각을 공유해 sensory로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0017",
+      "relation_id": "m5-9-w462-s1-r1",
+      "source_sense": "w462-s1",
+      "relation": { "target": "w327", "target_sense": "w327-s1", "type": "sensory" },
+      "direction": { "from": "w462-s1", "to": "w327-s1" },
+      "writer_use_note": "쓴맛 sense에 한정해 씁쓸함과 쌉싸름함의 맛 감각이 닿으므로 sensory로 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "쓴맛 sense에 한정된 맛 감각이라는 source/target 경계가 고정되어 sensory use가 안정적이다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "쓴맛 sense에 한정해 씁쓸함과 쌉싸름함의 맛 감각이 닿으므로 sensory로 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0018",
+      "relation_id": "m5-9-w473-s1-r1",
+      "source_sense": "w473-s1",
+      "relation": { "target": "w155", "target_sense": "w155-s1", "type": "scene" },
+      "direction": { "from": "w473-s1", "to": "w155-s1" },
+      "writer_use_note": "우물과 마당은 함께 놓일 수 있는 일반적 배경일 뿐 우물 sense가 마당 장면을 안정적으로 요구하지 않는다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "arbitrary-modifier-or-place",
+        "reason": "함께 놓일 수 있는 일반적 장소일 뿐 source sense에서 target scene이 안정적으로 요구되지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "arbitrary-modifier-or-place로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0019",
+      "relation_id": "m5-9-w474-s1-r1",
+      "source_sense": "w474-s1",
+      "relation": { "target": "w155", "target_sense": "w155-s1", "type": "scene" },
+      "direction": { "from": "w474-s1", "to": "w155-s1" },
+      "writer_use_note": "장독대와 마당은 전형적 배경의 동시 출현에 머물러 stable writer-use relation으로 인정하지 않았다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "arbitrary-modifier-or-place",
+        "reason": "전형적 배경의 동시 출현만으로는 source sense와 target scene 사이의 안정된 사용을 만들지 못한다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "arbitrary-modifier-or-place로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0020",
+      "relation_id": "m5-9-w475-s1-r1",
+      "source_sense": "w475-s1",
+      "relation": { "target": "w145", "target_sense": "w145-s1", "type": "scene" },
+      "direction": { "from": "w475-s1", "to": "w145-s1" },
+      "writer_use_note": "개울과 골목은 특정 장면에서 만날 수 있지만 개울 sense에서 필연적으로 파생되는 관계가 아니다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "arbitrary-modifier-or-place",
+        "reason": "특정 장면에서 함께 등장할 수 있다는 사실만으로 source에서 target scene이 필연적으로 파생되지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "arbitrary-modifier-or-place로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0021",
+      "relation_id": "m5-9-w487-s1-r1",
+      "source_sense": "w487-s1",
+      "relation": { "target": "w181", "target_sense": "w181-s1", "type": "action" },
+      "direction": { "from": "w487-s1", "to": "w181-s1" },
+      "writer_use_note": "다가서는 움직임은 접근을 구체화하고 접근하다와 action 장면을 공유해 인정했다.",
+      "pre_screen": {
+        "decision": "pass",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "stable-writer-use",
+        "reason": "다가서는 움직임이 접근이라는 구체적 action use를 source에서 target으로 직접 확장한다."
+      },
+      "human_admission": {
+        "status": "reviewed",
+        "decision": "admit",
+        "reason": "다가서는 움직임은 접근을 구체화하고 접근하다와 action 장면을 공유해 인정했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0022",
+      "relation_id": "m5-9-w488-s1-r1",
+      "source_sense": "w488-s1",
+      "relation": { "target": "w218", "target_sense": "w218-s1", "type": "action" },
+      "direction": { "from": "w488-s1", "to": "w218-s1" },
+      "writer_use_note": "물러서는 동작이 거절로 이어질 수는 있지만 가능한 해석 중 하나라 stable action relation으로 인정하지 않았다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "물러서는 동작이 거절로 이어질 수 있다는 가능한 결과를 stable action relation으로 승인하지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "가능한 결과·행동으로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0023",
+      "relation_id": "m5-9-w489-s1-r1",
+      "source_sense": "w489-s1",
+      "relation": { "target": "w206", "target_sense": "w206-s1", "type": "scene" },
+      "direction": { "from": "w489-s1", "to": "w206-s1" },
+      "writer_use_note": "흘러내림과 기울어짐은 특정 표면에서 함께 나타날 수 있는 일반적 결과라 scene relation으로 인정하지 않았다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "특정 표면에서 함께 나타나는 일반적 결과를 stable scene relation으로 승인하지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "일반적 결과로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0024",
+      "relation_id": "m5-9-w501-s1-r1",
+      "source_sense": "w501-s1",
+      "relation": { "target": "w260", "target_sense": "w260-s1", "type": "scene" },
+      "direction": { "from": "w501-s1", "to": "w260-s1" },
+      "writer_use_note": "장화와 우산은 비 오는 장면의 공통 소품일 뿐 서로의 sense를 설명하거나 대체하지 않는다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "broad-common-category",
+        "reason": "비 오는 장면이라는 공통 소품 범주만 있고 source와 target sense의 방향성 있는 writer use가 없다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "broad-common-category로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    },
+    {
+      "candidate_id": "m5-9-relation-candidate-0025",
+      "relation_id": "m5-9-w515-s1-r1",
+      "source_sense": "w515-s1",
+      "relation": { "target": "w018", "target_sense": "w018-s1", "type": "mood" },
+      "direction": { "from": "w515-s1", "to": "w018-s1" },
+      "writer_use_note": "가슴이 뛰는 표현에서 기쁨은 가능한 정서 방향 중 하나일 뿐 source expression에 안정적으로 수반되는 relation이 아니다.",
+      "pre_screen": {
+        "decision": "reject",
+        "method": "tuple-and-semantic-review",
+        "source_sense_locked": true,
+        "target_sense_locked": true,
+        "semantic_result": "not-stable-writer-use",
+        "error_category": "generic-result-or-reaction",
+        "reason": "표현에서 기쁨이 나타날 수 있다는 가능한 정서 방향을 stable mood relation으로 승인하지 않는다."
+      },
+      "human_admission": {
+        "status": "not-reviewed",
+        "decision": "not-reviewed",
+        "reason": "가능한 정서 결과로 pre-screen 제외했으며 human admission 분모 밖임을 별도 집계했다."
+      }
+    }
+  ]
+}

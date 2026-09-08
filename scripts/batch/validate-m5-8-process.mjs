@@ -19,6 +19,7 @@ import {
   REPOSITORY_DIRECTORY,
   validateBatchManifest,
 } from './validate-batch.mjs';
+import { loadAndValidateRepairAuthorization } from './repair-authorization.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -586,6 +587,11 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
       `${stage.stage_id} cannot reference a previous stage report`,
       'UNEXPECTED_PREVIOUS_STAGE',
     );
+    assertCondition(
+      !stage.input.repair_authorization,
+      `${stage.stage_id} cannot reference a repair authorization without a previous stage report`,
+      'UNEXPECTED_REPAIR_AUTHORIZATION',
+    );
     return;
   }
 
@@ -617,24 +623,55 @@ async function validatePreviousStageReport(stage, plan, plannedStageIndex, visit
     `${stage.stage_id} previous stage report does not match the ladder`,
     'STAGE_CHAIN_MISMATCH',
   );
-  assertEqual(
-    previousStage.gate_status,
-    'pass',
-    `${stage.stage_id} cannot follow a failed previous stage`,
-    'STAGE_CHAIN_GATE_FAILURE',
-  );
-  assertEqual(
-    previousStage.decision,
-    'APPROVE BOUNDED',
-    `${stage.stage_id} previous stage was not approved`,
-    'STAGE_CHAIN_GATE_FAILURE',
-  );
-  assertEqual(
-    previousStage.next_stage_authorized,
-    true,
-    `${stage.stage_id} previous stage did not authorize the next stage`,
-    'STAGE_CHAIN_PROMOTION_MISMATCH',
-  );
+  if (previousStage.gate_status === 'pass') {
+    assertCondition(
+      !stage.input.repair_authorization,
+      `${stage.stage_id} must not use repair authorization after a passed stage`,
+      'UNEXPECTED_REPAIR_AUTHORIZATION',
+    );
+    assertEqual(
+      previousStage.decision,
+      'APPROVE BOUNDED',
+      `${stage.stage_id} previous stage was not approved`,
+      'STAGE_CHAIN_GATE_FAILURE',
+    );
+    assertEqual(
+      previousStage.next_stage_authorized,
+      true,
+      `${stage.stage_id} previous stage did not authorize the next stage`,
+      'STAGE_CHAIN_PROMOTION_MISMATCH',
+    );
+  } else {
+    const repairReference = stage.input.repair_authorization;
+    assertCondition(
+      repairReference,
+      `${stage.stage_id} must reference a valid repair authorization after a failed stage`,
+      'MISSING_REPAIR_AUTHORIZATION',
+    );
+    const repairPath = resolveSourcePath(
+      repairReference.path,
+      `${stage.stage_id}.input.repair_authorization.path`,
+    );
+    const repairAuthorization = await loadAndValidateRepairAuthorization({
+      authorizationPath: repairPath,
+      authorizationSha256: repairReference.sha256,
+      failedStage: previousStage,
+      failedStagePath: previousPath,
+      failedStageSha256: previousArtifact.sha256,
+    });
+    assertEqual(
+      stage.target.net_start_increase,
+      repairAuthorization.net_start_increase,
+      `${stage.stage_id} exceeds the repair authorization wave scope`,
+      'REPAIR_TARGET_MISMATCH',
+    );
+    assertEqual(
+      stage.target.cumulative_start_target,
+      578,
+      `${stage.stage_id} does not target the authorized first validation wave`,
+      'REPAIR_TARGET_MISMATCH',
+    );
+  }
   assertEqual(
     previousStage.actual.canonical_snapshot,
     stage.input.canonical_snapshot,

@@ -68,6 +68,11 @@ stage result binds its manifest, derived metrics, relation diff, canonical
 directory, verification artifact, and (after the first stage) previous passed
 stage report by path and digest; it does not contain a candidate batch or
 canonical import rows.
+The M5-9A relation-screen and repair-authorization artifacts are also audit
+metadata. The screen separates source-bound relation proposals, tuple/semantic
+pre-screen decisions, and human admission without storing raw drafts. The
+authorization binds the failed M5-9 report and its regression result by SHA-256
+and permits only the first #96 validation wave; it never changes canonical data.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 

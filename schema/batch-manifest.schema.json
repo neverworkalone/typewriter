@@ -286,6 +286,9 @@
             "status": {
               "enum": ["complete", "incomplete"]
             },
+            "contract_version": {
+              "const": "m5-9a-v1"
+            },
             "passes": {
               "type": "array",
               "minItems": 5,

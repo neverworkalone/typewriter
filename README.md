@@ -108,6 +108,11 @@ The M5-8 staged editorial workflow, candidate-buffer contract, fixed expansion
 ladder, and process regressions are documented in
 [`docs/m5-8-editorial-workflow.md`](docs/m5-8-editorial-workflow.md).
 
+The M5-9A repair contract preserves the failed M5-9 gate, separates relation
+pre-screen from human admission, and limits resume authorization to #96's first
+50-start validation wave. Run npm run batch:repair:check to verify its
+digest-bound artifacts.
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

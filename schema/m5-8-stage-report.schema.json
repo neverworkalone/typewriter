@@ -36,7 +36,8 @@
           "pattern": "^m5-[a-z0-9][a-z0-9-]*$"
         },
         "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
-        "previous_stage_report": { "$ref": "#/$defs/reportReference" }
+        "previous_stage_report": { "$ref": "#/$defs/reportReference" },
+        "repair_authorization": { "$ref": "#/$defs/reportReference" }
       }
     },
     "target": {

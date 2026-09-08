@@ -194,7 +194,47 @@ function validateManifestSchema(manifest) {
   fail(`batch manifest schema validation failed: ${detail}`, error ? schemaErrorCode(error) : 'SCHEMA_ERROR');
 }
 
-function validateMeasurement(measurement) {
+function validateTimingDuration(pass, label) {
+  const hasWallClock = Object.hasOwn(pass, 'wall_clock_seconds');
+  const hasEditorSeconds = Object.hasOwn(pass, 'editor_seconds');
+  const hasStartedAt = Object.hasOwn(pass, 'started_at');
+  const hasCompletedAt = Object.hasOwn(pass, 'completed_at');
+
+  if (pass.status === 'unmeasured') {
+    if (hasStartedAt || hasCompletedAt || hasWallClock || hasEditorSeconds) {
+      fail(
+        `${label} is unmeasured but contains a timing measurement; do not estimate or backfill it`,
+        'UNMEASURED_TIMING_VALUE',
+      );
+    }
+    return;
+  }
+
+  if (!hasStartedAt || !hasCompletedAt) {
+    fail(
+      `${label} must record started_at and completed_at for a measured pass`,
+      'MISSING_TIMING_TIMESTAMP',
+    );
+  }
+  if (!hasWallClock) {
+    fail(`${label} must record wall_clock_seconds for a measured pass`, 'INCOMPLETE_TIMING');
+  }
+  const elapsedSeconds = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
+  if (!Number.isFinite(elapsedSeconds) || Math.abs(pass.wall_clock_seconds - elapsedSeconds) > 1e-6) {
+    fail(
+      `${label}.wall_clock_seconds must equal completed_at - started_at`,
+      'TIMING_DURATION_DRIFT',
+    );
+  }
+  if (pass.status === 'complete' && !hasEditorSeconds) {
+    fail(`${label} is complete but lacks editor_seconds`, 'INCOMPLETE_TIMING');
+  }
+}
+
+export function validateTimingMeasurement(
+  measurement,
+  { strict = measurement?.timing?.contract_version === 'm5-9a-v1' } = {},
+) {
   if (!measurement) return;
 
   const passes = measurement.timing.passes;
@@ -264,10 +304,17 @@ function validateMeasurement(measurement) {
         'INCOMPLETE_TIMING',
       );
     }
+    if (strict) validateTimingDuration(pass, label);
   }
   const optionalCycles = new Set();
   for (const [id, group] of optionalPassesById) {
     if (group.length === 0) continue;
+    if (strict && group.some((pass) => !Object.hasOwn(pass, 'cycle'))) {
+      fail(
+        `new timing contract requires a cycle number for every ${id} follow-up pass`,
+        'TIMING_CYCLE_REQUIRED',
+      );
+    }
     if (group.length > 1 && group.some((pass) => !Object.hasOwn(pass, 'cycle'))) {
       fail(
         `repeated ${id} timing passes must declare cycle numbers`,
@@ -298,6 +345,12 @@ function validateMeasurement(measurement) {
       const feedbackTimes = [auditPass, fixesPass]
         .filter((pass) => Object.hasOwn(pass, 'feedback_received_at'))
         .map((pass) => pass.feedback_received_at);
+      if (strict && feedbackTimes.length !== 2) {
+        fail(
+          `timing feedback cycle ${cycle} must bind both follow-up passes to feedback_received_at`,
+          'INCOMPLETE_TIMING_CYCLE',
+        );
+      }
       if (feedbackTimes.length === 1) {
         fail(`timing feedback cycle ${cycle} must bind both follow-up passes to feedback_received_at`, 'INCOMPLETE_TIMING_CYCLE');
       }
@@ -313,6 +366,19 @@ function validateMeasurement(measurement) {
   if (measurement.timing.status === 'complete'
     && passes.some((pass) => pass.status !== 'complete')) {
     fail('manifest.measurement.timing is declared complete with an unmeasured pass', 'INCOMPLETE_TIMING');
+  }
+
+  const initialReview = passes.find((pass) => pass.id === 'initial-review');
+  if (strict && initialReview?.completed_at) {
+    for (const pass of passes) {
+      if (!OPTIONAL_MEASUREMENT_PASS_IDS.includes(pass.id) || !pass.feedback_received_at) continue;
+      if (Date.parse(pass.feedback_received_at) < Date.parse(initialReview.completed_at)) {
+        fail(
+          `${timingPassKey(pass)} feedback_received_at precedes initial-review completion`,
+          'FEEDBACK_BEFORE_REVIEW',
+        );
+      }
+    }
   }
 
   const findingIds = measurement.audit.findings.map((finding) => finding.id);
@@ -386,7 +452,7 @@ export function validateBatchManifest(manifest) {
   if (Object.hasOwn(manifest.review, 'completed_at')) {
     requireIsoDate(manifest.review.completed_at, 'manifest.review.completed_at');
   }
-  validateMeasurement(manifest.measurement);
+  validateTimingMeasurement(manifest.measurement);
   validateSenseReview(manifest.sense_review, manifest);
 
   const inventoryIds = new Set();

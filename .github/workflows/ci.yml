@@ -62,6 +62,9 @@ jobs:
       - name: Validate M5-8 process contract
         run: npm run batch:process:check
 
+      - name: Validate M5-9A repair authorization
+        run: npm run batch:repair:check
+
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs
 
