@@ -104,6 +104,10 @@ documented in [`docs/m5-6-relation-process.md`](docs/m5-6-relation-process.md).
 The M5-7 new 40-start recalibration and fixed expansion-gate result are recorded
 in [`docs/m5-7-expansion-report.md`](docs/m5-7-expansion-report.md).
 
+The M5-8 staged editorial workflow, candidate-buffer contract, fixed expansion
+ladder, and process regressions are documented in
+[`docs/m5-8-editorial-workflow.md`](docs/m5-8-editorial-workflow.md).
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

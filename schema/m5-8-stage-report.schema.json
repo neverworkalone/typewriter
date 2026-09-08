@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-8-stage-report.schema.json",
+  "title": "Typewriter M5-8 stage result report",
+  "description": "Source-bound result contract for one M5-8 expansion stage. It records process metadata only and is not canonical dictionary data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "stage_id",
+    "input",
+    "target",
+    "decisions",
+    "actual",
+    "metrics",
+    "source",
+    "gate_status",
+    "decision",
+    "next_stage_created"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "stage_id": {
+      "type": "string",
+      "pattern": "^m5-8-stage-[0-9]{2}-plus-[0-9]+$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inventory_revision", "canonical_snapshot"],
+      "properties": {
+        "inventory_revision": {
+          "type": "string",
+          "pattern": "^m5-[a-z0-9][a-z0-9-]*$"
+        },
+        "canonical_snapshot": { "$ref": "#/$defs/snapshot" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "net_start_increase",
+        "cumulative_start_target",
+        "candidate_buffer",
+        "selected_start_count"
+      ],
+      "properties": {
+        "net_start_increase": { "type": "integer", "minimum": 0 },
+        "cumulative_start_target": { "type": "integer", "minimum": 0 },
+        "candidate_buffer": { "type": "integer", "minimum": 0 },
+        "selected_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "included_start_count",
+        "corrected_start_count",
+        "held_start_count",
+        "rejected_start_count"
+      ],
+      "properties": {
+        "included_start_count": { "type": "integer", "minimum": 0 },
+        "corrected_start_count": { "type": "integer", "minimum": 0 },
+        "held_start_count": { "type": "integer", "minimum": 0 },
+        "rejected_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "actual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_snapshot", "imported_start_count"],
+      "properties": {
+        "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
+        "imported_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "correction_rate_of_selected",
+        "relation_noise_rate_of_before",
+        "total_wall_clock_seconds",
+        "total_editor_seconds",
+        "editor_seconds_per_selected_start",
+        "timing_status",
+        "unmeasured_timing_pass_count",
+        "audit_status",
+        "audit_independent",
+        "open_audit_blocker_count",
+        "human_editorial_review_complete",
+        "canonical_integrity",
+        "deterministic_sqlite",
+        "search_product_regression"
+      ],
+      "properties": {
+        "correction_rate_of_selected": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "relation_noise_rate_of_before": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "total_wall_clock_seconds": { "type": "number", "minimum": 0 },
+        "total_editor_seconds": { "type": "number", "minimum": 0 },
+        "editor_seconds_per_selected_start": {
+          "type": "number",
+          "minimum": 0
+        },
+        "timing_status": { "enum": ["complete", "incomplete"] },
+        "unmeasured_timing_pass_count": { "type": "integer", "minimum": 0 },
+        "audit_status": { "enum": ["complete", "incomplete"] },
+        "audit_independent": { "type": "boolean" },
+        "open_audit_blocker_count": { "type": "integer", "minimum": 0 },
+        "human_editorial_review_complete": { "type": "boolean" },
+        "canonical_integrity": { "type": "boolean" },
+        "deterministic_sqlite": { "type": "boolean" },
+        "search_product_regression": { "type": "boolean" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "metrics", "canonical_directory"],
+      "properties": {
+        "manifest": { "type": "string", "pattern": "\\S" },
+        "metrics": { "type": "string", "pattern": "\\S" },
+        "canonical_directory": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "gate_status": { "enum": ["pass", "fail"] },
+    "decision": { "enum": ["APPROVE BOUNDED", "HOLD PROCESS"] },
+    "next_stage_created": { "type": "boolean" }
+  },
+  "$defs": {
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_count",
+        "start_count",
+        "reference_only_count",
+        "sense_count",
+        "relation_count",
+        "expression_count"
+      ],
+      "properties": {
+        "record_count": { "type": "integer", "minimum": 0 },
+        "start_count": { "type": "integer", "minimum": 0 },
+        "reference_only_count": { "type": "integer", "minimum": 0 },
+        "sense_count": { "type": "integer", "minimum": 0 },
+        "relation_count": { "type": "integer", "minimum": 0 },
+        "expression_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

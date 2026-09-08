@@ -1,0 +1,84 @@
+{
+  "schema_version": "1",
+  "fixture_id": "m5-8-m5-7-process-regressions",
+  "canonical_artifact": "data/canonical/m5-7-recalibration.jsonl",
+  "relation_diff_artifact": "data/batches/m5-7-recalibration-relation-diff.json",
+  "sense_cases": [
+    {
+      "case_id": "m5-7-w405-sense-boundary",
+      "canonical_id": "w405",
+      "expected_sense_count": 2,
+      "expected_pos": ["adjective", "adjective"],
+      "expected_phase": "sense-review"
+    },
+    {
+      "case_id": "m5-7-w406-pos-boundary",
+      "canonical_id": "w406",
+      "expected_sense_count": 1,
+      "expected_pos": ["verb"],
+      "expected_phase": "sense-review"
+    },
+    {
+      "case_id": "m5-7-w410-sensory-boundary",
+      "canonical_id": "w410",
+      "expected_sense_count": 3,
+      "expected_pos": ["adjective", "adjective", "adjective"],
+      "expected_phase": "sense-review"
+    },
+    {
+      "case_id": "m5-7-w420-literal-figurative-boundary",
+      "canonical_id": "w420",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_phase": "sense-review"
+    },
+    {
+      "case_id": "m5-7-w421-action-state-boundary",
+      "canonical_id": "w421",
+      "expected_sense_count": 2,
+      "expected_pos": ["verb", "verb"],
+      "expected_phase": "sense-review"
+    }
+  ],
+  "relation_cases": [
+    {
+      "case_id": "m5-7-w393-incidental-manipulation",
+      "relation_id": "m5-7-w393-s1-r1",
+      "source_sense": "w393-s1",
+      "before": {
+        "target": "w118",
+        "target_sense": "w118-s1",
+        "type": "sensory"
+      },
+      "failure_category": "incidental-co-occurrence",
+      "expected_final_relation_count": 0,
+      "expected_phase": "relation-review"
+    },
+    {
+      "case_id": "m5-7-w398-broad-category",
+      "relation_id": "m5-7-w398-s1-r1",
+      "source_sense": "w398-s1",
+      "before": {
+        "target": "w031",
+        "target_sense": "w031-s1",
+        "type": "mood"
+      },
+      "failure_category": "broad-common-category",
+      "expected_final_relation_count": 0,
+      "expected_phase": "relation-review"
+    },
+    {
+      "case_id": "m5-7-w400-broad-category",
+      "relation_id": "m5-7-w400-s1-r1",
+      "source_sense": "w400-s1",
+      "before": {
+        "target": "w013",
+        "target_sense": "w013-s1",
+        "type": "mood"
+      },
+      "failure_category": "broad-common-category",
+      "expected_final_relation_count": 0,
+      "expected_phase": "relation-review"
+    }
+  ]
+}

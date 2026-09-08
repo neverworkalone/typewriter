@@ -17,6 +17,7 @@
     "batch:diff": "node scripts/batch/relation-diff.mjs",
     "batch:metrics": "node scripts/batch/derive-metrics.mjs",
     "batch:admission:check": "node scripts/batch/validate-relation-admission.mjs",
+    "batch:process:check": "node scripts/batch/validate-m5-8-process.mjs",
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",

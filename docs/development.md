@@ -126,6 +126,8 @@ npm run batch:import -- \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
   --output=/tmp/typewriter-m5-2/canonical-import.jsonl
+
+npm run batch:process:check
 ```
 
 The import helper never edits `data/canonical/`; it only emits validated rows outside

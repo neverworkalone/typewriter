@@ -270,6 +270,18 @@ passes, including a measured re-audit and correction pass after PR feedback.
 Its fixed-gate result is `HOLD PROCESS` and is documented in
 [`m5-7-expansion-report.md`](m5-7-expansion-report.md).
 
+### M5-8 process redesign
+
+Before another data batch is selected, apply the staged workflow in
+[`m5-8-editorial-workflow.md`](m5-8-editorial-workflow.md) and validate its
+machine-readable plan with `npm run batch:process:check`. The plan separates a
+human sense/POS checkpoint from optional relation admission, keeps relation
+output empty until sense review is complete, measures actual timing events, and
+defines candidate-buffer arithmetic so `+N` means the exact canonical start
+delta. It fixes the M5-7 sense/POS and relation regressions without adding
+canonical rows or pre-creating later-stage issues. A failed quality, cost, audit,
+or exact-count gate produces `HOLD PROCESS` and blocks the next stage.
+
 The pre-defined expansion decision is documented in
 [`m5-expansion-gate.md`](m5-expansion-gate.md). A later calibration must apply that
 gate without changing its thresholds after seeing the result.

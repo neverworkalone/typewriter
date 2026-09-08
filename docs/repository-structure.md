@@ -62,6 +62,9 @@ digest. A metrics file is generated from those sources and canonical records; it
 may record counts, rates, timing totals or measured lower bounds, audit findings,
 and validation outcomes, but neither file may contain raw model responses, draft
 text, confidence scores, secrets, or local staging paths.
+The M5-8 expansion plan and stage-report schema are also process metadata: they
+define the fixed phase/ladder contract and source-bound per-stage results, but
+they do not contain a candidate batch or canonical import rows.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 

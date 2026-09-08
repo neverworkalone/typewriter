@@ -59,6 +59,9 @@ jobs:
       - name: Run batch workflow tests
         run: node --test tests/batch-workflow.test.mjs
 
+      - name: Validate M5-8 process contract
+        run: npm run batch:process:check
+
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs
 
