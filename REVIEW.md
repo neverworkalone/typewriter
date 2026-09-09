@@ -2,7 +2,9 @@
 
 Review with the minimum context needed to reach a reliable decision.
 
-Do not reconstruct the implementation process. Review the resulting change.
+Do not reconstruct the entire implementation process. Review the resulting
+change and inspect the minimal upstream producer/validation path when needed
+to determine whether the defect can recur.
 
 ## Context-efficient review flow
 
@@ -91,6 +93,35 @@ Batch related findings in one review pass.
 
 Prefer a generalized regression or validator for the defect class over many
 redundant case-specific checks.
+
+## System-first resolution
+
+A review finding is not resolved merely because the current output was patched.
+
+When a defect can recur, identify the upstream system that produced or
+allowed it: producer, builder, validator, fixture, prompt, workflow, or CI
+integration. Inspect only the upstream path needed to determine recurrence;
+do not reconstruct the entire implementation history.
+
+A recurring or deterministic defect is a blocker if the PR changes only the
+current output without changing the responsible system or adding a regression
+guard.
+
+Every resolved blocker of this kind must include:
+
+- the smallest fixture that reproduces the defect;
+- a generalized invariant or validator rule;
+- an automated regression test that fails for the old behavior and passes for
+  the fixed behavior;
+- execution through the repository preflight or CI path before PR submission.
+
+For generated or staged data, verify the producer and admission boundary, not
+only the generated result. A builder that silently converts every proposal
+into `admitted/clean`, for example, is a system defect; correcting the affected
+records alone is insufficient.
+
+Do not declare the work complete while the new regression is absent,
+unexecuted, or disconnected from the preflight/CI gate.
 
 ## Follow-up review
 
