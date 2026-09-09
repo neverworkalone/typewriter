@@ -439,6 +439,28 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
 
 function stageDecisionsFromArtifacts(metricsArtifact) {
   const { decisions } = metricsArtifact.derived;
+  if (metricsArtifact.derived.canonical_import.import_status === 'proposed') {
+    return {
+      included_start_count: 0,
+      corrected_start_count: 0,
+      held_start_count: decisions.held,
+      rejected_start_count: decisions.rejected,
+      deferred_start_count: decisions.deferred ?? 0,
+      proposed_start_count: decisions.importable_start_count,
+    };
+  }
+  return {
+    included_start_count: decisions.included,
+    corrected_start_count: decisions.corrected,
+    held_start_count: decisions.held,
+    rejected_start_count: decisions.rejected,
+    deferred_start_count: decisions.deferred ?? 0,
+  };
+}
+
+function proposalDecisionsFromArtifacts(metricsArtifact) {
+  if (metricsArtifact.derived.canonical_import.import_status !== 'proposed') return undefined;
+  const { decisions } = metricsArtifact.derived;
   return {
     included_start_count: decisions.included,
     corrected_start_count: decisions.corrected,
@@ -552,6 +574,7 @@ export async function loadExpansionStageSources(stage) {
     );
   }
 
+  const proposalDecisions = proposalDecisionsFromArtifacts(metricsArtifact.value);
   return {
     validation: SOURCE_ARTIFACT_VALIDATION_VERSION,
     paths: sourcePaths,
@@ -561,6 +584,7 @@ export async function loadExpansionStageSources(stage) {
     processed_start_count: metricsArtifact.value.derived.selection.processed_start_count
       ?? metricsArtifact.value.derived.selection.selected_start_count,
     decisions: stageDecisionsFromArtifacts(metricsArtifact.value),
+    ...(proposalDecisions ? { proposal_decisions: proposalDecisions } : {}),
     imported_start_count: metricsArtifact.value.derived.canonical_import.imported_start_count,
     canonical_snapshot: canonicalSummary(canonical.records),
     metrics: stageMetricsFromArtifacts(metricsArtifact.value, verificationArtifact.value),
@@ -635,6 +659,20 @@ function validateLoadedStageSources(stage, sourceArtifacts) {
     `${stage.stage_id} decisions drifted from the manifest metrics`,
     'SOURCE_DECISION_DRIFT',
   );
+  if (stage.proposal_decisions !== undefined) {
+    assertEqual(
+      stage.proposal_decisions,
+      sourceArtifacts.proposal_decisions,
+      `${stage.stage_id} proposal decisions drifted from the manifest metrics`,
+      'SOURCE_PROPOSAL_DECISION_DRIFT',
+    );
+  } else {
+    assertCondition(
+      sourceArtifacts.proposal_decisions === undefined,
+      `${stage.stage_id} unexpectedly contains proposal decisions`,
+      'SOURCE_PROPOSAL_DECISION_DRIFT',
+    );
+  }
   assertEqual(
     stage.actual.imported_start_count,
     sourceArtifacts.imported_start_count,
@@ -993,10 +1031,14 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
     `${stage.stage_id} selected count must include the declared candidate buffer`,
     'BUFFER_SELECTION_MISMATCH',
   );
+  const proposedStartCount = stage.decisions.proposed_start_count ?? 0;
+  const proposalStage = proposedStartCount > 0;
   assertEqual(
-    stage.decisions.included_start_count + stage.decisions.corrected_start_count,
+    stage.decisions.included_start_count
+      + stage.decisions.corrected_start_count
+      + proposedStartCount,
     stage.target.net_start_increase,
-    `${stage.stage_id} included/corrected starts must equal the target net increase`,
+    `${stage.stage_id} imported/proposed starts must equal the target net increase`,
     'NET_START_INCREASE_MISMATCH',
   );
   const usedBuffer = stage.decisions.held_start_count + stage.decisions.rejected_start_count;
@@ -1026,6 +1068,7 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
       + stage.decisions.corrected_start_count
       + stage.decisions.held_start_count
       + stage.decisions.rejected_start_count
+      + proposedStartCount
       + stage.decisions.deferred_start_count,
     stage.target.selected_start_count,
     `${stage.stage_id} decisions must account for every selected start`,
@@ -1034,7 +1077,8 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
   const processedStartCount = stage.decisions.included_start_count
     + stage.decisions.corrected_start_count
     + stage.decisions.held_start_count
-    + stage.decisions.rejected_start_count;
+    + stage.decisions.rejected_start_count
+    + proposedStartCount;
   assertEqual(
     processedStartCount,
     sourceArtifacts.processed_start_count,
@@ -1044,27 +1088,57 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
   assertEqual(
     stage.actual.imported_start_count,
     stage.decisions.included_start_count + stage.decisions.corrected_start_count,
-    `${stage.stage_id} actual imported starts do not match included/corrected decisions`,
+    `${stage.stage_id} actual imported starts do not match imported decisions`,
     'ACTUAL_IMPORT_MISMATCH',
   );
-  assertEqual(
-    stage.input.canonical_snapshot.start_count + stage.actual.imported_start_count,
-    stage.target.cumulative_start_target,
-    `${stage.stage_id} actual cumulative starts do not match the target`,
-    'CUMULATIVE_START_MISMATCH',
-  );
-  assertEqual(
-    stage.actual.canonical_snapshot.start_count,
-    stage.target.cumulative_start_target,
-    `${stage.stage_id} actual canonical start count does not match the target`,
-    'CANONICAL_START_MISMATCH',
-  );
-  assertEqual(
-    stage.metrics.correction_rate_of_selected,
-    (stage.decisions.corrected_start_count / processedStartCount),
-    `${stage.stage_id} correction rate is not derived from processed decisions`,
-    'METRIC_DRIFT',
-  );
+  if (proposalStage) {
+    assertCondition(
+      stage.proposal_decisions !== undefined,
+      `${stage.stage_id} proposal decisions are required while proposals are pending`,
+      'PROPOSAL_DECISION_MISSING',
+    );
+    const proposalProcessedStartCount = stage.proposal_decisions.included_start_count
+      + stage.proposal_decisions.corrected_start_count
+      + stage.proposal_decisions.held_start_count
+      + stage.proposal_decisions.rejected_start_count;
+    assertEqual(
+      stage.proposal_decisions.included_start_count + stage.proposal_decisions.corrected_start_count,
+      proposedStartCount,
+      `${stage.stage_id} proposal decisions do not account for the pending target`,
+      'PROPOSAL_DECISION_MISMATCH',
+    );
+    assertEqual(
+      stage.metrics.correction_rate_of_selected,
+      stage.proposal_decisions.corrected_start_count / proposalProcessedStartCount,
+      `${stage.stage_id} correction rate is not derived from proposal decisions`,
+      'METRIC_DRIFT',
+    );
+    assertEqual(
+      stage.actual.canonical_snapshot.start_count,
+      stage.input.canonical_snapshot.start_count + stage.actual.imported_start_count,
+      `${stage.stage_id} pending stage actual canonical start count drifted from the base`,
+      'CANONICAL_START_MISMATCH',
+    );
+  } else {
+    assertEqual(
+      stage.input.canonical_snapshot.start_count + stage.actual.imported_start_count,
+      stage.target.cumulative_start_target,
+      `${stage.stage_id} actual cumulative starts do not match the target`,
+      'CUMULATIVE_START_MISMATCH',
+    );
+    assertEqual(
+      stage.actual.canonical_snapshot.start_count,
+      stage.target.cumulative_start_target,
+      `${stage.stage_id} actual canonical start count does not match the target`,
+      'CANONICAL_START_MISMATCH',
+    );
+    assertEqual(
+      stage.metrics.correction_rate_of_selected,
+      (stage.decisions.corrected_start_count / processedStartCount),
+      `${stage.stage_id} correction rate is not derived from processed decisions`,
+      'METRIC_DRIFT',
+    );
+  }
   if (stage.metrics.total_editor_seconds === null) {
     assertEqual(
       stage.metrics.editor_seconds_per_selected_start,

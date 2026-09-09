@@ -124,10 +124,10 @@ record-level sense evidence, a source-bound noncanonical 20-case candidate-gener
 calibration, and independent relation/timing checkpoints while preserving the
 578-start pre-A2 base snapshot. The #96 Wave A2 result is recorded in
 [`docs/m5-10a-wave-a2-report.md`](docs/m5-10a-wave-a2-report.md); its current
-canonical snapshot contains the proposed 628-start result, but the manifest stays
-`in-review`/`HOLD PROCESS` because editorial and independent-audit provenance are
-unverified and editor-session timing is still unmeasured. Wave B remains separately
-unauthorized. Run
+canonical snapshot remains at 578 starts while the 50 proposed rows stay in a
+separate staging artifact. The manifest stays `in-review`/`HOLD PROCESS` because
+editorial and independent-audit provenance are unverified and editor-session timing
+is still unmeasured. Wave B remains separately unauthorized. Run
 `npm run batch:m5-10a:calibration:check` and
 `npm run batch:m5-10a:wave-a2:check` before the process/repair checks.
 

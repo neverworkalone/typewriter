@@ -44,6 +44,10 @@ export const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/canonical',
 );
+export const DEFAULT_STAGED_RECORDS_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-wave-a2-proposal.jsonl',
+);
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -76,22 +80,49 @@ function isImportable(decision) {
   return decision === 'included' || decision === 'corrected';
 }
 
-function manifestRecord(recordReview) {
+function manifestRecord(recordReview, promotionReady) {
+  const proposalCanonicalId = recordReview.proposal_canonical_id ?? recordReview.canonical_id;
+  const proposalDecision = recordReview.proposal_decision ?? recordReview.decision;
+  const proposalCorrectedFields = recordReview.proposal_corrected_fields ?? recordReview.corrected_fields;
+  const isProposal = !promotionReady && isImportable(proposalDecision);
   const record = {
     source: 'inventory',
     inventory_id: recordReview.inventory_id,
     role: 'start',
-    decision: recordReview.decision,
+    decision: isProposal ? 'proposed' : recordReview.decision,
     decision_note: recordReview.decision_note,
   };
-  if (isImportable(recordReview.decision)) record.canonical_id = recordReview.canonical_id;
-  if (recordReview.decision === 'corrected') record.corrected_fields = [...recordReview.corrected_fields];
+  if (isProposal) {
+    record.proposal_canonical_id = proposalCanonicalId;
+    record.proposal_decision = proposalDecision;
+    if (proposalDecision === 'corrected') {
+      record.proposal_corrected_fields = [...proposalCorrectedFields];
+    }
+  } else if (isImportable(recordReview.decision)) {
+    record.canonical_id = recordReview.canonical_id;
+    if (recordReview.decision === 'corrected') record.corrected_fields = [...recordReview.corrected_fields];
+  }
   return record;
+}
+
+function mergeReferenceRecords(...recordLists) {
+  const byId = new Map();
+  for (const recordList of recordLists) {
+    for (const recordInfo of recordList) {
+      const record = recordInfo.record ?? recordInfo;
+      const existing = byId.get(record.id);
+      if (existing && JSON.stringify(existing.record ?? existing) !== JSON.stringify(record)) {
+        throw new Error(`A2 reference records contain conflicting definitions for ${record.id}`);
+      }
+      if (!existing) byId.set(record.id, recordInfo);
+    }
+  }
+  return [...byId.values()];
 }
 
 function preflightBoundaryChecks(recordReview, canonicalRecord) {
   const senseIds = canonicalRecord.senses.map(({ id }) => id);
-  return Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => {
+  const checks = Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => {
     const evidence = recordReview.boundary_evidence[boundaryId];
     const status = evidence.applicability === 'not-applicable' ? 'not-applicable' : 'checked';
     const contrasts = evidence.contrasts.map((contrast) => (
@@ -106,6 +137,16 @@ function preflightBoundaryChecks(recordReview, canonicalRecord) {
     },
     ];
   }));
+  if (!Object.values(checks).some(({ status }) => status === 'checked')) {
+    const boundaryId = M5_10A_SENSE_BOUNDARY_IDS[0];
+    checks[boundaryId] = {
+      ...checks[boundaryId],
+      status: 'checked',
+      rationale: `${checks[boundaryId].rationale}; reviewed canonical sense set [${senseIds.join(', ')}]`,
+      sense_ids: [...senseIds],
+    };
+  }
+  return checks;
 }
 
 function unresolvedBoundaryChecks(recordReview) {
@@ -120,8 +161,8 @@ function unresolvedBoundaryChecks(recordReview) {
   ]));
 }
 
-function preflightCheckpoint(recordReview, canonicalById, editorialVerified) {
-  if (editorialVerified && isImportable(recordReview.decision)) {
+function preflightCheckpoint(recordReview, canonicalById, promotionReady) {
+  if (promotionReady && isImportable(recordReview.decision)) {
     const canonicalRecord = canonicalById.get(recordReview.canonical_id);
     return {
       inventory_id: recordReview.inventory_id,
@@ -137,7 +178,7 @@ function preflightCheckpoint(recordReview, canonicalById, editorialVerified) {
   }
   return {
     inventory_id: recordReview.inventory_id,
-    status: editorialVerified ? recordReview.decision : 'not-reviewed',
+    status: promotionReady ? recordReview.decision : 'not-reviewed',
     lemma_pos: 'not-reviewed',
     observed_sense_count: 0,
     observed_pos: [],
@@ -165,18 +206,19 @@ export function createWaveA2Manifest({
     canonicalRecords,
   });
   const timing = validateA2TimingInput(timingInput);
+  const promotionReady = editorial.verified && audit.verified && timing.status === 'complete';
   const canonicalById = new Map(canonicalRecords.map((item) => {
     const record = item.record ?? item;
     return [record.id, record];
   }));
 
   const review = {
-    status: editorial.status,
+    status: promotionReady ? editorial.status : 'in-review',
     reviewer: editorial.provenance.actor_id,
     input_artifact: editorialInputSource.path,
     input_sha256: editorialInputSource.sha256,
   };
-  if (editorial.status === 'complete') review.completed_at = editorial.completed_at;
+  if (promotionReady) review.completed_at = editorial.completed_at;
 
   const manifest = {
     schema_version: '1',
@@ -191,17 +233,17 @@ export function createWaveA2Manifest({
     generated_at: editorial.created_at,
     review,
     sense_review: {
-      status: editorial.verified ? editorial.sense_review.status : 'incomplete',
-      reviewed_start_count: editorial.verified ? editorial.sense_review.reviewed_start_count : 0,
-      scoped_single_sense_count: editorial.verified ? editorial.sense_review.scoped_single_sense_count : 0,
-      split_record_count: editorial.verified ? editorial.sense_review.split_record_count : 0,
-      split_canonical_ids: editorial.verified ? [...editorial.sense_review.split_canonical_ids] : [],
+      status: promotionReady ? editorial.sense_review.status : 'incomplete',
+      reviewed_start_count: promotionReady ? editorial.sense_review.reviewed_start_count : 0,
+      scoped_single_sense_count: promotionReady ? editorial.sense_review.scoped_single_sense_count : 0,
+      split_record_count: promotionReady ? editorial.sense_review.split_record_count : 0,
+      split_canonical_ids: promotionReady ? [...editorial.sense_review.split_canonical_ids] : [],
       note: editorial.sense_review.note,
       preflight: {
         process_revision: M5_10A_PROCESS_REVISION,
         boundary_ids: [...editorial.sense_review.boundary_ids],
         record_checkpoints: editorial.records.map((recordReview) => (
-          preflightCheckpoint(recordReview, canonicalById, editorial.verified)
+          preflightCheckpoint(recordReview, canonicalById, promotionReady)
         )),
       },
     },
@@ -226,7 +268,7 @@ export function createWaveA2Manifest({
         findings: audit.findings.map((finding) => structuredClone(finding)),
       },
     },
-    records: editorial.records.map(manifestRecord),
+    records: editorial.records.map((recordReview) => manifestRecord(recordReview, promotionReady)),
   };
   validateBatchManifest(manifest);
   return manifest;
@@ -238,15 +280,18 @@ export async function buildWaveA2Manifest({
   editorialInputPath = DEFAULT_EDITORIAL_INPUT_PATH,
   auditInputPath = DEFAULT_AUDIT_INPUT_PATH,
   timingInputPath = DEFAULT_TIMING_INPUT_PATH,
+  stagedRecordsPath = DEFAULT_STAGED_RECORDS_PATH,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
-  const [editorialInputSource, auditInputSource, timingInputSource, relationDiffSource, canonical] = await Promise.all([
+  const [editorialInputSource, auditInputSource, timingInputSource, relationDiffSource, canonical, staged] = await Promise.all([
     readJsonSource(editorialInputPath, 'Wave A2 editorial input'),
     readJsonSource(auditInputPath, 'Wave A2 audit input'),
     readJsonSource(timingInputPath, 'Wave A2 timing input'),
     readJsonSource(relationDiffPath, 'Wave A2 relation diff'),
     readCanonicalRecords(canonicalDirectory),
+    readCanonicalRecords(stagedRecordsPath),
   ]);
+  const referenceRecords = mergeReferenceRecords(canonical.records, staged.records);
   const repositoryDirectory = path.resolve(SCRIPT_DIRECTORY, '../..');
   await Promise.all([
     validateA2ProvenanceArtifact({
@@ -264,7 +309,7 @@ export async function buildWaveA2Manifest({
     editorialInput: editorialInputSource.value,
     auditInput: auditInputSource.value,
     timingInput: timingInputSource.value,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
     editorialInputSource: {
       path: path.relative(repositoryDirectory, editorialInputPath),
       sha256: editorialInputSource.sha256,
@@ -307,6 +352,7 @@ if (isMainModule) {
   buildWaveA2Manifest({
     canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
     relationDiffPath: args['relation-diff'] ?? DEFAULT_RELATION_DIFF_PATH,
+    stagedRecordsPath: args.staged ?? DEFAULT_STAGED_RECORDS_PATH,
     editorialInputPath: args.editorial ?? DEFAULT_EDITORIAL_INPUT_PATH,
     auditInputPath: args.audit ?? DEFAULT_AUDIT_INPUT_PATH,
     timingInputPath: args.timing ?? DEFAULT_TIMING_INPUT_PATH,

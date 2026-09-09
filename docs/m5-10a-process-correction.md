@@ -40,9 +40,10 @@ The six boundary IDs are fixed in the process revision
 
 An `included` or `corrected` record maps to a `complete` checkpoint only after a
 verified human session. It must carry its canonical ID, observed sense/POS facts,
-completed lemma/POS review, at least one checked (applicable) boundary, and no
-unreviewed boundary. A `held`, `rejected`, or `deferred` record cannot carry a
-canonical ID.
+completed lemma/POS review, reviewed evidence for every boundary, and no
+unreviewed boundary. An applicable boundary carries an actual contrast; an
+explicitly `not-applicable` boundary carries no sense claim. A `held`, `rejected`,
+or `deferred` record cannot carry a canonical ID.
 Reviewed evidence cites the exact canonical candidate senses and records a
 structured contrast when the boundary applies; `not-applicable` and
 `not-reviewed` make no generated sense claim. Any boundary marked `not-reviewed`
@@ -202,10 +203,11 @@ is created by #107.
 ## Wave A2 execution
 
 Issue #96 Wave A2's proposal is recorded in its separate report
-[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). The current canonical
-snapshot contains the declared 50-start delta from the 58-start selection, but
-the manifest remains `in-review` because no verified editorial or independent
-audit session artifact is attached. Its bounded stage remains `HOLD PROCESS`
+[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). The declared 50-start
+delta from the 58-start selection remains in proposal staging, while the current
+canonical snapshot stays at the 578-start base. The manifest remains `in-review`
+because no verified editorial or independent audit session artifact is attached.
+Its bounded stage remains `HOLD PROCESS`
 until those artifacts and the separate editor-session timing input contain real
 evidence. The A2 stage still sets `next_stage_authorized: false`; Wave B is not
 included in the A2 batch.

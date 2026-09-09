@@ -25,11 +25,11 @@ test('validates the pilot dataset counts and current completeness regression', a
       checkPilotCompleteness: true,
     }),
     {
-      fileCount: 7,
-      recordCount: 670,
-      senseCount: 810,
-      relationCount: 473,
-      candidateCount: 628,
+      fileCount: 6,
+      recordCount: 620,
+      senseCount: 743,
+      relationCount: 467,
+      candidateCount: 578,
     },
   );
 });

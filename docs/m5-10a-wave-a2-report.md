@@ -2,23 +2,25 @@
 
 ## Result
 
-Issue #96 Wave A2 contains a 58-start proposal and the current canonical snapshot
-contains the proposed 50-start delta. The source-bound manifest remains
+Issue #96 Wave A2 contains a 58-start proposal. The source-bound manifest remains
 `in-review`: no human editorial session artifact was supplied, so these rows are
-not treated as a validated import. The source-bound stage report
+not treated as a validated import. The 50 importable records live in the separate
+proposal staging JSONL; the product canonical snapshot remains at the pre-A2
+baseline. The source-bound stage report
 [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json)
-reaches 628 canonical starts but remains `HOLD PROCESS`: the old command-runtime
-timing claim was invalidated, and the replacement editor-session timing input is
-still unmeasured. Wave B was not started or authorized; its authorization remains
-false until a separate decision.
+records a proposed net increase of 50 but remains `HOLD PROCESS`: the old
+command-runtime timing claim was invalidated, and the replacement editor-session
+timing input is still unmeasured. Wave B was not started or authorized; its
+authorization remains false until a separate decision.
 
 ## Count ledger
 
 | Snapshot | Records | Starts | Reference-only | Senses | Relations | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Input (Wave A output) | 620 | 578 | 42 | 743 | 467 | 39 |
-| Wave A2 output | 670 | 628 | 42 | 810 | 473 | 43 |
-| Net change | +50 | +50 | 0 | +67 | +6 | +4 |
+| A2 proposal staging (not canonical) | 50 | 50 | 0 | 67 | 6 | 4 |
+| Current product canonical | 620 | 578 | 42 | 743 | 467 | 39 |
+| Net canonical change before verified review | 0 | 0 | 0 | 0 | 0 | 0 |
 
 The proposed selected-start decisions are 35 `included`, 15 `corrected`, 3
 `held`, 3 `rejected`, and 2 `deferred`. The declared buffer is 8; six entries
@@ -30,11 +32,14 @@ rejected rows are not canonical.
 The unverified editorial input records proposed canonical sense IDs and
 `pending` decisions in a structured six-boundary shape; all 50 manifest
 checkpoints remain `not-reviewed`. It does not claim that a human completed the
-preflight. The canonical corrections are retained: `w603` and `w620` now have
-three distinct senses each, and `w621-s2 → w009-s1` is an `association` for a
-state-changing action, not a `near` replacement. The separate relation diff
-contains three `mood`, one `near`, one `sensory`, and one `association` proposal.
-There are no new reference-only records and no relation removals or noise events.
+preflight. The proposal staging file retains the candidate content for later
+review, but it is not part of `data/canonical/`, the current inventory, SQLite,
+or the extension package. The candidate corrections are retained in staging:
+`w603` and `w620` have three distinct senses each, and `w621-s2 → w009-s1` is an
+`association` for a state-changing action, not a `near` replacement. The
+separate relation diff contains three `mood`, one `near`, one `sensory`, and one
+`association` proposal. There are no new reference-only records and no relation
+removals or noise events.
 
 The five required timing passes are currently `unmeasured`. The earlier 27.918
 seconds was command runtime without retained editor-session evidence and is not
@@ -69,8 +74,11 @@ unreviewed evidence fails the A2 check; an unverified draft is projected as
   — source-derived counts, rates, timing, and audit summary.
 - [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json) —
   source- and digest-bound stage result.
-- [`data/canonical/m5-10a-wave-a2.jsonl`](../data/canonical/m5-10a-wave-a2.jsonl)
-  — the current canonical snapshot containing the proposed 50-record delta.
+- [`data/batches/m5-10a-wave-a2-proposal.jsonl`](../data/batches/m5-10a-wave-a2-proposal.jsonl)
+  — the 50-record proposal staging file; it is not canonical until verified
+  editorial, audit, and timing gates pass.
+- `data/canonical/` — the current 620-record / 578-start product canonical
+  snapshot. A2 proposal rows must not appear here while review is unverified.
 - [`data/batches/m5-10a-wave-a2-preimport-inventory.json`](../data/batches/m5-10a-wave-a2-preimport-inventory.json)
   — the pre-promotion inventory snapshot.
 
@@ -93,6 +101,9 @@ npm run batch:metrics -- --manifest=data/batches/m5-10-wave-a2.json --relation-d
 npm run batch:m5-10a:wave-a2:stage
 npm run batch:m5-10a:wave-a2:check
 npm run verify:m2 -- --allow-dirty
+npm run build:dictionary -- --allow-dirty
+npm run package
+npm run validate:package
 npm test
 ```
 

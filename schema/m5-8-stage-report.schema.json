@@ -71,6 +71,25 @@
         "corrected_start_count": { "type": "integer", "minimum": 0 },
         "held_start_count": { "type": "integer", "minimum": 0 },
         "rejected_start_count": { "type": "integer", "minimum": 0 },
+        "deferred_start_count": { "type": "integer", "minimum": 0 },
+        "proposed_start_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "proposal_decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "included_start_count",
+        "corrected_start_count",
+        "held_start_count",
+        "rejected_start_count",
+        "deferred_start_count"
+      ],
+      "properties": {
+        "included_start_count": { "type": "integer", "minimum": 0 },
+        "corrected_start_count": { "type": "integer", "minimum": 0 },
+        "held_start_count": { "type": "integer", "minimum": 0 },
+        "rejected_start_count": { "type": "integer", "minimum": 0 },
         "deferred_start_count": { "type": "integer", "minimum": 0 }
       }
     },

@@ -27,6 +27,14 @@
     "selected_start_count": 58
   },
   "decisions": {
+    "included_start_count": 0,
+    "corrected_start_count": 0,
+    "held_start_count": 3,
+    "rejected_start_count": 3,
+    "deferred_start_count": 2,
+    "proposed_start_count": 50
+  },
+  "proposal_decisions": {
     "included_start_count": 35,
     "corrected_start_count": 15,
     "held_start_count": 3,
@@ -40,14 +48,14 @@
   },
   "actual": {
     "canonical_snapshot": {
-      "record_count": 670,
-      "start_count": 628,
+      "record_count": 620,
+      "start_count": 578,
       "reference_only_count": 42,
-      "sense_count": 810,
-      "relation_count": 473,
-      "expression_count": 43
+      "sense_count": 743,
+      "relation_count": 467,
+      "expression_count": 39
     },
-    "imported_start_count": 50
+    "imported_start_count": 0
   },
   "metrics": {
     "correction_rate_of_selected": 0.26785714285714285,
@@ -71,13 +79,13 @@
   },
   "source": {
     "manifest": "data/batches/m5-10-wave-a2.json",
-    "manifest_sha256": "ed349297f7a304d9ae64a83a4a1362ddf206ce4946c7412c81b1e696ac42e16c",
+    "manifest_sha256": "65f6bf978fcdd3e34755073ac905efccdc5dd6ce151c17194d7db42829b455c7",
     "metrics": "data/batches/m5-10a-wave-a2-metrics.json",
-    "metrics_sha256": "c4601a0245882cf1e3f438c26b6e410646d285ea837012c574956691a414f223",
+    "metrics_sha256": "fe3212d677174eb9271b9d0db962b2d12df42ab7bd90f3c03493a73a1e744780",
     "relation_diff": "data/batches/m5-10a-wave-a2-relation-diff.json",
     "relation_diff_sha256": "9b0de1a4c1c947249cb70f11203d48e6248a6d24d5e84157a2d1c972aa42d78f",
     "canonical_directory": "data/canonical",
-    "canonical_sha256": "ce305391951d4fa2f4857599f69b616d1fc2bf91c341b6b0190af7a3a7a59a55",
+    "canonical_sha256": "3f26930a626278c8c281b914dda3fcbcf2c407b71ff87464718422683ba7ed98",
     "verification": "data/batches/m5-10a-wave-a2-verification.json",
     "verification_sha256": "5c084da920f3d5d590872e06a3bd39dce9e786a3caa55c928881f4e72791d68a"
   },

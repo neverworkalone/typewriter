@@ -33,6 +33,7 @@ const manifestSchemaValidator = new Ajv2020({
 
 const ROLES = Object.freeze(['start', 'reference-only']);
 const DECISIONS = Object.freeze(['included', 'held', 'rejected', 'corrected']);
+const PROPOSAL_DECISIONS = Object.freeze(['included', 'corrected']);
 const MEASUREMENT_PASS_IDS = Object.freeze([
   'target-preparation',
   'initial-review',
@@ -150,6 +151,26 @@ function validateManifestRecord(record, index) {
   if (Object.hasOwn(record, 'canonical_id')) {
     requireString(record.canonical_id, `${prefix}.canonical_id`);
   }
+  if (Object.hasOwn(record, 'proposal_canonical_id')) {
+    requireString(record.proposal_canonical_id, `${prefix}.proposal_canonical_id`);
+    if (!/^w[0-9]{3,}$/u.test(record.proposal_canonical_id)) {
+      fail(`${prefix}.proposal_canonical_id must be a start canonical ID`, 'INVALID_PROPOSAL_ID');
+    }
+  }
+  if (Object.hasOwn(record, 'proposal_decision')) {
+    if (!PROPOSAL_DECISIONS.includes(record.proposal_decision)) {
+      fail(
+        `${prefix}.proposal_decision must be one of ${PROPOSAL_DECISIONS.join(', ')}`,
+        'INVALID_PROPOSAL_DECISION',
+      );
+    }
+  }
+  if (Object.hasOwn(record, 'proposal_corrected_fields')) {
+    requireUnique(record.proposal_corrected_fields, `${prefix}.proposal_corrected_fields`);
+    record.proposal_corrected_fields.forEach((field, fieldIndex) => {
+      requireString(field, `${prefix}.proposal_corrected_fields[${fieldIndex}]`);
+    });
+  }
   if (Object.hasOwn(record, 'corrected_fields')) {
     requireUnique(record.corrected_fields, `${prefix}.corrected_fields`);
     record.corrected_fields.forEach((field, fieldIndex) => {
@@ -161,6 +182,26 @@ function validateManifestRecord(record, index) {
     record.related_to.forEach((relatedId, relatedIndex) => {
       requireString(relatedId, `${prefix}.related_to[${relatedIndex}]`);
     });
+  }
+
+  if (record.decision === 'proposed') {
+    if (!Object.hasOwn(record, 'proposal_canonical_id') || !Object.hasOwn(record, 'proposal_decision')) {
+      fail(`${prefix} proposed record must carry proposal identity and decision`, 'INVALID_PROPOSAL_RECORD');
+    }
+    if (Object.hasOwn(record, 'canonical_id') || Object.hasOwn(record, 'corrected_fields')) {
+      fail(`${prefix} proposed record must not carry importable canonical fields`, 'INVALID_PROPOSAL_RECORD');
+    }
+    if (record.proposal_decision === 'corrected'
+      && (!Object.hasOwn(record, 'proposal_corrected_fields') || record.proposal_corrected_fields.length === 0)) {
+      fail(`${prefix} corrected proposal must identify its proposed corrections`, 'INVALID_PROPOSAL_RECORD');
+    }
+    if (record.proposal_decision === 'included' && Object.hasOwn(record, 'proposal_corrected_fields')) {
+      fail(`${prefix} included proposal must not carry proposal_corrected_fields`, 'INVALID_PROPOSAL_RECORD');
+    }
+  } else if (Object.hasOwn(record, 'proposal_canonical_id')
+    || Object.hasOwn(record, 'proposal_decision')
+    || Object.hasOwn(record, 'proposal_corrected_fields')) {
+    fail(`${prefix} proposal fields are only valid for a proposed record`, 'INVALID_PROPOSAL_RECORD');
   }
 }
 
@@ -618,6 +659,13 @@ export function validateSensePreflight(preflight, manifest) {
             'PREFLIGHT_EVIDENCE_MISMATCH',
           );
         }
+      } else if (evidence.status === 'not-applicable') {
+        if (evidence.sense_ids.length > 0) {
+          fail(
+            `${label}.boundary_checks.${boundaryId} not-applicable evidence must not cite senses`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
       } else if (evidence.sense_ids.length > 0) {
         fail(
           `${label}.boundary_checks.${boundaryId} non-checked evidence must not cite senses`,
@@ -626,7 +674,7 @@ export function validateSensePreflight(preflight, manifest) {
       }
     }
     if (checkpoint.status === 'complete' && checkedBoundaryCount === 0) {
-      fail(`${label} must contain at least one checked sense boundary`, 'PREFLIGHT_INCOMPLETE');
+      fail(`${label} must contain reviewed sense boundaries`, 'PREFLIGHT_INCOMPLETE');
     }
     if (checkpoint.status === 'complete' && missingBoundaryIds.length > 0) {
       fail(`${label} cannot be complete while a sense boundary is not reviewed`, 'PREFLIGHT_INCOMPLETE');
@@ -754,6 +802,27 @@ export function validateBatchManifest(manifest) {
       canonicalIds.add(record.canonical_id);
     }
   });
+
+  if (manifest.review.status !== 'complete') {
+    const importable = manifest.records.find(
+      (record) => record.decision === 'included' || record.decision === 'corrected',
+    );
+    if (importable) {
+      fail(
+        `incomplete manifest cannot contain importable decision for ${importable.inventory_id ?? importable.canonical_id}`,
+        'UNVERIFIED_IMPORTABLE_DECISION',
+      );
+    }
+  }
+  if (manifest.review.status === 'complete') {
+    const proposal = manifest.records.find((record) => record.decision === 'proposed');
+    if (proposal) {
+      fail(
+        `complete manifest cannot contain proposed decision for ${proposal.inventory_id ?? proposal.proposal_canonical_id}`,
+        'PROPOSAL_REVIEW_INCOMPLETE',
+      );
+    }
+  }
 
   return manifest;
 }

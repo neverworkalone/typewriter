@@ -84,8 +84,9 @@ and machine verification results by path and SHA-256. The builder requires the
 audit input as a separate source and never treats its own generated output as an
 independent editorial review. The authorization is limited to #96 Wave A2 (+50
 from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The separate
-A2 execution report records the resulting canonical addition; the process
-correction itself preserves the 578-start pre-A2 source snapshot.
+A2 execution report records the proposed addition in staging; the process
+correction itself preserves the 578-start pre-A2 source snapshot, and product
+canonical data remains unchanged until verified review completes.
 The A2 structured editorial and audit proposal inputs may be tracked in this
 directory only when they contain no raw draft or external source text and are
 explicitly marked unverified/incomplete. They cannot produce a completed import

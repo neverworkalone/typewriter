@@ -220,9 +220,10 @@ reproducible after the current canonical directory advances.
 
 The A2 proposal is recorded in
 [`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It selects 58
-starts and the current canonical snapshot contains a proposed +50 delta from
-578 to 628 starts, but the manifest remains `in-review` because no verified human
-editorial session is attached. The audit is `incomplete` and
+starts and keeps the 50 importable rows in separate proposal staging; the current
+product canonical snapshot remains at 578 starts until verified review. The
+manifest remains `in-review` because no verified human editorial session is
+attached. The audit is `incomplete` and
 `independent: false`; the stage gate remains `HOLD PROCESS` because the separate
 A2 timing input has five unmeasured passes. The stage keeps
 `next_stage_authorized: false`; Wave B is a separate, not-yet-authorized step.

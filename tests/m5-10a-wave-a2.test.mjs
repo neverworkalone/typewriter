@@ -4,10 +4,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { buildWaveA2Manifest } from '../scripts/batch/build-m5-10a-wave-a2.mjs';
+import {
+  buildWaveA2Manifest,
+  createWaveA2Manifest,
+} from '../scripts/batch/build-m5-10a-wave-a2.mjs';
+import { validateA2CanonicalBoundary } from '../scripts/batch/validate-m5-10a-wave-a2.mjs';
 import { main as recordA2Timing } from '../scripts/batch/record-m5-10a-wave-a2-timing.mjs';
 import {
   createA2TimingProof,
+  A2_TIMING_WORK_UNIT_CONTRACT,
   validateA2AuditInput,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
@@ -22,6 +27,7 @@ import {
 import {
   validateExpansionStage,
 } from '../scripts/batch/validate-m5-8-process.mjs';
+import { validateBatchManifest } from '../scripts/batch/validate-batch.mjs';
 import {
   summarizeRelationDiff,
   validateRelationDiff,
@@ -30,6 +36,7 @@ import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
+const PROPOSAL_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-proposal.jsonl');
 const A2_BOUNDARY_IDS = [
   'physical-figurative',
   'homonym-pos',
@@ -50,6 +57,17 @@ function assertInputError(action, code) {
 function createVerifiedEditorialFixture(editorial, canonicalRecords) {
   const fixture = structuredClone(editorial);
   const canonicalById = new Map(canonicalRecords.map(({ record }) => [record.id, record]));
+  fixture.records.slice(0, 50).forEach((recordReview) => {
+    if (recordReview.decision !== 'proposed') return;
+    recordReview.canonical_id = recordReview.proposal_canonical_id;
+    recordReview.decision = recordReview.proposal_decision;
+    delete recordReview.proposal_canonical_id;
+    delete recordReview.proposal_decision;
+    if (recordReview.proposal_corrected_fields) {
+      recordReview.corrected_fields = recordReview.proposal_corrected_fields;
+      delete recordReview.proposal_corrected_fields;
+    }
+  });
   fixture.schema_version = '2';
   fixture.source_kind = 'human-authored';
   fixture.provenance = {
@@ -164,14 +182,64 @@ function createVerifiedRelationDiffFixture(relationDiff) {
   return fixture;
 }
 
-test('M5-10A Wave A2 validates the bounded +50 promotion and keeps Wave B blocked', async () => {
-  const [manifest, relationDiff, metrics, stage, plan, canonical] = await Promise.all([
+function createCompleteTimingFixture(timing) {
+  const fixture = structuredClone(timing);
+  const baseTime = Date.parse('2026-09-09T07:00:00Z');
+  fixture.status = 'complete';
+  fixture.passes = fixture.passes.map((pass, index) => {
+    const sessionId = `33333333-3333-4333-8333-${String(index + 1).padStart(12, '0')}`;
+    const startedAt = new Date(baseTime + index * 120000).toISOString();
+    const completedAt = new Date(baseTime + index * 120000 + 300000).toISOString();
+    const contract = A2_TIMING_WORK_UNIT_CONTRACT[pass.id];
+    return {
+      ...pass,
+      status: 'complete',
+      started_at: startedAt,
+      completed_at: completedAt,
+      wall_clock_seconds: 300,
+      editor_seconds: 300,
+      session_id: sessionId,
+      recording_source: 'timing-recorder-v1',
+      work_evidence: {
+        unit_kind: contract.unit_kind,
+        unit_count: contract.unit_ids.length,
+        unit_ids: [...contract.unit_ids],
+        before_sha256: 'c'.repeat(64),
+        after_sha256: 'd'.repeat(64),
+        note: `${pass.id} completed work-unit fixture evidence.`,
+      },
+    };
+  });
+  fixture.events = fixture.passes.flatMap((pass, index) => ([
+    {
+      event_id: `m5-10a-wave-a2-timing-event-${String(index * 2 + 1).padStart(4, '0')}`,
+      pass_id: pass.id,
+      kind: 'start',
+      session_id: pass.session_id,
+      at: pass.started_at,
+    },
+    {
+      event_id: `m5-10a-wave-a2-timing-event-${String(index * 2 + 2).padStart(4, '0')}`,
+      pass_id: pass.id,
+      kind: 'stop',
+      session_id: pass.session_id,
+      at: pass.completed_at,
+    },
+  ]));
+  fixture.recording_proof_sha256 = createA2TimingProof(fixture);
+  return fixture;
+}
+
+test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and keeps Wave B blocked', async () => {
+  const [manifest, editorial, relationDiff, metrics, stage, plan, canonical, proposal] = await Promise.all([
     readBatchJson('m5-10-wave-a2.json'),
+    readBatchJson('m5-10a-wave-a2-editorial-input.json'),
     readBatchJson('m5-10a-wave-a2-relation-diff.json'),
     readBatchJson('m5-10a-wave-a2-metrics.json'),
     readBatchJson('m5-10a-wave-a2.json'),
     readBatchJson('m5-8-expansion-plan.json'),
     readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(PROPOSAL_PATH),
   ]);
 
   assert.equal(manifest.batch_id, 'm5-10-wave-a2-20260909');
@@ -198,10 +266,44 @@ test('M5-10A Wave A2 validates the bounded +50 promotion and keeps Wave B blocke
     sense_field_correction_count: 15,
     relation_field_correction_count: 0,
   });
-  assert.equal(metrics.derived.canonical_import.imported_start_count, 50);
-  assert.equal(metrics.derived.canonical_import.imported_sense_count, 67);
-  assert.equal(metrics.derived.canonical_import.imported_relation_count, 6);
+  assert.equal(metrics.derived.canonical_import.imported_start_count, 0);
+  assert.equal(metrics.derived.canonical_import.imported_sense_count, 0);
+  assert.equal(metrics.derived.canonical_import.imported_relation_count, 0);
   assert.equal(metrics.derived.canonical_import.import_status, 'proposed');
+  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {});
+  assert.equal(canonical.records.length, 620);
+  const proposalIds = new Set(proposal.records.map(({ record }) => record.id));
+  assert.equal(proposal.records.length, 50);
+  assert.equal(canonical.records.some(({ record }) => proposalIds.has(record.id)), false);
+  assert.deepEqual(
+    proposal.records.map(({ record }) => record.id),
+    Array.from({ length: 50 }, (_, index) => `w${index + 579}`),
+  );
+
+  validateA2CanonicalBoundary({
+    editorialInput: editorial,
+    canonicalRecords: canonical.records,
+  });
+  assertInputError(
+    () => validateA2CanonicalBoundary({
+      editorialInput: editorial,
+      canonicalRecords: [...canonical.records, proposal.records[0]],
+    }),
+    'UNVERIFIED_CANONICAL_PROMOTION',
+  );
+  for (const decision of ['included', 'corrected']) {
+    const illegallyPromoted = structuredClone(manifest);
+    illegallyPromoted.records[0].decision = decision;
+    illegallyPromoted.records[0].canonical_id = illegallyPromoted.records[0].proposal_canonical_id;
+    delete illegallyPromoted.records[0].proposal_canonical_id;
+    delete illegallyPromoted.records[0].proposal_decision;
+    delete illegallyPromoted.records[0].proposal_corrected_fields;
+    if (decision === 'corrected') illegallyPromoted.records[0].corrected_fields = ['senses'];
+    assertInputError(
+      () => validateBatchManifest(illegallyPromoted),
+      'UNVERIFIED_IMPORTABLE_DECISION',
+    );
+  }
 
   validateRelationDiff(relationDiff);
   assert.deepEqual(summarizeRelationDiff(relationDiff), {
@@ -230,12 +332,7 @@ test('M5-10A Wave A2 validates the bounded +50 promotion and keeps Wave B blocke
     canonicalRecords: canonical.records,
     source: metrics.source,
   }));
-  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {
-    association: 1,
-    mood: 3,
-    near: 1,
-    sensory: 1,
-  });
+  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {});
   assert.equal(metrics.derived.timing.status, 'incomplete');
   assert.deepEqual(metrics.derived.timing.unmeasured_passes, [
     'target-preparation',
@@ -251,17 +348,25 @@ test('M5-10A Wave A2 validates the bounded +50 promotion and keeps Wave B blocke
 
   assert.deepEqual(await validateExpansionStage(stage, plan), {
     stage_id: 'm5-10a-wave-a2-plus-50',
-    imported_start_count: 50,
+    imported_start_count: 0,
     candidate_buffer: 8,
     gate_status: 'fail',
   });
   assert.deepEqual(stage.actual.canonical_snapshot, {
-    record_count: 670,
-    start_count: 628,
+    record_count: 620,
+    start_count: 578,
     reference_only_count: 42,
-    sense_count: 810,
-    relation_count: 473,
-    expression_count: 43,
+    sense_count: 743,
+    relation_count: 467,
+    expression_count: 39,
+  });
+  assert.equal(stage.decisions.proposed_start_count, 50);
+  assert.deepEqual(stage.proposal_decisions, {
+    included_start_count: 35,
+    corrected_start_count: 15,
+    held_start_count: 3,
+    rejected_start_count: 3,
+    deferred_start_count: 2,
   });
   assert.equal(stage.metrics.timing_status, 'incomplete');
   assert.equal(stage.metrics.total_editor_seconds, null);
@@ -275,31 +380,33 @@ test('M5-10A Wave A2 validates the bounded +50 promotion and keeps Wave B blocke
 });
 
 test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async () => {
-  const [editorial, audit, timing, relationDiff, canonical] = await Promise.all([
+  const [editorial, audit, timing, relationDiff, canonical, proposal] = await Promise.all([
     readBatchJson('m5-10a-wave-a2-editorial-input.json'),
     readBatchJson('m5-10a-wave-a2-audit-input.json'),
     readBatchJson('m5-10a-wave-a2-timing-input.json'),
     readBatchJson('m5-10a-wave-a2-relation-diff.json'),
     readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(PROPOSAL_PATH),
   ]);
+  const referenceRecords = [...canonical.records, ...proposal.records];
   const unverifiedEditorial = validateA2EditorialInput({
     input: editorial,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
   });
   assert.equal(unverifiedEditorial.verified, false);
   const unverifiedAudit = validateA2AuditInput({
     audit,
     editorialInput: unverifiedEditorial,
     relationDiff,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
   });
   assert.equal(unverifiedAudit.verified, false);
   validateA2TimingInput(timing);
 
-  const verifiedEditorial = createVerifiedEditorialFixture(editorial, canonical.records);
+  const verifiedEditorial = createVerifiedEditorialFixture(editorial, referenceRecords);
   validateA2EditorialInput({
     input: verifiedEditorial,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
   });
   const verifiedRelationDiff = createVerifiedRelationDiffFixture(relationDiff);
   const verifiedAudit = createVerifiedAuditFixture(audit, verifiedEditorial, verifiedRelationDiff);
@@ -308,10 +415,51 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       audit: verifiedAudit,
       editorialInput: { ...verifiedEditorial, verified: true },
       relationDiff: verifiedRelationDiff,
-      canonicalRecords: canonical.records,
+      canonicalRecords: referenceRecords,
     }).verified,
     true,
   );
+
+  const manifestSources = {
+    editorialInputSource: { path: 'data/batches/test-editorial.json', sha256: 'a'.repeat(64) },
+    auditInputSource: { path: 'data/batches/test-audit.json', sha256: 'b'.repeat(64) },
+    timingInputSource: { path: 'data/batches/test-timing.json', sha256: 'c'.repeat(64) },
+    relationDiffSource: {
+      path: 'data/batches/test-relation-diff.json',
+      sha256: 'd'.repeat(64),
+      value: relationDiff,
+    },
+  };
+  const blockedPromotionManifest = createWaveA2Manifest({
+    editorialInput: verifiedEditorial,
+    auditInput: audit,
+    timingInput: timing,
+    canonicalRecords: referenceRecords,
+    ...manifestSources,
+  });
+  assert.equal(blockedPromotionManifest.review.status, 'in-review');
+  assert.equal(blockedPromotionManifest.sense_review.status, 'incomplete');
+  assert.equal(blockedPromotionManifest.records[0].decision, 'proposed');
+  assert.equal(blockedPromotionManifest.records[0].canonical_id, undefined);
+  assert.equal(blockedPromotionManifest.records[0].proposal_canonical_id, 'w579');
+
+  const completeTiming = createCompleteTimingFixture(timing);
+  const promotedManifest = createWaveA2Manifest({
+    editorialInput: verifiedEditorial,
+    auditInput: verifiedAudit,
+    timingInput: completeTiming,
+    canonicalRecords: referenceRecords,
+    ...manifestSources,
+    relationDiffSource: {
+      ...manifestSources.relationDiffSource,
+      value: verifiedRelationDiff,
+    },
+  });
+  assert.equal(promotedManifest.review.status, 'complete');
+  assert.equal(promotedManifest.sense_review.status, 'complete');
+  assert.equal(promotedManifest.records[0].decision, 'included');
+  assert.equal(promotedManifest.records[0].canonical_id, 'w579');
+  assert.equal(promotedManifest.records[0].proposal_canonical_id, undefined);
 
   const pendingAudit = createVerifiedAuditFixture(audit, verifiedEditorial, relationDiff);
   assertInputError(
@@ -319,7 +467,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       audit: pendingAudit,
       editorialInput: { ...verifiedEditorial, verified: true },
       relationDiff,
-      canonicalRecords: canonical.records,
+      canonicalRecords: referenceRecords,
     }),
     'AUDIT_INCOMPLETE',
   );
@@ -336,7 +484,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       audit: invalidCanonicalAudit,
       editorialInput: { ...verifiedEditorial, verified: true },
       relationDiff: invalidCanonicalRelationDiff,
-      canonicalRecords: canonical.records,
+      canonicalRecords: referenceRecords,
     }),
     'MISSING_CANONICAL_SENSE',
   );
@@ -344,7 +492,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   const posMismatch = structuredClone(verifiedEditorial);
   posMismatch.records[0].observed_pos = [];
   assertInputError(
-    () => validateA2EditorialInput({ input: posMismatch, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: posMismatch, canonicalRecords: referenceRecords }),
     'CANONICAL_POS_MISMATCH',
   );
   await assert.rejects(
@@ -404,21 +552,21 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   const structuralMismatch = structuredClone(verifiedEditorial);
   structuralMismatch.records[0].boundary_evidence['physical-figurative'].candidate_sense_ids = [];
   assertInputError(
-    () => validateA2EditorialInput({ input: structuralMismatch, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: structuralMismatch, canonicalRecords: referenceRecords }),
     'BOUNDARY_SENSE_COVERAGE_MISMATCH',
   );
 
   const missingEvidence = structuredClone(verifiedEditorial);
   delete missingEvidence.records[0].boundary_evidence['word-idiom'];
   assertInputError(
-    () => validateA2EditorialInput({ input: missingEvidence, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: missingEvidence, canonicalRecords: referenceRecords }),
     'SCHEMA_ERROR',
   );
 
   const unreviewedEvidence = structuredClone(verifiedEditorial);
   unreviewedEvidence.records[0].boundary_evidence['word-idiom'].review_status = 'unreviewed';
   assertInputError(
-    () => validateA2EditorialInput({ input: unreviewedEvidence, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: unreviewedEvidence, canonicalRecords: referenceRecords }),
     'UNREVIEWED_BOUNDARY_EVIDENCE',
   );
 
@@ -427,7 +575,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   const firstSplit = splitRecords[0];
   const secondSplit = splitRecords[1];
   const firstContrast = firstSplit.boundary_evidence['sensory-emotion-state-action'].contrasts[0];
-  const secondCanonical = canonical.records.find(({ record }) => record.id === secondSplit.canonical_id).record;
+  const secondCanonical = referenceRecords.find(({ record }) => record.id === secondSplit.canonical_id).record;
   secondSplit.boundary_evidence['sensory-emotion-state-action'].contrasts = [{
     ...firstContrast,
     left_sense_id: secondCanonical.senses[0].id,
@@ -437,7 +585,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     difference: `${secondCanonical.lemma} separates these senses by the observed focus rather than treating them as one use.`,
   }];
   assertInputError(
-    () => validateA2EditorialInput({ input: duplicatedEvidence, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: duplicatedEvidence, canonicalRecords: referenceRecords }),
     'GENERIC_EDITORIAL_EVIDENCE',
   );
 
@@ -452,7 +600,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       audit: duplicatedAudit,
       editorialInput: { ...verifiedEditorial, verified: true },
       relationDiff: verifiedRelationDiff,
-      canonicalRecords: canonical.records,
+      canonicalRecords: referenceRecords,
     }),
     'GENERIC_EDITORIAL_EVIDENCE',
   );
@@ -464,7 +612,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       audit: nonIndependentAudit,
       editorialInput: unverifiedEditorial,
       relationDiff,
-      canonicalRecords: canonical.records,
+      canonicalRecords: referenceRecords,
     }),
     'AUDIT_NOT_INDEPENDENT',
   );
@@ -475,7 +623,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   falseHumanClaim.completed_at = '2026-09-09T06:00:00Z';
   falseHumanClaim.sense_review.status = 'complete';
   assertInputError(
-    () => validateA2EditorialInput({ input: falseHumanClaim, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: falseHumanClaim, canonicalRecords: referenceRecords }),
     'PROVENANCE_REQUIRED',
   );
 
@@ -485,7 +633,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   inReviewHumanClaim.provenance.actor_kind = 'human';
   inReviewHumanClaim.provenance.actor_id = 'editor-session-owner';
   assertInputError(
-    () => validateA2EditorialInput({ input: inReviewHumanClaim, canonicalRecords: canonical.records }),
+    () => validateA2EditorialInput({ input: inReviewHumanClaim, canonicalRecords: referenceRecords }),
     'SCHEMA_ERROR',
   );
 
@@ -494,7 +642,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   syntheticTiming.recording_proof_sha256 = createA2TimingProof(syntheticTiming);
   assertInputError(() => validateA2TimingInput(syntheticTiming), 'TIMING_EVENT_COVERAGE');
 
-  const canonicalById = new Map(canonical.records.map(({ record }) => [record.id, record]));
+  const canonicalById = new Map(referenceRecords.map(({ record }) => [record.id, record]));
   assert.equal(canonicalById.get('w603').senses.length, 3);
   assert.deepEqual(
     canonicalById.get('w603').senses.map(({ gloss }) => gloss),

@@ -271,6 +271,9 @@ function validateContrast(contrast, canonicalRecord, evidenceLabel, fingerprints
 
 function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fingerprints, verified) {
   const label = `editorial.records[${recordIndex}]`;
+  const decision = recordReview.decision === 'proposed'
+    ? recordReview.proposal_decision
+    : recordReview.decision;
   const senseIds = canonicalRecord.senses.map(({ id }) => id);
   assertEqual(
     recordReview.observed_sense_count,
@@ -318,10 +321,10 @@ function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fing
   const splitBoundaries = M5_10A_SENSE_BOUNDARY_IDS.filter(
     (boundaryId) => recordReview.boundary_evidence[boundaryId].decision === 'split',
   );
-  if (recordReview.decision === 'corrected') {
+  if (decision === 'corrected') {
     assertCondition(canonicalRecord.senses.length > 1, `${label} corrected record must contain multiple canonical senses`, 'CANONICAL_SENSE_COUNT_MISMATCH');
     if (verified) assertCondition(splitBoundaries.length > 0, `${label} corrected record must identify a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
-  } else if (recordReview.decision === 'included') {
+  } else if (decision === 'included') {
     assertEqual(canonicalRecord.senses.length, 1, `${label} included record must remain single-sense`, 'CANONICAL_SENSE_COUNT_MISMATCH');
     if (verified) assertEqual(splitBoundaries, [], `${label} included record cannot claim a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
   }
@@ -368,18 +371,34 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
     const promoted = A2_PROMOTED_RECORD_REVIEWS[index];
     if (promoted) {
       assertEqual(recordReview.inventory_id, promoted.inventory_id, `${label} is out of deterministic A2 order`, 'EDITORIAL_SCOPE_DRIFT');
-      assertEqual(recordReview.canonical_id, promoted.canonical_id, `${label}.canonical_id is out of deterministic A2 order`, 'EDITORIAL_SCOPE_DRIFT');
+      const canonicalIdField = verified ? 'canonical_id' : 'proposal_canonical_id';
+      const canonicalId = recordReview[canonicalIdField];
+      assertEqual(canonicalId, promoted.canonical_id, `${label}.${canonicalIdField} is out of deterministic A2 order`, 'EDITORIAL_SCOPE_DRIFT');
+      const decision = verified ? recordReview.decision : recordReview.proposal_decision;
+      assertEqual(
+        recordReview.decision,
+        verified ? decision : 'proposed',
+        `${label}.decision is inconsistent with its provenance state`,
+        'EDITORIAL_DECISION_DRIFT',
+      );
       assertCondition(
-        recordReview.decision === 'included' || recordReview.decision === 'corrected',
+        decision === 'included' || decision === 'corrected',
         `${label} promoted record must be included or corrected`,
         'EDITORIAL_DECISION_DRIFT',
       );
-      const canonicalRecord = recordsById.get(recordReview.canonical_id);
+      const canonicalRecord = recordsById.get(canonicalId);
       assertCondition(canonicalRecord, `${label} canonical record is missing`, 'MISSING_CANONICAL_RECORD');
-      if (recordReview.decision === 'corrected') {
-        assertEqual(recordReview.corrected_fields, ['senses'], `${label}.corrected_fields must identify sense corrections`, 'CORRECTION_FIELD_DRIFT');
+      const correctedFields = verified
+        ? recordReview.corrected_fields
+        : recordReview.proposal_corrected_fields;
+      if (decision === 'corrected') {
+        assertEqual(correctedFields, ['senses'], `${label} corrected fields must identify sense corrections`, 'CORRECTION_FIELD_DRIFT');
       } else {
-        assertCondition(!Object.hasOwn(recordReview, 'corrected_fields'), `${label} included record must not carry corrected_fields`, 'CORRECTION_FIELD_DRIFT');
+        assertCondition(
+          !Object.hasOwn(recordReview, verified ? 'corrected_fields' : 'proposal_corrected_fields'),
+          `${label} included record must not carry corrected fields`,
+          'CORRECTION_FIELD_DRIFT',
+        );
       }
       assertCondition(
         recordReview.decision_note.includes(recordReview.inventory_id)
@@ -417,8 +436,14 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
 
   const promotedReviews = input.records.slice(0, A2_PROMOTED_RECORD_REVIEWS.length);
   const correctedIds = promotedReviews
-    .filter(({ decision }) => decision === 'corrected')
-    .map(({ canonical_id: canonicalId }) => canonicalId)
+    .filter((recordReview) => (
+      (recordReview.decision === 'proposed' ? recordReview.proposal_decision : recordReview.decision) === 'corrected'
+    ))
+    .map((recordReview) => (
+      recordReview.decision === 'proposed'
+        ? recordReview.proposal_canonical_id
+        : recordReview.canonical_id
+    ))
     .sort();
   if (verified) {
     assertEqual(

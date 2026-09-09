@@ -102,14 +102,28 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
   ]);
   const selectedStartCount = metrics.derived.selection.selected_start_count;
   const importedStartCount = metrics.derived.canonical_import.imported_start_count;
-  const decisions = {
+  const proposedStage = metrics.derived.canonical_import.import_status === 'proposed';
+  const proposalDecisions = {
     included_start_count: metrics.derived.decisions.included,
     corrected_start_count: metrics.derived.decisions.corrected,
     held_start_count: metrics.derived.decisions.held,
     rejected_start_count: metrics.derived.decisions.rejected,
     deferred_start_count: metrics.derived.decisions.deferred,
   };
-  const candidateBuffer = selectedStartCount - importedStartCount;
+  const decisions = proposedStage
+    ? {
+      included_start_count: 0,
+      corrected_start_count: 0,
+      held_start_count: proposalDecisions.held_start_count,
+      rejected_start_count: proposalDecisions.rejected_start_count,
+      deferred_start_count: proposalDecisions.deferred_start_count,
+      proposed_start_count: proposalDecisions.included_start_count
+        + proposalDecisions.corrected_start_count,
+    }
+    : proposalDecisions;
+  const targetNetStartIncrease = proposalDecisions.included_start_count
+    + proposalDecisions.corrected_start_count;
+  const candidateBuffer = selectedStartCount - targetNetStartIncrease;
   const usedBuffer = decisions.held_start_count + decisions.rejected_start_count;
   const metricsFromSources = stageMetrics(metrics, verification);
   const gate = evaluateExpansionGate(metricsFromSources, plan);
@@ -123,12 +137,13 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
       repair_authorization: repairSource,
     },
     target: {
-      net_start_increase: importedStartCount,
+      net_start_increase: targetNetStartIncrease,
       cumulative_start_target: 628,
       candidate_buffer: candidateBuffer,
       selected_start_count: selectedStartCount,
     },
     decisions,
+    ...(proposedStage ? { proposal_decisions: proposalDecisions } : {}),
     buffer: {
       available_count: candidateBuffer,
       used_count: usedBuffer,
@@ -167,8 +182,14 @@ const isMainModule = process.argv[1]
 if (isMainModule) {
   buildWaveA2Stage()
     .then((stage) => {
-      const countLabel = stage.metrics.human_editorial_review_complete ? 'imported' : 'proposal';
-      console.log(`Generated ${stage.stage_id}: ${stage.actual.imported_start_count} ${countLabel} start(s), gate ${stage.gate_status}.`);
+      if (stage.decisions.proposed_start_count > 0) {
+        console.log(
+          `Generated ${stage.stage_id}: ${stage.actual.imported_start_count} imported start(s), `
+          +`${stage.decisions.proposed_start_count} pending proposal start(s), gate ${stage.gate_status}.`,
+        );
+        return;
+      }
+      console.log(`Generated ${stage.stage_id}: ${stage.actual.imported_start_count} imported start(s), gate ${stage.gate_status}.`);
     })
     .catch((error) => {
       console.error(error.message);

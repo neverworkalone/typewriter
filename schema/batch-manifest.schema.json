@@ -175,8 +175,20 @@
           "type": "string",
           "pattern": "^[wr][0-9]{3,}$"
         },
+        "proposal_canonical_id": {
+          "type": "string",
+          "pattern": "^w[0-9]{3,}$"
+        },
         "decision": {
-          "enum": ["included", "held", "rejected", "corrected", "deferred"]
+          "enum": ["included", "held", "rejected", "corrected", "deferred", "proposed"]
+        },
+        "proposal_decision": {
+          "enum": ["included", "corrected"]
+        },
+        "proposal_corrected_fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "\\S" }
         },
         "corrected_fields": {
           "type": "array",
@@ -243,6 +255,44 @@
           },
           "then": {
             "not": { "required": ["canonical_id"] }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "proposed" }
+            }
+          },
+          "then": {
+            "required": ["proposal_canonical_id", "proposal_decision"],
+            "not": {
+              "anyOf": [
+                { "required": ["canonical_id"] },
+                { "required": ["corrected_fields"] }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "proposed" },
+              "proposal_decision": { "const": "corrected" }
+            }
+          },
+          "then": {
+            "required": ["proposal_corrected_fields"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": { "const": "proposed" },
+              "proposal_decision": { "const": "included" }
+            }
+          },
+          "then": {
+            "not": { "required": ["proposal_corrected_fields"] }
           }
         },
         {

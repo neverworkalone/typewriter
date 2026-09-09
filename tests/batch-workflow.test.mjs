@@ -46,7 +46,7 @@ function createManifest() {
         source: 'inventory',
         inventory_id: 'm5-363',
         role: 'start',
-        canonical_id: 'w629',
+        canonical_id: 'w579',
         decision: 'corrected',
         corrected_fields: ['senses'],
         decision_note: '검수 과정에서 감정의 품사와 관계 대상을 확정했다.',
@@ -56,7 +56,7 @@ function createManifest() {
         role: 'reference-only',
         canonical_id: 'r052',
         decision: 'included',
-        related_to: ['w629'],
+        related_to: ['w579'],
         decision_note: '승격 record의 relation target을 닫기 위한 참조 record다.',
       },
     ],
@@ -66,14 +66,14 @@ function createManifest() {
 function createStagedRecords() {
   return [
     {
-      id: 'w629',
+      id: 'w579',
       record_type: 'entry',
       role: 'start',
-      candidate_id: 'w629',
+      candidate_id: 'w579',
       lemma: '검수표적',
       search_forms: ['검수표적'],
       senses: [{
-      id: 'w629-s1',
+      id: 'w579-s1',
         pos: 'noun',
         gloss: '벅찬 기쁨이나 감동이 북받치는 마음.',
         relations: [{
@@ -326,7 +326,7 @@ test('validates a reviewed target plus reference closure and writes only an exte
     const summary = await validateBatch(fixture);
 
     assert.equal(summary.manifest.batch_id, 'm5-2-fixture');
-    assert.equal(summary.canonicalRecordCount, 670);
+    assert.equal(summary.canonicalRecordCount, 620);
     assert.equal(summary.stagedRecordCount, 2);
     assert.equal(summary.targetCount, 1);
     assert.equal(summary.referenceClosureCount, 1);
@@ -345,12 +345,12 @@ test('validates a reviewed target plus reference closure and writes only an exte
     const importedRecords = await readCanonicalRecords(outputPath);
     assert.deepEqual(
       importedRecords.records.map(({ record }) => record.id),
-      ['r052', 'w629'],
+      ['r052', 'w579'],
     );
 
     const after = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
     assert.equal(after.records.length, before.records.length);
-    assert.equal(after.records.some(({ record }) => record.id === 'w629'), false);
+    assert.equal(after.records.some(({ record }) => record.id === 'w579'), false);
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }
@@ -392,7 +392,7 @@ test('rejects incomplete review before reading or importing staged rows', async 
       validateBatch(fixture),
       (error) => {
         assert.ok(error instanceof BatchValidationError);
-        assert.equal(error.code, 'REVIEW_NOT_COMPLETE');
+        assert.equal(error.code, 'UNVERIFIED_IMPORTABLE_DECISION');
         return true;
       },
     );

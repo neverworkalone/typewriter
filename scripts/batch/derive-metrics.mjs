@@ -41,6 +41,16 @@ export const OPTIONAL_TIMING_PASS_IDS = Object.freeze([
 
 const DECISIONS = Object.freeze(['included', 'corrected', 'held', 'rejected']);
 
+function effectiveDecision(record) {
+  return record.decision === 'proposed' ? record.proposal_decision : record.decision;
+}
+
+function effectiveCorrectedFields(record) {
+  return record.decision === 'proposed'
+    ? record.proposal_corrected_fields
+    : record.corrected_fields;
+}
+
 export class BatchMetricsError extends Error {
   constructor(message, code = 'BATCH_METRICS_ERROR') {
     super(message);
@@ -107,7 +117,7 @@ function deriveDecisions(manifest) {
   );
   const counts = Object.fromEntries(DECISIONS.map((decision) => [
     decision,
-    selected.filter((record) => record.decision === decision).length,
+    selected.filter((record) => effectiveDecision(record) === decision).length,
   ]));
   const importable = counts.included + counts.corrected;
   const deferred = selected.filter((record) => record.decision === 'deferred').length;
@@ -128,10 +138,10 @@ function deriveDecisions(manifest) {
       rejected_rate: ratio(counts.rejected, processed),
       held_or_rejected_rate: ratio(counts.held + counts.rejected, processed),
       sense_field_correction_count: selected.filter(
-        (record) => record.corrected_fields?.includes('senses'),
+        (record) => effectiveCorrectedFields(record)?.includes('senses'),
       ).length,
       relation_field_correction_count: selected.filter(
-        (record) => record.corrected_fields?.includes('relations'),
+        (record) => effectiveCorrectedFields(record)?.includes('relations'),
       ).length,
     },
   };
@@ -196,6 +206,7 @@ function deriveSenseReview(manifest, canonicalRecords) {
 }
 
 function approvedCanonicalRecords(manifest, canonicalRecords) {
+  if (manifest.review.status !== 'complete') return [];
   const recordInfos = asRecordInfos(canonicalRecords);
   const recordsById = new Map(recordInfos.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
   const approved = manifest.records.filter(
@@ -215,6 +226,18 @@ function approvedCanonicalRecords(manifest, canonicalRecords) {
 }
 
 function deriveCanonicalImport(manifest, canonicalRecords) {
+  if (manifest.review.status !== 'complete') {
+    return {
+      imported_start_count: 0,
+      imported_reference_only_count: 0,
+      imported_record_count: 0,
+      imported_sense_count: 0,
+      imported_relation_count: 0,
+      imported_expression_count: 0,
+      relation_type_counts: {},
+      import_status: 'proposed',
+    };
+  }
   const importedRecords = approvedCanonicalRecords(manifest, canonicalRecords);
   const counts = countRelations(importedRecords);
   const result = {
@@ -226,7 +249,6 @@ function deriveCanonicalImport(manifest, canonicalRecords) {
     imported_expression_count: counts.expressionCount,
     relation_type_counts: counts.relationTypeCounts,
   };
-  if (manifest.review.status !== 'complete') result.import_status = 'proposed';
   return result;
 }
 
@@ -385,15 +407,19 @@ export function deriveBatchMetrics({ manifest, relationDiff, canonicalRecords } 
   const decisions = deriveDecisions(manifest);
   const relationSummary = summarizeRelationDiff(relationDiff);
   const importedRecords = approvedCanonicalRecords(manifest, canonicalRecords);
-  validateRelationDiffAgainstCanonical(relationDiff, importedRecords);
   const canonicalImport = deriveCanonicalImport(manifest, canonicalRecords);
-  if (canonicalImport.imported_start_count !== decisions.decisions.importable_start_count) {
+  if (manifest.review.status === 'complete') {
+    validateRelationDiffAgainstCanonical(relationDiff, importedRecords);
+  }
+  if (manifest.review.status === 'complete'
+    && canonicalImport.imported_start_count !== decisions.decisions.importable_start_count) {
     fail(
       `canonical imported start count ${canonicalImport.imported_start_count} does not match manifest importable count ${decisions.decisions.importable_start_count}`,
       'CANONICAL_DECISION_COUNT_MISMATCH',
     );
   }
-  if (canonicalImport.imported_relation_count !== relationSummary.after_count) {
+  if (manifest.review.status === 'complete'
+    && canonicalImport.imported_relation_count !== relationSummary.after_count) {
     fail(
       `canonical imported relation count ${canonicalImport.imported_relation_count} does not match relation diff after_count ${relationSummary.after_count}`,
       'RELATION_AFTER_COUNT_MISMATCH',

@@ -14,6 +14,7 @@ import {
   DEFAULT_EDITORIAL_INPUT_PATH,
   DEFAULT_OUTPUT_PATH,
   DEFAULT_RELATION_DIFF_PATH,
+  DEFAULT_STAGED_RECORDS_PATH,
   DEFAULT_TIMING_INPUT_PATH,
 } from './build-m5-10a-wave-a2.mjs';
 import { validateRelationDiff } from './relation-diff.mjs';
@@ -43,7 +44,6 @@ const DEFAULT_STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2.json');
 const DEFAULT_METRICS_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-metrics.json');
 const DEFAULT_PLAN_PATH = path.join(BATCH_DIRECTORY, 'm5-8-expansion-plan.json');
 const DEFAULT_VERIFICATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-verification.json');
-const DEFAULT_STAGED_RECORDS_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10a-wave-a2.jsonl');
 const DEFAULT_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-preimport-inventory.json');
 const DEFAULT_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
 
@@ -93,17 +93,53 @@ function parseArguments(argv) {
   return args;
 }
 
+function mergeReferenceRecords(...recordLists) {
+  const byId = new Map();
+  for (const recordList of recordLists) {
+    for (const recordInfo of recordList) {
+      const record = recordInfo.record ?? recordInfo;
+      const existing = byId.get(record.id);
+      if (existing && JSON.stringify(existing.record ?? existing) !== JSON.stringify(record)) {
+        fail(`A2 reference records contain conflicting definitions for ${record.id}`, 'REFERENCE_RECORD_CONFLICT');
+      }
+      if (!existing) byId.set(record.id, recordInfo);
+    }
+  }
+  return [...byId.values()];
+}
+
+function countSenses(recordInfos) {
+  return recordInfos.reduce((count, { record }) => count + record.senses.length, 0);
+}
+
+export function validateA2CanonicalBoundary({ editorialInput, canonicalRecords = [] } = {}) {
+  if (editorialInput?.source_kind !== 'unverified-draft') return;
+  const canonicalIds = new Set(canonicalRecords.map(({ record }) => record.id));
+  const leakedIds = A2_PROMOTED_CANONICAL_IDS.filter((canonicalId) => canonicalIds.has(canonicalId));
+  if (leakedIds.length > 0) {
+    fail(
+      `unverified A2 proposals must not appear in product canonical data: ${leakedIds.join(', ')}`,
+      'UNVERIFIED_CANONICAL_PROMOTION',
+    );
+  }
+}
+
 function validateA2ProposalStaging(manifest, stagedRecords) {
   const stagedById = new Map(stagedRecords.map(({ record }) => [record.id, record]));
-  const proposed = manifest.records.filter((record) => Object.hasOwn(record, 'canonical_id'));
+  const proposed = manifest.records.filter((record) => record.decision === 'proposed');
   assert.deepEqual(
-    proposed.map(({ canonical_id: canonicalId }) => canonicalId).sort(),
+    proposed.map(({ proposal_canonical_id: canonicalId }) => canonicalId).sort(),
     [...A2_PROMOTED_CANONICAL_IDS].sort(),
     'unverified A2 proposal canonical scope drifted',
   );
+  assert.deepEqual(
+    [...stagedById.keys()].sort(),
+    [...A2_PROMOTED_CANONICAL_IDS].sort(),
+    'A2 proposal staging must contain exactly the proposed canonical scope',
+  );
   for (const record of proposed) {
-    if (!stagedById.has(record.canonical_id)) {
-      fail(`unverified A2 proposal references missing staged record ${record.canonical_id}`, 'MISSING_STAGED_RECORD');
+    if (!stagedById.has(record.proposal_canonical_id)) {
+      fail(`unverified A2 proposal references missing staged record ${record.proposal_canonical_id}`, 'MISSING_STAGED_RECORD');
     }
   }
   return proposed.length;
@@ -136,6 +172,12 @@ export async function validateWaveA2({
     readJsonSource(verificationPath, 'Wave A2 verification'),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
+  const staged = await readCanonicalRecords(stagedRecordsPath);
+  const referenceRecords = mergeReferenceRecords(canonical.records, staged.records);
+  validateA2CanonicalBoundary({
+    editorialInput: editorialSource.value,
+    canonicalRecords: canonical.records,
+  });
 
   await Promise.all([
     validateA2ProvenanceArtifact({
@@ -152,13 +194,13 @@ export async function validateWaveA2({
 
   const editorial = validateA2EditorialInput({
     input: editorialSource.value,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
   });
   validateA2AuditInput({
     audit: auditSource.value,
     editorialInput: editorial,
     relationDiff: relationDiffSource.value,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
   });
   validateA2TimingInput(timingSource.value);
   validateRelationDiff(relationDiffSource.value);
@@ -210,7 +252,7 @@ export async function validateWaveA2({
     editorialInput: editorialSource.value,
     auditInput: auditSource.value,
     timingInput: timingSource.value,
-    canonicalRecords: canonical.records,
+    canonicalRecords: referenceRecords,
     editorialInputSource: sourceRef(editorialInputPath, editorialSource.bytes),
     auditInputSource: sourceRef(auditInputPath, auditSource.bytes),
     timingInputSource: sourceRef(timingInputPath, timingSource.bytes),
@@ -235,11 +277,12 @@ export async function validateWaveA2({
       allowRepositoryStaging: true,
     });
     assert.equal(batchResult.manifest.batch_id, A2_BATCH_ID, 'validated batch has the wrong batch_id');
+    batchResult.proposedSenseCount = metricsSource.value.derived.canonical_import.imported_sense_count;
     batchResult.validation_status = 'validated';
   } else {
-    const staged = await readCanonicalRecords(stagedRecordsPath);
     batchResult = {
       stagedRecordCount: validateA2ProposalStaging(manifestSource.value, staged.records),
+      proposedSenseCount: countSenses(staged.records),
       validation_status: 'proposal',
       manifest: manifestSource.value,
     };
@@ -274,8 +317,7 @@ export async function validateWaveA2({
     {
       stage_id: stageSource.value.stage_id,
       imported_start_count: metricsSource.value.derived.canonical_import.imported_start_count,
-      candidate_buffer: metricsSource.value.derived.selection.selected_start_count
-        - metricsSource.value.derived.canonical_import.imported_start_count,
+      candidate_buffer: stageSource.value.target.candidate_buffer,
       gate_status: evaluateExpansionGate(stageSource.value.metrics, planSource.value).gate_status,
     },
     'stage summary is not derived from the checked source artifacts',
@@ -297,7 +339,7 @@ export async function validateWaveA2({
       validation_status: batchResult.validation_status,
       selected_start_count: metricsSource.value.derived.selection.selected_start_count,
       proposed_start_count: batchResult.stagedRecordCount,
-      proposed_sense_count: metricsSource.value.derived.canonical_import.imported_sense_count,
+      proposed_sense_count: batchResult.proposedSenseCount,
     },
     timing: {
       status: timingSource.value.status,

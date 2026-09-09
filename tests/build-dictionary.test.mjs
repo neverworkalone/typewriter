@@ -40,19 +40,19 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       allowDirty: true,
     });
 
-    assert.equal(summary.recordCount, 670);
-    assert.equal(summary.searchFormCount, 746);
-    assert.equal(summary.senseCount, 810);
-    assert.equal(summary.relationCount, 473);
+    assert.equal(summary.recordCount, 620);
+    assert.equal(summary.searchFormCount, 696);
+    assert.equal(summary.senseCount, 743);
+    assert.equal(summary.relationCount, 467);
     assert.equal(summary.metadata.schema_version, '1');
     assert.equal(summary.metadata.normalization_version, '1');
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(countRows(database, 'records'), 670);
-      assert.equal(countRows(database, 'search_forms'), 746);
-      assert.equal(countRows(database, 'senses'), 810);
-      assert.equal(countRows(database, 'relations'), 473);
+      assert.equal(countRows(database, 'records'), 620);
+      assert.equal(countRows(database, 'search_forms'), 696);
+      assert.equal(countRows(database, 'senses'), 743);
+      assert.equal(countRows(database, 'relations'), 467);
       assert.deepEqual(getMetadata(database), summary.metadata);
 
       assert.deepEqual(findRecordsByExactTerm(database, '담담'), [
@@ -71,6 +71,9 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         })),
         [{ id: 'w288', lemma: '마음이 놓이다' }],
       );
+      assert.deepEqual(findRecordsByExactTerm(database, '환희'), []);
+      assert.equal(getRecord(database, 'w579'), null);
+      assert.deepEqual(findRecordsByExactTerm(database, '숨이 트이다'), []);
 
       const polysemousRecord = getRecord(database, 'w237');
       assert.equal(polysemousRecord.senses.length, 4);
@@ -120,7 +123,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
 
     const reopened = new DatabaseSync(outputPath, { readOnly: true });
     try {
-      assert.equal(countRows(reopened, 'records'), 670);
+      assert.equal(countRows(reopened, 'records'), 620);
       assert.equal(getRecord(reopened, 'w999'), null);
     } finally {
       reopened.close();
@@ -166,7 +169,7 @@ test('rebuilds from an empty output and protects canonical input', async () => {
           .get(),
         undefined,
       );
-      assert.equal(countRows(freshDatabase, 'records'), 670);
+      assert.equal(countRows(freshDatabase, 'records'), 620);
     } finally {
       freshDatabase.close();
     }
