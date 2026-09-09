@@ -180,20 +180,23 @@ test('Wave B rejects an incomplete reviewed staging shard before promotion', asy
 test('Wave B build and recorders require explicit external review artifacts', async () => {
   await assert.rejects(buildArtifacts(), /requires --staged=<external-reviewed-shard\.jsonl>/);
 
+  const { directory: externalDirectory, stagingPath } = await makeStagingDirectory();
   await mkdir(RECORDERS_TEMP_PARENT, { recursive: true });
   const directory = await mkdtemp(path.join(RECORDERS_TEMP_PARENT, 'run-'));
+  const proposalPath = path.join(externalDirectory, 'proposal.jsonl');
+  await writeFile(proposalPath, 'self-authored external proposal fixture\n', 'utf8');
   try {
     const editorialSessionPath = path.join(directory, 'editorial-session.json');
     await recordWaveBEditorial([
       '--action=start',
-      '--proposal=/private/tmp/typewriter-m5-10-wave-b-proposal.jsonl',
+      `--proposal=${proposalPath}`,
       `--session=${editorialSessionPath}`,
     ]);
     await assert.rejects(
       recordWaveBEditorial([
         '--action=complete',
         `--session=${editorialSessionPath}`,
-        '--staging=/private/tmp/typewriter-m5-10-wave-b-reviewed.jsonl',
+        `--staging=${stagingPath}`,
         '--timing=data/batches/m5-10-wave-b-timing-input.json',
         '--editorial=data/batches/m5-10-wave-b-editorial-input.json',
         '--canonical=data/canonical',
@@ -209,7 +212,7 @@ test('Wave B build and recorders require explicit external review artifacts', as
       '--action=start',
       `--session=${auditSessionPath}`,
       '--editorial=data/batches/m5-10-wave-b-editorial-input.json',
-      '--staging=/private/tmp/typewriter-m5-10-wave-b-reviewed.jsonl',
+      `--staging=${stagingPath}`,
       '--timing=data/batches/m5-10-wave-b-timing-input.json',
       '--relation=data/batches/m5-10-wave-b-relation-diff.json',
       '--canonical=data/canonical',
@@ -222,7 +225,7 @@ test('Wave B build and recorders require explicit external review artifacts', as
         '--action=complete',
         `--session=${auditSessionPath}`,
         '--editorial=data/batches/m5-10-wave-b-editorial-input.json',
-        '--staging=/private/tmp/typewriter-m5-10-wave-b-reviewed.jsonl',
+        `--staging=${stagingPath}`,
         '--timing=data/batches/m5-10-wave-b-timing-input.json',
         `--audit-timing=${auditTimingPath}`,
         '--audit=data/batches/m5-10-wave-b-audit-input.json',
@@ -233,5 +236,6 @@ test('Wave B build and recorders require explicit external review artifacts', as
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
+    await rm(externalDirectory, { recursive: true, force: true });
   }
 });
