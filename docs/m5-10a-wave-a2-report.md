@@ -38,6 +38,9 @@ review; it is not tracked in this repository and is not part of
 The tracked editorial metadata records the external JSONL SHA-256, and the A2
 manifest repeats that digest as `generator.draft_sha256`; the A2 validator checks
 the external file against it whenever staging is supplied.
+Once a human review is complete, a separate `reviewed_staging_sha256` is required
+on both the editorial and independent-audit inputs and is checked against the
+actual import file.
 The candidate corrections are retained in that external staging:
 `w603` and `w620` have three distinct senses each, and `w621-s2 → w009-s1` is an
 `association` for a state-changing action, not a `near` replacement. The

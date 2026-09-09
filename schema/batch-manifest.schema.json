@@ -64,6 +64,10 @@
         "input_sha256": {
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
+        },
+        "reviewed_staging_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       }
     },
@@ -406,6 +410,10 @@
               "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
             },
             "source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "reviewed_staging_sha256": {
               "type": "string",
               "pattern": "^[a-f0-9]{64}$"
             },

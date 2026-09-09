@@ -524,7 +524,15 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
 }
 
 export async function validateA2ProposalStagingDigest({ input, stagedRecordsPath } = {}) {
-  if (input?.source_kind !== 'unverified-draft' || !stagedRecordsPath) return;
+  if (!stagedRecordsPath) return;
+  const expectedDigest = input?.source_kind === 'unverified-draft'
+    ? input.proposal_staging?.sha256
+    : input?.reviewed_staging_sha256;
+  assertCondition(
+    typeof expectedDigest === 'string',
+    'A2 staged input digest is missing from the editorial input',
+    'STAGED_INPUT_DIGEST_REQUIRED',
+  );
   let bytes;
   try {
     bytes = await readFile(stagedRecordsPath);
@@ -536,9 +544,13 @@ export async function validateA2ProposalStagingDigest({ input, stagedRecordsPath
   }
   assertEqual(
     sha256Bytes(bytes),
-    input.proposal_staging.sha256,
-    'A2 proposal staging digest does not match editorial metadata',
-    'PROPOSAL_STAGING_DIGEST_MISMATCH',
+    expectedDigest,
+    input?.source_kind === 'unverified-draft'
+      ? 'A2 proposal staging digest does not match editorial metadata'
+      : 'A2 reviewed staging digest does not match editorial metadata',
+    input?.source_kind === 'unverified-draft'
+      ? 'PROPOSAL_STAGING_DIGEST_MISMATCH'
+      : 'REVIEWED_STAGING_DIGEST_MISMATCH',
   );
 }
 
@@ -574,6 +586,12 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
   assertCondition(editorialInput.verified === true, 'audit cannot complete while editorial provenance is unverified', 'AUDIT_EDITORIAL_PROVENANCE_MISMATCH');
   assertCondition(audit.independent, 'complete audit must claim independence only after verification', 'AUDIT_NOT_INDEPENDENT');
   assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
+  assertEqual(
+    audit.reviewed_staging_sha256,
+    editorialInput.reviewed_staging_sha256,
+    'audit reviewed staging digest must match the editorial input',
+    'AUDIT_STAGING_BINDING_MISMATCH',
+  );
   assertCondition(
     audit.provenance.actor_id !== editorialInput.provenance.actor_id,
     'independent audit must use a separate auditor identity',

@@ -215,7 +215,7 @@ export async function validateWaveA2({
     input: editorialSource.value,
     canonicalRecords: referenceRecords,
   });
-  validateA2AuditInput({
+  const audit = validateA2AuditInput({
     audit: auditSource.value,
     editorialInput: editorial,
     relationDiff: relationDiffSource.value,
@@ -236,6 +236,13 @@ export async function validateWaveA2({
     editorialSource.sha256,
     'manifest editorial input digest drifted',
   );
+  if (editorial.verified) {
+    assert.equal(
+      manifestSource.value.review.reviewed_staging_sha256,
+      editorialSource.value.reviewed_staging_sha256,
+      'manifest reviewed staging digest drifted from the editorial input',
+    );
+  }
   assert.equal(
     manifestSource.value.measurement.audit.source_artifact,
     relativeSourcePath(auditInputPath),
@@ -246,6 +253,13 @@ export async function validateWaveA2({
     auditSource.sha256,
     'manifest audit input digest drifted',
   );
+  if (audit.verified) {
+    assert.equal(
+      manifestSource.value.measurement.audit.reviewed_staging_sha256,
+      auditSource.value.reviewed_staging_sha256,
+      'manifest reviewed staging digest drifted from the audit input',
+    );
+  }
   assert.equal(
     manifestSource.value.measurement.timing.source_artifact,
     relativeSourcePath(timingInputPath),

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-wave-a2-editorial-input.schema.json",
   "title": "Typewriter M5-10A Wave A2 editorial proposal input",
-  "description": "A separately recorded editorial proposal. Only a verified human session may mark this input complete; an unverified draft cannot produce a completed review claim.",
+  "description": "A separately recorded editorial proposal. Only a verified human session may mark this input complete; a complete input binds the final reviewed canonical staging digest, and an unverified draft cannot produce a completed review claim.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -32,6 +32,7 @@
     "status": { "enum": ["in-review", "complete"] },
     "sense_review": { "$ref": "#/$defs/senseReview" },
     "proposal_staging": { "$ref": "#/$defs/proposalStaging" },
+    "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "records": {
       "type": "array",
       "minItems": 58,
@@ -45,7 +46,8 @@
         "properties": { "source_kind": { "const": "human-authored" } }
       },
       "then": {
-        "properties": { "status": { "const": "complete" } }
+        "properties": { "status": { "const": "complete" } },
+        "required": ["reviewed_staging_sha256"]
       }
     },
     {
@@ -53,7 +55,8 @@
         "properties": { "source_kind": { "const": "unverified-draft" } }
       },
       "then": {
-        "properties": { "status": { "const": "in-review" } }
+        "properties": { "status": { "const": "in-review" } },
+        "not": { "required": ["reviewed_staging_sha256"] }
       }
     },
     {

@@ -283,7 +283,9 @@ and timing inputs. The 50 candidate record bodies are supplied through an
 external `--staged=/tmp/.../*.jsonl` path and are never committed. The tracked
 proposal metadata binds that external JSONL by SHA-256, and the A2 validator
 rejects a supplied staging file whose digest differs; the generated manifest
-repeats it as `generator.draft_sha256`. An input
+repeats the proposal digest as `generator.draft_sha256`. A completed human
+editorial and independent audit also carry the final `reviewed_staging_sha256`,
+which the import validator checks against the bytes passed as `--staged`. An input
 without a verified session artifact must remain
 `unverified-draft`/`in-review` (or `incomplete`) and cannot claim a human review or
 independent audit. Timing is recorded in

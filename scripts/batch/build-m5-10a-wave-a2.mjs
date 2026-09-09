@@ -216,6 +216,7 @@ export function createWaveA2Manifest({
     input_artifact: editorialInputSource.path,
     input_sha256: editorialInputSource.sha256,
   };
+  if (editorial.verified) review.reviewed_staging_sha256 = editorial.reviewed_staging_sha256;
   if (promotionReady) review.completed_at = editorial.completed_at;
 
   const manifest = {
@@ -265,6 +266,7 @@ export function createWaveA2Manifest({
         status: audit.status,
         independent: audit.independent,
         findings: audit.findings.map((finding) => structuredClone(finding)),
+        ...(audit.verified ? { reviewed_staging_sha256: audit.reviewed_staging_sha256 } : {}),
       },
     },
     records: editorial.records.map((recordReview) => manifestRecord(recordReview, promotionReady)),
@@ -295,6 +297,11 @@ export async function buildWaveA2Manifest({
       input: editorialInputSource.value,
       stagedRecordsPath,
     });
+  }
+  if (editorialInputSource.value.source_kind === 'human-authored' && !stagedRecordsPath) {
+    const missing = new Error('verified A2 promotion requires an external --staged canonical input');
+    missing.code = 'MISSING_A2_STAGED_PATH';
+    throw missing;
   }
   const staged = stagedRecordsPath
     ? await readCanonicalRecords(stagedRecordsPath)
@@ -336,11 +343,6 @@ export async function buildWaveA2Manifest({
       value: relationDiffSource.value,
     },
   });
-  if (manifest.review.status === 'complete' && !stagedRecordsPath) {
-    const missing = new Error('verified A2 promotion requires an external --staged canonical input');
-    missing.code = 'MISSING_A2_STAGED_PATH';
-    throw missing;
-  }
   await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
 }

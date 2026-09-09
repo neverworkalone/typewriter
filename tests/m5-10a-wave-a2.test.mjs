@@ -31,7 +31,10 @@ import {
 import {
   validateExpansionStage,
 } from '../scripts/batch/validate-m5-8-process.mjs';
-import { validateBatchManifest } from '../scripts/batch/validate-batch.mjs';
+import {
+  validateBatch,
+  validateBatchManifest,
+} from '../scripts/batch/validate-batch.mjs';
 import {
   summarizeRelationDiff,
   validateRelationDiff,
@@ -40,6 +43,8 @@ import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
+const A2_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-preimport-inventory.json');
+const A2_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
 const A2_BOUNDARY_IDS = [
   'physical-figurative',
   'homonym-pos',
@@ -93,11 +98,15 @@ function createSelfAuthoredA2ReferenceRecords(editorial, canonicalRecords) {
   return [...canonicalRecords, ...proposalRecords];
 }
 
+function serializeCanonicalRecords(recordInfos) {
+  return `${recordInfos.map(({ record }) => JSON.stringify(record)).join('\n')}\n`;
+}
+
 function assertInputError(action, code) {
   assert.throws(action, (error) => error.code === code);
 }
 
-function createVerifiedEditorialFixture(editorial, canonicalRecords) {
+function createVerifiedEditorialFixture(editorial, canonicalRecords, reviewedStagingSha256) {
   const fixture = structuredClone(editorial);
   const canonicalById = new Map(canonicalRecords.map(({ record }) => [record.id, record]));
   fixture.records.slice(0, 50).forEach((recordReview) => {
@@ -124,6 +133,7 @@ function createVerifiedEditorialFixture(editorial, canonicalRecords) {
   };
   fixture.status = 'complete';
   fixture.completed_at = '2026-09-09T06:00:00Z';
+  fixture.reviewed_staging_sha256 = reviewedStagingSha256;
   fixture.sense_review.status = 'complete';
   fixture.sense_review.reviewed_start_count = 50;
   fixture.sense_review.scoped_single_sense_count = 35;
@@ -183,6 +193,7 @@ function createVerifiedAuditFixture(audit, editorial, relationDiff) {
     note: 'Test-only verified audit session fixture.',
   };
   fixture.auditor_id = fixture.provenance.actor_id;
+  fixture.reviewed_staging_sha256 = editorial.reviewed_staging_sha256;
   fixture.independent = true;
   fixture.created_at = '2026-09-09T06:10:00Z';
   fixture.completed_at = '2026-09-09T06:30:00Z';
@@ -459,6 +470,11 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
   ]);
   const referenceRecords = createSelfAuthoredA2ReferenceRecords(editorial, canonical.records);
+  const reviewedStagingBytes = Buffer.from(
+    serializeCanonicalRecords(referenceRecords.slice(canonical.records.length)),
+    'utf8',
+  );
+  const reviewedStagingSha256 = sha256Bytes(reviewedStagingBytes);
   const unverifiedEditorial = validateA2EditorialInput({
     input: editorial,
     canonicalRecords: referenceRecords,
@@ -473,7 +489,11 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   assert.equal(unverifiedAudit.verified, false);
   validateA2TimingInput(timing);
 
-  const verifiedEditorial = createVerifiedEditorialFixture(editorial, referenceRecords);
+  const verifiedEditorial = createVerifiedEditorialFixture(
+    editorial,
+    referenceRecords,
+    reviewedStagingSha256,
+  );
   validateA2EditorialInput({
     input: verifiedEditorial,
     canonicalRecords: referenceRecords,
@@ -530,8 +550,54 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   assert.equal(promotedManifest.records[0].decision, 'included');
   assert.equal(promotedManifest.records[0].canonical_id, 'w579');
   assert.equal(promotedManifest.records[0].proposal_canonical_id, undefined);
+  assert.equal(promotedManifest.review.reviewed_staging_sha256, reviewedStagingSha256);
+  assert.equal(promotedManifest.measurement.audit.reviewed_staging_sha256, reviewedStagingSha256);
+
+  const promotionDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10a-promotion-'));
+  try {
+    const promotedManifestPath = path.join(promotionDirectory, 'manifest.json');
+    const stagedRecordsPath = path.join(promotionDirectory, 'reviewed.jsonl');
+    const tamperedStagedRecordsPath = path.join(promotionDirectory, 'tampered.jsonl');
+    await writeFile(promotedManifestPath, `${JSON.stringify(promotedManifest)}\n`, 'utf8');
+    await writeFile(stagedRecordsPath, reviewedStagingBytes);
+    const promotion = await validateBatch({
+      manifestPath: promotedManifestPath,
+      stagedRecordsPath,
+      inventoryPath: A2_INVENTORY_PATH,
+      canonicalDirectory: A2_BASE_CANONICAL_DIRECTORY,
+    });
+    assert.equal(promotion.stagedRecordCount, 50);
+
+    const tamperedStaging = reviewedStagingBytes
+      .toString('utf8')
+      .replace('Self-authored test sense w579-1.', 'Self-authored test sense w579-x1.');
+    assert.notEqual(tamperedStaging, reviewedStagingBytes.toString('utf8'));
+    await writeFile(tamperedStagedRecordsPath, tamperedStaging, 'utf8');
+    await assert.rejects(
+      validateBatch({
+        manifestPath: promotedManifestPath,
+        stagedRecordsPath: tamperedStagedRecordsPath,
+        inventoryPath: A2_INVENTORY_PATH,
+        canonicalDirectory: A2_BASE_CANONICAL_DIRECTORY,
+      }),
+      (error) => error.code === 'REVIEWED_STAGING_DIGEST_MISMATCH',
+    );
+  } finally {
+    await rm(promotionDirectory, { recursive: true, force: true });
+  }
 
   const pendingAudit = createVerifiedAuditFixture(audit, verifiedEditorial, relationDiff);
+  const auditDigestMismatch = structuredClone(verifiedAudit);
+  auditDigestMismatch.reviewed_staging_sha256 = 'e'.repeat(64);
+  assertInputError(
+    () => validateA2AuditInput({
+      audit: auditDigestMismatch,
+      editorialInput: { ...verifiedEditorial, verified: true },
+      relationDiff: verifiedRelationDiff,
+      canonicalRecords: referenceRecords,
+    }),
+    'AUDIT_STAGING_BINDING_MISMATCH',
+  );
   assertInputError(
     () => validateA2AuditInput({
       audit: pendingAudit,
@@ -691,6 +757,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   falseHumanClaim.source_kind = 'human-authored';
   falseHumanClaim.status = 'complete';
   falseHumanClaim.completed_at = '2026-09-09T06:00:00Z';
+  falseHumanClaim.reviewed_staging_sha256 = 'a'.repeat(64);
   falseHumanClaim.sense_review.status = 'complete';
   assertInputError(
     () => validateA2EditorialInput({ input: falseHumanClaim, canonicalRecords: referenceRecords }),

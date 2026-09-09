@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -822,6 +823,13 @@ export function validateBatchManifest(manifest) {
         'PROPOSAL_REVIEW_INCOMPLETE',
       );
     }
+    if (manifest.batch_id.startsWith('m5-10-wave-a2-')
+      && !Object.hasOwn(manifest.review, 'reviewed_staging_sha256')) {
+      fail(
+        'complete Wave A2 manifest must bind the reviewed staging digest',
+        'REVIEWED_STAGING_DIGEST_REQUIRED',
+      );
+    }
   }
 
   return manifest;
@@ -1074,13 +1082,27 @@ export async function validateBatch({
 
   const canonicalResult = await readCanonicalRecords(canonicalDirectory);
   let stagedResult;
+  let stagedBytes;
   try {
+    if (Object.hasOwn(manifest.review, 'reviewed_staging_sha256')) {
+      stagedBytes = await readFile(stagedRecordsPath);
+    }
     stagedResult = await readCanonicalRecords(stagedRecordsPath);
   } catch (error) {
     if (error.code === 'ENOENT') {
       fail(`staged canonical input does not exist: ${stagedRecordsPath}`, 'MISSING_STAGED_INPUT');
     }
     throw error;
+  }
+
+  if (stagedBytes) {
+    const stagedDigest = createHash('sha256').update(stagedBytes).digest('hex');
+    if (stagedDigest !== manifest.review.reviewed_staging_sha256) {
+      fail(
+        'reviewed staging input digest does not match the complete manifest',
+        'REVIEWED_STAGING_DIGEST_MISMATCH',
+      );
+    }
   }
 
   validateStagedMapping(manifest.records, stagedResult.records);
