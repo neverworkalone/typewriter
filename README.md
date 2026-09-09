@@ -123,9 +123,11 @@ The #107 process correction and digest-bound repair authorization are documented
 record-level sense evidence, a source-bound noncanonical 20-case candidate-generation
 calibration, and independent relation/timing checkpoints while preserving the
 578-start pre-A2 base snapshot. The #96 Wave A2 result is recorded in
-[`docs/m5-10a-wave-a2-report.md`](docs/m5-10a-wave-a2-report.md); it reaches 628
-starts but remains `HOLD PROCESS` because its editor-session timing is still
-unmeasured; Wave B remains separately unauthorized. Run
+[`docs/m5-10a-wave-a2-report.md`](docs/m5-10a-wave-a2-report.md); its current
+canonical snapshot contains the proposed 628-start result, but the manifest stays
+`in-review`/`HOLD PROCESS` because editorial and independent-audit provenance are
+unverified and editor-session timing is still unmeasured. Wave B remains separately
+unauthorized. Run
 `npm run batch:m5-10a:calibration:check` and
 `npm run batch:m5-10a:wave-a2:check` before the process/repair checks.
 

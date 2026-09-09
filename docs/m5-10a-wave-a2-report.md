@@ -2,8 +2,10 @@
 
 ## Result
 
-Issue #96 Wave A2 selected 58 starts and imported exactly 50 reviewed canonical
-starts. The source-bound stage report
+Issue #96 Wave A2 contains a 58-start proposal and the current canonical snapshot
+contains the proposed 50-start delta. The source-bound manifest remains
+`in-review`: no human editorial session artifact was supplied, so these rows are
+not treated as a validated import. The source-bound stage report
 [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json)
 reaches 628 canonical starts but remains `HOLD PROCESS`: the old command-runtime
 timing claim was invalidated, and the replacement editor-session timing input is
@@ -18,53 +20,57 @@ false until a separate decision.
 | Wave A2 output | 670 | 628 | 42 | 810 | 473 | 43 |
 | Net change | +50 | +50 | 0 | +67 | +6 | +4 |
 
-The selected-start decisions were 35 `included`, 15 `corrected`, 3 `held`, 3
-`rejected`, and 2 `deferred`. The declared buffer was 8; six entries were used
-by held/rejected decisions and two remained deferred. Deferred and rejected rows
-are not canonical.
+The proposed selected-start decisions are 35 `included`, 15 `corrected`, 3
+`held`, 3 `rejected`, and 2 `deferred`. The declared buffer is 8; six entries
+are assigned to held/rejected decisions and two remain deferred. Deferred and
+rejected rows are not canonical.
 
 ## Editorial and relation review
 
-All 50 importable starts received the six-boundary sense/POS preflight required by
-`m5-10a-process-correction-v1`. Thirty-five remained single-sense and 15 were
-split into independently usable senses. The six admitted relations are recorded
-in the separate relation diff: three `mood`, one `near`, one `sensory`, and one
-`association`. In particular, `w603` and `w620` now have three distinct senses
-each, and `w621-s2 → w009-s1` is an `association` for a state-changing action,
-not a `near` replacement. There are no new reference-only records and no
-relation removals or noise events.
+The unverified editorial input records proposed canonical sense IDs and
+`pending` decisions in a structured six-boundary shape; all 50 manifest
+checkpoints remain `not-reviewed`. It does not claim that a human completed the
+preflight. The canonical corrections are retained: `w603` and `w620` now have
+three distinct senses each, and `w621-s2 → w009-s1` is an `association` for a
+state-changing action, not a `near` replacement. The separate relation diff
+contains three `mood`, one `near`, one `sensory`, and one `association` proposal.
+There are no new reference-only records and no relation removals or noise events.
 
 The five required timing passes are currently `unmeasured`. The earlier 27.918
 seconds was command runtime without retained editor-session evidence and is not
-used. The separate audit input has four resolved findings and zero open blockers.
-Canonical integrity, deterministic SQLite, and search regression verification all
-pass, but the timing gate correctly fails until recorder evidence is supplied.
+used. The audit input is explicitly `incomplete`, `independent: false`, and
+carries an open provenance blocker. Canonical integrity, deterministic SQLite,
+and search regression verification all pass, but the stage correctly remains
+blocked until verified editorial/audit session artifacts and recorder evidence
+are supplied.
 
 The manifest is projected from three explicit inputs rather than manufacturing
-review claims: the editorial decisions/preflight, the independent audit, and the
-recorder timing input. Missing, generic, duplicated, or unreviewed input evidence
-fails `npm run batch:m5-10a:wave-a2:check` before a commit is eligible.
+review claims. Missing, generic, duplicated, structurally inconsistent, or
+unreviewed evidence fails the A2 check; an unverified draft is projected as
+`in-review`/`incomplete` and cannot pass canonical-import validation.
 
 ## Source artifacts
 
 - [`data/batches/m5-10-wave-a2.json`](../data/batches/m5-10-wave-a2.json) — A2
   selection, six-boundary preflight, and projections bound to the explicit inputs.
 - [`data/batches/m5-10a-wave-a2-editorial-input.json`](../data/batches/m5-10a-wave-a2-editorial-input.json)
-  — record-level decisions, observed sense/POS facts, and six boundary evidence
-  objects.
+  — an explicitly unverified proposal with observed sense/POS facts and
+  structured candidate-sense boundary objects; it makes no human-authored claim.
 - [`data/batches/m5-10a-wave-a2-audit-input.json`](../data/batches/m5-10a-wave-a2-audit-input.json)
-  — separate relation review and audit findings.
+  — an explicitly incomplete audit proposal with `independent: false` and an open
+  provenance blocker.
 - [`data/batches/m5-10a-wave-a2-timing-input.json`](../data/batches/m5-10a-wave-a2-timing-input.json)
   — recorder-bound timing state; currently incomplete until real work sessions
   are recorded.
 - [`data/batches/m5-10a-wave-a2-relation-diff.json`](../data/batches/m5-10a-wave-a2-relation-diff.json)
-  — admitted relation event ledger.
+  — proposed relation event ledger; admission remains blocked until the audit is
+  verified.
 - [`data/batches/m5-10a-wave-a2-metrics.json`](../data/batches/m5-10a-wave-a2-metrics.json)
   — source-derived counts, rates, timing, and audit summary.
 - [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json) —
   source- and digest-bound stage result.
 - [`data/canonical/m5-10a-wave-a2.jsonl`](../data/canonical/m5-10a-wave-a2.jsonl)
-  — the 50 reviewed canonical records.
+  — the current canonical snapshot containing the proposed 50-record delta.
 - [`data/batches/m5-10a-wave-a2-preimport-inventory.json`](../data/batches/m5-10a-wave-a2-preimport-inventory.json)
   — the pre-promotion inventory snapshot.
 

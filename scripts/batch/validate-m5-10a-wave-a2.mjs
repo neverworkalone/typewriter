@@ -28,8 +28,10 @@ import {
 } from './validate-m5-8-process.mjs';
 import {
   A2_BATCH_ID,
+  A2_PROMOTED_CANONICAL_IDS,
   validateA2AuditInput,
   validateA2EditorialInput,
+  validateA2ProvenanceArtifact,
   validateA2TimingInput,
   sha256Bytes,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
@@ -91,6 +93,22 @@ function parseArguments(argv) {
   return args;
 }
 
+function validateA2ProposalStaging(manifest, stagedRecords) {
+  const stagedById = new Map(stagedRecords.map(({ record }) => [record.id, record]));
+  const proposed = manifest.records.filter((record) => Object.hasOwn(record, 'canonical_id'));
+  assert.deepEqual(
+    proposed.map(({ canonical_id: canonicalId }) => canonicalId).sort(),
+    [...A2_PROMOTED_CANONICAL_IDS].sort(),
+    'unverified A2 proposal canonical scope drifted',
+  );
+  for (const record of proposed) {
+    if (!stagedById.has(record.canonical_id)) {
+      fail(`unverified A2 proposal references missing staged record ${record.canonical_id}`, 'MISSING_STAGED_RECORD');
+    }
+  }
+  return proposed.length;
+}
+
 export async function validateWaveA2({
   manifestPath = DEFAULT_OUTPUT_PATH,
   editorialInputPath = DEFAULT_EDITORIAL_INPUT_PATH,
@@ -118,6 +136,19 @@ export async function validateWaveA2({
     readJsonSource(verificationPath, 'Wave A2 verification'),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
+
+  await Promise.all([
+    validateA2ProvenanceArtifact({
+      input: editorialSource.value,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      subjectKind: 'editorial',
+    }),
+    validateA2ProvenanceArtifact({
+      input: auditSource.value,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      subjectKind: 'audit',
+    }),
+  ]);
 
   const editorial = validateA2EditorialInput({
     input: editorialSource.value,
@@ -194,14 +225,25 @@ export async function validateWaveA2({
     'Wave A2 manifest differs from the explicit editorial/audit/timing inputs',
   );
 
-  const batchResult = await validateBatch({
-    manifestPath,
-    stagedRecordsPath,
-    inventoryPath,
-    canonicalDirectory: baseCanonicalDirectory,
-    allowRepositoryStaging: true,
-  });
-  assert.equal(batchResult.manifest.batch_id, A2_BATCH_ID, 'validated batch has the wrong batch_id');
+  let batchResult;
+  if (manifestSource.value.review.status === 'complete') {
+    batchResult = await validateBatch({
+      manifestPath,
+      stagedRecordsPath,
+      inventoryPath,
+      canonicalDirectory: baseCanonicalDirectory,
+      allowRepositoryStaging: true,
+    });
+    assert.equal(batchResult.manifest.batch_id, A2_BATCH_ID, 'validated batch has the wrong batch_id');
+    batchResult.validation_status = 'validated';
+  } else {
+    const staged = await readCanonicalRecords(stagedRecordsPath);
+    batchResult = {
+      stagedRecordCount: validateA2ProposalStaging(manifestSource.value, staged.records),
+      validation_status: 'proposal',
+      manifest: manifestSource.value,
+    };
+  }
 
   const expectedMetricsSource = {
     manifest: relativeSourcePath(manifestPath),
@@ -252,9 +294,10 @@ export async function validateWaveA2({
   return {
     batch: {
       batch_id: batchResult.manifest.batch_id,
+      validation_status: batchResult.validation_status,
       selected_start_count: metricsSource.value.derived.selection.selected_start_count,
-      imported_start_count: batchResult.stagedRecordCount,
-      imported_sense_count: metricsSource.value.derived.canonical_import.imported_sense_count,
+      proposed_start_count: batchResult.stagedRecordCount,
+      proposed_sense_count: metricsSource.value.derived.canonical_import.imported_sense_count,
     },
     timing: {
       status: timingSource.value.status,
@@ -286,8 +329,8 @@ if (isMainModule) {
   })
     .then((result) => {
       console.log(
-        `Validated ${result.batch.batch_id}: ${result.batch.imported_start_count} imported start(s), `
-          +`${result.batch.imported_sense_count} imported sense(s), timing ${result.timing.status}, `
+        `Validated ${result.batch.batch_id}: ${result.batch.proposed_start_count} ${result.batch.validation_status} start(s), `
+        +`${result.batch.proposed_sense_count} proposed sense(s), timing ${result.timing.status}, `
           +`stage gate ${result.stage.gate_status}.`,
       );
     })

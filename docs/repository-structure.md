@@ -14,7 +14,7 @@ work areas are documented here without creating empty scaffolding.
 | Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
 | M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/` | Tracked for review, but never a canonical input and never a product build input. |
 | M5 batch manifest and measurements | Review metadata, generator identity, decisions, event-level relation diffs, timing passes, and derived calibration measurements; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records, raw drafts, and external source text remain outside the repository. |
-| Unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
+| Raw unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | A temporary workspace outside this repository | Never committed. Keep only the review decision and permitted Typewriter-authored result when appropriate. |
 | Generated dictionary database | SQLite built deterministically from canonical input | Build output such as `dist/` or `artifacts/` | Generated, not hand-edited, and ignored as local output. |
 | User data | Recent searches, favorites, settings, and other runtime state | Browser-managed extension storage | Never stored in the read-only dictionary database or repository. |
@@ -86,6 +86,11 @@ independent editorial review. The authorization is limited to #96 Wave A2 (+50
 from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The separate
 A2 execution report records the resulting canonical addition; the process
 correction itself preserves the 578-start pre-A2 source snapshot.
+The A2 structured editorial and audit proposal inputs may be tracked in this
+directory only when they contain no raw draft or external source text and are
+explicitly marked unverified/incomplete. They cannot produce a completed import
+claim. A completed input additionally requires a provenance artifact that binds
+its actor, UUID session, subject digest, completion time, and artifact digest.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 

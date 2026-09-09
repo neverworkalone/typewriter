@@ -38,7 +38,8 @@
         "near": 1,
         "sensory": 1,
         "association": 1
-      }
+      },
+      "import_status": "proposed"
     },
     "relation_diff": {
       "before_count": 0,
@@ -53,10 +54,11 @@
       "noise_rate_of_before": 0,
       "classification_counts": {},
       "candidate_count": 6,
-      "admitted_candidate_count": 6,
+      "admitted_candidate_count": 0,
       "rejected_candidate_count": 0,
       "noise_denominator_count": 6,
-      "noise_rate_of_candidates": 0
+      "noise_rate_of_candidates": 0,
+      "pending_candidate_count": 6
     },
     "timing": {
       "status": "incomplete",
@@ -100,39 +102,21 @@
       ]
     },
     "audit": {
-      "status": "complete",
-      "independent": true,
-      "finding_count": 4,
-      "open_finding_count": 0,
-      "open_blocker_count": 0,
+      "status": "incomplete",
+      "independent": false,
+      "finding_count": 1,
+      "open_finding_count": 1,
+      "open_blocker_count": 1,
       "finding_counts": {
-        "sense": 2,
-        "relation-noise": 1,
-        "reference-closure": 1
+        "provenance": 1
       }
     },
     "sense_review": {
-      "status": "complete",
-      "reviewed_start_count": 50,
-      "scoped_single_sense_count": 35,
-      "split_record_count": 15,
-      "split_canonical_ids": [
-        "w588",
-        "w595",
-        "w598",
-        "w599",
-        "w603",
-        "w604",
-        "w606",
-        "w609",
-        "w617",
-        "w618",
-        "w619",
-        "w620",
-        "w621",
-        "w622",
-        "w628"
-      ]
+      "status": "incomplete",
+      "reviewed_start_count": 0,
+      "scoped_single_sense_count": 0,
+      "split_record_count": 0,
+      "split_canonical_ids": []
     }
   }
 }

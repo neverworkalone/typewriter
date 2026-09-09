@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   M5_10A_PROCESS_REVISION,
+  M5_10A_SENSE_BOUNDARY_IDS,
   validateBatchManifest,
 } from './validate-batch.mjs';
 import {
@@ -13,6 +14,7 @@ import {
   A2_INVENTORY_REVISION,
   validateA2AuditInput,
   validateA2EditorialInput,
+  validateA2ProvenanceArtifact,
   validateA2TimingInput,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -89,26 +91,26 @@ function manifestRecord(recordReview) {
 
 function preflightBoundaryChecks(recordReview, canonicalRecord) {
   const senseIds = canonicalRecord.senses.map(({ id }) => id);
-  return Object.fromEntries(Object.entries(recordReview.boundary_evidence).map(([boundaryId, evidence]) => [
+  return Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => {
+    const evidence = recordReview.boundary_evidence[boundaryId];
+    const status = evidence.applicability === 'not-applicable' ? 'not-applicable' : 'checked';
+    const contrasts = evidence.contrasts.map((contrast) => (
+      `${contrast.dimension}: ${contrast.left_sense_id}=${contrast.left_observation}; ${contrast.right_sense_id}=${contrast.right_observation}; ${contrast.difference}`
+    )).join(' | ');
+    return [
     boundaryId,
     {
-      status: evidence.status,
-      rationale: `${recordReview.inventory_id} ${canonicalRecord.id} ${canonicalRecord.lemma} ${boundaryId}: ${evidence.note} [${senseIds.join(', ')}]`,
-      sense_ids: [...evidence.sense_ids],
+      status,
+      rationale: `${recordReview.inventory_id} ${canonicalRecord.id} ${canonicalRecord.lemma} ${boundaryId}: decision=${evidence.decision}; ${contrasts || 'no contrast recorded'} [${senseIds.join(', ')}]`,
+      sense_ids: status === 'checked' ? [...evidence.candidate_sense_ids] : [],
     },
-  ]));
+    ];
+  }));
 }
 
 function unresolvedBoundaryChecks(recordReview) {
-  const reason = recordReview.unreviewed_note;
-  return Object.fromEntries([
-    'physical-figurative',
-    'homonym-pos',
-    'sensory-emotion-state-action',
-    'directional-symmetry',
-    'compound-spaced-phrase',
-    'word-idiom',
-  ].map((boundaryId) => [
+  const reason = recordReview.unreviewed_note ?? recordReview.decision_note;
+  return Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => [
     boundaryId,
     {
       status: 'not-reviewed',
@@ -118,8 +120,8 @@ function unresolvedBoundaryChecks(recordReview) {
   ]));
 }
 
-function preflightCheckpoint(recordReview, canonicalById) {
-  if (isImportable(recordReview.decision)) {
+function preflightCheckpoint(recordReview, canonicalById, editorialVerified) {
+  if (editorialVerified && isImportable(recordReview.decision)) {
     const canonicalRecord = canonicalById.get(recordReview.canonical_id);
     return {
       inventory_id: recordReview.inventory_id,
@@ -135,20 +137,13 @@ function preflightCheckpoint(recordReview, canonicalById) {
   }
   return {
     inventory_id: recordReview.inventory_id,
-    status: recordReview.decision,
+    status: editorialVerified ? recordReview.decision : 'not-reviewed',
     lemma_pos: 'not-reviewed',
     observed_sense_count: 0,
     observed_pos: [],
     boundary_checks: unresolvedBoundaryChecks(recordReview),
-    missing_boundary_ids: [
-      'physical-figurative',
-      'homonym-pos',
-      'sensory-emotion-state-action',
-      'directional-symmetry',
-      'compound-spaced-phrase',
-      'word-idiom',
-    ],
-    note: recordReview.unreviewed_note,
+    missing_boundary_ids: [...M5_10A_SENSE_BOUNDARY_IDS],
+    note: recordReview.unreviewed_note ?? recordReview.decision_note,
   };
 }
 
@@ -175,36 +170,38 @@ export function createWaveA2Manifest({
     return [record.id, record];
   }));
 
+  const review = {
+    status: editorial.status,
+    reviewer: editorial.provenance.actor_id,
+    input_artifact: editorialInputSource.path,
+    input_sha256: editorialInputSource.sha256,
+  };
+  if (editorial.status === 'complete') review.completed_at = editorial.completed_at;
+
   const manifest = {
     schema_version: '1',
     batch_id: A2_BATCH_ID,
     inventory_id: A2_INVENTORY_ID,
     inventory_revision: A2_INVENTORY_REVISION,
     generator: {
-      model_id: 'human-editorial-expansion',
-      tool_version: 'typewriter-m5-10a-wave-a2-2',
-      prompt_version: 'm5-10a-wave-a2-v2',
+      model_id: 'wave-a2-proposal-builder',
+      tool_version: 'typewriter-m5-10a-wave-a2-3',
+      prompt_version: 'not-used-for-provenance',
     },
-    generated_at: editorial.reviewed_at,
-    review: {
-      status: editorial.status,
-      reviewer: editorial.reviewer_id,
-      completed_at: editorial.reviewed_at,
-      input_artifact: editorialInputSource.path,
-      input_sha256: editorialInputSource.sha256,
-    },
+    generated_at: editorial.created_at,
+    review,
     sense_review: {
-      status: editorial.status,
-      reviewed_start_count: editorial.sense_review.reviewed_start_count,
-      scoped_single_sense_count: editorial.sense_review.scoped_single_sense_count,
-      split_record_count: editorial.sense_review.split_record_count,
-      split_canonical_ids: [...editorial.sense_review.split_canonical_ids],
+      status: editorial.verified ? editorial.sense_review.status : 'incomplete',
+      reviewed_start_count: editorial.verified ? editorial.sense_review.reviewed_start_count : 0,
+      scoped_single_sense_count: editorial.verified ? editorial.sense_review.scoped_single_sense_count : 0,
+      split_record_count: editorial.verified ? editorial.sense_review.split_record_count : 0,
+      split_canonical_ids: editorial.verified ? [...editorial.sense_review.split_canonical_ids] : [],
       note: editorial.sense_review.note,
       preflight: {
         process_revision: M5_10A_PROCESS_REVISION,
         boundary_ids: [...editorial.sense_review.boundary_ids],
         record_checkpoints: editorial.records.map((recordReview) => (
-          preflightCheckpoint(recordReview, canonicalById)
+          preflightCheckpoint(recordReview, canonicalById, editorial.verified)
         )),
       },
     },
@@ -251,6 +248,18 @@ export async function buildWaveA2Manifest({
     readCanonicalRecords(canonicalDirectory),
   ]);
   const repositoryDirectory = path.resolve(SCRIPT_DIRECTORY, '../..');
+  await Promise.all([
+    validateA2ProvenanceArtifact({
+      input: editorialInputSource.value,
+      repositoryDirectory,
+      subjectKind: 'editorial',
+    }),
+    validateA2ProvenanceArtifact({
+      input: auditInputSource.value,
+      repositoryDirectory,
+      subjectKind: 'audit',
+    }),
+  ]);
   const manifest = createWaveA2Manifest({
     editorialInput: editorialInputSource.value,
     auditInput: auditInputSource.value,

@@ -218,12 +218,13 @@ reproducible after the current canonical directory advances.
 
 ## M5-10A Wave A2 result
 
-The authorized A2 execution is recorded in
+The A2 proposal is recorded in
 [`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It selects 58
-starts, imports 50 after six-boundary sense/POS review, and advances the canonical
-snapshot from 578 to 628 starts. Six relations are admitted and the independent
-audit input is complete, but the stage gate remains `HOLD PROCESS` because the
-separate A2 timing input has five unmeasured passes. The stage keeps
+starts and the current canonical snapshot contains a proposed +50 delta from
+578 to 628 starts, but the manifest remains `in-review` because no verified human
+editorial session is attached. The audit is `incomplete` and
+`independent: false`; the stage gate remains `HOLD PROCESS` because the separate
+A2 timing input has five unmeasured passes. The stage keeps
 `next_stage_authorized: false`; Wave B is a separate, not-yet-authorized step.
 
 ## M5-10A process correction and A2 authorization
@@ -235,10 +236,9 @@ source-bound process artifact is
 and its executable check is `npm run batch:m5-10a:process:check`.
 
 The next sense review must record one `sense_review.preflight.record_checkpoints`
-entry for every selected inventory start. Each checkpoint records the inventory
-ID, importability status, lemma/POS review state, observed sense count and POS
-values, six boundary evidence objects (`status`, record-specific `rationale`,
-and `sense_ids`), omitted boundary IDs, and a note. The six
+entry for every selected inventory start. The separate editorial input records
+boundary evidence as structured `applicability`, `candidate_sense_ids`, `decision`,
+and `contrasts` fields. The six
 boundaries are:
 
 1. physical versus figurative usage;
@@ -249,10 +249,13 @@ boundaries are:
 6. ordinary word versus idiom.
 
 An importable checkpoint is complete only when its canonical ID, observed sense
-facts, lemma/POS review, at least one checked boundary, and all boundary evidence
-are complete. Checked evidence must cite a sense from that record; `not-applicable`
-and `not-reviewed` cite no sense, and copied or generic rationale is rejected. A
-missing boundary is explicitly listed and blocks relation review for that record.
+facts, lemma/POS review, at least one checked (applicable) boundary, and all
+boundary evidence are complete. Reviewed evidence must cite the canonical
+candidate senses and an actual structured contrast when applicable;
+`not-applicable` and `not-reviewed` cite no sense in the generated manifest, and
+copied or generic contrast evidence is rejected. A missing boundary is explicitly
+listed and blocks relation review for that record. An unverified proposal keeps
+every checkpoint `not-reviewed`.
 The regression fixture contains 21 known Wave A sense-boundary cases; its exact
 case IDs and boundary coverage are digest-bound to the process artifact.
 
@@ -274,7 +277,10 @@ seconds. A complete timing result must have measurements for the five required
 passes and every recorded follow-up pair; an unmeasured pass keeps the gate
 incomplete.
 
-Wave A2 binds those claims to
+Wave A2 binds its proposal and gate state to separate editorial, audit, and timing
+inputs. An input without a verified session artifact must remain
+`unverified-draft`/`in-review` (or `incomplete`) and cannot claim a human review or
+independent audit. Timing is recorded in
 `data/batches/m5-10a-wave-a2-timing-input.json`. The earlier 27.918-second
 command-runtime claim is invalid and is not copied into the new manifest. Use
 `npm run batch:m5-10a:wave-a2:timing` to record each pass from current-clock

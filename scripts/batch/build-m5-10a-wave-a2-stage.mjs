@@ -167,7 +167,8 @@ const isMainModule = process.argv[1]
 if (isMainModule) {
   buildWaveA2Stage()
     .then((stage) => {
-      console.log(`Generated ${stage.stage_id}: ${stage.actual.imported_start_count} imported start(s), gate ${stage.gate_status}.`);
+      const countLabel = stage.metrics.human_editorial_review_complete ? 'imported' : 'proposal';
+      console.log(`Generated ${stage.stage_id}: ${stage.actual.imported_start_count} ${countLabel} start(s), gate ${stage.gate_status}.`);
     })
     .catch((error) => {
       console.error(error.message);

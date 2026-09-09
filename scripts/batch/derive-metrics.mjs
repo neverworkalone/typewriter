@@ -141,6 +141,16 @@ function deriveSenseReview(manifest, canonicalRecords) {
   const review = manifest.sense_review;
   if (!review) return undefined;
 
+  if (review.status !== 'complete') {
+    return {
+      status: review.status,
+      reviewed_start_count: review.reviewed_start_count,
+      scoped_single_sense_count: review.scoped_single_sense_count,
+      split_record_count: review.split_record_count,
+      split_canonical_ids: [...review.split_canonical_ids],
+    };
+  }
+
   const recordById = new Map(
     asRecordInfos(canonicalRecords).map(({ record }) => [record.id, record]),
   );
@@ -207,7 +217,7 @@ function approvedCanonicalRecords(manifest, canonicalRecords) {
 function deriveCanonicalImport(manifest, canonicalRecords) {
   const importedRecords = approvedCanonicalRecords(manifest, canonicalRecords);
   const counts = countRelations(importedRecords);
-  return {
+  const result = {
     imported_start_count: importedRecords.filter(({ role }) => role === 'start').length,
     imported_reference_only_count: importedRecords.filter(({ role }) => role === 'reference-only').length,
     imported_record_count: importedRecords.length,
@@ -216,6 +226,8 @@ function deriveCanonicalImport(manifest, canonicalRecords) {
     imported_expression_count: counts.expressionCount,
     relation_type_counts: counts.relationTypeCounts,
   };
+  if (manifest.review.status !== 'complete') result.import_status = 'proposed';
+  return result;
 }
 
 function relationTupleKey(sourceSense, relation) {
@@ -414,6 +426,9 @@ export function deriveBatchMetrics({ manifest, relationDiff, canonicalRecords } 
       noise_denominator_count: relationSummary.noise_denominator_count,
       noise_rate_of_candidates: relationSummary.noise_rate_of_candidates,
     });
+    if (relationSummary.pending_candidate_count !== undefined) {
+      derived.relation_diff.pending_candidate_count = relationSummary.pending_candidate_count;
+    }
   }
   const senseReview = deriveSenseReview(manifest, canonicalRecords);
   if (senseReview) derived.sense_review = senseReview;

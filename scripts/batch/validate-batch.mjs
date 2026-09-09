@@ -537,10 +537,13 @@ export function validateSensePreflight(preflight, manifest) {
     if (!manifestRecord) {
       fail(`${label} references an unselected inventory target`, 'PREFLIGHT_COVERAGE_MISMATCH');
     }
+    const expectedStatus = manifest.review.status === 'complete'
+      ? expectedPreflightStatus(manifestRecord.decision)
+      : 'not-reviewed';
     assertJsonEqual(
       checkpoint.status,
-      expectedPreflightStatus(manifestRecord.decision),
-      `${label}.status does not match the manifest decision`,
+      expectedStatus,
+      `${label}.status does not match the manifest review state and decision`,
       'PREFLIGHT_DECISION_MISMATCH',
     );
     if (checkpoint.status === 'complete') {

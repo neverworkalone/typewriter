@@ -105,6 +105,7 @@
         "relation_type_counts"
       ],
       "properties": {
+        "import_status": { "enum": ["proposed", "validated"] },
         "imported_start_count": { "type": "integer", "minimum": 0 },
         "imported_reference_only_count": { "type": "integer", "minimum": 0 },
         "imported_record_count": { "type": "integer", "minimum": 0 },
@@ -147,6 +148,7 @@
         "candidate_count": { "type": "integer", "minimum": 0 },
         "admitted_candidate_count": { "type": "integer", "minimum": 0 },
         "rejected_candidate_count": { "type": "integer", "minimum": 0 },
+        "pending_candidate_count": { "type": "integer", "minimum": 0 },
         "noise_denominator_count": { "type": "integer", "minimum": 0 },
         "noise_rate_of_candidates": { "$ref": "#/$defs/rate" },
         "classification_counts": {

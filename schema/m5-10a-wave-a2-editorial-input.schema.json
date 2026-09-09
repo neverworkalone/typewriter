@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-wave-a2-editorial-input.schema.json",
-  "title": "Typewriter M5-10A Wave A2 human editorial input",
-  "description": "A separately authored decision and sense-preflight input. The Wave A2 manifest builder may consume this artifact, but it must not invent review evidence.",
+  "title": "Typewriter M5-10A Wave A2 editorial proposal input",
+  "description": "A separately recorded editorial proposal. Only a verified human session may mark this input complete; an unverified draft cannot produce a completed review claim.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,21 +12,22 @@
     "inventory_id",
     "inventory_revision",
     "source_kind",
-    "reviewer_id",
-    "reviewed_at",
+    "provenance",
+    "created_at",
     "status",
     "sense_review",
     "records"
   ],
   "properties": {
-    "schema_version": { "const": "1" },
+    "schema_version": { "const": "2" },
     "input_id": { "type": "string", "pattern": "^m5-10a-wave-a2-editorial-input-[0-9]{8}$" },
     "batch_id": { "type": "string", "pattern": "^m5-[0-9]+-[a-z0-9][a-z0-9-]*$" },
     "inventory_id": { "const": "m5-core-5k" },
     "inventory_revision": { "type": "string", "pattern": "^m5-[1-9][0-9]*$" },
-    "source_kind": { "const": "human-authored" },
-    "reviewer_id": { "type": "string", "pattern": "\\S" },
-    "reviewed_at": { "type": "string", "format": "date-time" },
+    "source_kind": { "enum": ["human-authored", "unverified-draft"] },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
     "status": { "enum": ["in-review", "complete"] },
     "sense_review": { "$ref": "#/$defs/senseReview" },
     "records": {
@@ -36,11 +37,73 @@
       "items": { "$ref": "#/$defs/recordReview" }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "source_kind": { "const": "human-authored" } }
+      },
+      "then": {
+        "properties": { "status": { "const": "complete" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "source_kind": { "const": "unverified-draft" } }
+      },
+      "then": {
+        "properties": { "status": { "const": "in-review" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "complete" } }
+      },
+      "then": { "required": ["completed_at"] }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "in-review" } }
+      },
+      "then": { "not": { "required": ["completed_at"] } }
+    }
+  ],
   "$defs": {
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verification_status",
+        "actor_kind",
+        "actor_id",
+        "session_id",
+        "artifact",
+        "sha256",
+        "note"
+      ],
+      "properties": {
+        "verification_status": { "enum": ["verified", "unverified"] },
+        "actor_kind": { "enum": ["human", "unknown"] },
+        "actor_id": { "type": "string", "pattern": "\\S" },
+        "session_id": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "artifact": {
+          "type": ["string", "null"],
+          "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$"
+        },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
     "senseReview": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "status",
         "boundary_ids",
         "reviewed_start_count",
         "scoped_single_sense_count",
@@ -49,6 +112,7 @@
         "note"
       ],
       "properties": {
+        "status": { "enum": ["in-review", "complete"] },
         "boundary_ids": {
           "const": [
             "physical-figurative",
@@ -92,7 +156,31 @@
         },
         "boundary_evidence": { "$ref": "#/$defs/boundaryEvidenceSet" },
         "unreviewed_note": { "type": "string", "pattern": "\\S" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "decision": { "enum": ["included", "corrected"] } } },
+          "then": {
+            "required": ["canonical_id", "observed_sense_count", "observed_pos", "boundary_evidence"],
+            "not": { "required": ["unreviewed_note"] }
+          }
+        },
+        {
+          "if": { "properties": { "decision": { "enum": ["held", "rejected", "deferred"] } } },
+          "then": {
+            "required": ["unreviewed_note"],
+            "not": { "required": ["canonical_id", "observed_sense_count", "observed_pos", "boundary_evidence"] }
+          }
+        },
+        {
+          "if": { "properties": { "decision": { "const": "corrected" } } },
+          "then": { "required": ["corrected_fields"] }
+        },
+        {
+          "if": { "properties": { "decision": { "enum": ["included", "held", "rejected", "deferred"] } } },
+          "then": { "not": { "required": ["corrected_fields"] } }
+        }
+      ]
     },
     "boundaryEvidenceSet": {
       "type": "object",
@@ -117,15 +205,47 @@
     "boundaryEvidence": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "sense_ids", "note"],
+      "required": ["review_status", "applicability", "candidate_sense_ids", "decision", "contrasts"],
       "properties": {
-        "status": { "enum": ["checked", "not-applicable", "not-reviewed"] },
-        "sense_ids": {
+        "review_status": { "enum": ["unreviewed", "reviewed"] },
+        "applicability": { "enum": ["applicable", "not-applicable", "unknown"] },
+        "candidate_sense_ids": {
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^w[0-9]{3,}-s[0-9]+$" }
         },
-        "note": { "type": "string", "pattern": "\\S" }
+        "decision": { "enum": ["pending", "keep", "split"] },
+        "contrasts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/contrast" }
+        }
+      }
+    },
+    "contrast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "left_sense_id",
+        "right_sense_id",
+        "dimension",
+        "facets",
+        "left_observation",
+        "right_observation",
+        "difference"
+      ],
+      "properties": {
+        "left_sense_id": { "type": "string", "pattern": "^w[0-9]{3,}-s[0-9]+$" },
+        "right_sense_id": { "type": "string", "pattern": "^w[0-9]{3,}-s[0-9]+$" },
+        "dimension": { "type": "string", "pattern": "\\S" },
+        "facets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "left_observation": { "type": "string", "pattern": "\\S" },
+        "right_observation": { "type": "string", "pattern": "\\S" },
+        "difference": { "type": "string", "pattern": "\\S" }
       }
     }
   }

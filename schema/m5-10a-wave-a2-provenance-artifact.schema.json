@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-wave-a2-provenance-artifact.schema.json",
+  "title": "Typewriter M5-10A Wave A2 provenance artifact",
+  "description": "A session-side record that binds a completed editorial or audit input to its actor, session, and exact input digest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "subject_kind",
+    "subject_id",
+    "subject_sha256",
+    "session_id",
+    "actor_kind",
+    "actor_id",
+    "started_at",
+    "completed_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "type": "string", "pattern": "^m5-10a-wave-a2-provenance-[a-z]+-[0-9]{8}$" },
+    "subject_kind": { "enum": ["editorial", "audit"] },
+    "subject_id": { "type": "string", "pattern": "^m5-10a-wave-a2-(editorial-input|audit)-[0-9]{8}$" },
+    "subject_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "actor_kind": { "const": "human" },
+    "actor_id": { "type": "string", "pattern": "\\S" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" }
+  }
+}

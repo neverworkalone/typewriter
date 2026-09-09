@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createRequire as createModuleRequire } from 'node:module';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 import Ajv2020 from 'ajv/dist/2020.js';
 
@@ -12,6 +14,7 @@ const require = createModuleRequire(import.meta.url);
 const EDITORIAL_SCHEMA = require('../../schema/m5-10a-wave-a2-editorial-input.schema.json');
 const AUDIT_SCHEMA = require('../../schema/m5-10a-wave-a2-audit-input.schema.json');
 const TIMING_SCHEMA = require('../../schema/m5-10a-wave-a2-timing-input.schema.json');
+const PROVENANCE_SCHEMA = require('../../schema/m5-10a-wave-a2-provenance-artifact.schema.json');
 
 const schemaOptions = {
   allErrors: true,
@@ -25,6 +28,7 @@ const schemaOptions = {
 const editorialSchemaValidator = new Ajv2020(schemaOptions).compile(EDITORIAL_SCHEMA);
 const auditSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_SCHEMA);
 const timingSchemaValidator = new Ajv2020(schemaOptions).compile(TIMING_SCHEMA);
+const provenanceSchemaValidator = new Ajv2020(schemaOptions).compile(PROVENANCE_SCHEMA);
 
 export const A2_BATCH_ID = 'm5-10-wave-a2-20260909';
 export const A2_INVENTORY_ID = 'm5-core-5k';
@@ -157,9 +161,10 @@ function stripEvidenceIdentifiers(text, {
   lemma,
   boundaryId,
   senseIds = [],
+  glosses = [],
 } = {}) {
   let normalized = text.normalize('NFC').replace(/\s+/gu, ' ').trim();
-  for (const token of [inventoryId, canonicalId, lemma, boundaryId, ...senseIds]
+  for (const token of [inventoryId, canonicalId, lemma, boundaryId, ...senseIds, ...glosses]
     .filter((token) => typeof token === 'string' && token.length > 0)
     .sort((left, right) => right.length - left.length)) {
     normalized = normalized.replaceAll(token, ' ');
@@ -175,16 +180,98 @@ function rejectKnownBoilerplate(text, label) {
     'source/target sense와 writer-facing relation type으로 독립 대조해',
     '현재 writer-facing 범위에서 안정적인 admission 근거가 부족해',
     '다음 단계에서 검토할 reserve 항목으로 deferred 처리했다',
+    '실제 대상의 성질과 비유적 쓰임으로 나누어 읽었다',
+    '품사와 문맥을 대조했다',
+    '감각, 정서, 상태, 행동의 초점을 구별했다',
+    '주체와 대상의 방향 및 상호성 관점에서 확인했다',
+    '표기와 검색 단위를 확인했다',
+    '관용 표현인지 일반 어휘인지 확인했다',
   ];
   if (boilerplate.some((phrase) => text.includes(phrase))) {
     fail(`${label} contains known generated boilerplate`, 'GENERIC_EDITORIAL_EVIDENCE');
   }
 }
 
-function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fingerprints) {
+const BOUNDARY_DIMENSIONS = Object.freeze({
+  'physical-figurative': new Set(['physical', 'figurative', 'usage']),
+  'homonym-pos': new Set(['homonym', 'pos', 'usage']),
+  'sensory-emotion-state-action': new Set(['sensory', 'emotion', 'state', 'action']),
+  'directional-symmetry': new Set(['direction', 'symmetry', 'argument']),
+  'compound-spaced-phrase': new Set(['compound', 'spacing', 'form']),
+  'word-idiom': new Set(['word', 'idiom', 'usage']),
+});
+
+function validateProvenance(input, label, unverifiedStatus = 'in-review') {
+  const provenance = input.provenance;
+  if (input.source_kind === 'unverified-draft') {
+    assertEqual(input.status, unverifiedStatus, `${label} unverified draft cannot be complete`, 'UNVERIFIED_INPUT_COMPLETE');
+    assertEqual(provenance.verification_status, 'unverified', `${label} provenance status is inconsistent`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.actor_kind, 'unknown', `${label} unverified input must not claim a human actor`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.actor_id, 'unknown', `${label} unverified input must not name a human actor`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.session_id, null, `${label} unverified input must not claim a session`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.artifact, null, `${label} unverified input must not claim a session artifact`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.sha256, null, `${label} unverified input must not claim a session digest`, 'PROVENANCE_MISMATCH');
+    return false;
+  }
+
+  assertEqual(input.source_kind, 'human-authored', `${label} source_kind is invalid`, 'PROVENANCE_MISMATCH');
+  assertEqual(input.status, 'complete', `${label} human-authored input must be complete`, 'PROVENANCE_REQUIRED');
+  assertEqual(provenance.verification_status, 'verified', `${label} human input must have verified provenance`, 'PROVENANCE_REQUIRED');
+  assertEqual(provenance.actor_kind, 'human', `${label} human input must identify a human actor`, 'PROVENANCE_REQUIRED');
+  assertCondition(provenance.actor_id !== 'unknown', `${label} human input must identify its actor`, 'PROVENANCE_REQUIRED');
+  if (input.status === 'complete') {
+    assertCondition(provenance.session_id !== null, `${label} complete input must bind a session`, 'PROVENANCE_REQUIRED');
+    assertCondition(provenance.artifact !== null, `${label} complete input must bind a session artifact`, 'PROVENANCE_REQUIRED');
+    assertCondition(provenance.sha256 !== null, `${label} complete input must bind a session digest`, 'PROVENANCE_REQUIRED');
+    assertCondition(Object.hasOwn(input, 'completed_at'), `${label} complete input must have completed_at`, 'PROVENANCE_REQUIRED');
+  }
+  return input.status === 'complete';
+}
+
+function senseGlosses(canonicalRecord) {
+  return canonicalRecord.senses.map(({ gloss }) => gloss);
+}
+
+function validateContrast(contrast, canonicalRecord, evidenceLabel, fingerprints) {
+  const senseIds = new Set(canonicalRecord.senses.map(({ id }) => id));
+  assertCondition(senseIds.has(contrast.left_sense_id), `${evidenceLabel} contrast cites an unknown left sense`, 'CONTRAST_SENSE_MISMATCH');
+  assertCondition(senseIds.has(contrast.right_sense_id), `${evidenceLabel} contrast cites an unknown right sense`, 'CONTRAST_SENSE_MISMATCH');
+  assertCondition(contrast.left_sense_id !== contrast.right_sense_id, `${evidenceLabel} contrast must compare two senses`, 'CONTRAST_SENSE_MISMATCH');
+  assertCondition(
+    BOUNDARY_DIMENSIONS[evidenceLabel.split('.').at(-1)]?.has(contrast.dimension),
+    `${evidenceLabel}.contrast.dimension is not valid for its boundary`,
+    'CONTRAST_DIMENSION_MISMATCH',
+  );
+  assertCondition(contrast.facets.length > 0, `${evidenceLabel}.contrast.facets must contain an actual distinction`, 'CONTRAST_FACETS_REQUIRED');
+  for (const field of ['left_observation', 'right_observation', 'difference']) {
+    requireString(contrast[field], `${evidenceLabel}.contrast.${field}`);
+  }
+  assertCondition(
+    contrast.left_observation !== contrast.right_observation,
+    `${evidenceLabel} contrast observations must differ`,
+    'GENERIC_EDITORIAL_EVIDENCE',
+  );
+  assertCondition(
+    contrast.difference.length >= 12,
+    `${evidenceLabel}.contrast.difference is too generic`,
+    'GENERIC_EDITORIAL_EVIDENCE',
+  );
+  const fingerprint = stripEvidenceIdentifiers(JSON.stringify(contrast), {
+    canonicalId: canonicalRecord.id,
+    lemma: canonicalRecord.lemma,
+    senseIds: canonicalRecord.senses.map(({ id }) => id),
+    glosses: senseGlosses(canonicalRecord),
+  });
+  assertCondition(fingerprint.length >= 12, `${evidenceLabel}.contrast is too generic after removing identifiers`, 'GENERIC_EDITORIAL_EVIDENCE');
+  if (fingerprints.has(fingerprint)) {
+    fail(`${evidenceLabel}.contrast reuses normalized evidence from ${fingerprints.get(fingerprint)}`, 'GENERIC_EDITORIAL_EVIDENCE');
+  }
+  fingerprints.set(fingerprint, evidenceLabel);
+}
+
+function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fingerprints, verified) {
   const label = `editorial.records[${recordIndex}]`;
   const senseIds = canonicalRecord.senses.map(({ id }) => id);
-  const observedSenseIds = new Set(senseIds);
   assertEqual(
     recordReview.observed_sense_count,
     senseIds.length,
@@ -197,51 +284,46 @@ function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fing
     `${label}.observed_pos does not match ${canonicalRecord.id}`,
     'CANONICAL_POS_MISMATCH',
   );
-  assertCondition(
-    recordReview.boundary_evidence && typeof recordReview.boundary_evidence === 'object',
-    `${label} is missing record-specific boundary evidence`,
-    'MISSING_BOUNDARY_EVIDENCE',
-  );
 
   for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
     const evidence = recordReview.boundary_evidence[boundaryId];
     const evidenceLabel = `${label}.boundary_evidence.${boundaryId}`;
     assertCondition(evidence, `${evidenceLabel} is missing`, 'MISSING_BOUNDARY_EVIDENCE');
     assertEqual(
-      evidence.status,
-      'checked',
-      `${evidenceLabel} must be explicitly checked for an importable record`,
-      'UNREVIEWED_BOUNDARY_EVIDENCE',
-    );
-    assertEqual(
-      [...evidence.sense_ids].sort(),
-      [...observedSenseIds].sort(),
-      `${evidenceLabel}.sense_ids does not cover the observed senses`,
+      [...evidence.candidate_sense_ids].sort(),
+      [...senseIds].sort(),
+      `${evidenceLabel}.candidate_sense_ids does not match the canonical senses`,
       'BOUNDARY_SENSE_COVERAGE_MISMATCH',
     );
-    requireString(evidence.note, `${evidenceLabel}.note`);
-    assertCondition(
-      evidence.note.includes(canonicalRecord.lemma),
-      `${evidenceLabel}.note must identify the reviewed lemma`,
-      'RECORD_SPECIFIC_EVIDENCE_REQUIRED',
-    );
-    rejectKnownBoilerplate(evidence.note, evidenceLabel);
-    const fingerprint = stripEvidenceIdentifiers(evidence.note, {
-      inventoryId: recordReview.inventory_id,
-      canonicalId: canonicalRecord.id,
-      lemma: canonicalRecord.lemma,
-      boundaryId,
-      senseIds,
-    });
-    assertCondition(
-      fingerprint.length >= 12,
-      `${evidenceLabel}.note is too generic after removing identifiers`,
-      'GENERIC_EDITORIAL_EVIDENCE',
-    );
-    if (fingerprints.has(fingerprint)) {
-      fail(`${evidenceLabel}.note reuses normalized evidence from ${fingerprints.get(fingerprint)}`, 'GENERIC_EDITORIAL_EVIDENCE');
+    if (!verified) {
+      assertEqual(evidence.review_status, 'unreviewed', `${evidenceLabel} must remain unreviewed`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+      assertEqual(evidence.applicability, 'unknown', `${evidenceLabel} unverified input must not claim applicability`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+      assertEqual(evidence.decision, 'pending', `${evidenceLabel} unverified input must not claim keep/split`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+      assertEqual(evidence.contrasts, [], `${evidenceLabel} unverified input must not claim contrasts`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+      continue;
     }
-    fingerprints.set(fingerprint, evidenceLabel);
+
+    assertEqual(evidence.review_status, 'reviewed', `${evidenceLabel} must be reviewed before completion`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+    assertCondition(evidence.applicability !== 'unknown', `${evidenceLabel} must declare applicability`, 'BOUNDARY_APPLICABILITY_MISSING');
+    if (evidence.applicability === 'not-applicable') {
+      assertEqual(evidence.decision, 'keep', `${evidenceLabel} not-applicable boundary must keep the candidate senses`, 'BOUNDARY_DECISION_MISMATCH');
+      assertEqual(evidence.contrasts, [], `${evidenceLabel} not-applicable boundary must not carry contrasts`, 'BOUNDARY_CONTRAST_MISMATCH');
+      continue;
+    }
+    assertCondition(['keep', 'split'].includes(evidence.decision), `${evidenceLabel} has an invalid reviewed decision`, 'BOUNDARY_DECISION_MISMATCH');
+    assertCondition(evidence.contrasts.length > 0, `${evidenceLabel} applicable boundary must include an actual contrast`, 'BOUNDARY_CONTRAST_REQUIRED');
+    for (const contrast of evidence.contrasts) validateContrast(contrast, canonicalRecord, evidenceLabel, fingerprints);
+  }
+
+  const splitBoundaries = M5_10A_SENSE_BOUNDARY_IDS.filter(
+    (boundaryId) => recordReview.boundary_evidence[boundaryId].decision === 'split',
+  );
+  if (recordReview.decision === 'corrected') {
+    assertCondition(canonicalRecord.senses.length > 1, `${label} corrected record must contain multiple canonical senses`, 'CANONICAL_SENSE_COUNT_MISMATCH');
+    if (verified) assertCondition(splitBoundaries.length > 0, `${label} corrected record must identify a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+  } else if (recordReview.decision === 'included') {
+    assertEqual(canonicalRecord.senses.length, 1, `${label} included record must remain single-sense`, 'CANONICAL_SENSE_COUNT_MISMATCH');
+    if (verified) assertEqual(splitBoundaries, [], `${label} included record cannot claim a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
   }
 }
 
@@ -265,7 +347,8 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
   assertEqual(input.inventory_id, A2_INVENTORY_ID, 'editorial inventory_id drifted', 'INVENTORY_ID_DRIFT');
   assertEqual(input.inventory_revision, A2_INVENTORY_REVISION, 'editorial inventory_revision drifted', 'INVENTORY_REVISION_DRIFT');
   assertEqual(input.sense_review.boundary_ids, M5_10A_SENSE_BOUNDARY_IDS, 'editorial boundary definition drifted', 'BOUNDARY_DEFINITION_DRIFT');
-  assertCondition(input.status === 'complete', 'editorial input must be complete before building an import manifest', 'EDITORIAL_REVIEW_INCOMPLETE');
+  const verified = validateProvenance(input, 'editorial input');
+  assertEqual(input.sense_review.status, input.status, 'editorial sense_review status does not match input status', 'EDITORIAL_REVIEW_INCOMPLETE');
 
   const recordsById = recordMap(canonicalRecords);
   const recordReviewsByInventoryId = new Map();
@@ -301,11 +384,11 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
       assertCondition(
         recordReview.decision_note.includes(recordReview.inventory_id)
           && recordReview.decision_note.includes(canonicalRecord.id)
-          && recordReview.decision_note.includes(canonicalRecord.lemma),
-        `${label}.decision_note must identify the inventory row, canonical record, and lemma`,
+          && (!verified || recordReview.decision_note.includes(canonicalRecord.lemma)),
+        `${label}.decision_note must identify the inventory row and canonical record${verified ? ' and lemma' : ''}`,
         'RECORD_SPECIFIC_EVIDENCE_REQUIRED',
       );
-      validateRecordEvidence(recordReview, canonicalRecord, index, evidenceFingerprints);
+      validateRecordEvidence(recordReview, canonicalRecord, index, evidenceFingerprints, verified);
       continue;
     }
 
@@ -337,34 +420,42 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
     .filter(({ decision }) => decision === 'corrected')
     .map(({ canonical_id: canonicalId }) => canonicalId)
     .sort();
-  assertEqual(
-    input.sense_review.reviewed_start_count,
-    promotedReviews.length,
-    'editorial sense review count does not cover every promoted start',
-    'SENSE_REVIEW_COUNT_MISMATCH',
-  );
-  assertEqual(
-    input.sense_review.scoped_single_sense_count + input.sense_review.split_record_count,
-    promotedReviews.length,
-    'editorial sense review summary does not account for every promoted start',
-    'SENSE_REVIEW_COUNT_MISMATCH',
-  );
-  assertEqual(
-    input.sense_review.split_record_count,
-    correctedIds.length,
-    'editorial split count does not match corrected decisions',
-    'SENSE_REVIEW_COUNT_MISMATCH',
-  );
-  assertEqual(
-    [...input.sense_review.split_canonical_ids].sort(),
-    correctedIds,
-    'editorial split IDs do not match corrected decisions',
-    'SENSE_REVIEW_CORRECTION_MISMATCH',
-  );
+  if (verified) {
+    assertEqual(
+      input.sense_review.reviewed_start_count,
+      promotedReviews.length,
+      'editorial sense review count does not cover every promoted start',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+    assertEqual(
+      input.sense_review.scoped_single_sense_count + input.sense_review.split_record_count,
+      promotedReviews.length,
+      'editorial sense review summary does not account for every promoted start',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+    assertEqual(
+      input.sense_review.split_record_count,
+      correctedIds.length,
+      'editorial split count does not match corrected decisions',
+      'SENSE_REVIEW_COUNT_MISMATCH',
+    );
+    assertEqual(
+      [...input.sense_review.split_canonical_ids].sort(),
+      correctedIds,
+      'editorial split IDs do not match corrected decisions',
+      'SENSE_REVIEW_CORRECTION_MISMATCH',
+    );
+  } else {
+    assertEqual(input.sense_review.reviewed_start_count, 0, 'unverified editorial input must not claim reviewed starts', 'UNVERIFIED_REVIEW_CLAIM');
+    assertEqual(input.sense_review.scoped_single_sense_count, 0, 'unverified editorial input must not claim single-sense review', 'UNVERIFIED_REVIEW_CLAIM');
+    assertEqual(input.sense_review.split_record_count, 0, 'unverified editorial input must not claim split review', 'UNVERIFIED_REVIEW_CLAIM');
+    assertEqual(input.sense_review.split_canonical_ids, [], 'unverified editorial input must not claim split IDs', 'UNVERIFIED_REVIEW_CLAIM');
+  }
   requireString(input.sense_review.note, 'editorial.sense_review.note');
   rejectKnownBoilerplate(input.sense_review.note, 'editorial.sense_review.note');
   return {
     ...input,
+    verified,
     recordsByInventoryId: recordReviewsByInventoryId,
     canonicalRecordsById: recordsById,
   };
@@ -385,8 +476,33 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
   validateSchema(audit, auditSchemaValidator, 'audit', 'Wave A2 audit input');
   assertEqual(audit.batch_id, A2_BATCH_ID, 'audit batch_id drifted', 'BATCH_ID_DRIFT');
   assertEqual(audit.editorial_input_id, editorialInput.input_id, 'audit editorial input binding drifted', 'AUDIT_INPUT_BINDING_MISMATCH');
-  assertCondition(audit.auditor_id !== editorialInput.reviewer_id, 'independent audit must use a separate auditor identity', 'AUDIT_NOT_INDEPENDENT');
-  assertCondition(audit.status === 'complete', 'audit input must be complete before claiming an independent audit', 'AUDIT_INCOMPLETE');
+  const verified = validateProvenance(audit, 'audit input', 'incomplete');
+  if (!verified) {
+    assertEqual(audit.independent, false, 'unverified audit must not claim independence', 'AUDIT_NOT_INDEPENDENT');
+    assertEqual(audit.reviewed_record_ids, [], 'unverified audit must not claim reviewed records', 'UNVERIFIED_AUDIT_CLAIM');
+    assertEqual(audit.relation_reviews, [], 'unverified audit must not claim reviewed relations', 'UNVERIFIED_AUDIT_CLAIM');
+    assertCondition(
+      audit.findings.some(({ category, severity, status }) => category === 'provenance' && severity === 'blocker' && status === 'open'),
+      'unverified audit must retain an open provenance blocker',
+      'UNVERIFIED_AUDIT_CLAIM',
+    );
+    requireString(audit.note, 'audit.note');
+    return { ...audit, verified: false };
+  }
+
+  assertCondition(editorialInput.verified === true, 'audit cannot complete while editorial provenance is unverified', 'AUDIT_EDITORIAL_PROVENANCE_MISMATCH');
+  assertCondition(audit.independent, 'complete audit must claim independence only after verification', 'AUDIT_NOT_INDEPENDENT');
+  assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
+  assertCondition(
+    audit.provenance.actor_id !== editorialInput.provenance.actor_id,
+    'independent audit must use a separate auditor identity',
+    'AUDIT_NOT_INDEPENDENT',
+  );
+  assertCondition(
+    audit.provenance.session_id !== editorialInput.provenance.session_id,
+    'independent audit must use a separate session',
+    'AUDIT_NOT_INDEPENDENT',
+  );
 
   const canonicalById = recordMap(canonicalRecords);
   assertEqual(
@@ -400,6 +516,11 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
   }
 
   const candidateReviews = relationDiff.candidate_reviews ?? [];
+  assertCondition(
+    candidateReviews.every(({ decision }) => decision === 'admit' || decision === 'reject'),
+    'complete audit cannot finalize pending relation candidates',
+    'AUDIT_INCOMPLETE',
+  );
   assertEqual(
     audit.relation_reviews.map(relationReviewKey).sort(),
     candidateReviews.map((review) => relationReviewKey({
@@ -413,23 +534,56 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
     'audit relation reviews must cover the exact reviewed candidate set and final types',
     'AUDIT_RELATION_SCOPE_MISMATCH',
   );
+  for (const [index, candidate] of candidateReviews.entries()) {
+    const label = `relationDiff.candidate_reviews[${index}]`;
+    const sourceRecordId = candidate.source_sense.replace(/-s[1-9][0-9]*$/u, '');
+    const sourceRecord = canonicalById.get(sourceRecordId);
+    assertCondition(sourceRecord, `${label} references an unknown source record`, 'MISSING_CANONICAL_RECORD');
+    assertCondition(
+      sourceRecord.senses.some(({ id }) => id === candidate.source_sense),
+      `${label}.source_sense is not a sense of ${sourceRecordId}`,
+      'MISSING_CANONICAL_SENSE',
+    );
+    const targetRecord = canonicalById.get(candidate.relation.target);
+    assertCondition(targetRecord, `${label} references an unknown target record`, 'MISSING_CANONICAL_RECORD');
+    if (candidate.relation.target_sense) {
+      const targetRecordId = candidate.relation.target_sense.replace(/-s[1-9][0-9]*$/u, '');
+      assertEqual(
+        targetRecordId,
+        targetRecord.id,
+        `${label}.relation.target_sense points outside its target record`,
+        'CANONICAL_RELATION_MISMATCH',
+      );
+      assertCondition(
+        targetRecord.senses.some(({ id }) => id === candidate.relation.target_sense),
+        `${label}.relation.target_sense is not a sense of ${targetRecord.id}`,
+        'MISSING_CANONICAL_SENSE',
+      );
+    }
+  }
   const relationNotes = new Map();
   for (const [index, review] of audit.relation_reviews.entries()) {
     const label = `audit.relation_reviews[${index}]`;
-    requireString(review.review_note, `${label}.review_note`);
-    rejectKnownBoilerplate(review.review_note, `${label}.review_note`);
-    assertCondition(review.review_note.includes(review.source_sense), `${label}.review_note must identify its source sense`, 'RECORD_SPECIFIC_EVIDENCE_REQUIRED');
-    assertCondition(review.review_note.includes(review.target_sense), `${label}.review_note must identify its target sense`, 'RECORD_SPECIFIC_EVIDENCE_REQUIRED');
+    assertEqual(review.review_status, 'reviewed', `${label} must be reviewed before completion`, 'AUDIT_INCOMPLETE');
+    assertCondition(review.basis.facets.length > 0, `${label}.basis.facets must contain an actual distinction`, 'AUDIT_EVIDENCE_REQUIRED');
+    requireString(review.basis.source_observation, `${label}.basis.source_observation`);
+    requireString(review.basis.target_observation, `${label}.basis.target_observation`);
+    requireString(review.basis.difference, `${label}.basis.difference`);
+    assertCondition(review.basis.source_observation !== review.basis.target_observation, `${label}.basis observations must differ`, 'GENERIC_EDITORIAL_EVIDENCE');
+    assertCondition(review.basis.difference.length >= 12, `${label}.basis.difference is too generic`, 'GENERIC_EDITORIAL_EVIDENCE');
+    const sourceRecord = canonicalById.get(review.source_sense.split('-s')[0]);
+    const targetRecord = canonicalById.get(review.target_sense.split('-s')[0]);
     assertCondition(
-      review.review_note.includes(review.relation_id)
-        && review.review_note.includes(review.candidate_id),
-      `${label}.review_note must identify its candidate and relation IDs`,
-      'RECORD_SPECIFIC_EVIDENCE_REQUIRED',
+      sourceRecord && targetRecord,
+      `${label} references an unknown source or target record`,
+      'MISSING_CANONICAL_RECORD',
     );
-    const fingerprint = stripEvidenceIdentifiers(review.review_note, {
+    const fingerprint = stripEvidenceIdentifiers(JSON.stringify(review.basis), {
       senseIds: [review.source_sense, review.target_sense],
+      glosses: [...senseGlosses(sourceRecord), ...senseGlosses(targetRecord)],
     });
-    if (relationNotes.has(fingerprint)) fail(`${label}.review_note reuses normalized relation evidence from ${relationNotes.get(fingerprint)}`, 'GENERIC_EDITORIAL_EVIDENCE');
+    assertCondition(fingerprint.length >= 12, `${label}.basis is too generic after removing identifiers`, 'GENERIC_EDITORIAL_EVIDENCE');
+    if (relationNotes.has(fingerprint)) fail(`${label}.basis reuses normalized relation evidence from ${relationNotes.get(fingerprint)}`, 'GENERIC_EDITORIAL_EVIDENCE');
     relationNotes.set(fingerprint, label);
   }
 
@@ -453,7 +607,7 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
   );
   requireString(audit.note, 'audit.note');
   rejectKnownBoilerplate(audit.note, 'audit.note');
-  return audit;
+  return { ...audit, verified: true };
 }
 
 export function createA2TimingProof(timing) {
@@ -529,6 +683,51 @@ export function validateA2TimingInput(timing) {
     );
   }
   return { status: 'complete', unmeasured_pass_count: 0 };
+}
+
+export async function validateA2ProvenanceArtifact({
+  input,
+  repositoryDirectory,
+  subjectKind,
+} = {}) {
+  const verified = input?.source_kind === 'human-authored' && input?.status === 'complete';
+  if (!verified) return null;
+  assertCondition(
+    typeof repositoryDirectory === 'string' && repositoryDirectory.length > 0,
+    'repositoryDirectory is required to verify a completed A2 provenance artifact',
+    'PROVENANCE_ARTIFACT_REQUIRED',
+  );
+  const artifactPath = path.resolve(repositoryDirectory, input.provenance.artifact);
+  let artifactBytes;
+  try {
+    artifactBytes = await readFile(artifactPath);
+  } catch (error) {
+    if (error.code === 'ENOENT') fail(`completed ${subjectKind} input provenance artifact does not exist: ${input.provenance.artifact}`, 'PROVENANCE_ARTIFACT_MISSING');
+    throw error;
+  }
+  let artifact;
+  try {
+    artifact = JSON.parse(artifactBytes.toString('utf8'));
+  } catch (error) {
+    fail(`completed ${subjectKind} provenance artifact is not valid JSON: ${error.message}`, 'PROVENANCE_ARTIFACT_INVALID');
+  }
+  validateSchema(artifact, provenanceSchemaValidator, `${subjectKind}.provenance`, 'Wave A2 provenance artifact');
+  assertEqual(artifact.subject_kind, subjectKind, `${subjectKind} provenance subject kind drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  const subjectId = subjectKind === 'editorial' ? input.input_id : input.audit_id;
+  assertEqual(artifact.subject_id, subjectId, `${subjectKind} provenance subject ID drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  assertEqual(artifact.subject_sha256, sha256ProvenanceSubject(input), `${subjectKind} provenance input digest drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  assertEqual(input.provenance.sha256, sha256Bytes(artifactBytes), `${subjectKind} provenance artifact digest drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  assertEqual(artifact.session_id, input.provenance.session_id, `${subjectKind} provenance session drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  assertEqual(artifact.actor_id, input.provenance.actor_id, `${subjectKind} provenance actor drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  assertEqual(artifact.completed_at, input.completed_at, `${subjectKind} provenance completion time drifted`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  assertCondition(Date.parse(artifact.completed_at) >= Date.parse(artifact.started_at), `${subjectKind} provenance artifact completed before it started`, 'PROVENANCE_ARTIFACT_MISMATCH');
+  return artifact;
+}
+
+export function sha256ProvenanceSubject(input) {
+  const subject = structuredClone(input);
+  subject.provenance.sha256 = null;
+  return sha256Bytes(Buffer.from(JSON.stringify(subject), 'utf8'));
 }
 
 export function sha256Bytes(bytes) {

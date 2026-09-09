@@ -1,182 +1,36 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "audit_id": "m5-10a-wave-a2-audit-20260909",
   "batch_id": "m5-10-wave-a2-20260909",
-  "source_kind": "human-authored",
+  "source_kind": "unverified-draft",
   "editorial_input_id": "m5-10a-wave-a2-editorial-input-20260909",
-  "auditor_id": "codex-independent-audit",
-  "independent": true,
-  "audited_at": "2026-09-09T05:20:00Z",
-  "reviewed_record_ids": [
-    "w579",
-    "w580",
-    "w581",
-    "w582",
-    "w583",
-    "w584",
-    "w585",
-    "w586",
-    "w587",
-    "w588",
-    "w589",
-    "w590",
-    "w591",
-    "w592",
-    "w593",
-    "w594",
-    "w595",
-    "w596",
-    "w597",
-    "w598",
-    "w599",
-    "w600",
-    "w601",
-    "w602",
-    "w603",
-    "w604",
-    "w605",
-    "w606",
-    "w607",
-    "w608",
-    "w609",
-    "w610",
-    "w611",
-    "w612",
-    "w613",
-    "w614",
-    "w615",
-    "w616",
-    "w617",
-    "w618",
-    "w619",
-    "w620",
-    "w621",
-    "w622",
-    "w623",
-    "w624",
-    "w625",
-    "w626",
-    "w627",
-    "w628"
-  ],
-  "relation_reviews": [
-    {
-      "candidate_id": "m5-10-wave-a2-candidate-001",
-      "relation_id": "m5-10-wave-a2-rel-001",
-      "source_sense": "w579-s1",
-      "target_sense": "w018-s1",
-      "relation_type": "mood",
-      "decision": "admit",
-      "review_note": "m5-10-wave-a2-candidate-001 m5-10-wave-a2-rel-001: w579-s1 환희의 고양된 기쁨과 w018-s1 기쁨의 정서 범위를 비교했다. 직접 대체보다 강도가 다른 정서의 결을 잇는 mood로 채택했다."
-    },
-    {
-      "candidate_id": "m5-10-wave-a2-candidate-002",
-      "relation_id": "m5-10-wave-a2-rel-002",
-      "source_sense": "w587-s1",
-      "target_sense": "w306-s1",
-      "relation_type": "near",
-      "decision": "admit",
-      "review_note": "m5-10-wave-a2-candidate-002 m5-10-wave-a2-rel-002: w587-s1 자책과 w306-s1 죄책감은 모두 자기 비난과 관련되지만 원인과 초점이 다르다. 부분적으로 가까운 의미를 보이는 near로 채택했다."
-    },
-    {
-      "candidate_id": "m5-10-wave-a2-candidate-003",
-      "relation_id": "m5-10-wave-a2-rel-003",
-      "source_sense": "w589-s1",
-      "target_sense": "w001-s1",
-      "relation_type": "mood",
-      "decision": "admit",
-      "review_note": "m5-10-wave-a2-candidate-003 m5-10-wave-a2-rel-003: w589-s1 고즈넉하다가 만드는 고요하고 아늑한 분위기와 w001-s1 고요의 정서적 색을 대조했다. 정취가 더해진 분위기 연결이므로 mood로 채택했다."
-    },
-    {
-      "candidate_id": "m5-10-wave-a2-candidate-004",
-      "relation_id": "m5-10-wave-a2-rel-004",
-      "source_sense": "w607-s1",
-      "target_sense": "w066-s2",
-      "relation_type": "sensory",
-      "decision": "admit",
-      "review_note": "m5-10-wave-a2-candidate-004 m5-10-wave-a2-rel-004: w607-s1 윤슬의 물결 위 반짝임과 w066-s2 빛의 표면 밝기를 시각 이미지로 대조했다. 의미 대체가 아닌 공유 감각이므로 sensory로 채택했다."
-    },
-    {
-      "candidate_id": "m5-10-wave-a2-candidate-005",
-      "relation_id": "m5-10-wave-a2-rel-005",
-      "source_sense": "w621-s2",
-      "target_sense": "w009-s1",
-      "relation_type": "association",
-      "decision": "admit",
-      "review_note": "m5-10-wave-a2-candidate-005 m5-10-wave-a2-rel-005: w621-s2 잦아들다와 w009-s1 긴장은 각각 감정의 상태와 그 세기가 낮아지는 변화를 가리킨다. 동의어나 near가 아니라 함께 떠올릴 상태·변화의 association으로 채택했다."
-    },
-    {
-      "candidate_id": "m5-10-wave-a2-candidate-006",
-      "relation_id": "m5-10-wave-a2-rel-006",
-      "source_sense": "w628-s2",
-      "target_sense": "w008-s1",
-      "relation_type": "mood",
-      "decision": "admit",
-      "review_note": "m5-10-wave-a2-candidate-006 m5-10-wave-a2-rel-006: w628-s2 숨이 트이다의 비유적 안도와 w008-s1 안도는 막힘이 풀린 뒤의 정서적 방향을 공유한다. 상황 표현과 감정 이름의 mood로 채택했다."
-    }
-  ],
-  "status": "complete",
+  "auditor_id": "unknown",
+  "independent": false,
+  "reviewed_record_ids": [],
+  "relation_reviews": [],
+  "status": "incomplete",
   "findings": [
     {
-      "id": "a2-sense-split-603-620",
-      "category": "sense",
-      "severity": "warning",
-      "status": "resolved",
+      "id": "a2-provenance-unverified",
+      "category": "provenance",
+      "severity": "blocker",
+      "status": "open",
       "evidence_refs": [
-        "w603-s1",
-        "w603-s2",
-        "w603-s3",
-        "w620-s1",
-        "w620-s2",
-        "w620-s3"
+        "editorial.provenance",
+        "audit.provenance"
       ],
-      "note": "w603 쨍쨍하다에서 햇볕, 소리, 빛을 분리했고 w620 일렁이다에서 물결, 빛, 감정을 분리했다. 서로 다른 감각·상태 초점이 하나의 gloss에 합쳐지지 않도록 canonical sense 수를 다시 확인했다."
-    },
-    {
-      "id": "a2-state-change-621",
-      "category": "relation-noise",
-      "severity": "warning",
-      "status": "resolved",
-      "evidence_refs": [
-        "w621-s2",
-        "w009-s1",
-        "m5-10-wave-a2-rel-005"
-      ],
-      "note": "w621-s2 잦아들다는 w009-s1 긴장 자체의 이름이 아니라 긴장이 약해지는 변화를 가리킨다. near 판정을 제거하고 상태와 변화 사이의 association으로 확정했다."
-    },
-    {
-      "id": "a2-boundary-evidence-coverage",
-      "category": "sense",
-      "severity": "info",
-      "status": "resolved",
-      "evidence_refs": [
-        "m5-10a-wave-a2-editorial-input-20260909",
-        "physical-figurative",
-        "homonym-pos",
-        "sensory-emotion-state-action",
-        "directional-symmetry",
-        "compound-spaced-phrase",
-        "word-idiom"
-      ],
-      "note": "w579부터 w628까지 50개 promoted start가 여섯 boundary evidence를 모두 갖추었고, 각 evidence의 sense_ids가 현재 canonical sense 목록과 일치하는지 확인했다."
-    },
-    {
-      "id": "a2-reference-closure",
-      "category": "reference-closure",
-      "severity": "info",
-      "status": "resolved",
-      "evidence_refs": [
-        "data/canonical",
-        "data/batches/m5-10a-wave-a2-relation-diff.json",
-        "w018-s1",
-        "w306-s1",
-        "w001-s1",
-        "w066-s2",
-        "w009-s1",
-        "w008-s1"
-      ],
-      "note": "여섯 admitted relation의 source와 target sense가 canonical에 존재하고, relation diff의 after tuple이 최종 canonical에 남아 있는지 확인했다."
+      "note": "No verifiable human editorial or independent audit session is attached; A2 remains blocked until those artifacts are supplied."
     }
   ],
-  "note": "editorial input과 relation diff를 분리해서 다시 대조했다. 50개 promoted record의 sense 경계, 여섯 relation tuple, w603·w620의 분리, w621의 state-change association을 별도 audit 결과로 남겼다."
+  "note": "No independent audit is claimed until a distinct verified audit session and artifact are supplied.",
+  "provenance": {
+    "verification_status": "unverified",
+    "actor_kind": "unknown",
+    "actor_id": "unknown",
+    "session_id": null,
+    "artifact": null,
+    "sha256": null,
+    "note": "No independent auditor session or verifiable audit artifact was supplied; this file is a proposal only."
+  },
+  "created_at": "2026-09-09T05:20:00Z"
 }

@@ -473,7 +473,8 @@
             "direct-replacement",
             "sense",
             "reference-closure",
-            "timing-measurement"
+            "timing-measurement",
+            "provenance"
           ]
         },
         "severity": {
@@ -539,7 +540,7 @@
           "pattern": "^w[0-9]{3,}$"
         },
         "status": {
-          "enum": ["complete", "held", "rejected", "deferred"]
+          "enum": ["complete", "held", "rejected", "deferred", "not-reviewed"]
         },
         "lemma_pos": {
           "enum": ["checked", "not-reviewed"]
