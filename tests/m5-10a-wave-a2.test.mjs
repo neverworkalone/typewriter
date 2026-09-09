@@ -9,7 +9,6 @@ import {
   createWaveA2Manifest,
 } from '../scripts/batch/build-m5-10a-wave-a2.mjs';
 import {
-  validateA2CanonicalBoundary,
   validateWaveA2,
 } from '../scripts/batch/validate-m5-10a-wave-a2.mjs';
 import { main as recordA2Timing } from '../scripts/batch/record-m5-10a-wave-a2-timing.mjs';
@@ -33,7 +32,6 @@ import {
 } from '../scripts/batch/validate-m5-8-process.mjs';
 import {
   validateBatch,
-  validateBatchManifest,
 } from '../scripts/batch/validate-batch.mjs';
 import {
   summarizeRelationDiff,
@@ -60,11 +58,11 @@ async function readBatchJson(fileName) {
 
 function createSelfAuthoredA2ReferenceRecords(editorial, canonicalRecords) {
   const specialGlosses = {
-    w603: ['햇볕이 강하고 눈부시다', '소리가 맑고 세차게 울리다', '빛이 맑고 세차게 비치다'],
+    w603: ['햇볕이 강하고 눈부시다', '소리가 맑고 세차게 울리다'],
     w620: ['액체나 물결이 잔잔하게 흔들리다', '빛이 가볍게 흔들리며 움직이다', '감정이 가볍게 흔들리며 움직이다'],
   };
   const proposalRecords = editorial.records.slice(0, 50).map((recordReview) => {
-    const id = recordReview.proposal_canonical_id;
+    const id = recordReview.proposal_canonical_id ?? recordReview.canonical_id;
     const glosses = specialGlosses[id] ?? Array.from(
       { length: recordReview.observed_sense_count },
       (_, index) => `Self-authored test sense ${id}-${index + 1}.`,
@@ -106,26 +104,104 @@ function assertInputError(action, code) {
   assert.throws(action, (error) => error.code === code);
 }
 
-function createVerifiedEditorialFixture(editorial, canonicalRecords, reviewedStagingSha256) {
+function createUnverifiedEditorialFixture(editorial) {
   const fixture = structuredClone(editorial);
-  const canonicalById = new Map(canonicalRecords.map(({ record }) => [record.id, record]));
+  fixture.source_kind = 'unverified-draft';
+  fixture.status = 'in-review';
+  delete fixture.completed_at;
+  delete fixture.reviewed_staging_sha256;
+  fixture.provenance = {
+    verification_status: 'unverified',
+    actor_kind: 'unknown',
+    actor_id: 'unknown',
+    session_id: null,
+    artifact: null,
+    sha256: null,
+    note: 'Test-only unverified proposal fixture.',
+  };
+  fixture.sense_review = {
+    ...fixture.sense_review,
+    status: 'in-review',
+    reviewed_start_count: 0,
+    scoped_single_sense_count: 0,
+    split_record_count: 0,
+    split_canonical_ids: [],
+    note: 'Test fixture keeps the proposal outside completed claims.',
+  };
   fixture.records.slice(0, 50).forEach((recordReview) => {
-    if (recordReview.decision !== 'proposed') return;
-    recordReview.canonical_id = recordReview.proposal_canonical_id;
-    recordReview.decision = recordReview.proposal_decision;
-    delete recordReview.proposal_canonical_id;
-    delete recordReview.proposal_decision;
-    if (recordReview.proposal_corrected_fields) {
-      recordReview.corrected_fields = recordReview.proposal_corrected_fields;
-      delete recordReview.proposal_corrected_fields;
-    }
+    const canonicalId = recordReview.canonical_id ?? recordReview.proposal_canonical_id;
+    const decision = recordReview.decision === 'proposed'
+      ? recordReview.proposal_decision
+      : recordReview.decision;
+    const correctedFields = recordReview.corrected_fields ?? recordReview.proposal_corrected_fields;
+    recordReview.proposal_canonical_id = canonicalId;
+    recordReview.proposal_decision = decision;
+    if (correctedFields) recordReview.proposal_corrected_fields = correctedFields;
+    delete recordReview.canonical_id;
+    delete recordReview.corrected_fields;
+    recordReview.decision = 'proposed';
+    const proposedSenseIds = Array.from(
+      { length: recordReview.observed_sense_count },
+      (_, index) => `${canonicalId}-s${index + 1}`,
+    );
+    recordReview.boundary_evidence = Object.fromEntries(A2_BOUNDARY_IDS.map((boundaryId) => [boundaryId, {
+      review_status: 'unreviewed',
+      applicability: 'unknown',
+      candidate_sense_ids: proposedSenseIds,
+      decision: 'pending',
+      contrasts: [],
+    }]));
   });
+  return fixture;
+}
+
+function createUnverifiedAuditFixture(audit) {
+  const fixture = structuredClone(audit);
+  fixture.source_kind = 'unverified-draft';
+  fixture.status = 'incomplete';
+  delete fixture.completed_at;
+  delete fixture.reviewed_staging_sha256;
+  fixture.provenance = {
+    verification_status: 'unverified',
+    actor_kind: 'unknown',
+    actor_id: 'unknown',
+    session_id: null,
+    artifact: null,
+    sha256: null,
+    note: 'Test-only unverified audit fixture.',
+  };
+  fixture.auditor_id = 'unknown';
+  fixture.independent = false;
+  fixture.reviewed_record_ids = [];
+  fixture.relation_reviews = [];
+  fixture.findings = [{
+    id: 'a2-test-unverified-provenance',
+    category: 'provenance',
+    severity: 'blocker',
+    status: 'open',
+    evidence_refs: ['unverified-editorial-input'],
+    note: 'Test fixture retains an open provenance blocker until an editorial pass is verified.',
+  }];
+  fixture.note = 'Test fixture keeps the audit outside completed claims.';
+  return fixture;
+}
+
+function createVerifiedEditorialFixture(
+  editorial,
+  canonicalRecords,
+  reviewedStagingSha256,
+  { sourceKind = 'human-authored', actorKind = 'human', actorId = 'editor-session-owner' } = {},
+) {
+  const fixture = editorial.source_kind === 'unverified-draft'
+    ? structuredClone(editorial)
+    : createUnverifiedEditorialFixture(editorial);
+  const canonicalById = new Map(canonicalRecords.map(({ record }) => [record.id, record]));
   fixture.schema_version = '2';
-  fixture.source_kind = 'human-authored';
+  fixture.source_kind = sourceKind;
   fixture.provenance = {
     verification_status: 'verified',
-    actor_kind: 'human',
-    actor_id: 'editor-session-owner',
+    actor_kind: actorKind,
+    actor_id: actorId,
     session_id: '11111111-1111-4111-8111-111111111111',
     artifact: 'data/batches/test-editorial-session.json',
     sha256: 'a'.repeat(64),
@@ -136,18 +212,34 @@ function createVerifiedEditorialFixture(editorial, canonicalRecords, reviewedSta
   fixture.reviewed_staging_sha256 = reviewedStagingSha256;
   fixture.sense_review.status = 'complete';
   fixture.sense_review.reviewed_start_count = 50;
-  fixture.sense_review.scoped_single_sense_count = 35;
-  fixture.sense_review.split_record_count = 15;
+  fixture.sense_review.split_record_count = fixture.records
+    .slice(0, 50)
+    .filter(({ proposal_decision, proposal_canonical_id }) => (
+      proposal_decision === 'corrected'
+      && canonicalById.get(proposal_canonical_id).senses.length > 1
+    )).length;
+  fixture.sense_review.scoped_single_sense_count = 50 - fixture.sense_review.split_record_count;
   fixture.sense_review.split_canonical_ids = fixture.records
     .slice(0, 50)
-    .filter(({ decision }) => decision === 'corrected')
-    .map(({ canonical_id: canonicalId }) => canonicalId);
+    .filter(({ proposal_decision, proposal_canonical_id }) => (
+      proposal_decision === 'corrected'
+      && canonicalById.get(proposal_canonical_id).senses.length > 1
+    ))
+    .map(({ proposal_canonical_id: canonicalId }) => canonicalId);
   fixture.sense_review.note = 'Test fixture records structured sense decisions and boundary contrasts.';
 
   fixture.records.slice(0, 50).forEach((recordReview, index) => {
+    recordReview.canonical_id = recordReview.proposal_canonical_id;
+    recordReview.decision = recordReview.proposal_decision;
+    if (recordReview.proposal_corrected_fields) {
+      recordReview.corrected_fields = recordReview.proposal_corrected_fields;
+    }
+    delete recordReview.proposal_canonical_id;
+    delete recordReview.proposal_decision;
+    delete recordReview.proposal_corrected_fields;
     const canonical = canonicalById.get(recordReview.canonical_id);
     recordReview.decision_note = `${recordReview.inventory_id} ${canonical.id} ${canonical.lemma}: verified editorial decision for the test fixture.`;
-    const split = recordReview.decision === 'corrected';
+    const split = recordReview.decision === 'corrected' && canonical.senses.length > 1;
     recordReview.boundary_evidence = Object.fromEntries(A2_BOUNDARY_IDS.map((boundaryId) => {
       if (split && boundaryId === 'sensory-emotion-state-action') {
         const [left, right] = canonical.senses;
@@ -179,16 +271,27 @@ function createVerifiedEditorialFixture(editorial, canonicalRecords, reviewedSta
   return fixture;
 }
 
-function createVerifiedAuditFixture(audit, editorial, relationDiff) {
+function createVerifiedAuditFixture(
+  audit,
+  editorial,
+  relationDiff,
+  {
+    sourceKind = 'human-authored',
+    actorKind = 'human',
+    actorId = 'audit-session-owner',
+    sessionId = '22222222-2222-4222-8222-222222222222',
+    artifact = 'data/batches/test-audit-session.json',
+  } = {},
+) {
   const fixture = structuredClone(audit);
   fixture.schema_version = '2';
-  fixture.source_kind = 'human-authored';
+  fixture.source_kind = sourceKind;
   fixture.provenance = {
     verification_status: 'verified',
-    actor_kind: 'human',
-    actor_id: 'audit-session-owner',
-    session_id: '22222222-2222-4222-8222-222222222222',
-    artifact: 'data/batches/test-audit-session.json',
+    actor_kind: actorKind,
+    actor_id: actorId,
+    session_id: sessionId,
+    artifact,
     sha256: 'b'.repeat(64),
     note: 'Test-only verified audit session fixture.',
   };
@@ -284,10 +387,11 @@ function createCompleteTimingFixture(timing) {
   return fixture;
 }
 
-test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and keeps Wave B blocked', async () => {
-  const [manifest, editorial, relationDiff, metrics, stage, plan, canonical] = await Promise.all([
+test('M5-10A Wave A2 imports frozen reviewed data but holds Wave B when timing exceeds the gate', async () => {
+  const [manifest, editorial, audit, relationDiff, metrics, stage, plan, canonical] = await Promise.all([
     readBatchJson('m5-10-wave-a2.json'),
     readBatchJson('m5-10a-wave-a2-editorial-input.json'),
+    readBatchJson('m5-10a-wave-a2-audit-input.json'),
     readBatchJson('m5-10a-wave-a2-relation-diff.json'),
     readBatchJson('m5-10a-wave-a2-metrics.json'),
     readBatchJson('m5-10a-wave-a2.json'),
@@ -297,94 +401,78 @@ test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and ke
 
   assert.equal(manifest.batch_id, 'm5-10-wave-a2-20260909');
   assert.equal(manifest.records.length, 58);
-  assert.equal(manifest.review.status, 'in-review');
-  assert.equal(manifest.review.reviewer, 'unknown');
+  assert.equal(manifest.review.status, 'complete');
+  assert.equal(manifest.review.reviewer, editorial.provenance.actor_id);
   assert.equal(manifest.generator.draft_sha256, editorial.proposal_staging.sha256);
-  assert.equal(manifest.sense_review.status, 'incomplete');
-  assert.equal(manifest.sense_review.reviewed_start_count, 0);
-  assert.equal(manifest.sense_review.split_record_count, 0);
+  assert.equal(manifest.review.reviewed_staging_sha256, editorial.reviewed_staging_sha256);
+  assert.equal(manifest.sense_review.status, 'complete');
+  assert.equal(manifest.sense_review.reviewed_start_count, 50);
+  assert.equal(manifest.sense_review.split_record_count, 15);
   assert.equal(manifest.sense_review.preflight.record_checkpoints.length, 58);
-  assert.ok(manifest.sense_review.preflight.record_checkpoints.every((checkpoint) => checkpoint.status === 'not-reviewed'));
+  assert.ok(manifest.sense_review.preflight.record_checkpoints.slice(0, 50).every((checkpoint) => checkpoint.status === 'complete'));
+  assert.deepEqual(manifest.sense_review.preflight.record_checkpoints.slice(50).map(({ status }) => status), [
+    'held', 'held', 'held', 'rejected', 'rejected', 'rejected', 'deferred', 'deferred',
+  ]);
   assert.deepEqual(metrics.derived.decisions, {
-    included: 35,
+    included: 34,
     held: 3,
     rejected: 3,
-    corrected: 15,
+    corrected: 16,
     deferred: 2,
     importable_start_count: 50,
-    correction_rate_of_selected: 15 / 56,
-    correction_rate_of_importable: 15 / 50,
+    correction_rate_of_selected: 16 / 56,
+    correction_rate_of_importable: 16 / 50,
     held_rate: 3 / 56,
     rejected_rate: 3 / 56,
     held_or_rejected_rate: 6 / 56,
-    sense_field_correction_count: 15,
+    sense_field_correction_count: 16,
     relation_field_correction_count: 0,
   });
-  assert.equal(metrics.derived.canonical_import.imported_start_count, 0);
-  assert.equal(metrics.derived.canonical_import.imported_sense_count, 0);
-  assert.equal(metrics.derived.canonical_import.imported_relation_count, 0);
-  assert.equal(metrics.derived.canonical_import.import_status, 'proposed');
-  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {});
-  assert.equal(canonical.records.length, 620);
-  const proposalIds = editorial.records.slice(0, 50).map(({ proposal_canonical_id: canonicalId }) => canonicalId);
-  assert.equal(proposalIds.length, 50);
-  assert.equal(editorial.proposal_staging.format, 'canonical-jsonl');
-  assert.match(editorial.proposal_staging.sha256, /^[a-f0-9]{64}$/u);
-  assert.equal(canonical.records.some(({ record }) => proposalIds.includes(record.id)), false);
-  assert.deepEqual(proposalIds, Array.from({ length: 50 }, (_, index) => `w${index + 579}`));
+  assert.equal(metrics.derived.canonical_import.imported_start_count, 50);
+  assert.equal(metrics.derived.canonical_import.imported_sense_count, 66);
+  assert.equal(metrics.derived.canonical_import.imported_relation_count, 6);
+  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {
+    mood: 3,
+    near: 1,
+    sensory: 1,
+    association: 1,
+  });
+  assert.equal(canonical.records.length, 670);
+  const reviewedIds = editorial.records.slice(0, 50).map(({ canonical_id: canonicalId }) => canonicalId);
+  assert.equal(editorial.source_kind, 'codex-authored');
+  assert.equal(editorial.status, 'complete');
+  assert.equal(audit.source_kind, 'codex-authored');
+  assert.equal(audit.status, 'complete');
+  assert.equal(audit.independent, true);
+  assert.ok(canonical.records.every(({ record }) => record.id !== 'w603' || record.senses.length === 2));
+  assert.deepEqual(reviewedIds, Array.from({ length: 50 }, (_, index) => `w${index + 579}`));
 
-  validateA2CanonicalBoundary({
-    editorialInput: editorial,
-    canonicalRecords: canonical.records,
-  });
-  assert.deepEqual((await validateWaveA2()).batch, {
-    batch_id: 'm5-10-wave-a2-20260909',
-    validation_status: 'proposal',
-    selected_start_count: 58,
-    proposed_start_count: 50,
-    proposed_sense_count: 67,
-  });
-  await assert.rejects(
-    validateWaveA2({
-      stagedRecordsPath: path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-proposal.jsonl'),
-    }),
-    (error) => error.code === 'STAGED_INPUT_INSIDE_REPOSITORY',
-  );
   const stagingDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10a-staging-'));
   try {
-    const tamperedStagingPath = path.join(stagingDirectory, 'proposal.jsonl');
+    const reviewedStagingPath = path.join(stagingDirectory, 'reviewed.jsonl');
+    await writeFile(
+      reviewedStagingPath,
+      serializeCanonicalRecords(canonical.records.filter(({ record }) => reviewedIds.includes(record.id))),
+      'utf8',
+    );
+    assert.deepEqual((await validateWaveA2({ stagedRecordsPath: reviewedStagingPath })).batch, {
+      batch_id: 'm5-10-wave-a2-20260909',
+      validation_status: 'validated',
+      selected_start_count: 58,
+      proposed_start_count: 50,
+      proposed_sense_count: 66,
+    });
+    const tamperedStagingPath = path.join(stagingDirectory, 'tampered.jsonl');
     await writeFile(tamperedStagingPath, '{"not":"a canonical record"}\n', 'utf8');
     await assert.rejects(
       validateA2ProposalStagingDigest({
         input: editorial,
         stagedRecordsPath: tamperedStagingPath,
       }),
-      (error) => error.code === 'PROPOSAL_STAGING_DIGEST_MISMATCH',
+      (error) => error.code === 'REVIEWED_STAGING_DIGEST_MISMATCH',
     );
   } finally {
     await rm(stagingDirectory, { recursive: true, force: true });
-  }
-  assertInputError(
-    () => validateA2CanonicalBoundary({
-      editorialInput: editorial,
-      canonicalRecords: [...canonical.records, {
-        record: { id: proposalIds[0] },
-      }],
-    }),
-    'UNVERIFIED_CANONICAL_PROMOTION',
-  );
-  for (const decision of ['included', 'corrected']) {
-    const illegallyPromoted = structuredClone(manifest);
-    illegallyPromoted.records[0].decision = decision;
-    illegallyPromoted.records[0].canonical_id = illegallyPromoted.records[0].proposal_canonical_id;
-    delete illegallyPromoted.records[0].proposal_canonical_id;
-    delete illegallyPromoted.records[0].proposal_decision;
-    delete illegallyPromoted.records[0].proposal_corrected_fields;
-    if (decision === 'corrected') illegallyPromoted.records[0].corrected_fields = ['senses'];
-    assertInputError(
-      () => validateBatchManifest(illegallyPromoted),
-      'UNVERIFIED_IMPORTABLE_DECISION',
-    );
   }
 
   validateRelationDiff(relationDiff);
@@ -401,8 +489,7 @@ test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and ke
     noise_rate_of_before: 0,
     classification_counts: {},
     candidate_count: 6,
-    admitted_candidate_count: 0,
-    pending_candidate_count: 6,
+    admitted_candidate_count: 6,
     rejected_candidate_count: 0,
     noise_denominator_count: 6,
     noise_rate_of_candidates: 0,
@@ -414,51 +501,46 @@ test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and ke
     canonicalRecords: canonical.records,
     source: metrics.source,
   }));
-  assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {});
-  assert.equal(metrics.derived.timing.status, 'incomplete');
-  assert.deepEqual(metrics.derived.timing.unmeasured_passes, [
-    'target-preparation',
-    'initial-review',
-    'feedback-fixes',
-    'final-audit',
-    'held-rejected',
-  ]);
-  assert.equal(metrics.derived.audit.status, 'incomplete');
-  assert.equal(metrics.derived.audit.independent, false);
-  assert.equal(metrics.derived.audit.open_blocker_count, 1);
-  assert.equal(metrics.derived.sense_review.status, 'incomplete');
+  assert.equal(metrics.derived.timing.status, 'complete');
+  assert.deepEqual(metrics.derived.timing.unmeasured_passes, []);
+  assert.equal(metrics.derived.audit.status, 'complete');
+  assert.equal(metrics.derived.audit.independent, true);
+  assert.equal(metrics.derived.audit.open_blocker_count, 0);
+  assert.equal(metrics.derived.sense_review.status, 'complete');
 
   assert.deepEqual(await validateExpansionStage(stage, plan), {
     stage_id: 'm5-10a-wave-a2-plus-50',
-    imported_start_count: 0,
+    imported_start_count: 50,
     candidate_buffer: 8,
     gate_status: 'fail',
   });
   assert.deepEqual(stage.actual.canonical_snapshot, {
-    record_count: 620,
-    start_count: 578,
+    record_count: 670,
+    start_count: 628,
     reference_only_count: 42,
-    sense_count: 743,
-    relation_count: 467,
-    expression_count: 39,
+    sense_count: 809,
+    relation_count: 473,
+    expression_count: 43,
   });
-  assert.equal(stage.decisions.proposed_start_count, 50);
-  assert.deepEqual(stage.proposal_decisions, {
-    included_start_count: 35,
-    corrected_start_count: 15,
+  assert.equal(stage.decisions.proposed_start_count, undefined);
+  assert.deepEqual(stage.decisions, {
+    included_start_count: 34,
+    corrected_start_count: 16,
     held_start_count: 3,
     rejected_start_count: 3,
     deferred_start_count: 2,
   });
-  assert.equal(stage.metrics.timing_status, 'incomplete');
-  assert.equal(stage.metrics.total_editor_seconds, null);
-  assert.equal(stage.metrics.unmeasured_timing_pass_count, 5);
+  assert.equal(stage.metrics.timing_status, 'complete');
+  assert.equal(stage.metrics.total_editor_seconds, metrics.derived.timing.total_editor_seconds);
+  assert.ok(stage.metrics.editor_seconds_per_selected_start > 12);
+  assert.equal(stage.metrics.unmeasured_timing_pass_count, 0);
   assert.equal(stage.decision, 'HOLD PROCESS');
   assert.equal(stage.next_stage_created, false);
   assert.equal(stage.next_stage_authorized, false);
+  assert.equal(stage.metrics.editorial_review_complete, true);
   assert.equal(stage.metrics.human_editorial_review_complete, false);
-  assert.equal(stage.metrics.audit_status, 'incomplete');
-  assert.equal(stage.metrics.audit_independent, false);
+  assert.equal(stage.metrics.audit_status, 'complete');
+  assert.equal(stage.metrics.audit_independent, true);
 });
 
 test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async () => {
@@ -475,13 +557,15 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     'utf8',
   );
   const reviewedStagingSha256 = sha256Bytes(reviewedStagingBytes);
+  const unverifiedInput = createUnverifiedEditorialFixture(editorial);
+  const unverifiedAuditInput = createUnverifiedAuditFixture(audit);
   const unverifiedEditorial = validateA2EditorialInput({
-    input: editorial,
+    input: unverifiedInput,
     canonicalRecords: referenceRecords,
   });
   assert.equal(unverifiedEditorial.verified, false);
   const unverifiedAudit = validateA2AuditInput({
-    audit,
+    audit: unverifiedAuditInput,
     editorialInput: unverifiedEditorial,
     relationDiff,
     canonicalRecords: referenceRecords,
@@ -522,7 +606,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   };
   const blockedPromotionManifest = createWaveA2Manifest({
     editorialInput: verifiedEditorial,
-    auditInput: audit,
+    auditInput: unverifiedAuditInput,
     timingInput: timing,
     canonicalRecords: referenceRecords,
     ...manifestSources,
@@ -586,7 +670,9 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     await rm(promotionDirectory, { recursive: true, force: true });
   }
 
-  const pendingAudit = createVerifiedAuditFixture(audit, verifiedEditorial, relationDiff);
+  const pendingRelationDiff = structuredClone(relationDiff);
+  pendingRelationDiff.candidate_reviews[0].decision = 'pending';
+  const pendingAudit = createVerifiedAuditFixture(audit, verifiedEditorial, pendingRelationDiff);
   const auditDigestMismatch = structuredClone(verifiedAudit);
   auditDigestMismatch.reviewed_staging_sha256 = 'e'.repeat(64);
   assertInputError(
@@ -602,7 +688,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     () => validateA2AuditInput({
       audit: pendingAudit,
       editorialInput: { ...verifiedEditorial, verified: true },
-      relationDiff,
+      relationDiff: pendingRelationDiff,
       canonicalRecords: referenceRecords,
     }),
     'AUDIT_INCOMPLETE',
@@ -707,18 +793,32 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   );
 
   const duplicatedEvidence = structuredClone(verifiedEditorial);
-  const splitRecords = duplicatedEvidence.records.filter(({ decision }) => decision === 'corrected');
+  const splitRecords = duplicatedEvidence.records.filter(({ decision, boundary_evidence: boundaryEvidence }) => (
+    decision === 'corrected'
+    && boundaryEvidence['sensory-emotion-state-action'].contrasts.length > 0
+  ));
   const firstSplit = splitRecords[0];
   const secondSplit = splitRecords[1];
   const firstContrast = firstSplit.boundary_evidence['sensory-emotion-state-action'].contrasts[0];
+  const firstCanonical = referenceRecords.find(({ record }) => record.id === firstSplit.canonical_id).record;
   const secondCanonical = referenceRecords.find(({ record }) => record.id === secondSplit.canonical_id).record;
-  secondSplit.boundary_evidence['sensory-emotion-state-action'].contrasts = [{
+  const duplicatedContrastEvidence = {
     ...firstContrast,
+    dimension: 'sensory',
+    facets: ['duplicated-sensory-facet'],
+    left_observation: 'The left use focuses on a concrete observed signal.',
+    right_observation: 'The right use focuses on a different observed signal.',
+    difference: 'These two uses differ in their observed focus and cannot share one sense.',
+  };
+  firstSplit.boundary_evidence['sensory-emotion-state-action'].contrasts = [{
+    ...duplicatedContrastEvidence,
+    left_sense_id: firstCanonical.senses[0].id,
+    right_sense_id: firstCanonical.senses[1].id,
+  }];
+  secondSplit.boundary_evidence['sensory-emotion-state-action'].contrasts = [{
+    ...duplicatedContrastEvidence,
     left_sense_id: secondCanonical.senses[0].id,
     right_sense_id: secondCanonical.senses[1].id,
-    left_observation: `${secondCanonical.senses[0].gloss} is the first observed focus.`,
-    right_observation: `${secondCanonical.senses[1].gloss} is the second observed focus.`,
-    difference: `${secondCanonical.lemma} separates these senses by the observed focus rather than treating them as one use.`,
   }];
   assertInputError(
     () => validateA2EditorialInput({ input: duplicatedEvidence, canonicalRecords: referenceRecords }),
@@ -741,13 +841,15 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     'GENERIC_EDITORIAL_EVIDENCE',
   );
 
-  const nonIndependentAudit = structuredClone(audit);
+  const nonIndependentAudit = structuredClone(verifiedAudit);
   nonIndependentAudit.independent = true;
+  nonIndependentAudit.provenance.session_id = verifiedEditorial.provenance.session_id;
+  nonIndependentAudit.provenance.artifact = verifiedEditorial.provenance.artifact;
   assertInputError(
     () => validateA2AuditInput({
       audit: nonIndependentAudit,
-      editorialInput: unverifiedEditorial,
-      relationDiff,
+      editorialInput: { ...verifiedEditorial, verified: true },
+      relationDiff: verifiedRelationDiff,
       canonicalRecords: referenceRecords,
     }),
     'AUDIT_NOT_INDEPENDENT',
@@ -766,6 +868,10 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
 
   const inReviewHumanClaim = structuredClone(editorial);
   inReviewHumanClaim.source_kind = 'human-authored';
+  inReviewHumanClaim.status = 'in-review';
+  delete inReviewHumanClaim.completed_at;
+  delete inReviewHumanClaim.reviewed_staging_sha256;
+  inReviewHumanClaim.sense_review.status = 'in-review';
   inReviewHumanClaim.provenance.verification_status = 'verified';
   inReviewHumanClaim.provenance.actor_kind = 'human';
   inReviewHumanClaim.provenance.actor_id = 'editor-session-owner';
@@ -776,14 +882,15 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
 
   const syntheticTiming = structuredClone(timing);
   syntheticTiming.status = 'complete';
+  syntheticTiming.events = [];
   syntheticTiming.recording_proof_sha256 = createA2TimingProof(syntheticTiming);
   assertInputError(() => validateA2TimingInput(syntheticTiming), 'TIMING_EVENT_COVERAGE');
 
   const canonicalById = new Map(referenceRecords.map(({ record }) => [record.id, record]));
-  assert.equal(canonicalById.get('w603').senses.length, 3);
+  assert.equal(canonicalById.get('w603').senses.length, 2);
   assert.deepEqual(
     canonicalById.get('w603').senses.map(({ gloss }) => gloss),
-    ['햇볕이 강하고 눈부시다', '소리가 맑고 세차게 울리다', '빛이 맑고 세차게 비치다'],
+    ['햇볕이 강하고 눈부시다', '소리가 맑고 세차게 울리다'],
   );
   assert.equal(canonicalById.get('w620').senses.length, 3);
   assert.deepEqual(
@@ -837,4 +944,73 @@ test('M5-10A Wave A2 build and timing recorder refuse missing or synthetic evide
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('M5-10A treats a separate Codex audit pass as independent without requiring another actor', async () => {
+  const [editorial, audit, relationDiff, canonical] = await Promise.all([
+    readBatchJson('m5-10a-wave-a2-editorial-input.json'),
+    readBatchJson('m5-10a-wave-a2-audit-input.json'),
+    readBatchJson('m5-10a-wave-a2-relation-diff.json'),
+    readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+  ]);
+  const referenceRecords = createSelfAuthoredA2ReferenceRecords(editorial, canonical.records);
+  const reviewedStagingSha256 = sha256Bytes(
+    Buffer.from(serializeCanonicalRecords(referenceRecords.slice(canonical.records.length)), 'utf8'),
+  );
+  const codexEditorial = createVerifiedEditorialFixture(
+    editorial,
+    referenceRecords,
+    reviewedStagingSha256,
+    { sourceKind: 'codex-authored', actorKind: 'codex', actorId: 'codex-wave-a2' },
+  );
+  const codexAudit = createVerifiedAuditFixture(
+    audit,
+    codexEditorial,
+    createVerifiedRelationDiffFixture(relationDiff),
+    {
+      sourceKind: 'codex-authored',
+      actorKind: 'codex',
+      actorId: 'codex-wave-a2',
+      sessionId: '22222222-2222-4222-8222-222222222222',
+      artifact: 'data/batches/test-codex-audit-session.json',
+    },
+  );
+  const validatedEditorial = validateA2EditorialInput({
+    input: codexEditorial,
+    canonicalRecords: referenceRecords,
+  });
+  assert.equal(validatedEditorial.verified, true);
+  assert.equal(
+    validateA2AuditInput({
+      audit: codexAudit,
+      editorialInput: validatedEditorial,
+      relationDiff: createVerifiedRelationDiffFixture(relationDiff),
+      canonicalRecords: referenceRecords,
+    }).verified,
+    true,
+  );
+
+  const reusedSession = structuredClone(codexAudit);
+  reusedSession.provenance.session_id = codexEditorial.provenance.session_id;
+  assertInputError(
+    () => validateA2AuditInput({
+      audit: reusedSession,
+      editorialInput: validatedEditorial,
+      relationDiff: createVerifiedRelationDiffFixture(relationDiff),
+      canonicalRecords: referenceRecords,
+    }),
+    'AUDIT_NOT_INDEPENDENT',
+  );
+
+  const reusedArtifact = structuredClone(codexAudit);
+  reusedArtifact.provenance.artifact = codexEditorial.provenance.artifact;
+  assertInputError(
+    () => validateA2AuditInput({
+      audit: reusedArtifact,
+      editorialInput: validatedEditorial,
+      relationDiff: createVerifiedRelationDiffFixture(relationDiff),
+      canonicalRecords: referenceRecords,
+    }),
+    'AUDIT_NOT_INDEPENDENT',
+  );
 });

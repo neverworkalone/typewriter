@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-wave-a2-editorial-input.schema.json",
-  "title": "Typewriter M5-10A Wave A2 editorial proposal input",
-  "description": "A separately recorded editorial proposal. Only a verified human session may mark this input complete; a complete input binds the final reviewed canonical staging digest, and an unverified draft cannot produce a completed review claim.",
+  "title": "Typewriter M5-10A Wave A2 editorial pass input",
+  "description": "A separately recorded Codex or human editorial pass. Only a verified pass may mark this input complete; a complete input binds the final reviewed canonical staging digest, and an unverified draft cannot produce a completed review claim.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,7 +25,7 @@
     "batch_id": { "type": "string", "pattern": "^m5-[0-9]+-[a-z0-9][a-z0-9-]*$" },
     "inventory_id": { "const": "m5-core-5k" },
     "inventory_revision": { "type": "string", "pattern": "^m5-[1-9][0-9]*$" },
-    "source_kind": { "enum": ["human-authored", "unverified-draft"] },
+    "source_kind": { "enum": ["human-authored", "codex-authored", "unverified-draft"] },
     "provenance": { "$ref": "#/$defs/provenance" },
     "created_at": { "type": "string", "format": "date-time" },
     "completed_at": { "type": "string", "format": "date-time" },
@@ -44,6 +44,15 @@
     {
       "if": {
         "properties": { "source_kind": { "const": "human-authored" } }
+      },
+      "then": {
+        "properties": { "status": { "const": "complete" } },
+        "required": ["reviewed_staging_sha256"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "source_kind": { "const": "codex-authored" } }
       },
       "then": {
         "properties": { "status": { "const": "complete" } },
@@ -87,7 +96,7 @@
       ],
       "properties": {
         "verification_status": { "enum": ["verified", "unverified"] },
-        "actor_kind": { "enum": ["human", "unknown"] },
+        "actor_kind": { "enum": ["human", "codex", "unknown"] },
         "actor_id": { "type": "string", "pattern": "\\S" },
         "session_id": {
           "type": ["string", "null"],

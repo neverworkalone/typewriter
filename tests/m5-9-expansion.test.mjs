@@ -21,11 +21,9 @@ import {
   validateRelationDiff,
 } from '../scripts/batch/relation-diff.mjs';
 import {
-  DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import {
-  DEFAULT_INVENTORY_PATH,
   readTargetInventory,
   validateTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
@@ -36,6 +34,8 @@ import {
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-9-postimport-canonical');
+const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
+const PRE_A2_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-preimport-inventory.json');
 
 async function readJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
@@ -50,7 +50,7 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
     readJson('m5-8-expansion-plan.json'),
     readJson('m5-9-expansion-verification.json'),
     readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY),
-    readTargetInventory(DEFAULT_INVENTORY_PATH),
+    readTargetInventory(PRE_A2_INVENTORY_PATH),
     readJson('m5-9-preimport-inventory.json'),
   ]);
 
@@ -189,7 +189,10 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
     expression_count: 37,
   });
 
-  const inventorySummary = await validateTargetInventory();
+  const inventorySummary = await validateTargetInventory({
+    inventoryPath: PRE_A2_INVENTORY_PATH,
+    canonicalDirectory: BASE_CANONICAL_DIRECTORY,
+  });
   assert.equal(inventorySummary.revision, 'm5-10');
   assert.equal(inventorySummary.inventoryEntryCount, 713);
   assert.equal(inventorySummary.currentStartCount, 578);
@@ -217,7 +220,7 @@ test('M5-9 admitted records and reserve decisions are visible in local search', 
 
   try {
     const first = await buildDictionary({
-      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
+      inputDirectory: BASE_CANONICAL_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
       allowDirty: true,

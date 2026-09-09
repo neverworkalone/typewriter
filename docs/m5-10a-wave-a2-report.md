@@ -2,100 +2,132 @@
 
 ## Result
 
-Issue #96 Wave A2 contains a 58-start proposal. The source-bound manifest remains
-`in-review`: no human editorial session artifact was supplied, so these rows are
-not treated as a validated import. The 50 candidate record bodies remain in
-external proposal staging and are not tracked; the product canonical snapshot
-remains at the pre-A2 baseline. The source-bound stage report
-[`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json)
-records a proposed net increase of 50 but remains `HOLD PROCESS`: the old
-command-runtime timing claim was invalidated, and the replacement editor-session
-timing input is still unmeasured. Wave B was not started or authorized; its
-authorization remains false until a separate decision.
+Issue #110 completes the Wave A2 editorial and audit workflow for the external
+50-record proposal plus an 8-record decision buffer. The Codex editorial pass
+reviewed all 50 starts record by record, checked all six sense-boundary fields,
+and froze the reviewed staging digest. A separate Codex audit pass then
+rechecked the frozen digest in a different session and artifact. Both passes
+are `codex-authored`; #110 does not require a human identity or two different
+actors.
+
+The reviewed, zero-blocker staging was imported into canonical, taking the
+product from 578 to 628 starts. Wave B remains unauthorized because the actual
+timing gate failed: all required timing passes are measured, but the measured
+editor time is 13.0354 seconds per processed start against the fixed 12-second
+maximum. The source-bound stage report therefore records `HOLD PROCESS` with
+both `next_stage_created` and `next_stage_authorized` set to `false`.
 
 ## Count ledger
 
 | Snapshot | Records | Starts | Reference-only | Senses | Relations | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Input (Wave A output) | 620 | 578 | 42 | 743 | 467 | 39 |
-| External A2 proposal staging (not tracked) | 50 | 50 | 0 | 67 | 6 | 4 |
-| Current product canonical | 620 | 578 | 42 | 743 | 467 | 39 |
-| Net canonical change before verified review | 0 | 0 | 0 | 0 | 0 | 0 |
+| A2 input/base canonical | 620 | 578 | 42 | 743 | 467 | 39 |
+| External proposal staging | 50 | 50 | 0 | 67 | 6 | 4 |
+| Frozen reviewed staging/import | 50 | 50 | 0 | 66 | 6 | 4 |
+| Current product canonical | 670 | 628 | 42 | 809 | 473 | 43 |
+| Net canonical change | +50 | +50 | 0 | +66 | +6 | +4 |
 
-The proposed selected-start decisions are 35 `included`, 15 `corrected`, 3
-`held`, 3 `rejected`, and 2 `deferred`. The declared buffer is 8; six entries
-are assigned to held/rejected decisions and two remain deferred. Deferred and
-rejected rows are not canonical.
+The 58 selected target rows resolved to 34 `included`, 16 `corrected`, 3
+`held`, 3 `rejected`, and 2 `deferred`. The six buffer rows assigned to
+`held`/`rejected` are not canonical; the two deferred rows remain visible in
+the inventory for a later decision. The 50 included-or-corrected rows are the
+only rows imported.
 
-## Editorial and relation review
+## Editorial pass
 
-The unverified editorial input records proposed canonical sense IDs and
-`pending` decisions in a structured six-boundary shape; all 50 manifest
-checkpoints remain `not-reviewed`. It does not claim that a human completed the
-preflight. The candidate content must remain in external staging for later
-review; it is not tracked in this repository and is not part of
-`data/canonical/`, the current inventory, SQLite, or the extension package.
-The tracked editorial metadata records the external JSONL SHA-256, and the A2
-manifest repeats that digest as `generator.draft_sha256`; the A2 validator checks
-the external file against it whenever staging is supplied.
-Once a human review is complete, a separate `reviewed_staging_sha256` is required
-on both the editorial and independent-audit inputs and is checked against the
-actual import file.
-The candidate corrections are retained in that external staging:
-`w603` and `w620` have three distinct senses each, and `w621-s2 → w009-s1` is an
-`association` for a state-changing action, not a `near` replacement. The
-separate relation diff contains three `mood`, one `near`, one `sensory`, and one
-`association` proposal. There are no new reference-only records and no relation
-removals or noise events.
+The final editorial input is `codex-authored` and `complete`. It independently
+records the lemma, POS, sense count, sense-boundary decisions, and record-level
+decision for every selected start. All 50 starts have complete checkpoints and
+all six boundary IDs are reviewed. There are 15 multi-sense split records and
+16 sense-field corrections: the additional correction is a single-sense gloss
+correction for `w582`. The reviewed result also removes the duplicate third
+sense from `w603`, preserves the three observed senses of `w620`, and keeps the
+`w621-s2 → w009-s1` relation as `association`.
 
-The five required timing passes are currently `unmeasured`. The earlier 27.918
-seconds was command runtime without retained editor-session evidence and is not
-used. The audit input is explicitly `incomplete`, `independent: false`, and
-carries an open provenance blocker. Canonical integrity, deterministic SQLite,
-and search regression verification all pass, but the stage correctly remains
-blocked until verified editorial/audit session artifacts and recorder evidence
-are supplied.
+The machine verification artifact therefore sets `editorial_review_complete` to
+`true`. Its legacy `human_editorial_review_complete` compatibility flag is
+explicitly `false`; no human identity or human-review claim is being made.
 
-The manifest is projected from three explicit inputs rather than manufacturing
-review claims. Missing, generic, duplicated, structurally inconsistent, or
-unreviewed evidence fails the A2 check; an unverified draft is projected as
-`in-review`/`incomplete` and cannot pass canonical-import validation.
+The frozen reviewed staging file is external to the repository and is bound by
+SHA-256:
+
+```text
+proposal staging:  290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8
+reviewed staging:  4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8
+```
+
+The import validator checks the reviewed digest against the actual external
+JSONL bytes. Candidate bodies are not copied into review metadata; only the
+reviewed canonical result is tracked in
+[`data/canonical/m5-10a-wave-a2.jsonl`](../data/canonical/m5-10a-wave-a2.jsonl).
+
+## Relation audit
+
+The relation screen started empty and admitted the six candidates one by one
+after the sense pass. All six were retained with record-specific notes: three
+`mood`, one `near`, one `sensory`, and one `association`. The candidate noise
+rate is `0/6 = 0%`, with no pending candidates and no relation-noise events.
+
+The separate audit input is complete and independently bound to the same
+reviewed staging digest. It rechecks all 50 promoted canonical starts and all
+six relation decisions. The audit has four resolved findings (sense,
+relation-noise, buffer-decision, and timing-measurement) and zero open blockers.
+The editorial and audit passes use the same Codex actor ID, but distinct UUID
+sessions and distinct provenance artifacts, which is the independence rule for
+this milestone.
+
+## Timing and gate
+
+The five required passes are all complete, recorder-backed, and have no
+unmeasured passes:
+
+| Pass | Editor seconds |
+| --- | ---: |
+| target preparation | 106.945 |
+| initial review | 520.616 |
+| feedback fixes | 22.094 |
+| final audit | 62.085 |
+| held/rejected decisions | 18.245 |
+| **total** | **729.985** |
+
+There are 56 processed starts after excluding the two deferred buffer rows, so
+the measured rate is `729.985 / 56 = 13.035446...` seconds per processed start.
+The timing gate fails only on this rate; timing completeness, correction rate
+(`16/56`), relation noise (`0%`), audit blockers (`0`), canonical integrity,
+SQLite reproducibility, and search/product regressions pass. Because the gate
+controls the next Wave authorization, the stage is `HOLD PROCESS` even though
+the reviewed zero-blocker rows are valid for the current canonical import.
 
 ## Source artifacts
 
-- [`data/batches/m5-10-wave-a2.json`](../data/batches/m5-10-wave-a2.json) — A2
-  selection, six-boundary preflight, and projections bound to the explicit inputs.
-- [`data/batches/m5-10a-wave-a2-editorial-input.json`](../data/batches/m5-10a-wave-a2-editorial-input.json)
-  — an explicitly unverified proposal with observed sense/POS facts and
-  structured candidate-sense boundary objects; it makes no human-authored claim.
-- [`data/batches/m5-10a-wave-a2-audit-input.json`](../data/batches/m5-10a-wave-a2-audit-input.json)
-  — an explicitly incomplete audit proposal with `independent: false` and an open
-  provenance blocker.
+- [`data/batches/m5-10-wave-a2.json`](../data/batches/m5-10-wave-a2.json) —
+  source-bound selection, review projection, and digest bindings.
+- [`data/batches/m5-10a-wave-a2-editorial-input.json`](../data/batches/m5-10a-wave-a2-editorial-input.json) —
+  complete Codex editorial pass and frozen staging digest.
+- [`data/batches/m5-10a-wave-a2-audit-input.json`](../data/batches/m5-10a-wave-a2-audit-input.json) —
+  separate complete audit pass over the frozen digest.
+- [`data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json`](../data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json)
+  and [`data/batches/m5-10a-wave-a2-provenance-audit-20260909.json`](../data/batches/m5-10a-wave-a2-provenance-audit-20260909.json)
+  — session, actor, completion-time, and subject-digest evidence.
 - [`data/batches/m5-10a-wave-a2-timing-input.json`](../data/batches/m5-10a-wave-a2-timing-input.json)
-  — recorder-bound timing state; currently incomplete until real work sessions
-  are recorded.
+  — current-clock timing events and work-unit evidence.
 - [`data/batches/m5-10a-wave-a2-relation-diff.json`](../data/batches/m5-10a-wave-a2-relation-diff.json)
-  — proposed relation event ledger; admission remains blocked until the audit is
-  verified.
+  — final six-candidate relation screen.
 - [`data/batches/m5-10a-wave-a2-metrics.json`](../data/batches/m5-10a-wave-a2-metrics.json)
-  — source-derived counts, rates, timing, and audit summary.
+  — deterministically derived decisions, counts, timing, and audit metrics.
 - [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json) —
-  source- and digest-bound stage result.
-- external `--staged=/tmp/.../*.jsonl` input — the 50-record proposal staging
-  file is intentionally not tracked; it is not canonical until verified
-  editorial, audit, and timing gates pass.
-- `data/canonical/` — the current 620-record / 578-start product canonical
-  snapshot. A2 proposal rows must not appear here while review is unverified.
-- [`data/batches/m5-10a-wave-a2-preimport-inventory.json`](../data/batches/m5-10a-wave-a2-preimport-inventory.json)
-  — the pre-promotion inventory snapshot.
+  final stage report with the failed timing gate and Wave B authorization flags.
+- [`data/inventory/m5-target-inventory.json`](../data/inventory/m5-target-inventory.json)
+  — regenerated inventory with 628 current starts and the remaining candidates.
+- `data/batches/m5-10a-wave-a-base-canonical/` — immutable 578-start source
+  snapshot used to keep historical Wave A inputs reproducible.
 
-The Wave A output used as A2 input remains reproducible from the immutable
-historical snapshot under
-`data/batches/m5-10a-wave-a-base-canonical/`. The process-correction and repair
-authorization artifacts continue to preserve that 578-start base and do not
-authorize Wave B.
+The external proposal and frozen reviewed staging JSONL remain outside the
+repository. No raw proposal body or unreviewed source material is canonical.
 
 ## Validation
+
+The following deterministic checks passed:
 
 ```text
 npm run validate
@@ -103,17 +135,15 @@ npm run validate:search
 npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 npm run batch:m5-10a:repair:check
-npm run batch:m5-10a:wave-a2:build
-npm run batch:metrics -- --manifest=data/batches/m5-10-wave-a2.json --relation-diff=data/batches/m5-10a-wave-a2-relation-diff.json --canonical-dir=data/canonical --output=data/batches/m5-10a-wave-a2-metrics.json
-npm run batch:m5-10a:wave-a2:stage
-npm run batch:m5-10a:wave-a2:check
-npm run verify:m2 -- --allow-dirty
-npm run build:dictionary -- --allow-dirty
+npm run batch:m5-10a:wave-a2:check -- --staged=/private/tmp/typewriter-m5-10a-wave-a2-reviewed.jsonl
+npm run verify:m2
+npm run build:dictionary
 npm run package
-npm run validate:package
+npm run test:unit
 npm test
 ```
 
-The product build is deterministic after the implementation is committed on a
-clean worktree. Chrome/CFT was not launched locally, per the task constraint;
-CI retains the browser-package checks.
+The full Node regression suite reports 125 passing tests and the unit suite
+reports 38 passing tests. Chrome/CFT was not launched because this change is
+covered by deterministic data, SQLite, search, and package checks and the task
+explicitly requested no Chrome launch.

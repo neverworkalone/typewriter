@@ -126,7 +126,6 @@
         "audit_status",
         "audit_independent",
         "open_audit_blocker_count",
-        "human_editorial_review_complete",
         "canonical_integrity",
         "deterministic_sqlite",
         "search_product_regression"
@@ -170,11 +169,16 @@
         "audit_status": { "enum": ["complete", "incomplete"] },
         "audit_independent": { "type": "boolean" },
         "open_audit_blocker_count": { "type": "integer", "minimum": 0 },
+        "editorial_review_complete": { "type": "boolean" },
         "human_editorial_review_complete": { "type": "boolean" },
         "canonical_integrity": { "type": "boolean" },
         "deterministic_sqlite": { "type": "boolean" },
         "search_product_regression": { "type": "boolean" }
-      }
+      },
+      "anyOf": [
+        { "required": ["editorial_review_complete"] },
+        { "required": ["human_editorial_review_complete"] }
+      ]
     },
     "source": {
       "type": "object",

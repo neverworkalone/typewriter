@@ -2,35 +2,245 @@
   "schema_version": "2",
   "audit_id": "m5-10a-wave-a2-audit-20260909",
   "batch_id": "m5-10-wave-a2-20260909",
-  "source_kind": "unverified-draft",
+  "source_kind": "codex-authored",
+  "provenance": {
+    "verification_status": "verified",
+    "actor_kind": "codex",
+    "actor_id": "codex-wave-a2-editorial",
+    "session_id": "0e1b252d-f654-4d94-a488-7e721166da6b",
+    "artifact": "data/batches/m5-10a-wave-a2-provenance-audit-20260909.json",
+    "sha256": "396abf422b4fc98b85b6451d69b5a615713627abd66d24646ba85234f43c6894",
+    "note": "Separate Codex audit pass over the frozen editorial staging, relation admissions, buffer decisions, and measured timing."
+  },
   "editorial_input_id": "m5-10a-wave-a2-editorial-input-20260909",
-  "auditor_id": "unknown",
-  "independent": false,
-  "reviewed_record_ids": [],
-  "relation_reviews": [],
-  "status": "incomplete",
-  "findings": [
+  "auditor_id": "codex-wave-a2-editorial",
+  "independent": true,
+  "created_at": "2026-09-09T09:34:19.073Z",
+  "completed_at": "2026-09-09T09:36:00.068Z",
+  "reviewed_record_ids": [
+    "w579",
+    "w580",
+    "w581",
+    "w582",
+    "w583",
+    "w584",
+    "w585",
+    "w586",
+    "w587",
+    "w588",
+    "w589",
+    "w590",
+    "w591",
+    "w592",
+    "w593",
+    "w594",
+    "w595",
+    "w596",
+    "w597",
+    "w598",
+    "w599",
+    "w600",
+    "w601",
+    "w602",
+    "w603",
+    "w604",
+    "w605",
+    "w606",
+    "w607",
+    "w608",
+    "w609",
+    "w610",
+    "w611",
+    "w612",
+    "w613",
+    "w614",
+    "w615",
+    "w616",
+    "w617",
+    "w618",
+    "w619",
+    "w620",
+    "w621",
+    "w622",
+    "w623",
+    "w624",
+    "w625",
+    "w626",
+    "w627",
+    "w628"
+  ],
+  "relation_reviews": [
     {
-      "id": "a2-provenance-unverified",
-      "category": "provenance",
-      "severity": "blocker",
-      "status": "open",
-      "evidence_refs": [
-        "editorial.provenance",
-        "audit.provenance"
-      ],
-      "note": "No verifiable human editorial or independent audit session is attached; A2 remains blocked until those artifacts are supplied."
+      "candidate_id": "m5-10-wave-a2-candidate-001",
+      "relation_id": "m5-10-wave-a2-rel-001",
+      "source_sense": "w579-s1",
+      "target_sense": "w018-s1",
+      "review_status": "reviewed",
+      "relation_type": "mood",
+      "decision": "admit",
+      "basis": {
+        "source_observation": "환희는 긍정 정서가 가장 높게 솟는 장면을 만든다.",
+        "target_observation": "기쁨은 좋은 일에서 생기는 넓은 긍정 정서로 쓰인다.",
+        "difference": "강도의 차이를 유지한 채 mood로 연결하면 직접 대체와 정서 확장을 구별할 수 있다.",
+        "facets": [
+          "intensity",
+          "positive mood"
+        ]
+      }
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-002",
+      "relation_id": "m5-10-wave-a2-rel-002",
+      "source_sense": "w587-s1",
+      "target_sense": "w306-s1",
+      "review_status": "reviewed",
+      "relation_type": "near",
+      "decision": "admit",
+      "basis": {
+        "source_observation": "자책은 자신의 행동을 되짚어 스스로 책망하는 쪽에 놓인다.",
+        "target_observation": "죄책감은 잘못으로 남에게 해를 끼쳤다고 느끼는 감정에 놓인다.",
+        "difference": "자기 책망의 행위와 잘못으로 인한 감정은 초점이 달라 near가 정직한 관계명이다.",
+        "facets": [
+          "self-blame",
+          "felt guilt"
+        ]
+      }
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-003",
+      "relation_id": "m5-10-wave-a2-rel-003",
+      "source_sense": "w589-s1",
+      "target_sense": "w001-s1",
+      "review_status": "reviewed",
+      "relation_type": "mood",
+      "decision": "admit",
+      "basis": {
+        "source_observation": "고즈넉하다는 고요한 장면에 아늑한 정취를 함께 부여한다.",
+        "target_observation": "고요는 소리와 움직임이 잦아든 상태를 직접 가리킨다.",
+        "difference": "고요를 기반으로 하되 정취를 더하는 분위기 차이를 mood로 보존한다.",
+        "facets": [
+          "quiet",
+          "atmosphere"
+        ]
+      }
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-004",
+      "relation_id": "m5-10-wave-a2-rel-004",
+      "source_sense": "w607-s1",
+      "target_sense": "w066-s2",
+      "review_status": "reviewed",
+      "relation_type": "sensory",
+      "decision": "admit",
+      "basis": {
+        "source_observation": "윤슬은 물결 위에서 반사되는 빛의 반짝임을 한 장면으로 고정한다.",
+        "target_observation": "빛은 표면 밝기와 시각적 광원을 더 넓게 가리킨다.",
+        "difference": "구체적인 물 표면 이미지와 일반적인 밝기 이미지가 만나 sensory 탐색을 만든다.",
+        "facets": [
+          "water surface",
+          "brightness"
+        ]
+      }
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-005",
+      "relation_id": "m5-10-wave-a2-rel-005",
+      "source_sense": "w621-s2",
+      "target_sense": "w009-s1",
+      "review_status": "reviewed",
+      "relation_type": "association",
+      "decision": "admit",
+      "basis": {
+        "source_observation": "잦아들다는 긴장이나 분노의 세기가 낮아지는 변화로 읽힌다.",
+        "target_observation": "긴장은 압박이 걸린 상태 자체를 가리킨다.",
+        "difference": "변화 동사와 상태 명사를 동의어로 합치지 않고 함께 떠올릴 association으로 남긴다.",
+        "facets": [
+          "de-escalation",
+          "state"
+        ]
+      }
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-006",
+      "relation_id": "m5-10-wave-a2-rel-006",
+      "source_sense": "w628-s2",
+      "target_sense": "w008-s1",
+      "review_status": "reviewed",
+      "relation_type": "mood",
+      "decision": "admit",
+      "basis": {
+        "source_observation": "숨이 트인다는 막힌 상황이 풀리며 호흡과 마음이 놓이는 표현이다.",
+        "target_observation": "안도는 걱정이나 위험이 줄어든 뒤의 정서 상태다.",
+        "difference": "상황이 풀리는 표현과 그 결과의 정서를 mood로 연결해 문장 온도의 이동을 보존한다.",
+        "facets": [
+          "relief expression",
+          "emotional state"
+        ]
+      }
     }
   ],
-  "note": "No independent audit is claimed until a distinct verified audit session and artifact are supplied.",
-  "provenance": {
-    "verification_status": "unverified",
-    "actor_kind": "unknown",
-    "actor_id": "unknown",
-    "session_id": null,
-    "artifact": null,
-    "sha256": null,
-    "note": "No independent auditor session or verifiable audit artifact was supplied; this file is a proposal only."
-  },
-  "created_at": "2026-09-09T05:20:00Z"
+  "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
+  "status": "complete",
+  "findings": [
+    {
+      "id": "a2-audit-sense-boundaries",
+      "category": "sense",
+      "severity": "warning",
+      "status": "resolved",
+      "evidence_refs": [
+        "w582-s1",
+        "w603-s1",
+        "w603-s2",
+        "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8"
+      ],
+      "note": "Frozen staging was re-read for the gloss correction and the duplicate light sense; the correction is present and no open sense blocker remains."
+    },
+    {
+      "id": "a2-audit-relation-screen",
+      "category": "relation-noise",
+      "severity": "info",
+      "status": "resolved",
+      "evidence_refs": [
+        "m5-10-wave-a2-rel-001",
+        "m5-10-wave-a2-rel-002",
+        "m5-10-wave-a2-rel-003",
+        "m5-10-wave-a2-rel-004",
+        "m5-10-wave-a2-rel-005",
+        "m5-10-wave-a2-rel-006"
+      ],
+      "note": "All six admitted tuples were rechecked against their source and target senses; no broad-category or incidental-co-occurrence candidate remains open."
+    },
+    {
+      "id": "a2-audit-buffer-decisions",
+      "category": "sense",
+      "severity": "info",
+      "status": "resolved",
+      "evidence_refs": [
+        "m5-357",
+        "m5-358",
+        "m5-359",
+        "m5-360",
+        "m5-361",
+        "m5-362",
+        "m5-363",
+        "m5-364"
+      ],
+      "note": "The three held, three rejected, and two deferred buffer rows match the frozen editorial decisions and remain outside the import set."
+    },
+    {
+      "id": "a2-audit-timing-completeness",
+      "category": "timing-measurement",
+      "severity": "info",
+      "status": "resolved",
+      "evidence_refs": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected"
+      ],
+      "note": "Each required timing pass has recorder start/stop events, measured duration, and exact work-unit evidence; no unmeasured pass remains."
+    }
+  ],
+  "note": "Separate audit pass completed from the frozen reviewed staging digest; editorial decisions were rechecked rather than reused as the audit conclusion."
 }

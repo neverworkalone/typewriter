@@ -39,7 +39,7 @@ The six boundary IDs are fixed in the process revision
 6. `word-idiom` — ordinary word versus idiom.
 
 An `included` or `corrected` record maps to a `complete` checkpoint only after a
-verified human session. It must carry its canonical ID, observed sense/POS facts,
+verified editorial session, whether human-authored or Codex-authored. It must carry its canonical ID, observed sense/POS facts,
 completed lemma/POS review, reviewed evidence for every boundary, and no
 unreviewed boundary. An applicable boundary carries an actual contrast; an
 explicitly `not-applicable` boundary carries no sense claim. A `held`, `rejected`,
@@ -55,7 +55,7 @@ An input without a verifiable session artifact is an `unverified-draft`; it must
 remain `in-review`, every promoted boundary stays `unreviewed`/`pending`, and it
 cannot be used as a completed import manifest. The artifact must bind the actor,
 UUID session, completion time, input digest, and its own digest before a complete
-human review can be accepted.
+editorial pass can be accepted.
 
 The self-authored regression fixture
 [`tests/fixtures/m5-10-wave-a-sense-regressions.json`](../tests/fixtures/m5-10-wave-a-sense-regressions.json)
@@ -141,9 +141,10 @@ historical classification is not used as the calibration success metric.
 
 ## Timing boundary
 
-The M5-10A timing contract is `m5-10a-v1`. It measures the five required human
-editorial passes—target preparation, initial review, feedback fixes, final audit,
-and held/rejected decisions—and each recorded post-review audit/fixes pair.
+The M5-10A timing contract is `m5-10a-v1`. It measures the five required
+editorial passes (human or Codex)—target preparation, initial review, feedback
+fixes, final audit, and held/rejected decisions—and each recorded post-review
+audit/fixes pair.
 For the calibration artifact, run `batch:m5-10a:calibration:timing` with
 `--action=start|stop`, `--pass=<required pass>`, and persisted `--input` /
 `--output` session paths. Stopping `final-audit` additionally requires the
@@ -202,12 +203,16 @@ is created by #107.
 
 ## Wave A2 execution
 
-Issue #96 Wave A2's proposal is recorded in its separate report
-[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). The declared 50-start
-delta from the 58-start selection remains in proposal staging, while the current
-canonical snapshot stays at the 578-start base. The manifest remains `in-review`
-because no verified editorial or independent audit session artifact is attached.
-Its bounded stage remains `HOLD PROCESS`
-until those artifacts and the separate editor-session timing input contain real
-evidence. The A2 stage still sets `next_stage_authorized: false`; Wave B is not
-included in the A2 batch.
+Issue #110 completed Issue #96 Wave A2 from its separate report
+[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). The Codex editorial
+pass reviewed the 50 importable starts and all eight buffer decisions, froze the
+reviewed staging digest, and a separate Codex audit pass rechecked that digest.
+The zero-blocker reviewed rows are now imported, taking the current canonical
+snapshot from 578 to 628 starts (670 records / 809 senses / 473 relations / 43
+expressions).
+
+The fixed timing gate still fails at 13.0354 editor seconds per processed start
+against the 12-second maximum, so the bounded A2 stage records `HOLD PROCESS`
+with `next_stage_created: false` and `next_stage_authorized: false`. Wave B is
+not authorized. The pre-A2 578-start snapshot and #107 authorization remain
+historical source artifacts; they are not overwritten by this result.

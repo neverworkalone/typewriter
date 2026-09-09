@@ -17,7 +17,10 @@ const REPOSITORY_DIRECTORY = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
-const PILOT_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
+const PILOT_DIRECTORY = path.join(
+  REPOSITORY_DIRECTORY,
+  'data/batches/m5-10a-wave-a-base-canonical',
+);
 
 async function createOutputDirectory() {
   return mkdtemp(path.join(tmpdir(), 'typewriter-reproducibility-'));

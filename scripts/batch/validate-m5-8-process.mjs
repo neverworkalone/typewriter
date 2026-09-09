@@ -408,6 +408,7 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
   const processedStartCount = metricsArtifact.derived.selection.processed_start_count
     ?? metricsArtifact.derived.selection.selected_start_count;
   const totalEditorSeconds = timing.total_editor_seconds;
+  const hasEditorialReviewFlag = Object.hasOwn(verification, 'editorial_review_complete');
   const metrics = {
     correction_rate_of_selected: decisions.correction_rate_of_selected,
     relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
@@ -429,7 +430,12 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     audit_status: audit.status,
     audit_independent: audit.independent,
     open_audit_blocker_count: audit.open_blocker_count,
-    human_editorial_review_complete: verification.human_editorial_review_complete,
+    ...(hasEditorialReviewFlag
+      ? { editorial_review_complete: verification.editorial_review_complete }
+      : {}),
+    ...(Object.hasOwn(verification, 'human_editorial_review_complete')
+      ? { human_editorial_review_complete: verification.human_editorial_review_complete }
+      : {}),
     canonical_integrity: verification.canonical_integrity,
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
@@ -961,6 +967,8 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
 export function evaluateExpansionGate(metrics, plan) {
   const relationNoiseRate = metrics.relation_noise_rate_of_candidates
     ?? metrics.relation_noise_rate_of_before;
+  const editorialReviewComplete = metrics.editorial_review_complete
+    ?? metrics.human_editorial_review_complete;
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = {
@@ -975,7 +983,7 @@ export function evaluateExpansionGate(metrics, plan) {
     audit_complete: metrics.audit_status === 'complete',
     audit_independent: metrics.audit_independent,
     open_audit_blockers: metrics.open_audit_blocker_count <= plan.gate.open_audit_blockers_max,
-    human_editorial_review_complete: metrics.human_editorial_review_complete,
+    editorial_review_complete: editorialReviewComplete,
     canonical_integrity: metrics.canonical_integrity,
     deterministic_sqlite: metrics.deterministic_sqlite,
     search_product_regression: metrics.search_product_regression,

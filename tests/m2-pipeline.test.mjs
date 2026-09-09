@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -6,13 +7,19 @@ import {
   runM2Pipeline,
 } from '../scripts/verify/m2-pipeline.mjs';
 import {
-  DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import { normalizeCanonicalDirectory } from '../scripts/normalize/canonical.mjs';
 
+const PILOT_DIRECTORY = path.resolve(
+  'data/batches/m5-10a-wave-a-base-canonical',
+);
+
 test('runs the complete M2 pipeline and compares canonical rows to SQLite', async () => {
-  const summary = await runM2Pipeline({ allowDirty: true });
+  const summary = await runM2Pipeline({
+    inputDirectory: PILOT_DIRECTORY,
+    allowDirty: true,
+  });
 
   assert.equal(summary.fileCount, 6);
   assert.equal(summary.recordCount, 620);
@@ -29,8 +36,8 @@ test('runs the complete M2 pipeline and compares canonical rows to SQLite', asyn
 });
 
 test('rejects normalized semantic-field drift before SQLite comparison', async () => {
-  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  const model = await normalizeCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY, {
+  const canonical = await readCanonicalRecords(PILOT_DIRECTORY);
+  const model = await normalizeCanonicalDirectory(PILOT_DIRECTORY, {
     checkPilotCompleteness: true,
   });
   const mutations = [

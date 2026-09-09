@@ -218,15 +218,17 @@ reproducible after the current canonical directory advances.
 
 ## M5-10A Wave A2 result
 
-The A2 proposal is recorded in
+The A2 result is recorded in
 [`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It selects 58
-starts and keeps the 50 importable rows in separate external proposal staging;
-the current product canonical snapshot remains at 578 starts until verified review. The
-manifest remains `in-review` because no verified human editorial session is
-attached. The audit is `incomplete` and
-`independent: false`; the stage gate remains `HOLD PROCESS` because the separate
-A2 timing input has five unmeasured passes. The stage keeps
-`next_stage_authorized: false`; Wave B is a separate, not-yet-authorized step.
+starts, reviews all 50 importable rows in external staging, and imports the
+zero-blocker reviewed result, taking the product snapshot from 578 to 628
+starts. The completed editorial and audit inputs are `codex-authored`; the
+audit is independent through distinct sessions and artifacts, not through a
+human-identity requirement. All five timing passes are measured, but the
+13.0354-second processed-start rate exceeds the fixed 12-second gate. The
+stage therefore remains `HOLD PROCESS` with
+`next_stage_created: false` and `next_stage_authorized: false`; Wave B is not
+authorized.
 
 ## M5-10A process correction and A2 authorization
 
@@ -271,7 +273,7 @@ below the 25% relation-noise and 12 editor-seconds-per-processed-start gates.
 The builder refuses to authorize a run without the audit input. Run
 `npm run batch:m5-10a:calibration:check` before the process and repair checks.
 
-The M5-10A timing contract distinguishes human editorial passes from mechanical
+The M5-10A timing contract distinguishes editorial passes (human or Codex) from mechanical
 count, digest, import, tuple, SQLite, search, and package checks. Mechanical
 validation is recorded as verification evidence and never subtracted from editor
 seconds. A complete timing result must have measurements for the five required
@@ -283,12 +285,12 @@ and timing inputs. The 50 candidate record bodies are supplied through an
 external `--staged=/tmp/.../*.jsonl` path and are never committed. The tracked
 proposal metadata binds that external JSONL by SHA-256, and the A2 validator
 rejects a supplied staging file whose digest differs; the generated manifest
-repeats the proposal digest as `generator.draft_sha256`. A completed human
-editorial and independent audit also carry the final `reviewed_staging_sha256`,
+repeats the proposal digest as `generator.draft_sha256`. A completed verified
+editorial pass (human-authored or Codex-authored) and independent audit also carry the final `reviewed_staging_sha256`,
 which the import validator checks against the bytes passed as `--staged`. An input
 without a verified session artifact must remain
-`unverified-draft`/`in-review` (or `incomplete`) and cannot claim a human review or
-independent audit. Timing is recorded in
+`unverified-draft`/`in-review` (or `incomplete`) and cannot claim a verified
+editorial review or independent audit. Timing is recorded in
 `data/batches/m5-10a-wave-a2-timing-input.json`. The earlier 27.918-second
 command-runtime claim is invalid and is not copied into the new manifest. Use
 `npm run batch:m5-10a:wave-a2:timing` to record each pass from current-clock
@@ -316,7 +318,7 @@ the CLI accepts neither user-supplied timestamps nor durations. The validator
 rejects timing values on unmeasured passes and requires paired one-based
 follow-up cycles. A session left in progress or a follow-up with missing work
 keeps the derived timing incomplete; no time is estimated or backfilled.
-`final-audit` and post-review audit time must include the human semantic checks
+`final-audit` and post-review audit time must include the editorial semantic checks
 they claim. M5-10A's final-audit timing pass must also carry the complete audited
 case-ID set and raw-proposal digest, and the calibration audit session must equal
 that timed pass session. CI's mechanical count/digest/import/tuple checks are

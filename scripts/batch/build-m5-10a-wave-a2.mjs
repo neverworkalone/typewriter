@@ -298,7 +298,7 @@ export async function buildWaveA2Manifest({
       stagedRecordsPath,
     });
   }
-  if (editorialInputSource.value.source_kind === 'human-authored' && !stagedRecordsPath) {
+  if (editorialInputSource.value.source_kind !== 'unverified-draft' && !stagedRecordsPath) {
     const missing = new Error('verified A2 promotion requires an external --staged canonical input');
     missing.code = 'MISSING_A2_STAGED_PATH';
     throw missing;

@@ -12,16 +12,16 @@ import {
   getRecord,
 } from '../scripts/build/query.mjs';
 import {
-  DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import {
-  DEFAULT_INVENTORY_PATH,
   readTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const BATCH_DIRECTORY = path.resolve(TEST_DIRECTORY, '../data/batches');
+const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
+const PRE_A2_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-preimport-inventory.json');
 
 async function readJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
@@ -38,8 +38,8 @@ test('M5-3 calibration manifest, canonical import, and inventory transition stay
   const [manifest, metrics, canonical, inventoryResult] = await Promise.all([
     readJson('m5-3-calibration.json'),
     readJson('m5-3-calibration-metrics.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
-    readTargetInventory(DEFAULT_INVENTORY_PATH),
+    readCanonicalRecords(BASE_CANONICAL_DIRECTORY),
+    readTargetInventory(PRE_A2_INVENTORY_PATH),
   ]);
   const { inventory } = inventoryResult;
 
@@ -125,7 +125,7 @@ test('new calibration lemmas and sense-level relation targets are searchable in 
 
   try {
     await buildDictionary({
-      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
+      inputDirectory: BASE_CANONICAL_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
       allowDirty: true,

@@ -68,6 +68,7 @@ function stageMetrics(metricsArtifact, verification) {
     audit_status: audit.status,
     audit_independent: audit.independent,
     open_audit_blocker_count: audit.open_blocker_count,
+    editorial_review_complete: verification.editorial_review_complete,
     human_editorial_review_complete: verification.human_editorial_review_complete,
     canonical_integrity: verification.canonical_integrity,
     deterministic_sqlite: verification.deterministic_sqlite,
@@ -127,6 +128,7 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
   const usedBuffer = decisions.held_start_count + decisions.rejected_start_count;
   const metricsFromSources = stageMetrics(metrics, verification);
   const gate = evaluateExpansionGate(metricsFromSources, plan);
+  const nextStageReady = gate.gate_status === 'pass';
   const stage = {
     schema_version: '1',
     stage_id: 'm5-10a-wave-a2-plus-50',
@@ -168,8 +170,8 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
     },
     gate_status: gate.gate_status,
     decision: gate.decision,
-    next_stage_created: false,
-    next_stage_authorized: false,
+    next_stage_created: nextStageReady,
+    next_stage_authorized: nextStageReady,
   };
   await writeFile(outputPath, `${JSON.stringify(stage, null, 2)}\n`, 'utf8');
   await validateExpansionStage(stage, plan);

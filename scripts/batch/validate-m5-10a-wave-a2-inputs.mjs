@@ -30,6 +30,9 @@ const auditSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_SCHEMA);
 const timingSchemaValidator = new Ajv2020(schemaOptions).compile(TIMING_SCHEMA);
 const provenanceSchemaValidator = new Ajv2020(schemaOptions).compile(PROVENANCE_SCHEMA);
 
+const VERIFIED_SOURCE_KINDS = Object.freeze(['human-authored', 'codex-authored']);
+const VERIFIED_ACTOR_KINDS = Object.freeze(['human', 'codex']);
+
 export const A2_BATCH_ID = 'm5-10-wave-a2-20260909';
 export const A2_INVENTORY_ID = 'm5-core-5k';
 export const A2_INVENTORY_REVISION = 'm5-10';
@@ -73,7 +76,7 @@ export const A2_TIMING_WORK_UNIT_CONTRACT = Object.freeze({
   'feedback-fixes': Object.freeze({
     unit_kind: 'sense-correction',
     unit_ids: Object.freeze([...A2_PROMOTED_CANONICAL_IDS.filter((canonicalId) => [
-      'w588', 'w595', 'w598', 'w599', 'w603', 'w604', 'w606', 'w609',
+      'w582', 'w588', 'w595', 'w598', 'w599', 'w603', 'w604', 'w606', 'w609',
       'w617', 'w618', 'w619', 'w620', 'w621', 'w622', 'w628',
     ].includes(canonicalId))]),
   }),
@@ -206,19 +209,21 @@ function validateProvenance(input, label, unverifiedStatus = 'in-review') {
   if (input.source_kind === 'unverified-draft') {
     assertEqual(input.status, unverifiedStatus, `${label} unverified draft cannot be complete`, 'UNVERIFIED_INPUT_COMPLETE');
     assertEqual(provenance.verification_status, 'unverified', `${label} provenance status is inconsistent`, 'PROVENANCE_MISMATCH');
-    assertEqual(provenance.actor_kind, 'unknown', `${label} unverified input must not claim a human actor`, 'PROVENANCE_MISMATCH');
-    assertEqual(provenance.actor_id, 'unknown', `${label} unverified input must not name a human actor`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.actor_kind, 'unknown', `${label} unverified input must not claim a verified actor`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.actor_id, 'unknown', `${label} unverified input must not name a verified actor`, 'PROVENANCE_MISMATCH');
     assertEqual(provenance.session_id, null, `${label} unverified input must not claim a session`, 'PROVENANCE_MISMATCH');
     assertEqual(provenance.artifact, null, `${label} unverified input must not claim a session artifact`, 'PROVENANCE_MISMATCH');
     assertEqual(provenance.sha256, null, `${label} unverified input must not claim a session digest`, 'PROVENANCE_MISMATCH');
     return false;
   }
 
-  assertEqual(input.source_kind, 'human-authored', `${label} source_kind is invalid`, 'PROVENANCE_MISMATCH');
-  assertEqual(input.status, 'complete', `${label} human-authored input must be complete`, 'PROVENANCE_REQUIRED');
-  assertEqual(provenance.verification_status, 'verified', `${label} human input must have verified provenance`, 'PROVENANCE_REQUIRED');
-  assertEqual(provenance.actor_kind, 'human', `${label} human input must identify a human actor`, 'PROVENANCE_REQUIRED');
-  assertCondition(provenance.actor_id !== 'unknown', `${label} human input must identify its actor`, 'PROVENANCE_REQUIRED');
+  assertCondition(VERIFIED_SOURCE_KINDS.includes(input.source_kind), `${label} source_kind is invalid`, 'PROVENANCE_MISMATCH');
+  assertEqual(input.status, 'complete', `${label} verified input must be complete`, 'PROVENANCE_REQUIRED');
+  assertEqual(provenance.verification_status, 'verified', `${label} verified input must have verified provenance`, 'PROVENANCE_REQUIRED');
+  const expectedActorKind = input.source_kind === 'codex-authored' ? 'codex' : 'human';
+  assertEqual(provenance.actor_kind, expectedActorKind, `${label} source and actor kinds must agree`, 'PROVENANCE_REQUIRED');
+  assertCondition(VERIFIED_ACTOR_KINDS.includes(provenance.actor_kind), `${label} verified input must identify its actor kind`, 'PROVENANCE_REQUIRED');
+  assertCondition(provenance.actor_id !== 'unknown', `${label} verified input must identify its actor`, 'PROVENANCE_REQUIRED');
   if (input.status === 'complete') {
     assertCondition(provenance.session_id !== null, `${label} complete input must bind a session`, 'PROVENANCE_REQUIRED');
     assertCondition(provenance.artifact !== null, `${label} complete input must bind a session artifact`, 'PROVENANCE_REQUIRED');
@@ -322,8 +327,14 @@ function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fing
     (boundaryId) => recordReview.boundary_evidence[boundaryId].decision === 'split',
   );
   if (decision === 'corrected') {
-    assertCondition(canonicalRecord.senses.length > 1, `${label} corrected record must contain multiple canonical senses`, 'CANONICAL_SENSE_COUNT_MISMATCH');
-    if (verified) assertCondition(splitBoundaries.length > 0, `${label} corrected record must identify a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+    assertCondition(canonicalRecord.senses.length > 0, `${label} corrected record must contain at least one canonical sense`, 'CANONICAL_SENSE_COUNT_MISMATCH');
+    if (verified) {
+      if (canonicalRecord.senses.length > 1) {
+        assertCondition(splitBoundaries.length > 0, `${label} corrected multi-sense record must identify a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+      } else {
+        assertEqual(splitBoundaries, [], `${label} corrected single-sense record cannot claim a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+      }
+    }
   } else if (decision === 'included') {
     assertEqual(canonicalRecord.senses.length, 1, `${label} included record must remain single-sense`, 'CANONICAL_SENSE_COUNT_MISMATCH');
     if (verified) assertEqual(splitBoundaries, [], `${label} included record cannot claim a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
@@ -482,6 +493,10 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
         : recordReview.canonical_id
     ))
     .sort();
+  const splitCanonicalIds = correctedIds.filter((canonicalId) => {
+    const canonicalRecord = recordsById.get(canonicalId);
+    return canonicalRecord?.senses.length > 1;
+  });
   if (verified) {
     assertEqual(
       input.sense_review.reviewed_start_count,
@@ -497,14 +512,14 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
     );
     assertEqual(
       input.sense_review.split_record_count,
-      correctedIds.length,
-      'editorial split count does not match corrected decisions',
+      splitCanonicalIds.length,
+      'editorial split count does not match corrected multi-sense decisions',
       'SENSE_REVIEW_COUNT_MISMATCH',
     );
     assertEqual(
       [...input.sense_review.split_canonical_ids].sort(),
-      correctedIds,
-      'editorial split IDs do not match corrected decisions',
+      [...splitCanonicalIds].sort(),
+      'editorial split IDs do not match corrected multi-sense decisions',
       'SENSE_REVIEW_CORRECTION_MISMATCH',
     );
   } else {
@@ -593,13 +608,13 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
     'AUDIT_STAGING_BINDING_MISMATCH',
   );
   assertCondition(
-    audit.provenance.actor_id !== editorialInput.provenance.actor_id,
-    'independent audit must use a separate auditor identity',
+    audit.provenance.session_id !== editorialInput.provenance.session_id,
+    'independent audit must use a separate pass session',
     'AUDIT_NOT_INDEPENDENT',
   );
   assertCondition(
-    audit.provenance.session_id !== editorialInput.provenance.session_id,
-    'independent audit must use a separate session',
+    audit.provenance.artifact !== editorialInput.provenance.artifact,
+    'independent audit must use a separate pass artifact',
     'AUDIT_NOT_INDEPENDENT',
   );
 
@@ -789,7 +804,7 @@ export async function validateA2ProvenanceArtifact({
   repositoryDirectory,
   subjectKind,
 } = {}) {
-  const verified = input?.source_kind === 'human-authored' && input?.status === 'complete';
+  const verified = VERIFIED_SOURCE_KINDS.includes(input?.source_kind) && input?.status === 'complete';
   if (!verified) return null;
   assertCondition(
     typeof repositoryDirectory === 'string' && repositoryDirectory.length > 0,

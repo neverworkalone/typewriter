@@ -79,14 +79,14 @@ The M5-10A process-correction and repair-authorization artifacts extend that aud
 boundary after the failed Wave A result. They bind the six sense-preflight
 boundaries, record-level evidence checkpoints, the noncanonical 20-case
 candidate-generation calibration, historical relation pre-screen denominator,
-separate human-audit input and derived admission/noise metrics, timing contract,
+separate audit input and derived admission/noise metrics, timing contract,
 and machine verification results by path and SHA-256. The builder requires the
 audit input as a separate source and never treats its own generated output as an
 independent editorial review. The authorization is limited to #96 Wave A2 (+50
-from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The separate
-A2 execution report records the proposed addition in staging; the process
-correction itself preserves the 578-start pre-A2 source snapshot, and product
-canonical data remains unchanged until verified review completes.
+from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The completed
+A2 execution imported only the zero-blocker reviewed result; its timing gate
+still failed, so the current canonical data is 628 starts while Wave B remains
+unauthorized.
 The A2 structured editorial and audit metadata may be tracked in this directory
 when it contains only target selection, proposal identity/decision state,
 the external proposal artifact digest, structured review state, and the HOLD
@@ -94,9 +94,11 @@ cause; it must not carry candidate record bodies, raw draft text, or external
 source text. An explicitly
 unverified/incomplete input cannot produce a completed import claim. A completed
 input additionally requires a provenance artifact that binds its actor, UUID
-session, subject digest, completion time, and artifact digest. Candidate record
-bodies and the reviewed canonical JSONL passed to the import gate stay in a
-temporary workspace outside the repository.
+session, subject digest, completion time, and artifact digest. The actor may be
+human or Codex; a separate audit session and artifact establish independence
+even when the actor is the same Codex. Candidate record bodies and the reviewed
+canonical JSONL passed to the import gate stay in a temporary workspace outside
+the repository.
 
 When a later batch advances `data/canonical/`, a historical canonical directory
 may be retained under `data/batches/` when a source-bound stage report still

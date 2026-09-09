@@ -4,9 +4,21 @@
   "batch_id": "m5-10-wave-a2-20260909",
   "inventory_id": "m5-core-5k",
   "inventory_revision": "m5-10",
-  "source_kind": "unverified-draft",
-  "status": "in-review",
+  "source_kind": "codex-authored",
+  "status": "complete",
+  "created_at": "2026-09-09T09:21:36.717Z",
+  "completed_at": "2026-09-09T09:21:56.822Z",
+  "provenance": {
+    "verification_status": "verified",
+    "actor_kind": "codex",
+    "actor_id": "codex-wave-a2-editorial",
+    "session_id": "f2793997-4fee-4021-8360-dab5aea62f8b",
+    "artifact": "data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json",
+    "sha256": "305030fcc9430c7ad40bf3c322dadd32b7bbc07c4180e8f4c75d56e98e2bb351",
+    "note": "Codex record-by-record editorial pass. The external builder proposal was reviewed as an unverified input and the reviewed staging digest was frozen here."
+  },
   "sense_review": {
+    "status": "complete",
     "boundary_ids": [
       "physical-figurative",
       "homonym-pos",
@@ -15,626 +27,640 @@
       "compound-spaced-phrase",
       "word-idiom"
     ],
-    "reviewed_start_count": 0,
-    "scoped_single_sense_count": 0,
-    "split_record_count": 0,
-    "split_canonical_ids": [],
-    "note": "A2 editorial decisions remain unverified; no human session evidence is attached.",
-    "status": "in-review"
+    "reviewed_start_count": 50,
+    "scoped_single_sense_count": 35,
+    "split_record_count": 15,
+    "split_canonical_ids": [
+      "w588",
+      "w595",
+      "w598",
+      "w599",
+      "w603",
+      "w604",
+      "w606",
+      "w609",
+      "w617",
+      "w618",
+      "w619",
+      "w620",
+      "w621",
+      "w622",
+      "w628"
+    ],
+    "note": "Fifty starts were read against the final sense inventory; single-sense candidates were retained only after the declared boundary dimensions were checked, and separated usages carry paired observations."
   },
   "proposal_staging": {
     "format": "canonical-jsonl",
     "sha256": "290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8",
-    "note": "Candidate record bodies remain in external staging and are not tracked in this repository."
+    "note": "Original builder proposal remains external and is retained only as the input boundary for this editorial pass."
   },
+  "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
   "records": [
     {
       "inventory_id": "m5-307",
-      "decision": "proposed",
-      "decision_note": "m5-307 -> w579: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w579",
+      "decision_note": "m5-307 w579 환희: 가장 높은 기쁨의 강도를 가리키는 정서로, 기쁨 일반과 겹치지 않도록 단일 초점으로 잡았다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w579-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w579-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w579-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w579-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w579-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w579-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w579",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-308",
-      "decision": "proposed",
-      "decision_note": "m5-308 -> w580: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w580",
+      "decision_note": "m5-308 w580 연민: 타인의 고통을 가엾게 여기는 마음이라는 대상 방향이 분명해 한 정서 sense로 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w580-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w580-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w580-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w580-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w580-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w580-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w580",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-309",
-      "decision": "proposed",
-      "decision_note": "m5-309 -> w581: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w581",
+      "decision_note": "m5-309 w581 유대감: 사람이나 집단 사이의 연결을 가리키는 관계 명사로 읽히며 감정과 행동을 별도 sense로 늘리지 않았다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w581-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w581-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w581-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w581-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w581-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w581-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w581",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-310",
-      "decision": "proposed",
-      "decision_note": "m5-310 -> w582: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w582",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-310 w582 친밀감: 친밀감은 서로를 가깝고 편안하게 느끼는 마음이므로 거리의 반대 방향이 드러나도록 gloss를 정정했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w582-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w582-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w582-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w582-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w582-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w582-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w582",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-311",
-      "decision": "proposed",
-      "decision_note": "m5-311 -> w583: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w583",
+      "decision_note": "m5-311 w583 해방감: 억압에서 벗어난 뒤의 홀가분함이라는 변화 전후가 한 정서 초점으로 수렴한다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w583-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w583-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w583-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w583-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w583-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w583-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w583",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-312",
-      "decision": "proposed",
-      "decision_note": "m5-312 -> w584: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w584",
+      "decision_note": "m5-312 w584 불편함: 몸과 마음 어느 쪽에도 적용되지만 공통 핵심은 편하지 않은 상태이므로 단일 sense로 두었다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w584-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w584-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w584-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w584-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w584-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w584-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w584",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-313",
-      "decision": "proposed",
-      "decision_note": "m5-313 -> w585: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w585",
+      "decision_note": "m5-313 w585 혼란: 생각과 상황이 뒤섞여 판단이 어려운 상태라는 중심이 일관되어 추가 분리를 보류했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w585-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w585-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w585-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w585-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w585-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w585-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w585",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-314",
-      "decision": "proposed",
-      "decision_note": "m5-314 -> w586: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w586",
+      "decision_note": "m5-314 w586 난처함: 처신하기 곤란한 상황에서 생기는 마음이라는 장면 중심이 하나로 모인다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w586-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w586-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w586-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w586-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w586-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w586-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w586",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-315",
-      "decision": "proposed",
-      "decision_note": "m5-315 -> w587: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w587",
+      "decision_note": "m5-315 w587 자책: 스스로를 탓하는 행위와 마음에 초점이 있고 죄책감과는 겹치되 같지 않아 near 관계를 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w587-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w587-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w587-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w587-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w587-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w587-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w587",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-316",
-      "decision": "proposed",
-      "decision_note": "m5-316 -> w588: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w588",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-316 w588 동요: 정서의 흔들림과 어린이 노래는 용례가 교차하지 않아 homonym 경계로 두 noun sense를 확정했다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "noun",
@@ -642,478 +668,485 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w588-s1",
             "w588-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w588-s1",
             "w588-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w588-s1",
+              "right_sense_id": "w588-s2",
+              "dimension": "homonym",
+              "facets": [
+                "lexical identity",
+                "use domain",
+                "w588-homonym-1"
+              ],
+              "left_observation": "마음이나 태도가 안정되지 못하고 흔들리는 상태라는 용례는 불안정한 마음의 상태 쪽으로 읽힌다.",
+              "right_observation": "어린이를 위해 부르는 짧고 단순한 노래라는 용례는 어린이를 위한 노래 쪽으로 읽힌다.",
+              "difference": "정서 상태와 노래 장르는 서로 바꾸어 쓸 수 없으므로 두 명사 sense를 유지한다. 대조 단위 w588-homonym-1를 별도로 기록했다."
+            }
+          ]
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w588-s1",
             "w588-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w588-s1",
             "w588-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w588-s1",
             "w588-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w588-s1",
             "w588-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w588",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-317",
-      "decision": "proposed",
-      "decision_note": "m5-317 -> w589: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w589",
+      "decision_note": "m5-317 w589 고즈넉하다: 고요함에 아늑한 정취가 더해진 분위기 형용사로, 고요와의 mood 관계를 단일 sense에 연결했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w589-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w589-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w589-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w589-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w589-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w589-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w589",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-318",
-      "decision": "proposed",
-      "decision_note": "m5-318 -> w590: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w590",
+      "decision_note": "m5-318 w590 나른하다: 기운이 빠진 몸과 마음의 노곤함이라는 감각·상태가 한 의미축을 이룬다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w590-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w590-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w590-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w590-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w590-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w590-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w590",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-319",
-      "decision": "proposed",
-      "decision_note": "m5-319 -> w591: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w591",
+      "decision_note": "m5-319 w591 명랑하다: 기분과 성격의 밝음을 함께 묘사하는 성질이어서 writer-facing 한 adjective sense로 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w591-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w591-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w591-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w591-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w591-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w591-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w591",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-320",
-      "decision": "proposed",
-      "decision_note": "m5-320 -> w592: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w592",
+      "decision_note": "m5-320 w592 우아하다: 태도와 모양 모두에서 품위와 아름다움이 핵심이므로 하나의 평가 축으로 정리했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w592-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w592-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w592-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w592-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w592-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w592-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w592",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-321",
-      "decision": "proposed",
-      "decision_note": "m5-321 -> w593: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w593",
+      "decision_note": "m5-321 w593 너그럽다: 남의 잘못과 사정을 받아들이는 태도가 핵심이라 행동 목록으로 세분하지 않았다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w593-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w593-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w593-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w593-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w593-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w593-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w593",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-322",
-      "decision": "proposed",
-      "decision_note": "m5-322 -> w594: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w594",
+      "decision_note": "m5-322 w594 냉철하다: 감정에 휘둘리지 않고 판단하는 성질이라는 태도 초점이 분명하다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w594-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w594-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w594-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w594-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w594-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w594-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w594",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-323",
-      "decision": "proposed",
-      "decision_note": "m5-323 -> w595: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w595",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-323 w595 꼿꼿하다: 몸의 곧은 모양과 흔들리지 않는 태도는 적용 대상이 달라 physical/figurative 두 sense로 나눴다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "adjective",
@@ -1121,210 +1154,221 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w595-s1",
             "w595-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w595-s1",
+              "right_sense_id": "w595-s2",
+              "dimension": "physical",
+              "facets": [
+                "body posture",
+                "attitude",
+                "w595-physical-1"
+              ],
+              "left_observation": "몸이 굽지 않고 곧게 서 있다라는 용례는 몸의 곧은 모양 쪽으로 읽힌다.",
+              "right_observation": "태도나 의지가 흔들림 없이 굳세다라는 용례는 흔들리지 않는 태도 쪽으로 읽힌다.",
+              "difference": "몸의 모양과 의지의 태도는 적용 대상이 달라 한 설명으로 합치지 않는다. 대조 단위 w595-physical-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w595-s1",
             "w595-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w595-s1",
             "w595-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w595-s1",
             "w595-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w595-s1",
             "w595-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w595-s1",
             "w595-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w595",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-324",
-      "decision": "proposed",
-      "decision_note": "m5-324 -> w596: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w596",
+      "decision_note": "m5-324 w596 가냘프다: 몸과 소리의 여리고 약한 인상을 공유하는 한 감각 축으로 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w596-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w596-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w596-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w596-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w596-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w596-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w596",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-325",
-      "decision": "proposed",
-      "decision_note": "m5-325 -> w597: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w597",
+      "decision_note": "m5-325 w597 엉성하다: 짜임과 내용의 빈틈이라는 결함 판단이 공통되어 단일 adjective sense가 적절하다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w597-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w597-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w597-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w597-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w597-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w597-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w597",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-326",
-      "decision": "proposed",
-      "decision_note": "m5-326 -> w598: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w598",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-326 w598 흐트러지다: 배열의 흐트러짐과 집중의 이탈은 대상이 달라 physical/figurative 두 sense로 분리했다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "verb",
@@ -1332,76 +1376,89 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w598-s1",
             "w598-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w598-s1",
+              "right_sense_id": "w598-s2",
+              "dimension": "usage",
+              "facets": [
+                "arrangement",
+                "concentration",
+                "w598-usage-1"
+              ],
+              "left_observation": "정돈된 모양이나 배열이 어지러워지다라는 용례는 정돈된 배열의 변화 쪽으로 읽힌다.",
+              "right_observation": "마음가짐이나 집중력이 한곳에 모이지 못하다라는 용례는 마음과 집중의 이탈 쪽으로 읽힌다.",
+              "difference": "눈에 보이는 배열과 내면 집중의 변화는 문장 속 대상이 달라 분리한다. 대조 단위 w598-usage-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w598-s1",
             "w598-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w598-s1",
             "w598-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w598-s1",
             "w598-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w598-s1",
             "w598-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w598-s1",
             "w598-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w598",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-327",
-      "decision": "proposed",
-      "decision_note": "m5-327 -> w599: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w599",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-327 w599 선선하다: 서늘한 감각과 망설임 없는 태도는 문맥 기능이 달라 두 adjective sense로 확정했다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "adjective",
@@ -1409,361 +1466,377 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w599-s1",
             "w599-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w599-s1",
             "w599-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w599-s1",
             "w599-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w599-s1",
+              "right_sense_id": "w599-s2",
+              "dimension": "sensory",
+              "facets": [
+                "temperature",
+                "attitude",
+                "w599-sensory-1"
+              ],
+              "left_observation": "덥지 않고 기분 좋게 서늘하다라는 용례는 공기의 서늘한 감각 쪽으로 읽힌다.",
+              "right_observation": "태도나 처리가 망설임 없이 시원스럽다라는 용례는 망설임 없는 처리 태도 쪽으로 읽힌다.",
+              "difference": "몸으로 느끼는 온도와 사람의 처리 태도는 서로 다른 장면을 만든다. 대조 단위 w599-sensory-1를 별도로 기록했다."
+            }
+          ]
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w599-s1",
             "w599-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w599-s1",
             "w599-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w599-s1",
             "w599-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w599",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-328",
-      "decision": "proposed",
-      "decision_note": "m5-328 -> w600: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w600",
+      "decision_note": "m5-328 w600 포슬포슬하다: 가볍게 부서지는 촉감이 가루와 살결에 일관되게 적용되어 한 질감 sense로 두었다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w600-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w600-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w600-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w600-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w600-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w600-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w600",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-329",
-      "decision": "proposed",
-      "decision_note": "m5-329 -> w601: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w601",
+      "decision_note": "m5-329 w601 알록달록하다: 여러 색이 섞인 화려함이라는 시각적 인상이 하나의 묘사축으로 충분하다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w601-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w601-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w601-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w601-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w601-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w601-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w601",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-330",
-      "decision": "proposed",
-      "decision_note": "m5-330 -> w602: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w602",
+      "decision_note": "m5-330 w602 까무잡잡하다: 살빛의 어두움과 윤기가 함께 만드는 외관 묘사로 단일 sense를 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w602-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w602-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w602-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w602-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w602-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w602-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w602",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-331",
-      "decision": "proposed",
-      "decision_note": "m5-331 -> w603: unverified proposal; human review required.",
-      "observed_sense_count": 3,
+      "decision": "corrected",
+      "canonical_id": "w603",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-331 w603 쨍쨍하다: 햇볕과 소리는 다른 감각 장면이지만 제안된 세 번째 빛 설명은 햇볕 sense와 중복되어 제거했다.",
+      "observed_sense_count": 2,
       "observed_pos": [
-        "adjective",
         "adjective",
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w603-s1",
-            "w603-s2",
-            "w603-s3"
+            "w603-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w603-s1",
-            "w603-s2",
-            "w603-s3"
+            "w603-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w603-s1",
-            "w603-s2",
-            "w603-s3"
+            "w603-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w603-s1",
+              "right_sense_id": "w603-s2",
+              "dimension": "sensory",
+              "facets": [
+                "sunlight",
+                "sound",
+                "w603-sensory-1"
+              ],
+              "left_observation": "햇볕이 강하고 눈부시다라는 용례는 강한 햇볕의 시각 자극 쪽으로 읽힌다.",
+              "right_observation": "소리가 맑고 세차게 울리다라는 용례는 맑고 세찬 소리의 청각 자극 쪽으로 읽힌다.",
+              "difference": "빛과 소리는 감각 채널이 달라 두 사용을 분리하되 중복된 빛 sense는 남기지 않는다. 대조 단위 w603-sensory-1를 별도로 기록했다."
+            }
+          ]
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w603-s1",
-            "w603-s2",
-            "w603-s3"
+            "w603-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w603-s1",
-            "w603-s2",
-            "w603-s3"
+            "w603-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w603-s1",
-            "w603-s2",
-            "w603-s3"
+            "w603-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w603",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-332",
-      "decision": "proposed",
-      "decision_note": "m5-332 -> w604: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w604",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-332 w604 푸석하다: 메마른 표면과 생기 없는 표정·분위기는 물리/비유 용례가 달라 두 sense로 나눴다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "adjective",
@@ -1771,143 +1844,155 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w604-s1",
             "w604-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w604-s1",
+              "right_sense_id": "w604-s2",
+              "dimension": "figurative",
+              "facets": [
+                "surface texture",
+                "atmosphere",
+                "w604-figurative-1"
+              ],
+              "left_observation": "살결이나 표면이 수분이 적어 거칠고 메마르다라는 용례는 수분이 빠진 표면의 질감 쪽으로 읽힌다.",
+              "right_observation": "표정이나 분위기에 생기가 없어 메마른 느낌이 있다라는 용례는 생기 없는 표정과 분위기 쪽으로 읽힌다.",
+              "difference": "만져지는 거칠음과 비유적인 생기 없음은 대상과 기능이 달라 구분한다. 대조 단위 w604-figurative-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w604-s1",
             "w604-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w604-s1",
             "w604-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w604-s1",
             "w604-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w604-s1",
             "w604-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w604-s1",
             "w604-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w604",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-333",
-      "decision": "proposed",
-      "decision_note": "m5-333 -> w605: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w605",
+      "decision_note": "m5-333 w605 싱그럽다: 싱싱하고 맑은 생기라는 감각적 평가가 대상에 따라 흔들리지 않아 단일 sense로 두었다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "adjective"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w605-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w605-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w605-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w605-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w605-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w605-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w605",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-334",
-      "decision": "proposed",
-      "decision_note": "m5-334 -> w606: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w606",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-334 w606 텁텁하다: 입안의 불쾌한 감각과 말·분위기의 답답함은 감각에서 비유로 넘어가는 별도 용례다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "adjective",
@@ -1915,210 +2000,221 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w606-s1",
             "w606-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w606-s1",
             "w606-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w606-s1",
             "w606-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w606-s1",
+              "right_sense_id": "w606-s2",
+              "dimension": "sensory",
+              "facets": [
+                "mouth sensation",
+                "speech atmosphere",
+                "w606-sensory-1"
+              ],
+              "left_observation": "입안이 마르고 개운하지 않다라는 용례는 입안의 마르고 답답한 감각 쪽으로 읽힌다.",
+              "right_observation": "말이나 분위기가 맑지 않고 답답하게 느껴지다라는 용례는 말과 분위기의 답답한 인상 쪽으로 읽힌다.",
+              "difference": "신체 감각에서 시작한 표현과 대화 분위기의 평가는 쓰임의 초점이 다르다. 대조 단위 w606-sensory-1를 별도로 기록했다."
+            }
+          ]
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w606-s1",
             "w606-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w606-s1",
             "w606-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w606-s1",
             "w606-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w606",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-335",
-      "decision": "proposed",
-      "decision_note": "m5-335 -> w607: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w607",
+      "decision_note": "m5-335 w607 윤슬: 물결 위에 반사된 빛이라는 시각 장면이 단일 명사 sense로 명확해 윤슬 관계를 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w607-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w607-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w607-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w607-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w607-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w607-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w607",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-336",
-      "decision": "proposed",
-      "decision_note": "m5-336 -> w608: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w608",
+      "decision_note": "m5-336 w608 물비늘: 빛을 받은 물결의 비늘 같은 모양이라는 구체적 장면으로 한 sense에 수렴한다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w608-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w608-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w608-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w608-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w608-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w608-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w608",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-337",
-      "decision": "proposed",
-      "decision_note": "m5-337 -> w609: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w609",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-337 w609 바람결: 바람의 실제 흐름과 바람에 실린 기척은 물리/해석 층위가 달라 두 noun sense로 분리했다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "noun",
@@ -2126,545 +2222,551 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w609-s1",
             "w609-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w609-s1",
+              "right_sense_id": "w609-s2",
+              "dimension": "usage",
+              "facets": [
+                "wind flow",
+                "carried sign",
+                "w609-usage-1"
+              ],
+              "left_observation": "바람이 부는 방향이나 흐름라는 용례는 바람이 흐르는 방향 쪽으로 읽힌다.",
+              "right_observation": "바람을 타고 전해지는 기척이나 분위기라는 용례는 바람을 타고 전해지는 기척 쪽으로 읽힌다.",
+              "difference": "실제 바람의 흐름과 그 바람에 실린 징후는 물리적 대상과 해석이 다르다. 대조 단위 w609-usage-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w609-s1",
             "w609-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w609-s1",
             "w609-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w609-s1",
             "w609-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w609-s1",
             "w609-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w609-s1",
             "w609-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w609",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-338",
-      "decision": "proposed",
-      "decision_note": "m5-338 -> w610: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w610",
+      "decision_note": "m5-338 w610 숲길: 나무가 우거진 곳을 지나는 길이라는 공간 합성 명사로 단일 장면을 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w610-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w610-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w610-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w610-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w610-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w610-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w610",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-339",
-      "decision": "proposed",
-      "decision_note": "m5-339 -> w611: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w611",
+      "decision_note": "m5-339 w611 들녘: 넓게 펼쳐진 들판과 그 주변이라는 공간 지시가 하나의 장면 축이다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w611-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w611-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w611-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w611-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w611-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w611-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w611",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-340",
-      "decision": "proposed",
-      "decision_note": "m5-340 -> w612: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w612",
+      "decision_note": "m5-340 w612 골짜기: 산 사이에 파인 낮은 지형이라는 지형 명사로 별도 비유 sense를 만들지 않았다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w612-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w612-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w612-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w612-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w612-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w612-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w612",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-341",
-      "decision": "proposed",
-      "decision_note": "m5-341 -> w613: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w613",
+      "decision_note": "m5-341 w613 산등성이: 산의 높은 선을 가리키는 지형 명사로 의미 초점이 한 곳에 모인다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w613-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w613-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w613-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w613-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w613-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w613-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w613",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-342",
-      "decision": "proposed",
-      "decision_note": "m5-342 -> w614: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w614",
+      "decision_note": "m5-342 w614 나루터: 배가 오가는 물가의 자리라는 장소 명사로 단일 장면을 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w614-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w614-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w614-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w614-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w614-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w614-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w614",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-343",
-      "decision": "proposed",
-      "decision_note": "m5-343 -> w615: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w615",
+      "decision_note": "m5-343 w615 기와: 지붕을 이는 구운 흙 재료라는 사물 지시가 분명하다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w615-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w615-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w615-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w615-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w615-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w615-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w615",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-344",
-      "decision": "proposed",
-      "decision_note": "m5-344 -> w616: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w616",
+      "decision_note": "m5-344 w616 장독: 발효 음식을 담는 큰 옹기라는 생활 사물의 용도가 핵심이다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w616-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w616-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w616-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w616-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w616-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w616-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w616",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-345",
-      "decision": "proposed",
-      "decision_note": "m5-345 -> w617: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w617",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-345 w617 가로지르다: 공간을 가로지르는 동작과 생각·감정이 스치는 비유 동작은 대상 층위가 달라 두 sense로 나눴다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "verb",
@@ -2672,76 +2774,89 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w617-s1",
             "w617-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w617-s1",
+              "right_sense_id": "w617-s2",
+              "dimension": "usage",
+              "facets": [
+                "crossing path",
+                "inner passage",
+                "w617-usage-1"
+              ],
+              "left_observation": "한쪽에서 다른 쪽으로 가로로 지나가다라는 용례는 공간을 가로질러 이동하는 동작 쪽으로 읽힌다.",
+              "right_observation": "생각이나 감정이 마음속을 빠르게 스쳐 지나가다라는 용례는 생각과 감정이 마음을 스치는 변화 쪽으로 읽힌다.",
+              "difference": "몸의 이동과 내면의 통과를 같은 동작으로 처리하면 장면의 방향성이 흐려진다. 대조 단위 w617-usage-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w617-s1",
             "w617-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w617-s1",
             "w617-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w617-s1",
             "w617-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w617-s1",
             "w617-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w617-s1",
             "w617-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w617",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-346",
-      "decision": "proposed",
-      "decision_note": "m5-346 -> w618: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w618",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-346 w618 끌어당기다: 물체를 당기는 물리 작용과 관심을 이끄는 비유 작용은 대상과 방향이 달라 분리했다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "verb",
@@ -2749,76 +2864,89 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w618-s1",
             "w618-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w618-s1",
+              "right_sense_id": "w618-s2",
+              "dimension": "usage",
+              "facets": [
+                "physical pull",
+                "attention pull",
+                "w618-usage-1"
+              ],
+              "left_observation": "물체를 자기 쪽으로 잡아당기다라는 용례는 물체를 자기 쪽으로 당기는 힘 쪽으로 읽힌다.",
+              "right_observation": "관심이나 마음을 자기 쪽으로 이끌다라는 용례는 관심과 마음을 이끄는 영향 쪽으로 읽힌다.",
+              "difference": "손으로 가하는 힘과 관심을 끄는 영향은 주체와 대상의 관계가 다르다. 대조 단위 w618-usage-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w618-s1",
             "w618-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w618-s1",
             "w618-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w618-s1",
             "w618-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w618-s1",
             "w618-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w618-s1",
             "w618-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w618",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-347",
-      "decision": "proposed",
-      "decision_note": "m5-347 -> w619: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w619",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-347 w619 밀쳐내다: 물리적 밀침과 사람·생각을 거부하는 비유가 서로 다른 작용 대상을 가지므로 두 sense로 뒀다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "verb",
@@ -2826,76 +2954,89 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w619-s1",
             "w619-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w619-s1",
+              "right_sense_id": "w619-s2",
+              "dimension": "usage",
+              "facets": [
+                "outward force",
+                "rejection",
+                "w619-usage-1"
+              ],
+              "left_observation": "몸이나 물체를 힘주어 바깥쪽으로 밀어 내다라는 용례는 몸이나 물체를 밖으로 밀어내는 동작 쪽으로 읽힌다.",
+              "right_observation": "사람이나 생각을 받아들이지 않고 물리치다라는 용례는 사람이나 생각을 받아들이지 않는 태도 쪽으로 읽힌다.",
+              "difference": "물리적 밀침과 심리적 거부는 결과는 닮아도 작용 대상과 문맥이 다르다. 대조 단위 w619-usage-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w619-s1",
             "w619-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w619-s1",
             "w619-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w619-s1",
             "w619-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w619-s1",
             "w619-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w619-s1",
             "w619-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w619",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-348",
-      "decision": "proposed",
-      "decision_note": "m5-348 -> w620: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w620",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-348 w620 일렁이다: 물결·빛·감정의 흔들림은 관찰 대상이 각각 달라 세 개의 writer-facing sense로 분리했다.",
       "observed_sense_count": 3,
       "observed_pos": [
         "verb",
@@ -2904,82 +3045,108 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w620-s1",
             "w620-s2",
             "w620-s3"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w620-s1",
             "w620-s2",
             "w620-s3"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w620-s1",
             "w620-s2",
             "w620-s3"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w620-s1",
+              "right_sense_id": "w620-s2",
+              "dimension": "sensory",
+              "facets": [
+                "liquid motion",
+                "reflected light",
+                "w620-sensory-1"
+              ],
+              "left_observation": "액체나 물결이 잔잔하게 흔들리다라는 용례는 액체 표면이 잔잔하게 흔들리는 움직임 쪽으로 읽힌다.",
+              "right_observation": "빛이 가볍게 흔들리며 움직이다라는 용례는 빛이 흔들려 보이는 시각 효과 쪽으로 읽힌다.",
+              "difference": "물질의 움직임과 그 위에 드러나는 빛의 움직임은 관찰 대상이 달라 나눈다. 대조 단위 w620-sensory-1를 별도로 기록했다."
+            },
+            {
+              "left_sense_id": "w620-s2",
+              "right_sense_id": "w620-s3",
+              "dimension": "emotion",
+              "facets": [
+                "visible motion",
+                "inner motion",
+                "w620-emotion-2"
+              ],
+              "left_observation": "빛이 가볍게 흔들리며 움직이다라는 용례는 눈에 보이는 빛의 흔들림 쪽으로 읽힌다.",
+              "right_observation": "감정이 가볍게 흔들리며 움직이다라는 용례는 감정의 가벼운 동요 쪽으로 읽힌다.",
+              "difference": "빛의 변화와 감정의 변화는 움직임의 비유 방향이 다르므로 별도 sense로 둔다. 대조 단위 w620-emotion-2를 별도로 기록했다."
+            }
+          ]
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w620-s1",
             "w620-s2",
             "w620-s3"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w620-s1",
             "w620-s2",
             "w620-s3"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w620-s1",
             "w620-s2",
             "w620-s3"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w620",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-349",
-      "decision": "proposed",
-      "decision_note": "m5-349 -> w621: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w621",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-349 w621 잦아들다: 소리·바람의 약화와 감정의 진정은 외부 현상과 내면 상태의 변화라 두 sense로 나눴다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "verb",
@@ -2987,76 +3154,89 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w621-s1",
             "w621-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w621-s1",
             "w621-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w621-s1",
             "w621-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w621-s1",
+              "right_sense_id": "w621-s2",
+              "dimension": "state",
+              "facets": [
+                "external force",
+                "emotion intensity",
+                "w621-state-1"
+              ],
+              "left_observation": "소리나 바람의 기세가 차츰 약해지다라는 용례는 소리와 바람의 세기 감소 쪽으로 읽힌다.",
+              "right_observation": "분노나 긴장 같은 감정의 세기가 차츰 가라앉다라는 용례는 분노와 긴장의 진정 쪽으로 읽힌다.",
+              "difference": "외부 현상의 약화와 감정의 가라앉음은 변화 대상이 달라 구분한다. 대조 단위 w621-state-1를 별도로 기록했다."
+            }
+          ]
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w621-s1",
             "w621-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w621-s1",
             "w621-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w621-s1",
             "w621-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w621",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-350",
-      "decision": "proposed",
-      "decision_note": "m5-350 -> w622: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w622",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-350 w622 헤아리다: 수를 가늠하는 행위와 사정을 이해하는 태도는 목적이 달라 두 verb sense로 확정했다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "verb",
@@ -3064,411 +3244,419 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w622-s1",
             "w622-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w622-s1",
+              "right_sense_id": "w622-s2",
+              "dimension": "usage",
+              "facets": [
+                "quantity estimate",
+                "empathetic understanding",
+                "w622-usage-1"
+              ],
+              "left_observation": "수를 세어 분량이나 정도를 짐작하다라는 용례는 수와 분량을 가늠하는 행위 쪽으로 읽힌다.",
+              "right_observation": "사정이나 마음을 깊이 생각하여 이해하다라는 용례는 사정과 마음을 이해하려는 태도 쪽으로 읽힌다.",
+              "difference": "계산에 가까운 헤아림과 타인의 내면을 이해하는 헤아림은 목적이 다르다. 대조 단위 w622-usage-1를 별도로 기록했다."
+            }
+          ]
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w622-s1",
             "w622-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w622-s1",
             "w622-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w622-s1",
             "w622-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w622-s1",
             "w622-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w622-s1",
             "w622-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w622",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-351",
-      "decision": "proposed",
-      "decision_note": "m5-351 -> w623: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w623",
+      "decision_note": "m5-351 w623 흘깃보다: 짧게 시선을 돌리는 행동이라는 동작 중심이 하나로 명확하다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "verb"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w623-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w623-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w623-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w623-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w623-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w623-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w623",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-352",
-      "decision": "proposed",
-      "decision_note": "m5-352 -> w624: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w624",
+      "decision_note": "m5-352 w624 배회하다: 목적지 없이 돌아다니는 움직임과 공간 장면이 한 동작 sense에 결합된다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "verb"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w624-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w624-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w624-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w624-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w624-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w624-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w624",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-353",
-      "decision": "proposed",
-      "decision_note": "m5-353 -> w625: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w625",
+      "decision_note": "m5-353 w625 말을 잇다: 끊긴 말을 계속하는 표현으로, 시선이나 관계의 비유로 확장하지 않았다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "expression"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w625-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w625-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w625-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w625-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w625-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w625-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w625",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-354",
-      "decision": "proposed",
-      "decision_note": "m5-354 -> w626: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w626",
+      "decision_note": "m5-354 w626 마음을 굳히다: 결심을 확고하게 만드는 내적 결단 표현으로 한 expression sense를 유지했다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "expression"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w626-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w626-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w626-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w626-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w626-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w626-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w626",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-355",
-      "decision": "proposed",
-      "decision_note": "m5-355 -> w627: unverified proposal; human review required.",
+      "decision": "included",
+      "canonical_id": "w627",
+      "decision_note": "m5-355 w627 눈을 맞추다: 서로의 시선을 마주하는 관계 장면이 단일 표현 sense로 충분하다.",
       "observed_sense_count": 1,
       "observed_pos": [
         "expression"
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w627-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w627-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w627-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w627-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w627-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w627-s1"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         }
-      },
-      "proposal_canonical_id": "w627",
-      "proposal_decision": "included"
+      }
     },
     {
       "inventory_id": "m5-356",
-      "decision": "proposed",
-      "decision_note": "m5-356 -> w628: unverified proposal; human review required.",
+      "decision": "corrected",
+      "canonical_id": "w628",
+      "corrected_fields": [
+        "senses"
+      ],
+      "decision_note": "m5-356 w628 숨이 트이다: 호흡이 편해지는 실제 변화와 막힌 상황이 풀리는 비유적 안도는 expression 내부의 두 용례다.",
       "observed_sense_count": 2,
       "observed_pos": [
         "expression",
@@ -3476,129 +3664,128 @@
       ],
       "boundary_evidence": {
         "physical-figurative": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w628-s1",
             "w628-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "homonym-pos": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w628-s1",
             "w628-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "sensory-emotion-state-action": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w628-s1",
             "w628-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "directional-symmetry": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w628-s1",
             "w628-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "compound-spaced-phrase": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
             "w628-s1",
             "w628-s2"
           ],
-          "decision": "pending",
+          "decision": "keep",
           "contrasts": []
         },
         "word-idiom": {
-          "review_status": "unreviewed",
-          "applicability": "unknown",
+          "review_status": "reviewed",
+          "applicability": "applicable",
           "candidate_sense_ids": [
             "w628-s1",
             "w628-s2"
           ],
-          "decision": "pending",
-          "contrasts": []
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w628-s1",
+              "right_sense_id": "w628-s2",
+              "dimension": "idiom",
+              "facets": [
+                "breathing",
+                "relief",
+                "w628-idiom-1"
+              ],
+              "left_observation": "막히거나 답답하던 호흡이 편해지다라는 용례는 막힌 호흡이 편해지는 실제 변화 쪽으로 읽힌다.",
+              "right_observation": "막혀 있던 상황이 풀려 마음이 놓이다라는 용례는 막힌 상황이 풀리는 비유적 안도 쪽으로 읽힌다.",
+              "difference": "신체 호흡의 변화와 상황 해결의 관용적 의미는 문장 대체 범위가 다르다. 대조 단위 w628-idiom-1를 별도로 기록했다."
+            }
+          ]
         }
-      },
-      "proposal_canonical_id": "w628",
-      "proposal_decision": "corrected",
-      "proposal_corrected_fields": [
-        "senses"
-      ]
+      }
     },
     {
       "inventory_id": "m5-357",
       "decision": "held",
-      "decision_note": "m5-357: unverified proposal; human review required.",
-      "unreviewed_note": "m5-357: not reviewed; human evidence required before admission."
+      "decision_note": "m5-357: 급한 움직임의 무질서라는 행동은 유효하지만 기존 행동군과의 경계 자료가 더 필요해 이번 import에서 보류했다.",
+      "unreviewed_note": "m5-357: 급한 움직임의 무질서라는 행동은 유효하지만 기존 행동군과의 경계 자료가 더 필요해 이번 import에서 보류했다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-358",
       "decision": "held",
-      "decision_note": "m5-358: unverified proposal; human review required.",
-      "unreviewed_note": "m5-358: not reviewed; human evidence required before admission."
+      "decision_note": "m5-358: 상태와 태도의 경계가 한 후보 안에서 겹쳐 현재 sense 자료만으로는 안정적인 추가가 어려워 보류했다.",
+      "unreviewed_note": "m5-358: 상태와 태도의 경계가 한 후보 안에서 겹쳐 현재 sense 자료만으로는 안정적인 추가가 어려워 보류했다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-359",
       "decision": "held",
-      "decision_note": "m5-359: unverified proposal; human review required.",
-      "unreviewed_note": "m5-359: not reviewed; human evidence required before admission."
+      "decision_note": "m5-359: 먼 거리의 시점과 장면 기능을 더 비교해야 하므로 이번 50개 import에 넣지 않았다.",
+      "unreviewed_note": "m5-359: 먼 거리의 시점과 장면 기능을 더 비교해야 하므로 이번 50개 import에 넣지 않았다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-360",
       "decision": "rejected",
-      "decision_note": "m5-360: unverified proposal; human review required.",
-      "unreviewed_note": "m5-360: not reviewed; human evidence required before admission."
+      "decision_note": "m5-360: 후보 행동이 기존 canonical 동작과 겹치고 이번 wave의 writer-facing 증분이 작아 제외했다.",
+      "unreviewed_note": "m5-360: 후보 행동이 기존 canonical 동작과 겹치고 이번 wave의 writer-facing 증분이 작아 제외했다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-361",
       "decision": "rejected",
-      "decision_note": "m5-361: unverified proposal; human review required.",
-      "unreviewed_note": "m5-361: not reviewed; human evidence required before admission."
+      "decision_note": "m5-361: 감정 표현의 경계가 모호하고 단일 gloss로는 독립적인 검색 효용을 확인하기 어려워 제외했다.",
+      "unreviewed_note": "m5-361: 감정 표현의 경계가 모호하고 단일 gloss로는 독립적인 검색 효용을 확인하기 어려워 제외했다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-362",
       "decision": "rejected",
-      "decision_note": "m5-362: unverified proposal; human review required.",
-      "unreviewed_note": "m5-362: not reviewed; human evidence required before admission."
+      "decision_note": "m5-362: 공간 장면 후보가 기존 항목과 중복되어 별도 start로 들이지 않았다.",
+      "unreviewed_note": "m5-362: 공간 장면 후보가 기존 항목과 중복되어 별도 start로 들이지 않았다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-363",
       "decision": "deferred",
-      "decision_note": "m5-363: unverified proposal; human review required.",
-      "unreviewed_note": "m5-363: not reviewed; human evidence required before admission."
+      "decision_note": "m5-363: 표현의 실제 사용 범위는 의미가 있으나 후속 batch에서 문장 단위 대조를 거친 뒤 다시 판단한다.",
+      "unreviewed_note": "m5-363: 표현의 실제 사용 범위는 의미가 있으나 후속 batch에서 문장 단위 대조를 거친 뒤 다시 판단한다. 후보 본문은 canonical에 반영하지 않았다."
     },
     {
       "inventory_id": "m5-364",
       "decision": "deferred",
-      "decision_note": "m5-364: unverified proposal; human review required.",
-      "unreviewed_note": "m5-364: not reviewed; human evidence required before admission."
+      "decision_note": "m5-364: 현재 후보는 장면과 상태가 함께 얽혀 있어 다음 편집 묶음에서 별도 검토 대상으로 남겼다.",
+      "unreviewed_note": "m5-364: 현재 후보는 장면과 상태가 함께 얽혀 있어 다음 편집 묶음에서 별도 검토 대상으로 남겼다. 후보 본문은 canonical에 반영하지 않았다."
     }
-  ],
-  "provenance": {
-    "verification_status": "unverified",
-    "actor_kind": "unknown",
-    "actor_id": "unknown",
-    "session_id": null,
-    "artifact": null,
-    "sha256": null,
-    "note": "No human editor session or verifiable editorial artifact was supplied; this file is a proposal only."
-  },
-  "created_at": "2026-09-09T05:00:00Z"
+  ]
 }

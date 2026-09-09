@@ -16,7 +16,6 @@ import {
   summarizeRelationDiff,
 } from '../scripts/batch/relation-diff.mjs';
 import {
-  DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import {
@@ -25,6 +24,7 @@ import {
 } from '../scripts/build/query.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
+const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
 
 async function readJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
@@ -35,7 +35,7 @@ test('M5-5 recalibration artifacts record the fixed gate result', async () => {
     readJson('m5-5-recalibration.json'),
     readJson('m5-5-recalibration-relation-diff.json'),
     readJson('m5-5-recalibration-metrics.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(BASE_CANONICAL_DIRECTORY),
     readJson('m5-9-preimport-inventory.json'),
   ]);
 
@@ -123,7 +123,7 @@ test('M5-5 recalibration records and reference closure are searchable', async ()
 
   try {
     await buildDictionary({
-      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
+      inputDirectory: BASE_CANONICAL_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
       allowDirty: true,
@@ -156,7 +156,7 @@ test('M5-7 new 40-start batch reproduces the updated expansion gate result', asy
     readJson('m5-7-recalibration.json'),
     readJson('m5-7-recalibration-relation-diff.json'),
     readJson('m5-7-recalibration-metrics.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(BASE_CANONICAL_DIRECTORY),
     readJson('m5-9-preimport-inventory.json'),
     readFile(path.join(BATCH_DIRECTORY, 'm5-7-preimport-inventory.json'), 'utf8').then(JSON.parse),
   ]);
@@ -269,7 +269,7 @@ test('M5-7 imported starts and expressions are searchable while held rows stay o
 
   try {
     await buildDictionary({
-      inputDirectory: DEFAULT_CANONICAL_DIRECTORY,
+      inputDirectory: BASE_CANONICAL_DIRECTORY,
       outputPath,
       checkPilotCompleteness: true,
       allowDirty: true,
