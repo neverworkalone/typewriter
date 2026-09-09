@@ -330,6 +330,39 @@ function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fing
   }
 }
 
+function validateUnverifiedRecordShape(recordReview, proposalCanonicalId, recordIndex) {
+  const label = `editorial.records[${recordIndex}]`;
+  assertCondition(
+    recordReview.observed_sense_count > 0,
+    `${label} proposed record must identify at least one candidate sense`,
+    'UNVERIFIED_SENSE_CLAIM',
+  );
+  assertEqual(
+    recordReview.observed_pos.length,
+    recordReview.observed_sense_count,
+    `${label}.observed_pos must have one POS value per proposed sense`,
+    'UNVERIFIED_SENSE_CLAIM',
+  );
+  const proposedSenseIds = Array.from(
+    { length: recordReview.observed_sense_count },
+    (_, index) => `${proposalCanonicalId}-s${index + 1}`,
+  );
+  for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+    const evidence = recordReview.boundary_evidence[boundaryId];
+    const evidenceLabel = `${label}.boundary_evidence.${boundaryId}`;
+    assertEqual(
+      [...evidence.candidate_sense_ids].sort(),
+      [...proposedSenseIds].sort(),
+      `${evidenceLabel}.candidate_sense_ids must cover the proposed sense set`,
+      'UNVERIFIED_SENSE_CLAIM',
+    );
+    assertEqual(evidence.review_status, 'unreviewed', `${evidenceLabel} must remain unreviewed`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+    assertEqual(evidence.applicability, 'unknown', `${evidenceLabel} must remain unknown`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+    assertEqual(evidence.decision, 'pending', `${evidenceLabel} must remain pending`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+    assertEqual(evidence.contrasts, [], `${evidenceLabel} must not contain unverified contrasts`, 'UNREVIEWED_BOUNDARY_EVIDENCE');
+  }
+}
+
 function expectedDecisionForBuffer(inventoryId) {
   const decisions = {
     'm5-357': 'held',
@@ -387,7 +420,6 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
         'EDITORIAL_DECISION_DRIFT',
       );
       const canonicalRecord = recordsById.get(canonicalId);
-      assertCondition(canonicalRecord, `${label} canonical record is missing`, 'MISSING_CANONICAL_RECORD');
       const correctedFields = verified
         ? recordReview.corrected_fields
         : recordReview.proposal_corrected_fields;
@@ -402,11 +434,16 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
       }
       assertCondition(
         recordReview.decision_note.includes(recordReview.inventory_id)
-          && recordReview.decision_note.includes(canonicalRecord.id)
-          && (!verified || recordReview.decision_note.includes(canonicalRecord.lemma)),
+          && recordReview.decision_note.includes(canonicalId)
+          && (!verified || (canonicalRecord && recordReview.decision_note.includes(canonicalRecord.lemma))),
         `${label}.decision_note must identify the inventory row and canonical record${verified ? ' and lemma' : ''}`,
         'RECORD_SPECIFIC_EVIDENCE_REQUIRED',
       );
+      if (!canonicalRecord) {
+        assertCondition(!verified, `${label} canonical record is missing`, 'MISSING_CANONICAL_RECORD');
+        validateUnverifiedRecordShape(recordReview, canonicalId, index);
+        continue;
+      }
       validateRecordEvidence(recordReview, canonicalRecord, index, evidenceFingerprints, verified);
       continue;
     }
@@ -484,6 +521,25 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
     recordsByInventoryId: recordReviewsByInventoryId,
     canonicalRecordsById: recordsById,
   };
+}
+
+export async function validateA2ProposalStagingDigest({ input, stagedRecordsPath } = {}) {
+  if (input?.source_kind !== 'unverified-draft' || !stagedRecordsPath) return;
+  let bytes;
+  try {
+    bytes = await readFile(stagedRecordsPath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(`A2 proposal staging does not exist: ${stagedRecordsPath}`, 'MISSING_PROPOSAL_STAGING');
+    }
+    throw error;
+  }
+  assertEqual(
+    sha256Bytes(bytes),
+    input.proposal_staging.sha256,
+    'A2 proposal staging digest does not match editorial metadata',
+    'PROPOSAL_STAGING_DIGEST_MISMATCH',
+  );
 }
 
 function relationReviewKey(review) {

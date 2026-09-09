@@ -8,7 +8,10 @@ import {
   buildWaveA2Manifest,
   createWaveA2Manifest,
 } from '../scripts/batch/build-m5-10a-wave-a2.mjs';
-import { validateA2CanonicalBoundary } from '../scripts/batch/validate-m5-10a-wave-a2.mjs';
+import {
+  validateA2CanonicalBoundary,
+  validateWaveA2,
+} from '../scripts/batch/validate-m5-10a-wave-a2.mjs';
 import { main as recordA2Timing } from '../scripts/batch/record-m5-10a-wave-a2-timing.mjs';
 import {
   createA2TimingProof,
@@ -16,6 +19,7 @@ import {
   validateA2AuditInput,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
+  validateA2ProposalStagingDigest,
   sha256Bytes,
   sha256ProvenanceSubject,
   validateA2TimingInput,
@@ -36,7 +40,6 @@ import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
-const PROPOSAL_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-proposal.jsonl');
 const A2_BOUNDARY_IDS = [
   'physical-figurative',
   'homonym-pos',
@@ -48,6 +51,46 @@ const A2_BOUNDARY_IDS = [
 
 async function readBatchJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
+}
+
+function createSelfAuthoredA2ReferenceRecords(editorial, canonicalRecords) {
+  const specialGlosses = {
+    w603: ['햇볕이 강하고 눈부시다', '소리가 맑고 세차게 울리다', '빛이 맑고 세차게 비치다'],
+    w620: ['액체나 물결이 잔잔하게 흔들리다', '빛이 가볍게 흔들리며 움직이다', '감정이 가볍게 흔들리며 움직이다'],
+  };
+  const proposalRecords = editorial.records.slice(0, 50).map((recordReview) => {
+    const id = recordReview.proposal_canonical_id;
+    const glosses = specialGlosses[id] ?? Array.from(
+      { length: recordReview.observed_sense_count },
+      (_, index) => `Self-authored test sense ${id}-${index + 1}.`,
+    );
+    const senses = glosses.map((gloss, index) => ({
+      id: `${id}-s${index + 1}`,
+      pos: recordReview.observed_pos[index],
+      gloss,
+      ...(id === 'w621' && index === 1 ? {
+        relations: [{
+          target: 'w009',
+          target_sense: 'w009-s1',
+          type: 'association',
+          note: 'Self-authored test relation for the verified promotion fixture.',
+        }],
+      } : {}),
+    }));
+    return {
+      source: 'test-fixture',
+      record: {
+        id,
+        record_type: recordReview.observed_pos[0] === 'expression' ? 'expression' : 'entry',
+        role: 'start',
+        candidate_id: id,
+        lemma: `self-authored-${id}`,
+        search_forms: [`self-authored-${id}`],
+        senses,
+      },
+    };
+  });
+  return [...canonicalRecords, ...proposalRecords];
 }
 
 function assertInputError(action, code) {
@@ -231,7 +274,7 @@ function createCompleteTimingFixture(timing) {
 }
 
 test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and keeps Wave B blocked', async () => {
-  const [manifest, editorial, relationDiff, metrics, stage, plan, canonical, proposal] = await Promise.all([
+  const [manifest, editorial, relationDiff, metrics, stage, plan, canonical] = await Promise.all([
     readBatchJson('m5-10-wave-a2.json'),
     readBatchJson('m5-10a-wave-a2-editorial-input.json'),
     readBatchJson('m5-10a-wave-a2-relation-diff.json'),
@@ -239,13 +282,13 @@ test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and ke
     readBatchJson('m5-10a-wave-a2.json'),
     readBatchJson('m5-8-expansion-plan.json'),
     readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
-    readCanonicalRecords(PROPOSAL_PATH),
   ]);
 
   assert.equal(manifest.batch_id, 'm5-10-wave-a2-20260909');
   assert.equal(manifest.records.length, 58);
   assert.equal(manifest.review.status, 'in-review');
   assert.equal(manifest.review.reviewer, 'unknown');
+  assert.equal(manifest.generator.draft_sha256, editorial.proposal_staging.sha256);
   assert.equal(manifest.sense_review.status, 'incomplete');
   assert.equal(manifest.sense_review.reviewed_start_count, 0);
   assert.equal(manifest.sense_review.split_record_count, 0);
@@ -272,22 +315,50 @@ test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and ke
   assert.equal(metrics.derived.canonical_import.import_status, 'proposed');
   assert.deepEqual(metrics.derived.canonical_import.relation_type_counts, {});
   assert.equal(canonical.records.length, 620);
-  const proposalIds = new Set(proposal.records.map(({ record }) => record.id));
-  assert.equal(proposal.records.length, 50);
-  assert.equal(canonical.records.some(({ record }) => proposalIds.has(record.id)), false);
-  assert.deepEqual(
-    proposal.records.map(({ record }) => record.id),
-    Array.from({ length: 50 }, (_, index) => `w${index + 579}`),
-  );
+  const proposalIds = editorial.records.slice(0, 50).map(({ proposal_canonical_id: canonicalId }) => canonicalId);
+  assert.equal(proposalIds.length, 50);
+  assert.equal(editorial.proposal_staging.format, 'canonical-jsonl');
+  assert.match(editorial.proposal_staging.sha256, /^[a-f0-9]{64}$/u);
+  assert.equal(canonical.records.some(({ record }) => proposalIds.includes(record.id)), false);
+  assert.deepEqual(proposalIds, Array.from({ length: 50 }, (_, index) => `w${index + 579}`));
 
   validateA2CanonicalBoundary({
     editorialInput: editorial,
     canonicalRecords: canonical.records,
   });
+  assert.deepEqual((await validateWaveA2()).batch, {
+    batch_id: 'm5-10-wave-a2-20260909',
+    validation_status: 'proposal',
+    selected_start_count: 58,
+    proposed_start_count: 50,
+    proposed_sense_count: 67,
+  });
+  await assert.rejects(
+    validateWaveA2({
+      stagedRecordsPath: path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-proposal.jsonl'),
+    }),
+    (error) => error.code === 'STAGED_INPUT_INSIDE_REPOSITORY',
+  );
+  const stagingDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10a-staging-'));
+  try {
+    const tamperedStagingPath = path.join(stagingDirectory, 'proposal.jsonl');
+    await writeFile(tamperedStagingPath, '{"not":"a canonical record"}\n', 'utf8');
+    await assert.rejects(
+      validateA2ProposalStagingDigest({
+        input: editorial,
+        stagedRecordsPath: tamperedStagingPath,
+      }),
+      (error) => error.code === 'PROPOSAL_STAGING_DIGEST_MISMATCH',
+    );
+  } finally {
+    await rm(stagingDirectory, { recursive: true, force: true });
+  }
   assertInputError(
     () => validateA2CanonicalBoundary({
       editorialInput: editorial,
-      canonicalRecords: [...canonical.records, proposal.records[0]],
+      canonicalRecords: [...canonical.records, {
+        record: { id: proposalIds[0] },
+      }],
     }),
     'UNVERIFIED_CANONICAL_PROMOTION',
   );
@@ -380,15 +451,14 @@ test('M5-10A Wave A2 keeps the bounded +50 proposal out of canonical data and ke
 });
 
 test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async () => {
-  const [editorial, audit, timing, relationDiff, canonical, proposal] = await Promise.all([
+  const [editorial, audit, timing, relationDiff, canonical] = await Promise.all([
     readBatchJson('m5-10a-wave-a2-editorial-input.json'),
     readBatchJson('m5-10a-wave-a2-audit-input.json'),
     readBatchJson('m5-10a-wave-a2-timing-input.json'),
     readBatchJson('m5-10a-wave-a2-relation-diff.json'),
     readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
-    readCanonicalRecords(PROPOSAL_PATH),
   ]);
-  const referenceRecords = [...canonical.records, ...proposal.records];
+  const referenceRecords = createSelfAuthoredA2ReferenceRecords(editorial, canonical.records);
   const unverifiedEditorial = validateA2EditorialInput({
     input: editorial,
     canonicalRecords: referenceRecords,

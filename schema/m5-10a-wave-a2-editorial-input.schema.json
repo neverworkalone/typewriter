@@ -16,6 +16,7 @@
     "created_at",
     "status",
     "sense_review",
+    "proposal_staging",
     "records"
   ],
   "properties": {
@@ -30,6 +31,7 @@
     "completed_at": { "type": "string", "format": "date-time" },
     "status": { "enum": ["in-review", "complete"] },
     "sense_review": { "$ref": "#/$defs/senseReview" },
+    "proposal_staging": { "$ref": "#/$defs/proposalStaging" },
     "records": {
       "type": "array",
       "minItems": 58,
@@ -131,6 +133,16 @@
           "uniqueItems": true,
           "items": { "type": "string", "pattern": "^w[0-9]{3,}$" }
         },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "proposalStaging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "sha256", "note"],
+      "properties": {
+        "format": { "const": "canonical-jsonl" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "note": { "type": "string", "pattern": "\\S" }
       }
     },

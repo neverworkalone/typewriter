@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   M5_10A_PROCESS_REVISION,
   M5_10A_SENSE_BOUNDARY_IDS,
+  assertExternalStagingPath,
   validateBatchManifest,
 } from './validate-batch.mjs';
 import {
@@ -15,6 +16,7 @@ import {
   validateA2AuditInput,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
+  validateA2ProposalStagingDigest,
   validateA2TimingInput,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -43,10 +45,6 @@ export const DEFAULT_TIMING_INPUT_PATH = path.resolve(
 export const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/canonical',
-);
-export const DEFAULT_STAGED_RECORDS_PATH = path.resolve(
-  SCRIPT_DIRECTORY,
-  '../../data/batches/m5-10a-wave-a2-proposal.jsonl',
 );
 
 function sha256(bytes) {
@@ -229,6 +227,7 @@ export function createWaveA2Manifest({
       model_id: 'wave-a2-proposal-builder',
       tool_version: 'typewriter-m5-10a-wave-a2-3',
       prompt_version: 'not-used-for-provenance',
+      draft_sha256: editorial.proposal_staging.sha256,
     },
     generated_at: editorial.created_at,
     review,
@@ -280,17 +279,26 @@ export async function buildWaveA2Manifest({
   editorialInputPath = DEFAULT_EDITORIAL_INPUT_PATH,
   auditInputPath = DEFAULT_AUDIT_INPUT_PATH,
   timingInputPath = DEFAULT_TIMING_INPUT_PATH,
-  stagedRecordsPath = DEFAULT_STAGED_RECORDS_PATH,
+  stagedRecordsPath,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
-  const [editorialInputSource, auditInputSource, timingInputSource, relationDiffSource, canonical, staged] = await Promise.all([
+  const [editorialInputSource, auditInputSource, timingInputSource, relationDiffSource, canonical] = await Promise.all([
     readJsonSource(editorialInputPath, 'Wave A2 editorial input'),
     readJsonSource(auditInputPath, 'Wave A2 audit input'),
     readJsonSource(timingInputPath, 'Wave A2 timing input'),
     readJsonSource(relationDiffPath, 'Wave A2 relation diff'),
     readCanonicalRecords(canonicalDirectory),
-    readCanonicalRecords(stagedRecordsPath),
   ]);
+  if (stagedRecordsPath) {
+    assertExternalStagingPath(stagedRecordsPath);
+    await validateA2ProposalStagingDigest({
+      input: editorialInputSource.value,
+      stagedRecordsPath,
+    });
+  }
+  const staged = stagedRecordsPath
+    ? await readCanonicalRecords(stagedRecordsPath)
+    : { records: [] };
   const referenceRecords = mergeReferenceRecords(canonical.records, staged.records);
   const repositoryDirectory = path.resolve(SCRIPT_DIRECTORY, '../..');
   await Promise.all([
@@ -328,6 +336,11 @@ export async function buildWaveA2Manifest({
       value: relationDiffSource.value,
     },
   });
+  if (manifest.review.status === 'complete' && !stagedRecordsPath) {
+    const missing = new Error('verified A2 promotion requires an external --staged canonical input');
+    missing.code = 'MISSING_A2_STAGED_PATH';
+    throw missing;
+  }
   await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
 }
@@ -352,7 +365,7 @@ if (isMainModule) {
   buildWaveA2Manifest({
     canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
     relationDiffPath: args['relation-diff'] ?? DEFAULT_RELATION_DIFF_PATH,
-    stagedRecordsPath: args.staged ?? DEFAULT_STAGED_RECORDS_PATH,
+    stagedRecordsPath: args.staged,
     editorialInputPath: args.editorial ?? DEFAULT_EDITORIAL_INPUT_PATH,
     auditInputPath: args.audit ?? DEFAULT_AUDIT_INPUT_PATH,
     timingInputPath: args.timing ?? DEFAULT_TIMING_INPUT_PATH,

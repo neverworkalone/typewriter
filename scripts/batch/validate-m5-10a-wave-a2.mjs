@@ -14,12 +14,12 @@ import {
   DEFAULT_EDITORIAL_INPUT_PATH,
   DEFAULT_OUTPUT_PATH,
   DEFAULT_RELATION_DIFF_PATH,
-  DEFAULT_STAGED_RECORDS_PATH,
   DEFAULT_TIMING_INPUT_PATH,
 } from './build-m5-10a-wave-a2.mjs';
 import { validateRelationDiff } from './relation-diff.mjs';
 import {
   REPOSITORY_DIRECTORY,
+  assertExternalStagingPath,
   validateBatch,
   validateBatchManifest,
 } from './validate-batch.mjs';
@@ -30,9 +30,11 @@ import {
 import {
   A2_BATCH_ID,
   A2_PROMOTED_CANONICAL_IDS,
+  A2_PROMOTED_RECORD_REVIEWS,
   validateA2AuditInput,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
+  validateA2ProposalStagingDigest,
   validateA2TimingInput,
   sha256Bytes,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
@@ -124,7 +126,7 @@ export function validateA2CanonicalBoundary({ editorialInput, canonicalRecords =
   }
 }
 
-function validateA2ProposalStaging(manifest, stagedRecords) {
+function validateA2ProposalStaging(manifest, stagedRecords = []) {
   const stagedById = new Map(stagedRecords.map(({ record }) => [record.id, record]));
   const proposed = manifest.records.filter((record) => record.decision === 'proposed');
   assert.deepEqual(
@@ -132,17 +134,25 @@ function validateA2ProposalStaging(manifest, stagedRecords) {
     [...A2_PROMOTED_CANONICAL_IDS].sort(),
     'unverified A2 proposal canonical scope drifted',
   );
-  assert.deepEqual(
-    [...stagedById.keys()].sort(),
-    [...A2_PROMOTED_CANONICAL_IDS].sort(),
-    'A2 proposal staging must contain exactly the proposed canonical scope',
-  );
-  for (const record of proposed) {
-    if (!stagedById.has(record.proposal_canonical_id)) {
-      fail(`unverified A2 proposal references missing staged record ${record.proposal_canonical_id}`, 'MISSING_STAGED_RECORD');
+  if (stagedRecords.length > 0) {
+    assert.deepEqual(
+      [...stagedById.keys()].sort(),
+      [...A2_PROMOTED_CANONICAL_IDS].sort(),
+      'A2 proposal staging must contain exactly the proposed canonical scope',
+    );
+    for (const record of proposed) {
+      if (!stagedById.has(record.proposal_canonical_id)) {
+        fail(`unverified A2 proposal references missing staged record ${record.proposal_canonical_id}`, 'MISSING_STAGED_RECORD');
+      }
     }
   }
   return proposed.length;
+}
+
+function countProposedSenses(editorialInput) {
+  return editorialInput.records
+    .slice(0, A2_PROMOTED_RECORD_REVIEWS.length)
+    .reduce((count, recordReview) => count + recordReview.observed_sense_count, 0);
 }
 
 export async function validateWaveA2({
@@ -156,7 +166,7 @@ export async function validateWaveA2({
   planPath = DEFAULT_PLAN_PATH,
   verificationPath = DEFAULT_VERIFICATION_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
-  stagedRecordsPath = DEFAULT_STAGED_RECORDS_PATH,
+  stagedRecordsPath,
   inventoryPath = DEFAULT_INVENTORY_PATH,
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
 } = {}) {
@@ -172,7 +182,16 @@ export async function validateWaveA2({
     readJsonSource(verificationPath, 'Wave A2 verification'),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
-  const staged = await readCanonicalRecords(stagedRecordsPath);
+  if (stagedRecordsPath) {
+    assertExternalStagingPath(stagedRecordsPath);
+    await validateA2ProposalStagingDigest({
+      input: editorialSource.value,
+      stagedRecordsPath,
+    });
+  }
+  const staged = stagedRecordsPath
+    ? await readCanonicalRecords(stagedRecordsPath)
+    : { records: [] };
   const referenceRecords = mergeReferenceRecords(canonical.records, staged.records);
   validateA2CanonicalBoundary({
     editorialInput: editorialSource.value,
@@ -269,6 +288,9 @@ export async function validateWaveA2({
 
   let batchResult;
   if (manifestSource.value.review.status === 'complete') {
+    if (!stagedRecordsPath) {
+      fail('verified A2 promotion requires an external --staged canonical input', 'MISSING_A2_STAGED_PATH');
+    }
     batchResult = await validateBatch({
       manifestPath,
       stagedRecordsPath,
@@ -282,7 +304,9 @@ export async function validateWaveA2({
   } else {
     batchResult = {
       stagedRecordCount: validateA2ProposalStaging(manifestSource.value, staged.records),
-      proposedSenseCount: countSenses(staged.records),
+      proposedSenseCount: staged.records.length > 0
+        ? countSenses(staged.records)
+        : countProposedSenses(editorialSource.value),
       validation_status: 'proposal',
       manifest: manifestSource.value,
     };
@@ -365,7 +389,7 @@ if (isMainModule) {
     planPath: args.plan ?? DEFAULT_PLAN_PATH,
     verificationPath: args.verification ?? DEFAULT_VERIFICATION_PATH,
     canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
-    stagedRecordsPath: args.staged ?? DEFAULT_STAGED_RECORDS_PATH,
+    stagedRecordsPath: args.staged,
     inventoryPath: args.inventory ?? DEFAULT_INVENTORY_PATH,
     baseCanonicalDirectory: args['base-canonical-dir'] ?? DEFAULT_BASE_CANONICAL_DIRECTORY,
   })

@@ -87,13 +87,16 @@ from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The separate
 A2 execution report records the proposed addition in staging; the process
 correction itself preserves the 578-start pre-A2 source snapshot, and product
 canonical data remains unchanged until verified review completes.
-The A2 structured editorial and audit proposal inputs may be tracked in this
-directory only when they contain no raw draft or external source text and are
-explicitly marked unverified/incomplete. They cannot produce a completed import
-claim. A completed input additionally requires a provenance artifact that binds
-its actor, UUID session, subject digest, completion time, and artifact digest.
-The reviewed canonical JSONL passed to the import gate stays in a temporary
-workspace outside the repository.
+The A2 structured editorial and audit metadata may be tracked in this directory
+when it contains only target selection, proposal identity/decision state,
+the external proposal artifact digest, structured review state, and the HOLD
+cause; it must not carry candidate record bodies, raw draft text, or external
+source text. An explicitly
+unverified/incomplete input cannot produce a completed import claim. A completed
+input additionally requires a provenance artifact that binds its actor, UUID
+session, subject digest, completion time, and artifact digest. Candidate record
+bodies and the reviewed canonical JSONL passed to the import gate stay in a
+temporary workspace outside the repository.
 
 When a later batch advances `data/canonical/`, a historical canonical directory
 may be retained under `data/batches/` when a source-bound stage report still

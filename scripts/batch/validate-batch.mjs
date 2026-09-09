@@ -116,7 +116,7 @@ function isInside(directory, candidate) {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
 
-function assertExternalStagingPath(stagedRecordsPath, allowRepositoryStaging) {
+export function assertExternalStagingPath(stagedRecordsPath, allowRepositoryStaging = false) {
   if (isInside(REPOSITORY_DIRECTORY, stagedRecordsPath) && !allowRepositoryStaging) {
     fail(
       `staged canonical input must remain outside the repository: ${stagedRecordsPath}`,

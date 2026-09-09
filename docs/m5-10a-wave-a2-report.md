@@ -4,9 +4,9 @@
 
 Issue #96 Wave A2 contains a 58-start proposal. The source-bound manifest remains
 `in-review`: no human editorial session artifact was supplied, so these rows are
-not treated as a validated import. The 50 importable records live in the separate
-proposal staging JSONL; the product canonical snapshot remains at the pre-A2
-baseline. The source-bound stage report
+not treated as a validated import. The 50 candidate record bodies remain in
+external proposal staging and are not tracked; the product canonical snapshot
+remains at the pre-A2 baseline. The source-bound stage report
 [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json)
 records a proposed net increase of 50 but remains `HOLD PROCESS`: the old
 command-runtime timing claim was invalidated, and the replacement editor-session
@@ -18,7 +18,7 @@ authorization remains false until a separate decision.
 | Snapshot | Records | Starts | Reference-only | Senses | Relations | Expressions |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Input (Wave A output) | 620 | 578 | 42 | 743 | 467 | 39 |
-| A2 proposal staging (not canonical) | 50 | 50 | 0 | 67 | 6 | 4 |
+| External A2 proposal staging (not tracked) | 50 | 50 | 0 | 67 | 6 | 4 |
 | Current product canonical | 620 | 578 | 42 | 743 | 467 | 39 |
 | Net canonical change before verified review | 0 | 0 | 0 | 0 | 0 | 0 |
 
@@ -32,9 +32,13 @@ rejected rows are not canonical.
 The unverified editorial input records proposed canonical sense IDs and
 `pending` decisions in a structured six-boundary shape; all 50 manifest
 checkpoints remain `not-reviewed`. It does not claim that a human completed the
-preflight. The proposal staging file retains the candidate content for later
-review, but it is not part of `data/canonical/`, the current inventory, SQLite,
-or the extension package. The candidate corrections are retained in staging:
+preflight. The candidate content must remain in external staging for later
+review; it is not tracked in this repository and is not part of
+`data/canonical/`, the current inventory, SQLite, or the extension package.
+The tracked editorial metadata records the external JSONL SHA-256, and the A2
+manifest repeats that digest as `generator.draft_sha256`; the A2 validator checks
+the external file against it whenever staging is supplied.
+The candidate corrections are retained in that external staging:
 `w603` and `w620` have three distinct senses each, and `w621-s2 → w009-s1` is an
 `association` for a state-changing action, not a `near` replacement. The
 separate relation diff contains three `mood`, one `near`, one `sensory`, and one
@@ -74,8 +78,8 @@ unreviewed evidence fails the A2 check; an unverified draft is projected as
   — source-derived counts, rates, timing, and audit summary.
 - [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json) —
   source- and digest-bound stage result.
-- [`data/batches/m5-10a-wave-a2-proposal.jsonl`](../data/batches/m5-10a-wave-a2-proposal.jsonl)
-  — the 50-record proposal staging file; it is not canonical until verified
+- external `--staged=/tmp/.../*.jsonl` input — the 50-record proposal staging
+  file is intentionally not tracked; it is not canonical until verified
   editorial, audit, and timing gates pass.
 - `data/canonical/` — the current 620-record / 578-start product canonical
   snapshot. A2 proposal rows must not appear here while review is unverified.

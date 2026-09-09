@@ -220,8 +220,8 @@ reproducible after the current canonical directory advances.
 
 The A2 proposal is recorded in
 [`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It selects 58
-starts and keeps the 50 importable rows in separate proposal staging; the current
-product canonical snapshot remains at 578 starts until verified review. The
+starts and keeps the 50 importable rows in separate external proposal staging;
+the current product canonical snapshot remains at 578 starts until verified review. The
 manifest remains `in-review` because no verified human editorial session is
 attached. The audit is `incomplete` and
 `independent: false`; the stage gate remains `HOLD PROCESS` because the separate
@@ -278,8 +278,13 @@ seconds. A complete timing result must have measurements for the five required
 passes and every recorded follow-up pair; an unmeasured pass keeps the gate
 incomplete.
 
-Wave A2 binds its proposal and gate state to separate editorial, audit, and timing
-inputs. An input without a verified session artifact must remain
+Wave A2 binds its proposal metadata and gate state to separate editorial, audit,
+and timing inputs. The 50 candidate record bodies are supplied through an
+external `--staged=/tmp/.../*.jsonl` path and are never committed. The tracked
+proposal metadata binds that external JSONL by SHA-256, and the A2 validator
+rejects a supplied staging file whose digest differs; the generated manifest
+repeats it as `generator.draft_sha256`. An input
+without a verified session artifact must remain
 `unverified-draft`/`in-review` (or `incomplete`) and cannot claim a human review or
 independent audit. Timing is recorded in
 `data/batches/m5-10a-wave-a2-timing-input.json`. The earlier 27.918-second
