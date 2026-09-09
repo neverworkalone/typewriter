@@ -226,16 +226,18 @@ starts. The completed editorial and audit inputs are `codex-authored`; the
 audit is independent through distinct sessions and artifacts, not through a
 human-identity requirement. The recorders consume separately supplied editorial
 and audit decision artifacts and never manufacture semantic decisions or clean
-findings. All five timing passes are measured in chronological order, and the
-second corrected 10.612179-second processed-start rate is within the fixed
-12-second gate. The stage is
+findings. All five editorial timing passes and the distinct post-freeze audit
+timing pass are measured in chronological order, and the complete
+11.595429-second processed-start rate is within the fixed 12-second gate. The
+stage is
 `APPROVE BOUNDED` and `ready_to_create: true`, but `next_stage_created: false`
 and `next_stage_authorized: false`; a passing metric does not create or
 authorize a GitHub task implicitly. The second corrected chronological timing
-run measures 10.612179 seconds per processed start, with the editorial session
-starting before the first timing pass. Editorial finalization is recorded after
-the last timing stop, and audit finalization is recorded during the distinct
-audit session.
+run measures 649.344 seconds across 56 processed starts, with the editorial
+session starting before the first timing pass. Editorial finalization is
+recorded after the last editorial timing stop; the post-freeze audit timing
+starts after editorial completion and stops before audit decision finalization
+in the distinct audit session.
 
 ## M5-10A process correction and A2 authorization
 
@@ -285,7 +287,9 @@ count, digest, import, tuple, SQLite, search, and package checks. Mechanical
 validation is recorded as verification evidence and never subtracted from editor
 seconds. A complete timing result must have measurements for the five required
 passes and every recorded follow-up pair; an unmeasured pass keeps the gate
-incomplete.
+incomplete. Wave A2 additionally requires a separately recorded
+`post-freeze-audit` pass over the frozen staging; its editor seconds are included
+in the source-derived total and gate.
 
 Wave A2 binds its proposal metadata and gate state to separate editorial, audit,
 and timing inputs. Completion also requires separately supplied editorial and
@@ -300,8 +304,10 @@ editorial pass (human-authored or Codex-authored) and independent audit also car
 which the import validator checks against the bytes passed as `--staged`. An input
 without a verified session artifact must remain
 `unverified-draft`/`in-review` (or `incomplete`) and cannot claim a verified
-editorial review or independent audit. Timing is recorded in
-`data/batches/m5-10a-wave-a2-timing-input.json`. The earlier 27.918-second
+editorial review or independent audit. Editorial timing is recorded in
+`data/batches/m5-10a-wave-a2-timing-input.json`, while the required A2
+post-freeze audit timing is recorded separately in
+`data/batches/m5-10a-wave-a2-audit-timing-input.json`. The earlier 27.918-second
 command-runtime claim is invalid and is not copied into the new manifest. Use
 `npm run batch:m5-10a:wave-a2:timing` to record each pass from current-clock
 start/stop events; every completed pass must also cite the exact A2 work-unit
@@ -391,7 +397,8 @@ retarget or retype measurable instead of hiding it in a rewritten final JSONL.
 The final artifact may add a controlled failure type to each reviewed event, but it
 never includes the draft prose or external source text.
 
-Five timing passes are required in every new measurement manifest:
+The baseline timing contract has five required editorial passes in every new
+measurement manifest:
 
 1. `target-preparation`
 2. `initial-review`
@@ -402,6 +409,9 @@ Five timing passes are required in every new measurement manifest:
 Each pass records wall-clock seconds and editor seconds separately. A manifest may
 be marked `incomplete` while an older baseline is being repaired, but a completed
 metrics artifact is rejected if any required pass is missing either measurement.
+Wave A2 adds one required `post-freeze-audit` pass in a distinct timing artifact
+after editorial completion; that pass is combined with the five editorial passes
+for the A2 source-derived total and gate.
 When reviewer feedback arrives after the five-pass review has ended, the manifest
 adds a paired `post-review-audit` and `post-review-fixes` entry for that feedback
 cycle. Repeated cycles carry a one-based `cycle` and both entries carry the same

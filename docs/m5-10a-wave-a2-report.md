@@ -17,8 +17,9 @@ product from 578 to 628 starts. The initial PR timing claim was superseded
 because its editorial completion preceded the timing session. A follow-up
 chronology review also superseded the first correction because that session
 still started after the timing work. A second fresh chronological recorder
-session now starts the editorial session before the first timing pass and
-measures 594.282 editor seconds across 56 processed starts, or 10.612179
+session now starts the editorial session before the first timing pass. The
+complete chain measures the five editorial passes plus a distinct post-freeze
+audit pass: 649.344 editor seconds across 56 processed starts, or 11.595429
 seconds per processed start, so the fixed gate passes. The source-bound stage
 report therefore records `APPROVE BOUNDED` and `ready_to_create: true`, while
 `next_stage_created` and `next_stage_authorized` remain `false`: a passing
@@ -76,8 +77,10 @@ after the sense pass. All six were retained with record-specific notes: three
 rate is `0/6 = 0%`, with no pending candidates and no relation-noise events.
 
 The separate audit input is complete and independently bound to the same
-reviewed staging digest. It rechecks all 50 promoted canonical starts and all
-six relation decisions. The audit has four resolved findings (sense,
+reviewed staging digest. Its post-freeze timing artifact is distinct from the
+editorial timing artifact and binds the audit provenance session, frozen staging
+digest, and decision-finalization chronology. It rechecks all 50 promoted
+canonical starts and all six relation decisions. The audit has four resolved findings (sense,
 relation-noise, buffer-decision, and timing-measurement) and zero open blockers.
 The editorial and audit passes use the same Codex actor ID, but distinct UUID
 sessions and distinct provenance artifacts, which is the independence rule for
@@ -85,8 +88,8 @@ this milestone.
 
 ## Timing and gate
 
-The five required passes are all complete, recorder-backed, chronological, and
-have no unmeasured passes:
+The five editorial passes and the distinct post-freeze audit pass are all
+complete, recorder-backed, chronological, and have no unmeasured passes:
 
 | Pass | Editor seconds |
 | --- | ---: |
@@ -95,10 +98,11 @@ have no unmeasured passes:
 | feedback fixes | 81.677 |
 | final audit | 75.435 |
 | held/rejected decisions | 28.777 |
-| **total** | **594.282** |
+| post-freeze audit | 55.062 |
+| **total** | **649.344** |
 
 There are 56 processed starts after excluding the two deferred buffer rows, so
-the measured rate is `594.282 / 56 = 10.612178...` seconds per processed start.
+the measured rate is `649.344 / 56 = 11.595428...` seconds per processed start.
 Timing completeness, correction rate (`16/56`), relation noise (`0%`), audit
 blockers (`0`), canonical integrity, SQLite reproducibility, and search/product
 regressions also pass. The stage carries a `correction_plan` field for a future
@@ -106,20 +110,17 @@ failed timing result, but this run marks it `not-required` because the fixed
 gate passes.
 
 The editorial session started at `2026-09-09T11:57:04.154Z`, before the first
-timing pass at `2026-09-09T11:57:09.441Z`. The timing session stops before
-editorial completion, and the audit starts only after editorial completion and
-all timing stops. The editorial record decisions are supplied in a separate
-tracked artifact, and the audit relation decisions and findings are supplied in
-a second tracked artifact created during the separate audit session. Each
-decision artifact records a `finalized_at` timestamp; the editorial finalization
-is after the last timing stop and before editorial completion, and the audit
-finalization is within the separate audit session. The recorder outputs bind
-those artifacts by path, complete-file digest, session, and chronology, so an
-artifact finalized before the final recorded pass cannot support a verified
-completion claim. In this run the editorial artifact was finalized at
-`2026-09-09T12:08:26.816Z`, after the final timing stop at
-`2026-09-09T12:07:35.054Z`; the audit artifact was finalized at
-`2026-09-09T12:09:27.475Z` during the distinct audit session.
+timing pass at `2026-09-09T11:57:09.441Z`; its last timing stop was
+`2026-09-09T12:07:35.054Z`, and editorial completion followed at
+`2026-09-09T12:08:33.438Z`. The separate audit session started at
+`2026-09-09T12:58:06.219Z`; its post-freeze timing pass ran from
+`2026-09-09T12:58:11.798Z` to `2026-09-09T12:59:06.860Z`, before the audit
+decision artifact finalized at `2026-09-09T12:59:38.935Z` and the audit
+completed at `2026-09-09T13:00:16.176Z`. The editorial record decisions and
+audit relation decisions/findings are supplied in separate tracked artifacts.
+The recorder outputs bind both timing artifacts and decision artifacts by path,
+complete-file digest, session, and chronology, so an audit completed without a
+measured post-freeze pass cannot support a verified completion claim.
 
 ## Source artifacts
 
@@ -139,7 +140,9 @@ completion claim. In this run the editorial artifact was finalized at
   and [`data/batches/m5-10a-wave-a2-provenance-audit-20260909.json`](../data/batches/m5-10a-wave-a2-provenance-audit-20260909.json)
   — session, actor, completion-time, and subject-digest evidence.
 - [`data/batches/m5-10a-wave-a2-timing-input.json`](../data/batches/m5-10a-wave-a2-timing-input.json)
-  — current-clock timing events and work-unit evidence.
+  — five editorial current-clock timing events and work-unit evidence.
+- [`data/batches/m5-10a-wave-a2-audit-timing-input.json`](../data/batches/m5-10a-wave-a2-audit-timing-input.json)
+  — distinct post-freeze audit timing events, frozen-staging binding, and work-unit evidence.
 - [`data/batches/m5-10a-wave-a2-relation-diff.json`](../data/batches/m5-10a-wave-a2-relation-diff.json)
   — final six-candidate relation screen.
 - [`data/batches/m5-10a-wave-a2-metrics.json`](../data/batches/m5-10a-wave-a2-metrics.json)

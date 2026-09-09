@@ -170,6 +170,13 @@ checks are verification evidence, not editorial work. They are explicitly
 excluded from editor seconds. A missing or unmeasured pass leaves timing
 incomplete and fails the gate; no time is estimated or backfilled.
 
+For Wave A2, the five editorial passes are frozen in
+`data/batches/m5-10a-wave-a2-timing-input.json`. The required independent audit
+then has its own `post-freeze-audit` timing artifact over the frozen staging;
+that pass must start after editorial completion, stop before audit decision
+finalization, and contribute its editor seconds to the same source-derived
+total. A complete A2 audit without that measured pass is invalid.
+
 ## Source-bound authorization
 
 `data/batches/m5-10a-process-correction.json` binds the historical stage,
@@ -215,10 +222,13 @@ The first PR timing claim was superseded because editorial completion preceded
 the timing session. A follow-up chronology review found that the first
 correction still created the editorial session after the timing work, so that
 result is superseded too. The second corrected recorder session starts the
-editorial session before the first timing pass, stops all five passes before
-editorial completion, and measures 594.282 editor seconds across 56 processed
-starts (10.612179 seconds per start), so the fixed gate passes. The bounded A2
-stage records `APPROVE BOUNDED` and `ready_to_create: true`, but keeps
+editorial session before the first timing pass, stops all five editorial passes
+before editorial completion, and measures 594.282 seconds of editorial time
+across 56 processed starts (10.612179 seconds per start). The separately
+measured post-freeze audit adds 55.062 editor seconds, for a source-derived
+total of 649.344 seconds (11.595429 seconds per start), so the fixed gate
+passes. The bounded A2 stage records `APPROVE BOUNDED` and
+`ready_to_create: true`, but keeps
 `next_stage_created: false` and `next_stage_authorized: false` until a real,
 separately authorized next-stage task exists. The pre-A2 578-start snapshot and
 #107 authorization remain historical source artifacts; they are not overwritten
@@ -228,7 +238,9 @@ The editorial and audit completion recorders now consume separate, tracked
 decision artifacts and bind them to the frozen staging digest, active session,
 and chronology. Each artifact also records a finalization timestamp that is
 included in its complete-file digest; editorial finalization must follow the last
-timing stop and precede editorial completion. They cannot synthesize completed decisions, audit findings, or
-independence from recorder output alone. If a later run fails the timing gate,
+editorial timing stop and precede editorial completion. The audit timing pass
+must stop before audit decision finalization. The recorders cannot synthesize
+completed decisions, audit findings, or independence from recorder output alone.
+If a later run fails the timing gate,
 the stage report must include the measured breakdown, cause, expected saving,
 limited retry size, and the unchanged 12-second/25% fixed gates.

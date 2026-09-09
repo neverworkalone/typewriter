@@ -13,6 +13,7 @@ import {
   A2_BATCH_ID,
   A2_INVENTORY_ID,
   A2_INVENTORY_REVISION,
+  validateA2AuditTimingInput,
   validateA2AuditInput,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
@@ -41,6 +42,10 @@ export const DEFAULT_AUDIT_INPUT_PATH = path.resolve(
 export const DEFAULT_TIMING_INPUT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-10a-wave-a2-timing-input.json',
+);
+export const DEFAULT_AUDIT_TIMING_INPUT_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-wave-a2-audit-timing-input.json',
 );
 export const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
   SCRIPT_DIRECTORY,
@@ -194,6 +199,8 @@ export function createWaveA2Manifest({
   editorialInputSource,
   auditInputSource,
   timingInputSource,
+  auditTimingInput,
+  auditTimingInputSource,
   relationDiffSource,
 } = {}) {
   const editorial = validateA2EditorialInput({ input: editorialInput, canonicalRecords });
@@ -204,7 +211,41 @@ export function createWaveA2Manifest({
     canonicalRecords,
   });
   const timing = validateA2TimingInput(timingInput);
-  const promotionReady = editorial.verified && audit.verified && timing.status === 'complete';
+  const auditTiming = auditTimingInput
+    ? validateA2AuditTimingInput(auditTimingInput)
+    : null;
+  if (audit.verified && !auditTiming) {
+    const missing = new Error('verified A2 audit requires a post-freeze audit timing input');
+    missing.code = 'MISSING_A2_AUDIT_TIMING_INPUT';
+    throw missing;
+  }
+  if (audit.verified && !auditTimingInputSource) {
+    const missing = new Error('verified A2 audit requires a bound post-freeze audit timing source');
+    missing.code = 'MISSING_A2_AUDIT_TIMING_SOURCE';
+    throw missing;
+  }
+  if (audit.verified) {
+    const auditPass = auditTimingInput.passes[0];
+    if (audit.timing_artifact.path !== auditTimingInputSource.path
+      || audit.timing_artifact.sha256 !== auditTimingInputSource.sha256) {
+      const mismatch = new Error('A2 audit timing artifact does not match its source input');
+      mismatch.code = 'AUDIT_TIMING_BINDING_MISMATCH';
+      throw mismatch;
+    }
+    if (auditTiming.status === 'complete'
+      && (audit.timing_artifact.started_at !== auditPass.started_at
+        || audit.timing_artifact.completed_at !== auditPass.completed_at
+        || audit.timing_artifact.audit_session_id !== auditPass.audit_session_id
+        || audit.timing_artifact.reviewed_staging_sha256 !== auditPass.reviewed_staging_sha256)) {
+      const mismatch = new Error('A2 audit timing artifact does not match the completed post-freeze pass');
+      mismatch.code = 'AUDIT_TIMING_BINDING_MISMATCH';
+      throw mismatch;
+    }
+  }
+  const promotionReady = editorial.verified
+    && audit.verified
+    && timing.status === 'complete'
+    && auditTiming?.status === 'complete';
   const canonicalById = new Map(canonicalRecords.map((item) => {
     const record = item.record ?? item;
     return [record.id, record];
@@ -257,8 +298,17 @@ export function createWaveA2Manifest({
         contract_version: 'm5-10a-v1',
         source_artifact: timingInputSource.path,
         source_sha256: timingInputSource.sha256,
-        status: timingInput.status,
-        passes: timingInput.passes.map((pass) => structuredClone(pass)),
+        status: timingInput.status === 'complete' && auditTiming?.status === 'complete'
+          ? 'complete'
+          : 'incomplete',
+        ...(auditTimingInputSource ? {
+          audit_source_artifact: auditTimingInputSource.path,
+          audit_source_sha256: auditTimingInputSource.sha256,
+        } : {}),
+        passes: [
+          ...timingInput.passes,
+          ...(auditTimingInput ? auditTimingInput.passes : []),
+        ].map((pass) => structuredClone(pass)),
       },
       audit: {
         source_artifact: auditInputSource.path,
@@ -281,13 +331,15 @@ export async function buildWaveA2Manifest({
   editorialInputPath = DEFAULT_EDITORIAL_INPUT_PATH,
   auditInputPath = DEFAULT_AUDIT_INPUT_PATH,
   timingInputPath = DEFAULT_TIMING_INPUT_PATH,
+  auditTimingInputPath = DEFAULT_AUDIT_TIMING_INPUT_PATH,
   stagedRecordsPath,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
-  const [editorialInputSource, auditInputSource, timingInputSource, relationDiffSource, canonical] = await Promise.all([
+  const [editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, relationDiffSource, canonical] = await Promise.all([
     readJsonSource(editorialInputPath, 'Wave A2 editorial input'),
     readJsonSource(auditInputPath, 'Wave A2 audit input'),
     readJsonSource(timingInputPath, 'Wave A2 timing input'),
+    readJsonSource(auditTimingInputPath, 'Wave A2 post-freeze audit timing input'),
     readJsonSource(relationDiffPath, 'Wave A2 relation diff'),
     readCanonicalRecords(canonicalDirectory),
   ]);
@@ -324,6 +376,7 @@ export async function buildWaveA2Manifest({
     editorialInput: editorialInputSource.value,
     auditInput: auditInputSource.value,
     timingInput: timingInputSource.value,
+    auditTimingInput: auditTimingInputSource.value,
     canonicalRecords: referenceRecords,
     editorialInputSource: {
       path: path.relative(repositoryDirectory, editorialInputPath),
@@ -336,6 +389,10 @@ export async function buildWaveA2Manifest({
     timingInputSource: {
       path: path.relative(repositoryDirectory, timingInputPath),
       sha256: timingInputSource.sha256,
+    },
+    auditTimingInputSource: {
+      path: path.relative(repositoryDirectory, auditTimingInputPath),
+      sha256: auditTimingInputSource.sha256,
     },
     relationDiffSource: {
       path: path.relative(repositoryDirectory, relationDiffPath),
@@ -371,6 +428,7 @@ if (isMainModule) {
     editorialInputPath: args.editorial ?? DEFAULT_EDITORIAL_INPUT_PATH,
     auditInputPath: args.audit ?? DEFAULT_AUDIT_INPUT_PATH,
     timingInputPath: args.timing ?? DEFAULT_TIMING_INPUT_PATH,
+    auditTimingInputPath: args['audit-timing'] ?? DEFAULT_AUDIT_TIMING_INPUT_PATH,
     outputPath: args.output ?? DEFAULT_OUTPUT_PATH,
   })
     .then((manifest) => {

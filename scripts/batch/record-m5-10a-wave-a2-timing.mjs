@@ -5,12 +5,16 @@ import { fileURLToPath } from 'node:url';
 
 import {
   A2_BATCH_ID,
+  A2_AUDIT_TIMING_PASS_IDS,
   A2_MIN_EDITOR_SECONDS_PER_UNIT,
   A2_TIMING_PASS_IDS,
   A2_TIMING_WORK_UNIT_CONTRACT,
   createA2TimingProof,
+  sha256Bytes,
+  validateA2AuditTimingInput,
   validateA2TimingInput,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
+import { assertExternalStagingPath } from './validate-batch.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_OUTPUT_PATH = path.resolve(
@@ -20,6 +24,7 @@ const DEFAULT_OUTPUT_PATH = path.resolve(
 const TIMING_RECORDER_VERSION = 'timing-recorder-v1';
 const TIMING_RECORDING_COMMAND = 'node scripts/batch/record-m5-10a-wave-a2-timing.mjs';
 const DEFAULT_TIMING_ID = 'm5-10a-wave-a2-timing-20260909';
+const DEFAULT_AUDIT_TIMING_ID = 'm5-10a-wave-a2-timing-audit-20260909';
 
 function parseArguments(argv) {
   const args = {};
@@ -61,22 +66,31 @@ function timestampFromClock() {
 }
 
 function requirePass(args) {
-  if (!args.pass || !A2_TIMING_PASS_IDS.includes(args.pass)) {
-    throw new Error(`--pass must be one of ${A2_TIMING_PASS_IDS.join(', ')}`);
+  const passIds = [...A2_TIMING_PASS_IDS, ...A2_AUDIT_TIMING_PASS_IDS];
+  if (!args.pass || !passIds.includes(args.pass)) {
+    throw new Error(`--pass must be one of ${passIds.join(', ')}`);
   }
   return args.pass;
+}
+
+function passIdsForTimingKind(timingKind) {
+  if (timingKind === 'editorial') return A2_TIMING_PASS_IDS;
+  if (timingKind === 'post-freeze-audit') return A2_AUDIT_TIMING_PASS_IDS;
+  throw new Error(`unsupported A2 timing kind: ${timingKind}`);
 }
 
 function assertSession(session) {
   if (!session || typeof session !== 'object'
     || session.schema_version !== '1'
+    || !['editorial', 'post-freeze-audit'].includes(session.timing_kind)
     || session.batch_id !== A2_BATCH_ID
     || session.recorder_version !== TIMING_RECORDER_VERSION
     || session.recording_source !== TIMING_RECORDER_VERSION
     || session.recorder_command !== TIMING_RECORDING_COMMAND
     || !['in-progress', 'complete'].includes(session.status)
     || !Array.isArray(session.passes)
-    || JSON.stringify(session.passes.map(({ id }) => id)) !== JSON.stringify(A2_TIMING_PASS_IDS)
+    || JSON.stringify(session.passes.map(({ id }) => id))
+      !== JSON.stringify(passIdsForTimingKind(session.timing_kind))
     || !Array.isArray(session.events)) {
     throw new Error('timing input must be an A2 recorder session created by this command');
   }
@@ -85,17 +99,19 @@ function assertSession(session) {
   }
 }
 
-function createSession() {
+function createSession(timingKind) {
+  const passIds = passIdsForTimingKind(timingKind);
   return {
     schema_version: '1',
-    timing_id: DEFAULT_TIMING_ID,
+    timing_id: timingKind === 'editorial' ? DEFAULT_TIMING_ID : DEFAULT_AUDIT_TIMING_ID,
+    timing_kind: timingKind,
     batch_id: A2_BATCH_ID,
     recorder_version: TIMING_RECORDER_VERSION,
     recording_source: TIMING_RECORDER_VERSION,
     recorder_command: TIMING_RECORDING_COMMAND,
     processed_start_count: 56,
     status: 'in-progress',
-    passes: A2_TIMING_PASS_IDS.map((id) => ({ id, status: 'unmeasured' })),
+    passes: passIds.map((id) => ({ id, status: 'unmeasured' })),
     events: [],
     note: 'A2 timing session is retained as raw recorder events until every pass has a work-evidence file.',
   };
@@ -137,8 +153,10 @@ async function readWorkEvidence(args, passId) {
   );
 }
 
-function startPass(session, passId) {
-  const passIndex = A2_TIMING_PASS_IDS.indexOf(passId);
+function startPass(session, passId, binding = {}) {
+  const passIds = passIdsForTimingKind(session.timing_kind);
+  const passIndex = passIds.indexOf(passId);
+  if (passIndex < 0) throw new Error(`${passId} is not part of the ${session.timing_kind} timing contract`);
   const pass = session.passes[passIndex];
   if (pass.status !== 'unmeasured') throw new Error(`${passId} is not an unmeasured pass`);
   if (session.passes.some(({ status }) => status === 'in-progress')) {
@@ -155,6 +173,7 @@ function startPass(session, passId) {
     started_at: startedAt,
     session_id: sessionId,
     recording_source: TIMING_RECORDER_VERSION,
+    ...binding,
   };
   session.events.push({
     event_id: `m5-10a-wave-a2-timing-event-${String(session.events.length + 1).padStart(4, '0')}`,
@@ -167,7 +186,9 @@ function startPass(session, passId) {
 }
 
 async function stopPass(session, passId, workEvidence) {
-  const passIndex = A2_TIMING_PASS_IDS.indexOf(passId);
+  const passIds = passIdsForTimingKind(session.timing_kind);
+  const passIndex = passIds.indexOf(passId);
+  if (passIndex < 0) throw new Error(`${passId} is not part of the ${session.timing_kind} timing contract`);
   const pass = session.passes[passIndex];
   if (pass.status !== 'in-progress') throw new Error(`${passId} has no active recorder start`);
   const completedAt = timestampFromClock();
@@ -195,9 +216,45 @@ async function stopPass(session, passId, workEvidence) {
     session.status = 'complete';
     session.note = 'A2 timing completed from recorder start/stop events and per-pass work evidence.';
     session.recording_proof_sha256 = createA2TimingProof(session);
-    validateA2TimingInput(session);
+    if (session.timing_kind === 'editorial') validateA2TimingInput(session);
+    else validateA2AuditTimingInput(session);
   }
   return session;
+}
+
+async function readAuditTimingBinding(args, outputPath) {
+  if (!args['audit-session']) {
+    throw new Error('post-freeze-audit start requires --audit-session=<audit-session.json>');
+  }
+  if (!args.staging) {
+    throw new Error('post-freeze-audit start requires --staging=<reviewed-staging.jsonl>');
+  }
+  const auditSession = await readJson(path.resolve(args['audit-session']), 'audit session');
+  if (auditSession.recorder_version !== 'wave-a2-audit-recorder-v2'
+    || auditSession.status !== 'in-progress'
+    || typeof auditSession.session_id !== 'string'
+    || typeof auditSession.started_at !== 'string'
+    || typeof auditSession.reviewed_staging_path !== 'string'
+    || typeof auditSession.reviewed_staging_sha256 !== 'string'
+    || typeof auditSession.audit_timing_input_path !== 'string') {
+    throw new Error('audit timing requires an in-progress v2 audit session with a frozen staging binding');
+  }
+  const stagingPath = path.resolve(args.staging);
+  assertExternalStagingPath(stagingPath);
+  if (path.resolve(auditSession.reviewed_staging_path) !== stagingPath) {
+    throw new Error('audit timing staging path does not match the audit session freeze');
+  }
+  if (path.resolve(auditSession.audit_timing_input_path) !== path.resolve(outputPath)) {
+    throw new Error('audit timing output path does not match the audit session binding');
+  }
+  const stagingBytes = await readFile(stagingPath);
+  if (sha256Bytes(stagingBytes) !== auditSession.reviewed_staging_sha256) {
+    throw new Error('audit timing staging digest does not match the audit session freeze');
+  }
+  if (!Number.isFinite(Date.parse(auditSession.started_at))) {
+    throw new Error('audit session started_at must be a valid timestamp');
+  }
+  return auditSession;
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -215,15 +272,35 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (action === 'start') {
+    const passId = requirePass(args);
+    const timingKind = passId === 'post-freeze-audit' ? 'post-freeze-audit' : 'editorial';
     let session;
     if (args.input) {
       session = await readJson(path.resolve(args.input), 'A2 timing session');
       assertSession(session);
     } else {
       await ensureNewOutput(outputPath);
-      session = createSession();
+      session = createSession(timingKind);
     }
-    const updated = startPass(session, requirePass(args));
+    if (session.timing_kind !== timingKind) {
+      throw new Error(`${passId} cannot be recorded in a ${session.timing_kind} timing session`);
+    }
+    const auditBinding = timingKind === 'post-freeze-audit'
+      ? await readAuditTimingBinding(args, outputPath)
+      : null;
+    const updated = startPass(
+      session,
+      passId,
+      auditBinding
+        ? {
+          audit_session_id: auditBinding.session_id,
+          reviewed_staging_sha256: auditBinding.reviewed_staging_sha256,
+        }
+        : {},
+    );
+    if (auditBinding && Date.parse(updated.passes[0].started_at) < Date.parse(auditBinding.started_at)) {
+      throw new Error('post-freeze audit timing must start after the audit provenance session');
+    }
     await writeJson(outputPath, updated);
     console.log(`Started explicit A2 timing pass ${args.pass}; session state is in ${path.relative(process.cwd(), outputPath)}.`);
     return updated;

@@ -43,7 +43,8 @@
       "items": { "$ref": "#/$defs/relationReview" }
     },
     "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "timing_artifact": { "$ref": "#/$defs/timingArtifact" },
+    "editorial_timing_artifact": { "$ref": "#/$defs/timingArtifact" },
+    "timing_artifact": { "$ref": "#/$defs/auditTimingArtifact" },
     "decision_artifact": { "$ref": "#/$defs/decisionArtifact" },
     "status": { "enum": ["incomplete", "complete"] },
     "findings": {
@@ -60,7 +61,7 @@
       },
       "then": {
         "properties": { "status": { "const": "complete" } },
-        "required": ["reviewed_staging_sha256", "timing_artifact", "decision_artifact"]
+        "required": ["reviewed_staging_sha256", "editorial_timing_artifact", "timing_artifact", "decision_artifact"]
       }
     },
     {
@@ -69,7 +70,7 @@
       },
       "then": {
         "properties": { "status": { "const": "complete" } },
-        "required": ["reviewed_staging_sha256", "timing_artifact", "decision_artifact"]
+        "required": ["reviewed_staging_sha256", "editorial_timing_artifact", "timing_artifact", "decision_artifact"]
       }
     },
     {
@@ -131,6 +132,22 @@
         "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "started_at": { "type": "string", "format": "date-time" },
         "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "auditTimingArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "started_at", "completed_at", "audit_session_id", "reviewed_staging_sha256"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "audit_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
       }
     },
     "decisionArtifact": {

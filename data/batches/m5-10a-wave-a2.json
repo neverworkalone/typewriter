@@ -54,11 +54,11 @@
     "relation_noise_rate_of_before": 0,
     "relation_noise_candidate_count": 6,
     "relation_noise_rate_of_candidates": 0,
-    "total_wall_clock_seconds": 594.2820000000002,
-    "measured_wall_clock_seconds": 594.2820000000002,
-    "total_editor_seconds": 594.2820000000002,
-    "measured_editor_seconds": 594.2820000000002,
-    "editor_seconds_per_selected_start": 10.612178571428574,
+    "total_wall_clock_seconds": 649.3440000000002,
+    "measured_wall_clock_seconds": 649.3440000000002,
+    "total_editor_seconds": 649.3440000000002,
+    "measured_editor_seconds": 649.3440000000002,
+    "editor_seconds_per_selected_start": 11.595428571428574,
     "timing_status": "complete",
     "unmeasured_timing_pass_count": 0,
     "audit_status": "complete",
@@ -72,9 +72,9 @@
   },
   "source": {
     "manifest": "data/batches/m5-10-wave-a2.json",
-    "manifest_sha256": "bbbb233686ecffaf920ed1e7404e64794fb61433167f00d21fe40bd83a64b599",
+    "manifest_sha256": "5086cd04987dfc3b5035a03128a15add29dc7248c64c7d81118d9aa8d2ffd410",
     "metrics": "data/batches/m5-10a-wave-a2-metrics.json",
-    "metrics_sha256": "7b39ae7cb63ebe38684fd5083e0dbccbd63957b071e7f94adcd272f9f6652219",
+    "metrics_sha256": "2c16e42dd173d81f70b6be7337b09267073517b467a8a612299da7dd19536d99",
     "relation_diff": "data/batches/m5-10a-wave-a2-relation-diff.json",
     "relation_diff_sha256": "9c398a980d2ad12ba51bc303b656a713d28159f35bd987095412a0c8829dddde",
     "canonical_directory": "data/canonical",
@@ -95,13 +95,13 @@
         "pass_id": "target-preparation",
         "editor_seconds": 95.983,
         "unit_count": 58,
-        "share_of_total": 0.1615108652121383
+        "share_of_total": 0.14781533362901633
       },
       {
         "pass_id": "initial-review",
         "editor_seconds": 312.41,
         "unit_count": 300,
-        "share_of_total": 0.5256931894285877
+        "share_of_total": 0.48111632663118464
       }
     ],
     "planned_change": "No process correction is scheduled for this passing result; retain the fixed gates and separate decision-artifact bindings.",

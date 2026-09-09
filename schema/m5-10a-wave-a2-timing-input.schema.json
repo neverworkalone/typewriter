@@ -20,7 +20,8 @@
   ],
   "properties": {
     "schema_version": { "const": "1" },
-    "timing_id": { "type": "string", "pattern": "^m5-10a-wave-a2-timing-[0-9]{8}$" },
+    "timing_id": { "type": "string", "pattern": "^m5-10a-wave-a2-timing(?:-audit)?-[0-9]{8}$" },
+    "timing_kind": { "enum": ["editorial", "post-freeze-audit"] },
     "batch_id": { "type": "string", "pattern": "^m5-[0-9]+-[a-z0-9][a-z0-9-]*$" },
     "recorder_version": { "const": "timing-recorder-v1" },
     "recording_source": { "const": "timing-recorder-v1" },
@@ -29,7 +30,7 @@
     "status": { "enum": ["incomplete", "complete"] },
     "passes": {
       "type": "array",
-      "minItems": 5,
+      "minItems": 1,
       "maxItems": 5,
       "items": { "$ref": "#/$defs/pass" }
     },
@@ -40,6 +41,41 @@
     "recording_proof_sha256": { "$ref": "#/$defs/sha256" },
     "note": { "type": "string", "pattern": "\\S" }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "timing_kind": { "const": "editorial" } },
+        "required": ["timing_kind"]
+      },
+      "then": {
+        "properties": {
+          "timing_id": { "type": "string", "pattern": "^m5-10a-wave-a2-timing-[0-9]{8}$" },
+          "passes": { "type": "array", "minItems": 5, "maxItems": 5 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "timing_kind": { "const": "post-freeze-audit" } },
+        "required": ["timing_kind"]
+      },
+      "then": {
+        "properties": {
+          "timing_id": { "type": "string", "pattern": "^m5-10a-wave-a2-timing-audit-[0-9]{8}$" },
+          "passes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "contains": {
+              "type": "object",
+              "required": ["id"],
+              "properties": { "id": { "const": "post-freeze-audit" } }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "pass": {
@@ -47,23 +83,50 @@
       "additionalProperties": false,
       "required": ["id", "status"],
       "properties": {
-        "id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-audit", "held-rejected"] },
+        "id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-audit", "held-rejected", "post-freeze-audit"] },
         "status": { "enum": ["unmeasured", "in-progress", "complete"] },
         "started_at": { "type": "string", "format": "date-time" },
         "completed_at": { "type": "string", "format": "date-time" },
         "wall_clock_seconds": { "type": "number", "minimum": 0 },
         "editor_seconds": { "type": "number", "minimum": 0 },
         "session_id": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+        "audit_session_id": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+        "reviewed_staging_sha256": { "$ref": "#/$defs/sha256" },
         "recording_source": { "const": "timing-recorder-v1" },
         "work_evidence": { "$ref": "#/$defs/workEvidence" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "id": { "const": "post-freeze-audit" } },
+            "required": ["id"]
+          },
+          "then": {
+            "if": {
+              "properties": { "status": { "enum": ["in-progress", "complete"] } },
+              "required": ["status"]
+            },
+            "then": {
+              "required": ["audit_session_id", "reviewed_staging_sha256"]
+            }
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                { "required": ["audit_session_id"] },
+                { "required": ["reviewed_staging_sha256"] }
+              ]
+            }
+          }
+        }
+      ]
     },
     "workEvidence": {
       "type": "object",
       "additionalProperties": false,
       "required": ["unit_kind", "unit_count", "unit_ids", "before_sha256", "after_sha256", "note"],
       "properties": {
-        "unit_kind": { "enum": ["selected-target", "boundary-check", "sense-correction", "final-audit-item", "buffer-decision"] },
+        "unit_kind": { "enum": ["selected-target", "boundary-check", "sense-correction", "final-audit-item", "buffer-decision", "post-freeze-audit-item"] },
         "unit_count": { "type": "integer", "minimum": 1 },
         "unit_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "\\S" } },
         "before_sha256": { "$ref": "#/$defs/sha256" },
@@ -77,7 +140,7 @@
       "required": ["event_id", "pass_id", "kind", "session_id", "at"],
       "properties": {
         "event_id": { "type": "string", "pattern": "^m5-10a-wave-a2-timing-event-[0-9]{4}$" },
-        "pass_id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-audit", "held-rejected"] },
+        "pass_id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-audit", "held-rejected", "post-freeze-audit"] },
         "kind": { "enum": ["start", "stop"] },
         "session_id": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
         "at": { "type": "string", "format": "date-time" }

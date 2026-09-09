@@ -21,7 +21,9 @@ import {
 import { main as recordA2Audit } from '../scripts/batch/record-m5-10a-wave-a2-audit.mjs';
 import {
   createA2TimingProof,
+  A2_AUDIT_TIMING_PASS_IDS,
   A2_TIMING_WORK_UNIT_CONTRACT,
+  validateA2AuditTimingInput,
   validateA2AuditInput,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
@@ -171,6 +173,7 @@ function createUnverifiedAuditFixture(audit) {
   delete fixture.completed_at;
   delete fixture.reviewed_staging_sha256;
   delete fixture.timing_artifact;
+  delete fixture.editorial_timing_artifact;
   delete fixture.decision_artifact;
   fixture.provenance = {
     verification_status: 'unverified',
@@ -305,6 +308,7 @@ function createVerifiedAuditFixture(
     actorId = 'audit-session-owner',
     sessionId = '22222222-2222-4222-8222-222222222222',
     artifact = 'data/batches/test-audit-session.json',
+    auditTiming = createCompleteAuditTimingFixture(editorial, sessionId),
   } = {},
 ) {
   const fixture = structuredClone(audit);
@@ -324,7 +328,16 @@ function createVerifiedAuditFixture(
   fixture.independent = true;
   fixture.created_at = '2026-09-09T06:10:00Z';
   fixture.completed_at = '2026-09-09T06:30:00Z';
-  fixture.timing_artifact = structuredClone(editorial.timing_artifact);
+  const auditTimingBytes = Buffer.from(`${JSON.stringify(auditTiming, null, 2)}\n`, 'utf8');
+  fixture.editorial_timing_artifact = structuredClone(editorial.timing_artifact);
+  fixture.timing_artifact = {
+    path: 'data/batches/test-audit-timing.json',
+    sha256: sha256Bytes(auditTimingBytes),
+    started_at: auditTiming.passes[0].started_at,
+    completed_at: auditTiming.passes[0].completed_at,
+    audit_session_id: sessionId,
+    reviewed_staging_sha256: editorial.reviewed_staging_sha256,
+  };
   fixture.decision_artifact = {
     path: 'data/batches/test-audit-decisions.json',
     sha256: 'e'.repeat(64),
@@ -360,6 +373,64 @@ function createVerifiedAuditFixture(
   }];
   fixture.note = 'Test fixture records a distinct verified audit session and structured relation bases.';
   return fixture;
+}
+
+function createCompleteAuditTimingFixture(editorial, auditSessionId = '22222222-2222-4222-8222-222222222222') {
+  const passId = A2_AUDIT_TIMING_PASS_IDS[0];
+  const startedAt = '2026-09-09T06:11:00Z';
+  const completedAt = '2026-09-09T06:12:00Z';
+  const timingSessionId = '44444444-4444-4444-8444-444444444444';
+  const contract = A2_TIMING_WORK_UNIT_CONTRACT[passId];
+  const timing = {
+    schema_version: '1',
+    timing_id: 'm5-10a-wave-a2-timing-audit-20260909',
+    timing_kind: 'post-freeze-audit',
+    batch_id: 'm5-10-wave-a2-20260909',
+    recorder_version: 'timing-recorder-v1',
+    recording_source: 'timing-recorder-v1',
+    recorder_command: 'node scripts/batch/record-m5-10a-wave-a2-timing.mjs',
+    processed_start_count: 56,
+    status: 'complete',
+    passes: [{
+      id: passId,
+      status: 'complete',
+      started_at: startedAt,
+      completed_at: completedAt,
+      wall_clock_seconds: 60,
+      editor_seconds: 60,
+      session_id: timingSessionId,
+      recording_source: 'timing-recorder-v1',
+      audit_session_id: auditSessionId,
+      reviewed_staging_sha256: editorial.reviewed_staging_sha256,
+      work_evidence: {
+        unit_kind: contract.unit_kind,
+        unit_count: contract.unit_ids.length,
+        unit_ids: [...contract.unit_ids],
+        before_sha256: editorial.reviewed_staging_sha256,
+        after_sha256: editorial.reviewed_staging_sha256,
+        note: 'Post-freeze audit rechecked the frozen staging, relations, buffer decisions, and timing completeness contract.',
+      },
+    }],
+    events: [
+      {
+        event_id: 'm5-10a-wave-a2-timing-event-0001',
+        pass_id: passId,
+        kind: 'start',
+        session_id: timingSessionId,
+        at: startedAt,
+      },
+      {
+        event_id: 'm5-10a-wave-a2-timing-event-0002',
+        pass_id: passId,
+        kind: 'stop',
+        session_id: timingSessionId,
+        at: completedAt,
+      },
+    ],
+    note: 'Post-freeze audit timing fixture is recorded from explicit start/stop events.',
+  };
+  timing.recording_proof_sha256 = createA2TimingProof(timing);
+  return timing;
 }
 
 function createVerifiedRelationDiffFixture(relationDiff) {
@@ -630,7 +701,16 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     canonicalRecords: referenceRecords,
   });
   const verifiedRelationDiff = createVerifiedRelationDiffFixture(relationDiff);
-  const verifiedAudit = createVerifiedAuditFixture(audit, verifiedEditorial, verifiedRelationDiff);
+  const completeAuditTiming = createCompleteAuditTimingFixture(verifiedEditorial);
+  const verifiedAudit = createVerifiedAuditFixture(
+    audit,
+    verifiedEditorial,
+    verifiedRelationDiff,
+    { auditTiming: completeAuditTiming },
+  );
+  const completeAuditTimingSha256 = sha256Bytes(
+    Buffer.from(`${JSON.stringify(completeAuditTiming, null, 2)}\n`, 'utf8'),
+  );
   assert.equal(
     validateA2AuditInput({
       audit: verifiedAudit,
@@ -641,10 +721,44 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     true,
   );
 
+  const missingPostFreezeTiming = structuredClone(verifiedAudit);
+  delete missingPostFreezeTiming.timing_artifact;
+  assertInputError(
+    () => validateA2AuditInput({
+      audit: missingPostFreezeTiming,
+      editorialInput: { ...verifiedEditorial, verified: true },
+      relationDiff: verifiedRelationDiff,
+      canonicalRecords: referenceRecords,
+    }),
+    'SCHEMA_ERROR',
+  );
+  const unmeasuredPostFreezeTiming = structuredClone(completeAuditTiming);
+  unmeasuredPostFreezeTiming.status = 'incomplete';
+  unmeasuredPostFreezeTiming.events = [];
+  delete unmeasuredPostFreezeTiming.recording_proof_sha256;
+  unmeasuredPostFreezeTiming.passes = [{ id: 'post-freeze-audit', status: 'unmeasured' }];
+  assert.deepEqual(validateA2AuditTimingInput(unmeasuredPostFreezeTiming), {
+    status: 'incomplete',
+    unmeasured_pass_count: 1,
+  });
+  const falselyCompleteAuditTiming = structuredClone(unmeasuredPostFreezeTiming);
+  falselyCompleteAuditTiming.status = 'complete';
+  falselyCompleteAuditTiming.passes = [{
+    id: 'post-freeze-audit',
+    status: 'unmeasured',
+  }];
+  falselyCompleteAuditTiming.events = completeAuditTiming.events;
+  falselyCompleteAuditTiming.recording_proof_sha256 = createA2TimingProof(falselyCompleteAuditTiming);
+  assertInputError(
+    () => validateA2AuditTimingInput(falselyCompleteAuditTiming),
+    'INCOMPLETE_TIMING',
+  );
+
   const manifestSources = {
     editorialInputSource: { path: 'data/batches/test-editorial.json', sha256: 'a'.repeat(64) },
     auditInputSource: { path: 'data/batches/test-audit.json', sha256: 'b'.repeat(64) },
     timingInputSource: { path: 'data/batches/test-timing.json', sha256: 'c'.repeat(64) },
+    auditTimingInputSource: { path: 'data/batches/test-audit-timing.json', sha256: completeAuditTimingSha256 },
     relationDiffSource: {
       path: 'data/batches/test-relation-diff.json',
       sha256: 'd'.repeat(64),
@@ -669,6 +783,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     editorialInput: verifiedEditorial,
     auditInput: verifiedAudit,
     timingInput: completeTiming,
+    auditTimingInput: completeAuditTiming,
     canonicalRecords: referenceRecords,
     ...manifestSources,
     relationDiffSource: {
@@ -683,6 +798,33 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   assert.equal(promotedManifest.records[0].proposal_canonical_id, undefined);
   assert.equal(promotedManifest.review.reviewed_staging_sha256, reviewedStagingSha256);
   assert.equal(promotedManifest.measurement.audit.reviewed_staging_sha256, reviewedStagingSha256);
+  assert.equal(
+    promotedManifest.measurement.timing.audit_source_sha256,
+    completeAuditTimingSha256,
+  );
+
+  const mismatchedAuditTimingSource = {
+    ...manifestSources,
+    auditTimingInputSource: {
+      ...manifestSources.auditTimingInputSource,
+      sha256: 'f'.repeat(64),
+    },
+  };
+  assert.throws(
+    () => createWaveA2Manifest({
+      editorialInput: verifiedEditorial,
+      auditInput: verifiedAudit,
+      timingInput: completeTiming,
+      auditTimingInput: completeAuditTiming,
+      canonicalRecords: referenceRecords,
+      ...mismatchedAuditTimingSource,
+      relationDiffSource: {
+        ...manifestSources.relationDiffSource,
+        value: verifiedRelationDiff,
+      },
+    }),
+    (error) => error.code === 'AUDIT_TIMING_BINDING_MISMATCH',
+  );
 
   const promotionDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10a-promotion-'));
   try {
@@ -892,6 +1034,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   nonIndependentAudit.independent = true;
   nonIndependentAudit.provenance.session_id = verifiedEditorial.provenance.session_id;
   nonIndependentAudit.provenance.artifact = verifiedEditorial.provenance.artifact;
+  nonIndependentAudit.timing_artifact.audit_session_id = verifiedEditorial.provenance.session_id;
   assertInputError(
     () => validateA2AuditInput({
       audit: nonIndependentAudit,
@@ -1072,6 +1215,7 @@ test('M5-10A completion recorders require separately supplied decision artifacts
       '--editorial=data/batches/m5-10a-wave-a2-editorial-input.json',
       `--staging=${stagingPath}`,
       '--timing=data/batches/m5-10a-wave-a2-timing-input.json',
+      `--audit-timing=${path.join(directory, 'audit-timing.json')}`,
       `--decisions=${decisionsPath}`,
       '--canonical=data/canonical',
     ]);
@@ -1083,12 +1227,13 @@ test('M5-10A completion recorders require separately supplied decision artifacts
         '--editorial=data/batches/m5-10a-wave-a2-editorial-input.json',
         `--staging=${stagingPath}`,
         '--timing=data/batches/m5-10a-wave-a2-timing-input.json',
+        `--audit-timing=${path.join(directory, 'audit-timing.json')}`,
         `--decisions=${decisionsPath}`,
         '--audit=data/batches/m5-10a-wave-a2-audit-input-negative.json',
         '--relation=data/batches/m5-10a-wave-a2-relation-diff.json',
         '--canonical=data/canonical',
       ]),
-      /audit decision artifact does not exist/,
+      /post-freeze audit timing input does not exist/,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -1141,6 +1286,7 @@ test('M5-10A treats a separate Codex audit pass as independent without requiring
 
   const reusedSession = structuredClone(codexAudit);
   reusedSession.provenance.session_id = codexEditorial.provenance.session_id;
+  reusedSession.timing_artifact.audit_session_id = codexEditorial.provenance.session_id;
   assertInputError(
     () => validateA2AuditInput({
       audit: reusedSession,

@@ -47,6 +47,7 @@ export const A2_TIMING_PASS_IDS = Object.freeze([
   'final-audit',
   'held-rejected',
 ]);
+export const A2_AUDIT_TIMING_PASS_IDS = Object.freeze(['post-freeze-audit']);
 export const A2_PROMOTED_RECORD_REVIEWS = Object.freeze(
   Array.from({ length: 50 }, (_, index) => ({
     inventory_id: `m5-${String(index + 307).padStart(3, '0')}`,
@@ -94,6 +95,18 @@ export const A2_TIMING_WORK_UNIT_CONTRACT = Object.freeze({
   'held-rejected': Object.freeze({
     unit_kind: 'buffer-decision',
     unit_ids: Object.freeze([...A2_BUFFER_INVENTORY_IDS]),
+  }),
+  'post-freeze-audit': Object.freeze({
+    unit_kind: 'post-freeze-audit-item',
+    unit_ids: Object.freeze([
+      ...A2_PROMOTED_CANONICAL_IDS,
+      ...Array.from({ length: 6 }, (_, index) => `m5-10-wave-a2-rel-00${index + 1}`),
+      ...A2_BUFFER_INVENTORY_IDS,
+      'a2-audit-sense-boundaries',
+      'a2-audit-relation-screen',
+      'a2-audit-buffer-decisions',
+      'a2-audit-timing-completeness',
+    ]),
   }),
 });
 
@@ -678,8 +691,8 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
     'AUDIT_CHRONOLOGY_MISMATCH',
   );
   assertCondition(
-    Date.parse(audit.timing_artifact.completed_at) <= Date.parse(audit.created_at),
-    'audit cannot start before the required timing passes stopped',
+    Date.parse(audit.editorial_timing_artifact.completed_at) <= Date.parse(audit.created_at),
+    'audit cannot start before the editorial timing passes stopped',
     'AUDIT_CHRONOLOGY_MISMATCH',
   );
   assertCondition(
@@ -695,18 +708,43 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
     'AUDIT_DECISION_ARTIFACT_CHRONOLOGY',
   );
   assertEqual(
-    audit.timing_artifact,
+    audit.editorial_timing_artifact,
     editorialInput.timing_artifact,
-    'audit timing artifact must bind the editorial timing result',
+    'audit editorial timing artifact must bind the editorial timing result',
     'AUDIT_TIMING_BINDING_MISMATCH',
   );
-  assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
   assertEqual(
     audit.reviewed_staging_sha256,
     editorialInput.reviewed_staging_sha256,
     'audit reviewed staging digest must match the editorial input',
     'AUDIT_STAGING_BINDING_MISMATCH',
   );
+  assertCondition(
+    audit.timing_artifact.path !== audit.editorial_timing_artifact.path,
+    'post-freeze audit timing must use a distinct timing artifact',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
+  assertEqual(
+    audit.timing_artifact.audit_session_id,
+    audit.provenance.session_id,
+    'post-freeze audit timing must bind the audit provenance session',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
+  assertEqual(
+    audit.timing_artifact.reviewed_staging_sha256,
+    audit.reviewed_staging_sha256,
+    'post-freeze audit timing must bind the reviewed staging digest',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
+  assertCondition(
+    Date.parse(audit.timing_artifact.started_at) >= Date.parse(audit.created_at)
+      && Date.parse(audit.timing_artifact.started_at) <= Date.parse(audit.timing_artifact.completed_at)
+      && Date.parse(audit.timing_artifact.completed_at) <= Date.parse(audit.decision_artifact.finalized_at)
+      && Date.parse(audit.timing_artifact.completed_at) <= Date.parse(audit.completed_at),
+    'post-freeze audit timing must run after audit start and stop before audit decision finalization and completion',
+    'AUDIT_TIMING_CHRONOLOGY_MISMATCH',
+  );
+  assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
   assertCondition(
     audit.provenance.session_id !== editorialInput.provenance.session_id,
     'independent audit must use a separate pass session',
@@ -829,19 +867,20 @@ export function createA2TimingProof(timing) {
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
-function validateTimingPassOrder(passes) {
+function validateTimingPassOrder(passes, expectedPassIds, label) {
   assertEqual(
     passes.map(({ id }) => id),
-    A2_TIMING_PASS_IDS,
-    'timing pass coverage/order drifted',
+    expectedPassIds,
+    `${label} timing pass coverage/order drifted`,
     'TIMING_PASS_COVERAGE',
   );
 }
 
-export function validateA2TimingInput(timing) {
+function validateA2TimingInputForPasses(timing, expectedPassIds, expectedTimingKind, label) {
   validateSchema(timing, timingSchemaValidator, 'timing', 'Wave A2 timing input');
   assertEqual(timing.batch_id, A2_BATCH_ID, 'timing batch_id drifted', 'BATCH_ID_DRIFT');
-  validateTimingPassOrder(timing.passes);
+  assertEqual(timing.timing_kind ?? 'editorial', expectedTimingKind, `${label} timing_kind drifted`, 'TIMING_KIND_MISMATCH');
+  validateTimingPassOrder(timing.passes, expectedPassIds, label);
   if (timing.status === 'incomplete') {
     assertEqual(timing.events, [], 'incomplete timing must not retain partial synthetic events', 'INVALID_INCOMPLETE_TIMING');
     for (const pass of timing.passes) {
@@ -854,8 +893,8 @@ export function validateA2TimingInput(timing) {
   }
 
   assertCondition(timing.recording_proof_sha256 === createA2TimingProof(timing), 'timing recording proof does not match persisted events', 'TIMING_RECORDING_PROOF_MISMATCH');
-  assertEqual(timing.events.length, A2_TIMING_PASS_IDS.length * 2, 'complete timing must persist one start and one stop event per pass', 'TIMING_EVENT_COVERAGE');
-  const eventsByPass = new Map(A2_TIMING_PASS_IDS.map((id) => [id, []]));
+  assertEqual(timing.events.length, expectedPassIds.length * 2, 'complete timing must persist one start and one stop event per pass', 'TIMING_EVENT_COVERAGE');
+  const eventsByPass = new Map(expectedPassIds.map((id) => [id, []]));
   for (const event of timing.events) eventsByPass.get(event.pass_id).push(event);
   for (let index = 1; index < timing.passes.length; index += 1) {
     assertCondition(
@@ -902,8 +941,71 @@ export function validateA2TimingInput(timing) {
       `${pass.id} work evidence unit_ids do not cover the A2 timing contract`,
       'TIMING_WORK_EVIDENCE_MISMATCH',
     );
+    if (pass.id === 'post-freeze-audit') {
+      assertCondition(
+        pass.work_evidence.before_sha256 === pass.reviewed_staging_sha256
+          && pass.work_evidence.after_sha256 === pass.reviewed_staging_sha256,
+        'post-freeze audit work evidence must remain bound to the frozen reviewed staging digest',
+        'AUDIT_TIMING_STAGING_BINDING_MISMATCH',
+      );
+    }
   }
   return { status: 'complete', unmeasured_pass_count: 0 };
+}
+
+export function validateA2TimingInput(timing) {
+  return validateA2TimingInputForPasses(timing, A2_TIMING_PASS_IDS, 'editorial', 'editorial');
+}
+
+export function validateA2AuditTimingInput(
+  timing,
+  {
+    auditSessionId,
+    reviewedStagingSha256,
+    auditSessionStartedAt,
+    decisionFinalizedAt,
+  } = {},
+) {
+  const result = validateA2TimingInputForPasses(
+    timing,
+    A2_AUDIT_TIMING_PASS_IDS,
+    'post-freeze-audit',
+    'post-freeze audit',
+  );
+  if (timing.status === 'incomplete') return result;
+
+  const pass = timing.passes[0];
+  if (auditSessionId) {
+    assertEqual(
+      pass.audit_session_id,
+      auditSessionId,
+      'post-freeze audit timing session binding drifted',
+      'AUDIT_TIMING_BINDING_MISMATCH',
+    );
+  }
+  if (reviewedStagingSha256) {
+    assertEqual(
+      pass.reviewed_staging_sha256,
+      reviewedStagingSha256,
+      'post-freeze audit timing staging binding drifted',
+      'AUDIT_TIMING_STAGING_BINDING_MISMATCH',
+    );
+  }
+  if (auditSessionStartedAt) {
+    assertCondition(
+      Date.parse(pass.started_at) >= Date.parse(auditSessionStartedAt),
+      'post-freeze audit timing started before the audit provenance session',
+      'AUDIT_TIMING_CHRONOLOGY_MISMATCH',
+    );
+  }
+  if (decisionFinalizedAt) {
+    assertCondition(
+      Date.parse(pass.completed_at) <= Date.parse(decisionFinalizedAt),
+      'post-freeze audit timing completed after audit decision finalization',
+      'AUDIT_TIMING_CHRONOLOGY_MISMATCH',
+    );
+  }
+  return result;
 }
 
 export async function validateA2ProvenanceArtifact({

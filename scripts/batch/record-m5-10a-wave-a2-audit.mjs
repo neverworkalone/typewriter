@@ -8,6 +8,7 @@ import {
   validateA2AuditDecisionArtifact,
   validateA2AuditInput,
   validateA2EditorialInput,
+  validateA2AuditTimingInput,
   validateA2ProvenanceArtifact,
   validateA2TimingInput,
   sha256Bytes,
@@ -87,6 +88,15 @@ function assertCompleteTiming(timing) {
   return timing.passes.at(-1).completed_at;
 }
 
+async function assertNewArtifact(filePath, label) {
+  try {
+    await access(filePath);
+    throw new Error(`${label} must be supplied after audit start: ${filePath}`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
+
 async function readAndValidateEditorial(args) {
   const editorialPath = path.resolve(args.editorial);
   const stagingPath = path.resolve(args.staging);
@@ -138,13 +148,13 @@ async function startSession(args) {
   if (Date.parse(timingCompletedAt) > Date.parse(editorial.completed_at)) {
     throw new Error('audit cannot start before the editorial timing passes have stopped');
   }
-  const decisionsPath = path.resolve(args.decisions);
-  try {
-    await access(decisionsPath);
-    throw new Error(`audit decision artifact must be supplied after audit start: ${decisionsPath}`);
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+  if (!args['audit-timing']) {
+    throw new Error('audit start requires --audit-timing=<post-freeze-audit-timing.json>');
   }
+  const auditTimingPath = path.resolve(args['audit-timing']);
+  await assertNewArtifact(auditTimingPath, 'audit timing artifact');
+  const decisionsPath = path.resolve(args.decisions);
+  await assertNewArtifact(decisionsPath, 'audit decision artifact');
   const sessionPath = path.resolve(args.session);
   await assertNewSession(sessionPath);
   const session = {
@@ -162,8 +172,9 @@ async function startSession(args) {
     timing_input_path: timingPath,
     timing_input_sha256: sha256Bytes(timingBytes),
     timing_completed_at: timingCompletedAt,
+    audit_timing_input_path: auditTimingPath,
     audit_decisions_path: decisionsPath,
-    note: 'Separate audit session started; completion requires a separately supplied audit decision artifact over the frozen editorial result.',
+    note: 'Separate audit session started; completion requires a separately measured post-freeze audit timing pass and a separately supplied audit decision artifact over the frozen editorial result.',
   };
   await writeJson(sessionPath, session);
   console.log(`Started separate Codex Wave A2 audit session ${session.session_id}.`);
@@ -193,6 +204,16 @@ async function completeSession(args) {
   const timing = JSON.parse(timingBytes.toString('utf8'));
   const timingCompletedAt = assertCompleteTiming(timing);
   if (timingCompletedAt !== session.timing_completed_at) throw new Error('timing completion changed during the audit session');
+
+  if (!session.audit_timing_input_path) {
+    throw new Error('audit session does not bind a post-freeze audit timing artifact');
+  }
+  const auditTimingPath = path.resolve(args['audit-timing'] ?? session.audit_timing_input_path);
+  if (auditTimingPath !== path.resolve(session.audit_timing_input_path)) {
+    throw new Error('audit timing artifact path changed during the audit session');
+  }
+  const auditTimingBytes = await readBytes(auditTimingPath, 'post-freeze audit timing input');
+  const auditTiming = JSON.parse(auditTimingBytes.toString('utf8'));
 
   const decisionsPath = path.resolve(args.decisions ?? session.audit_decisions_path);
   if (decisionsPath !== session.audit_decisions_path) throw new Error('audit decision artifact path changed during the audit session');
@@ -225,6 +246,16 @@ async function completeSession(args) {
   if (Date.parse(timingCompletedAt) > Date.parse(session.started_at)) {
     throw new Error('audit session must start after the required timing passes stopped');
   }
+  validateA2AuditTimingInput(auditTiming, {
+    auditSessionId: session.session_id,
+    reviewedStagingSha256: session.reviewed_staging_sha256,
+    auditSessionStartedAt: session.started_at,
+    decisionFinalizedAt: decisionArtifact.finalized_at,
+  });
+  const auditTimingCompletedAt = auditTiming.passes[0].completed_at;
+  if (Date.parse(auditTimingCompletedAt) > Date.parse(completedAt)) {
+    throw new Error('post-freeze audit timing cannot complete after the audit session');
+  }
 
   const canonical = await readCanonicalRecords(path.resolve(args.canonical));
   const staged = await readCanonicalRecords(session.reviewed_staging_path);
@@ -255,11 +286,19 @@ async function completeSession(args) {
     completed_at: completedAt,
     reviewed_record_ids: structuredClone(decisionArtifact.reviewed_record_ids),
     relation_reviews: structuredClone(decisionArtifact.relation_reviews),
-    timing_artifact: {
+    editorial_timing_artifact: {
       path: repositoryRelativePath(session.timing_input_path, 'timing artifact'),
       sha256: session.timing_input_sha256,
       started_at: timing.passes[0].started_at,
       completed_at: timingCompletedAt,
+    },
+    timing_artifact: {
+      path: repositoryRelativePath(auditTimingPath, 'audit timing artifact'),
+      sha256: sha256Bytes(auditTimingBytes),
+      started_at: auditTiming.passes[0].started_at,
+      completed_at: auditTimingCompletedAt,
+      audit_session_id: session.session_id,
+      reviewed_staging_sha256: session.reviewed_staging_sha256,
     },
     decision_artifact: {
       path: repositoryRelativePath(decisionsPath, 'audit decision artifact'),
@@ -306,6 +345,8 @@ async function completeSession(args) {
     completed_at: completedAt,
     audit_input_path: path.resolve(args.audit),
     audit_input_sha256: sha256Bytes(Buffer.from(`${JSON.stringify(audit, null, 2)}\n`, 'utf8')),
+    audit_timing_input_sha256: sha256Bytes(auditTimingBytes),
+    audit_timing_completed_at: auditTimingCompletedAt,
     decision_artifact_sha256: sha256Bytes(decisionBytes),
     provenance_artifact_path: artifactPath,
     provenance_artifact_sha256: audit.provenance.sha256,
@@ -329,6 +370,9 @@ export async function main(argv = process.argv.slice(2)) {
   }
   for (const option of ['session', 'editorial', 'staging', 'timing', 'decisions']) {
     if (!args[option]) throw new Error(`--${option} is required`);
+  }
+  if (args.action === 'start' && !args['audit-timing']) {
+    throw new Error('--audit-timing is required for start');
   }
   if (args.action === 'start') return startSession(args);
   for (const option of ['audit', 'relation', 'canonical']) {
