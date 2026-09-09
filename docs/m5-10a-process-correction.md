@@ -223,7 +223,9 @@ by this result.
 
 The editorial and audit completion recorders now consume separate, tracked
 decision artifacts and bind them to the frozen staging digest, active session,
-and chronology. They cannot synthesize completed decisions, audit findings, or
+and chronology. Each artifact also records a finalization timestamp that is
+included in its complete-file digest; editorial finalization must follow the last
+timing stop and precede editorial completion. They cannot synthesize completed decisions, audit findings, or
 independence from recorder output alone. If a later run fails the timing gate,
 the stage report must include the measured breakdown, cause, expected saving,
 limited retry size, and the unchanged 12-second/25% fixed gates.

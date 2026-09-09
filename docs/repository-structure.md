@@ -96,7 +96,9 @@ decision-artifact bindings, and any measured correction plan; it must not carry
 candidate record bodies, raw draft text, or external source text. An explicitly
 unverified/incomplete input cannot produce a completed import claim. A completed
 input additionally requires a provenance artifact that binds its actor, UUID
-session, subject digest, completion time, and artifact digest. The actor may be
+session, subject digest, completion time, and artifact digest. Decision artifacts
+also bind a `finalized_at` timestamp into their complete-file digest; editorial
+finalization must follow the last timing stop and precede completion. The actor may be
 human or Codex; a separate audit session and artifact establish independence
 even when the actor is the same Codex. Candidate record bodies and the reviewed
 canonical JSONL passed to the import gate stay in a temporary workspace outside

@@ -215,6 +215,10 @@ async function completeSession(args) {
     || Date.parse(decisionArtifact.created_at) > Date.parse(completedAt)) {
     throw new Error('audit decisions must be supplied during the active audit session');
   }
+  if (Date.parse(decisionArtifact.finalized_at) < Date.parse(session.started_at)
+    || Date.parse(decisionArtifact.finalized_at) > Date.parse(completedAt)) {
+    throw new Error('audit decisions must be finalized during the active audit session');
+  }
   if (Date.parse(editorial.completed_at) > Date.parse(session.started_at)) {
     throw new Error('audit session must start after editorial completion');
   }
@@ -260,6 +264,7 @@ async function completeSession(args) {
       path: repositoryRelativePath(decisionsPath, 'audit decision artifact'),
       sha256: sha256Bytes(decisionBytes),
       created_at: decisionArtifact.created_at,
+      finalized_at: decisionArtifact.finalized_at,
     },
     reviewed_staging_sha256: session.reviewed_staging_sha256,
     status: 'complete',

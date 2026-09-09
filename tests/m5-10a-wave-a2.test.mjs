@@ -230,6 +230,7 @@ function createVerifiedEditorialFixture(
     path: 'data/batches/test-editorial-decisions.json',
     sha256: 'd'.repeat(64),
     created_at: '2026-09-09T05:40:00Z',
+    finalized_at: '2026-09-09T05:55:00Z',
   };
   fixture.sense_review.status = 'complete';
   fixture.sense_review.reviewed_start_count = 50;
@@ -326,6 +327,7 @@ function createVerifiedAuditFixture(
     path: 'data/batches/test-audit-decisions.json',
     sha256: 'e'.repeat(64),
     created_at: '2026-09-09T06:15:00Z',
+    finalized_at: '2026-09-09T06:20:00Z',
   };
   fixture.reviewed_record_ids = editorial.records
     .slice(0, 50)
@@ -569,12 +571,21 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
   });
   assert.equal(stage.ready_to_create, true);
   assert.equal(stage.correction_plan.status, 'not-required');
+  assert.equal(stage.correction_plan.expected_saving_editor_seconds, 0);
+  assert.match(stage.correction_plan.next_validation.note, /^No retry is required by this passing result\b/);
   assert.equal(stage.next_stage_created, false);
   assert.equal(stage.next_stage_authorized, false);
   assert.equal(stage.metrics.editorial_review_complete, true);
   assert.equal(stage.metrics.human_editorial_review_complete, false);
   assert.equal(stage.metrics.audit_status, 'complete');
   assert.equal(stage.metrics.audit_independent, true);
+
+  const contradictoryStage = structuredClone(stage);
+  contradictoryStage.correction_plan.next_validation.note = 'Run a retry and HOLD Wave B until re-evaluated.';
+  await assert.rejects(
+    validateExpansionStage(contradictoryStage, plan),
+    (error) => error.code === 'CORRECTION_PLAN_CONTRADICTION',
+  );
 });
 
 test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async () => {
@@ -925,6 +936,12 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   assertInputError(
     () => validateA2EditorialInput({ input: timingAfterEditorial, canonicalRecords: referenceRecords }),
     'EDITORIAL_CHRONOLOGY_MISMATCH',
+  );
+  const decisionBeforeTiming = structuredClone(verifiedEditorial);
+  decisionBeforeTiming.decision_artifact.finalized_at = '2026-09-09T05:49:00Z';
+  assertInputError(
+    () => validateA2EditorialInput({ input: decisionBeforeTiming, canonicalRecords: referenceRecords }),
+    'EDITORIAL_DECISION_ARTIFACT_CHRONOLOGY',
   );
   assert.throws(
     () => assertEditorialCompletionChronology(

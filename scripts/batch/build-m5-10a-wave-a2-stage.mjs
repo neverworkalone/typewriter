@@ -80,6 +80,7 @@ function stageMetrics(metricsArtifact, verification) {
 function correctionPlan(metricsArtifact, gateStatus) {
   const timing = metricsArtifact.derived.timing;
   const totalEditorSeconds = timing.total_editor_seconds;
+  const correctionRequired = gateStatus === 'fail';
   const measuredBreakdown = ['target-preparation', 'initial-review'].map((passId) => {
     const pass = timing.passes[passId];
     return {
@@ -90,16 +91,22 @@ function correctionPlan(metricsArtifact, gateStatus) {
     };
   });
   return {
-    status: gateStatus === 'fail' ? 'required' : 'not-required',
-    cause: 'Target preparation and the six-boundary initial review account for the measured cost; repeated evidence drafting and setup must be reduced without removing any boundary check.',
+    status: correctionRequired ? 'required' : 'not-required',
+    cause: correctionRequired
+      ? 'Target preparation and the six-boundary initial review account for the measured cost; repeated evidence drafting and setup must be reduced without removing any boundary check.'
+      : 'No correction is required: the corrected chronological timing result is within the fixed editor-time gate.',
     measured_breakdown: measuredBreakdown,
-    planned_change: 'Use a separately authored record decision worksheet keyed to the six boundary IDs, capture each record-specific observation once, and reuse only that supplied evidence in the recorder; keep all 50 starts and all six boundaries in scope.',
-    expected_saving_editor_seconds: 200,
+    planned_change: correctionRequired
+      ? 'Use a separately authored record decision worksheet keyed to the six boundary IDs, capture each record-specific observation once, and reuse only that supplied evidence in the recorder; keep all 50 starts and all six boundaries in scope.'
+      : 'No process correction is scheduled for this passing result; retain the fixed gates and separate decision-artifact bindings.',
+    expected_saving_editor_seconds: correctionRequired ? 200 : 0,
     next_validation: {
-      selected_start_count: 10,
-      candidate_buffer: 2,
+      selected_start_count: correctionRequired ? 10 : 50,
+      candidate_buffer: correctionRequired ? 2 : 8,
       canonical_import_authorized: false,
-      note: 'Run a ten-start process-correction retry with a two-row buffer; do not import or authorize Wave B from this retry until the fixed gate is re-evaluated.',
+      note: correctionRequired
+        ? 'Run a ten-start process-correction retry with a two-row buffer; do not import or authorize Wave B from this retry until the fixed gate is re-evaluated.'
+        : 'No retry is required by this passing result; any next-stage work still requires a real task and separate authorization.',
     },
     fixed_gate: {
       editor_seconds_per_processed_start_max: 12,

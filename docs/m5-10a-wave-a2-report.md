@@ -107,8 +107,15 @@ The timing session stops before editorial completion, and the audit starts only
 after editorial completion and all timing stops. The editorial record decisions
 are supplied in a separate tracked artifact, and the audit relation decisions
 and findings are supplied in a second tracked artifact created during the
-separate audit session. The recorder outputs bind those artifacts by path,
-digest, session, and chronology.
+separate audit session. Each decision artifact records a `finalized_at` timestamp;
+the editorial finalization is after the last timing stop and before editorial
+completion, and the audit finalization is within the separate audit session. The
+recorder outputs bind those artifacts by path, complete-file digest, session, and
+chronology, so an artifact finalized before the final recorded pass cannot
+support a verified completion claim. In this run the editorial artifact was
+finalized at `2026-09-09T11:41:00.952Z` and the audit artifact at
+`2026-09-09T11:41:36.553Z`, after the final timing stop at
+`2026-09-09T11:06:18.336Z`.
 
 ## Source artifacts
 

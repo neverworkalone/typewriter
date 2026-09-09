@@ -224,14 +224,15 @@ starts, reviews all 50 importable rows in external staging, and imports the
 zero-blocker reviewed result, taking the product snapshot from 578 to 628
 starts. The completed editorial and audit inputs are `codex-authored`; the
 audit is independent through distinct sessions and artifacts, not through a
-human-identity requirement. All five timing passes are measured, but the
-The recorders consume separately supplied editorial and audit decision artifacts
-and never manufacture semantic decisions or clean findings. All five timing
-passes are measured in chronological order, and the corrected 9.467982-second
+human-identity requirement. The recorders consume separately supplied editorial
+and audit decision artifacts and never manufacture semantic decisions or clean
+findings. All five timing passes are measured in chronological order, and the corrected 9.467982-second
 processed-start rate is within the fixed 12-second gate. The stage is
 `APPROVE BOUNDED` and `ready_to_create: true`, but `next_stage_created: false`
 and `next_stage_authorized: false`; a passing metric does not create or
-authorize a GitHub task implicitly.
+authorize a GitHub task implicitly. Editorial finalization is recorded after the
+last timing stop, and audit finalization is recorded during the distinct audit
+session.
 
 ## M5-10A process correction and A2 authorization
 

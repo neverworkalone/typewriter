@@ -1201,6 +1201,35 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
       `${stage.stage_id} correction plan status does not match the gate`,
       'CORRECTION_PLAN_STATUS_MISMATCH',
     );
+    if (stage.gate_status === 'pass') {
+      assertEqual(
+        stage.correction_plan.expected_saving_editor_seconds,
+        0,
+        `${stage.stage_id} passing result cannot claim a pending correction saving`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+      const correctionPlanText = [
+        stage.correction_plan.cause,
+        stage.correction_plan.planned_change,
+        stage.correction_plan.next_validation.note,
+      ].join(' ');
+      assertCondition(
+        !/\bHOLD\b|re-evaluat|do not import|authorize Wave B/iu.test(correctionPlanText),
+        `${stage.stage_id} passing result contains an operative HOLD or re-evaluation directive`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+      assertCondition(
+        /^No retry is required by this passing result\b/iu.test(stage.correction_plan.next_validation.note),
+        `${stage.stage_id} passing result must declare that no retry is required`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+    } else {
+      assertCondition(
+        stage.correction_plan.expected_saving_editor_seconds > 0,
+        `${stage.stage_id} failed result must declare a positive correction saving`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+    }
     const breakdownEditorSeconds = stage.correction_plan.measured_breakdown
       .reduce((total, item) => total + item.editor_seconds, 0);
     assertCondition(

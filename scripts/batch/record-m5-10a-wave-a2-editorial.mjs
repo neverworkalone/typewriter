@@ -178,6 +178,11 @@ async function completeSession(args) {
     || Date.parse(decisionArtifact.created_at) > Date.parse(completedAt)) {
     throw new Error('editorial decisions must be supplied during the active editorial session');
   }
+  if (Date.parse(decisionArtifact.finalized_at) < Date.parse(session.started_at)
+    || Date.parse(decisionArtifact.finalized_at) < Date.parse(timingCompletedAt)
+    || Date.parse(decisionArtifact.finalized_at) > Date.parse(completedAt)) {
+    throw new Error('editorial decisions must be finalized after all timing passes stop and before editorial completion');
+  }
 
   const canonical = await readCanonicalRecords(path.resolve(args.canonical));
   const staged = await readCanonicalRecords(stagingPath);
@@ -237,6 +242,7 @@ async function completeSession(args) {
       path: repositoryRelativePath(decisionPath, 'editorial decision artifact'),
       sha256: sha256Bytes(decisionBytes),
       created_at: decisionArtifact.created_at,
+      finalized_at: decisionArtifact.finalized_at,
     },
     reviewed_staging_sha256: reviewedStagingSha256,
     records: structuredClone(decisionArtifact.records),

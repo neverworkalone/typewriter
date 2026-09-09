@@ -135,11 +135,12 @@
     "decisionArtifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sha256", "created_at"],
+      "required": ["path", "sha256", "created_at", "finalized_at"],
       "properties": {
         "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
         "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        "created_at": { "type": "string", "format": "date-time" }
+        "created_at": { "type": "string", "format": "date-time" },
+        "finalized_at": { "type": "string", "format": "date-time" }
       }
     },
     "relationReview": {

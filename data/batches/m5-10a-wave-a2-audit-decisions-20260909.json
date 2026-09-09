@@ -5,8 +5,8 @@
   "source_kind": "codex-authored",
   "actor_kind": "codex",
   "actor_id": "codex-wave-a2-editorial",
-  "session_id": "bc91e6e6-873a-4ed2-b4a5-7d3d1acdcc1a",
-  "created_at": "2026-09-09T11:07:49.355Z",
+  "session_id": "e0ea3f80-bbdb-4f52-bcd9-b4d847f5a27f",
+  "created_at": "2026-09-09T11:41:23.330Z",
   "editorial_input_id": "m5-10a-wave-a2-editorial-input-20260909",
   "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
   "reviewed_record_ids": [
@@ -232,5 +232,6 @@
       "note": "Each required timing pass has recorder start/stop events, measured duration, and exact work-unit evidence; no unmeasured pass remains."
     }
   ],
-  "note": "A separate Codex audit decision set rechecked the frozen record set, six relation decisions, eight buffer decisions, and all five timing passes."
+  "note": "Separately supplied Codex audit decisions re-finalized during the follow-up audit session over the frozen editorial staging.",
+  "finalized_at": "2026-09-09T11:41:36.553Z"
 }

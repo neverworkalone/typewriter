@@ -6,15 +6,15 @@
   "inventory_revision": "m5-10",
   "source_kind": "codex-authored",
   "status": "complete",
-  "created_at": "2026-09-09T10:56:55.777Z",
-  "completed_at": "2026-09-09T11:07:08.507Z",
+  "created_at": "2026-09-09T11:40:38.418Z",
+  "completed_at": "2026-09-09T11:41:08.044Z",
   "provenance": {
     "verification_status": "verified",
     "actor_kind": "codex",
     "actor_id": "codex-wave-a2-editorial",
-    "session_id": "8351b1b9-753c-4f13-8b8b-5c5dc182b8e9",
+    "session_id": "b1d02d95-46cb-4412-b210-b8a6e859927b",
     "artifact": "data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json",
-    "sha256": "9f99464fe32a9f437e5de7deb01430c865ae12477a54e145daf1f628b927a26f",
+    "sha256": "352472ed54bcc22fc435494efe5c637ddbecc0ece4b7c13c4d6d620b4aa01a3e",
     "note": "Codex editorial output is derived from the separately supplied decision artifact and frozen staging bytes."
   },
   "sense_review": {
@@ -61,8 +61,9 @@
   },
   "decision_artifact": {
     "path": "data/batches/m5-10a-wave-a2-editorial-decisions-20260909.json",
-    "sha256": "294a616cc4dcb4a3ca0dc33d13bc748cb7dd8efc247fcf2f39e5e6034a12a988",
-    "created_at": "2026-09-09T10:57:56.395Z"
+    "sha256": "5358153fd2868dc7dc42298e621948cce222abc93579fab332c673dc14d11608",
+    "created_at": "2026-09-09T11:40:38.418Z",
+    "finalized_at": "2026-09-09T11:41:00.952Z"
   },
   "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
   "records": [

@@ -253,6 +253,11 @@ export async function validateWaveA2({
       editorialSource.value.reviewed_staging_sha256,
       'editorial decision artifact reviewed staging digest drifted',
     );
+    assert.equal(
+      editorialDecisions.finalized_at,
+      editorialSource.value.decision_artifact.finalized_at,
+      'editorial decision artifact finalization timestamp drifted',
+    );
     assert.deepEqual(
       editorialDecisions.records,
       editorialSource.value.records,
@@ -286,6 +291,11 @@ export async function validateWaveA2({
       auditDecisions.reviewed_staging_sha256,
       auditSource.value.reviewed_staging_sha256,
       'audit decision artifact reviewed staging digest drifted',
+    );
+    assert.equal(
+      auditDecisions.finalized_at,
+      auditSource.value.decision_artifact.finalized_at,
+      'audit decision artifact finalization timestamp drifted',
     );
     assert.deepEqual(
       auditDecisions.reviewed_record_ids,

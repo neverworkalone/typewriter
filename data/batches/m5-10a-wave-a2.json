@@ -72,7 +72,7 @@
   },
   "source": {
     "manifest": "data/batches/m5-10-wave-a2.json",
-    "manifest_sha256": "f3bb1ddee023915221d78acb0c41ea44c8a5bd025b0b3c8650d76a17bd37f4a4",
+    "manifest_sha256": "627563bff0a0ec0152bd2331842786ea6e28dc2ca084c50f3d853c2e2bffb75e",
     "metrics": "data/batches/m5-10a-wave-a2-metrics.json",
     "metrics_sha256": "a98b637d62f0ea9645e66296be7b533b8510b5e873c84ea9e0a122ea4d78ee13",
     "relation_diff": "data/batches/m5-10a-wave-a2-relation-diff.json",
@@ -89,7 +89,7 @@
   "next_stage_authorized": false,
   "correction_plan": {
     "status": "not-required",
-    "cause": "Target preparation and the six-boundary initial review account for the measured cost; repeated evidence drafting and setup must be reduced without removing any boundary check.",
+    "cause": "No correction is required: the corrected chronological timing result is within the fixed editor-time gate.",
     "measured_breakdown": [
       {
         "pass_id": "target-preparation",
@@ -104,13 +104,13 @@
         "share_of_total": 0.6616396992118172
       }
     ],
-    "planned_change": "Use a separately authored record decision worksheet keyed to the six boundary IDs, capture each record-specific observation once, and reuse only that supplied evidence in the recorder; keep all 50 starts and all six boundaries in scope.",
-    "expected_saving_editor_seconds": 200,
+    "planned_change": "No process correction is scheduled for this passing result; retain the fixed gates and separate decision-artifact bindings.",
+    "expected_saving_editor_seconds": 0,
     "next_validation": {
-      "selected_start_count": 10,
-      "candidate_buffer": 2,
+      "selected_start_count": 50,
+      "candidate_buffer": 8,
       "canonical_import_authorized": false,
-      "note": "Run a ten-start process-correction retry with a two-row buffer; do not import or authorize Wave B from this retry until the fixed gate is re-evaluated."
+      "note": "No retry is required by this passing result; any next-stage work still requires a real task and separate authorization."
     },
     "fixed_gate": {
       "editor_seconds_per_processed_start_max": 12,

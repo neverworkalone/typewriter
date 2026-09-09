@@ -159,6 +159,11 @@ function validateDecisionArtifactProvenance(input, label) {
   const expectedActorKind = input.source_kind === 'codex-authored' ? 'codex' : 'human';
   assertEqual(input.actor_kind, expectedActorKind, `${label} source and actor kinds must agree`, 'DECISION_ARTIFACT_PROVENANCE');
   assertCondition(input.actor_id !== 'unknown', `${label} must identify its actor`, 'DECISION_ARTIFACT_PROVENANCE');
+  assertCondition(
+    Date.parse(input.finalized_at) >= Date.parse(input.created_at),
+    `${label} finalized_at cannot precede created_at`,
+    'DECISION_ARTIFACT_CHRONOLOGY',
+  );
 }
 
 export function validateA2EditorialDecisionArtifact(input) {
@@ -452,6 +457,12 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
       'editorial decision artifact was not supplied during the editorial session',
       'EDITORIAL_DECISION_ARTIFACT_CHRONOLOGY',
     );
+    assertCondition(
+      Date.parse(input.decision_artifact.finalized_at) >= Date.parse(input.timing_artifact.completed_at)
+        && Date.parse(input.decision_artifact.finalized_at) <= Date.parse(input.completed_at),
+      'editorial decision artifact was finalized before the required timing passes stopped or after editorial completion',
+      'EDITORIAL_DECISION_ARTIFACT_CHRONOLOGY',
+    );
   }
   assertEqual(input.sense_review.status, input.status, 'editorial sense_review status does not match input status', 'EDITORIAL_REVIEW_INCOMPLETE');
 
@@ -673,6 +684,12 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
     Date.parse(audit.decision_artifact.created_at) >= Date.parse(audit.created_at)
       && Date.parse(audit.decision_artifact.created_at) <= Date.parse(audit.completed_at),
     'audit decision artifact was not supplied during the audit session',
+    'AUDIT_DECISION_ARTIFACT_CHRONOLOGY',
+  );
+  assertCondition(
+    Date.parse(audit.decision_artifact.finalized_at) >= Date.parse(audit.decision_artifact.created_at)
+      && Date.parse(audit.decision_artifact.finalized_at) <= Date.parse(audit.completed_at),
+    'audit decision artifact was finalized outside the audit session',
     'AUDIT_DECISION_ARTIFACT_CHRONOLOGY',
   );
   assertEqual(

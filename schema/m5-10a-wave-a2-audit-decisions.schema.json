@@ -14,6 +14,7 @@
     "actor_id",
     "session_id",
     "created_at",
+    "finalized_at",
     "editorial_input_id",
     "reviewed_staging_sha256",
     "reviewed_record_ids",
@@ -33,6 +34,7 @@
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
     },
     "created_at": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
     "editorial_input_id": { "type": "string", "pattern": "^m5-10a-wave-a2-editorial-input-[0-9]{8}$" },
     "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "reviewed_record_ids": {

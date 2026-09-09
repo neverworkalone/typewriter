@@ -311,7 +311,7 @@
           }
         },
         "planned_change": { "type": "string", "pattern": "\\S" },
-        "expected_saving_editor_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "expected_saving_editor_seconds": { "type": "number", "minimum": 0 },
         "next_validation": {
           "type": "object",
           "additionalProperties": false,
@@ -332,7 +332,17 @@
             "relation_noise_rate_max": { "const": 0.25 }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "required" } } },
+          "then": { "properties": { "expected_saving_editor_seconds": { "type": "number", "exclusiveMinimum": 0 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "not-required" } } },
+          "then": { "properties": { "expected_saving_editor_seconds": { "type": "number", "const": 0 } } }
+        }
+      ]
     }
   }
 }
