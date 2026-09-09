@@ -1,0 +1,3431 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "inventory_id": "m5-core-5k",
+  "inventory_revision": "m5-10",
+  "generator": {
+    "model_id": "wave-a2-proposal-builder",
+    "tool_version": "typewriter-m5-10a-wave-a2-3",
+    "prompt_version": "not-used-for-provenance",
+    "draft_sha256": "290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8"
+  },
+  "generated_at": "2026-09-09T05:00:00Z",
+  "review": {
+    "status": "in-review",
+    "reviewer": "unknown",
+    "input_artifact": "data/batches/m5-10a-wave-a2-editorial-input.json",
+    "input_sha256": "8ae5c3d811ae62e53eb1726475e10735cf66ec9253be8968692f55f67f489df1"
+  },
+  "sense_review": {
+    "status": "incomplete",
+    "reviewed_start_count": 0,
+    "scoped_single_sense_count": 0,
+    "split_record_count": 0,
+    "split_canonical_ids": [],
+    "note": "A2 editorial decisions remain unverified; no human session evidence is attached.",
+    "preflight": {
+      "process_revision": "m5-10a-process-correction-v1",
+      "boundary_ids": [
+        "physical-figurative",
+        "homonym-pos",
+        "sensory-emotion-state-action",
+        "directional-symmetry",
+        "compound-spaced-phrase",
+        "word-idiom"
+      ],
+      "record_checkpoints": [
+        {
+          "inventory_id": "m5-307",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-307 physical-figurative: m5-307 -> w579: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-307 homonym-pos: m5-307 -> w579: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-307 sensory-emotion-state-action: m5-307 -> w579: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-307 directional-symmetry: m5-307 -> w579: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-307 compound-spaced-phrase: m5-307 -> w579: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-307 word-idiom: m5-307 -> w579: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-307 -> w579: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-308",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-308 physical-figurative: m5-308 -> w580: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-308 homonym-pos: m5-308 -> w580: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-308 sensory-emotion-state-action: m5-308 -> w580: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-308 directional-symmetry: m5-308 -> w580: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-308 compound-spaced-phrase: m5-308 -> w580: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-308 word-idiom: m5-308 -> w580: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-308 -> w580: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-309",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-309 physical-figurative: m5-309 -> w581: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-309 homonym-pos: m5-309 -> w581: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-309 sensory-emotion-state-action: m5-309 -> w581: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-309 directional-symmetry: m5-309 -> w581: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-309 compound-spaced-phrase: m5-309 -> w581: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-309 word-idiom: m5-309 -> w581: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-309 -> w581: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-310",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-310 physical-figurative: m5-310 -> w582: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-310 homonym-pos: m5-310 -> w582: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-310 sensory-emotion-state-action: m5-310 -> w582: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-310 directional-symmetry: m5-310 -> w582: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-310 compound-spaced-phrase: m5-310 -> w582: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-310 word-idiom: m5-310 -> w582: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-310 -> w582: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-311",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-311 physical-figurative: m5-311 -> w583: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-311 homonym-pos: m5-311 -> w583: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-311 sensory-emotion-state-action: m5-311 -> w583: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-311 directional-symmetry: m5-311 -> w583: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-311 compound-spaced-phrase: m5-311 -> w583: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-311 word-idiom: m5-311 -> w583: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-311 -> w583: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-312",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-312 physical-figurative: m5-312 -> w584: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-312 homonym-pos: m5-312 -> w584: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-312 sensory-emotion-state-action: m5-312 -> w584: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-312 directional-symmetry: m5-312 -> w584: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-312 compound-spaced-phrase: m5-312 -> w584: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-312 word-idiom: m5-312 -> w584: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-312 -> w584: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-313",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-313 physical-figurative: m5-313 -> w585: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-313 homonym-pos: m5-313 -> w585: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-313 sensory-emotion-state-action: m5-313 -> w585: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-313 directional-symmetry: m5-313 -> w585: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-313 compound-spaced-phrase: m5-313 -> w585: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-313 word-idiom: m5-313 -> w585: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-313 -> w585: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-314",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-314 physical-figurative: m5-314 -> w586: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-314 homonym-pos: m5-314 -> w586: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-314 sensory-emotion-state-action: m5-314 -> w586: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-314 directional-symmetry: m5-314 -> w586: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-314 compound-spaced-phrase: m5-314 -> w586: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-314 word-idiom: m5-314 -> w586: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-314 -> w586: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-315",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-315 physical-figurative: m5-315 -> w587: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-315 homonym-pos: m5-315 -> w587: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-315 sensory-emotion-state-action: m5-315 -> w587: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-315 directional-symmetry: m5-315 -> w587: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-315 compound-spaced-phrase: m5-315 -> w587: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-315 word-idiom: m5-315 -> w587: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-315 -> w587: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-316",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-316 physical-figurative: m5-316 -> w588: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-316 homonym-pos: m5-316 -> w588: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-316 sensory-emotion-state-action: m5-316 -> w588: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-316 directional-symmetry: m5-316 -> w588: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-316 compound-spaced-phrase: m5-316 -> w588: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-316 word-idiom: m5-316 -> w588: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-316 -> w588: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-317",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-317 physical-figurative: m5-317 -> w589: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-317 homonym-pos: m5-317 -> w589: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-317 sensory-emotion-state-action: m5-317 -> w589: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-317 directional-symmetry: m5-317 -> w589: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-317 compound-spaced-phrase: m5-317 -> w589: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-317 word-idiom: m5-317 -> w589: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-317 -> w589: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-318",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-318 physical-figurative: m5-318 -> w590: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-318 homonym-pos: m5-318 -> w590: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-318 sensory-emotion-state-action: m5-318 -> w590: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-318 directional-symmetry: m5-318 -> w590: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-318 compound-spaced-phrase: m5-318 -> w590: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-318 word-idiom: m5-318 -> w590: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-318 -> w590: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-319",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-319 physical-figurative: m5-319 -> w591: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-319 homonym-pos: m5-319 -> w591: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-319 sensory-emotion-state-action: m5-319 -> w591: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-319 directional-symmetry: m5-319 -> w591: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-319 compound-spaced-phrase: m5-319 -> w591: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-319 word-idiom: m5-319 -> w591: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-319 -> w591: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-320",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-320 physical-figurative: m5-320 -> w592: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-320 homonym-pos: m5-320 -> w592: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-320 sensory-emotion-state-action: m5-320 -> w592: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-320 directional-symmetry: m5-320 -> w592: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-320 compound-spaced-phrase: m5-320 -> w592: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-320 word-idiom: m5-320 -> w592: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-320 -> w592: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-321",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-321 physical-figurative: m5-321 -> w593: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-321 homonym-pos: m5-321 -> w593: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-321 sensory-emotion-state-action: m5-321 -> w593: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-321 directional-symmetry: m5-321 -> w593: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-321 compound-spaced-phrase: m5-321 -> w593: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-321 word-idiom: m5-321 -> w593: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-321 -> w593: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-322",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-322 physical-figurative: m5-322 -> w594: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-322 homonym-pos: m5-322 -> w594: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-322 sensory-emotion-state-action: m5-322 -> w594: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-322 directional-symmetry: m5-322 -> w594: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-322 compound-spaced-phrase: m5-322 -> w594: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-322 word-idiom: m5-322 -> w594: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-322 -> w594: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-323",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-323 physical-figurative: m5-323 -> w595: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-323 homonym-pos: m5-323 -> w595: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-323 sensory-emotion-state-action: m5-323 -> w595: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-323 directional-symmetry: m5-323 -> w595: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-323 compound-spaced-phrase: m5-323 -> w595: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-323 word-idiom: m5-323 -> w595: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-323 -> w595: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-324",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-324 physical-figurative: m5-324 -> w596: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-324 homonym-pos: m5-324 -> w596: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-324 sensory-emotion-state-action: m5-324 -> w596: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-324 directional-symmetry: m5-324 -> w596: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-324 compound-spaced-phrase: m5-324 -> w596: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-324 word-idiom: m5-324 -> w596: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-324 -> w596: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-325",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-325 physical-figurative: m5-325 -> w597: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-325 homonym-pos: m5-325 -> w597: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-325 sensory-emotion-state-action: m5-325 -> w597: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-325 directional-symmetry: m5-325 -> w597: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-325 compound-spaced-phrase: m5-325 -> w597: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-325 word-idiom: m5-325 -> w597: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-325 -> w597: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-326",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-326 physical-figurative: m5-326 -> w598: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-326 homonym-pos: m5-326 -> w598: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-326 sensory-emotion-state-action: m5-326 -> w598: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-326 directional-symmetry: m5-326 -> w598: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-326 compound-spaced-phrase: m5-326 -> w598: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-326 word-idiom: m5-326 -> w598: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-326 -> w598: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-327",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-327 physical-figurative: m5-327 -> w599: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-327 homonym-pos: m5-327 -> w599: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-327 sensory-emotion-state-action: m5-327 -> w599: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-327 directional-symmetry: m5-327 -> w599: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-327 compound-spaced-phrase: m5-327 -> w599: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-327 word-idiom: m5-327 -> w599: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-327 -> w599: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-328",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-328 physical-figurative: m5-328 -> w600: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-328 homonym-pos: m5-328 -> w600: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-328 sensory-emotion-state-action: m5-328 -> w600: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-328 directional-symmetry: m5-328 -> w600: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-328 compound-spaced-phrase: m5-328 -> w600: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-328 word-idiom: m5-328 -> w600: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-328 -> w600: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-329",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-329 physical-figurative: m5-329 -> w601: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-329 homonym-pos: m5-329 -> w601: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-329 sensory-emotion-state-action: m5-329 -> w601: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-329 directional-symmetry: m5-329 -> w601: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-329 compound-spaced-phrase: m5-329 -> w601: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-329 word-idiom: m5-329 -> w601: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-329 -> w601: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-330",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-330 physical-figurative: m5-330 -> w602: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-330 homonym-pos: m5-330 -> w602: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-330 sensory-emotion-state-action: m5-330 -> w602: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-330 directional-symmetry: m5-330 -> w602: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-330 compound-spaced-phrase: m5-330 -> w602: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-330 word-idiom: m5-330 -> w602: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-330 -> w602: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-331",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-331 physical-figurative: m5-331 -> w603: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-331 homonym-pos: m5-331 -> w603: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-331 sensory-emotion-state-action: m5-331 -> w603: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-331 directional-symmetry: m5-331 -> w603: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-331 compound-spaced-phrase: m5-331 -> w603: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-331 word-idiom: m5-331 -> w603: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-331 -> w603: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-332",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-332 physical-figurative: m5-332 -> w604: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-332 homonym-pos: m5-332 -> w604: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-332 sensory-emotion-state-action: m5-332 -> w604: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-332 directional-symmetry: m5-332 -> w604: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-332 compound-spaced-phrase: m5-332 -> w604: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-332 word-idiom: m5-332 -> w604: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-332 -> w604: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-333",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-333 physical-figurative: m5-333 -> w605: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-333 homonym-pos: m5-333 -> w605: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-333 sensory-emotion-state-action: m5-333 -> w605: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-333 directional-symmetry: m5-333 -> w605: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-333 compound-spaced-phrase: m5-333 -> w605: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-333 word-idiom: m5-333 -> w605: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-333 -> w605: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-334",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-334 physical-figurative: m5-334 -> w606: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-334 homonym-pos: m5-334 -> w606: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-334 sensory-emotion-state-action: m5-334 -> w606: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-334 directional-symmetry: m5-334 -> w606: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-334 compound-spaced-phrase: m5-334 -> w606: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-334 word-idiom: m5-334 -> w606: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-334 -> w606: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-335",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-335 physical-figurative: m5-335 -> w607: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-335 homonym-pos: m5-335 -> w607: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-335 sensory-emotion-state-action: m5-335 -> w607: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-335 directional-symmetry: m5-335 -> w607: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-335 compound-spaced-phrase: m5-335 -> w607: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-335 word-idiom: m5-335 -> w607: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-335 -> w607: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-336",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-336 physical-figurative: m5-336 -> w608: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-336 homonym-pos: m5-336 -> w608: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-336 sensory-emotion-state-action: m5-336 -> w608: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-336 directional-symmetry: m5-336 -> w608: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-336 compound-spaced-phrase: m5-336 -> w608: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-336 word-idiom: m5-336 -> w608: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-336 -> w608: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-337",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-337 physical-figurative: m5-337 -> w609: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-337 homonym-pos: m5-337 -> w609: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-337 sensory-emotion-state-action: m5-337 -> w609: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-337 directional-symmetry: m5-337 -> w609: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-337 compound-spaced-phrase: m5-337 -> w609: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-337 word-idiom: m5-337 -> w609: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-337 -> w609: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-338",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-338 physical-figurative: m5-338 -> w610: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-338 homonym-pos: m5-338 -> w610: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-338 sensory-emotion-state-action: m5-338 -> w610: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-338 directional-symmetry: m5-338 -> w610: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-338 compound-spaced-phrase: m5-338 -> w610: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-338 word-idiom: m5-338 -> w610: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-338 -> w610: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-339",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-339 physical-figurative: m5-339 -> w611: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-339 homonym-pos: m5-339 -> w611: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-339 sensory-emotion-state-action: m5-339 -> w611: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-339 directional-symmetry: m5-339 -> w611: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-339 compound-spaced-phrase: m5-339 -> w611: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-339 word-idiom: m5-339 -> w611: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-339 -> w611: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-340",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-340 physical-figurative: m5-340 -> w612: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-340 homonym-pos: m5-340 -> w612: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-340 sensory-emotion-state-action: m5-340 -> w612: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-340 directional-symmetry: m5-340 -> w612: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-340 compound-spaced-phrase: m5-340 -> w612: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-340 word-idiom: m5-340 -> w612: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-340 -> w612: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-341",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-341 physical-figurative: m5-341 -> w613: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-341 homonym-pos: m5-341 -> w613: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-341 sensory-emotion-state-action: m5-341 -> w613: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-341 directional-symmetry: m5-341 -> w613: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-341 compound-spaced-phrase: m5-341 -> w613: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-341 word-idiom: m5-341 -> w613: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-341 -> w613: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-342",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-342 physical-figurative: m5-342 -> w614: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-342 homonym-pos: m5-342 -> w614: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-342 sensory-emotion-state-action: m5-342 -> w614: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-342 directional-symmetry: m5-342 -> w614: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-342 compound-spaced-phrase: m5-342 -> w614: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-342 word-idiom: m5-342 -> w614: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-342 -> w614: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-343",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-343 physical-figurative: m5-343 -> w615: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-343 homonym-pos: m5-343 -> w615: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-343 sensory-emotion-state-action: m5-343 -> w615: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-343 directional-symmetry: m5-343 -> w615: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-343 compound-spaced-phrase: m5-343 -> w615: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-343 word-idiom: m5-343 -> w615: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-343 -> w615: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-344",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-344 physical-figurative: m5-344 -> w616: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-344 homonym-pos: m5-344 -> w616: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-344 sensory-emotion-state-action: m5-344 -> w616: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-344 directional-symmetry: m5-344 -> w616: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-344 compound-spaced-phrase: m5-344 -> w616: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-344 word-idiom: m5-344 -> w616: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-344 -> w616: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-345",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-345 physical-figurative: m5-345 -> w617: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-345 homonym-pos: m5-345 -> w617: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-345 sensory-emotion-state-action: m5-345 -> w617: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-345 directional-symmetry: m5-345 -> w617: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-345 compound-spaced-phrase: m5-345 -> w617: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-345 word-idiom: m5-345 -> w617: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-345 -> w617: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-346",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-346 physical-figurative: m5-346 -> w618: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-346 homonym-pos: m5-346 -> w618: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-346 sensory-emotion-state-action: m5-346 -> w618: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-346 directional-symmetry: m5-346 -> w618: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-346 compound-spaced-phrase: m5-346 -> w618: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-346 word-idiom: m5-346 -> w618: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-346 -> w618: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-347",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-347 physical-figurative: m5-347 -> w619: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-347 homonym-pos: m5-347 -> w619: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-347 sensory-emotion-state-action: m5-347 -> w619: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-347 directional-symmetry: m5-347 -> w619: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-347 compound-spaced-phrase: m5-347 -> w619: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-347 word-idiom: m5-347 -> w619: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-347 -> w619: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-348",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-348 physical-figurative: m5-348 -> w620: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-348 homonym-pos: m5-348 -> w620: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-348 sensory-emotion-state-action: m5-348 -> w620: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-348 directional-symmetry: m5-348 -> w620: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-348 compound-spaced-phrase: m5-348 -> w620: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-348 word-idiom: m5-348 -> w620: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-348 -> w620: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-349",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-349 physical-figurative: m5-349 -> w621: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-349 homonym-pos: m5-349 -> w621: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-349 sensory-emotion-state-action: m5-349 -> w621: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-349 directional-symmetry: m5-349 -> w621: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-349 compound-spaced-phrase: m5-349 -> w621: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-349 word-idiom: m5-349 -> w621: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-349 -> w621: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-350",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-350 physical-figurative: m5-350 -> w622: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-350 homonym-pos: m5-350 -> w622: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-350 sensory-emotion-state-action: m5-350 -> w622: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-350 directional-symmetry: m5-350 -> w622: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-350 compound-spaced-phrase: m5-350 -> w622: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-350 word-idiom: m5-350 -> w622: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-350 -> w622: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-351",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-351 physical-figurative: m5-351 -> w623: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-351 homonym-pos: m5-351 -> w623: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-351 sensory-emotion-state-action: m5-351 -> w623: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-351 directional-symmetry: m5-351 -> w623: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-351 compound-spaced-phrase: m5-351 -> w623: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-351 word-idiom: m5-351 -> w623: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-351 -> w623: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-352",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-352 physical-figurative: m5-352 -> w624: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-352 homonym-pos: m5-352 -> w624: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-352 sensory-emotion-state-action: m5-352 -> w624: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-352 directional-symmetry: m5-352 -> w624: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-352 compound-spaced-phrase: m5-352 -> w624: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-352 word-idiom: m5-352 -> w624: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-352 -> w624: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-353",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-353 physical-figurative: m5-353 -> w625: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-353 homonym-pos: m5-353 -> w625: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-353 sensory-emotion-state-action: m5-353 -> w625: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-353 directional-symmetry: m5-353 -> w625: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-353 compound-spaced-phrase: m5-353 -> w625: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-353 word-idiom: m5-353 -> w625: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-353 -> w625: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-354",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-354 physical-figurative: m5-354 -> w626: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-354 homonym-pos: m5-354 -> w626: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-354 sensory-emotion-state-action: m5-354 -> w626: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-354 directional-symmetry: m5-354 -> w626: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-354 compound-spaced-phrase: m5-354 -> w626: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-354 word-idiom: m5-354 -> w626: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-354 -> w626: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-355",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-355 physical-figurative: m5-355 -> w627: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-355 homonym-pos: m5-355 -> w627: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-355 sensory-emotion-state-action: m5-355 -> w627: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-355 directional-symmetry: m5-355 -> w627: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-355 compound-spaced-phrase: m5-355 -> w627: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-355 word-idiom: m5-355 -> w627: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-355 -> w627: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-356",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-356 physical-figurative: m5-356 -> w628: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-356 homonym-pos: m5-356 -> w628: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-356 sensory-emotion-state-action: m5-356 -> w628: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-356 directional-symmetry: m5-356 -> w628: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-356 compound-spaced-phrase: m5-356 -> w628: unverified proposal; human review required.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-356 word-idiom: m5-356 -> w628: unverified proposal; human review required.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-356 -> w628: unverified proposal; human review required."
+        },
+        {
+          "inventory_id": "m5-357",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 physical-figurative: m5-357: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 homonym-pos: m5-357: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 sensory-emotion-state-action: m5-357: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 directional-symmetry: m5-357: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 compound-spaced-phrase: m5-357: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 word-idiom: m5-357: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-357: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-358",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 physical-figurative: m5-358: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 homonym-pos: m5-358: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 sensory-emotion-state-action: m5-358: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 directional-symmetry: m5-358: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 compound-spaced-phrase: m5-358: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 word-idiom: m5-358: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-358: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-359",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 physical-figurative: m5-359: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 homonym-pos: m5-359: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 sensory-emotion-state-action: m5-359: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 directional-symmetry: m5-359: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 compound-spaced-phrase: m5-359: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 word-idiom: m5-359: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-359: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-360",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 physical-figurative: m5-360: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 homonym-pos: m5-360: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 sensory-emotion-state-action: m5-360: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 directional-symmetry: m5-360: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 compound-spaced-phrase: m5-360: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 word-idiom: m5-360: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-360: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-361",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 physical-figurative: m5-361: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 homonym-pos: m5-361: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 sensory-emotion-state-action: m5-361: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 directional-symmetry: m5-361: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 compound-spaced-phrase: m5-361: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 word-idiom: m5-361: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-361: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-362",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 physical-figurative: m5-362: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 homonym-pos: m5-362: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 sensory-emotion-state-action: m5-362: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 directional-symmetry: m5-362: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 compound-spaced-phrase: m5-362: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 word-idiom: m5-362: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-362: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-363",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 physical-figurative: m5-363: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 homonym-pos: m5-363: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 sensory-emotion-state-action: m5-363: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 directional-symmetry: m5-363: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 compound-spaced-phrase: m5-363: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 word-idiom: m5-363: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-363: not reviewed; human evidence required before admission."
+        },
+        {
+          "inventory_id": "m5-364",
+          "status": "not-reviewed",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 physical-figurative: m5-364: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 homonym-pos: m5-364: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 sensory-emotion-state-action: m5-364: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 directional-symmetry: m5-364: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 compound-spaced-phrase: m5-364: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 word-idiom: m5-364: not reviewed; human evidence required before admission.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-364: not reviewed; human evidence required before admission."
+        }
+      ]
+    }
+  },
+  "measurement": {
+    "schema_version": "1",
+    "relation_diff": {
+      "artifact": "data/batches/m5-10a-wave-a2-relation-diff.json",
+      "sha256": "9b0de1a4c1c947249cb70f11203d48e6248a6d24d5e84157a2d1c972aa42d78f"
+    },
+    "timing": {
+      "contract_version": "m5-10a-v1",
+      "source_artifact": "data/batches/m5-10a-wave-a2-timing-input.json",
+      "source_sha256": "722193f06ac803b31372d2291d61c7c7609d81230358169404c3d890ea0cdf1f",
+      "status": "incomplete",
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "unmeasured"
+        },
+        {
+          "id": "initial-review",
+          "status": "unmeasured"
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "unmeasured"
+        },
+        {
+          "id": "final-audit",
+          "status": "unmeasured"
+        },
+        {
+          "id": "held-rejected",
+          "status": "unmeasured"
+        }
+      ]
+    },
+    "audit": {
+      "source_artifact": "data/batches/m5-10a-wave-a2-audit-input.json",
+      "source_sha256": "7901a7cdcb7c4d5153b5511f2cdfa4bf9464ff4cb5f73db26386907d7b711a16",
+      "status": "incomplete",
+      "independent": false,
+      "findings": [
+        {
+          "id": "a2-provenance-unverified",
+          "category": "provenance",
+          "severity": "blocker",
+          "status": "open",
+          "evidence_refs": [
+            "editorial.provenance",
+            "audit.provenance"
+          ],
+          "note": "No verifiable human editorial or independent audit session is attached; A2 remains blocked until those artifacts are supplied."
+        }
+      ]
+    }
+  },
+  "records": [
+    {
+      "source": "inventory",
+      "inventory_id": "m5-307",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-307 -> w579: unverified proposal; human review required.",
+      "proposal_canonical_id": "w579",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-308",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-308 -> w580: unverified proposal; human review required.",
+      "proposal_canonical_id": "w580",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-309",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-309 -> w581: unverified proposal; human review required.",
+      "proposal_canonical_id": "w581",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-310",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-310 -> w582: unverified proposal; human review required.",
+      "proposal_canonical_id": "w582",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-311",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-311 -> w583: unverified proposal; human review required.",
+      "proposal_canonical_id": "w583",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-312",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-312 -> w584: unverified proposal; human review required.",
+      "proposal_canonical_id": "w584",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-313",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-313 -> w585: unverified proposal; human review required.",
+      "proposal_canonical_id": "w585",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-314",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-314 -> w586: unverified proposal; human review required.",
+      "proposal_canonical_id": "w586",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-315",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-315 -> w587: unverified proposal; human review required.",
+      "proposal_canonical_id": "w587",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-316",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-316 -> w588: unverified proposal; human review required.",
+      "proposal_canonical_id": "w588",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-317",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-317 -> w589: unverified proposal; human review required.",
+      "proposal_canonical_id": "w589",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-318",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-318 -> w590: unverified proposal; human review required.",
+      "proposal_canonical_id": "w590",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-319",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-319 -> w591: unverified proposal; human review required.",
+      "proposal_canonical_id": "w591",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-320",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-320 -> w592: unverified proposal; human review required.",
+      "proposal_canonical_id": "w592",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-321",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-321 -> w593: unverified proposal; human review required.",
+      "proposal_canonical_id": "w593",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-322",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-322 -> w594: unverified proposal; human review required.",
+      "proposal_canonical_id": "w594",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-323",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-323 -> w595: unverified proposal; human review required.",
+      "proposal_canonical_id": "w595",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-324",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-324 -> w596: unverified proposal; human review required.",
+      "proposal_canonical_id": "w596",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-325",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-325 -> w597: unverified proposal; human review required.",
+      "proposal_canonical_id": "w597",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-326",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-326 -> w598: unverified proposal; human review required.",
+      "proposal_canonical_id": "w598",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-327",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-327 -> w599: unverified proposal; human review required.",
+      "proposal_canonical_id": "w599",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-328",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-328 -> w600: unverified proposal; human review required.",
+      "proposal_canonical_id": "w600",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-329",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-329 -> w601: unverified proposal; human review required.",
+      "proposal_canonical_id": "w601",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-330",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-330 -> w602: unverified proposal; human review required.",
+      "proposal_canonical_id": "w602",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-331",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-331 -> w603: unverified proposal; human review required.",
+      "proposal_canonical_id": "w603",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-332",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-332 -> w604: unverified proposal; human review required.",
+      "proposal_canonical_id": "w604",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-333",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-333 -> w605: unverified proposal; human review required.",
+      "proposal_canonical_id": "w605",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-334",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-334 -> w606: unverified proposal; human review required.",
+      "proposal_canonical_id": "w606",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-335",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-335 -> w607: unverified proposal; human review required.",
+      "proposal_canonical_id": "w607",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-336",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-336 -> w608: unverified proposal; human review required.",
+      "proposal_canonical_id": "w608",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-337",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-337 -> w609: unverified proposal; human review required.",
+      "proposal_canonical_id": "w609",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-338",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-338 -> w610: unverified proposal; human review required.",
+      "proposal_canonical_id": "w610",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-339",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-339 -> w611: unverified proposal; human review required.",
+      "proposal_canonical_id": "w611",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-340",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-340 -> w612: unverified proposal; human review required.",
+      "proposal_canonical_id": "w612",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-341",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-341 -> w613: unverified proposal; human review required.",
+      "proposal_canonical_id": "w613",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-342",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-342 -> w614: unverified proposal; human review required.",
+      "proposal_canonical_id": "w614",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-343",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-343 -> w615: unverified proposal; human review required.",
+      "proposal_canonical_id": "w615",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-344",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-344 -> w616: unverified proposal; human review required.",
+      "proposal_canonical_id": "w616",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-345",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-345 -> w617: unverified proposal; human review required.",
+      "proposal_canonical_id": "w617",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-346",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-346 -> w618: unverified proposal; human review required.",
+      "proposal_canonical_id": "w618",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-347",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-347 -> w619: unverified proposal; human review required.",
+      "proposal_canonical_id": "w619",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-348",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-348 -> w620: unverified proposal; human review required.",
+      "proposal_canonical_id": "w620",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-349",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-349 -> w621: unverified proposal; human review required.",
+      "proposal_canonical_id": "w621",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-350",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-350 -> w622: unverified proposal; human review required.",
+      "proposal_canonical_id": "w622",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-351",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-351 -> w623: unverified proposal; human review required.",
+      "proposal_canonical_id": "w623",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-352",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-352 -> w624: unverified proposal; human review required.",
+      "proposal_canonical_id": "w624",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-353",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-353 -> w625: unverified proposal; human review required.",
+      "proposal_canonical_id": "w625",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-354",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-354 -> w626: unverified proposal; human review required.",
+      "proposal_canonical_id": "w626",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-355",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-355 -> w627: unverified proposal; human review required.",
+      "proposal_canonical_id": "w627",
+      "proposal_decision": "included"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-356",
+      "role": "start",
+      "decision": "proposed",
+      "decision_note": "m5-356 -> w628: unverified proposal; human review required.",
+      "proposal_canonical_id": "w628",
+      "proposal_decision": "corrected",
+      "proposal_corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-357",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "m5-357: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-358",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "m5-358: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-359",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "m5-359: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-360",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "m5-360: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-361",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "m5-361: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-362",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "m5-362: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-363",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "m5-363: unverified proposal; human review required."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-364",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "m5-364: unverified proposal; human review required."
+    }
+  ]
+}

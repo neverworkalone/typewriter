@@ -62,6 +62,10 @@ export const DEFAULT_CALIBRATION_AUDIT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-10a-relation-calibration-audit.json',
 );
+export const DEFAULT_CALIBRATION_CANONICAL_DIRECTORY = path.resolve(
+  REPOSITORY_DIRECTORY,
+  'data/batches/m5-10a-wave-a-base-canonical',
+);
 export const DEFAULT_CALIBRATION_PLAN_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-8-expansion-plan.json',
@@ -676,7 +680,7 @@ export async function validateM5A10ACalibration({
   const timingPath = resolveRepositoryPath(artifact.source.relation_calibration_timing, 'calibration.source.relation_calibration_timing');
   const auditPath = resolveRepositoryPath(artifact.source.relation_calibration_audit, 'calibration.source.relation_calibration_audit');
   assertEqual(fixturePath, DEFAULT_CALIBRATION_FIXTURE_PATH, 'calibration fixture path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
-  assertEqual(canonicalDirectory, path.resolve(REPOSITORY_DIRECTORY, 'data/canonical'), 'calibration canonical path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
+  assertEqual(canonicalDirectory, DEFAULT_CALIBRATION_CANONICAL_DIRECTORY, 'calibration canonical path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(planPath, DEFAULT_CALIBRATION_PLAN_PATH, 'calibration plan path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(timingPath, DEFAULT_CALIBRATION_TIMING_PATH, 'calibration timing path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(auditPath, DEFAULT_CALIBRATION_AUDIT_PATH, 'calibration audit path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');

@@ -1,0 +1,149 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "before_count": 0,
+  "after_count": 6,
+  "events": [
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0001",
+      "relation_id": "m5-10-wave-a2-rel-001",
+      "operation": "add",
+      "source_sense": "w579-s1",
+      "after": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0002",
+      "relation_id": "m5-10-wave-a2-rel-002",
+      "operation": "add",
+      "source_sense": "w587-s1",
+      "after": {
+        "target": "w306",
+        "target_sense": "w306-s1",
+        "type": "near"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0003",
+      "relation_id": "m5-10-wave-a2-rel-003",
+      "operation": "add",
+      "source_sense": "w589-s1",
+      "after": {
+        "target": "w001",
+        "target_sense": "w001-s1",
+        "type": "mood"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0004",
+      "relation_id": "m5-10-wave-a2-rel-004",
+      "operation": "add",
+      "source_sense": "w607-s1",
+      "after": {
+        "target": "w066",
+        "target_sense": "w066-s2",
+        "type": "sensory"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0005",
+      "relation_id": "m5-10-wave-a2-rel-005",
+      "operation": "add",
+      "source_sense": "w621-s2",
+      "after": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "association"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0006",
+      "relation_id": "m5-10-wave-a2-rel-006",
+      "operation": "add",
+      "source_sense": "w628-s2",
+      "after": {
+        "target": "w008",
+        "target_sense": "w008-s1",
+        "type": "mood"
+      }
+    }
+  ],
+  "source_note": "A2 pure-add relation proposal: six candidate tuples are retained for structural comparison; admission remains blocked until verified editorial and independent-audit inputs are supplied; w621-s2 is retained as an association for a state-changing action.",
+  "candidate_reviews": [
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-001",
+      "relation_id": "m5-10-wave-a2-rel-001",
+      "source_sense": "w579-s1",
+      "relation": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      },
+      "decision": "pending",
+      "review_note": "w579-s1 환희의 고양된 기쁨과 w018-s1 기쁨의 정서 범위를 비교하는 mood 후보로 제안했다. 최종 채택 여부는 검증된 독립 audit에서 결정한다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-002",
+      "relation_id": "m5-10-wave-a2-rel-002",
+      "source_sense": "w587-s1",
+      "relation": {
+        "target": "w306",
+        "target_sense": "w306-s1",
+        "type": "near"
+      },
+      "decision": "pending",
+      "review_note": "w587-s1 자책과 w306-s1 죄책감은 모두 자기 비난과 관련되지만 원인과 초점이 다르다. 부분적으로 가까운 의미를 보이는 near 후보로 제안했다. 최종 채택 여부는 검증된 독립 audit에서 결정한다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-003",
+      "relation_id": "m5-10-wave-a2-rel-003",
+      "source_sense": "w589-s1",
+      "relation": {
+        "target": "w001",
+        "target_sense": "w001-s1",
+        "type": "mood"
+      },
+      "decision": "pending",
+      "review_note": "w589-s1 고즈넉하다가 만드는 고요하고 아늑한 분위기와 w001-s1 고요의 정서적 색을 대조하는 mood 후보로 제안했다. 최종 채택 여부는 검증된 독립 audit에서 결정한다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-004",
+      "relation_id": "m5-10-wave-a2-rel-004",
+      "source_sense": "w607-s1",
+      "relation": {
+        "target": "w066",
+        "target_sense": "w066-s2",
+        "type": "sensory"
+      },
+      "decision": "pending",
+      "review_note": "w607-s1 윤슬의 물결 위 반짝임과 w066-s2 빛의 표면 밝기를 시각 이미지로 대조하는 sensory 후보로 제안했다. 최종 채택 여부는 검증된 독립 audit에서 결정한다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-005",
+      "relation_id": "m5-10-wave-a2-rel-005",
+      "source_sense": "w621-s2",
+      "relation": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "association"
+      },
+      "decision": "pending",
+      "review_note": "w621-s2 잦아들다와 w009-s1 긴장은 각각 감정의 상태와 그 세기가 낮아지는 변화를 가리킨다. 동의어나 near가 아니라 함께 떠올릴 상태·변화의 association 후보로 제안했다. 최종 채택 여부는 검증된 독립 audit에서 결정한다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-006",
+      "relation_id": "m5-10-wave-a2-rel-006",
+      "source_sense": "w628-s2",
+      "relation": {
+        "target": "w008",
+        "target_sense": "w008-s1",
+        "type": "mood"
+      },
+      "decision": "pending",
+      "review_note": "w628-s2 숨이 트이다의 비유적 안도와 w008-s1 안도는 막힘이 풀린 뒤의 정서적 방향을 공유하는 mood 후보로 제안했다. 최종 채택 여부는 검증된 독립 audit에서 결정한다."
+    }
+  ]
+}

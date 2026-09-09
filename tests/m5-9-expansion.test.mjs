@@ -190,12 +190,12 @@ test('M5-9 imports exactly 100 reviewed starts and records the failed source-bou
   });
 
   const inventorySummary = await validateTargetInventory();
-  assert.equal(inventorySummary.revision, 'm5-7');
-  assert.equal(inventorySummary.inventoryEntryCount, 655);
+  assert.equal(inventorySummary.revision, 'm5-10');
+  assert.equal(inventorySummary.inventoryEntryCount, 713);
   assert.equal(inventorySummary.currentStartCount, 578);
-  assert.equal(inventorySummary.candidateStartCount, 7);
-  assert.equal(inventorySummary.plannedStartCount, 585);
-  assert.equal(inventorySummary.heldCount, 24);
+  assert.equal(inventorySummary.candidateStartCount, 59);
+  assert.equal(inventorySummary.plannedStartCount, 637);
+  assert.equal(inventorySummary.heldCount, 30);
   assert.equal(preImportInventory.revision, 'm5-5');
   assert.deepEqual(preImportInventory.canonical_snapshot, {
     record_count: 470,

@@ -121,6 +121,27 @@ function canonicalEntry(recordInfo) {
 }
 
 function validateSeedPromotion(entry) {
+  if (entry.status === 'proposed') {
+    if (!Object.hasOwn(entry, 'proposal_canonical_id')) {
+      throw new TargetInventoryGenerationError(
+        `proposed seed ${entry.inventory_id} requires proposal_canonical_id`,
+        'MISSING_PROPOSAL_CANONICAL_ID',
+      );
+    }
+    if (!/^w[0-9]{3,}$/u.test(entry.proposal_canonical_id)) {
+      throw new TargetInventoryGenerationError(
+        `proposed seed ${entry.inventory_id} has invalid proposal_canonical_id ${entry.proposal_canonical_id}`,
+        'INVALID_PROPOSAL_CANONICAL_ID',
+      );
+    }
+    if (entry.planned_role !== 'start') {
+      throw new TargetInventoryGenerationError(
+        `proposed seed ${entry.inventory_id} must retain planned_role start`,
+        'INVALID_PROPOSAL_ROLE',
+      );
+    }
+    return;
+  }
   if (entry.status !== 'promoted') {
     if (Object.hasOwn(entry, 'canonical_id')) {
       throw new TargetInventoryGenerationError(
@@ -149,6 +170,11 @@ function validateSeedPromotion(entry) {
       'INVALID_PROMOTION_ROLE',
     );
   }
+}
+
+function proposedEditorialEntry(seedEntry) {
+  const { proposal_canonical_id: ignoredProposalCanonicalId, ...entry } = seedEntry;
+  return { ...entry, source: 'editorial', status: 'candidate' };
 }
 
 function promotedCanonicalEntry(recordInfo, seedEntry) {
@@ -187,6 +213,7 @@ export async function generateTargetInventory({
     validateSeedPromotion(entry);
     return entry.status === 'promoted';
   });
+  const proposals = seed.targets.filter((entry) => entry.status === 'proposed');
   const promotionsByCanonicalId = new Map();
   for (const promotion of promotions) {
     if (promotionsByCanonicalId.has(promotion.canonical_id)) {
@@ -197,10 +224,26 @@ export async function generateTargetInventory({
     }
     promotionsByCanonicalId.set(promotion.canonical_id, promotion);
   }
-
   const canonicalById = new Map(
     canonical.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),
   );
+  const proposedCanonicalIds = new Set();
+  for (const proposal of proposals) {
+    if (proposedCanonicalIds.has(proposal.proposal_canonical_id)) {
+      throw new TargetInventoryGenerationError(
+        `multiple proposed seeds target canonical ${proposal.proposal_canonical_id}`,
+        'DUPLICATE_PROPOSED_CANONICAL_ID',
+      );
+    }
+    proposedCanonicalIds.add(proposal.proposal_canonical_id);
+    if (canonicalById.has(proposal.proposal_canonical_id)) {
+      throw new TargetInventoryGenerationError(
+        `proposed seed ${proposal.inventory_id} targets an existing canonical ${proposal.proposal_canonical_id}; review it as promoted instead`,
+        'PROPOSAL_CANONICAL_ALREADY_EXISTS',
+      );
+    }
+  }
+
   for (const promotion of promotions) {
     if (!canonicalById.has(promotion.canonical_id)) {
       throw new TargetInventoryGenerationError(
@@ -223,7 +266,9 @@ export async function generateTargetInventory({
     ...currentEntries,
     ...seed.targets
       .filter((entry) => entry.status !== 'promoted')
-      .map((entry) => ({ source: 'editorial', ...entry })),
+      .map((entry) => entry.status === 'proposed'
+        ? proposedEditorialEntry(entry)
+        : ({ source: 'editorial', ...entry })),
   ];
   const currentStartCount = currentEntries.filter(
     (entry) => entry.planned_role === 'start',

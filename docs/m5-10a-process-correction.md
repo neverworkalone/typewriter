@@ -6,7 +6,7 @@ Issue #107 corrects the review process after the failed #96 Wave A result. It
 does not change canonical data, convert the historical `HOLD PROCESS` result to
 a pass, or authorize Wave B.
 
-The current canonical snapshot remains:
+The pre-A2 canonical snapshot preserved by this process correction is:
 
 ```text
 620 records / 578 starts / 42 reference-only / 743 senses / 467 relations / 39 expressions
@@ -23,8 +23,8 @@ Every selected inventory start in a future M5-10A manifest must have exactly one
 - `inventory_id` and the importability `status`;
 - whether lemma/POS review was completed;
 - observed sense count and POS values;
-- six boundary evidence objects, each with `status`, record-specific `rationale`,
-  and `sense_ids`;
+- six structured boundary evidence objects, each with `applicability`,
+  `candidate_sense_ids`, `decision`, and any actual `contrasts`;
 - `missing_boundary_ids`; and
 - a human-readable note.
 
@@ -38,14 +38,24 @@ The six boundary IDs are fixed in the process revision
 5. `compound-spaced-phrase` — compound word versus spaced phrase; and
 6. `word-idiom` — ordinary word versus idiom.
 
-An `included` or `corrected` record maps to a `complete` checkpoint and must
-carry its canonical ID, observed sense/POS facts, completed lemma/POS review,
-at least one checked boundary, and no unreviewed boundary. A `held`, `rejected`,
-or `deferred` record cannot carry a canonical ID. Checked evidence cites senses
-belonging to that canonical record and identifies the inventory record in its
-rationale; `not-applicable` and `not-reviewed` cite no senses. Any boundary
-marked `not-reviewed` must be repeated in `missing_boundary_ids`; that omission
-blocks relation review for the record. Reused or generic rationale is rejected.
+An `included` or `corrected` record maps to a `complete` checkpoint only after a
+verified human session. It must carry its canonical ID, observed sense/POS facts,
+completed lemma/POS review, reviewed evidence for every boundary, and no
+unreviewed boundary. An applicable boundary carries an actual contrast; an
+explicitly `not-applicable` boundary carries no sense claim. A `held`, `rejected`,
+or `deferred` record cannot carry a canonical ID.
+Reviewed evidence cites the exact canonical candidate senses and records a
+structured contrast when the boundary applies; `not-applicable` and
+`not-reviewed` make no generated sense claim. Any boundary marked `not-reviewed`
+must be repeated in `missing_boundary_ids`; that omission blocks relation review
+for the record. Reused or generic contrast evidence is rejected after removing
+record IDs, lemmas, and glosses from its fingerprint.
+
+An input without a verifiable session artifact is an `unverified-draft`; it must
+remain `in-review`, every promoted boundary stays `unreviewed`/`pending`, and it
+cannot be used as a completed import manifest. The artifact must bind the actor,
+UUID session, completion time, input digest, and its own digest before a complete
+human review can be accepted.
 
 The self-authored regression fixture
 [`tests/fixtures/m5-10-wave-a-sense-regressions.json`](../tests/fixtures/m5-10-wave-a-sense-regressions.json)
@@ -189,3 +199,15 @@ Wave B:     net +150, unauthorized until A2 passes and is separately authorized
 The candidate buffer must be declared before selection, and canonical mutation is
 false in the authorization. No Wave B batch, quota, canonical start, or M6 work
 is created by #107.
+
+## Wave A2 execution
+
+Issue #96 Wave A2's proposal is recorded in its separate report
+[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). The declared 50-start
+delta from the 58-start selection remains in proposal staging, while the current
+canonical snapshot stays at the 578-start base. The manifest remains `in-review`
+because no verified editorial or independent audit session artifact is attached.
+Its bounded stage remains `HOLD PROCESS`
+until those artifacts and the separate editor-session timing input contain real
+evidence. The A2 stage still sets `next_stage_authorized: false`; Wave B is not
+included in the A2 batch.

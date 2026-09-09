@@ -110,6 +110,14 @@ const EXPECTED_M5_3_RELATION_BASELINE = Object.freeze({
   before_count: 139,
 });
 
+const A2_REPAIR_STAGE = Object.freeze({
+  stage_id: 'm5-10a-wave-a2-plus-50',
+  target_net_start_increase: 50,
+  cumulative_start_target: 628,
+  previous_stage_id: 'm5-9a-wave-a-plus-50',
+  requires_repair_authorization: true,
+});
+
 const EXPECTED_SENSE_REGRESSIONS = Object.freeze([
   { canonical_id: 'w405', expected_sense_count: 2, expected_pos: ['adjective', 'adjective'] },
   { canonical_id: 'w406', expected_sense_count: 1, expected_pos: ['verb'] },
@@ -431,6 +439,28 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
 
 function stageDecisionsFromArtifacts(metricsArtifact) {
   const { decisions } = metricsArtifact.derived;
+  if (metricsArtifact.derived.canonical_import.import_status === 'proposed') {
+    return {
+      included_start_count: 0,
+      corrected_start_count: 0,
+      held_start_count: decisions.held,
+      rejected_start_count: decisions.rejected,
+      deferred_start_count: decisions.deferred ?? 0,
+      proposed_start_count: decisions.importable_start_count,
+    };
+  }
+  return {
+    included_start_count: decisions.included,
+    corrected_start_count: decisions.corrected,
+    held_start_count: decisions.held,
+    rejected_start_count: decisions.rejected,
+    deferred_start_count: decisions.deferred ?? 0,
+  };
+}
+
+function proposalDecisionsFromArtifacts(metricsArtifact) {
+  if (metricsArtifact.derived.canonical_import.import_status !== 'proposed') return undefined;
+  const { decisions } = metricsArtifact.derived;
   return {
     included_start_count: decisions.included,
     corrected_start_count: decisions.corrected,
@@ -544,6 +574,7 @@ export async function loadExpansionStageSources(stage) {
     );
   }
 
+  const proposalDecisions = proposalDecisionsFromArtifacts(metricsArtifact.value);
   return {
     validation: SOURCE_ARTIFACT_VALIDATION_VERSION,
     paths: sourcePaths,
@@ -553,6 +584,7 @@ export async function loadExpansionStageSources(stage) {
     processed_start_count: metricsArtifact.value.derived.selection.processed_start_count
       ?? metricsArtifact.value.derived.selection.selected_start_count,
     decisions: stageDecisionsFromArtifacts(metricsArtifact.value),
+    ...(proposalDecisions ? { proposal_decisions: proposalDecisions } : {}),
     imported_start_count: metricsArtifact.value.derived.canonical_import.imported_start_count,
     canonical_snapshot: canonicalSummary(canonical.records),
     metrics: stageMetricsFromArtifacts(metricsArtifact.value, verificationArtifact.value),
@@ -627,6 +659,20 @@ function validateLoadedStageSources(stage, sourceArtifacts) {
     `${stage.stage_id} decisions drifted from the manifest metrics`,
     'SOURCE_DECISION_DRIFT',
   );
+  if (stage.proposal_decisions !== undefined) {
+    assertEqual(
+      stage.proposal_decisions,
+      sourceArtifacts.proposal_decisions,
+      `${stage.stage_id} proposal decisions drifted from the manifest metrics`,
+      'SOURCE_PROPOSAL_DECISION_DRIFT',
+    );
+  } else {
+    assertCondition(
+      sourceArtifacts.proposal_decisions === undefined,
+      `${stage.stage_id} unexpectedly contains proposal decisions`,
+      'SOURCE_PROPOSAL_DECISION_DRIFT',
+    );
+  }
   assertEqual(
     stage.actual.imported_start_count,
     sourceArtifacts.imported_start_count,
@@ -674,6 +720,16 @@ function resolveStageContext(stage, plan) {
     ({ stage_id: stageId }) => stageId === plan.repair_resume.parent_stage_id,
   );
   const { wave_a: waveA, wave_b: waveB } = plan.repair_resume;
+  if (stage.stage_id === A2_REPAIR_STAGE.stage_id) {
+    return {
+      kind: 'repair-wave-a2',
+      contract: A2_REPAIR_STAGE,
+      ladderIndex: parentStageIndex,
+      previousStageId: A2_REPAIR_STAGE.previous_stage_id,
+      previousStageIds: [A2_REPAIR_STAGE.previous_stage_id],
+      baseStartCount: A2_REPAIR_STAGE.cumulative_start_target - A2_REPAIR_STAGE.target_net_start_increase,
+    };
+  }
   if (stage.stage_id === waveA.stage_id) {
     return {
       kind: 'repair-wave-a',
@@ -742,7 +798,7 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
     `${stage.stage_id} previous stage report does not match the allowed process chain`,
     'STAGE_CHAIN_MISMATCH',
   );
-  if (stageContext.kind === 'repair-wave-a') {
+  if (stageContext.kind === 'repair-wave-a' || stageContext.kind === 'repair-wave-a2') {
     assertEqual(
       previousStage.gate_status,
       'fail',
@@ -902,6 +958,36 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
   );
 }
 
+export function evaluateExpansionGate(metrics, plan) {
+  const relationNoiseRate = metrics.relation_noise_rate_of_candidates
+    ?? metrics.relation_noise_rate_of_before;
+  const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
+    / plan.gate.relation_noise_baseline.before_count;
+  const qualityPasses = {
+    correction_rate: metrics.correction_rate_of_selected <= plan.gate.correction_rate_max,
+    relation_noise_rate: relationNoiseRate <= plan.gate.relation_noise_rate_max,
+    relation_noise_below_baseline: !plan.gate.relation_noise_below_m5_3_baseline_required
+      || relationNoiseRate < baselineRate,
+    editor_seconds_per_selected_start: Number.isFinite(metrics.editor_seconds_per_selected_start)
+      && metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
+    timing_complete: metrics.timing_status === 'complete',
+    unmeasured_timing_passes: metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
+    audit_complete: metrics.audit_status === 'complete',
+    audit_independent: metrics.audit_independent,
+    open_audit_blockers: metrics.open_audit_blocker_count <= plan.gate.open_audit_blockers_max,
+    human_editorial_review_complete: metrics.human_editorial_review_complete,
+    canonical_integrity: metrics.canonical_integrity,
+    deterministic_sqlite: metrics.deterministic_sqlite,
+    search_product_regression: metrics.search_product_regression,
+  };
+  const gate_status = Object.values(qualityPasses).every(Boolean) ? 'pass' : 'fail';
+  return {
+    quality_passes: qualityPasses,
+    gate_status,
+    decision: gate_status === 'pass' ? 'APPROVE BOUNDED' : plan.gate.failure_decision,
+  };
+}
+
 function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts) {
   const plannedStage = stageContext.contract;
   validateLoadedStageSources(stage, sourceArtifacts);
@@ -945,10 +1031,14 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
     `${stage.stage_id} selected count must include the declared candidate buffer`,
     'BUFFER_SELECTION_MISMATCH',
   );
+  const proposedStartCount = stage.decisions.proposed_start_count ?? 0;
+  const proposalStage = proposedStartCount > 0;
   assertEqual(
-    stage.decisions.included_start_count + stage.decisions.corrected_start_count,
+    stage.decisions.included_start_count
+      + stage.decisions.corrected_start_count
+      + proposedStartCount,
     stage.target.net_start_increase,
-    `${stage.stage_id} included/corrected starts must equal the target net increase`,
+    `${stage.stage_id} imported/proposed starts must equal the target net increase`,
     'NET_START_INCREASE_MISMATCH',
   );
   const usedBuffer = stage.decisions.held_start_count + stage.decisions.rejected_start_count;
@@ -978,6 +1068,7 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
       + stage.decisions.corrected_start_count
       + stage.decisions.held_start_count
       + stage.decisions.rejected_start_count
+      + proposedStartCount
       + stage.decisions.deferred_start_count,
     stage.target.selected_start_count,
     `${stage.stage_id} decisions must account for every selected start`,
@@ -986,7 +1077,8 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
   const processedStartCount = stage.decisions.included_start_count
     + stage.decisions.corrected_start_count
     + stage.decisions.held_start_count
-    + stage.decisions.rejected_start_count;
+    + stage.decisions.rejected_start_count
+    + proposedStartCount;
   assertEqual(
     processedStartCount,
     sourceArtifacts.processed_start_count,
@@ -996,27 +1088,57 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
   assertEqual(
     stage.actual.imported_start_count,
     stage.decisions.included_start_count + stage.decisions.corrected_start_count,
-    `${stage.stage_id} actual imported starts do not match included/corrected decisions`,
+    `${stage.stage_id} actual imported starts do not match imported decisions`,
     'ACTUAL_IMPORT_MISMATCH',
   );
-  assertEqual(
-    stage.input.canonical_snapshot.start_count + stage.actual.imported_start_count,
-    stage.target.cumulative_start_target,
-    `${stage.stage_id} actual cumulative starts do not match the target`,
-    'CUMULATIVE_START_MISMATCH',
-  );
-  assertEqual(
-    stage.actual.canonical_snapshot.start_count,
-    stage.target.cumulative_start_target,
-    `${stage.stage_id} actual canonical start count does not match the target`,
-    'CANONICAL_START_MISMATCH',
-  );
-  assertEqual(
-    stage.metrics.correction_rate_of_selected,
-    (stage.decisions.corrected_start_count / processedStartCount),
-    `${stage.stage_id} correction rate is not derived from processed decisions`,
-    'METRIC_DRIFT',
-  );
+  if (proposalStage) {
+    assertCondition(
+      stage.proposal_decisions !== undefined,
+      `${stage.stage_id} proposal decisions are required while proposals are pending`,
+      'PROPOSAL_DECISION_MISSING',
+    );
+    const proposalProcessedStartCount = stage.proposal_decisions.included_start_count
+      + stage.proposal_decisions.corrected_start_count
+      + stage.proposal_decisions.held_start_count
+      + stage.proposal_decisions.rejected_start_count;
+    assertEqual(
+      stage.proposal_decisions.included_start_count + stage.proposal_decisions.corrected_start_count,
+      proposedStartCount,
+      `${stage.stage_id} proposal decisions do not account for the pending target`,
+      'PROPOSAL_DECISION_MISMATCH',
+    );
+    assertEqual(
+      stage.metrics.correction_rate_of_selected,
+      stage.proposal_decisions.corrected_start_count / proposalProcessedStartCount,
+      `${stage.stage_id} correction rate is not derived from proposal decisions`,
+      'METRIC_DRIFT',
+    );
+    assertEqual(
+      stage.actual.canonical_snapshot.start_count,
+      stage.input.canonical_snapshot.start_count + stage.actual.imported_start_count,
+      `${stage.stage_id} pending stage actual canonical start count drifted from the base`,
+      'CANONICAL_START_MISMATCH',
+    );
+  } else {
+    assertEqual(
+      stage.input.canonical_snapshot.start_count + stage.actual.imported_start_count,
+      stage.target.cumulative_start_target,
+      `${stage.stage_id} actual cumulative starts do not match the target`,
+      'CUMULATIVE_START_MISMATCH',
+    );
+    assertEqual(
+      stage.actual.canonical_snapshot.start_count,
+      stage.target.cumulative_start_target,
+      `${stage.stage_id} actual canonical start count does not match the target`,
+      'CANONICAL_START_MISMATCH',
+    );
+    assertEqual(
+      stage.metrics.correction_rate_of_selected,
+      (stage.decisions.corrected_start_count / processedStartCount),
+      `${stage.stage_id} correction rate is not derived from processed decisions`,
+      'METRIC_DRIFT',
+    );
+  }
   if (stage.metrics.total_editor_seconds === null) {
     assertEqual(
       stage.metrics.editor_seconds_per_selected_start,
@@ -1033,37 +1155,16 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
     );
   }
 
-  const relationNoiseRate = stage.metrics.relation_noise_rate_of_candidates
-    ?? stage.metrics.relation_noise_rate_of_before;
-  const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
-    / plan.gate.relation_noise_baseline.before_count;
-  const qualityPasses = [
-    stage.metrics.correction_rate_of_selected <= plan.gate.correction_rate_max,
-    relationNoiseRate <= plan.gate.relation_noise_rate_max,
-    !plan.gate.relation_noise_below_m5_3_baseline_required
-      || relationNoiseRate < baselineRate,
-    Number.isFinite(stage.metrics.editor_seconds_per_selected_start)
-      && stage.metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
-    stage.metrics.timing_status === 'complete',
-    stage.metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
-    stage.metrics.audit_status === 'complete',
-    stage.metrics.audit_independent,
-    stage.metrics.open_audit_blocker_count <= plan.gate.open_audit_blockers_max,
-    stage.metrics.human_editorial_review_complete,
-    stage.metrics.canonical_integrity,
-    stage.metrics.deterministic_sqlite,
-    stage.metrics.search_product_regression,
-  ];
-  const expectedGateStatus = qualityPasses.every(Boolean) ? 'pass' : 'fail';
+  const gate = evaluateExpansionGate(stage.metrics, plan);
   assertEqual(
     stage.gate_status,
-    expectedGateStatus,
+    gate.gate_status,
     `${stage.stage_id} gate status does not match source-derived metrics`,
     'GATE_STATUS_MISMATCH',
   );
   assertEqual(
     stage.decision,
-    stage.gate_status === 'pass' ? 'APPROVE BOUNDED' : plan.gate.failure_decision,
+    gate.decision,
     `${stage.stage_id} decision does not match the gate status`,
     'DECISION_MISMATCH',
   );

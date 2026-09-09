@@ -438,7 +438,7 @@
         "relation_calibration_fixture_sha256": { "$ref": "#/$defs/sha256" },
         "sense_regression_fixture": { "const": "tests/fixtures/m5-10-wave-a-sense-regressions.json" },
         "sense_regression_fixture_sha256": { "$ref": "#/$defs/sha256" },
-        "canonical_directory": { "const": "data/canonical" },
+        "canonical_directory": { "const": "data/batches/m5-10a-wave-a-base-canonical" },
         "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
         "wave_a_verification": { "const": "data/batches/m5-10-wave-a-verification.json" },
         "wave_a_verification_sha256": { "$ref": "#/$defs/sha256" }

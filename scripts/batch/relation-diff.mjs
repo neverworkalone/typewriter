@@ -277,7 +277,6 @@ function validateCandidateReviews(diff, eventByRelationId, eventCounts) {
 
   const candidateIds = new Set();
   const relationIds = new Set();
-  let admittedCount = 0;
   for (const [index, review] of reviews.entries()) {
     if (candidateIds.has(review.candidate_id)) {
       fail(
@@ -300,11 +299,10 @@ function validateCandidateReviews(diff, eventByRelationId, eventCounts) {
     requireString(review.review_note, `candidate_reviews[${index}].review_note`);
 
     const event = eventByRelationId.get(review.relation_id);
-    if (review.decision === 'admit') {
-      admittedCount += 1;
+    if (review.decision === 'admit' || review.decision === 'pending') {
       if (!event || event.operation !== 'add') {
         fail(
-          `admitted candidate ${review.candidate_id} must map to an add event`,
+          `${review.decision} candidate ${review.candidate_id} must map to an add event`,
           'CANDIDATE_EVENT_MISMATCH',
         );
       }
@@ -332,7 +330,10 @@ function validateCandidateReviews(diff, eventByRelationId, eventCounts) {
       'CANDIDATE_REVIEWS_NOT_PURE_ADD',
     );
   }
-  if (eventCounts.add !== admittedCount) {
+  const eventBackedCandidateCount = reviews.filter(
+    ({ decision }) => decision === 'admit' || decision === 'pending',
+  ).length;
+  if (eventCounts.add !== eventBackedCandidateCount) {
     fail(
       'pure-add candidate_reviews must account for every add event and no other operation',
       'CANDIDATE_EVENT_COVERAGE',
@@ -451,9 +452,13 @@ export function summarizeRelationDiff(diff) {
     const admittedCandidateCount = diff.candidate_reviews.filter(
       ({ decision }) => decision === 'admit',
     ).length;
+    const pendingCandidateCount = diff.candidate_reviews.filter(
+      ({ decision }) => decision === 'pending',
+    ).length;
     summary.candidate_count = diff.candidate_reviews.length;
     summary.admitted_candidate_count = admittedCandidateCount;
     summary.rejected_candidate_count = rejectedCandidateCount;
+    if (pendingCandidateCount > 0) summary.pending_candidate_count = pendingCandidateCount;
     summary.noise_denominator_count = diff.candidate_reviews.length;
     summary.noise_rate_of_candidates = diff.candidate_reviews.length === 0
       ? 0

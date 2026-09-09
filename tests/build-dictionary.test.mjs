@@ -71,6 +71,9 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         })),
         [{ id: 'w288', lemma: '마음이 놓이다' }],
       );
+      assert.deepEqual(findRecordsByExactTerm(database, '환희'), []);
+      assert.equal(getRecord(database, 'w579'), null);
+      assert.deepEqual(findRecordsByExactTerm(database, '숨이 트이다'), []);
 
       const polysemousRecord = getRecord(database, 'w237');
       assert.equal(polysemousRecord.senses.length, 4);

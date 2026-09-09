@@ -1,0 +1,117 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "source": {
+    "manifest": "data/batches/m5-10-wave-a2.json",
+    "relation_diff": "data/batches/m5-10a-wave-a2-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 58,
+      "processed_start_count": 56
+    },
+    "decisions": {
+      "included": 35,
+      "corrected": 15,
+      "held": 3,
+      "rejected": 3,
+      "deferred": 2,
+      "importable_start_count": 50,
+      "correction_rate_of_selected": 0.26785714285714285,
+      "correction_rate_of_importable": 0.3,
+      "held_rate": 0.05357142857142857,
+      "rejected_rate": 0.05357142857142857,
+      "held_or_rejected_rate": 0.10714285714285714,
+      "sense_field_correction_count": 15,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 0,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 0,
+      "imported_sense_count": 0,
+      "imported_relation_count": 0,
+      "imported_expression_count": 0,
+      "relation_type_counts": {},
+      "import_status": "proposed"
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 6,
+      "added_count": 6,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": -6,
+      "noise_event_count": 0,
+      "noise_rate_of_before": 0,
+      "classification_counts": {},
+      "candidate_count": 6,
+      "admitted_candidate_count": 0,
+      "rejected_candidate_count": 0,
+      "noise_denominator_count": 6,
+      "noise_rate_of_candidates": 0,
+      "pending_candidate_count": 6
+    },
+    "timing": {
+      "status": "incomplete",
+      "passes": {
+        "target-preparation": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "initial-review": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "feedback-fixes": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "final-audit": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "held-rejected": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        }
+      },
+      "total_wall_clock_seconds": null,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 0,
+      "measured_editor_seconds": 0,
+      "unmeasured_passes": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected"
+      ]
+    },
+    "audit": {
+      "status": "incomplete",
+      "independent": false,
+      "finding_count": 1,
+      "open_finding_count": 1,
+      "open_blocker_count": 1,
+      "finding_counts": {
+        "provenance": 1
+      }
+    },
+    "sense_review": {
+      "status": "incomplete",
+      "reviewed_start_count": 0,
+      "scoped_single_sense_count": 0,
+      "split_record_count": 0,
+      "split_canonical_ids": []
+    }
+  }
+}

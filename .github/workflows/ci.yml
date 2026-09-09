@@ -74,6 +74,9 @@ jobs:
       - name: Validate M5-10A repair authorization
         run: npm run batch:m5-10a:repair:check
 
+      - name: Validate M5-10A Wave A2 stage
+        run: npm run batch:m5-10a:wave-a2:check
+
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs
 

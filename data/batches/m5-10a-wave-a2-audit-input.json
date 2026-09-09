@@ -1,0 +1,36 @@
+{
+  "schema_version": "2",
+  "audit_id": "m5-10a-wave-a2-audit-20260909",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "source_kind": "unverified-draft",
+  "editorial_input_id": "m5-10a-wave-a2-editorial-input-20260909",
+  "auditor_id": "unknown",
+  "independent": false,
+  "reviewed_record_ids": [],
+  "relation_reviews": [],
+  "status": "incomplete",
+  "findings": [
+    {
+      "id": "a2-provenance-unverified",
+      "category": "provenance",
+      "severity": "blocker",
+      "status": "open",
+      "evidence_refs": [
+        "editorial.provenance",
+        "audit.provenance"
+      ],
+      "note": "No verifiable human editorial or independent audit session is attached; A2 remains blocked until those artifacts are supplied."
+    }
+  ],
+  "note": "No independent audit is claimed until a distinct verified audit session and artifact are supplied.",
+  "provenance": {
+    "verification_status": "unverified",
+    "actor_kind": "unknown",
+    "actor_id": "unknown",
+    "session_id": null,
+    "artifact": null,
+    "sha256": null,
+    "note": "No independent auditor session or verifiable audit artifact was supplied; this file is a proposal only."
+  },
+  "created_at": "2026-09-09T05:20:00Z"
+}

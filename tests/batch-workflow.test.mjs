@@ -28,7 +28,7 @@ function createManifest() {
     schema_version: '1',
     batch_id: 'm5-2-fixture',
     inventory_id: 'm5-core-5k',
-    inventory_revision: 'm5-7',
+    inventory_revision: 'm5-10',
     generator: {
       model_id: 'fixture-model',
       tool_version: 'fixture-tool-1',
@@ -44,7 +44,7 @@ function createManifest() {
     records: [
       {
         source: 'inventory',
-        inventory_id: 'm5-135',
+        inventory_id: 'm5-363',
         role: 'start',
         canonical_id: 'w579',
         decision: 'corrected',
@@ -73,7 +73,7 @@ function createStagedRecords() {
       lemma: '검수표적',
       search_forms: ['검수표적'],
       senses: [{
-        id: 'w579-s1',
+      id: 'w579-s1',
         pos: 'noun',
         gloss: '벅찬 기쁨이나 감동이 북받치는 마음.',
         relations: [{
@@ -392,7 +392,7 @@ test('rejects incomplete review before reading or importing staged rows', async 
       validateBatch(fixture),
       (error) => {
         assert.ok(error instanceof BatchValidationError);
-        assert.equal(error.code, 'REVIEW_NOT_COMPLETE');
+        assert.equal(error.code, 'UNVERIFIED_IMPORTABLE_DECISION');
         return true;
       },
     );
@@ -445,10 +445,10 @@ test('rejects unapproved staged rows and non-deterministic canonical IDs', async
     );
 
     const manifest = await readManifest(fixture.manifestPath);
-    records[0].id = 'w580';
-    records[0].candidate_id = 'w580';
-    records[0].senses[0].id = 'w580-s1';
-    manifest.records[0].canonical_id = 'w580';
+    records[0].id = 'w630';
+    records[0].candidate_id = 'w630';
+    records[0].senses[0].id = 'w630-s1';
+    manifest.records[0].canonical_id = 'w630';
     await writeFixtureFiles({ directory: fixture.directory, manifest, records });
     await assert.rejects(
       validateBatch({
