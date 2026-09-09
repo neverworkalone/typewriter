@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +27,7 @@ import { validateTargetInventory } from '../validate/target-inventory.mjs';
 const require = createRequire(import.meta.url);
 const EDITORIAL_DECISIONS_SCHEMA = require('../../schema/m5-10-wave-b-editorial-decisions.schema.json');
 const AUDIT_DECISIONS_SCHEMA = require('../../schema/m5-10-wave-b-audit-decisions.schema.json');
+const SEMANTIC_REGRESSION_SCHEMA = require('../../schema/m5-10-wave-b-semantic-regressions.schema.json');
 const schemaOptions = {
   allErrors: true,
   formats: {
@@ -37,6 +39,7 @@ const schemaOptions = {
 };
 const editorialDecisionsSchemaValidator = new Ajv2020(schemaOptions).compile(EDITORIAL_DECISIONS_SCHEMA);
 const auditDecisionsSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_DECISIONS_SCHEMA);
+const semanticRegressionSchemaValidator = new Ajv2020(schemaOptions).compile(SEMANTIC_REGRESSION_SCHEMA);
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -77,6 +80,16 @@ export const WAVE_B_PROPOSAL_CANONICAL_IDS = Object.freeze(
   Array.from({ length: WAVE_B_SELECTED_START_COUNT }, (_, index) => `w${String(index + 629).padStart(3, '0')}`),
 );
 
+export const WAVE_B_SEMANTIC_REGRESSION_CASES = Object.freeze([
+  { case_id: 'wave-b-sem-001', inventory_id: 'm5-455', canonical_id: 'w719' },
+  { case_id: 'wave-b-sem-002', inventory_id: 'm5-470', canonical_id: 'w734' },
+  { case_id: 'wave-b-sem-003', inventory_id: 'm5-480', canonical_id: 'w744' },
+  { case_id: 'wave-b-sem-004', inventory_id: 'm5-482', canonical_id: 'w746' },
+  { case_id: 'wave-b-sem-005', inventory_id: 'm5-486', canonical_id: 'w750' },
+  { case_id: 'wave-b-sem-006', canonical_id: 'w548' },
+  { case_id: 'wave-b-sem-007', inventory_id: 'm5-514', canonical_id: 'w778' },
+]);
+
 export const DEFAULT_OUTPUT_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b.json');
 export const DEFAULT_EDITORIAL_INPUT_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json');
 export const DEFAULT_AUDIT_INPUT_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-audit-input.json');
@@ -90,6 +103,7 @@ export const DEFAULT_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-p
 export const DEFAULT_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-base-canonical');
 export const DEFAULT_PLAN_PATH = path.join(BATCH_DIRECTORY, 'm5-8-expansion-plan.json');
 export const DEFAULT_AUTHORIZATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-authorization.json');
+export const DEFAULT_SEMANTIC_REGRESSION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-semantic-regressions.json');
 
 export const WAVE_B_TIMING_WORK_UNIT_CONTRACT = Object.freeze({
   'target-preparation': {
@@ -172,6 +186,25 @@ function sha256Bytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function resolveArtifactPath(filePath) {
+  return path.isAbsolute(filePath) ? filePath : path.resolve(REPOSITORY_DIRECTORY, filePath);
+}
+
+function validateTimingArtifact(artifact, label) {
+  if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact)) fail(`${label} must be an artifact reference`, 'TIMING_ARTIFACT_MISSING');
+  requireString(artifact.path, `${label}.path`);
+  requireSha256(artifact.sha256, `${label}.sha256`);
+  let bytes;
+  try {
+    bytes = readFileSync(resolveArtifactPath(artifact.path));
+  } catch (error) {
+    if (error.code === 'ENOENT') fail(`${label} does not exist: ${artifact.path}`, 'TIMING_ARTIFACT_MISSING');
+    throw error;
+  }
+  assertEqual(sha256Bytes(bytes), artifact.sha256, `${label}.sha256 was not computed from the artifact bytes`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+  return artifact;
+}
+
 export function createWaveBTimingProof(timing) {
   const copy = structuredClone(timing);
   delete copy.recording_proof_sha256;
@@ -207,16 +240,67 @@ function inventoryById(entries) {
   return new Map(entries.map((entry) => [entry.inventory_id ?? entry.id, entry]));
 }
 
-function validateBoundaryEvidence(evidence, inventoryId, proposalId, label) {
+const BOUNDARY_DIMENSIONS = Object.freeze({
+  'physical-figurative': new Set(['physical', 'figurative', 'usage']),
+  'homonym-pos': new Set(['homonym', 'pos', 'usage']),
+  'sensory-emotion-state-action': new Set(['sensory', 'emotion', 'state', 'action']),
+  'directional-symmetry': new Set(['direction', 'symmetry', 'argument']),
+  'compound-spaced-phrase': new Set(['compound', 'spacing', 'form']),
+  'word-idiom': new Set(['word', 'idiom', 'usage']),
+});
+
+function stripEvidenceIdentifiers(text, {
+  inventoryId,
+  canonicalId,
+  lemma,
+  boundaryId,
+  senseIds = [],
+  glosses = [],
+} = {}) {
+  let normalized = text.normalize('NFC').replace(/\s+/gu, ' ').trim();
+  for (const token of [inventoryId, canonicalId, lemma, boundaryId, ...senseIds, ...glosses]
+    .filter((token) => typeof token === 'string' && token.length > 0)
+    .sort((left, right) => right.length - left.length)) {
+    normalized = normalized.replaceAll(token, ' ');
+  }
+  return normalized.replace(/\d+/gu, '#').replace(/\s+/gu, ' ').trim();
+}
+
+function validateContrast(contrast, canonicalRecord, boundaryId, label) {
+  if (!contrast || typeof contrast !== 'object' || Array.isArray(contrast)) fail(`${label} contrast must be an object`, 'INVALID_BOUNDARY_CONTRAST');
+  const senseIds = new Set(canonicalRecord.senses.map(({ id }) => id));
+  for (const side of ['left_sense_id', 'right_sense_id']) {
+    if (!senseIds.has(contrast[side])) fail(`${label} contrast cites an unknown ${side}`, 'CONTRAST_SENSE_MISMATCH');
+  }
+  if (contrast.left_sense_id === contrast.right_sense_id) fail(`${label} contrast must compare two senses`, 'CONTRAST_SENSE_MISMATCH');
+  if (!BOUNDARY_DIMENSIONS[boundaryId]?.has(contrast.dimension)) fail(`${label} contrast dimension is invalid for ${boundaryId}`, 'CONTRAST_DIMENSION_MISMATCH');
+  if (!Array.isArray(contrast.facets) || contrast.facets.length === 0) fail(`${label} contrast.facets must contain an actual distinction`, 'CONTRAST_FACETS_REQUIRED');
+  for (const field of ['left_observation', 'right_observation', 'difference']) requireString(contrast[field], `${label} contrast.${field}`);
+  if (contrast.left_observation === contrast.right_observation) fail(`${label} contrast observations must differ`, 'GENERIC_EDITORIAL_EVIDENCE');
+  if (contrast.difference.length < 12) fail(`${label} contrast.difference is too generic`, 'GENERIC_EDITORIAL_EVIDENCE');
+  return contrast;
+}
+
+function validateBoundaryEvidence(evidence, inventoryId, proposalId, senseIds, canonicalRecord, boundaryId, label) {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) fail(`${label} must be an object`, 'INVALID_BOUNDARY_EVIDENCE');
   assertEqual(evidence.review_status, 'reviewed', `${label}.review_status must be reviewed`, 'UNREVIEWED_BOUNDARY');
   if (!['applicable', 'not-applicable'].includes(evidence.applicability)) fail(`${label}.applicability is invalid`, 'INVALID_BOUNDARY_EVIDENCE');
-  assertEqual(evidence.decision, 'keep', `${label}.decision must be keep`, 'INVALID_BOUNDARY_DECISION');
-  if (!Array.isArray(evidence.candidate_sense_ids) || evidence.candidate_sense_ids.length !== 1) fail(`${label}.candidate_sense_ids must contain one sense`, 'INVALID_BOUNDARY_EVIDENCE');
-  assertEqual(evidence.candidate_sense_ids, [`${proposalId}-s1`], `${label}.candidate_sense_ids drifted`, 'BOUNDARY_SENSE_MISMATCH');
-  if (!Array.isArray(evidence.contrasts) || evidence.contrasts.length !== 0) fail(`${label}.contrasts must be an explicit empty array for the single-sense scope`, 'UNEXPECTED_BOUNDARY_CONTRAST');
+  if (!['keep', 'split'].includes(evidence.decision)) fail(`${label}.decision is invalid`, 'INVALID_BOUNDARY_DECISION');
+  assertEqual(evidence.candidate_sense_ids, senseIds, `${label}.candidate_sense_ids drifted`, 'BOUNDARY_SENSE_MISMATCH');
+  if (!Array.isArray(evidence.contrasts)) fail(`${label}.contrasts must be an array`, 'INVALID_BOUNDARY_CONTRAST');
+  if (evidence.applicability === 'not-applicable') {
+    assertEqual(evidence.decision, 'keep', `${label}.not-applicable boundary must keep the candidate senses`, 'INVALID_BOUNDARY_DECISION');
+    assertEqual(evidence.contrasts, [], `${label}.not-applicable boundary must not carry contrasts`, 'UNEXPECTED_BOUNDARY_CONTRAST');
+  } else if (evidence.decision === 'split' && evidence.contrasts.length === 0) {
+    fail(`${label}.applicable split boundary must include an actual contrast`, 'BOUNDARY_CONTRAST_REQUIRED');
+  } else if (canonicalRecord.senses.length > 1 && evidence.contrasts.length === 0) {
+    fail(`${label}.applicable multi-sense boundary must include an actual contrast`, 'BOUNDARY_CONTRAST_REQUIRED');
+  }
+  for (const [contrastIndex, contrast] of evidence.contrasts.entries()) {
+    validateContrast(contrast, canonicalRecord, boundaryId, `${label}.contrasts[${contrastIndex}]`);
+  }
   requireString(evidence.rationale, `${label}.rationale`);
-  for (const token of [inventoryId, proposalId, `${proposalId}-s1`]) {
+  for (const token of [inventoryId, proposalId, ...senseIds]) {
     if (!evidence.rationale.includes(token)) fail(`${label}.rationale must cite ${token}`, 'BOUNDARY_EVIDENCE_MISMATCH');
   }
 }
@@ -234,12 +318,17 @@ function validateUnreviewedBoundaryEvidence(evidence, inventoryId, proposalId, l
   }
 }
 
-function validateRecordReview(recordReview, index, inventoryEntries, referenceById) {
+function validateRecordReview(recordReview, index, inventoryEntries, referenceById, semanticCasesByCanonicalId) {
   const expectedInventoryId = WAVE_B_SELECTED_INVENTORY_IDS[index];
   assertEqual(recordReview.inventory_id, expectedInventoryId, `editorial record ${index} inventory scope drifted`, 'EDITORIAL_SCOPE_MISMATCH');
   const imported = index < WAVE_B_IMPORTED_START_COUNT;
   const expectedProposalId = WAVE_B_PROPOSAL_CANONICAL_IDS[index];
-  const expectedDecision = imported ? 'included' : index < 160 ? 'held' : 'deferred';
+  const semanticCase = semanticCasesByCanonicalId.get(expectedProposalId);
+  const expectedDecision = imported
+    ? semanticCase?.scope === 'wave-b-proposal' && semanticCase.required_decision === 'split'
+      ? 'corrected'
+      : 'included'
+    : index < 160 ? 'held' : 'deferred';
   const reviewed = index < WAVE_B_IMPORTED_START_COUNT;
   assertEqual(recordReview.proposal_canonical_id, expectedProposalId, `${expectedInventoryId} proposal canonical ID drifted`, 'PROPOSAL_SCOPE_MISMATCH');
   assertEqual(recordReview.decision, expectedDecision, `${expectedInventoryId} decision drifted`, 'EDITORIAL_DECISION_MISMATCH');
@@ -248,11 +337,13 @@ function validateRecordReview(recordReview, index, inventoryEntries, referenceBy
   const inventoryEntry = inventoryEntries.get(expectedInventoryId);
   if (!inventoryEntry) fail(`${expectedInventoryId} is missing from target inventory`, 'MISSING_INVENTORY_TARGET');
   const reference = referenceById.get(expectedProposalId);
+  if (reviewed && !reference) fail(`${expectedProposalId} is missing from Wave B reference records`, 'MISSING_REFERENCE_RECORD');
   const expectedLemma = reference?.lemma ?? inventoryEntry.lemma;
   const expectedPos = reviewed
     ? reference?.senses?.map(({ pos }) => pos) ?? inventoryEntry.pos
     : [];
-  assertEqual(recordReview.observed_sense_count, reviewed ? 1 : 0, `${expectedInventoryId} sense review scope drifted`, 'SENSE_SCOPE_MISMATCH');
+  const expectedSenseIds = reviewed ? reference.senses.map(({ id }) => id) : [];
+  assertEqual(recordReview.observed_sense_count, reviewed ? expectedSenseIds.length : 0, `${expectedInventoryId} sense review scope drifted`, 'SENSE_SCOPE_MISMATCH');
   assertEqual(recordReview.observed_pos, expectedPos, `${expectedInventoryId} observed POS drifted`, 'POS_SCOPE_MISMATCH');
   requireString(recordReview.decision_note, `${expectedInventoryId}.decision_note`);
   for (const token of [expectedInventoryId, expectedProposalId, expectedLemma]) {
@@ -264,14 +355,115 @@ function validateRecordReview(recordReview, index, inventoryEntries, referenceBy
     `${expectedInventoryId} boundary evidence scope drifted`,
     'BOUNDARY_SCOPE_MISMATCH',
   );
+  if (reviewed && recordReview.decision === 'corrected') {
+    assertEqual(recordReview.corrected_fields, ['senses'], `${expectedInventoryId}.corrected_fields must identify the sense correction`, 'CORRECTION_FIELD_MISMATCH');
+  } else if (reviewed && Object.hasOwn(recordReview, 'corrected_fields')) {
+    fail(`${expectedInventoryId} included record must not carry corrected_fields`, 'CORRECTION_FIELD_MISMATCH');
+  }
+  const rationaleFingerprints = new Set();
+  let applicableBoundaryCount = 0;
+  let notApplicableBoundaryCount = 0;
+  let contrastCount = 0;
   for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
     const label = `${expectedInventoryId}.boundary_evidence.${boundaryId}`;
     if (reviewed) {
-      validateBoundaryEvidence(recordReview.boundary_evidence[boundaryId], expectedInventoryId, expectedProposalId, label);
+      const evidence = recordReview.boundary_evidence[boundaryId];
+      validateBoundaryEvidence(evidence, expectedInventoryId, expectedProposalId, expectedSenseIds, reference, boundaryId, label);
+      if (evidence.applicability === 'applicable') applicableBoundaryCount += 1;
+      else notApplicableBoundaryCount += 1;
+      contrastCount += evidence.contrasts.length;
+      const fingerprint = stripEvidenceIdentifiers(evidence.rationale, {
+        inventoryId: expectedInventoryId,
+        canonicalId: expectedProposalId,
+        lemma: expectedLemma,
+        boundaryId,
+        senseIds: expectedSenseIds,
+        glosses: reference.senses.map(({ gloss }) => gloss),
+      });
+      if (rationaleFingerprints.has(fingerprint)) fail(`${label}.rationale reuses normalized evidence from another boundary`, 'GENERIC_EDITORIAL_EVIDENCE');
+      rationaleFingerprints.add(fingerprint);
     } else {
       validateUnreviewedBoundaryEvidence(recordReview.boundary_evidence[boundaryId], expectedInventoryId, expectedProposalId, label);
     }
   }
+  if (reviewed && (notApplicableBoundaryCount === 0 || (applicableBoundaryCount === M5_10A_SENSE_BOUNDARY_IDS.length && contrastCount === 0))) {
+    fail(`${expectedInventoryId} uses blanket applicable boundary evidence without a record-specific contrast`, 'GENERIC_EDITORIAL_EVIDENCE');
+  }
+  if (reviewed && contrastCount === 0 && rationaleFingerprints.size <= 1) {
+    fail(`${expectedInventoryId} uses one normalized rationale for every empty boundary result`, 'GENERIC_EDITORIAL_EVIDENCE');
+  }
+  if (reviewed && reference.senses.length > 1 && applicableBoundaryCount === 0) {
+    fail(`${expectedInventoryId} multi-sense review must identify an applicable boundary`, 'BOUNDARY_APPLICABILITY_MISSING');
+  }
+}
+
+function readSemanticRegressionCorpus() {
+  let corpus;
+  try {
+    corpus = JSON.parse(readFileSync(DEFAULT_SEMANTIC_REGRESSION_PATH, 'utf8'));
+  } catch (error) {
+    fail(`semantic regression corpus cannot be read: ${error.message}`, 'SEMANTIC_CORPUS_MISSING');
+  }
+  validateDecisionSchema(corpus, semanticRegressionSchemaValidator, 'Wave B semantic regression corpus');
+  return corpus;
+}
+
+function semanticCaseMap(corpus) {
+  return new Map(corpus.cases.map((semanticCase) => [semanticCase.canonical_id, semanticCase]));
+}
+
+function contrastPairKey(left, right) {
+  return [left, right].sort().join('|');
+}
+
+export function validateWaveBSemanticRegression({ corpus = readSemanticRegressionCorpus(), referenceRecords = [], editorialRecords = [] } = {}) {
+  validateDecisionSchema(corpus, semanticRegressionSchemaValidator, 'Wave B semantic regression corpus');
+  for (const category of ['homonym', 'pos', 'polysemy', 'space-phrase']) {
+    if (!corpus.categories.includes(category)) fail(`semantic regression corpus is missing the ${category} category`, 'SEMANTIC_CORPUS_COVERAGE');
+  }
+  assertEqual(
+    corpus.cases.map(({ case_id: caseId }) => caseId),
+    WAVE_B_SEMANTIC_REGRESSION_CASES.map(({ case_id: caseId }) => caseId),
+    'Wave B semantic regression case order drifted',
+    'SEMANTIC_CORPUS_COVERAGE',
+  );
+  const referenceById = recordsById(referenceRecords);
+  const reviewByInventoryId = new Map(editorialRecords.map((recordReview) => [recordReview.inventory_id, recordReview]));
+  for (const semanticCase of corpus.cases) {
+    const label = `semantic regression ${semanticCase.case_id}`;
+    const expectedCase = WAVE_B_SEMANTIC_REGRESSION_CASES.find(({ case_id: caseId }) => caseId === semanticCase.case_id);
+    if (!expectedCase) fail(`${label} is not an authorized Wave B regression case`, 'SEMANTIC_CORPUS_COVERAGE');
+    assertEqual(
+      { inventory_id: semanticCase.inventory_id, canonical_id: semanticCase.canonical_id },
+      { inventory_id: expectedCase.inventory_id, canonical_id: expectedCase.canonical_id },
+      `${label} target binding drifted`,
+      'SEMANTIC_CORPUS_COVERAGE',
+    );
+    const record = referenceById.get(semanticCase.canonical_id);
+    if (!record) fail(`${label} references missing canonical record ${semanticCase.canonical_id}`, 'MISSING_REFERENCE_RECORD');
+    assertEqual(record.lemma, semanticCase.lemma, `${label} lemma drifted`, 'SEMANTIC_CORPUS_MISMATCH');
+    assertEqual(record.senses.map(({ id }) => id), semanticCase.expected_sense_ids, `${label} sense IDs drifted`, 'SEMANTIC_CORPUS_MISMATCH');
+    assertEqual(record.senses.length, semanticCase.expected_sense_count, `${label} sense count drifted`, 'SEMANTIC_CORPUS_MISMATCH');
+    assertEqual(record.senses.map(({ pos }) => pos), semanticCase.expected_pos, `${label} POS drifted`, 'SEMANTIC_CORPUS_MISMATCH');
+    assertEqual(record.senses.map(({ gloss }) => gloss), semanticCase.expected_glosses, `${label} glosses drifted`, 'SEMANTIC_CORPUS_MISMATCH');
+
+    if (semanticCase.scope !== 'wave-b-proposal') continue;
+    const recordReview = reviewByInventoryId.get(semanticCase.inventory_id);
+    if (!recordReview) fail(`${label} is not connected to proposal preflight`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    assertEqual(recordReview.canonical_id, semanticCase.canonical_id, `${label} preflight canonical binding drifted`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    assertEqual(recordReview.observed_sense_count, semanticCase.expected_sense_count, `${label} preflight sense count drifted`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    const evidence = recordReview.boundary_evidence?.[semanticCase.boundary_id];
+    if (!evidence) fail(`${label} preflight boundary evidence is missing`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    assertEqual(evidence.applicability, semanticCase.required_applicability, `${label} preflight applicability drifted`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    assertEqual(evidence.decision, semanticCase.required_decision, `${label} preflight decision drifted`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    assertEqual(evidence.candidate_sense_ids, semanticCase.expected_sense_ids, `${label} preflight sense coverage drifted`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    requireString(evidence.rationale, `${label} preflight rationale`);
+    if (!evidence.rationale.includes(semanticCase.case_id)) fail(`${label} preflight rationale must cite its corpus case`, 'SEMANTIC_PREFLIGHT_DISCONNECTED');
+    const actualPairs = new Set((evidence.contrasts ?? []).map(({ left_sense_id: left, right_sense_id: right }) => contrastPairKey(left, right)));
+    const expectedPairs = new Set(semanticCase.contrast_pairs.map(([left, right]) => contrastPairKey(left, right)));
+    assertEqual(actualPairs, expectedPairs, `${label} preflight contrast coverage drifted`, 'SEMANTIC_PREFLIGHT_CONTRAST_MISMATCH');
+  }
+  return { verified: true, caseCount: corpus.cases.length };
 }
 
 export function validateWaveBEditorialInput({ input, inventoryEntries = [], referenceRecords = [] } = {}) {
@@ -289,9 +481,6 @@ export function validateWaveBEditorialInput({ input, inventoryEntries = [], refe
   assertEqual(input.sense_review?.boundary_ids, M5_10A_SENSE_BOUNDARY_IDS, 'Wave B editorial boundary IDs drifted', 'BOUNDARY_SCOPE_MISMATCH');
   assertEqual(input.sense_review?.status, 'complete', 'Wave B editorial sense review is incomplete', 'SENSE_REVIEW_INCOMPLETE');
   assertEqual(input.sense_review?.reviewed_start_count, WAVE_B_IMPORTED_START_COUNT, 'Wave B reviewed start count drifted', 'SENSE_REVIEW_COUNT_MISMATCH');
-  assertEqual(input.sense_review?.scoped_single_sense_count, WAVE_B_IMPORTED_START_COUNT, 'Wave B single-sense count drifted', 'SENSE_SCOPE_MISMATCH');
-  assertEqual(input.sense_review?.split_record_count, 0, 'Wave B must not claim split records', 'SENSE_SCOPE_MISMATCH');
-  assertEqual(input.sense_review?.split_canonical_ids, [], 'Wave B split canonical scope must be empty', 'SENSE_SCOPE_MISMATCH');
   requireString(input.sense_review?.note, 'editorial sense_review.note');
   requireSha256(input.proposal_staging?.sha256, 'editorial proposal_staging.sha256');
   assertEqual(input.proposal_staging?.format, 'canonical-jsonl', 'Wave B proposal format drifted', 'PROPOSAL_FORMAT_MISMATCH');
@@ -309,11 +498,21 @@ export function validateWaveBEditorialInput({ input, inventoryEntries = [], refe
   requireSha256(input.provenance?.sha256, 'editorial provenance artifact sha256');
   const entries = inventoryById(inventoryEntries);
   const referenceById = recordsById(referenceRecords);
+  const semanticCorpus = readSemanticRegressionCorpus();
+  const semanticCasesByCanonicalId = semanticCaseMap(semanticCorpus);
   if (!Array.isArray(input.records)) fail('Wave B editorial records must be an array', 'INVALID_EDITORIAL_RECORDS');
   exactIds(input.records.map(({ inventory_id: id }) => id), WAVE_B_SELECTED_INVENTORY_IDS, 'editorial record');
-  for (const [index, recordReview] of input.records.entries()) validateRecordReview(recordReview, index, entries, referenceById);
+  for (const [index, recordReview] of input.records.entries()) validateRecordReview(recordReview, index, entries, referenceById, semanticCasesByCanonicalId);
+  validateWaveBSemanticRegression({ corpus: semanticCorpus, referenceRecords, editorialRecords: input.records });
+  const importedReviews = input.records.slice(0, WAVE_B_IMPORTED_START_COUNT);
+  const splitCanonicalIds = importedReviews
+    .filter((recordReview) => referenceById.get(recordReview.canonical_id)?.senses.length > 1)
+    .map(({ canonical_id: canonicalId }) => canonicalId);
+  assertEqual(input.sense_review.scoped_single_sense_count, WAVE_B_IMPORTED_START_COUNT - splitCanonicalIds.length, 'Wave B single-sense count drifted', 'SENSE_SCOPE_MISMATCH');
+  assertEqual(input.sense_review.split_record_count, splitCanonicalIds.length, 'Wave B split record count drifted', 'SENSE_SCOPE_MISMATCH');
+  assertEqual(input.sense_review.split_canonical_ids, splitCanonicalIds, 'Wave B split canonical scope drifted', 'SENSE_SCOPE_MISMATCH');
   const counts = Object.fromEntries(DECISIONS.map((decision) => [decision, input.records.filter((record) => record.decision === decision).length]));
-  assertEqual(counts, { included: 150, corrected: 0, held: 10, rejected: 0, deferred: 10 }, 'Wave B editorial decision counts drifted', 'EDITORIAL_DECISION_COUNTS');
+  assertEqual(counts, { included: 145, corrected: 5, held: 10, rejected: 0, deferred: 10 }, 'Wave B editorial decision counts drifted', 'EDITORIAL_DECISION_COUNTS');
   return {
     verified: true,
     selectedStartCount: WAVE_B_SELECTED_START_COUNT,
@@ -377,12 +576,14 @@ export function validateWaveBAuditDecisionArtifact(decisionArtifact) {
   exactIds(decisionArtifact.reviewed_record_ids, WAVE_B_IMPORTED_CANONICAL_IDS, 'audit decision artifact canonical scope');
   exactIds(decisionArtifact.reviewed_buffer_inventory_ids, WAVE_B_BUFFER_INVENTORY_IDS, 'audit decision artifact buffer scope');
   assertEqual(decisionArtifact.relation_reviews, [], 'audit decision artifact relation scope drifted', 'DECISION_ARTIFACT_DRIFT');
+  const semanticCorpus = readSemanticRegressionCorpus();
+  assertEqual(decisionArtifact.coverage?.semantic_regression_case_ids, semanticCorpus.cases.map(({ case_id: caseId }) => caseId), 'audit decision semantic coverage drifted', 'AUDIT_COVERAGE_MISMATCH');
   exactIds(decisionArtifact.findings?.map(({ id }) => id), [
-    'wave-b-audit-scope',
-    'wave-b-audit-relation-screen',
-    'wave-b-audit-buffer',
-    'wave-b-audit-timing',
-    'wave-b-audit-determinism',
+    'wave-b-audit-semantic-regressions',
+    'wave-b-audit-boundary-evidence',
+    'wave-b-audit-timing-artifact',
+    'wave-b-audit-finding-evidence',
+    'wave-b-audit-canonical-regeneration',
   ], 'audit decision artifact findings');
   requireString(decisionArtifact.note, 'audit decision artifact note');
   return structuredClone(decisionArtifact);
@@ -396,6 +597,7 @@ function validateAuditDecisionArtifact(decisionArtifact, audit, editorialInput) 
   assertEqual(decisionArtifact.reviewed_record_ids, audit.reviewed_record_ids, 'audit decision artifact canonical scope drifted', 'DECISION_ARTIFACT_DRIFT');
   assertEqual(decisionArtifact.reviewed_buffer_inventory_ids, audit.reviewed_buffer_inventory_ids, 'audit decision artifact buffer scope drifted', 'DECISION_ARTIFACT_DRIFT');
   assertEqual(decisionArtifact.relation_reviews, audit.relation_reviews, 'audit decision artifact relation scope drifted', 'DECISION_ARTIFACT_DRIFT');
+  assertEqual(decisionArtifact.coverage, audit.coverage, 'audit decision artifact coverage drifted', 'DECISION_ARTIFACT_DRIFT');
   assertEqual(decisionArtifact.findings, audit.findings, 'audit decision artifact findings drifted', 'DECISION_ARTIFACT_DRIFT');
   assertEqual(decisionArtifact.session_id, audit.provenance.session_id, 'audit decision session drifted', 'DECISION_ARTIFACT_BINDING');
   assertEqual(decisionArtifact.finalized_at, audit.decision_artifact.finalized_at, 'audit decision finalization timestamp drifted', 'DECISION_ARTIFACT_BINDING');
@@ -451,6 +653,12 @@ export function validateWaveBAuditInput({ audit, editorialInput, relationDiff } 
   exactIds(audit.reviewed_buffer_inventory_ids, WAVE_B_BUFFER_INVENTORY_IDS, 'Wave B audit buffer scope');
   assertEqual(audit.relation_reviews, [], 'Wave B relation review must retain an explicit empty output', 'RELATION_REVIEW_SCOPE');
   if (!relationDiff || relationDiff.before_count !== 0 || relationDiff.after_count !== 0 || relationDiff.events.length !== 0) fail('Wave B audit requires an empty relation diff', 'RELATION_DIFF_NOT_EMPTY');
+  const semanticCorpus = readSemanticRegressionCorpus();
+  assertEqual(audit.coverage?.status, 'complete', 'Wave B audit coverage is incomplete', 'AUDIT_COVERAGE_MISMATCH');
+  exactIds(audit.coverage?.reviewed_record_ids, WAVE_B_IMPORTED_CANONICAL_IDS, 'Wave B audit coverage canonical scope');
+  exactIds(audit.coverage?.reviewed_buffer_inventory_ids, WAVE_B_BUFFER_INVENTORY_IDS, 'Wave B audit coverage buffer scope');
+  assertEqual(audit.coverage?.semantic_regression_case_ids, semanticCorpus.cases.map(({ case_id: caseId }) => caseId), 'Wave B audit semantic coverage drifted', 'AUDIT_COVERAGE_MISMATCH');
+  assertEqual(audit.coverage?.relation_scope, { before_count: 0, after_count: 0, candidate_count: 0 }, 'Wave B audit relation coverage drifted', 'AUDIT_COVERAGE_MISMATCH');
   requireString(audit.audit_id, 'audit_id');
   requireString(audit.auditor_id, 'auditor_id');
   requireIsoDate(audit.created_at, 'audit created_at');
@@ -466,17 +674,34 @@ export function validateWaveBAuditInput({ audit, editorialInput, relationDiff } 
   if (!Array.isArray(audit.findings) || audit.findings.length !== 5) fail('Wave B audit must contain five resolved findings', 'AUDIT_FINDINGS_MISMATCH');
   const findingIds = audit.findings.map(({ id }) => id);
   exactIds(findingIds, [
-    'wave-b-audit-scope',
-    'wave-b-audit-relation-screen',
-    'wave-b-audit-buffer',
-    'wave-b-audit-timing',
-    'wave-b-audit-determinism',
+    'wave-b-audit-semantic-regressions',
+    'wave-b-audit-boundary-evidence',
+    'wave-b-audit-timing-artifact',
+    'wave-b-audit-finding-evidence',
+    'wave-b-audit-canonical-regeneration',
   ], 'Wave B audit findings');
+  const findingDefects = new Set();
+  const reviewedRecordIdSet = new Set(audit.reviewed_record_ids);
   for (const finding of audit.findings) {
     if (!['sense', 'relation-noise', 'timing-measurement', 'reference-closure'].includes(finding.category)) fail(`${finding.id} has an invalid audit category`, 'AUDIT_FINDING_CATEGORY');
     assertEqual(finding.status, 'resolved', `${finding.id} must be resolved`, 'OPEN_AUDIT_FINDING');
     if (finding.severity === 'blocker') fail(`${finding.id} cannot be a blocker in a passing audit`, 'OPEN_AUDIT_BLOCKER');
     if (!Array.isArray(finding.evidence_refs) || finding.evidence_refs.length === 0) fail(`${finding.id} lacks evidence_refs`, 'AUDIT_EVIDENCE_MISSING');
+    if (!Array.isArray(finding.target_record_ids) || finding.target_record_ids.length === 0) fail(`${finding.id} lacks target_record_ids`, 'AUDIT_TARGET_MISSING');
+    for (const recordId of finding.target_record_ids) {
+      if (!/^w[0-9]{3,}$/u.test(recordId)) fail(`${finding.id} has an invalid target record ${recordId}`, 'AUDIT_TARGET_MISSING');
+      if (!reviewedRecordIdSet.has(recordId)) fail(`${finding.id} targets record ${recordId} outside the reviewed audit scope`, 'AUDIT_TARGET_SCOPE');
+    }
+    requireString(finding.defect, `${finding.id}.defect`);
+    requireString(finding.remediation, `${finding.id}.remediation`);
+    if (!finding.diff_evidence || typeof finding.diff_evidence !== 'object' || Array.isArray(finding.diff_evidence)) fail(`${finding.id} lacks diff_evidence`, 'AUDIT_DIFF_EVIDENCE_MISSING');
+    requireString(finding.diff_evidence.kind, `${finding.id}.diff_evidence.kind`);
+    if (!Object.hasOwn(finding.diff_evidence, 'before') || !Object.hasOwn(finding.diff_evidence, 'after')) fail(`${finding.id}.diff_evidence must include before and after`, 'AUDIT_DIFF_EVIDENCE_MISSING');
+    if (JSON.stringify(finding.diff_evidence.before) === JSON.stringify(finding.diff_evidence.after)) fail(`${finding.id}.diff_evidence does not show a remediation`, 'AUDIT_DIFF_EVIDENCE_MISSING');
+    if (!Array.isArray(finding.diff_evidence.changed_fields) || finding.diff_evidence.changed_fields.length === 0) fail(`${finding.id}.diff_evidence.changed_fields is empty`, 'AUDIT_DIFF_EVIDENCE_MISSING');
+    const normalizedDefect = stripEvidenceIdentifiers(`${finding.defect} ${finding.remediation}`);
+    if (findingDefects.has(normalizedDefect)) fail(`${finding.id} reuses normalized audit defect evidence`, 'GENERIC_EDITORIAL_EVIDENCE');
+    findingDefects.add(normalizedDefect);
     requireString(finding.note, `${finding.id}.note`);
   }
   return { verified: true, findingCount: audit.findings.length, openBlockerCount: 0 };
@@ -488,7 +713,7 @@ function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId
   requireIsoDate(pass.started_at, `${passId}.started_at`);
   requireIsoDate(pass.completed_at, `${passId}.completed_at`);
   requireUuid(pass.session_id, `${passId}.session_id`);
-  assertEqual(pass.recording_source, 'timing-recorder-v1', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(pass.recording_source, 'timing-recorder-v2', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
   const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
   if (!Number.isFinite(elapsed) || elapsed < 0) fail(`${passId} timing chronology is invalid`, 'TIMING_CHRONOLOGY');
   assertEqual(pass.wall_clock_seconds, elapsed, `${passId}.wall_clock_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
@@ -500,6 +725,14 @@ function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId
   requireSha256(pass.work_evidence?.before_sha256, `${passId}.work_evidence.before_sha256`);
   requireSha256(pass.work_evidence?.after_sha256, `${passId}.work_evidence.after_sha256`);
   requireString(pass.work_evidence?.note, `${passId}.work_evidence.note`);
+  const inputArtifact = validateTimingArtifact(pass.work_evidence?.input_artifact, `${passId}.work_evidence.input_artifact`);
+  const outputArtifact = validateTimingArtifact(pass.work_evidence?.output_artifact, `${passId}.work_evidence.output_artifact`);
+  assertEqual(pass.work_evidence.before_sha256, inputArtifact.sha256, `${passId}.before_sha256 is not the input artifact digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+  assertEqual(pass.work_evidence.after_sha256, outputArtifact.sha256, `${passId}.after_sha256 is not the output artifact digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+  if (inputArtifact.path === outputArtifact.path || inputArtifact.sha256 === outputArtifact.sha256) {
+    fail(`${passId} timing pass must record a real content transition`, 'TIMING_ARTIFACT_TRANSITION_MISSING');
+  }
+  requireString(pass.work_evidence.work_event_id, `${passId}.work_evidence.work_event_id`);
   if (passId === 'post-freeze-audit') {
     requireUuid(pass.audit_session_id, `${passId}.audit_session_id`);
     assertEqual(pass.audit_session_id, expectedAuditSessionId, `${passId}.audit_session_id drifted`, 'AUDIT_TIMING_BINDING');
@@ -547,17 +780,30 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
   assertEqual(timing.schema_version, '1', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
   assertEqual(timing.batch_id, WAVE_B_BATCH_ID, 'Wave B timing batch_id drifted', 'BATCH_ID_MISMATCH');
   assertEqual(timing.timing_kind, timingKind, 'Wave B timing kind drifted', 'TIMING_KIND_MISMATCH');
-  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v1', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
-  assertEqual(timing.recording_source, 'timing-recorder-v1', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v2', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recording_source, 'timing-recorder-v2', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.recorder_command, 'node scripts/batch/record-m5-10-wave-b-timing.mjs', 'Wave B timing recorder command drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.status, 'complete', 'Wave B timing is not complete', 'TIMING_INCOMPLETE');
   requireUuid(timing.session_id, 'timing session_id');
   requireString(timing.timing_id, 'timing_id');
   assertEqual(timing.processed_start_count, WAVE_B_PROCESSED_START_COUNT, 'Wave B timing processed count drifted', 'PROCESSED_COUNT_MISMATCH');
   const expectedPassIds = timingKind === 'editorial' ? WAVE_B_TIMING_PASS_IDS : WAVE_B_AUDIT_TIMING_PASS_IDS;
+  if (timingKind === 'post-freeze-audit') {
+    const stagingArtifact = validateTimingArtifact(timing.reviewed_staging_artifact, 'post-freeze audit reviewed staging artifact');
+    assertEqual(stagingArtifact.sha256, reviewedStagingSha256, 'post-freeze audit staging artifact digest drifted', 'AUDIT_TIMING_BINDING');
+    assertEqual(timing.reviewed_staging_sha256, stagingArtifact.sha256, 'post-freeze audit staging digest was not recorder-derived', 'AUDIT_TIMING_BINDING');
+  } else if (Object.hasOwn(timing, 'reviewed_staging_artifact') || Object.hasOwn(timing, 'reviewed_staging_sha256')) {
+    fail('editorial timing must not carry post-freeze staging binding fields', 'TIMING_BINDING_MISMATCH');
+  }
   exactIds(timing.passes?.map(({ id }) => id), expectedPassIds, `${timingKind} timing passes`);
   for (const pass of timing.passes) validateTimingPass(pass, pass.id, reviewedStagingSha256, auditSessionId);
   for (let index = 1; index < timing.passes.length; index += 1) {
+    assertEqual(
+      timing.passes[index - 1].work_evidence.output_artifact.sha256,
+      timing.passes[index].work_evidence.input_artifact.sha256,
+      `${timingKind} timing pass artifact chain is discontinuous at ${timing.passes[index].id}`,
+      'TIMING_ARTIFACT_CHAIN_MISMATCH',
+    );
     assertTimestampOrder(
       timing.passes[index - 1].completed_at,
       timing.passes[index].started_at,
@@ -565,12 +811,28 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
       'TIMING_CHRONOLOGY',
     );
   }
-  if (!Array.isArray(timing.events) || timing.events.length !== expectedPassIds.length * 2) fail(`${timingKind} timing event count drifted`, 'TIMING_EVENT_COVERAGE');
+  if (!Array.isArray(timing.events) || timing.events.length !== expectedPassIds.length * 3) fail(`${timingKind} timing event count drifted`, 'TIMING_EVENT_COVERAGE');
   const expectedEvents = timing.passes.flatMap((pass, index) => ([
-    { event_id: `m5-10-wave-b-timing-event-${String(index * 2 + 1).padStart(4, '0')}`, pass_id: pass.id, kind: 'start', session_id: pass.session_id, at: pass.started_at },
-    { event_id: `m5-10-wave-b-timing-event-${String(index * 2 + 2).padStart(4, '0')}`, pass_id: pass.id, kind: 'stop', session_id: pass.session_id, at: pass.completed_at },
+    { event_id: `m5-10-wave-b-timing-event-${String(index * 3 + 1).padStart(4, '0')}`, pass_id: pass.id, kind: 'start', session_id: pass.session_id, at: pass.started_at },
+    {
+      event_id: `m5-10-wave-b-timing-event-${String(index * 3 + 2).padStart(4, '0')}`,
+      pass_id: pass.id,
+      kind: 'work',
+      session_id: pass.session_id,
+      at: pass.completed_at,
+      unit_kind: pass.work_evidence.unit_kind,
+      unit_count: pass.work_evidence.unit_count,
+      unit_ids: pass.work_evidence.unit_ids,
+      input_artifact: pass.work_evidence.input_artifact,
+      output_artifact: pass.work_evidence.output_artifact,
+      note: pass.work_evidence.note,
+    },
+    { event_id: `m5-10-wave-b-timing-event-${String(index * 3 + 3).padStart(4, '0')}`, pass_id: pass.id, kind: 'stop', session_id: pass.session_id, at: pass.completed_at },
   ]));
   assertEqual(timing.events, expectedEvents, `${timingKind} timing events drifted from pass timestamps`, 'TIMING_EVENT_BINDING');
+  for (let index = 0; index < timing.passes.length; index += 1) {
+    assertEqual(timing.passes[index].work_evidence.work_event_id, timing.events[index * 3 + 1].event_id, `${timingKind} work event binding drifted`, 'TIMING_EVENT_BINDING');
+  }
   assertEqual(timing.recording_proof_sha256, createWaveBTimingProof(timing), `${timingKind} timing recording proof drifted`, 'TIMING_RECORDING_PROOF_MISMATCH');
   return {
     status: timing.status,
@@ -585,13 +847,13 @@ function preflightBoundaryChecks(recordReview, canonicalId) {
     return [boundaryId, {
       status: 'checked',
       rationale: evidence.rationale,
-      sense_ids: [`${canonicalId}-s1`],
+      sense_ids: [...evidence.candidate_sense_ids],
     }];
   }));
 }
 
 function preflightCheckpoint(recordReview, processed) {
-  const imported = recordReview.decision === 'included';
+  const imported = ['included', 'corrected'].includes(recordReview.decision);
   const checkpoint = {
     inventory_id: recordReview.inventory_id,
     status: processed ? 'complete' : recordReview.decision,
@@ -640,9 +902,9 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
     sense_review: {
       status: 'complete',
       reviewed_start_count: WAVE_B_IMPORTED_START_COUNT,
-      scoped_single_sense_count: WAVE_B_IMPORTED_START_COUNT,
-      split_record_count: 0,
-      split_canonical_ids: [],
+      scoped_single_sense_count: editorialInput.sense_review.scoped_single_sense_count,
+      split_record_count: editorialInput.sense_review.split_record_count,
+      split_canonical_ids: [...editorialInput.sense_review.split_canonical_ids],
       note: editorialInput.sense_review.note,
       preflight: {
         process_revision: M5_10A_PROCESS_REVISION,
@@ -668,6 +930,7 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
         reviewed_staging_sha256: auditInput.reviewed_staging_sha256,
         status: 'complete',
         independent: true,
+        coverage: structuredClone(auditInput.coverage),
         findings: auditInput.findings.map((finding) => structuredClone(finding)),
       },
     },
@@ -679,7 +942,8 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
         decision: recordReview.decision,
         decision_note: recordReview.decision_note,
       };
-      if (recordReview.decision === 'included') record.canonical_id = recordReview.canonical_id;
+      if (recordReview.decision === 'included' || recordReview.decision === 'corrected') record.canonical_id = recordReview.canonical_id;
+      if (recordReview.decision === 'corrected') record.corrected_fields = [...recordReview.corrected_fields];
       return record;
     }),
   };
@@ -721,9 +985,12 @@ function mergeReferenceRecords(...recordLists) {
 function validateProposalStaging(proposalRecords, editorialInput) {
   exactIds(proposalRecords.map(recordOf).map(({ id }) => id), WAVE_B_PROPOSAL_CANONICAL_IDS, 'Wave B proposal staging');
   assertEqual(proposalRecords.length, WAVE_B_SELECTED_START_COUNT, 'Wave B proposal staging count drifted', 'PROPOSAL_COUNT_MISMATCH');
+  const semanticCasesByCanonicalId = semanticCaseMap(readSemanticRegressionCorpus());
   for (const recordInfo of proposalRecords) {
     const record = recordOf(recordInfo);
-    if (record.role !== 'start' || record.senses.length !== 1) fail(`proposal ${record.id} is outside the single-sense start scope`, 'PROPOSAL_RECORD_MISMATCH');
+    const semanticCase = semanticCasesByCanonicalId.get(record.id);
+    const expectedSenseCount = semanticCase?.scope === 'wave-b-proposal' ? semanticCase.expected_sense_count : 1;
+    if (record.role !== 'start' || record.senses.length !== expectedSenseCount) fail(`proposal ${record.id} is outside the declared Wave B sense scope`, 'PROPOSAL_RECORD_MISMATCH');
   }
   const importedById = new Map(proposalRecords.slice(0, WAVE_B_IMPORTED_START_COUNT).map(recordOf).map((record) => [record.id, record]));
   for (const canonicalId of WAVE_B_IMPORTED_CANONICAL_IDS) {
@@ -794,7 +1061,7 @@ function validateStage(stage, { metrics, verification, manifestSource, metricsSo
   assertEqual(stage.input.inventory_revision, WAVE_B_INVENTORY_REVISION, 'Wave B stage inventory revision drifted', 'STAGE_INPUT_MISMATCH');
   assertEqual(stage.input.canonical_snapshot.start_count, WAVE_B_BASE_START_COUNT, 'Wave B stage base start count drifted', 'STAGE_INPUT_MISMATCH');
   assertEqual(stage.target, { net_start_increase: 150, cumulative_start_target: 778, candidate_buffer: 20, selected_start_count: 170 }, 'Wave B stage target drifted', 'STAGE_TARGET_MISMATCH');
-  assertEqual(stage.decisions, { included_start_count: 150, corrected_start_count: 0, held_start_count: 10, rejected_start_count: 0, deferred_start_count: 10 }, 'Wave B stage decisions drifted', 'STAGE_DECISION_MISMATCH');
+  assertEqual(stage.decisions, { included_start_count: 145, corrected_start_count: 5, held_start_count: 10, rejected_start_count: 0, deferred_start_count: 10 }, 'Wave B stage decisions drifted', 'STAGE_DECISION_MISMATCH');
   assertEqual(stage.buffer, { available_count: 20, used_count: 10, unused_count: 10 }, 'Wave B stage buffer drifted', 'STAGE_BUFFER_MISMATCH');
   assertEqual(stage.actual.canonical_snapshot, canonicalSnapshot, 'Wave B stage canonical snapshot drifted', 'STAGE_CANONICAL_MISMATCH');
   assertEqual(stage.actual.imported_start_count, 150, 'Wave B stage imported count drifted', 'STAGE_IMPORT_MISMATCH');
@@ -944,16 +1211,16 @@ export async function validateWaveB({
   assertMetricsMatch(metricsSource.value, regeneratedMetrics);
   assertEqual(metricsSource.value.derived.selection, { selected_start_count: 170, processed_start_count: 160 }, 'Wave B metrics selection drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.decisions, {
-    included: 150, corrected: 0, held: 10, rejected: 0, deferred: 10, importable_start_count: 150,
-    correction_rate_of_selected: 0, correction_rate_of_importable: 0, held_rate: 10 / 160, rejected_rate: 0, held_or_rejected_rate: 10 / 160,
-    sense_field_correction_count: 0, relation_field_correction_count: 0,
+    included: 145, corrected: 5, held: 10, rejected: 0, deferred: 10, importable_start_count: 150,
+    correction_rate_of_selected: 5 / 160, correction_rate_of_importable: 5 / 150, held_rate: 10 / 160, rejected_rate: 0, held_or_rejected_rate: 10 / 160,
+    sense_field_correction_count: 5, relation_field_correction_count: 0,
   }, 'Wave B metrics decisions drifted', 'METRICS_DRIFT');
-  assertEqual(metricsSource.value.derived.canonical_import, { imported_start_count: 150, imported_reference_only_count: 0, imported_record_count: 150, imported_sense_count: 150, imported_relation_count: 0, imported_expression_count: 20, relation_type_counts: {} }, 'Wave B canonical import metrics drifted', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.canonical_import, { imported_start_count: 150, imported_reference_only_count: 0, imported_record_count: 150, imported_sense_count: 156, imported_relation_count: 0, imported_expression_count: 20, relation_type_counts: {} }, 'Wave B canonical import metrics drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.relation_diff.before_count, 0, 'Wave B relation metrics before_count drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.relation_diff.after_count, 0, 'Wave B relation metrics after_count drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.timing.status, 'complete', 'Wave B metrics timing is incomplete', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.timing.unmeasured_passes, [], 'Wave B metrics contains unmeasured passes', 'METRICS_DRIFT');
-  assertEqual(metricsSource.value.derived.audit, { status: 'complete', independent: true, finding_count: 5, open_finding_count: 0, open_blocker_count: 0, finding_counts: { sense: 2, 'relation-noise': 1, 'timing-measurement': 1, 'reference-closure': 1 } }, 'Wave B audit metrics drifted', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.audit, { status: 'complete', independent: true, finding_count: 5, open_finding_count: 0, open_blocker_count: 0, finding_counts: { sense: 3, 'timing-measurement': 1, 'reference-closure': 1 } }, 'Wave B audit metrics drifted', 'METRICS_DRIFT');
   const expectedGate = evaluateExpansionGate(createWaveBStageMetrics(metricsSource.value, verification), planSource.value);
   const stageResult = validateStage(stageSource.value, {
     metrics: metricsSource.value,
@@ -976,7 +1243,7 @@ export async function validateWaveB({
   const previousStageSha256 = sha256Bytes(await readFile(previousStagePath));
   validateAuthorization(authorizationSource.value, previousStage, previousStageSha256, editorialSource.value.proposal_staging.sha256);
   assertEqual(canonicalSummary(baseCanonical.records), { record_count: 670, start_count: 628, reference_only_count: 42, sense_count: 809, relation_count: 473, expression_count: 43 }, 'Wave B base canonical snapshot drifted', 'BASE_CANONICAL_MISMATCH');
-  assertEqual(canonicalSummary(canonical.records), { record_count: 820, start_count: 778, reference_only_count: 42, sense_count: 959, relation_count: 473, expression_count: 63 }, 'Wave B final canonical snapshot drifted', 'CANONICAL_MISMATCH');
+  assertEqual(canonicalSummary(canonical.records), { record_count: 820, start_count: 778, reference_only_count: 42, sense_count: 965, relation_count: 473, expression_count: 63 }, 'Wave B final canonical snapshot drifted', 'CANONICAL_MISMATCH');
   return {
     batch: { batch_id: WAVE_B_BATCH_ID, validation_status: 'validated', selected_start_count: editorial.selectedStartCount, processed_start_count: editorial.processedStartCount, imported_start_count: batchResult.stagedRecordCount, staged_record_count: staged.records.length },
     metrics: metricsSource.value.derived,

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10-wave-b-semantic-regressions.schema.json",
+  "title": "Typewriter M5-10 Wave B semantic regression corpus",
+  "description": "Self-authored, curated semantic cases that must be checked during Wave B proposal preflight and final canonical validation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "fixture_id", "batch_id", "categories", "cases"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "fixture_id": { "const": "m5-10-wave-b-semantic-regressions-v1" },
+    "batch_id": { "const": "m5-10-wave-b-20260909" },
+    "categories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["homonym", "pos", "polysemy", "space-phrase"] }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "scope",
+        "case_type",
+        "canonical_id",
+        "lemma",
+        "boundary_id",
+        "expected_sense_count",
+        "expected_sense_ids",
+        "expected_glosses",
+        "required_applicability",
+        "required_decision",
+        "contrast_pairs",
+        "review_requirement"
+      ],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^wave-b-sem-[0-9]{3}$" },
+        "scope": { "enum": ["wave-b-proposal", "canonical-regression"] },
+        "inventory_id": { "type": "string", "pattern": "^m5-[0-9]{3}$" },
+        "case_type": { "enum": ["homonym", "pos", "polysemy", "space-phrase"] },
+        "canonical_id": { "type": "string", "pattern": "^w[0-9]{3,}$" },
+        "lemma": { "type": "string", "pattern": "\\S" },
+        "boundary_id": {
+          "enum": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ]
+        },
+        "expected_sense_count": { "type": "integer", "minimum": 1 },
+        "expected_sense_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^w[0-9]{3,}-s[0-9]+$" }
+        },
+        "expected_pos": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["noun", "adjective", "verb", "expression"] }
+        },
+        "expected_glosses": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "required_applicability": { "enum": ["applicable", "not-applicable"] },
+        "required_decision": { "enum": ["keep", "split"] },
+        "contrast_pairs": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "string", "pattern": "^w[0-9]{3,}-s[0-9]+$" }
+          }
+        },
+        "review_requirement": { "type": "string", "pattern": "\\S" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "scope": { "const": "wave-b-proposal" } } },
+          "then": { "required": ["inventory_id"] }
+        },
+        {
+          "if": { "properties": { "case_type": { "const": "space-phrase" } } },
+          "then": {
+            "properties": {
+              "required_applicability": { "const": "not-applicable" },
+              "required_decision": { "const": "keep" },
+              "contrast_pairs": { "type": "array", "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "required_decision": { "const": "split" } } },
+          "then": { "properties": { "contrast_pairs": { "type": "array", "minItems": 1 } } }
+        }
+      ]
+    }
+  }
+}

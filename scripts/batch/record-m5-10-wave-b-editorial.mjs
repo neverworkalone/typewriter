@@ -187,6 +187,11 @@ async function completeSession(args) {
   const provenanceArtifactPath = repositoryRelativePath(provenancePath, 'editorial provenance artifact');
   const canonical = await readCanonicalRecords(path.resolve(args.canonical ?? DEFAULT_CANONICAL_DIRECTORY));
   const inventory = await readJson(path.resolve(args.inventory ?? DEFAULT_INVENTORY_PATH), 'Wave B preimport inventory');
+  const reviewedRecords = decisionArtifact.records.slice(0, WAVE_B_IMPORTED_START_COUNT);
+  const splitCanonicalIds = reviewedRecords
+    .filter(({ observed_sense_count: senseCount }) => senseCount > 1)
+    .map(({ canonical_id: canonicalId }) => canonicalId);
+  const scopedSingleSenseCount = reviewedRecords.filter(({ observed_sense_count: senseCount }) => senseCount === 1).length;
   const editorial = {
     schema_version: '2',
     input_id: 'm5-10-wave-b-editorial-input-20260909',
@@ -210,10 +215,10 @@ async function completeSession(args) {
       status: 'complete',
       boundary_ids: ['physical-figurative', 'homonym-pos', 'sensory-emotion-state-action', 'directional-symmetry', 'compound-spaced-phrase', 'word-idiom'],
       reviewed_start_count: WAVE_B_IMPORTED_START_COUNT,
-      scoped_single_sense_count: WAVE_B_IMPORTED_START_COUNT,
-      split_record_count: 0,
-      split_canonical_ids: [],
-      note: 'All 150 imported starts are covered by the supplied record-level sense/POS and boundary decisions; held and deferred buffer rows remain outside the completed sense-review scope.',
+      scoped_single_sense_count: scopedSingleSenseCount,
+      split_record_count: splitCanonicalIds.length,
+      split_canonical_ids: splitCanonicalIds,
+      note: 'All 150 imported starts are covered by record-level sense/POS and boundary decisions; five known homonym/polysemy regressions are split and held/deferred buffer rows remain outside the completed sense-review scope.',
     },
     proposal_staging: {
       format: 'canonical-jsonl',

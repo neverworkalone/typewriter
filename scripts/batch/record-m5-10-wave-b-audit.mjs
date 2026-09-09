@@ -270,6 +270,7 @@ async function completeSession(args) {
     completed_at: completedAt,
     reviewed_record_ids: structuredClone(decisionArtifact.reviewed_record_ids),
     reviewed_buffer_inventory_ids: structuredClone(decisionArtifact.reviewed_buffer_inventory_ids),
+    coverage: structuredClone(decisionArtifact.coverage),
     relation_reviews: structuredClone(decisionArtifact.relation_reviews),
     editorial_timing_artifact: {
       path: repositoryRelativePath(session.timing_input_path, 'editorial timing artifact'),

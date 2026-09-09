@@ -1,0 +1,159 @@
+{
+  "schema_version": "1",
+  "fixture_id": "m5-10-wave-b-semantic-regressions-v1",
+  "batch_id": "m5-10-wave-b-20260909",
+  "categories": [
+    "homonym",
+    "pos",
+    "polysemy",
+    "space-phrase"
+  ],
+  "cases": [
+    {
+      "case_id": "wave-b-sem-001",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-455",
+      "case_type": "polysemy",
+      "canonical_id": "w719",
+      "lemma": "일으키다",
+      "boundary_id": "physical-figurative",
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["w719-s1", "w719-s2"],
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "누워 있거나 쓰러진 사람이나 물체를 세우다.",
+        "어떤 사건이나 현상을 생기게 하다."
+      ],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["w719-s1", "w719-s2"]],
+      "review_requirement": "사람이나 물체를 세우는 물리적 의미와 사건·현상을 생기게 하는 의미를 하나의 대체어로 합치지 않는다."
+    },
+    {
+      "case_id": "wave-b-sem-002",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-470",
+      "case_type": "polysemy",
+      "canonical_id": "w734",
+      "lemma": "지나치다",
+      "boundary_id": "homonym-pos",
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["w734-s1", "w734-s2"],
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": [
+        "어떤 곳이나 대상을 거치지 않고 통과하다.",
+        "정도나 한도를 넘어서 심하다."
+      ],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["w734-s1", "w734-s2"]],
+      "review_requirement": "어떤 장소를 통과하는 동작과 정도가 한도를 넘는 상태를 서로 치환할 수 있는 한 sense로 처리하지 않는다."
+    },
+    {
+      "case_id": "wave-b-sem-003",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-480",
+      "case_type": "homonym",
+      "canonical_id": "w744",
+      "lemma": "문진",
+      "boundary_id": "homonym-pos",
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["w744-s1", "w744-s2"],
+      "expected_pos": ["noun", "noun"],
+      "expected_glosses": [
+        "종이나 책장이 날리지 않게 눌러 두는 물건.",
+        "의사가 환자의 병력과 증상을 묻고 확인하는 일."
+      ],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["w744-s1", "w744-s2"]],
+      "review_requirement": "종이를 누르는 물건과 의사가 병력·증상을 묻는 절차는 같은 명사 표기라도 장면과 치환 가능성이 다르다."
+    },
+    {
+      "case_id": "wave-b-sem-004",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-482",
+      "case_type": "polysemy",
+      "canonical_id": "w746",
+      "lemma": "책장",
+      "boundary_id": "homonym-pos",
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["w746-s1", "w746-s2"],
+      "expected_pos": ["noun", "noun"],
+      "expected_glosses": [
+        "책을 세워 두는 가구나 선반.",
+        "책을 이루는 낱장의 한 면."
+      ],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["w746-s1", "w746-s2"]],
+      "review_requirement": "책을 꽂는 가구와 책의 한 면을 가리키는 명사는 장면의 규모와 기능이 달라 함께 묶지 않는다."
+    },
+    {
+      "case_id": "wave-b-sem-005",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-486",
+      "case_type": "homonym",
+      "canonical_id": "w750",
+      "lemma": "도장",
+      "boundary_id": "homonym-pos",
+      "expected_sense_count": 3,
+      "expected_sense_ids": ["w750-s1", "w750-s2", "w750-s3"],
+      "expected_pos": ["noun", "noun", "noun"],
+      "expected_glosses": [
+        "이름이나 권한을 증명하려고 찍는 인장.",
+        "물체 표면에 페인트나 보호재를 입히는 일.",
+        "무술을 배우고 수련하는 곳."
+      ],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [
+        ["w750-s1", "w750-s2"],
+        ["w750-s1", "w750-s3"],
+        ["w750-s2", "w750-s3"]
+      ],
+      "review_requirement": "인장, 표면에 입히는 칠, 무술 수련 공간이라는 세 장면을 각각 분리해 writer-facing 검색 결과의 장면을 보존한다."
+    },
+    {
+      "case_id": "wave-b-sem-006",
+      "scope": "canonical-regression",
+      "case_type": "pos",
+      "canonical_id": "w548",
+      "lemma": "고소하다",
+      "boundary_id": "homonym-pos",
+      "expected_sense_count": 3,
+      "expected_sense_ids": ["w548-s1", "w548-s2", "w548-s3"],
+      "expected_pos": ["adjective", "adjective", "verb"],
+      "expected_glosses": [
+        "볶거나 구운 음식에서 구수하고 기름진 맛이 나다",
+        "남의 불행이나 실패를 보며 속이 시원하고 통쾌하다",
+        "피해 사실을 수사 기관에 알리고 처벌을 요구하다"
+      ],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [
+        ["w548-s1", "w548-s2"],
+        ["w548-s1", "w548-s3"],
+        ["w548-s2", "w548-s3"]
+      ],
+      "review_requirement": "품사가 다른 adjective와 verb sense가 같은 lemma에 공존할 때 POS 경계를 보존하는 canonical regression이다."
+    },
+    {
+      "case_id": "wave-b-sem-007",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-514",
+      "case_type": "space-phrase",
+      "canonical_id": "w778",
+      "lemma": "목을 축이다",
+      "boundary_id": "compound-spaced-phrase",
+      "expected_sense_count": 1,
+      "expected_sense_ids": ["w778-s1"],
+      "expected_pos": ["expression"],
+      "expected_glosses": ["물을 마셔 목의 마른 느낌을 가라앉히다."],
+      "required_applicability": "not-applicable",
+      "required_decision": "keep",
+      "contrast_pairs": [],
+      "review_requirement": "띄어 쓴 표현 전체를 하나의 검색 단위로 유지하고 낱말 경계로 잘라 별도 sense를 만들지 않는다."
+    }
+  ]
+}

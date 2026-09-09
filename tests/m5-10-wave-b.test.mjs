@@ -18,9 +18,10 @@ import {
   DEFAULT_VERIFICATION_PATH,
   WaveBValidationError,
   validateWaveBChronology,
+  validateWaveBSemanticRegression,
   validateWaveB,
 } from '../scripts/batch/validate-m5-10-wave-b.mjs';
-import { DEFAULT_CANONICAL_DIRECTORY } from '../scripts/validate/canonical-jsonl.mjs';
+import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_SHARD_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-b.jsonl');
@@ -46,7 +47,8 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
     assert.equal(result.batch.processed_start_count, 160);
     assert.equal(result.batch.imported_start_count, 150);
     assert.equal(result.canonical.start_count, 778);
-    assert.equal(result.metrics.canonical_import.imported_sense_count, 150);
+    assert.equal(result.metrics.canonical_import.imported_sense_count, 156);
+    assert.deepEqual(result.metrics.sense_review.split_canonical_ids, ['w719', 'w734', 'w744', 'w746', 'w750']);
     assert.equal(result.metrics.canonical_import.imported_relation_count, 0);
     assert.equal(result.stage.gate_status, 'pass');
     assert.equal(result.gate.quality_passes.timing_complete, true);
@@ -66,6 +68,29 @@ test('Wave B fails closed on editorial scope, relation output, and timing regres
     await assert.rejects(
       validateWaveB({ stagedRecordsPath: stagingPath, editorialInputPath: editorialPath }),
       (error) => error instanceof WaveBValidationError && error.code === 'BOUNDARY_EVIDENCE_MISMATCH',
+    );
+
+    const blanketEditorialPath = path.join(directory, 'blanket-editorial.json');
+    const blanketEditorial = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
+    const blanketRecord = blanketEditorial.records.find(({ inventory_id: inventoryId }) => inventoryId === 'm5-365');
+    for (const evidence of Object.values(blanketRecord.boundary_evidence)) {
+      evidence.applicability = 'applicable';
+      evidence.decision = 'keep';
+      evidence.contrasts = [];
+    }
+    await writeFile(blanketEditorialPath, `${JSON.stringify(blanketEditorial)}\n`, 'utf8');
+    await assert.rejects(
+      validateWaveB({ stagedRecordsPath: stagingPath, editorialInputPath: blanketEditorialPath }),
+      (error) => error instanceof WaveBValidationError && error.code === 'GENERIC_EDITORIAL_EVIDENCE',
+    );
+
+    const precomputedDecisionPath = path.join(directory, 'precomputed-decision.json');
+    const precomputedDecision = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
+    precomputedDecision.records.find(({ inventory_id: inventoryId }) => inventoryId === 'm5-455').decision = 'included';
+    await writeFile(precomputedDecisionPath, `${JSON.stringify(precomputedDecision)}\n`, 'utf8');
+    await assert.rejects(
+      validateWaveB({ stagedRecordsPath: stagingPath, editorialInputPath: precomputedDecisionPath }),
+      (error) => error instanceof WaveBValidationError && error.code === 'EDITORIAL_DECISION_MISMATCH',
     );
 
     const relationPath = path.join(directory, 'relation.json');
@@ -94,6 +119,33 @@ test('Wave B fails closed on editorial scope, relation output, and timing regres
     await assert.rejects(
       validateWaveB({ stagedRecordsPath: stagingPath, timingInputPath: timingPath }),
       (error) => error instanceof WaveBValidationError && error.code === 'TIMING_INCOMPLETE',
+    );
+
+    const digestTimingPath = path.join(directory, 'digest-timing.json');
+    const digestTiming = await readJson(DEFAULT_TIMING_INPUT_PATH);
+    digestTiming.passes[0].work_evidence.before_sha256 = '0'.repeat(64);
+    await writeFile(digestTimingPath, `${JSON.stringify(digestTiming)}\n`, 'utf8');
+    await assert.rejects(
+      validateWaveB({ stagedRecordsPath: stagingPath, timingInputPath: digestTimingPath }),
+      (error) => error instanceof WaveBValidationError && error.code === 'TIMING_ARTIFACT_DIGEST_MISMATCH',
+    );
+
+    const missingTimingArtifactPath = path.join(directory, 'missing-timing-artifact.json');
+    const missingTimingArtifact = await readJson(DEFAULT_TIMING_INPUT_PATH);
+    missingTimingArtifact.passes[0].work_evidence.input_artifact.path = path.join(directory, 'does-not-exist.json');
+    await writeFile(missingTimingArtifactPath, `${JSON.stringify(missingTimingArtifact)}\n`, 'utf8');
+    await assert.rejects(
+      validateWaveB({ stagedRecordsPath: stagingPath, timingInputPath: missingTimingArtifactPath }),
+      (error) => error instanceof WaveBValidationError && error.code === 'TIMING_ARTIFACT_MISSING',
+    );
+
+    const outOfScopeAuditPath = path.join(directory, 'out-of-scope-audit.json');
+    const outOfScopeAudit = await readJson(DEFAULT_AUDIT_INPUT_PATH);
+    outOfScopeAudit.findings[0].target_record_ids = ['w999'];
+    await writeFile(outOfScopeAuditPath, `${JSON.stringify(outOfScopeAudit)}\n`, 'utf8');
+    await assert.rejects(
+      validateWaveB({ stagedRecordsPath: stagingPath, auditInputPath: outOfScopeAuditPath }),
+      (error) => error instanceof WaveBValidationError && error.code === 'AUDIT_TARGET_SCOPE',
     );
 
     const stagePath = path.join(directory, 'stage.json');
@@ -160,6 +212,19 @@ test('Wave B keeps held and deferred buffer rows outside completed sense review'
   assert.equal(manifest.sense_review.preflight.record_checkpoints[149].status, 'complete');
   assert.equal(manifest.sense_review.preflight.record_checkpoints[150].status, 'held');
   assert.equal(manifest.sense_review.preflight.record_checkpoints[160].status, 'deferred');
+});
+
+test('Wave B semantic regression cases stay connected to proposal preflight', async () => {
+  const editorial = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
+  const canonical = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-semantic-regressions.json'));
+  const canonicalRecords = (await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY)).records;
+  const broken = structuredClone(editorial);
+  const brokenRecord = broken.records.find(({ inventory_id: inventoryId }) => inventoryId === 'm5-455');
+  brokenRecord.observed_sense_count = 1;
+  await assert.rejects(
+    async () => validateWaveBSemanticRegression({ corpus: canonical, referenceRecords: canonicalRecords, editorialRecords: broken.records }),
+    (error) => error instanceof WaveBValidationError && error.code === 'SEMANTIC_PREFLIGHT_DISCONNECTED',
+  );
 });
 
 test('Wave B rejects an incomplete reviewed staging shard before promotion', async () => {
