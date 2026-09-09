@@ -447,8 +447,10 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
       'EDITORIAL_CHRONOLOGY_MISMATCH',
     );
     assertCondition(
-      Date.parse(input.timing_artifact.completed_at) <= Date.parse(input.completed_at),
-      'editorial input completed before the required timing passes stopped',
+      Date.parse(input.timing_artifact.started_at) >= Date.parse(input.created_at)
+        && Date.parse(input.timing_artifact.started_at) <= Date.parse(input.timing_artifact.completed_at)
+        && Date.parse(input.timing_artifact.completed_at) <= Date.parse(input.completed_at),
+      'editorial session does not enclose all required timing passes',
       'EDITORIAL_CHRONOLOGY_MISMATCH',
     );
     assertCondition(

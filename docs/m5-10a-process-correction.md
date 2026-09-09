@@ -212,9 +212,12 @@ snapshot from 578 to 628 starts (670 records / 809 senses / 473 relations / 43
 expressions).
 
 The first PR timing claim was superseded because editorial completion preceded
-the timing session. The corrected recorder session stops all five passes before
-editorial completion and measures 530.207 editor seconds across 56 processed
-starts (9.467982 seconds per start), so the fixed gate passes. The bounded A2
+the timing session. A follow-up chronology review found that the first
+correction still created the editorial session after the timing work, so that
+result is superseded too. The second corrected recorder session starts the
+editorial session before the first timing pass, stops all five passes before
+editorial completion, and measures 594.282 editor seconds across 56 processed
+starts (10.612179 seconds per start), so the fixed gate passes. The bounded A2
 stage records `APPROVE BOUNDED` and `ready_to_create: true`, but keeps
 `next_stage_created: false` and `next_stage_authorized: false` until a real,
 separately authorized next-stage task exists. The pre-A2 578-start snapshot and

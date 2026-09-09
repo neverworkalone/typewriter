@@ -15,6 +15,7 @@ import {
 import { main as recordA2Timing } from '../scripts/batch/record-m5-10a-wave-a2-timing.mjs';
 import {
   assertEditorialCompletionChronology,
+  assertEditorialTimingSessionChronology,
   main as recordA2Editorial,
 } from '../scripts/batch/record-m5-10a-wave-a2-editorial.mjs';
 import { main as recordA2Audit } from '../scripts/batch/record-m5-10a-wave-a2-audit.mjs';
@@ -224,6 +225,7 @@ function createVerifiedEditorialFixture(
   fixture.timing_artifact = {
     path: 'data/batches/test-timing.json',
     sha256: 'c'.repeat(64),
+    started_at: '2026-09-09T05:35:00Z',
     completed_at: '2026-09-09T05:50:00Z',
   };
   fixture.decision_artifact = {
@@ -937,6 +939,12 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     () => validateA2EditorialInput({ input: timingAfterEditorial, canonicalRecords: referenceRecords }),
     'EDITORIAL_CHRONOLOGY_MISMATCH',
   );
+  const sessionAfterTiming = structuredClone(verifiedEditorial);
+  sessionAfterTiming.created_at = '2026-09-09T05:36:00Z';
+  assertInputError(
+    () => validateA2EditorialInput({ input: sessionAfterTiming, canonicalRecords: referenceRecords }),
+    'EDITORIAL_CHRONOLOGY_MISMATCH',
+  );
   const decisionBeforeTiming = structuredClone(verifiedEditorial);
   decisionBeforeTiming.decision_artifact.finalized_at = '2026-09-09T05:49:00Z';
   assertInputError(
@@ -949,6 +957,14 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       '2026-09-09T06:00:00Z',
     ),
     /editorial completion cannot precede the final timing stop/,
+  );
+  assert.throws(
+    () => assertEditorialTimingSessionChronology(
+      createCompleteTimingFixture(timing),
+      '2026-09-09T07:00:01Z',
+      '2026-09-09T09:00:00Z',
+    ),
+    /editorial session must start before the first timing pass/,
   );
 
   const canonicalById = new Map(referenceRecords.map(({ record }) => [record.id, record]));

@@ -350,6 +350,11 @@ export async function validateWaveA2({
       'editorial timing completion drifted',
     );
     assert.equal(
+      editorialSource.value.timing_artifact.started_at,
+      timingSource.value.passes[0].started_at,
+      'editorial timing start drifted',
+    );
+    assert.equal(
       editorialSource.value.decision_artifact.path,
       relativeSourcePath(path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path)),
       'editorial decision artifact path is not repository-relative',
@@ -385,6 +390,11 @@ export async function validateWaveA2({
       auditSource.value.timing_artifact.completed_at,
       timingSource.value.passes.at(-1).completed_at,
       'audit timing completion drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.started_at,
+      timingSource.value.passes[0].started_at,
+      'audit timing start drifted',
     );
   }
   assert.equal(

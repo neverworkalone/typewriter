@@ -258,6 +258,7 @@ async function completeSession(args) {
     timing_artifact: {
       path: repositoryRelativePath(session.timing_input_path, 'timing artifact'),
       sha256: session.timing_input_sha256,
+      started_at: timing.passes[0].started_at,
       completed_at: timingCompletedAt,
     },
     decision_artifact: {

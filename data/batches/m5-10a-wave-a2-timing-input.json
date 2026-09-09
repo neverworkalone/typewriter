@@ -11,12 +11,12 @@
     {
       "id": "target-preparation",
       "status": "complete",
-      "started_at": "2026-09-09T10:57:05.081Z",
-      "session_id": "fb424477-69b5-4526-b2d0-7072b91033c4",
+      "started_at": "2026-09-09T11:57:09.441Z",
+      "session_id": "96d2993b-423c-4f07-8cd2-8b0fa557c70f",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T10:57:37.324Z",
-      "wall_clock_seconds": 32.243,
-      "editor_seconds": 32.243,
+      "completed_at": "2026-09-09T11:58:45.424Z",
+      "wall_clock_seconds": 95.983,
+      "editor_seconds": 95.983,
       "work_evidence": {
         "unit_kind": "selected-target",
         "unit_count": 58,
@@ -82,18 +82,18 @@
         ],
         "before_sha256": "290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8",
         "after_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "note": "Checked the fixed 50-start scope plus the declared eight-row buffer, matched the external proposal digest, and froze the reviewed staging boundary."
+        "note": "Prepared and cross-checked the fixed 50-start proposal scope plus the declared eight-row buffer against inventory and the external staging boundary."
       }
     },
     {
       "id": "initial-review",
       "status": "complete",
-      "started_at": "2026-09-09T10:57:43.583Z",
-      "session_id": "885fe5ef-a0bf-4550-ac2c-aaad2ae5b7bf",
+      "started_at": "2026-09-09T11:58:56.497Z",
+      "session_id": "b2ebb576-7390-45c9-a3a5-ae8adf8c5f07",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T11:03:34.389Z",
-      "wall_clock_seconds": 350.806,
-      "editor_seconds": 350.806,
+      "completed_at": "2026-09-09T12:04:08.907Z",
+      "wall_clock_seconds": 312.41,
+      "editor_seconds": 312.41,
       "work_evidence": {
         "unit_kind": "boundary-check",
         "unit_count": 300,
@@ -399,20 +399,20 @@
           "m5-356:compound-spaced-phrase",
           "m5-356:word-idiom"
         ],
-        "before_sha256": "290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8",
+        "before_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
         "after_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "note": "Read all 300 boundary units across the 50 starts, retained single-sense candidates only where no independent usage boundary was found, and recorded distinct contrasts for every split decision."
+        "note": "Read and cross-checked all 300 six-boundary units across the 50 starts, including sense/POS alignment and record-specific contrasts."
       }
     },
     {
       "id": "feedback-fixes",
       "status": "complete",
-      "started_at": "2026-09-09T11:03:39.051Z",
-      "session_id": "d5dbf82a-b002-452d-bbfa-6702bf5efd61",
+      "started_at": "2026-09-09T12:04:17.014Z",
+      "session_id": "9b66e4b9-ad86-4322-b11a-8620af52b5f6",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T11:05:20.309Z",
-      "wall_clock_seconds": 101.258,
-      "editor_seconds": 101.258,
+      "completed_at": "2026-09-09T12:05:38.691Z",
+      "wall_clock_seconds": 81.677,
+      "editor_seconds": 81.677,
       "work_evidence": {
         "unit_kind": "sense-correction",
         "unit_count": 16,
@@ -434,20 +434,20 @@
           "w622",
           "w628"
         ],
-        "before_sha256": "290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8",
+        "before_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
         "after_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "note": "Applied and rechecked the 16 explicit sense corrections: the 친밀감 gloss direction, 쨍쨍하다 duplicate sense removal, and the 14 retained multi-sense boundary corrections."
+        "note": "Rechecked all 16 explicit sense-correction units against the frozen canonical and reviewed staging, including target existence, sense cardinality, and correction-boundary coverage."
       }
     },
     {
       "id": "final-audit",
       "status": "complete",
-      "started_at": "2026-09-09T11:05:26.887Z",
-      "session_id": "5caa3fde-e627-487f-8c02-8f894a48b5d4",
+      "started_at": "2026-09-09T12:05:45.554Z",
+      "session_id": "16907313-e556-405d-b22d-753da2d9f352",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T11:06:02.245Z",
-      "wall_clock_seconds": 35.358,
-      "editor_seconds": 35.358,
+      "completed_at": "2026-09-09T12:07:00.989Z",
+      "wall_clock_seconds": 75.435,
+      "editor_seconds": 75.435,
       "work_evidence": {
         "unit_kind": "final-audit-item",
         "unit_count": 56,
@@ -510,19 +510,19 @@
           "m5-10-wave-a2-rel-006"
         ],
         "before_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "after_sha256": "9c398a980d2ad12ba51bc303b656a713d28159f35bd987095412a0c8829dddde",
-        "note": "Rechecked all 50 frozen canonical starts, six admitted relation tuples, the distinct audit session binding, and the complete timing contract before promotion."
+        "after_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
+        "note": "Rechecked all 50 finalized record units and six admitted relation units against the frozen canonical/staging boundary, including sense targets, relation types, and review decisions."
       }
     },
     {
       "id": "held-rejected",
       "status": "complete",
-      "started_at": "2026-09-09T11:06:07.794Z",
-      "session_id": "f8729e8d-d293-49cd-b239-f78b28ec1a41",
+      "started_at": "2026-09-09T12:07:06.277Z",
+      "session_id": "f8047b01-f719-414f-95d2-ef1f3fd0c121",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T11:06:18.336Z",
-      "wall_clock_seconds": 10.542,
-      "editor_seconds": 10.542,
+      "completed_at": "2026-09-09T12:07:35.054Z",
+      "wall_clock_seconds": 28.777,
+      "editor_seconds": 28.777,
       "work_evidence": {
         "unit_kind": "buffer-decision",
         "unit_count": 8,
@@ -538,7 +538,7 @@
         ],
         "before_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
         "after_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-        "note": "Re-read all eight buffer rows, confirmed the fixed held/rejected/deferred classification and ensured none enters the reviewed import staging."
+        "note": "Rechecked all eight declared buffer decisions and their notes: three held, three rejected, and two deferred; none entered canonical import scope."
       }
     }
   ],
@@ -547,73 +547,73 @@
       "event_id": "m5-10a-wave-a2-timing-event-0001",
       "pass_id": "target-preparation",
       "kind": "start",
-      "session_id": "fb424477-69b5-4526-b2d0-7072b91033c4",
-      "at": "2026-09-09T10:57:05.081Z"
+      "session_id": "96d2993b-423c-4f07-8cd2-8b0fa557c70f",
+      "at": "2026-09-09T11:57:09.441Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0002",
       "pass_id": "target-preparation",
       "kind": "stop",
-      "session_id": "fb424477-69b5-4526-b2d0-7072b91033c4",
-      "at": "2026-09-09T10:57:37.324Z"
+      "session_id": "96d2993b-423c-4f07-8cd2-8b0fa557c70f",
+      "at": "2026-09-09T11:58:45.424Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0003",
       "pass_id": "initial-review",
       "kind": "start",
-      "session_id": "885fe5ef-a0bf-4550-ac2c-aaad2ae5b7bf",
-      "at": "2026-09-09T10:57:43.583Z"
+      "session_id": "b2ebb576-7390-45c9-a3a5-ae8adf8c5f07",
+      "at": "2026-09-09T11:58:56.497Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0004",
       "pass_id": "initial-review",
       "kind": "stop",
-      "session_id": "885fe5ef-a0bf-4550-ac2c-aaad2ae5b7bf",
-      "at": "2026-09-09T11:03:34.389Z"
+      "session_id": "b2ebb576-7390-45c9-a3a5-ae8adf8c5f07",
+      "at": "2026-09-09T12:04:08.907Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0005",
       "pass_id": "feedback-fixes",
       "kind": "start",
-      "session_id": "d5dbf82a-b002-452d-bbfa-6702bf5efd61",
-      "at": "2026-09-09T11:03:39.051Z"
+      "session_id": "9b66e4b9-ad86-4322-b11a-8620af52b5f6",
+      "at": "2026-09-09T12:04:17.014Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0006",
       "pass_id": "feedback-fixes",
       "kind": "stop",
-      "session_id": "d5dbf82a-b002-452d-bbfa-6702bf5efd61",
-      "at": "2026-09-09T11:05:20.309Z"
+      "session_id": "9b66e4b9-ad86-4322-b11a-8620af52b5f6",
+      "at": "2026-09-09T12:05:38.691Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0007",
       "pass_id": "final-audit",
       "kind": "start",
-      "session_id": "5caa3fde-e627-487f-8c02-8f894a48b5d4",
-      "at": "2026-09-09T11:05:26.887Z"
+      "session_id": "16907313-e556-405d-b22d-753da2d9f352",
+      "at": "2026-09-09T12:05:45.554Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0008",
       "pass_id": "final-audit",
       "kind": "stop",
-      "session_id": "5caa3fde-e627-487f-8c02-8f894a48b5d4",
-      "at": "2026-09-09T11:06:02.245Z"
+      "session_id": "16907313-e556-405d-b22d-753da2d9f352",
+      "at": "2026-09-09T12:07:00.989Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0009",
       "pass_id": "held-rejected",
       "kind": "start",
-      "session_id": "f8729e8d-d293-49cd-b239-f78b28ec1a41",
-      "at": "2026-09-09T11:06:07.794Z"
+      "session_id": "f8047b01-f719-414f-95d2-ef1f3fd0c121",
+      "at": "2026-09-09T12:07:06.277Z"
     },
     {
       "event_id": "m5-10a-wave-a2-timing-event-0010",
       "pass_id": "held-rejected",
       "kind": "stop",
-      "session_id": "f8729e8d-d293-49cd-b239-f78b28ec1a41",
-      "at": "2026-09-09T11:06:18.336Z"
+      "session_id": "f8047b01-f719-414f-95d2-ef1f3fd0c121",
+      "at": "2026-09-09T12:07:35.054Z"
     }
   ],
   "note": "A2 timing completed from recorder start/stop events and per-pass work evidence.",
-  "recording_proof_sha256": "2be2cb175b6474ddb79d93b13318658b132f3b191bd0fb9f0cf882480c8f83c4"
+  "recording_proof_sha256": "eb4bcc33c87909f37f34df31ed4ed02a9ae40567904b295cb278d3062ed7fe5e"
 }

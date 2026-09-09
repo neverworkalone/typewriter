@@ -14,13 +14,15 @@ result.
 
 The reviewed, zero-blocker staging was imported into canonical, taking the
 product from 578 to 628 starts. The initial PR timing claim was superseded
-because its editorial completion preceded the timing session. A fresh
-chronological recorder session now measures 530.207 editor seconds across 56
-processed starts, or 9.467982 seconds per processed start, so the fixed gate
-passes. The source-bound stage report therefore records `APPROVE BOUNDED` and
-`ready_to_create: true`, while `next_stage_created` and
-`next_stage_authorized` remain `false`: a passing metric does not create or
-authorize a GitHub task by itself.
+because its editorial completion preceded the timing session. A follow-up
+chronology review also superseded the first correction because that session
+still started after the timing work. A second fresh chronological recorder
+session now starts the editorial session before the first timing pass and
+measures 594.282 editor seconds across 56 processed starts, or 10.612179
+seconds per processed start, so the fixed gate passes. The source-bound stage
+report therefore records `APPROVE BOUNDED` and `ready_to_create: true`, while
+`next_stage_created` and `next_stage_authorized` remain `false`: a passing
+metric does not create or authorize a GitHub task by itself.
 
 ## Count ledger
 
@@ -88,34 +90,36 @@ have no unmeasured passes:
 
 | Pass | Editor seconds |
 | --- | ---: |
-| target preparation | 32.243 |
-| initial review | 350.806 |
-| feedback fixes | 101.258 |
-| final audit | 35.358 |
-| held/rejected decisions | 10.542 |
-| **total** | **530.207** |
+| target preparation | 95.983 |
+| initial review | 312.410 |
+| feedback fixes | 81.677 |
+| final audit | 75.435 |
+| held/rejected decisions | 28.777 |
+| **total** | **594.282** |
 
 There are 56 processed starts after excluding the two deferred buffer rows, so
-the measured rate is `530.207 / 56 = 9.467982...` seconds per processed start.
+the measured rate is `594.282 / 56 = 10.612178...` seconds per processed start.
 Timing completeness, correction rate (`16/56`), relation noise (`0%`), audit
 blockers (`0`), canonical integrity, SQLite reproducibility, and search/product
 regressions also pass. The stage carries a `correction_plan` field for a future
 failed timing result, but this run marks it `not-required` because the fixed
 gate passes.
 
-The timing session stops before editorial completion, and the audit starts only
-after editorial completion and all timing stops. The editorial record decisions
-are supplied in a separate tracked artifact, and the audit relation decisions
-and findings are supplied in a second tracked artifact created during the
-separate audit session. Each decision artifact records a `finalized_at` timestamp;
-the editorial finalization is after the last timing stop and before editorial
-completion, and the audit finalization is within the separate audit session. The
-recorder outputs bind those artifacts by path, complete-file digest, session, and
-chronology, so an artifact finalized before the final recorded pass cannot
-support a verified completion claim. In this run the editorial artifact was
-finalized at `2026-09-09T11:41:00.952Z` and the audit artifact at
-`2026-09-09T11:41:36.553Z`, after the final timing stop at
-`2026-09-09T11:06:18.336Z`.
+The editorial session started at `2026-09-09T11:57:04.154Z`, before the first
+timing pass at `2026-09-09T11:57:09.441Z`. The timing session stops before
+editorial completion, and the audit starts only after editorial completion and
+all timing stops. The editorial record decisions are supplied in a separate
+tracked artifact, and the audit relation decisions and findings are supplied in
+a second tracked artifact created during the separate audit session. Each
+decision artifact records a `finalized_at` timestamp; the editorial finalization
+is after the last timing stop and before editorial completion, and the audit
+finalization is within the separate audit session. The recorder outputs bind
+those artifacts by path, complete-file digest, session, and chronology, so an
+artifact finalized before the final recorded pass cannot support a verified
+completion claim. In this run the editorial artifact was finalized at
+`2026-09-09T12:08:26.816Z`, after the final timing stop at
+`2026-09-09T12:07:35.054Z`; the audit artifact was finalized at
+`2026-09-09T12:09:27.475Z` during the distinct audit session.
 
 ## Source artifacts
 

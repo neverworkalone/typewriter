@@ -163,10 +163,11 @@
     "timingArtifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "sha256", "completed_at"],
+      "required": ["path", "sha256", "started_at", "completed_at"],
       "properties": {
         "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
         "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "started_at": { "type": "string", "format": "date-time" },
         "completed_at": { "type": "string", "format": "date-time" }
       }
     },

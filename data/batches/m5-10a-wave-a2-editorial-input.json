@@ -6,15 +6,15 @@
   "inventory_revision": "m5-10",
   "source_kind": "codex-authored",
   "status": "complete",
-  "created_at": "2026-09-09T11:40:38.418Z",
-  "completed_at": "2026-09-09T11:41:08.044Z",
+  "created_at": "2026-09-09T11:57:04.154Z",
+  "completed_at": "2026-09-09T12:08:33.438Z",
   "provenance": {
     "verification_status": "verified",
     "actor_kind": "codex",
     "actor_id": "codex-wave-a2-editorial",
-    "session_id": "b1d02d95-46cb-4412-b210-b8a6e859927b",
+    "session_id": "42c050a6-5355-403d-866a-04a415f2e576",
     "artifact": "data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json",
-    "sha256": "352472ed54bcc22fc435494efe5c637ddbecc0ece4b7c13c4d6d620b4aa01a3e",
+    "sha256": "48582eba6c1feb8e0e1d66b202feab3b1733f3b8d6d25c9612e364241d91677a",
     "note": "Codex editorial output is derived from the separately supplied decision artifact and frozen staging bytes."
   },
   "sense_review": {
@@ -56,14 +56,15 @@
   },
   "timing_artifact": {
     "path": "data/batches/m5-10a-wave-a2-timing-input.json",
-    "sha256": "ded9b5f91daf37e605b642bcd0459f8445841c5ca3d35bf749af5d32317c50ac",
-    "completed_at": "2026-09-09T11:06:18.336Z"
+    "sha256": "43768d85b19dccc935eeb0e81ee13e77750a04aababe7253bee195fc5f5ae682",
+    "started_at": "2026-09-09T11:57:09.441Z",
+    "completed_at": "2026-09-09T12:07:35.054Z"
   },
   "decision_artifact": {
     "path": "data/batches/m5-10a-wave-a2-editorial-decisions-20260909.json",
-    "sha256": "5358153fd2868dc7dc42298e621948cce222abc93579fab332c673dc14d11608",
-    "created_at": "2026-09-09T11:40:38.418Z",
-    "finalized_at": "2026-09-09T11:41:00.952Z"
+    "sha256": "cd88034957489497b892e486aaf6ce95bb6224b03cff8931b8bf09096fb6af4d",
+    "created_at": "2026-09-09T12:08:26.816Z",
+    "finalized_at": "2026-09-09T12:08:26.816Z"
   },
   "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
   "records": [

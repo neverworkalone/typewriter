@@ -99,6 +99,15 @@ export function assertEditorialCompletionChronology(timing, completedAt) {
   return timingCompletedAt;
 }
 
+export function assertEditorialTimingSessionChronology(timing, sessionStartedAt, completedAt) {
+  const timingCompletedAt = assertEditorialCompletionChronology(timing, completedAt);
+  const timingStartedAt = timing.passes[0].started_at;
+  if (Date.parse(timingStartedAt) < Date.parse(sessionStartedAt)) {
+    throw new Error('editorial session must start before the first timing pass');
+  }
+  return { timingStartedAt, timingCompletedAt };
+}
+
 function recordMap(recordInfos) {
   return new Map(recordInfos.map(({ record }) => [record.id, record]));
 }
@@ -173,7 +182,11 @@ async function completeSession(args) {
   const timingBytes = await readBytes(timingPath, 'A2 timing input');
   const timing = JSON.parse(timingBytes.toString('utf8'));
   const completedAt = new Date().toISOString();
-  const timingCompletedAt = assertEditorialCompletionChronology(timing, completedAt);
+  const { timingStartedAt, timingCompletedAt } = assertEditorialTimingSessionChronology(
+    timing,
+    session.started_at,
+    completedAt,
+  );
   if (Date.parse(decisionArtifact.created_at) < Date.parse(session.started_at)
     || Date.parse(decisionArtifact.created_at) > Date.parse(completedAt)) {
     throw new Error('editorial decisions must be supplied during the active editorial session');
@@ -236,6 +249,7 @@ async function completeSession(args) {
     timing_artifact: {
       path: repositoryRelativePath(timingPath, 'timing artifact'),
       sha256: sha256Bytes(timingBytes),
+      started_at: timingStartedAt,
       completed_at: timingCompletedAt,
     },
     decision_artifact: {

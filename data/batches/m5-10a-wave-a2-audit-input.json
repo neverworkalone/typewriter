@@ -7,16 +7,16 @@
     "verification_status": "verified",
     "actor_kind": "codex",
     "actor_id": "codex-wave-a2-editorial",
-    "session_id": "e0ea3f80-bbdb-4f52-bcd9-b4d847f5a27f",
+    "session_id": "0d25a74f-99c2-48e6-b5f3-15a7e55a0238",
     "artifact": "data/batches/m5-10a-wave-a2-provenance-audit-20260909.json",
-    "sha256": "f45319e581075dabdc8f67ebcacf12d678c0906ba4a201647c3b198f12a24a4a",
+    "sha256": "1329d95051eaacaa90ce4580715624ad9f6af62c9218e535271b807a461836dd",
     "note": "Audit output is derived from the separately supplied audit decision artifact over the frozen editorial staging."
   },
   "editorial_input_id": "m5-10a-wave-a2-editorial-input-20260909",
   "auditor_id": "codex-wave-a2-editorial",
   "independent": true,
-  "created_at": "2026-09-09T11:41:23.330Z",
-  "completed_at": "2026-09-09T11:41:43.697Z",
+  "created_at": "2026-09-09T12:09:04.612Z",
+  "completed_at": "2026-09-09T12:09:33.980Z",
   "reviewed_record_ids": [
     "w579",
     "w580",
@@ -181,14 +181,15 @@
   ],
   "timing_artifact": {
     "path": "data/batches/m5-10a-wave-a2-timing-input.json",
-    "sha256": "ded9b5f91daf37e605b642bcd0459f8445841c5ca3d35bf749af5d32317c50ac",
-    "completed_at": "2026-09-09T11:06:18.336Z"
+    "sha256": "43768d85b19dccc935eeb0e81ee13e77750a04aababe7253bee195fc5f5ae682",
+    "started_at": "2026-09-09T11:57:09.441Z",
+    "completed_at": "2026-09-09T12:07:35.054Z"
   },
   "decision_artifact": {
     "path": "data/batches/m5-10a-wave-a2-audit-decisions-20260909.json",
-    "sha256": "ec31bf6080821f827f83ad893d5a11b22c166644760dde4d52cf0523ac17ab9d",
-    "created_at": "2026-09-09T11:41:23.330Z",
-    "finalized_at": "2026-09-09T11:41:36.553Z"
+    "sha256": "6dd38d283e0a77ed082ba72ebc1c85bb2c8c893dde6de18285af73ec3319899c",
+    "created_at": "2026-09-09T12:09:27.475Z",
+    "finalized_at": "2026-09-09T12:09:27.475Z"
   },
   "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
   "status": "complete",
@@ -253,5 +254,5 @@
       "note": "Each required timing pass has recorder start/stop events, measured duration, and exact work-unit evidence; no unmeasured pass remains."
     }
   ],
-  "note": "Separately supplied Codex audit decisions re-finalized during the follow-up audit session over the frozen editorial staging."
+  "note": "Separately supplied Codex audit decisions finalized during the continuous audit session over the frozen editorial staging."
 }
