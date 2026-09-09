@@ -31,6 +31,7 @@ const require = createRequire(import.meta.url);
 const FIXTURE_SCHEMA = require('../../schema/m5-10a-relation-calibration-fixture.schema.json');
 const ARTIFACT_SCHEMA = require('../../schema/m5-10a-relation-calibration.schema.json');
 const TIMING_SCHEMA = require('../../schema/m5-10a-relation-calibration-timing.schema.json');
+const AUDIT_SCHEMA = require('../../schema/m5-10a-relation-calibration-audit.schema.json');
 const schemaOptions = {
   allErrors: true,
   formats: {
@@ -43,6 +44,7 @@ const schemaOptions = {
 const fixtureSchemaValidator = new Ajv2020(schemaOptions).compile(FIXTURE_SCHEMA);
 const artifactSchemaValidator = new Ajv2020(schemaOptions).compile(ARTIFACT_SCHEMA);
 const timingSchemaValidator = new Ajv2020(schemaOptions).compile(TIMING_SCHEMA);
+const auditSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_SCHEMA);
 
 export const DEFAULT_CALIBRATION_FIXTURE_PATH = path.resolve(
   SCRIPT_DIRECTORY,
@@ -55,6 +57,10 @@ export const DEFAULT_CALIBRATION_ARTIFACT_PATH = path.resolve(
 export const DEFAULT_CALIBRATION_TIMING_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-10a-relation-calibration-timing.json',
+);
+export const DEFAULT_CALIBRATION_AUDIT_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-relation-calibration-audit.json',
 );
 export const DEFAULT_CALIBRATION_PLAN_PATH = path.resolve(
   SCRIPT_DIRECTORY,
@@ -456,44 +462,85 @@ function rawProposalDigest(artifact) {
   return sha256Bytes(JSON.stringify(artifact.raw_proposals));
 }
 
-function auditInputDigest(artifact) {
-  return sha256Bytes(JSON.stringify({
-    fixture_sha256: artifact.source.fixture_sha256,
-    raw_proposals: artifact.raw_proposals,
-    generation_suppressions: artifact.generation_suppressions,
-    not_generated_cases: artifact.not_generated_cases,
-    timing_source_sha256: artifact.source.relation_calibration_timing_sha256,
-  }));
-}
-
-function validateAudit(audit, fixture, generated, artifact, timing) {
-  assertEqual(audit.status, 'complete', 'calibration audit is not complete', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.independent, true, 'calibration audit is not independent', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.generator_id, M5_10A_RELATION_GENERATION_REVISION, 'calibration audit generator provenance drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertCondition(audit.initial_review_id !== audit.auditor_id, 'calibration auditor must differ from the initial review identity', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertCondition(audit.generator_id !== audit.auditor_id, 'calibration auditor must differ from the generator identity', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertCondition(typeof audit.auditor_id === 'string' && audit.auditor_id.trim().length > 0, 'calibration audit auditor identity is missing', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertCondition(Number.isFinite(Date.parse(audit.audited_at)), 'calibration audit timestamp is invalid', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertCondition(isUuidV4(audit.audit_session_id), 'calibration audit session must be a UUIDv4', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(audit.audit_session_id, timing.final_audit_pass_session_id, 'calibration audit session is not the timed final-audit session', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertCondition(audit.audit_session_id !== timing.session_id, 'calibration audit session must be separate from the overall timing session', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(audit.audit_input_sha256, auditInputDigest(artifact), 'calibration audit input digest drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(audit.raw_proposal_sha256, rawProposalDigest(artifact), 'calibration audit raw-proposal digest drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(timing.final_audit_case_ids, fixture.cases.map(({ case_id: caseId }) => caseId), 'final-audit timing case coverage drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(timing.final_audit_case_count, fixture.cases.length, 'final-audit timing case count drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(timing.final_audit_raw_proposal_sha256, rawProposalDigest(artifact), 'final-audit timing raw-proposal digest drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
-  assertEqual(audit.open_blocker_count, 0, 'calibration audit has an open blocker', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.reviewed_case_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration audit did not review all 20 cases', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.reviewed_raw_proposal_count, generated.raw_proposal_count, 'calibration audit raw-proposal denominator drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  const expectedCaseIds = fixture.cases.map(({ case_id: caseId }) => caseId);
-  assertEqual(audit.case_reviews.map(({ case_id: caseId }) => caseId), expectedCaseIds, 'calibration audit case coverage drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  const generatedById = new Map(generated.generated_candidates.map((candidate) => [candidate.case_id, candidate]));
+export function deriveCalibrationAuditMetrics(caseReviews, rawProposalCount) {
+  assertCondition(Array.isArray(caseReviews), 'calibration audit case reviews are missing', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  const rawReviews = caseReviews.filter(({ outcome }) => outcome === 'raw-proposal');
+  assertEqual(rawReviews.length, rawProposalCount, 'calibration audit raw-proposal denominator drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
   let admittedCount = 0;
   let rejectedCount = 0;
   let correctionCount = 0;
   let confirmedNoiseCount = 0;
+  for (const review of rawReviews) {
+    if (review.decision === 'admit') {
+      admittedCount += 1;
+    } else if (review.decision === 'reject') {
+      rejectedCount += 1;
+    } else if (review.decision === 'correct') {
+      admittedCount += 1;
+    } else {
+      fail(`${review.case_id ?? 'unknown case'} has an invalid audit decision`, 'CALIBRATION_AUDIT_GATE_FAILURE');
+    }
+    if (review.correction === 'corrected') correctionCount += 1;
+    if (review.noise_assessment === 'noise') confirmedNoiseCount += 1;
+  }
+  return {
+    reviewed_raw_proposal_count: rawProposalCount,
+    human_admitted_count: admittedCount,
+    human_rejected_count: rejectedCount,
+    correction_count: correctionCount,
+    correction_rate: rawProposalCount === 0 ? 0 : correctionCount / rawProposalCount,
+    confirmed_noise_count: confirmedNoiseCount,
+    noise_rate_of_raw_proposals: rawProposalCount === 0 ? 0 : confirmedNoiseCount / rawProposalCount,
+  };
+}
+
+export function validateCalibrationAuditInput({
+  audit,
+  auditSourceSha256,
+  fixture,
+  generated,
+  timing,
+  expectedRawProposalSha256,
+} = {}) {
+  validateSchema(audit, auditSchemaValidator, 'audit-input', 'M5-10A relation calibration audit');
+  assertEqual(audit.process_revision, M5_10A_RELATION_GENERATION_REVISION, 'calibration audit process revision drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.generator_id, M5_10A_RELATION_GENERATION_REVISION, 'calibration audit generator provenance drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.initial_review_id, 'm5-10a-initial-review', 'calibration audit initial review provenance drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.independent, true, 'calibration audit is not independent', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(audit.generator_id !== audit.auditor_id, 'calibration auditor must differ from the generator identity', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(audit.initial_review_id !== audit.auditor_id, 'calibration auditor must differ from the initial review identity', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(typeof audit.auditor_id === 'string' && audit.auditor_id.trim().length > 0, 'calibration audit auditor identity is missing', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(Number.isFinite(Date.parse(audit.audited_at)), 'calibration audit timestamp is invalid', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(isUuidV4(audit.audit_session_id), 'calibration audit session must be a UUIDv4', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertEqual(audit.audit_session_id, timing.final_audit_pass_session_id, 'calibration audit session is not the timed final-audit session', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertEqual(audit.overall_timing_session_id, timing.session_id, 'calibration audit is not bound to the timing recording', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(audit.audit_session_id !== audit.overall_timing_session_id, 'calibration audit session must be separate from the overall timing session', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertEqual(audit.raw_proposal_sha256, expectedRawProposalSha256, 'calibration audit raw-proposal digest drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertCondition(typeof auditSourceSha256 === 'string' && /^[a-f0-9]{64}$/u.test(auditSourceSha256), 'calibration audit source digest is missing', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  const findingIds = audit.findings.map(({ id }) => id);
+  assertEqual(new Set(findingIds).size, findingIds.length, 'calibration audit findings repeat', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  const openBlockerCount = audit.findings.filter(({ status }) => status === 'open').length;
+  assertEqual(audit.open_blocker_count, openBlockerCount, 'calibration audit blocker count drifted from findings', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  const finalAuditEvidence = timing.final_audit_case_ids
+    ? {
+      case_ids: timing.final_audit_case_ids,
+      case_count: timing.final_audit_case_count,
+      raw_proposal_sha256: timing.final_audit_raw_proposal_sha256,
+    }
+    : timing.final_audit_work_evidence;
+  assertEqual(finalAuditEvidence?.case_ids, fixture.cases.map(({ case_id: caseId }) => caseId), 'final-audit timing case coverage drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertEqual(finalAuditEvidence?.case_count, fixture.cases.length, 'final-audit timing case count drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+  assertEqual(finalAuditEvidence?.raw_proposal_sha256, expectedRawProposalSha256, 'final-audit timing raw-proposal digest drifted', 'CALIBRATION_AUDIT_PROVENANCE_FAILURE');
+
+  const expectedCaseIds = fixture.cases.map(({ case_id: caseId }) => caseId);
+  assertEqual(audit.case_reviews.map(({ case_id: caseId }) => caseId), expectedCaseIds, 'calibration audit case coverage drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  const generatedById = new Map(generated.generated_candidates.map((candidate) => [candidate.case_id, candidate]));
+  const notGeneratedById = new Map(generated.not_generated_cases.map((item) => [item.case_id, item]));
+  const caseReviews = [];
+
   for (const review of audit.case_reviews) {
-    assertCondition(review.note.includes(review.case_id), `${review.case_id} audit note is not record-specific`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertCondition(review.evidence.includes(review.case_id), `${review.case_id} audit evidence is not record-specific`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertCondition(review.evidence.includes(review.source_sense), `${review.case_id} audit evidence does not identify the source sense`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
     const candidate = generatedById.get(review.case_id);
     if (candidate) {
       assertEqual(review.source_sense, candidate.source_sense, `${review.case_id} audit source sense drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
@@ -501,47 +548,97 @@ function validateAudit(audit, fixture, generated, artifact, timing) {
       assertEqual(review.relation_type, candidate.relation.type, `${review.case_id} audit relation type drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
       assertEqual(review.direction, candidate.direction, `${review.case_id} audit direction drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
       assertEqual(review.outcome, 'raw-proposal', `${review.case_id} audit outcome drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertEqual(review.admission, 'admitted', `${review.case_id} raw proposal was not fully audited`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertEqual(review.noise_assessment, 'clean', `${review.case_id} noise assessment drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      admittedCount += 1;
-      if (review.noise_assessment === 'noise') confirmedNoiseCount += 1;
-      if (review.admission === 'rejected') rejectedCount += 1;
-    } else {
-      const notGenerated = generated.not_generated_cases.find(({ case_id: caseId }) => caseId === review.case_id);
-      assertCondition(notGenerated, `${review.case_id} is missing from generator no-candidate output`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertEqual(review.source_sense, notGenerated.source_sense, `${review.case_id} no-candidate source sense drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertEqual(review.outcome, 'no-valid-candidate', `${review.case_id} no-candidate outcome drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertEqual(review.admission, 'not-applicable', `${review.case_id} no-candidate admission drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertEqual(review.noise_assessment, 'not-applicable', `${review.case_id} no-candidate noise assessment drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
-      assertCondition(!Object.hasOwn(review, 'target_sense') && !Object.hasOwn(review, 'relation_type') && !Object.hasOwn(review, 'direction'), `${review.case_id} no-candidate audit contains proposal fields`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      assertCondition(review.evidence.includes(review.target_sense), `${review.case_id} audit evidence does not identify the target sense`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      if (review.decision === 'admit') {
+        assertEqual(review.noise_assessment, 'clean', `${review.case_id} admitted proposal must be marked clean`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+        assertEqual(review.correction, 'none', `${review.case_id} admitted proposal cannot claim a correction`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      } else if (review.decision === 'reject') {
+        assertEqual(review.noise_assessment, 'noise', `${review.case_id} rejected proposal must be marked noise`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+        assertEqual(review.correction, 'none', `${review.case_id} rejected proposal cannot claim a correction`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      } else {
+        assertEqual(review.decision, 'correct', `${review.case_id} has an invalid audit decision`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+        assertEqual(review.correction, 'corrected', `${review.case_id} corrected proposal must record correction`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+      }
+      caseReviews.push({
+        case_id: review.case_id,
+        source_sense: candidate.source_sense,
+        target_sense: candidate.relation.target_sense,
+        relation_type: candidate.relation.type,
+        direction: candidate.direction,
+        outcome: 'raw-proposal',
+        decision: review.decision,
+        admission: review.decision === 'reject' ? 'rejected' : 'admitted',
+        noise_assessment: review.noise_assessment,
+        correction: review.correction,
+        note: review.evidence,
+      });
+      continue;
     }
-    if (review.correction === 'corrected') correctionCount += 1;
+
+    const notGenerated = notGeneratedById.get(review.case_id);
+    assertCondition(notGenerated, `${review.case_id} is missing from generator no-candidate output`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertEqual(review.source_sense, notGenerated.source_sense, `${review.case_id} no-candidate source sense drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertEqual(review.outcome, 'no-valid-candidate', `${review.case_id} no-candidate outcome drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertEqual(review.decision, 'not-applicable', `${review.case_id} no-candidate decision drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertEqual(review.noise_assessment, 'not-applicable', `${review.case_id} no-candidate noise assessment drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertEqual(review.correction, 'none', `${review.case_id} no-candidate correction drifted`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    assertCondition(!Object.hasOwn(review, 'target_sense') && !Object.hasOwn(review, 'relation_type') && !Object.hasOwn(review, 'direction'), `${review.case_id} no-candidate audit contains proposal fields`, 'CALIBRATION_AUDIT_EVIDENCE_MISMATCH');
+    caseReviews.push({
+      case_id: review.case_id,
+      source_sense: review.source_sense,
+      outcome: 'no-valid-candidate',
+      decision: 'not-applicable',
+      admission: 'not-applicable',
+      noise_assessment: 'not-applicable',
+      correction: 'none',
+      note: review.evidence,
+    });
   }
-  assertEqual(audit.human_admitted_count, admittedCount, 'calibration audit admitted count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.human_rejected_count, rejectedCount, 'calibration audit rejected count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.correction_count, correctionCount, 'calibration audit correction count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.confirmed_noise_count, confirmedNoiseCount, 'calibration audit noise count drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.correction_rate, audit.reviewed_raw_proposal_count === 0 ? 0 : correctionCount / audit.reviewed_raw_proposal_count, 'calibration audit correction rate drifted', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertEqual(audit.confirmed_noise_count, 0, 'human audit found a raw proposal that is noise', 'CALIBRATION_NOISE_GATE_FAILURE');
-  const findingIds = audit.findings.map(({ id }) => id);
-  assertEqual(new Set(findingIds).size, findingIds.length, 'calibration audit findings repeat', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertCondition(audit.findings.every(({ status }) => status === 'closed'), 'calibration audit has an open finding', 'CALIBRATION_AUDIT_GATE_FAILURE');
+
+  const derivedMetrics = deriveCalibrationAuditMetrics(caseReviews, generated.raw_proposal_count);
   return {
-    status: audit.status,
+    status: 'complete',
     independent: audit.independent,
-    reviewed_case_count: audit.reviewed_case_count,
-    reviewed_raw_proposal_count: audit.reviewed_raw_proposal_count,
-    human_admitted_count: audit.human_admitted_count,
-    human_rejected_count: audit.human_rejected_count,
-    correction_count: audit.correction_count,
-    correction_rate: audit.correction_rate,
-    confirmed_noise_count: audit.confirmed_noise_count,
-    open_blocker_count: audit.open_blocker_count,
+    generator_id: audit.generator_id,
+    initial_review_id: audit.initial_review_id,
+    reviewed_case_count: fixture.cases.length,
+    ...derivedMetrics,
+    open_blocker_count: openBlockerCount,
     auditor_id: audit.auditor_id,
     audited_at: audit.audited_at,
     audit_session_id: audit.audit_session_id,
-    audit_input_sha256: audit.audit_input_sha256,
+    audit_input_sha256: auditSourceSha256,
     raw_proposal_sha256: audit.raw_proposal_sha256,
+    case_reviews: caseReviews,
+    findings: audit.findings,
+  };
+}
+
+function validateAudit(audit, auditInput, auditSourceSha256, fixture, generated, artifact, timing) {
+  const expected = validateCalibrationAuditInput({
+    audit: auditInput,
+    auditSourceSha256,
+    fixture,
+    generated,
+    timing,
+    expectedRawProposalSha256: rawProposalDigest(artifact),
+  });
+  assertEqual(audit, expected, 'calibration audit result drifted from independent audit input', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.open_blocker_count, 0, 'calibration audit has an open blocker', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  return expected;
+}
+
+export function evaluateCalibrationGate({ generated, timing, audit, limits } = {}) {
+  const failures = [];
+  if (generated.pre_screen_noise_count !== 0) failures.push('generator pre-screened a request');
+  if (generated.noise_rate_of_raw_proposals > limits.relation_noise_rate_max) failures.push('audited relation noise exceeds the fixed limit');
+  if (timing.editor_seconds_per_processed_start > limits.editor_seconds_per_processed_start_max) failures.push('editor time exceeds the fixed limit');
+  if (audit.correction_rate > limits.correction_rate_max) failures.push('audit correction rate exceeds the fixed limit');
+  if (timing.unmeasured_pass_count > limits.unmeasured_timing_passes_max) failures.push('timing contains an unmeasured pass');
+  if (audit.open_blocker_count > limits.open_audit_blockers_max) failures.push('audit contains an open blocker');
+  return {
+    status: failures.length === 0 ? 'passed' : 'failed',
+    failures,
   };
 }
 
@@ -559,12 +656,10 @@ function validateFixedGate(artifact, plan, preflight, generated, timing, audit) 
   assertEqual(preflight.evidence_case_count, M5_10A_CALIBRATION_CASE_COUNT, 'calibration preflight evidence coverage drifted', 'CALIBRATION_PREFLIGHT_GATE_FAILURE');
   assertEqual(preflight.unresolved_boundary_count, 0, 'calibration preflight has unresolved boundaries', 'CALIBRATION_PREFLIGHT_GATE_FAILURE');
   assertEqual(preflight.duplicate_evidence_count, 0, 'calibration preflight has duplicate evidence', 'CALIBRATION_GENERIC_EVIDENCE');
-  assertEqual(generated.pre_screen_noise_count, audit.confirmed_noise_count, 'calibration noise metric was not recomputed from the full audit', 'CALIBRATION_NOISE_GATE_FAILURE');
-  assertCondition(generated.noise_rate_of_raw_proposals <= limits.relation_noise_rate_max, 'calibration relation noise exceeds fixed gate', 'CALIBRATION_NOISE_GATE_FAILURE');
-  assertCondition(timing.editor_seconds_per_processed_start <= limits.editor_seconds_per_processed_start_max, 'calibration editor time exceeds fixed gate', 'CALIBRATION_TIMING_GATE_FAILURE');
-  assertCondition(audit.correction_rate <= limits.correction_rate_max, 'calibration correction rate exceeds fixed gate', 'CALIBRATION_AUDIT_GATE_FAILURE');
-  assertCondition(timing.unmeasured_pass_count <= limits.unmeasured_timing_passes_max, 'calibration contains an unmeasured pass', 'CALIBRATION_TIMING_GATE_FAILURE');
-  assertCondition(audit.open_blocker_count <= limits.open_audit_blockers_max, 'calibration contains an open audit blocker', 'CALIBRATION_AUDIT_GATE_FAILURE');
+  assertEqual(audit.noise_rate_of_raw_proposals, audit.reviewed_raw_proposal_count === 0 ? 0 : audit.confirmed_noise_count / audit.reviewed_raw_proposal_count, 'calibration audit noise rate drifted', 'CALIBRATION_NOISE_GATE_FAILURE');
+  assertEqual(generated.noise_rate_of_raw_proposals, 0, 'source-only generator must not pre-screen requests', 'CALIBRATION_NOISE_GATE_FAILURE');
+  const gate = evaluateCalibrationGate({ generated: { ...generated, noise_rate_of_raw_proposals: audit.noise_rate_of_raw_proposals }, timing, audit, limits });
+  assertEqual(gate.status, 'passed', `calibration fixed gate failed: ${gate.failures.join('; ')}`, 'CALIBRATION_GATE_FAILURE');
 }
 
 export async function validateM5A10ACalibration({
@@ -579,22 +674,27 @@ export async function validateM5A10ACalibration({
   const canonicalDirectory = resolveRepositoryPath(artifact.source.canonical_directory, 'calibration.source.canonical_directory');
   const planPath = resolveRepositoryPath(artifact.source.expansion_plan, 'calibration.source.expansion_plan');
   const timingPath = resolveRepositoryPath(artifact.source.relation_calibration_timing, 'calibration.source.relation_calibration_timing');
+  const auditPath = resolveRepositoryPath(artifact.source.relation_calibration_audit, 'calibration.source.relation_calibration_audit');
   assertEqual(fixturePath, DEFAULT_CALIBRATION_FIXTURE_PATH, 'calibration fixture path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(canonicalDirectory, path.resolve(REPOSITORY_DIRECTORY, 'data/canonical'), 'calibration canonical path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(planPath, DEFAULT_CALIBRATION_PLAN_PATH, 'calibration plan path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
   assertEqual(timingPath, DEFAULT_CALIBRATION_TIMING_PATH, 'calibration timing path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
+  assertEqual(auditPath, DEFAULT_CALIBRATION_AUDIT_PATH, 'calibration audit path drifted', 'CALIBRATION_SOURCE_PATH_MISMATCH');
 
-  const [fixtureSource, planSource] = await Promise.all([
+  const [fixtureSource, planSource, auditSource] = await Promise.all([
     readJsonSource(fixturePath, 'M5-10A relation calibration fixture'),
     readJsonSource(planPath, 'M5-8 expansion plan'),
+    readJsonSource(auditPath, 'M5-10A relation calibration audit'),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const canonicalDigest = await hashCanonicalDirectory(canonicalDirectory);
   assertEqual(fixtureSource.sha256, artifact.source.fixture_sha256, 'calibration fixture digest drifted', 'CALIBRATION_SOURCE_DIGEST_MISMATCH');
   assertEqual(canonicalDigest, artifact.source.canonical_directory_sha256, 'calibration canonical digest drifted', 'CALIBRATION_SOURCE_DIGEST_MISMATCH');
   assertEqual(planSource.sha256, artifact.source.expansion_plan_sha256, 'calibration expansion plan digest drifted', 'CALIBRATION_SOURCE_DIGEST_MISMATCH');
+  assertEqual(auditSource.sha256, artifact.source.relation_calibration_audit_sha256, 'calibration audit source digest drifted', 'CALIBRATION_SOURCE_DIGEST_MISMATCH');
 
   validateSchema(fixtureSource.value, fixtureSchemaValidator, 'fixture', 'M5-10A relation calibration fixture');
+  validateSchema(auditSource.value, auditSchemaValidator, 'audit-input', 'M5-10A relation calibration audit');
   validateExpansionPlan(planSource.value);
   const canonicalSnapshot = canonicalSummary(canonical.records);
   assertEqual(canonicalSnapshot, EXPECTED_CANONICAL_SNAPSHOT, 'calibration canonical snapshot changed', 'CALIBRATION_CANONICAL_SCOPE_CHANGED');
@@ -613,7 +713,7 @@ export async function validateM5A10ACalibration({
     timingPath,
     artifact.source.relation_calibration_timing_sha256,
   );
-  const audit = validateAudit(artifact.calibration.audit, fixtureSource.value, generated, artifact, timing);
+  const audit = validateAudit(artifact.calibration.audit, auditSource.value, auditSource.sha256, fixtureSource.value, generated, artifact, timing);
   validateFixedGate(artifact, planSource.value, preflight, generated, timing, audit);
 
   return {
@@ -630,6 +730,8 @@ export async function validateM5A10ACalibration({
     suppressed_candidate_count: generated.generation_suppressed_count,
     pre_screen_noise_count: generated.pre_screen_noise_count,
     noise_rate_of_raw_proposals: generated.noise_rate_of_raw_proposals,
+    audited_noise_count: audit.confirmed_noise_count,
+    audited_noise_rate_of_raw_proposals: audit.noise_rate_of_raw_proposals,
     editor_seconds_per_processed_start: timing.editor_seconds_per_processed_start,
     unmeasured_pass_count: timing.unmeasured_pass_count,
     correction_rate: audit.correction_rate,
@@ -642,6 +744,7 @@ export async function validateM5A10ACalibration({
       canonical_directory: canonicalDigest,
       expansion_plan: planSource.sha256,
       relation_calibration_timing: artifact.source.relation_calibration_timing_sha256,
+      relation_calibration_audit: artifact.source.relation_calibration_audit_sha256,
     },
   };
 }
@@ -665,7 +768,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(result, null, 2));
   } else {
     console.log(
-      `Validated ${result.process_revision}: ${result.request_count} unlabelled request(s), ${result.raw_proposal_count} raw proposal(s), ${result.generation_suppressed_count} upstream suppression(s), and ${result.noise_rate_of_raw_proposals * 100}% raw-proposal noise.`,
+      `Validated ${result.process_revision}: ${result.request_count} unlabelled request(s), ${result.raw_proposal_count} raw proposal(s), ${result.generation_suppressed_count} upstream suppression(s), and ${result.audited_noise_rate_of_raw_proposals * 100}% audited raw-proposal noise.`,
     );
   }
   return result;

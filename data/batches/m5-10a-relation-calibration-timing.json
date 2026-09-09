@@ -3,50 +3,50 @@
   "recorder_version": "timing-recorder-v1",
   "recording_source": "timing-recorder-v1",
   "recorder_command": "node scripts/batch/record-m5-10a-calibration-timing.mjs",
-  "session_id": "adb80c43-5d3d-4dea-a64a-82b7c93a3c13",
+  "session_id": "5e5930c1-6256-420e-8544-058179c9b95e",
   "clock_source": "system-clock",
-  "recorded_at": "2026-09-09T01:12:46.053Z",
+  "recorded_at": "2026-09-09T01:53:31.616Z",
   "processed_start_count": 20,
   "passes": [
     {
       "id": "target-preparation",
       "status": "complete",
-      "started_at": "2026-09-09T01:09:09.289Z",
-      "session_id": "5e39ba27-50fb-4b1c-b2fa-6e8d5b23b7fb",
+      "started_at": "2026-09-09T01:52:05.257Z",
+      "session_id": "3773b60b-7623-44bb-8593-5574029505cf",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T01:09:43.118Z",
-      "wall_clock_seconds": 33.829,
-      "editor_seconds": 33.829
+      "completed_at": "2026-09-09T01:52:13.885Z",
+      "wall_clock_seconds": 8.628,
+      "editor_seconds": 8.628
     },
     {
       "id": "initial-review",
       "status": "complete",
-      "started_at": "2026-09-09T01:09:58.755Z",
-      "session_id": "35dd4202-5a84-4a7d-90a9-e86ee9c0d144",
+      "started_at": "2026-09-09T01:52:20.417Z",
+      "session_id": "1b490432-08cf-40da-a5f5-cf06f79bf057",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T01:10:15.015Z",
-      "wall_clock_seconds": 16.26,
-      "editor_seconds": 16.26
+      "completed_at": "2026-09-09T01:52:34.325Z",
+      "wall_clock_seconds": 13.908,
+      "editor_seconds": 13.908
     },
     {
       "id": "feedback-fixes",
       "status": "complete",
-      "started_at": "2026-09-09T01:10:22.088Z",
-      "session_id": "eb9f2910-d323-4f8f-a727-6cdab38e7d79",
+      "started_at": "2026-09-09T01:52:41.460Z",
+      "session_id": "3bada551-7376-438b-9e49-2209a542f290",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T01:10:51.031Z",
-      "wall_clock_seconds": 28.943,
-      "editor_seconds": 28.943
+      "completed_at": "2026-09-09T01:52:41.775Z",
+      "wall_clock_seconds": 0.315,
+      "editor_seconds": 0.315
     },
     {
       "id": "final-audit",
       "status": "complete",
-      "started_at": "2026-09-09T01:10:58.528Z",
-      "session_id": "eb2622cc-e094-4271-997e-9623e02a574d",
+      "started_at": "2026-09-09T01:52:48.070Z",
+      "session_id": "48313400-662f-4ab4-a914-d67b0a6d7da4",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T01:12:32.585Z",
-      "wall_clock_seconds": 94.057,
-      "editor_seconds": 94.057,
+      "completed_at": "2026-09-09T01:53:31.239Z",
+      "wall_clock_seconds": 43.169,
+      "editor_seconds": 43.169,
       "work_evidence": {
         "case_ids": [
           "m5-10a-cal-001",
@@ -71,19 +71,19 @@
           "m5-10a-cal-020"
         ],
         "case_count": 20,
-        "raw_proposal_sha256": "013ef2a83460a073b766cd723cb865031ced222e7c7a181cc5a8e54ea8f6d26d"
+        "raw_proposal_sha256": "28b1fb299c939f5dfb65ef386658367af4db938960fe21f8e34116a7c6b9d8df"
       }
     },
     {
       "id": "held-rejected",
       "status": "complete",
-      "started_at": "2026-09-09T01:12:45.865Z",
-      "session_id": "85947c1c-1a09-4acb-aee5-d31ef3492109",
+      "started_at": "2026-09-09T01:53:31.424Z",
+      "session_id": "b1b26936-4be8-46f2-948c-f1d09b1f21c1",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-09T01:12:46.052Z",
-      "wall_clock_seconds": 0.187,
-      "editor_seconds": 0.187
+      "completed_at": "2026-09-09T01:53:31.615Z",
+      "wall_clock_seconds": 0.191,
+      "editor_seconds": 0.191
     }
   ],
-  "recording_proof_sha256": "874a8c5aaf8347c307b78877ae7fac74c660adee6628298b63061559991ea96c"
+  "recording_proof_sha256": "557b039077105c4329ba8ba39f54d691e2de2da4def95045cf791a84d0f3de13"
 }

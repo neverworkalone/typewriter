@@ -318,6 +318,8 @@ function validateCandidateGeneration(process, calibrationResult) {
     not_generated_case_ids: calibrationResult.not_generated_case_ids,
     pre_screen_noise_count: calibrationResult.pre_screen_noise_count,
     noise_rate_of_raw_proposals: calibrationResult.noise_rate_of_raw_proposals,
+    audited_noise_count: calibrationResult.audited_noise_count,
+    audited_noise_rate_of_raw_proposals: calibrationResult.audited_noise_rate_of_raw_proposals,
     editor_seconds_per_processed_start: calibrationResult.editor_seconds_per_processed_start,
     correction_rate: calibrationResult.correction_rate,
     unmeasured_pass_count: calibrationResult.unmeasured_pass_count,

@@ -147,6 +147,9 @@ npm run batch:m5-10a:calibration:timing -- \
   --raw-proposal-sha256=<sha256> \
   --input=/tmp/typewriter-m5-10a-timing-session.json \
   --output=/tmp/typewriter-m5-10a-timing-session.json
+# Commit a separately authored per-case audit input before building. The builder
+# refuses a missing audit and derives counts/rates/gate status from its decisions.
+# The default path is data/batches/m5-10a-relation-calibration-audit.json.
 npm run batch:m5-10a:calibration:build
 npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check

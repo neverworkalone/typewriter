@@ -14,7 +14,7 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fixture", "fixture_sha256", "canonical_directory", "canonical_directory_sha256", "expansion_plan", "expansion_plan_sha256", "relation_calibration_timing", "relation_calibration_timing_sha256"],
+      "required": ["fixture", "fixture_sha256", "canonical_directory", "canonical_directory_sha256", "expansion_plan", "expansion_plan_sha256", "relation_calibration_timing", "relation_calibration_timing_sha256", "relation_calibration_audit", "relation_calibration_audit_sha256"],
       "properties": {
         "fixture": { "const": "tests/fixtures/m5-10a-relation-generation-calibration.json" },
         "fixture_sha256": { "$ref": "#/$defs/sha256" },
@@ -23,7 +23,9 @@
         "expansion_plan": { "const": "data/batches/m5-8-expansion-plan.json" },
         "expansion_plan_sha256": { "$ref": "#/$defs/sha256" },
         "relation_calibration_timing": { "const": "data/batches/m5-10a-relation-calibration-timing.json" },
-        "relation_calibration_timing_sha256": { "$ref": "#/$defs/sha256" }
+        "relation_calibration_timing_sha256": { "$ref": "#/$defs/sha256" },
+        "relation_calibration_audit": { "const": "data/batches/m5-10a-relation-calibration-audit.json" },
+        "relation_calibration_audit_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
@@ -147,7 +149,7 @@
     "audit": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "independent", "generator_id", "initial_review_id", "auditor_id", "audited_at", "audit_session_id", "audit_input_sha256", "raw_proposal_sha256", "reviewed_case_count", "reviewed_raw_proposal_count", "human_admitted_count", "human_rejected_count", "correction_count", "correction_rate", "confirmed_noise_count", "open_blocker_count", "case_reviews", "findings"],
+      "required": ["status", "independent", "generator_id", "initial_review_id", "auditor_id", "audited_at", "audit_session_id", "audit_input_sha256", "raw_proposal_sha256", "reviewed_case_count", "reviewed_raw_proposal_count", "human_admitted_count", "human_rejected_count", "correction_count", "correction_rate", "confirmed_noise_count", "noise_rate_of_raw_proposals", "open_blocker_count", "case_reviews", "findings"],
       "properties": {
         "status": { "const": "complete" },
         "independent": { "const": true },
@@ -165,6 +167,7 @@
         "correction_count": { "type": "integer", "minimum": 0, "maximum": 20 },
         "correction_rate": { "type": "number", "minimum": 0, "maximum": 1 },
         "confirmed_noise_count": { "type": "integer", "minimum": 0, "maximum": 20 },
+        "noise_rate_of_raw_proposals": { "type": "number", "minimum": 0, "maximum": 1 },
         "open_blocker_count": { "type": "integer", "minimum": 0 },
         "case_reviews": { "type": "array", "minItems": 20, "maxItems": 20, "items": { "$ref": "#/$defs/caseReview" } },
         "findings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/finding" } }
@@ -173,7 +176,7 @@
     "caseReview": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["case_id", "source_sense", "outcome", "admission", "noise_assessment", "correction", "note"],
+      "required": ["case_id", "source_sense", "outcome", "decision", "admission", "noise_assessment", "correction", "note"],
       "properties": {
         "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
         "source_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
@@ -189,9 +192,10 @@
           }
         },
         "outcome": { "enum": ["raw-proposal", "no-valid-candidate"] },
-        "admission": { "enum": ["admitted", "not-applicable"] },
-        "noise_assessment": { "enum": ["clean", "not-applicable"] },
-        "correction": { "const": "none" },
+        "decision": { "enum": ["admit", "reject", "correct", "not-applicable"] },
+        "admission": { "enum": ["admitted", "rejected", "not-applicable"] },
+        "noise_assessment": { "enum": ["clean", "noise", "not-applicable"] },
+        "correction": { "enum": ["none", "corrected"] },
         "note": { "type": "string", "pattern": "\\S" }
       },
       "oneOf": [
@@ -199,8 +203,9 @@
           "required": ["target_sense", "relation_type", "direction"],
           "properties": {
             "outcome": { "const": "raw-proposal" },
-            "admission": { "const": "admitted" },
-            "noise_assessment": { "const": "clean" }
+            "decision": { "enum": ["admit", "reject", "correct"] },
+            "admission": { "enum": ["admitted", "rejected"] },
+            "noise_assessment": { "enum": ["clean", "noise"] }
           }
         },
         {
@@ -213,6 +218,7 @@
           },
           "properties": {
             "outcome": { "const": "no-valid-candidate" },
+            "decision": { "const": "not-applicable" },
             "admission": { "const": "not-applicable" },
             "noise_assessment": { "const": "not-applicable" }
           }

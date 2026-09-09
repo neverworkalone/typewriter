@@ -90,6 +90,24 @@ const OPPOSING_MARKER_PAIRS = Object.freeze([
   [/소리|울림|목소리/u, /고요|잠잠|조용|잦아들/u],
 ]);
 const NEGATED_LEXICAL_CONTEXT = /^(?:않|없|못|아니)/u;
+const NEAR_MEANING_FRAME_PATTERNS = Object.freeze({
+  absence: /허전|쓸쓸|공허|외롭|빈/u,
+  calm: /담담|차분|편안|가라앉|안정|잔잔/u,
+  clarity: /선명|뚜렷|또렷|빛깔|윤곽|모양/u,
+  regret: /후회|뉘우|잘못|아쉬/u,
+  resentment: /원망|탓|부당|대우|미워/u,
+  hurt: /상처|아픔|흔적/u,
+  jealousy: /질투|빼앗길|관심을/u,
+  ambivalence: /애증|사랑과\s*미움|동시에/u,
+  manner: /말과\s*행동|장면|흐름|억지스럽|자연스럽/u,
+  temperament: /성격|태도|까다롭|너그럽|무던/u,
+  sound: /소리|울림|목소리|귀로|되울|메아리/u,
+});
+const NEAR_INCOMPATIBLE_FRAME_PAIRS = Object.freeze([
+  ['resentment', 'hurt'],
+  ['jealousy', 'ambivalence'],
+  ['manner', 'temperament'],
+]);
 
 export class RelationGenerationError extends Error {
   constructor(message, code = 'RELATION_GENERATION_ERROR') {
@@ -124,6 +142,24 @@ function senseText({ record, sense }) {
 
 function normalizedText(entry) {
   return senseText(entry).normalize('NFC');
+}
+
+function meaningFrames(entry) {
+  const text = normalizedText(entry);
+  return new Set(
+    Object.entries(NEAR_MEANING_FRAME_PATTERNS)
+      .filter(([, pattern]) => pattern.test(text))
+      .map(([frame]) => frame),
+  );
+}
+
+function hasIncompatibleNearFrame(source, target) {
+  const sourceFrames = meaningFrames(source);
+  const targetFrames = meaningFrames(target);
+  return NEAR_INCOMPATIBLE_FRAME_PAIRS.some(([left, right]) => (
+    (sourceFrames.has(left) && targetFrames.has(right))
+      || (sourceFrames.has(right) && targetFrames.has(left))
+  ));
 }
 
 function normalizeLexicalToken(token) {
@@ -310,7 +346,9 @@ function sharedSemanticGroups(source, target) {
 }
 
 function hasNearSemanticOverlap(source, target) {
-  if (source.sense.pos !== target.sense.pos || !hasWriterUseBridge(source, target)) return false;
+  if (source.sense.pos !== target.sense.pos
+    || !hasWriterUseBridge(source, target)
+    || hasIncompatibleNearFrame(source, target)) return false;
   const sourceDomains = inferDomains(source);
   const targetDomains = inferDomains(target);
   return (hasEmotionOrState(sourceDomains) && hasEmotionOrState(targetDomains))
@@ -367,7 +405,10 @@ function classifyRelationContract(relationType, source, target) {
       : 'arbitrary-modifier-or-place';
   }
   if (relationType === 'action') {
-    return hasEmotionOrState(sourceDomains) && targetDomains.has('action') && hasActionWriterBridge(source, target)
+    return hasEmotionOrState(sourceDomains)
+      && targetDomains.has('action')
+      && target.sense.pos === 'verb'
+      && hasActionWriterBridge(source, target)
       ? undefined
       : 'incidental-co-occurrence';
   }
@@ -424,6 +465,7 @@ function relationTypeFor(source, target) {
   if (hasNearSemanticOverlap(source, target)) return 'near';
   if (hasEmotionOrState(sourceDomains)
     && targetDomains.has('action')
+    && target.sense.pos === 'verb'
     && hasActionWriterBridge(source, target)) return 'action';
   if (hasSharedSensoryDomain(sourceDomains, targetDomains)
     && hasSensoryWriterBridge(source, target)) return 'sensory';

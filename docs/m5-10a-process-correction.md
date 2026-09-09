@@ -77,15 +77,25 @@ None of the calibration cases is imported into canonical data, every generated
 target remains inside the pre-existing scope, and every generated tuple is
 checked to be absent from the canonical relation set.
 
+The builder does not manufacture an editorial verdict. The separately authored
+[`data/batches/m5-10a-relation-calibration-audit.json`](../data/batches/m5-10a-relation-calibration-audit.json)
+records one `admit`, `reject`, or `correct` decision for each raw proposal and a
+not-applicable review for each no-candidate case. A missing audit input blocks
+the build, and `independent`, counts, rates, and gate status are not accepted
+from the build output as proof; the validator derives them from the audit cases
+and findings. The current regenerated set has nine raw proposals and eleven
+no-candidate results. The four previously reported false-positive patterns are
+absent from that set.
+
 The fixed gate requires all 20 calibration cases to have record-specific,
 non-boilerplate boundary evidence. Checked evidence carries the observed
 canonical gloss and a meaning/use note; `not-applicable` evidence carries an
 explicit reason and no sense claim. The full audit reviews all 20 requests,
 including no-candidate results, and every raw proposal, recomputes noise,
-correction rate, and admission counts,
+ correction rate, and admission counts,
 and leaves zero open blockers. The audit records a distinct auditor identity,
-audit timestamp, UUID session, and digest over the current fixture/output/timing
-inputs; `independent: true` alone is not accepted. Editor time is read only from
+audit timestamp, UUID session, and source digest; `independent: true` alone is not
+accepted. Editor time is read only from
 the separate `timing-recorder-v1` session artifact. Each pass must be explicitly
 started and stopped through the recorder CLI, which persists an in-progress
 session; automatic waits, handwritten timestamps, and backfilled sessions fail.

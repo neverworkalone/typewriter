@@ -23,9 +23,13 @@ import {
 } from '../scripts/batch/validate-m5-10a-process.mjs';
 import {
   DEFAULT_CALIBRATION_ARTIFACT_PATH,
+  DEFAULT_CALIBRATION_AUDIT_PATH,
+  deriveCalibrationAuditMetrics,
+  evaluateCalibrationGate,
   validateCalibrationFixtureEvidence,
   validateM5A10ACalibration,
 } from '../scripts/batch/validate-m5-10a-calibration.mjs';
+import { main as buildCalibration } from '../scripts/batch/build-m5-10a-calibration.mjs';
 import { verifyCalibrationTimingRecording } from '../scripts/batch/timing.mjs';
 import {
   classifyRelationRequest,
@@ -116,6 +120,8 @@ test('M5-10A process correction and repair authorization remain source-bound', a
     not_generated_case_ids: process.candidate_generation.not_generated_case_ids,
     pre_screen_noise_count: 0,
     noise_rate_of_raw_proposals: 0,
+    audited_noise_count: 0,
+    audited_noise_rate_of_raw_proposals: 0,
     editor_seconds_per_processed_start: process.candidate_generation.editor_seconds_per_processed_start,
     correction_rate: 0,
     unmeasured_pass_count: 0,
@@ -254,6 +260,8 @@ test('M5-10A calibration is an upstream fixed gate, not historical classificatio
   assert.equal(calibration.suppressed_candidate_count, 0);
   assert.equal(calibration.pre_screen_noise_count, 0);
   assert.equal(calibration.noise_rate_of_raw_proposals, 0);
+  assert.equal(calibration.audited_noise_count, 0);
+  assert.equal(calibration.audited_noise_rate_of_raw_proposals, 0);
   assert.ok(calibration.editor_seconds_per_processed_start > 0);
   assert.ok(calibration.editor_seconds_per_processed_start <= 12);
   assert.equal(calibration.correction_rate, 0);
@@ -273,6 +281,68 @@ test('M5-10A calibration is an upstream fixed gate, not historical classificatio
       'word-idiom': 5,
     },
   });
+});
+
+test('M5-10A audit metrics derive noise from every raw decision', () => {
+  const reviewsFor = (noiseCount) => Array.from({ length: 12 }, (_, index) => ({
+    case_id: `synthetic-${index + 1}`,
+    outcome: 'raw-proposal',
+    decision: index < noiseCount ? 'reject' : 'admit',
+    noise_assessment: index < noiseCount ? 'noise' : 'clean',
+    correction: 'none',
+  }));
+  const limits = {
+    relation_noise_rate_max: 0.25,
+    editor_seconds_per_processed_start_max: 12,
+    correction_rate_max: 0.5,
+    unmeasured_timing_passes_max: 0,
+    open_audit_blockers_max: 0,
+  };
+  const timing = {
+    editor_seconds_per_processed_start: 3,
+    unmeasured_pass_count: 0,
+  };
+  const threeOfTwelve = deriveCalibrationAuditMetrics(reviewsFor(3), 12);
+  assert.equal(threeOfTwelve.confirmed_noise_count, 3);
+  assert.equal(threeOfTwelve.noise_rate_of_raw_proposals, 0.25);
+  assert.equal(
+    evaluateCalibrationGate({
+      generated: { pre_screen_noise_count: 0, noise_rate_of_raw_proposals: threeOfTwelve.noise_rate_of_raw_proposals },
+      timing,
+      audit: { correction_rate: threeOfTwelve.correction_rate, open_blocker_count: 0 },
+      limits,
+    }).status,
+    'passed',
+  );
+  const fourOfTwelve = deriveCalibrationAuditMetrics(reviewsFor(4), 12);
+  assert.equal(fourOfTwelve.confirmed_noise_count, 4);
+  assert.equal(fourOfTwelve.noise_rate_of_raw_proposals, 4 / 12);
+  const failedGate = evaluateCalibrationGate({
+    generated: { pre_screen_noise_count: 0, noise_rate_of_raw_proposals: fourOfTwelve.noise_rate_of_raw_proposals },
+    timing,
+    audit: { correction_rate: fourOfTwelve.correction_rate, open_blocker_count: 0 },
+    limits,
+  });
+  assert.equal(failedGate.status, 'failed');
+  assert.ok(failedGate.failures.includes('audited relation noise exceeds the fixed limit'));
+});
+
+test('M5-10A calibration build requires a separately authored audit input', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10a-missing-audit-'));
+  try {
+    const missingAuditPath = path.join(directory, 'missing-audit.json');
+    const outputPath = path.join(directory, 'calibration.json');
+    await assert.rejects(
+      () => buildCalibration([
+        `--audit=${missingAuditPath}`,
+        `--output=${outputPath}`,
+      ]),
+      (error) => error?.code === 'ENOENT',
+      `missing audit input ${DEFAULT_CALIBRATION_AUDIT_PATH} must block the build`,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('M5-10A calibration rejects oracle labels, unseen negatives, and canonical tuple reuse', async () => {

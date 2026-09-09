@@ -250,8 +250,11 @@ Relation admission keeps the relation list empty until sense preflight is comple
 The historical 25-proposal regression remains 13 pre-screen passes and 12
 pre-screen rejections for failure reproducibility only. Upstream correction is
 proven separately by the source-bound, noncanonical 20-case calibration dry-run:
-its fixed generator emits zero known-noise candidates and must stay below the
-25% relation-noise and 12 editor-seconds-per-processed-start gates. Run
+its fixed generator emits zero pre-screened noise candidates; a separately
+authored audit input supplies per-proposal decisions, and the validator derives
+the raw-proposal noise rate from those decisions. That audited rate must stay
+below the 25% relation-noise and 12 editor-seconds-per-processed-start gates.
+The builder refuses to authorize a run without the audit input. Run
 `npm run batch:m5-10a:calibration:check` before the process and repair checks.
 
 The M5-10A timing contract distinguishes human editorial passes from mechanical
