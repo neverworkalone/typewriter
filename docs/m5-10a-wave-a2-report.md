@@ -8,14 +8,19 @@ reviewed all 50 starts record by record, checked all six sense-boundary fields,
 and froze the reviewed staging digest. A separate Codex audit pass then
 rechecked the frozen digest in a different session and artifact. Both passes
 are `codex-authored`; #110 does not require a human identity or two different
-actors.
+actors. The completion recorders consume separately supplied decision artifacts;
+they do not manufacture record decisions, relation findings, or a clean audit
+result.
 
 The reviewed, zero-blocker staging was imported into canonical, taking the
-product from 578 to 628 starts. Wave B remains unauthorized because the actual
-timing gate failed: all required timing passes are measured, but the measured
-editor time is 13.0354 seconds per processed start against the fixed 12-second
-maximum. The source-bound stage report therefore records `HOLD PROCESS` with
-both `next_stage_created` and `next_stage_authorized` set to `false`.
+product from 578 to 628 starts. The initial PR timing claim was superseded
+because its editorial completion preceded the timing session. A fresh
+chronological recorder session now measures 530.207 editor seconds across 56
+processed starts, or 9.467982 seconds per processed start, so the fixed gate
+passes. The source-bound stage report therefore records `APPROVE BOUNDED` and
+`ready_to_create: true`, while `next_stage_created` and
+`next_stage_authorized` remain `false`: a passing metric does not create or
+authorize a GitHub task by itself.
 
 ## Count ledger
 
@@ -78,25 +83,32 @@ this milestone.
 
 ## Timing and gate
 
-The five required passes are all complete, recorder-backed, and have no
-unmeasured passes:
+The five required passes are all complete, recorder-backed, chronological, and
+have no unmeasured passes:
 
 | Pass | Editor seconds |
 | --- | ---: |
-| target preparation | 106.945 |
-| initial review | 520.616 |
-| feedback fixes | 22.094 |
-| final audit | 62.085 |
-| held/rejected decisions | 18.245 |
-| **total** | **729.985** |
+| target preparation | 32.243 |
+| initial review | 350.806 |
+| feedback fixes | 101.258 |
+| final audit | 35.358 |
+| held/rejected decisions | 10.542 |
+| **total** | **530.207** |
 
 There are 56 processed starts after excluding the two deferred buffer rows, so
-the measured rate is `729.985 / 56 = 13.035446...` seconds per processed start.
-The timing gate fails only on this rate; timing completeness, correction rate
-(`16/56`), relation noise (`0%`), audit blockers (`0`), canonical integrity,
-SQLite reproducibility, and search/product regressions pass. Because the gate
-controls the next Wave authorization, the stage is `HOLD PROCESS` even though
-the reviewed zero-blocker rows are valid for the current canonical import.
+the measured rate is `530.207 / 56 = 9.467982...` seconds per processed start.
+Timing completeness, correction rate (`16/56`), relation noise (`0%`), audit
+blockers (`0`), canonical integrity, SQLite reproducibility, and search/product
+regressions also pass. The stage carries a `correction_plan` field for a future
+failed timing result, but this run marks it `not-required` because the fixed
+gate passes.
+
+The timing session stops before editorial completion, and the audit starts only
+after editorial completion and all timing stops. The editorial record decisions
+are supplied in a separate tracked artifact, and the audit relation decisions
+and findings are supplied in a second tracked artifact created during the
+separate audit session. The recorder outputs bind those artifacts by path,
+digest, session, and chronology.
 
 ## Source artifacts
 
@@ -104,8 +116,14 @@ the reviewed zero-blocker rows are valid for the current canonical import.
   source-bound selection, review projection, and digest bindings.
 - [`data/batches/m5-10a-wave-a2-editorial-input.json`](../data/batches/m5-10a-wave-a2-editorial-input.json) —
   complete Codex editorial pass and frozen staging digest.
+- [`data/batches/m5-10a-wave-a2-editorial-decisions-20260909.json`](../data/batches/m5-10a-wave-a2-editorial-decisions-20260909.json) —
+  separately supplied record-level editorial decisions consumed by the
+  editorial recorder.
 - [`data/batches/m5-10a-wave-a2-audit-input.json`](../data/batches/m5-10a-wave-a2-audit-input.json) —
   separate complete audit pass over the frozen digest.
+- [`data/batches/m5-10a-wave-a2-audit-decisions-20260909.json`](../data/batches/m5-10a-wave-a2-audit-decisions-20260909.json) —
+  separately supplied relation reviews and audit findings consumed by the
+  audit recorder.
 - [`data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json`](../data/batches/m5-10a-wave-a2-provenance-editorial-20260909.json)
   and [`data/batches/m5-10a-wave-a2-provenance-audit-20260909.json`](../data/batches/m5-10a-wave-a2-provenance-audit-20260909.json)
   — session, actor, completion-time, and subject-digest evidence.
@@ -116,7 +134,7 @@ the reviewed zero-blocker rows are valid for the current canonical import.
 - [`data/batches/m5-10a-wave-a2-metrics.json`](../data/batches/m5-10a-wave-a2-metrics.json)
   — deterministically derived decisions, counts, timing, and audit metrics.
 - [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json) —
-  final stage report with the failed timing gate and Wave B authorization flags.
+  final stage report with the passing gate, readiness flag, and uncreated/un-authorized next-stage flags.
 - [`data/inventory/m5-target-inventory.json`](../data/inventory/m5-target-inventory.json)
   — regenerated inventory with 628 current starts and the remaining candidates.
 - `data/batches/m5-10a-wave-a-base-canonical/` — immutable 578-start source
@@ -143,7 +161,7 @@ npm run test:unit
 npm test
 ```
 
-The full Node regression suite reports 125 passing tests and the unit suite
-reports 38 passing tests. Chrome/CFT was not launched because this change is
+The full Node regression suite and unit suite were rerun after the recorder and
+stage-gate changes. Chrome/CFT was not launched because this change is
 covered by deterministic data, SQLite, search, and package checks and the task
 explicitly requested no Chrome launch.

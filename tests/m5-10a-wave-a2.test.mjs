@@ -8,10 +8,16 @@ import {
   buildWaveA2Manifest,
   createWaveA2Manifest,
 } from '../scripts/batch/build-m5-10a-wave-a2.mjs';
+import { nextStageState } from '../scripts/batch/build-m5-10a-wave-a2-stage.mjs';
 import {
   validateWaveA2,
 } from '../scripts/batch/validate-m5-10a-wave-a2.mjs';
 import { main as recordA2Timing } from '../scripts/batch/record-m5-10a-wave-a2-timing.mjs';
+import {
+  assertEditorialCompletionChronology,
+  main as recordA2Editorial,
+} from '../scripts/batch/record-m5-10a-wave-a2-editorial.mjs';
+import { main as recordA2Audit } from '../scripts/batch/record-m5-10a-wave-a2-audit.mjs';
 import {
   createA2TimingProof,
   A2_TIMING_WORK_UNIT_CONTRACT,
@@ -110,6 +116,8 @@ function createUnverifiedEditorialFixture(editorial) {
   fixture.status = 'in-review';
   delete fixture.completed_at;
   delete fixture.reviewed_staging_sha256;
+  delete fixture.timing_artifact;
+  delete fixture.decision_artifact;
   fixture.provenance = {
     verification_status: 'unverified',
     actor_kind: 'unknown',
@@ -161,6 +169,8 @@ function createUnverifiedAuditFixture(audit) {
   fixture.status = 'incomplete';
   delete fixture.completed_at;
   delete fixture.reviewed_staging_sha256;
+  delete fixture.timing_artifact;
+  delete fixture.decision_artifact;
   fixture.provenance = {
     verification_status: 'unverified',
     actor_kind: 'unknown',
@@ -208,8 +218,19 @@ function createVerifiedEditorialFixture(
     note: 'Test-only verified editorial session fixture.',
   };
   fixture.status = 'complete';
+  fixture.created_at = '2026-09-09T05:30:00Z';
   fixture.completed_at = '2026-09-09T06:00:00Z';
   fixture.reviewed_staging_sha256 = reviewedStagingSha256;
+  fixture.timing_artifact = {
+    path: 'data/batches/test-timing.json',
+    sha256: 'c'.repeat(64),
+    completed_at: '2026-09-09T05:50:00Z',
+  };
+  fixture.decision_artifact = {
+    path: 'data/batches/test-editorial-decisions.json',
+    sha256: 'd'.repeat(64),
+    created_at: '2026-09-09T05:40:00Z',
+  };
   fixture.sense_review.status = 'complete';
   fixture.sense_review.reviewed_start_count = 50;
   fixture.sense_review.split_record_count = fixture.records
@@ -300,6 +321,12 @@ function createVerifiedAuditFixture(
   fixture.independent = true;
   fixture.created_at = '2026-09-09T06:10:00Z';
   fixture.completed_at = '2026-09-09T06:30:00Z';
+  fixture.timing_artifact = structuredClone(editorial.timing_artifact);
+  fixture.decision_artifact = {
+    path: 'data/batches/test-audit-decisions.json',
+    sha256: 'e'.repeat(64),
+    created_at: '2026-09-09T06:15:00Z',
+  };
   fixture.reviewed_record_ids = editorial.records
     .slice(0, 50)
     .map(({ canonical_id: canonicalId }) => canonicalId);
@@ -345,8 +372,8 @@ function createCompleteTimingFixture(timing) {
   fixture.status = 'complete';
   fixture.passes = fixture.passes.map((pass, index) => {
     const sessionId = `33333333-3333-4333-8333-${String(index + 1).padStart(12, '0')}`;
-    const startedAt = new Date(baseTime + index * 120000).toISOString();
-    const completedAt = new Date(baseTime + index * 120000 + 300000).toISOString();
+    const startedAt = new Date(baseTime + index * 360000).toISOString();
+    const completedAt = new Date(baseTime + index * 360000 + 300000).toISOString();
     const contract = A2_TIMING_WORK_UNIT_CONTRACT[pass.id];
     return {
       ...pass,
@@ -387,7 +414,7 @@ function createCompleteTimingFixture(timing) {
   return fixture;
 }
 
-test('M5-10A Wave A2 imports frozen reviewed data but holds Wave B when timing exceeds the gate', async () => {
+test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncreated', async () => {
   const [manifest, editorial, audit, relationDiff, metrics, stage, plan, canonical] = await Promise.all([
     readBatchJson('m5-10-wave-a2.json'),
     readBatchJson('m5-10a-wave-a2-editorial-input.json'),
@@ -512,7 +539,7 @@ test('M5-10A Wave A2 imports frozen reviewed data but holds Wave B when timing e
     stage_id: 'm5-10a-wave-a2-plus-50',
     imported_start_count: 50,
     candidate_buffer: 8,
-    gate_status: 'fail',
+    gate_status: 'pass',
   });
   assert.deepEqual(stage.actual.canonical_snapshot, {
     record_count: 670,
@@ -532,9 +559,16 @@ test('M5-10A Wave A2 imports frozen reviewed data but holds Wave B when timing e
   });
   assert.equal(stage.metrics.timing_status, 'complete');
   assert.equal(stage.metrics.total_editor_seconds, metrics.derived.timing.total_editor_seconds);
-  assert.ok(stage.metrics.editor_seconds_per_selected_start > 12);
+  assert.ok(stage.metrics.editor_seconds_per_selected_start <= 12);
   assert.equal(stage.metrics.unmeasured_timing_pass_count, 0);
-  assert.equal(stage.decision, 'HOLD PROCESS');
+  assert.equal(stage.decision, 'APPROVE BOUNDED');
+  assert.deepEqual(nextStageState('pass'), {
+    ready_to_create: true,
+    next_stage_created: false,
+    next_stage_authorized: false,
+  });
+  assert.equal(stage.ready_to_create, true);
+  assert.equal(stage.correction_plan.status, 'not-required');
   assert.equal(stage.next_stage_created, false);
   assert.equal(stage.next_stage_authorized, false);
   assert.equal(stage.metrics.editorial_review_complete, true);
@@ -886,6 +920,20 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
   syntheticTiming.recording_proof_sha256 = createA2TimingProof(syntheticTiming);
   assertInputError(() => validateA2TimingInput(syntheticTiming), 'TIMING_EVENT_COVERAGE');
 
+  const timingAfterEditorial = structuredClone(verifiedEditorial);
+  timingAfterEditorial.timing_artifact.completed_at = '2026-09-09T06:01:00Z';
+  assertInputError(
+    () => validateA2EditorialInput({ input: timingAfterEditorial, canonicalRecords: referenceRecords }),
+    'EDITORIAL_CHRONOLOGY_MISMATCH',
+  );
+  assert.throws(
+    () => assertEditorialCompletionChronology(
+      createCompleteTimingFixture(timing),
+      '2026-09-09T06:00:00Z',
+    ),
+    /editorial completion cannot precede the final timing stop/,
+  );
+
   const canonicalById = new Map(referenceRecords.map(({ record }) => [record.id, record]));
   assert.equal(canonicalById.get('w603').senses.length, 2);
   assert.deepEqual(
@@ -940,6 +988,74 @@ test('M5-10A Wave A2 build and timing recorder refuse missing or synthetic evide
         `--output=${sessionPath}`,
       ]),
       /requires --work-evidence/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('M5-10A completion recorders require separately supplied decision artifacts', async () => {
+  await assert.rejects(
+    recordA2Editorial([
+      '--action=complete',
+      '--proposal=/private/tmp/typewriter-m5-10a-wave-a2-proposal.jsonl',
+      '--session=/private/tmp/typewriter-m5-10a-wave-a2-editorial-session-negative.json',
+      '--staging=/private/tmp/typewriter-m5-10a-wave-a2-reviewed.jsonl',
+      '--timing=data/batches/m5-10a-wave-a2-timing-input.json',
+      '--editorial=data/batches/m5-10a-wave-a2-editorial-input-negative.json',
+      '--canonical=data/canonical',
+    ]),
+    /--decisions is required for complete/,
+  );
+  await assert.rejects(
+    recordA2Audit([
+      '--action=complete',
+      '--session=/private/tmp/typewriter-m5-10a-wave-a2-audit-session-negative.json',
+      '--editorial=data/batches/m5-10a-wave-a2-editorial-input.json',
+      '--staging=/private/tmp/typewriter-m5-10a-wave-a2-reviewed.jsonl',
+      '--timing=data/batches/m5-10a-wave-a2-timing-input.json',
+    ]),
+    /--decisions is required/,
+  );
+
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10a-audit-recorder-'));
+  try {
+    const [editorial, canonical] = await Promise.all([
+      readBatchJson('m5-10a-wave-a2-editorial-input.json'),
+      readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+    ]);
+    const reviewedIds = new Set(editorial.records.slice(0, 50).map(({ canonical_id: canonicalId }) => canonicalId));
+    const stagingPath = path.join(directory, 'reviewed.jsonl');
+    const sessionPath = path.join(directory, 'audit-session.json');
+    const decisionsPath = path.join(directory, 'audit-decisions.json');
+    await writeFile(
+      stagingPath,
+      serializeCanonicalRecords(canonical.records.filter(({ record }) => reviewedIds.has(record.id))),
+      'utf8',
+    );
+    const started = await recordA2Audit([
+      '--action=start',
+      `--session=${sessionPath}`,
+      '--editorial=data/batches/m5-10a-wave-a2-editorial-input.json',
+      `--staging=${stagingPath}`,
+      '--timing=data/batches/m5-10a-wave-a2-timing-input.json',
+      `--decisions=${decisionsPath}`,
+      '--canonical=data/canonical',
+    ]);
+    assert.equal(started.status, 'in-progress');
+    await assert.rejects(
+      recordA2Audit([
+        '--action=complete',
+        `--session=${sessionPath}`,
+        '--editorial=data/batches/m5-10a-wave-a2-editorial-input.json',
+        `--staging=${stagingPath}`,
+        '--timing=data/batches/m5-10a-wave-a2-timing-input.json',
+        `--decisions=${decisionsPath}`,
+        '--audit=data/batches/m5-10a-wave-a2-audit-input-negative.json',
+        '--relation=data/batches/m5-10a-wave-a2-relation-diff.json',
+        '--canonical=data/canonical',
+      ]),
+      /audit decision artifact does not exist/,
     );
   } finally {
     await rm(directory, { recursive: true, force: true });

@@ -84,14 +84,16 @@ and machine verification results by path and SHA-256. The builder requires the
 audit input as a separate source and never treats its own generated output as an
 independent editorial review. The authorization is limited to #96 Wave A2 (+50
 from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The completed
-A2 execution imported only the zero-blocker reviewed result; its timing gate
-still failed, so the current canonical data is 628 starts while Wave B remains
-unauthorized.
+A2 execution imported only the zero-blocker reviewed result; the corrected
+chronological timing gate passes, so the current canonical data is 628 starts.
+The stage is ready to create a next task, but the builder keeps the task
+creation and authorization flags false until a real, separately authorized task
+exists.
 The A2 structured editorial and audit metadata may be tracked in this directory
 when it contains only target selection, proposal identity/decision state,
-the external proposal artifact digest, structured review state, and the HOLD
-cause; it must not carry candidate record bodies, raw draft text, or external
-source text. An explicitly
+the external proposal artifact digest, structured review state, separate
+decision-artifact bindings, and any measured correction plan; it must not carry
+candidate record bodies, raw draft text, or external source text. An explicitly
 unverified/incomplete input cannot produce a completed import claim. A completed
 input additionally requires a provenance artifact that binds its actor, UUID
 session, subject digest, completion time, and artifact digest. The actor may be

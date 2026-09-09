@@ -31,7 +31,9 @@ import {
   A2_BATCH_ID,
   A2_PROMOTED_CANONICAL_IDS,
   A2_PROMOTED_RECORD_REVIEWS,
+  validateA2AuditDecisionArtifact,
   validateA2AuditInput,
+  validateA2EditorialDecisionArtifact,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
   validateA2ProposalStagingDigest,
@@ -182,6 +184,20 @@ export async function validateWaveA2({
     readJsonSource(verificationPath, 'Wave A2 verification'),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
+  const editorialDecisionSource = editorialSource.value.source_kind === 'unverified-draft'
+    || !editorialSource.value.decision_artifact
+    ? null
+    : await readJsonSource(
+      path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path),
+      'Wave A2 editorial decision artifact',
+    );
+  const auditDecisionSource = auditSource.value.source_kind === 'unverified-draft'
+    || !auditSource.value.decision_artifact
+    ? null
+    : await readJsonSource(
+      path.resolve(REPOSITORY_DIRECTORY, auditSource.value.decision_artifact.path),
+      'Wave A2 audit decision artifact',
+    );
   if (stagedRecordsPath) {
     assertExternalStagingPath(stagedRecordsPath);
     await validateA2ProposalStagingDigest({
@@ -215,12 +231,78 @@ export async function validateWaveA2({
     input: editorialSource.value,
     canonicalRecords: referenceRecords,
   });
+  if (editorial.verified) {
+    const editorialDecisions = validateA2EditorialDecisionArtifact(editorialDecisionSource.value);
+    assert.equal(
+      editorialDecisionSource.sha256,
+      editorialSource.value.decision_artifact.sha256,
+      'editorial decision artifact digest drifted',
+    );
+    assert.equal(
+      editorialDecisions.session_id,
+      editorialSource.value.provenance.session_id,
+      'editorial decision artifact session drifted',
+    );
+    assert.equal(
+      editorialDecisions.proposal_staging_sha256,
+      editorialSource.value.proposal_staging.sha256,
+      'editorial decision artifact proposal digest drifted',
+    );
+    assert.equal(
+      editorialDecisions.reviewed_staging_sha256,
+      editorialSource.value.reviewed_staging_sha256,
+      'editorial decision artifact reviewed staging digest drifted',
+    );
+    assert.deepEqual(
+      editorialDecisions.records,
+      editorialSource.value.records,
+      'editorial input decisions do not match the separately supplied decision artifact',
+    );
+  }
   const audit = validateA2AuditInput({
     audit: auditSource.value,
     editorialInput: editorial,
     relationDiff: relationDiffSource.value,
     canonicalRecords: referenceRecords,
   });
+  if (audit.verified) {
+    const auditDecisions = validateA2AuditDecisionArtifact(auditDecisionSource.value);
+    assert.equal(
+      auditDecisionSource.sha256,
+      auditSource.value.decision_artifact.sha256,
+      'audit decision artifact digest drifted',
+    );
+    assert.equal(
+      auditDecisions.session_id,
+      auditSource.value.provenance.session_id,
+      'audit decision artifact session drifted',
+    );
+    assert.equal(
+      auditDecisions.editorial_input_id,
+      editorialSource.value.input_id,
+      'audit decision artifact editorial input binding drifted',
+    );
+    assert.equal(
+      auditDecisions.reviewed_staging_sha256,
+      auditSource.value.reviewed_staging_sha256,
+      'audit decision artifact reviewed staging digest drifted',
+    );
+    assert.deepEqual(
+      auditDecisions.reviewed_record_ids,
+      auditSource.value.reviewed_record_ids,
+      'audit input reviewed records do not match the separately supplied decision artifact',
+    );
+    assert.deepEqual(
+      auditDecisions.relation_reviews,
+      auditSource.value.relation_reviews,
+      'audit input relation decisions do not match the separately supplied decision artifact',
+    );
+    assert.deepEqual(
+      auditDecisions.findings,
+      auditSource.value.findings,
+      'audit input findings do not match the separately supplied decision artifact',
+    );
+  }
   validateA2TimingInput(timingSource.value);
   validateRelationDiff(relationDiffSource.value);
 
@@ -242,6 +324,26 @@ export async function validateWaveA2({
       editorialSource.value.reviewed_staging_sha256,
       'manifest reviewed staging digest drifted from the editorial input',
     );
+    assert.equal(
+      editorialSource.value.timing_artifact.path,
+      relativeSourcePath(timingInputPath),
+      'editorial timing artifact path drifted',
+    );
+    assert.equal(
+      editorialSource.value.timing_artifact.sha256,
+      timingSource.sha256,
+      'editorial timing artifact digest drifted',
+    );
+    assert.equal(
+      editorialSource.value.timing_artifact.completed_at,
+      timingSource.value.passes.at(-1).completed_at,
+      'editorial timing completion drifted',
+    );
+    assert.equal(
+      editorialSource.value.decision_artifact.path,
+      relativeSourcePath(path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path)),
+      'editorial decision artifact path is not repository-relative',
+    );
   }
   assert.equal(
     manifestSource.value.measurement.audit.source_artifact,
@@ -258,6 +360,21 @@ export async function validateWaveA2({
       manifestSource.value.measurement.audit.reviewed_staging_sha256,
       auditSource.value.reviewed_staging_sha256,
       'manifest reviewed staging digest drifted from the audit input',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.path,
+      relativeSourcePath(timingInputPath),
+      'audit timing artifact path drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.sha256,
+      timingSource.sha256,
+      'audit timing artifact digest drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.completed_at,
+      timingSource.value.passes.at(-1).completed_at,
+      'audit timing completion drifted',
     );
   }
   assert.equal(

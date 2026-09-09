@@ -13,6 +13,8 @@ import {
 const require = createModuleRequire(import.meta.url);
 const EDITORIAL_SCHEMA = require('../../schema/m5-10a-wave-a2-editorial-input.schema.json');
 const AUDIT_SCHEMA = require('../../schema/m5-10a-wave-a2-audit-input.schema.json');
+const EDITORIAL_DECISIONS_SCHEMA = require('../../schema/m5-10a-wave-a2-editorial-decisions.schema.json');
+const AUDIT_DECISIONS_SCHEMA = require('../../schema/m5-10a-wave-a2-audit-decisions.schema.json');
 const TIMING_SCHEMA = require('../../schema/m5-10a-wave-a2-timing-input.schema.json');
 const PROVENANCE_SCHEMA = require('../../schema/m5-10a-wave-a2-provenance-artifact.schema.json');
 
@@ -27,6 +29,8 @@ const schemaOptions = {
 };
 const editorialSchemaValidator = new Ajv2020(schemaOptions).compile(EDITORIAL_SCHEMA);
 const auditSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_SCHEMA);
+const editorialDecisionsSchemaValidator = new Ajv2020(schemaOptions).compile(EDITORIAL_DECISIONS_SCHEMA);
+const auditDecisionsSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_DECISIONS_SCHEMA);
 const timingSchemaValidator = new Ajv2020(schemaOptions).compile(TIMING_SCHEMA);
 const provenanceSchemaValidator = new Ajv2020(schemaOptions).compile(PROVENANCE_SCHEMA);
 
@@ -149,6 +153,42 @@ function validateSchema(value, validator, root, label) {
       : `${label} schema validation failed`,
     'SCHEMA_ERROR',
   );
+}
+
+function validateDecisionArtifactProvenance(input, label) {
+  const expectedActorKind = input.source_kind === 'codex-authored' ? 'codex' : 'human';
+  assertEqual(input.actor_kind, expectedActorKind, `${label} source and actor kinds must agree`, 'DECISION_ARTIFACT_PROVENANCE');
+  assertCondition(input.actor_id !== 'unknown', `${label} must identify its actor`, 'DECISION_ARTIFACT_PROVENANCE');
+}
+
+export function validateA2EditorialDecisionArtifact(input) {
+  validateSchema(
+    input,
+    editorialDecisionsSchemaValidator,
+    'editorial_decisions',
+    'Wave A2 editorial decision artifact',
+  );
+  assertEqual(input.batch_id, A2_BATCH_ID, 'editorial decision artifact batch_id drifted', 'BATCH_ID_DRIFT');
+  validateDecisionArtifactProvenance(input, 'editorial decision artifact');
+  assertEqual(
+    input.records.map(({ inventory_id: inventoryId }) => inventoryId),
+    A2_SELECTED_INVENTORY_IDS,
+    'editorial decision artifact scope/order drifted',
+    'EDITORIAL_DECISION_ARTIFACT_SCOPE',
+  );
+  return structuredClone(input);
+}
+
+export function validateA2AuditDecisionArtifact(input) {
+  validateSchema(
+    input,
+    auditDecisionsSchemaValidator,
+    'audit_decisions',
+    'Wave A2 audit decision artifact',
+  );
+  assertEqual(input.batch_id, A2_BATCH_ID, 'audit decision artifact batch_id drifted', 'BATCH_ID_DRIFT');
+  validateDecisionArtifactProvenance(input, 'audit decision artifact');
+  return structuredClone(input);
 }
 
 function recordMap(recordInfos) {
@@ -395,6 +435,24 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
   assertEqual(input.inventory_revision, A2_INVENTORY_REVISION, 'editorial inventory_revision drifted', 'INVENTORY_REVISION_DRIFT');
   assertEqual(input.sense_review.boundary_ids, M5_10A_SENSE_BOUNDARY_IDS, 'editorial boundary definition drifted', 'BOUNDARY_DEFINITION_DRIFT');
   const verified = validateProvenance(input, 'editorial input');
+  if (verified) {
+    assertCondition(
+      Date.parse(input.completed_at) >= Date.parse(input.created_at),
+      'editorial input completed before its session started',
+      'EDITORIAL_CHRONOLOGY_MISMATCH',
+    );
+    assertCondition(
+      Date.parse(input.timing_artifact.completed_at) <= Date.parse(input.completed_at),
+      'editorial input completed before the required timing passes stopped',
+      'EDITORIAL_CHRONOLOGY_MISMATCH',
+    );
+    assertCondition(
+      Date.parse(input.decision_artifact.created_at) >= Date.parse(input.created_at)
+        && Date.parse(input.decision_artifact.created_at) <= Date.parse(input.completed_at),
+      'editorial decision artifact was not supplied during the editorial session',
+      'EDITORIAL_DECISION_ARTIFACT_CHRONOLOGY',
+    );
+  }
   assertEqual(input.sense_review.status, input.status, 'editorial sense_review status does not match input status', 'EDITORIAL_REVIEW_INCOMPLETE');
 
   const recordsById = recordMap(canonicalRecords);
@@ -600,6 +658,29 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
 
   assertCondition(editorialInput.verified === true, 'audit cannot complete while editorial provenance is unverified', 'AUDIT_EDITORIAL_PROVENANCE_MISMATCH');
   assertCondition(audit.independent, 'complete audit must claim independence only after verification', 'AUDIT_NOT_INDEPENDENT');
+  assertCondition(
+    Date.parse(audit.completed_at) >= Date.parse(audit.created_at)
+      && Date.parse(audit.created_at) >= Date.parse(editorialInput.completed_at),
+    'audit chronology must begin after the completed editorial pass',
+    'AUDIT_CHRONOLOGY_MISMATCH',
+  );
+  assertCondition(
+    Date.parse(audit.timing_artifact.completed_at) <= Date.parse(audit.created_at),
+    'audit cannot start before the required timing passes stopped',
+    'AUDIT_CHRONOLOGY_MISMATCH',
+  );
+  assertCondition(
+    Date.parse(audit.decision_artifact.created_at) >= Date.parse(audit.created_at)
+      && Date.parse(audit.decision_artifact.created_at) <= Date.parse(audit.completed_at),
+    'audit decision artifact was not supplied during the audit session',
+    'AUDIT_DECISION_ARTIFACT_CHRONOLOGY',
+  );
+  assertEqual(
+    audit.timing_artifact,
+    editorialInput.timing_artifact,
+    'audit timing artifact must bind the editorial timing result',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
   assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
   assertEqual(
     audit.reviewed_staging_sha256,
@@ -757,6 +838,13 @@ export function validateA2TimingInput(timing) {
   assertEqual(timing.events.length, A2_TIMING_PASS_IDS.length * 2, 'complete timing must persist one start and one stop event per pass', 'TIMING_EVENT_COVERAGE');
   const eventsByPass = new Map(A2_TIMING_PASS_IDS.map((id) => [id, []]));
   for (const event of timing.events) eventsByPass.get(event.pass_id).push(event);
+  for (let index = 1; index < timing.passes.length; index += 1) {
+    assertCondition(
+      Date.parse(timing.passes[index].started_at) >= Date.parse(timing.passes[index - 1].completed_at),
+      `timing pass ${timing.passes[index].id} starts before the previous pass stopped`,
+      'TIMING_CHRONOLOGY_MISMATCH',
+    );
+  }
   for (const pass of timing.passes) {
     assertEqual(pass.status, 'complete', `complete timing pass ${pass.id} is not complete`, 'INCOMPLETE_TIMING');
     for (const field of ['started_at', 'completed_at', 'wall_clock_seconds', 'editor_seconds', 'session_id', 'recording_source', 'work_evidence']) {

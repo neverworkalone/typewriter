@@ -43,6 +43,8 @@
       "items": { "$ref": "#/$defs/relationReview" }
     },
     "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "timing_artifact": { "$ref": "#/$defs/timingArtifact" },
+    "decision_artifact": { "$ref": "#/$defs/decisionArtifact" },
     "status": { "enum": ["incomplete", "complete"] },
     "findings": {
       "type": "array",
@@ -58,7 +60,7 @@
       },
       "then": {
         "properties": { "status": { "const": "complete" } },
-        "required": ["reviewed_staging_sha256"]
+        "required": ["reviewed_staging_sha256", "timing_artifact", "decision_artifact"]
       }
     },
     {
@@ -67,7 +69,7 @@
       },
       "then": {
         "properties": { "status": { "const": "complete" } },
-        "required": ["reviewed_staging_sha256"]
+        "required": ["reviewed_staging_sha256", "timing_artifact", "decision_artifact"]
       }
     },
     {
@@ -118,6 +120,26 @@
           "pattern": "^[a-f0-9]{64}$"
         },
         "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "timingArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "completed_at"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "decisionArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "created_at"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "created_at": { "type": "string", "format": "date-time" }
       }
     },
     "relationReview": {

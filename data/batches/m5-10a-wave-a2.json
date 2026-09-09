@@ -54,11 +54,11 @@
     "relation_noise_rate_of_before": 0,
     "relation_noise_candidate_count": 6,
     "relation_noise_rate_of_candidates": 0,
-    "total_wall_clock_seconds": 729.985,
-    "measured_wall_clock_seconds": 729.985,
-    "total_editor_seconds": 729.985,
-    "measured_editor_seconds": 729.985,
-    "editor_seconds_per_selected_start": 13.03544642857143,
+    "total_wall_clock_seconds": 530.207,
+    "measured_wall_clock_seconds": 530.207,
+    "total_editor_seconds": 530.207,
+    "measured_editor_seconds": 530.207,
+    "editor_seconds_per_selected_start": 9.467982142857142,
     "timing_status": "complete",
     "unmeasured_timing_pass_count": 0,
     "audit_status": "complete",
@@ -72,9 +72,9 @@
   },
   "source": {
     "manifest": "data/batches/m5-10-wave-a2.json",
-    "manifest_sha256": "0ba25ea5b8d391c7ca420dd672667510b8a977f9e64a806c750a07817c967ee2",
+    "manifest_sha256": "f3bb1ddee023915221d78acb0c41ea44c8a5bd025b0b3c8650d76a17bd37f4a4",
     "metrics": "data/batches/m5-10a-wave-a2-metrics.json",
-    "metrics_sha256": "11bf61a954df2c87c8d84dea152a63c2fe8c726871b7d0c08d67e44d0bd5f53b",
+    "metrics_sha256": "a98b637d62f0ea9645e66296be7b533b8510b5e873c84ea9e0a122ea4d78ee13",
     "relation_diff": "data/batches/m5-10a-wave-a2-relation-diff.json",
     "relation_diff_sha256": "9c398a980d2ad12ba51bc303b656a713d28159f35bd987095412a0c8829dddde",
     "canonical_directory": "data/canonical",
@@ -82,8 +82,39 @@
     "verification": "data/batches/m5-10a-wave-a2-verification.json",
     "verification_sha256": "01586718dfd03f60f999b3bd77d9348fd109febf1de72e2ed74c31d5324f9782"
   },
-  "gate_status": "fail",
-  "decision": "HOLD PROCESS",
+  "gate_status": "pass",
+  "decision": "APPROVE BOUNDED",
+  "ready_to_create": true,
   "next_stage_created": false,
-  "next_stage_authorized": false
+  "next_stage_authorized": false,
+  "correction_plan": {
+    "status": "not-required",
+    "cause": "Target preparation and the six-boundary initial review account for the measured cost; repeated evidence drafting and setup must be reduced without removing any boundary check.",
+    "measured_breakdown": [
+      {
+        "pass_id": "target-preparation",
+        "editor_seconds": 32.243,
+        "unit_count": 58,
+        "share_of_total": 0.060812097916474135
+      },
+      {
+        "pass_id": "initial-review",
+        "editor_seconds": 350.806,
+        "unit_count": 300,
+        "share_of_total": 0.6616396992118172
+      }
+    ],
+    "planned_change": "Use a separately authored record decision worksheet keyed to the six boundary IDs, capture each record-specific observation once, and reuse only that supplied evidence in the recorder; keep all 50 starts and all six boundaries in scope.",
+    "expected_saving_editor_seconds": 200,
+    "next_validation": {
+      "selected_start_count": 10,
+      "candidate_buffer": 2,
+      "canonical_import_authorized": false,
+      "note": "Run a ten-start process-correction retry with a two-row buffer; do not import or authorize Wave B from this retry until the fixed gate is re-evaluated."
+    },
+    "fixed_gate": {
+      "editor_seconds_per_processed_start_max": 12,
+      "relation_noise_rate_max": 0.25
+    }
+  }
 }

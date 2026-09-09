@@ -1176,6 +1176,46 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
     `${stage.stage_id} decision does not match the gate status`,
     'DECISION_MISMATCH',
   );
+  if (stage.stage_id === 'm5-10a-wave-a2-plus-50') {
+    assertEqual(
+      stage.ready_to_create,
+      stage.gate_status === 'pass',
+      `${stage.stage_id} ready_to_create must reflect gate readiness only`,
+      'NEXT_STAGE_READINESS_MISMATCH',
+    );
+    assertEqual(
+      stage.next_stage_created,
+      false,
+      `${stage.stage_id} cannot claim a created next-stage task without a real reference`,
+      'NEXT_STAGE_CREATED_WITHOUT_REFERENCE',
+    );
+    assertEqual(
+      stage.next_stage_authorized,
+      false,
+      `${stage.stage_id} cannot authorize a next stage without a separately authorized task`,
+      'NEXT_STAGE_AUTHORIZATION_MISMATCH',
+    );
+    assertEqual(
+      stage.correction_plan.status,
+      stage.gate_status === 'fail' ? 'required' : 'not-required',
+      `${stage.stage_id} correction plan status does not match the gate`,
+      'CORRECTION_PLAN_STATUS_MISMATCH',
+    );
+    const breakdownEditorSeconds = stage.correction_plan.measured_breakdown
+      .reduce((total, item) => total + item.editor_seconds, 0);
+    assertCondition(
+      breakdownEditorSeconds > 0 && breakdownEditorSeconds <= stage.metrics.total_editor_seconds,
+      `${stage.stage_id} correction plan breakdown is outside the measured editor total`,
+      'CORRECTION_PLAN_METRIC_MISMATCH',
+    );
+    assertNear(
+      stage.correction_plan.measured_breakdown
+        .reduce((total, item) => total + item.share_of_total, 0),
+      breakdownEditorSeconds / stage.metrics.total_editor_seconds,
+      `${stage.stage_id} correction plan shares do not match measured editor seconds`,
+      'CORRECTION_PLAN_METRIC_MISMATCH',
+    );
+  }
   if (stage.gate_status === 'fail') {
     assertEqual(
       stage.next_stage_authorized,

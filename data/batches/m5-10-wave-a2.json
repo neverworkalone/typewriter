@@ -9,14 +9,14 @@
     "prompt_version": "not-used-for-provenance",
     "draft_sha256": "290a74905da1eea8e816dc7273acca2abe09c9a94e30217c0abb3f3e96717dd8"
   },
-  "generated_at": "2026-09-09T09:21:36.717Z",
+  "generated_at": "2026-09-09T10:56:55.777Z",
   "review": {
     "status": "complete",
     "reviewer": "codex-wave-a2-editorial",
     "input_artifact": "data/batches/m5-10a-wave-a2-editorial-input.json",
-    "input_sha256": "4fd6a049804447f89a2995e6dfa9d4755f43301df0b2f7847dc14b49c54feea1",
+    "input_sha256": "b0cf91d871f14217eb771d46be9e12e0453a41c84a321d658f906efa3108d28d",
     "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-    "completed_at": "2026-09-09T09:21:56.822Z"
+    "completed_at": "2026-09-09T11:07:08.507Z"
   },
   "sense_review": {
     "status": "complete",
@@ -40,7 +40,7 @@
       "w622",
       "w628"
     ],
-    "note": "Fifty starts were read against the final sense inventory; single-sense candidates were retained only after the declared boundary dimensions were checked, and separated usages carry paired observations.",
+    "note": "All selected starts were supplied with record-specific decisions and six boundary checks in the separate editorial decision artifact.",
     "preflight": {
       "process_revision": "m5-10a-process-correction-v1",
       "boundary_ids": [
@@ -2780,18 +2780,18 @@
     "timing": {
       "contract_version": "m5-10a-v1",
       "source_artifact": "data/batches/m5-10a-wave-a2-timing-input.json",
-      "source_sha256": "6d802c8ffa7cb9311907b20e5bd3af511f2763c9c34e6ce1d7f2ed4aa63475cb",
+      "source_sha256": "ded9b5f91daf37e605b642bcd0459f8445841c5ca3d35bf749af5d32317c50ac",
       "status": "complete",
       "passes": [
         {
           "id": "target-preparation",
           "status": "complete",
-          "started_at": "2026-09-09T09:23:06.605Z",
-          "session_id": "77d95ed9-1428-4c1a-bef0-b8f32bb13de4",
+          "started_at": "2026-09-09T10:57:05.081Z",
+          "session_id": "fb424477-69b5-4526-b2d0-7072b91033c4",
           "recording_source": "timing-recorder-v1",
-          "completed_at": "2026-09-09T09:24:53.550Z",
-          "wall_clock_seconds": 106.945,
-          "editor_seconds": 106.945,
+          "completed_at": "2026-09-09T10:57:37.324Z",
+          "wall_clock_seconds": 32.243,
+          "editor_seconds": 32.243,
           "work_evidence": {
             "unit_kind": "selected-target",
             "unit_count": 58,
@@ -2863,12 +2863,12 @@
         {
           "id": "initial-review",
           "status": "complete",
-          "started_at": "2026-09-09T09:24:59.648Z",
-          "session_id": "1b8cd7c6-e1b7-48da-96b7-51a2534169d5",
+          "started_at": "2026-09-09T10:57:43.583Z",
+          "session_id": "885fe5ef-a0bf-4550-ac2c-aaad2ae5b7bf",
           "recording_source": "timing-recorder-v1",
-          "completed_at": "2026-09-09T09:33:40.264Z",
-          "wall_clock_seconds": 520.616,
-          "editor_seconds": 520.616,
+          "completed_at": "2026-09-09T11:03:34.389Z",
+          "wall_clock_seconds": 350.806,
+          "editor_seconds": 350.806,
           "work_evidence": {
             "unit_kind": "boundary-check",
             "unit_count": 300,
@@ -3182,12 +3182,12 @@
         {
           "id": "feedback-fixes",
           "status": "complete",
-          "started_at": "2026-09-09T09:33:47.334Z",
-          "session_id": "63dbe6cb-8592-406a-9179-e31c804adfdd",
+          "started_at": "2026-09-09T11:03:39.051Z",
+          "session_id": "d5dbf82a-b002-452d-bbfa-6702bf5efd61",
           "recording_source": "timing-recorder-v1",
-          "completed_at": "2026-09-09T09:34:09.428Z",
-          "wall_clock_seconds": 22.094,
-          "editor_seconds": 22.094,
+          "completed_at": "2026-09-09T11:05:20.309Z",
+          "wall_clock_seconds": 101.258,
+          "editor_seconds": 101.258,
           "work_evidence": {
             "unit_kind": "sense-correction",
             "unit_count": 16,
@@ -3217,12 +3217,12 @@
         {
           "id": "final-audit",
           "status": "complete",
-          "started_at": "2026-09-09T09:34:25.447Z",
-          "session_id": "05b49b00-5eb6-4fc1-a90f-3331112b4508",
+          "started_at": "2026-09-09T11:05:26.887Z",
+          "session_id": "5caa3fde-e627-487f-8c02-8f894a48b5d4",
           "recording_source": "timing-recorder-v1",
-          "completed_at": "2026-09-09T09:35:27.532Z",
-          "wall_clock_seconds": 62.085,
-          "editor_seconds": 62.085,
+          "completed_at": "2026-09-09T11:06:02.245Z",
+          "wall_clock_seconds": 35.358,
+          "editor_seconds": 35.358,
           "work_evidence": {
             "unit_kind": "final-audit-item",
             "unit_count": 56,
@@ -3292,12 +3292,12 @@
         {
           "id": "held-rejected",
           "status": "complete",
-          "started_at": "2026-09-09T09:35:32.960Z",
-          "session_id": "b53fed9f-97a2-4335-8f7b-c46fa52fe337",
+          "started_at": "2026-09-09T11:06:07.794Z",
+          "session_id": "f8729e8d-d293-49cd-b239-f78b28ec1a41",
           "recording_source": "timing-recorder-v1",
-          "completed_at": "2026-09-09T09:35:51.205Z",
-          "wall_clock_seconds": 18.245,
-          "editor_seconds": 18.245,
+          "completed_at": "2026-09-09T11:06:18.336Z",
+          "wall_clock_seconds": 10.542,
+          "editor_seconds": 10.542,
           "work_evidence": {
             "unit_kind": "buffer-decision",
             "unit_count": 8,
@@ -3320,7 +3320,7 @@
     },
     "audit": {
       "source_artifact": "data/batches/m5-10a-wave-a2-audit-input.json",
-      "source_sha256": "23957b76a4219e0f601ec956d36c090d7880ecb7d77b856e9a20fb4d7e58a4ad",
+      "source_sha256": "f31b6edd71bb137885eed00df325c03d9f8d661dc1852d7367ce570f62aba722",
       "status": "complete",
       "independent": true,
       "findings": [

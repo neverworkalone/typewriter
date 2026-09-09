@@ -4,28 +4,53 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  A2_BATCH_ID,
+  validateA2AuditDecisionArtifact,
   validateA2AuditInput,
+  validateA2EditorialInput,
   validateA2ProvenanceArtifact,
+  validateA2TimingInput,
   sha256Bytes,
   sha256ProvenanceSubject,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
+import { assertExternalStagingPath } from './validate-batch.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+const AUDIT_RECORDER_VERSION = 'wave-a2-audit-recorder-v2';
+const A2_DATE = A2_BATCH_ID.slice(-8);
+const DEFAULT_PROVENANCE_ARTIFACT = `data/batches/m5-10a-wave-a2-provenance-audit-${A2_DATE}.json`;
 
 function parseArguments(argv) {
   const args = {};
   for (const argument of argv) {
-    if (!argument.startsWith('--') || !argument.includes('=')) throw new Error(`arguments must use --name=value form (received ${argument})`);
+    if (!argument.startsWith('--') || !argument.includes('=')) {
+      throw new Error(`arguments must use --name=value form (received ${argument})`);
+    }
     const separator = argument.indexOf('=');
     args[argument.slice(2, separator)] = argument.slice(separator + 1);
   }
   return args;
 }
 
-async function readJson(filePath) {
-  return JSON.parse(await readFile(filePath, 'utf8'));
+async function readJson(filePath, label) {
+  try {
+    return JSON.parse(await readFile(filePath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error(`${label} does not exist: ${filePath}`);
+    if (error instanceof SyntaxError) throw new Error(`${label} is not valid JSON: ${error.message}`);
+    throw error;
+  }
+}
+
+async function readBytes(filePath, label) {
+  try {
+    return await readFile(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error(`${label} does not exist: ${filePath}`);
+    throw error;
+  }
 }
 
 async function writeJson(filePath, value) {
@@ -41,156 +66,210 @@ async function assertNewSession(sessionPath) {
   }
 }
 
-async function startSession(args) {
-  const editorial = await readJson(path.resolve(args.editorial));
-  const stagingBytes = await readFile(path.resolve(args.staging));
+function repositoryRelativePath(filePath, label) {
+  const relative = path.relative(REPOSITORY_DIRECTORY, path.resolve(filePath));
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(`${label} must be inside the repository so its digest can be committed: ${filePath}`);
+  }
+  return relative;
+}
+
+function assertCompleteTiming(timing) {
+  validateA2TimingInput(timing);
+  if (timing.status !== 'complete') throw new Error('audit completion requires complete A2 timing');
+  for (let index = 1; index < timing.passes.length; index += 1) {
+    const previous = timing.passes[index - 1];
+    const current = timing.passes[index];
+    if (Date.parse(current.started_at) < Date.parse(previous.completed_at)) {
+      throw new Error('audit timing passes overlap or are out of order');
+    }
+  }
+  return timing.passes.at(-1).completed_at;
+}
+
+async function readAndValidateEditorial(args) {
+  const editorialPath = path.resolve(args.editorial);
+  const stagingPath = path.resolve(args.staging);
+  assertExternalStagingPath(stagingPath);
+  const [editorial, stagingBytes, canonical, staged] = await Promise.all([
+    readJson(editorialPath, 'editorial input'),
+    readBytes(stagingPath, 'reviewed staging'),
+    readCanonicalRecords(path.resolve(args.canonical)),
+    readCanonicalRecords(stagingPath),
+  ]);
+  validateA2EditorialInput({
+    input: editorial,
+    canonicalRecords: [...canonical.records, ...staged.records],
+  });
+  if (editorial.source_kind !== 'codex-authored' || editorial.status !== 'complete') {
+    throw new Error('audit requires a completed Codex editorial input');
+  }
   const stagingSha256 = sha256Bytes(stagingBytes);
-  if (editorial.source_kind !== 'codex-authored' || editorial.status !== 'complete') throw new Error('audit requires a completed Codex editorial input');
-  if (editorial.reviewed_staging_sha256 !== stagingSha256) throw new Error('audit staging digest does not match the editorial freeze');
+  if (editorial.reviewed_staging_sha256 !== stagingSha256) {
+    throw new Error('audit staging digest does not match the editorial freeze');
+  }
+  return {
+    editorial,
+    editorialPath,
+    editorialBytes: Buffer.from(`${JSON.stringify(editorial, null, 2)}\n`, 'utf8'),
+    stagingPath,
+    stagingSha256,
+    canonicalRecords: [...canonical.records, ...staged.records],
+  };
+}
+
+async function startSession(args) {
+  const {
+    editorial,
+    editorialPath,
+    editorialBytes,
+    stagingPath,
+    stagingSha256,
+  } = await readAndValidateEditorial(args);
+  const timingPath = path.resolve(args.timing ?? editorial.timing_artifact.path);
+  const timingBytes = await readBytes(timingPath, 'A2 timing input');
+  const timing = JSON.parse(timingBytes.toString('utf8'));
+  const timingCompletedAt = assertCompleteTiming(timing);
+  if (editorial.timing_artifact.path !== repositoryRelativePath(timingPath, 'timing artifact')
+    || editorial.timing_artifact.sha256 !== sha256Bytes(timingBytes)
+    || editorial.timing_artifact.completed_at !== timingCompletedAt) {
+    throw new Error('audit timing input does not match the editorial timing binding');
+  }
+  if (Date.parse(timingCompletedAt) > Date.parse(editorial.completed_at)) {
+    throw new Error('audit cannot start before the editorial timing passes have stopped');
+  }
+  const decisionsPath = path.resolve(args.decisions);
+  try {
+    await access(decisionsPath);
+    throw new Error(`audit decision artifact must be supplied after audit start: ${decisionsPath}`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
   const sessionPath = path.resolve(args.session);
   await assertNewSession(sessionPath);
   const session = {
     schema_version: '1',
-    recorder_version: 'wave-a2-audit-recorder-v1',
+    recorder_version: AUDIT_RECORDER_VERSION,
     status: 'in-progress',
     session_id: randomUUID(),
-    actor_kind: 'codex',
+    actor_kind: editorial.provenance.actor_kind,
     actor_id: editorial.provenance.actor_id,
     started_at: new Date().toISOString(),
-    editorial_input_path: path.resolve(args.editorial),
-    editorial_input_sha256: sha256Bytes(Buffer.from(`${JSON.stringify(editorial, null, 2)}\n`, 'utf8')),
-    reviewed_staging_path: path.resolve(args.staging),
+    editorial_input_path: editorialPath,
+    editorial_input_sha256: sha256Bytes(editorialBytes),
+    reviewed_staging_path: stagingPath,
     reviewed_staging_sha256: stagingSha256,
-    note: 'Separate audit session has started; no completed audit claim is made until the explicit complete action.',
+    timing_input_path: timingPath,
+    timing_input_sha256: sha256Bytes(timingBytes),
+    timing_completed_at: timingCompletedAt,
+    audit_decisions_path: decisionsPath,
+    note: 'Separate audit session started; completion requires a separately supplied audit decision artifact over the frozen editorial result.',
   };
   await writeJson(sessionPath, session);
   console.log(`Started separate Codex Wave A2 audit session ${session.session_id}.`);
   return session;
 }
 
-const RELATION_BASIS = Object.freeze([
-  {
-    source_observation: '환희는 긍정 정서가 가장 높게 솟는 장면을 만든다.',
-    target_observation: '기쁨은 좋은 일에서 생기는 넓은 긍정 정서로 쓰인다.',
-    difference: '강도의 차이를 유지한 채 mood로 연결하면 직접 대체와 정서 확장을 구별할 수 있다.',
-    facets: ['intensity', 'positive mood'],
-  },
-  {
-    source_observation: '자책은 자신의 행동을 되짚어 스스로 책망하는 쪽에 놓인다.',
-    target_observation: '죄책감은 잘못으로 남에게 해를 끼쳤다고 느끼는 감정에 놓인다.',
-    difference: '자기 책망의 행위와 잘못으로 인한 감정은 초점이 달라 near가 정직한 관계명이다.',
-    facets: ['self-blame', 'felt guilt'],
-  },
-  {
-    source_observation: '고즈넉하다는 고요한 장면에 아늑한 정취를 함께 부여한다.',
-    target_observation: '고요는 소리와 움직임이 잦아든 상태를 직접 가리킨다.',
-    difference: '고요를 기반으로 하되 정취를 더하는 분위기 차이를 mood로 보존한다.',
-    facets: ['quiet', 'atmosphere'],
-  },
-  {
-    source_observation: '윤슬은 물결 위에서 반사되는 빛의 반짝임을 한 장면으로 고정한다.',
-    target_observation: '빛은 표면 밝기와 시각적 광원을 더 넓게 가리킨다.',
-    difference: '구체적인 물 표면 이미지와 일반적인 밝기 이미지가 만나 sensory 탐색을 만든다.',
-    facets: ['water surface', 'brightness'],
-  },
-  {
-    source_observation: '잦아들다는 긴장이나 분노의 세기가 낮아지는 변화로 읽힌다.',
-    target_observation: '긴장은 압박이 걸린 상태 자체를 가리킨다.',
-    difference: '변화 동사와 상태 명사를 동의어로 합치지 않고 함께 떠올릴 association으로 남긴다.',
-    facets: ['de-escalation', 'state'],
-  },
-  {
-    source_observation: '숨이 트인다는 막힌 상황이 풀리며 호흡과 마음이 놓이는 표현이다.',
-    target_observation: '안도는 걱정이나 위험이 줄어든 뒤의 정서 상태다.',
-    difference: '상황이 풀리는 표현과 그 결과의 정서를 mood로 연결해 문장 온도의 이동을 보존한다.',
-    facets: ['relief expression', 'emotional state'],
-  },
-]);
-
 async function completeSession(args) {
   const sessionPath = path.resolve(args.session);
-  const session = await readJson(sessionPath);
-  if (session.status !== 'in-progress') throw new Error('audit session must be in-progress before complete');
-  const editorial = await readJson(session.editorial_input_path);
-  const stagingBytes = await readFile(session.reviewed_staging_path);
-  if (sha256Bytes(stagingBytes) !== session.reviewed_staging_sha256) throw new Error('frozen reviewed staging changed during audit');
-  const relationDiff = await readJson(path.resolve(args.relation));
-  const timing = await readJson(path.resolve(args.timing));
-  if (timing.status !== 'complete' || timing.passes.some(({ status }) => status !== 'complete')) throw new Error('audit cannot complete while timing has an unmeasured pass');
-  if (relationDiff.candidate_reviews.some(({ decision }) => !['admit', 'reject'].includes(decision))) throw new Error('audit cannot complete while relation candidates remain pending');
+  const session = await readJson(sessionPath, 'audit session');
+  if (session.recorder_version !== AUDIT_RECORDER_VERSION || session.status !== 'in-progress') {
+    throw new Error('audit session must be an in-progress v2 recorder session');
+  }
+  const editorialPath = path.resolve(args.editorial);
+  const editorialBytes = await readBytes(editorialPath, 'editorial input');
+  if (sha256Bytes(editorialBytes) !== session.editorial_input_sha256) {
+    throw new Error('editorial input changed during the audit session');
+  }
+  const editorial = JSON.parse(editorialBytes.toString('utf8'));
+  const stagingBytes = await readBytes(session.reviewed_staging_path, 'reviewed staging');
+  if (sha256Bytes(stagingBytes) !== session.reviewed_staging_sha256) {
+    throw new Error('frozen reviewed staging changed during audit');
+  }
+  const timingBytes = await readBytes(session.timing_input_path, 'A2 timing input');
+  if (sha256Bytes(timingBytes) !== session.timing_input_sha256) {
+    throw new Error('timing input changed during the audit session');
+  }
+  const timing = JSON.parse(timingBytes.toString('utf8'));
+  const timingCompletedAt = assertCompleteTiming(timing);
+  if (timingCompletedAt !== session.timing_completed_at) throw new Error('timing completion changed during the audit session');
+
+  const decisionsPath = path.resolve(args.decisions ?? session.audit_decisions_path);
+  if (decisionsPath !== session.audit_decisions_path) throw new Error('audit decision artifact path changed during the audit session');
+  const decisionBytes = await readBytes(decisionsPath, 'audit decision artifact');
+  const decisionArtifact = validateA2AuditDecisionArtifact(JSON.parse(decisionBytes.toString('utf8')));
   const completedAt = new Date().toISOString();
+  if (decisionArtifact.session_id !== session.session_id) {
+    throw new Error('audit decision artifact must bind the active audit session');
+  }
+  if (decisionArtifact.actor_kind !== session.actor_kind || decisionArtifact.actor_id !== session.actor_id) {
+    throw new Error('audit decision artifact actor does not match the active audit session');
+  }
+  if (decisionArtifact.editorial_input_id !== editorial.input_id) {
+    throw new Error('audit decision artifact must bind the completed editorial input');
+  }
+  if (decisionArtifact.reviewed_staging_sha256 !== session.reviewed_staging_sha256) {
+    throw new Error('audit decision artifact reviewed staging digest does not match the frozen staging');
+  }
+  if (Date.parse(decisionArtifact.created_at) < Date.parse(session.started_at)
+    || Date.parse(decisionArtifact.created_at) > Date.parse(completedAt)) {
+    throw new Error('audit decisions must be supplied during the active audit session');
+  }
+  if (Date.parse(editorial.completed_at) > Date.parse(session.started_at)) {
+    throw new Error('audit session must start after editorial completion');
+  }
+  if (Date.parse(timingCompletedAt) > Date.parse(session.started_at)) {
+    throw new Error('audit session must start after the required timing passes stopped');
+  }
+
+  const canonical = await readCanonicalRecords(path.resolve(args.canonical));
+  const staged = await readCanonicalRecords(session.reviewed_staging_path);
+  const provenanceArtifact = args.provenance
+    ? repositoryRelativePath(args.provenance, 'audit provenance artifact')
+    : DEFAULT_PROVENANCE_ARTIFACT;
+  const independent = session.session_id !== editorial.provenance.session_id
+    && provenanceArtifact !== editorial.provenance.artifact;
+  if (!independent) throw new Error('audit recorder requires a distinct session and provenance artifact');
   const audit = {
     schema_version: '2',
-    audit_id: 'm5-10a-wave-a2-audit-20260909',
+    audit_id: `m5-10a-wave-a2-audit-${A2_DATE}`,
     batch_id: editorial.batch_id,
-    source_kind: 'codex-authored',
+    source_kind: session.actor_kind === 'codex' ? 'codex-authored' : 'human-authored',
     provenance: {
       verification_status: 'verified',
-      actor_kind: 'codex',
+      actor_kind: session.actor_kind,
       actor_id: session.actor_id,
       session_id: session.session_id,
-      artifact: 'data/batches/m5-10a-wave-a2-provenance-audit-20260909.json',
+      artifact: provenanceArtifact,
       sha256: null,
-      note: 'Separate Codex audit pass over the frozen editorial staging, relation admissions, buffer decisions, and measured timing.',
+      note: 'Audit output is derived from the separately supplied audit decision artifact over the frozen editorial staging.',
     },
     editorial_input_id: editorial.input_id,
     auditor_id: session.actor_id,
-    independent: true,
+    independent,
     created_at: session.started_at,
     completed_at: completedAt,
-    reviewed_record_ids: editorial.records.slice(0, 50).map(({ canonical_id: canonicalId }) => canonicalId),
-    relation_reviews: relationDiff.candidate_reviews.map((candidate, index) => ({
-      candidate_id: candidate.candidate_id,
-      relation_id: candidate.relation_id,
-      source_sense: candidate.source_sense,
-      target_sense: candidate.relation.target_sense,
-      review_status: 'reviewed',
-      relation_type: candidate.relation.type,
-      decision: candidate.decision,
-      basis: RELATION_BASIS[index],
-    })),
+    reviewed_record_ids: structuredClone(decisionArtifact.reviewed_record_ids),
+    relation_reviews: structuredClone(decisionArtifact.relation_reviews),
+    timing_artifact: {
+      path: repositoryRelativePath(session.timing_input_path, 'timing artifact'),
+      sha256: session.timing_input_sha256,
+      completed_at: timingCompletedAt,
+    },
+    decision_artifact: {
+      path: repositoryRelativePath(decisionsPath, 'audit decision artifact'),
+      sha256: sha256Bytes(decisionBytes),
+      created_at: decisionArtifact.created_at,
+    },
     reviewed_staging_sha256: session.reviewed_staging_sha256,
     status: 'complete',
-    findings: [
-      {
-        id: 'a2-audit-sense-boundaries',
-        category: 'sense',
-        severity: 'warning',
-        status: 'resolved',
-        evidence_refs: ['w582-s1', 'w603-s1', 'w603-s2', session.reviewed_staging_sha256],
-        note: 'Frozen staging was re-read for the gloss correction and the duplicate light sense; the correction is present and no open sense blocker remains.',
-      },
-      {
-        id: 'a2-audit-relation-screen',
-        category: 'relation-noise',
-        severity: 'info',
-        status: 'resolved',
-        evidence_refs: relationDiff.candidate_reviews.map(({ relation_id: relationId }) => relationId),
-        note: 'All six admitted tuples were rechecked against their source and target senses; no broad-category or incidental-co-occurrence candidate remains open.',
-      },
-      {
-        id: 'a2-audit-buffer-decisions',
-        category: 'sense',
-        severity: 'info',
-        status: 'resolved',
-        evidence_refs: editorial.records.slice(50).map(({ inventory_id: inventoryId }) => inventoryId),
-        note: 'The three held, three rejected, and two deferred buffer rows match the frozen editorial decisions and remain outside the import set.',
-      },
-      {
-        id: 'a2-audit-timing-completeness',
-        category: 'timing-measurement',
-        severity: 'info',
-        status: 'resolved',
-        evidence_refs: timing.passes.map(({ id }) => id),
-        note: 'Each required timing pass has recorder start/stop events, measured duration, and exact work-unit evidence; no unmeasured pass remains.',
-      },
-    ],
-    note: 'Separate audit pass completed from the frozen reviewed staging digest; editorial decisions were rechecked rather than reused as the audit conclusion.',
+    findings: structuredClone(decisionArtifact.findings),
+    note: decisionArtifact.note,
   };
   const artifactPath = path.resolve(REPOSITORY_DIRECTORY, audit.provenance.artifact);
   const artifact = {
     schema_version: '1',
-    artifact_id: 'm5-10a-wave-a2-provenance-audit-20260909',
+    artifact_id: `m5-10a-wave-a2-provenance-audit-${A2_DATE}`,
     subject_kind: 'audit',
     subject_id: audit.audit_id,
     subject_sha256: sha256ProvenanceSubject(audit),
@@ -202,16 +281,14 @@ async function completeSession(args) {
   };
   const artifactBytes = Buffer.from(`${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
   audit.provenance.sha256 = sha256Bytes(artifactBytes);
-  await writeJson(artifactPath, artifact);
-  await writeJson(path.resolve(args.audit), audit);
-  const canonical = await readCanonicalRecords(path.resolve(args.canonical));
-  const staged = await readCanonicalRecords(session.reviewed_staging_path);
-  const relationValidated = validateA2AuditInput({
+  validateA2AuditInput({
     audit,
     editorialInput: { ...editorial, verified: true },
-    relationDiff,
+    relationDiff: await readJson(path.resolve(args.relation), 'relation diff'),
     canonicalRecords: [...canonical.records, ...staged.records],
   });
+  await writeFile(artifactPath, artifactBytes, 'utf8');
+  await writeJson(path.resolve(args.audit), audit);
   await validateA2ProvenanceArtifact({
     input: audit,
     repositoryDirectory: REPOSITORY_DIRECTORY,
@@ -223,16 +300,16 @@ async function completeSession(args) {
     completed_at: completedAt,
     audit_input_path: path.resolve(args.audit),
     audit_input_sha256: sha256Bytes(Buffer.from(`${JSON.stringify(audit, null, 2)}\n`, 'utf8')),
+    decision_artifact_sha256: sha256Bytes(decisionBytes),
     provenance_artifact_path: artifactPath,
     provenance_artifact_sha256: audit.provenance.sha256,
-    reviewed_record_count: relationValidated.reviewed_record_ids.length,
-    reviewed_relation_count: relationValidated.relation_reviews.length,
-    note: 'Separate Codex audit pass completed after rechecking the frozen staging digest, all records, all relation candidates, the buffer, and timing completeness.',
+    note: 'Separate Codex audit completed from the supplied audit decisions after rechecking the frozen staging, relation set, and editorial timing result; no audit finding was generated by the recorder.',
   };
   await writeJson(sessionPath, completedSession);
   console.log(JSON.stringify({
     session_id: completedSession.session_id,
     audit_input: path.resolve(args.audit),
+    decision_artifact: decisionsPath,
     provenance_artifact: artifactPath,
     reviewed_staging_sha256: audit.reviewed_staging_sha256,
   }, null, 2));
@@ -241,10 +318,16 @@ async function completeSession(args) {
 
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
-  if (!args.action || !['start', 'complete'].includes(args.action)) throw new Error('--action=start or --action=complete is required');
-  for (const option of ['session', 'editorial', 'staging']) if (!args[option]) throw new Error(`--${option} is required`);
+  if (!args.action || !['start', 'complete'].includes(args.action)) {
+    throw new Error('--action=start or --action=complete is required');
+  }
+  for (const option of ['session', 'editorial', 'staging', 'timing', 'decisions']) {
+    if (!args[option]) throw new Error(`--${option} is required`);
+  }
   if (args.action === 'start') return startSession(args);
-  for (const option of ['audit', 'relation', 'timing', 'canonical']) if (!args[option]) throw new Error(`--${option} is required for complete`);
+  for (const option of ['audit', 'relation', 'canonical']) {
+    if (!args[option]) throw new Error(`--${option} is required for complete`);
+  }
   return completeSession(args);
 }
 

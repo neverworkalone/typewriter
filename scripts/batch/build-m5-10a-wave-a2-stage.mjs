@@ -8,6 +8,7 @@ import {
   sha256File,
   validateExpansionStage,
 } from './validate-m5-8-process.mjs';
+import { A2_TIMING_WORK_UNIT_CONTRACT } from './validate-m5-10a-wave-a2-inputs.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -76,6 +77,45 @@ function stageMetrics(metricsArtifact, verification) {
   };
 }
 
+function correctionPlan(metricsArtifact, gateStatus) {
+  const timing = metricsArtifact.derived.timing;
+  const totalEditorSeconds = timing.total_editor_seconds;
+  const measuredBreakdown = ['target-preparation', 'initial-review'].map((passId) => {
+    const pass = timing.passes[passId];
+    return {
+      pass_id: passId,
+      editor_seconds: pass.editor_seconds,
+      unit_count: A2_TIMING_WORK_UNIT_CONTRACT[passId].unit_ids.length,
+      share_of_total: totalEditorSeconds === null ? 0 : pass.editor_seconds / totalEditorSeconds,
+    };
+  });
+  return {
+    status: gateStatus === 'fail' ? 'required' : 'not-required',
+    cause: 'Target preparation and the six-boundary initial review account for the measured cost; repeated evidence drafting and setup must be reduced without removing any boundary check.',
+    measured_breakdown: measuredBreakdown,
+    planned_change: 'Use a separately authored record decision worksheet keyed to the six boundary IDs, capture each record-specific observation once, and reuse only that supplied evidence in the recorder; keep all 50 starts and all six boundaries in scope.',
+    expected_saving_editor_seconds: 200,
+    next_validation: {
+      selected_start_count: 10,
+      candidate_buffer: 2,
+      canonical_import_authorized: false,
+      note: 'Run a ten-start process-correction retry with a two-row buffer; do not import or authorize Wave B from this retry until the fixed gate is re-evaluated.',
+    },
+    fixed_gate: {
+      editor_seconds_per_processed_start_max: 12,
+      relation_noise_rate_max: 0.25,
+    },
+  };
+}
+
+export function nextStageState(gateStatus) {
+  return {
+    ready_to_create: gateStatus === 'pass',
+    next_stage_created: false,
+    next_stage_authorized: false,
+  };
+}
+
 async function sourceReference(filePath) {
   return {
     path: path.relative(REPOSITORY_DIRECTORY, filePath),
@@ -128,7 +168,6 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
   const usedBuffer = decisions.held_start_count + decisions.rejected_start_count;
   const metricsFromSources = stageMetrics(metrics, verification);
   const gate = evaluateExpansionGate(metricsFromSources, plan);
-  const nextStageReady = gate.gate_status === 'pass';
   const stage = {
     schema_version: '1',
     stage_id: 'm5-10a-wave-a2-plus-50',
@@ -170,8 +209,8 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
     },
     gate_status: gate.gate_status,
     decision: gate.decision,
-    next_stage_created: nextStageReady,
-    next_stage_authorized: nextStageReady,
+    ...nextStageState(gate.gate_status),
+    correction_plan: correctionPlan(metrics, gate.gate_status),
   };
   await writeFile(outputPath, `${JSON.stringify(stage, null, 2)}\n`, 'utf8');
   await validateExpansionStage(stage, plan);

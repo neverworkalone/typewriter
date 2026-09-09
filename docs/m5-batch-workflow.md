@@ -225,10 +225,13 @@ zero-blocker reviewed result, taking the product snapshot from 578 to 628
 starts. The completed editorial and audit inputs are `codex-authored`; the
 audit is independent through distinct sessions and artifacts, not through a
 human-identity requirement. All five timing passes are measured, but the
-13.0354-second processed-start rate exceeds the fixed 12-second gate. The
-stage therefore remains `HOLD PROCESS` with
-`next_stage_created: false` and `next_stage_authorized: false`; Wave B is not
-authorized.
+The recorders consume separately supplied editorial and audit decision artifacts
+and never manufacture semantic decisions or clean findings. All five timing
+passes are measured in chronological order, and the corrected 9.467982-second
+processed-start rate is within the fixed 12-second gate. The stage is
+`APPROVE BOUNDED` and `ready_to_create: true`, but `next_stage_created: false`
+and `next_stage_authorized: false`; a passing metric does not create or
+authorize a GitHub task implicitly.
 
 ## M5-10A process correction and A2 authorization
 
@@ -281,7 +284,10 @@ passes and every recorded follow-up pair; an unmeasured pass keeps the gate
 incomplete.
 
 Wave A2 binds its proposal metadata and gate state to separate editorial, audit,
-and timing inputs. The 50 candidate record bodies are supplied through an
+and timing inputs. Completion also requires separately supplied editorial and
+audit decision artifacts; the recorders bind those inputs by digest, session,
+and chronology but do not generate semantic decisions or clean findings. The
+50 candidate record bodies are supplied through an
 external `--staged=/tmp/.../*.jsonl` path and are never committed. The tracked
 proposal metadata binds that external JSONL by SHA-256, and the A2 validator
 rejects a supplied staging file whose digest differs; the generated manifest

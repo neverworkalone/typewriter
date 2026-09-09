@@ -211,8 +211,19 @@ The zero-blocker reviewed rows are now imported, taking the current canonical
 snapshot from 578 to 628 starts (670 records / 809 senses / 473 relations / 43
 expressions).
 
-The fixed timing gate still fails at 13.0354 editor seconds per processed start
-against the 12-second maximum, so the bounded A2 stage records `HOLD PROCESS`
-with `next_stage_created: false` and `next_stage_authorized: false`. Wave B is
-not authorized. The pre-A2 578-start snapshot and #107 authorization remain
-historical source artifacts; they are not overwritten by this result.
+The first PR timing claim was superseded because editorial completion preceded
+the timing session. The corrected recorder session stops all five passes before
+editorial completion and measures 530.207 editor seconds across 56 processed
+starts (9.467982 seconds per start), so the fixed gate passes. The bounded A2
+stage records `APPROVE BOUNDED` and `ready_to_create: true`, but keeps
+`next_stage_created: false` and `next_stage_authorized: false` until a real,
+separately authorized next-stage task exists. The pre-A2 578-start snapshot and
+#107 authorization remain historical source artifacts; they are not overwritten
+by this result.
+
+The editorial and audit completion recorders now consume separate, tracked
+decision artifacts and bind them to the frozen staging digest, active session,
+and chronology. They cannot synthesize completed decisions, audit findings, or
+independence from recorder output alone. If a later run fails the timing gate,
+the stage report must include the measured breakdown, cause, expected saving,
+limited retry size, and the unchanged 12-second/25% fixed gates.
