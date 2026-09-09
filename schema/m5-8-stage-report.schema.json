@@ -126,7 +126,6 @@
         "audit_status",
         "audit_independent",
         "open_audit_blocker_count",
-        "human_editorial_review_complete",
         "canonical_integrity",
         "deterministic_sqlite",
         "search_product_regression"
@@ -170,11 +169,16 @@
         "audit_status": { "enum": ["complete", "incomplete"] },
         "audit_independent": { "type": "boolean" },
         "open_audit_blocker_count": { "type": "integer", "minimum": 0 },
+        "editorial_review_complete": { "type": "boolean" },
         "human_editorial_review_complete": { "type": "boolean" },
         "canonical_integrity": { "type": "boolean" },
         "deterministic_sqlite": { "type": "boolean" },
         "search_product_regression": { "type": "boolean" }
-      }
+      },
+      "anyOf": [
+        { "required": ["editorial_review_complete"] },
+        { "required": ["human_editorial_review_complete"] }
+      ]
     },
     "source": {
       "type": "object",
@@ -218,15 +222,30 @@
     },
     "gate_status": { "enum": ["pass", "fail"] },
     "decision": { "enum": ["APPROVE BOUNDED", "HOLD PROCESS"] },
+    "ready_to_create": {
+      "type": "boolean",
+      "description": "Whether the fixed gate is ready for a separately authorized next-stage creation; it does not claim that an issue or task exists."
+    },
+    "correction_plan": { "$ref": "#/$defs/correctionPlan" },
     "next_stage_created": {
       "type": "boolean",
-      "description": "Whether the roadmap issue or stage placeholder already exists; this may be true before the gate passes."
+      "description": "Whether a real next-stage issue or stage placeholder exists. A gate result alone cannot set this to true."
     },
     "next_stage_authorized": {
       "type": "boolean",
       "description": "Whether the next stage is permitted to start after this gate."
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "stage_id": { "const": "m5-10a-wave-a2-plus-50" } }
+      },
+      "then": {
+        "required": ["ready_to_create", "correction_plan"]
+      }
+    }
+  ],
   "$defs": {
     "sha256": {
       "type": "string",
@@ -260,6 +279,70 @@
         "relation_count": { "type": "integer", "minimum": 0 },
         "expression_count": { "type": "integer", "minimum": 0 }
       }
+    },
+    "correctionPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "cause",
+        "measured_breakdown",
+        "planned_change",
+        "expected_saving_editor_seconds",
+        "next_validation",
+        "fixed_gate"
+      ],
+      "properties": {
+        "status": { "enum": ["required", "not-required"] },
+        "cause": { "type": "string", "pattern": "\\S" },
+        "measured_breakdown": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pass_id", "editor_seconds", "unit_count", "share_of_total"],
+            "properties": {
+              "pass_id": { "type": "string", "pattern": "\\S" },
+              "editor_seconds": { "type": "number", "minimum": 0 },
+              "unit_count": { "type": "integer", "minimum": 1 },
+              "share_of_total": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "planned_change": { "type": "string", "pattern": "\\S" },
+        "expected_saving_editor_seconds": { "type": "number", "minimum": 0 },
+        "next_validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selected_start_count", "candidate_buffer", "canonical_import_authorized", "note"],
+          "properties": {
+            "selected_start_count": { "type": "integer", "minimum": 1 },
+            "candidate_buffer": { "type": "integer", "minimum": 0 },
+            "canonical_import_authorized": { "const": false },
+            "note": { "type": "string", "pattern": "\\S" }
+          }
+        },
+        "fixed_gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["editor_seconds_per_processed_start_max", "relation_noise_rate_max"],
+          "properties": {
+            "editor_seconds_per_processed_start_max": { "const": 12 },
+            "relation_noise_rate_max": { "const": 0.25 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "required" } } },
+          "then": { "properties": { "expected_saving_editor_seconds": { "type": "number", "exclusiveMinimum": 0 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "not-required" } } },
+          "then": { "properties": { "expected_saving_editor_seconds": { "type": "number", "const": 0 } } }
+        }
+      ]
     }
   }
 }

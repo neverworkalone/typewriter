@@ -12,29 +12,33 @@
       "processed_start_count": 56
     },
     "decisions": {
-      "included": 35,
-      "corrected": 15,
+      "included": 34,
+      "corrected": 16,
       "held": 3,
       "rejected": 3,
       "deferred": 2,
       "importable_start_count": 50,
-      "correction_rate_of_selected": 0.26785714285714285,
-      "correction_rate_of_importable": 0.3,
+      "correction_rate_of_selected": 0.2857142857142857,
+      "correction_rate_of_importable": 0.32,
       "held_rate": 0.05357142857142857,
       "rejected_rate": 0.05357142857142857,
       "held_or_rejected_rate": 0.10714285714285714,
-      "sense_field_correction_count": 15,
+      "sense_field_correction_count": 16,
       "relation_field_correction_count": 0
     },
     "canonical_import": {
-      "imported_start_count": 0,
+      "imported_start_count": 50,
       "imported_reference_only_count": 0,
-      "imported_record_count": 0,
-      "imported_sense_count": 0,
-      "imported_relation_count": 0,
-      "imported_expression_count": 0,
-      "relation_type_counts": {},
-      "import_status": "proposed"
+      "imported_record_count": 50,
+      "imported_sense_count": 66,
+      "imported_relation_count": 6,
+      "imported_expression_count": 4,
+      "relation_type_counts": {
+        "mood": 3,
+        "near": 1,
+        "sensory": 1,
+        "association": 1
+      }
     },
     "relation_diff": {
       "before_count": 0,
@@ -49,69 +53,85 @@
       "noise_rate_of_before": 0,
       "classification_counts": {},
       "candidate_count": 6,
-      "admitted_candidate_count": 0,
+      "admitted_candidate_count": 6,
       "rejected_candidate_count": 0,
       "noise_denominator_count": 6,
-      "noise_rate_of_candidates": 0,
-      "pending_candidate_count": 6
+      "noise_rate_of_candidates": 0
     },
     "timing": {
-      "status": "incomplete",
+      "status": "complete",
       "passes": {
         "target-preparation": {
-          "status": "unmeasured",
-          "wall_clock_seconds": null,
-          "editor_seconds": null
+          "status": "complete",
+          "wall_clock_seconds": 95.983,
+          "editor_seconds": 95.983
         },
         "initial-review": {
-          "status": "unmeasured",
-          "wall_clock_seconds": null,
-          "editor_seconds": null
+          "status": "complete",
+          "wall_clock_seconds": 312.41,
+          "editor_seconds": 312.41
         },
         "feedback-fixes": {
-          "status": "unmeasured",
-          "wall_clock_seconds": null,
-          "editor_seconds": null
+          "status": "complete",
+          "wall_clock_seconds": 81.677,
+          "editor_seconds": 81.677
         },
         "final-audit": {
-          "status": "unmeasured",
-          "wall_clock_seconds": null,
-          "editor_seconds": null
+          "status": "complete",
+          "wall_clock_seconds": 75.435,
+          "editor_seconds": 75.435
         },
         "held-rejected": {
-          "status": "unmeasured",
-          "wall_clock_seconds": null,
-          "editor_seconds": null
+          "status": "complete",
+          "wall_clock_seconds": 28.777,
+          "editor_seconds": 28.777
+        },
+        "post-freeze-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 55.062,
+          "editor_seconds": 55.062
         }
       },
-      "total_wall_clock_seconds": null,
-      "total_editor_seconds": null,
-      "measured_wall_clock_seconds": 0,
-      "measured_editor_seconds": 0,
-      "unmeasured_passes": [
-        "target-preparation",
-        "initial-review",
-        "feedback-fixes",
-        "final-audit",
-        "held-rejected"
-      ]
+      "total_wall_clock_seconds": 649.3440000000002,
+      "total_editor_seconds": 649.3440000000002,
+      "measured_wall_clock_seconds": 649.3440000000002,
+      "measured_editor_seconds": 649.3440000000002,
+      "unmeasured_passes": []
     },
     "audit": {
-      "status": "incomplete",
-      "independent": false,
-      "finding_count": 1,
-      "open_finding_count": 1,
-      "open_blocker_count": 1,
+      "status": "complete",
+      "independent": true,
+      "finding_count": 4,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
       "finding_counts": {
-        "provenance": 1
+        "sense": 2,
+        "relation-noise": 1,
+        "timing-measurement": 1
       }
     },
     "sense_review": {
-      "status": "incomplete",
-      "reviewed_start_count": 0,
-      "scoped_single_sense_count": 0,
-      "split_record_count": 0,
-      "split_canonical_ids": []
+      "status": "complete",
+      "reviewed_start_count": 50,
+      "scoped_single_sense_count": 35,
+      "split_record_count": 15,
+      "split_canonical_ids": [
+        "w588",
+        "w595",
+        "w598",
+        "w599",
+        "w603",
+        "w604",
+        "w606",
+        "w609",
+        "w617",
+        "w618",
+        "w619",
+        "w620",
+        "w621",
+        "w622",
+        "w628"
+      ]
     }
   }
 }

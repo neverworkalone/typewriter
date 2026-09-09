@@ -10,6 +10,7 @@ import {
 import {
   createWaveA2Manifest,
   DEFAULT_AUDIT_INPUT_PATH,
+  DEFAULT_AUDIT_TIMING_INPUT_PATH,
   DEFAULT_CANONICAL_DIRECTORY,
   DEFAULT_EDITORIAL_INPUT_PATH,
   DEFAULT_OUTPUT_PATH,
@@ -31,7 +32,10 @@ import {
   A2_BATCH_ID,
   A2_PROMOTED_CANONICAL_IDS,
   A2_PROMOTED_RECORD_REVIEWS,
+  validateA2AuditDecisionArtifact,
+  validateA2AuditTimingInput,
   validateA2AuditInput,
+  validateA2EditorialDecisionArtifact,
   validateA2EditorialInput,
   validateA2ProvenanceArtifact,
   validateA2ProposalStagingDigest,
@@ -160,6 +164,7 @@ export async function validateWaveA2({
   editorialInputPath = DEFAULT_EDITORIAL_INPUT_PATH,
   auditInputPath = DEFAULT_AUDIT_INPUT_PATH,
   timingInputPath = DEFAULT_TIMING_INPUT_PATH,
+  auditTimingInputPath = DEFAULT_AUDIT_TIMING_INPUT_PATH,
   relationDiffPath = DEFAULT_RELATION_DIFF_PATH,
   metricsPath = DEFAULT_METRICS_PATH,
   stagePath = DEFAULT_STAGE_PATH,
@@ -170,11 +175,12 @@ export async function validateWaveA2({
   inventoryPath = DEFAULT_INVENTORY_PATH,
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
 } = {}) {
-  const [manifestSource, editorialSource, auditSource, timingSource, relationDiffSource, metricsSource, stageSource, planSource, verificationSource] = await Promise.all([
+  const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, planSource, verificationSource] = await Promise.all([
     readJsonSource(manifestPath, 'Wave A2 manifest'),
     readJsonSource(editorialInputPath, 'Wave A2 editorial input'),
     readJsonSource(auditInputPath, 'Wave A2 audit input'),
     readJsonSource(timingInputPath, 'Wave A2 timing input'),
+    readJsonSource(auditTimingInputPath, 'Wave A2 post-freeze audit timing input'),
     readJsonSource(relationDiffPath, 'Wave A2 relation diff'),
     readJsonSource(metricsPath, 'Wave A2 metrics'),
     readJsonSource(stagePath, 'Wave A2 stage report'),
@@ -182,6 +188,20 @@ export async function validateWaveA2({
     readJsonSource(verificationPath, 'Wave A2 verification'),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
+  const editorialDecisionSource = editorialSource.value.source_kind === 'unverified-draft'
+    || !editorialSource.value.decision_artifact
+    ? null
+    : await readJsonSource(
+      path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path),
+      'Wave A2 editorial decision artifact',
+    );
+  const auditDecisionSource = auditSource.value.source_kind === 'unverified-draft'
+    || !auditSource.value.decision_artifact
+    ? null
+    : await readJsonSource(
+      path.resolve(REPOSITORY_DIRECTORY, auditSource.value.decision_artifact.path),
+      'Wave A2 audit decision artifact',
+    );
   if (stagedRecordsPath) {
     assertExternalStagingPath(stagedRecordsPath);
     await validateA2ProposalStagingDigest({
@@ -215,13 +235,99 @@ export async function validateWaveA2({
     input: editorialSource.value,
     canonicalRecords: referenceRecords,
   });
+  if (editorial.verified) {
+    const editorialDecisions = validateA2EditorialDecisionArtifact(editorialDecisionSource.value);
+    assert.equal(
+      editorialDecisionSource.sha256,
+      editorialSource.value.decision_artifact.sha256,
+      'editorial decision artifact digest drifted',
+    );
+    assert.equal(
+      editorialDecisions.session_id,
+      editorialSource.value.provenance.session_id,
+      'editorial decision artifact session drifted',
+    );
+    assert.equal(
+      editorialDecisions.proposal_staging_sha256,
+      editorialSource.value.proposal_staging.sha256,
+      'editorial decision artifact proposal digest drifted',
+    );
+    assert.equal(
+      editorialDecisions.reviewed_staging_sha256,
+      editorialSource.value.reviewed_staging_sha256,
+      'editorial decision artifact reviewed staging digest drifted',
+    );
+    assert.equal(
+      editorialDecisions.finalized_at,
+      editorialSource.value.decision_artifact.finalized_at,
+      'editorial decision artifact finalization timestamp drifted',
+    );
+    assert.deepEqual(
+      editorialDecisions.records,
+      editorialSource.value.records,
+      'editorial input decisions do not match the separately supplied decision artifact',
+    );
+  }
   const audit = validateA2AuditInput({
     audit: auditSource.value,
     editorialInput: editorial,
     relationDiff: relationDiffSource.value,
     canonicalRecords: referenceRecords,
   });
+  if (audit.verified) {
+    const auditDecisions = validateA2AuditDecisionArtifact(auditDecisionSource.value);
+    assert.equal(
+      auditDecisionSource.sha256,
+      auditSource.value.decision_artifact.sha256,
+      'audit decision artifact digest drifted',
+    );
+    assert.equal(
+      auditDecisions.session_id,
+      auditSource.value.provenance.session_id,
+      'audit decision artifact session drifted',
+    );
+    assert.equal(
+      auditDecisions.editorial_input_id,
+      editorialSource.value.input_id,
+      'audit decision artifact editorial input binding drifted',
+    );
+    assert.equal(
+      auditDecisions.reviewed_staging_sha256,
+      auditSource.value.reviewed_staging_sha256,
+      'audit decision artifact reviewed staging digest drifted',
+    );
+    assert.equal(
+      auditDecisions.finalized_at,
+      auditSource.value.decision_artifact.finalized_at,
+      'audit decision artifact finalization timestamp drifted',
+    );
+    assert.deepEqual(
+      auditDecisions.reviewed_record_ids,
+      auditSource.value.reviewed_record_ids,
+      'audit input reviewed records do not match the separately supplied decision artifact',
+    );
+    assert.deepEqual(
+      auditDecisions.relation_reviews,
+      auditSource.value.relation_reviews,
+      'audit input relation decisions do not match the separately supplied decision artifact',
+    );
+    assert.deepEqual(
+      auditDecisions.findings,
+      auditSource.value.findings,
+      'audit input findings do not match the separately supplied decision artifact',
+    );
+  }
   validateA2TimingInput(timingSource.value);
+  if (audit.verified) {
+    validateA2AuditTimingInput(auditTimingSource.value, {
+      auditSessionId: auditSource.value.provenance.session_id,
+      reviewedStagingSha256: auditSource.value.reviewed_staging_sha256,
+      auditSessionStartedAt: auditSource.value.created_at,
+      decisionFinalizedAt: auditSource.value.decision_artifact.finalized_at,
+    });
+  } else {
+    validateA2AuditTimingInput(auditTimingSource.value);
+  }
   validateRelationDiff(relationDiffSource.value);
 
   assert.equal(manifestSource.value.batch_id, A2_BATCH_ID, 'manifest batch_id drifted');
@@ -242,6 +348,31 @@ export async function validateWaveA2({
       editorialSource.value.reviewed_staging_sha256,
       'manifest reviewed staging digest drifted from the editorial input',
     );
+    assert.equal(
+      editorialSource.value.timing_artifact.path,
+      relativeSourcePath(timingInputPath),
+      'editorial timing artifact path drifted',
+    );
+    assert.equal(
+      editorialSource.value.timing_artifact.sha256,
+      timingSource.sha256,
+      'editorial timing artifact digest drifted',
+    );
+    assert.equal(
+      editorialSource.value.timing_artifact.completed_at,
+      timingSource.value.passes.at(-1).completed_at,
+      'editorial timing completion drifted',
+    );
+    assert.equal(
+      editorialSource.value.timing_artifact.started_at,
+      timingSource.value.passes[0].started_at,
+      'editorial timing start drifted',
+    );
+    assert.equal(
+      editorialSource.value.decision_artifact.path,
+      relativeSourcePath(path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path)),
+      'editorial decision artifact path is not repository-relative',
+    );
   }
   assert.equal(
     manifestSource.value.measurement.audit.source_artifact,
@@ -259,6 +390,46 @@ export async function validateWaveA2({
       auditSource.value.reviewed_staging_sha256,
       'manifest reviewed staging digest drifted from the audit input',
     );
+    assert.equal(
+      auditSource.value.editorial_timing_artifact.path,
+      relativeSourcePath(timingInputPath),
+      'audit editorial timing artifact path drifted',
+    );
+    assert.equal(
+      auditSource.value.editorial_timing_artifact.sha256,
+      timingSource.sha256,
+      'audit editorial timing artifact digest drifted',
+    );
+    assert.equal(
+      auditSource.value.editorial_timing_artifact.completed_at,
+      timingSource.value.passes.at(-1).completed_at,
+      'audit editorial timing completion drifted',
+    );
+    assert.equal(
+      auditSource.value.editorial_timing_artifact.started_at,
+      timingSource.value.passes[0].started_at,
+      'audit editorial timing start drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.path,
+      relativeSourcePath(auditTimingInputPath),
+      'post-freeze audit timing artifact path drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.sha256,
+      auditTimingSource.sha256,
+      'post-freeze audit timing artifact digest drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.completed_at,
+      auditTimingSource.value.passes[0].completed_at,
+      'post-freeze audit timing completion drifted',
+    );
+    assert.equal(
+      auditSource.value.timing_artifact.started_at,
+      auditTimingSource.value.passes[0].started_at,
+      'post-freeze audit timing start drifted',
+    );
   }
   assert.equal(
     manifestSource.value.measurement.timing.source_artifact,
@@ -269,6 +440,16 @@ export async function validateWaveA2({
     manifestSource.value.measurement.timing.source_sha256,
     timingSource.sha256,
     'manifest timing input digest drifted',
+  );
+  assert.equal(
+    manifestSource.value.measurement.timing.audit_source_artifact,
+    relativeSourcePath(auditTimingInputPath),
+    'manifest post-freeze audit timing source artifact drifted',
+  );
+  assert.equal(
+    manifestSource.value.measurement.timing.audit_source_sha256,
+    auditTimingSource.sha256,
+    'manifest post-freeze audit timing source digest drifted',
   );
   assert.equal(
     manifestSource.value.measurement.relation_diff.artifact,
@@ -285,10 +466,12 @@ export async function validateWaveA2({
     editorialInput: editorialSource.value,
     auditInput: auditSource.value,
     timingInput: timingSource.value,
+    auditTimingInput: auditTimingSource.value,
     canonicalRecords: referenceRecords,
     editorialInputSource: sourceRef(editorialInputPath, editorialSource.bytes),
     auditInputSource: sourceRef(auditInputPath, auditSource.bytes),
     timingInputSource: sourceRef(timingInputPath, timingSource.bytes),
+    auditTimingInputSource: sourceRef(auditTimingInputPath, auditTimingSource.bytes),
     relationDiffSource: {
       ...sourceRef(relationDiffPath, relationDiffSource.bytes),
       value: relationDiffSource.value,
@@ -397,6 +580,7 @@ if (isMainModule) {
     editorialInputPath: args.editorial ?? DEFAULT_EDITORIAL_INPUT_PATH,
     auditInputPath: args.audit ?? DEFAULT_AUDIT_INPUT_PATH,
     timingInputPath: args.timing ?? DEFAULT_TIMING_INPUT_PATH,
+    auditTimingInputPath: args['audit-timing'] ?? DEFAULT_AUDIT_TIMING_INPUT_PATH,
     relationDiffPath: args['relation-diff'] ?? DEFAULT_RELATION_DIFF_PATH,
     metricsPath: args.metrics ?? DEFAULT_METRICS_PATH,
     stagePath: args.stage ?? DEFAULT_STAGE_PATH,

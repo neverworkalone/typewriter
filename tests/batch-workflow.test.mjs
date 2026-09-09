@@ -63,6 +63,13 @@ function createManifest() {
   };
 }
 
+const FIXTURE_CANONICAL_DIRECTORY = path.resolve(
+  'data/batches/m5-10a-wave-a-base-canonical',
+);
+const FIXTURE_INVENTORY_PATH = path.resolve(
+  'data/batches/m5-10a-wave-a2-preimport-inventory.json',
+);
+
 function createStagedRecords() {
   return [
     {
@@ -109,7 +116,13 @@ async function createFixture() {
     `${createStagedRecords().map((record) => JSON.stringify(record)).join('\n')}\n`,
     'utf8',
   );
-  return { directory, manifestPath, stagedRecordsPath };
+  return {
+    directory,
+    manifestPath,
+    stagedRecordsPath,
+    canonicalDirectory: FIXTURE_CANONICAL_DIRECTORY,
+    inventoryPath: FIXTURE_INVENTORY_PATH,
+  };
 }
 
 async function readManifest(manifestPath) {
@@ -322,7 +335,7 @@ test('validates a reviewed target plus reference closure and writes only an exte
   const outputPath = path.join(fixture.directory, 'canonical-import.jsonl');
 
   try {
-    const before = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+    const before = await readCanonicalRecords(fixture.canonicalDirectory);
     const summary = await validateBatch(fixture);
 
     assert.equal(summary.manifest.batch_id, 'm5-2-fixture');
@@ -348,7 +361,7 @@ test('validates a reviewed target plus reference closure and writes only an exte
       ['r052', 'w579'],
     );
 
-    const after = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+    const after = await readCanonicalRecords(fixture.canonicalDirectory);
     assert.equal(after.records.length, before.records.length);
     assert.equal(after.records.some(({ record }) => record.id === 'w579'), false);
   } finally {

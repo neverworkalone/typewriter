@@ -2,21 +2,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-8-stage-verification.schema.json",
   "title": "Typewriter M5-8 stage verification result",
-  "description": "Machine-check result flags referenced by one M5-8 stage report.",
+  "description": "Machine-check result flags referenced by one M5-8 stage report. New reports use editorial_review_complete; the legacy human_editorial_review_complete name remains accepted for historical artifacts.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
-    "human_editorial_review_complete",
     "canonical_integrity",
     "deterministic_sqlite",
     "search_product_regression"
   ],
   "properties": {
     "schema_version": { "const": "1" },
+    "editorial_review_complete": { "type": "boolean" },
     "human_editorial_review_complete": { "type": "boolean" },
     "canonical_integrity": { "type": "boolean" },
     "deterministic_sqlite": { "type": "boolean" },
     "search_product_regression": { "type": "boolean" }
-  }
+  },
+  "anyOf": [
+    { "required": ["editorial_review_complete"] },
+    { "required": ["human_editorial_review_complete"] }
+  ]
 }

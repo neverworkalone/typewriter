@@ -13,6 +13,8 @@ import {
 const require = createModuleRequire(import.meta.url);
 const EDITORIAL_SCHEMA = require('../../schema/m5-10a-wave-a2-editorial-input.schema.json');
 const AUDIT_SCHEMA = require('../../schema/m5-10a-wave-a2-audit-input.schema.json');
+const EDITORIAL_DECISIONS_SCHEMA = require('../../schema/m5-10a-wave-a2-editorial-decisions.schema.json');
+const AUDIT_DECISIONS_SCHEMA = require('../../schema/m5-10a-wave-a2-audit-decisions.schema.json');
 const TIMING_SCHEMA = require('../../schema/m5-10a-wave-a2-timing-input.schema.json');
 const PROVENANCE_SCHEMA = require('../../schema/m5-10a-wave-a2-provenance-artifact.schema.json');
 
@@ -27,8 +29,13 @@ const schemaOptions = {
 };
 const editorialSchemaValidator = new Ajv2020(schemaOptions).compile(EDITORIAL_SCHEMA);
 const auditSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_SCHEMA);
+const editorialDecisionsSchemaValidator = new Ajv2020(schemaOptions).compile(EDITORIAL_DECISIONS_SCHEMA);
+const auditDecisionsSchemaValidator = new Ajv2020(schemaOptions).compile(AUDIT_DECISIONS_SCHEMA);
 const timingSchemaValidator = new Ajv2020(schemaOptions).compile(TIMING_SCHEMA);
 const provenanceSchemaValidator = new Ajv2020(schemaOptions).compile(PROVENANCE_SCHEMA);
+
+const VERIFIED_SOURCE_KINDS = Object.freeze(['human-authored', 'codex-authored']);
+const VERIFIED_ACTOR_KINDS = Object.freeze(['human', 'codex']);
 
 export const A2_BATCH_ID = 'm5-10-wave-a2-20260909';
 export const A2_INVENTORY_ID = 'm5-core-5k';
@@ -40,6 +47,7 @@ export const A2_TIMING_PASS_IDS = Object.freeze([
   'final-audit',
   'held-rejected',
 ]);
+export const A2_AUDIT_TIMING_PASS_IDS = Object.freeze(['post-freeze-audit']);
 export const A2_PROMOTED_RECORD_REVIEWS = Object.freeze(
   Array.from({ length: 50 }, (_, index) => ({
     inventory_id: `m5-${String(index + 307).padStart(3, '0')}`,
@@ -73,7 +81,7 @@ export const A2_TIMING_WORK_UNIT_CONTRACT = Object.freeze({
   'feedback-fixes': Object.freeze({
     unit_kind: 'sense-correction',
     unit_ids: Object.freeze([...A2_PROMOTED_CANONICAL_IDS.filter((canonicalId) => [
-      'w588', 'w595', 'w598', 'w599', 'w603', 'w604', 'w606', 'w609',
+      'w582', 'w588', 'w595', 'w598', 'w599', 'w603', 'w604', 'w606', 'w609',
       'w617', 'w618', 'w619', 'w620', 'w621', 'w622', 'w628',
     ].includes(canonicalId))]),
   }),
@@ -87,6 +95,18 @@ export const A2_TIMING_WORK_UNIT_CONTRACT = Object.freeze({
   'held-rejected': Object.freeze({
     unit_kind: 'buffer-decision',
     unit_ids: Object.freeze([...A2_BUFFER_INVENTORY_IDS]),
+  }),
+  'post-freeze-audit': Object.freeze({
+    unit_kind: 'post-freeze-audit-item',
+    unit_ids: Object.freeze([
+      ...A2_PROMOTED_CANONICAL_IDS,
+      ...Array.from({ length: 6 }, (_, index) => `m5-10-wave-a2-rel-00${index + 1}`),
+      ...A2_BUFFER_INVENTORY_IDS,
+      'a2-audit-sense-boundaries',
+      'a2-audit-relation-screen',
+      'a2-audit-buffer-decisions',
+      'a2-audit-timing-completeness',
+    ]),
   }),
 });
 
@@ -148,6 +168,47 @@ function validateSchema(value, validator, root, label) {
   );
 }
 
+function validateDecisionArtifactProvenance(input, label) {
+  const expectedActorKind = input.source_kind === 'codex-authored' ? 'codex' : 'human';
+  assertEqual(input.actor_kind, expectedActorKind, `${label} source and actor kinds must agree`, 'DECISION_ARTIFACT_PROVENANCE');
+  assertCondition(input.actor_id !== 'unknown', `${label} must identify its actor`, 'DECISION_ARTIFACT_PROVENANCE');
+  assertCondition(
+    Date.parse(input.finalized_at) >= Date.parse(input.created_at),
+    `${label} finalized_at cannot precede created_at`,
+    'DECISION_ARTIFACT_CHRONOLOGY',
+  );
+}
+
+export function validateA2EditorialDecisionArtifact(input) {
+  validateSchema(
+    input,
+    editorialDecisionsSchemaValidator,
+    'editorial_decisions',
+    'Wave A2 editorial decision artifact',
+  );
+  assertEqual(input.batch_id, A2_BATCH_ID, 'editorial decision artifact batch_id drifted', 'BATCH_ID_DRIFT');
+  validateDecisionArtifactProvenance(input, 'editorial decision artifact');
+  assertEqual(
+    input.records.map(({ inventory_id: inventoryId }) => inventoryId),
+    A2_SELECTED_INVENTORY_IDS,
+    'editorial decision artifact scope/order drifted',
+    'EDITORIAL_DECISION_ARTIFACT_SCOPE',
+  );
+  return structuredClone(input);
+}
+
+export function validateA2AuditDecisionArtifact(input) {
+  validateSchema(
+    input,
+    auditDecisionsSchemaValidator,
+    'audit_decisions',
+    'Wave A2 audit decision artifact',
+  );
+  assertEqual(input.batch_id, A2_BATCH_ID, 'audit decision artifact batch_id drifted', 'BATCH_ID_DRIFT');
+  validateDecisionArtifactProvenance(input, 'audit decision artifact');
+  return structuredClone(input);
+}
+
 function recordMap(recordInfos) {
   return new Map(recordInfos.map((item) => {
     const record = item?.record ?? item;
@@ -206,19 +267,21 @@ function validateProvenance(input, label, unverifiedStatus = 'in-review') {
   if (input.source_kind === 'unverified-draft') {
     assertEqual(input.status, unverifiedStatus, `${label} unverified draft cannot be complete`, 'UNVERIFIED_INPUT_COMPLETE');
     assertEqual(provenance.verification_status, 'unverified', `${label} provenance status is inconsistent`, 'PROVENANCE_MISMATCH');
-    assertEqual(provenance.actor_kind, 'unknown', `${label} unverified input must not claim a human actor`, 'PROVENANCE_MISMATCH');
-    assertEqual(provenance.actor_id, 'unknown', `${label} unverified input must not name a human actor`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.actor_kind, 'unknown', `${label} unverified input must not claim a verified actor`, 'PROVENANCE_MISMATCH');
+    assertEqual(provenance.actor_id, 'unknown', `${label} unverified input must not name a verified actor`, 'PROVENANCE_MISMATCH');
     assertEqual(provenance.session_id, null, `${label} unverified input must not claim a session`, 'PROVENANCE_MISMATCH');
     assertEqual(provenance.artifact, null, `${label} unverified input must not claim a session artifact`, 'PROVENANCE_MISMATCH');
     assertEqual(provenance.sha256, null, `${label} unverified input must not claim a session digest`, 'PROVENANCE_MISMATCH');
     return false;
   }
 
-  assertEqual(input.source_kind, 'human-authored', `${label} source_kind is invalid`, 'PROVENANCE_MISMATCH');
-  assertEqual(input.status, 'complete', `${label} human-authored input must be complete`, 'PROVENANCE_REQUIRED');
-  assertEqual(provenance.verification_status, 'verified', `${label} human input must have verified provenance`, 'PROVENANCE_REQUIRED');
-  assertEqual(provenance.actor_kind, 'human', `${label} human input must identify a human actor`, 'PROVENANCE_REQUIRED');
-  assertCondition(provenance.actor_id !== 'unknown', `${label} human input must identify its actor`, 'PROVENANCE_REQUIRED');
+  assertCondition(VERIFIED_SOURCE_KINDS.includes(input.source_kind), `${label} source_kind is invalid`, 'PROVENANCE_MISMATCH');
+  assertEqual(input.status, 'complete', `${label} verified input must be complete`, 'PROVENANCE_REQUIRED');
+  assertEqual(provenance.verification_status, 'verified', `${label} verified input must have verified provenance`, 'PROVENANCE_REQUIRED');
+  const expectedActorKind = input.source_kind === 'codex-authored' ? 'codex' : 'human';
+  assertEqual(provenance.actor_kind, expectedActorKind, `${label} source and actor kinds must agree`, 'PROVENANCE_REQUIRED');
+  assertCondition(VERIFIED_ACTOR_KINDS.includes(provenance.actor_kind), `${label} verified input must identify its actor kind`, 'PROVENANCE_REQUIRED');
+  assertCondition(provenance.actor_id !== 'unknown', `${label} verified input must identify its actor`, 'PROVENANCE_REQUIRED');
   if (input.status === 'complete') {
     assertCondition(provenance.session_id !== null, `${label} complete input must bind a session`, 'PROVENANCE_REQUIRED');
     assertCondition(provenance.artifact !== null, `${label} complete input must bind a session artifact`, 'PROVENANCE_REQUIRED');
@@ -322,8 +385,14 @@ function validateRecordEvidence(recordReview, canonicalRecord, recordIndex, fing
     (boundaryId) => recordReview.boundary_evidence[boundaryId].decision === 'split',
   );
   if (decision === 'corrected') {
-    assertCondition(canonicalRecord.senses.length > 1, `${label} corrected record must contain multiple canonical senses`, 'CANONICAL_SENSE_COUNT_MISMATCH');
-    if (verified) assertCondition(splitBoundaries.length > 0, `${label} corrected record must identify a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+    assertCondition(canonicalRecord.senses.length > 0, `${label} corrected record must contain at least one canonical sense`, 'CANONICAL_SENSE_COUNT_MISMATCH');
+    if (verified) {
+      if (canonicalRecord.senses.length > 1) {
+        assertCondition(splitBoundaries.length > 0, `${label} corrected multi-sense record must identify a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+      } else {
+        assertEqual(splitBoundaries, [], `${label} corrected single-sense record cannot claim a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
+      }
+    }
   } else if (decision === 'included') {
     assertEqual(canonicalRecord.senses.length, 1, `${label} included record must remain single-sense`, 'CANONICAL_SENSE_COUNT_MISMATCH');
     if (verified) assertEqual(splitBoundaries, [], `${label} included record cannot claim a split boundary`, 'BOUNDARY_DECISION_MISMATCH');
@@ -384,6 +453,32 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
   assertEqual(input.inventory_revision, A2_INVENTORY_REVISION, 'editorial inventory_revision drifted', 'INVENTORY_REVISION_DRIFT');
   assertEqual(input.sense_review.boundary_ids, M5_10A_SENSE_BOUNDARY_IDS, 'editorial boundary definition drifted', 'BOUNDARY_DEFINITION_DRIFT');
   const verified = validateProvenance(input, 'editorial input');
+  if (verified) {
+    assertCondition(
+      Date.parse(input.completed_at) >= Date.parse(input.created_at),
+      'editorial input completed before its session started',
+      'EDITORIAL_CHRONOLOGY_MISMATCH',
+    );
+    assertCondition(
+      Date.parse(input.timing_artifact.started_at) >= Date.parse(input.created_at)
+        && Date.parse(input.timing_artifact.started_at) <= Date.parse(input.timing_artifact.completed_at)
+        && Date.parse(input.timing_artifact.completed_at) <= Date.parse(input.completed_at),
+      'editorial session does not enclose all required timing passes',
+      'EDITORIAL_CHRONOLOGY_MISMATCH',
+    );
+    assertCondition(
+      Date.parse(input.decision_artifact.created_at) >= Date.parse(input.created_at)
+        && Date.parse(input.decision_artifact.created_at) <= Date.parse(input.completed_at),
+      'editorial decision artifact was not supplied during the editorial session',
+      'EDITORIAL_DECISION_ARTIFACT_CHRONOLOGY',
+    );
+    assertCondition(
+      Date.parse(input.decision_artifact.finalized_at) >= Date.parse(input.timing_artifact.completed_at)
+        && Date.parse(input.decision_artifact.finalized_at) <= Date.parse(input.completed_at),
+      'editorial decision artifact was finalized before the required timing passes stopped or after editorial completion',
+      'EDITORIAL_DECISION_ARTIFACT_CHRONOLOGY',
+    );
+  }
   assertEqual(input.sense_review.status, input.status, 'editorial sense_review status does not match input status', 'EDITORIAL_REVIEW_INCOMPLETE');
 
   const recordsById = recordMap(canonicalRecords);
@@ -482,6 +577,10 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
         : recordReview.canonical_id
     ))
     .sort();
+  const splitCanonicalIds = correctedIds.filter((canonicalId) => {
+    const canonicalRecord = recordsById.get(canonicalId);
+    return canonicalRecord?.senses.length > 1;
+  });
   if (verified) {
     assertEqual(
       input.sense_review.reviewed_start_count,
@@ -497,14 +596,14 @@ export function validateA2EditorialInput({ input, canonicalRecords = [] } = {}) 
     );
     assertEqual(
       input.sense_review.split_record_count,
-      correctedIds.length,
-      'editorial split count does not match corrected decisions',
+      splitCanonicalIds.length,
+      'editorial split count does not match corrected multi-sense decisions',
       'SENSE_REVIEW_COUNT_MISMATCH',
     );
     assertEqual(
       [...input.sense_review.split_canonical_ids].sort(),
-      correctedIds,
-      'editorial split IDs do not match corrected decisions',
+      [...splitCanonicalIds].sort(),
+      'editorial split IDs do not match corrected multi-sense decisions',
       'SENSE_REVIEW_CORRECTION_MISMATCH',
     );
   } else {
@@ -585,7 +684,35 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
 
   assertCondition(editorialInput.verified === true, 'audit cannot complete while editorial provenance is unverified', 'AUDIT_EDITORIAL_PROVENANCE_MISMATCH');
   assertCondition(audit.independent, 'complete audit must claim independence only after verification', 'AUDIT_NOT_INDEPENDENT');
-  assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
+  assertCondition(
+    Date.parse(audit.completed_at) >= Date.parse(audit.created_at)
+      && Date.parse(audit.created_at) >= Date.parse(editorialInput.completed_at),
+    'audit chronology must begin after the completed editorial pass',
+    'AUDIT_CHRONOLOGY_MISMATCH',
+  );
+  assertCondition(
+    Date.parse(audit.editorial_timing_artifact.completed_at) <= Date.parse(audit.created_at),
+    'audit cannot start before the editorial timing passes stopped',
+    'AUDIT_CHRONOLOGY_MISMATCH',
+  );
+  assertCondition(
+    Date.parse(audit.decision_artifact.created_at) >= Date.parse(audit.created_at)
+      && Date.parse(audit.decision_artifact.created_at) <= Date.parse(audit.completed_at),
+    'audit decision artifact was not supplied during the audit session',
+    'AUDIT_DECISION_ARTIFACT_CHRONOLOGY',
+  );
+  assertCondition(
+    Date.parse(audit.decision_artifact.finalized_at) >= Date.parse(audit.decision_artifact.created_at)
+      && Date.parse(audit.decision_artifact.finalized_at) <= Date.parse(audit.completed_at),
+    'audit decision artifact was finalized outside the audit session',
+    'AUDIT_DECISION_ARTIFACT_CHRONOLOGY',
+  );
+  assertEqual(
+    audit.editorial_timing_artifact,
+    editorialInput.timing_artifact,
+    'audit editorial timing artifact must bind the editorial timing result',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
   assertEqual(
     audit.reviewed_staging_sha256,
     editorialInput.reviewed_staging_sha256,
@@ -593,13 +720,39 @@ export function validateA2AuditInput({ audit, editorialInput, relationDiff, cano
     'AUDIT_STAGING_BINDING_MISMATCH',
   );
   assertCondition(
-    audit.provenance.actor_id !== editorialInput.provenance.actor_id,
-    'independent audit must use a separate auditor identity',
+    audit.timing_artifact.path !== audit.editorial_timing_artifact.path,
+    'post-freeze audit timing must use a distinct timing artifact',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
+  assertEqual(
+    audit.timing_artifact.audit_session_id,
+    audit.provenance.session_id,
+    'post-freeze audit timing must bind the audit provenance session',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
+  assertEqual(
+    audit.timing_artifact.reviewed_staging_sha256,
+    audit.reviewed_staging_sha256,
+    'post-freeze audit timing must bind the reviewed staging digest',
+    'AUDIT_TIMING_BINDING_MISMATCH',
+  );
+  assertCondition(
+    Date.parse(audit.timing_artifact.started_at) >= Date.parse(audit.created_at)
+      && Date.parse(audit.timing_artifact.started_at) <= Date.parse(audit.timing_artifact.completed_at)
+      && Date.parse(audit.timing_artifact.completed_at) <= Date.parse(audit.decision_artifact.finalized_at)
+      && Date.parse(audit.timing_artifact.completed_at) <= Date.parse(audit.completed_at),
+    'post-freeze audit timing must run after audit start and stop before audit decision finalization and completion',
+    'AUDIT_TIMING_CHRONOLOGY_MISMATCH',
+  );
+  assertEqual(audit.auditor_id, audit.provenance.actor_id, 'audit auditor_id must match its provenance actor', 'AUDIT_PROVENANCE_MISMATCH');
+  assertCondition(
+    audit.provenance.session_id !== editorialInput.provenance.session_id,
+    'independent audit must use a separate pass session',
     'AUDIT_NOT_INDEPENDENT',
   );
   assertCondition(
-    audit.provenance.session_id !== editorialInput.provenance.session_id,
-    'independent audit must use a separate session',
+    audit.provenance.artifact !== editorialInput.provenance.artifact,
+    'independent audit must use a separate pass artifact',
     'AUDIT_NOT_INDEPENDENT',
   );
 
@@ -714,19 +867,20 @@ export function createA2TimingProof(timing) {
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
-function validateTimingPassOrder(passes) {
+function validateTimingPassOrder(passes, expectedPassIds, label) {
   assertEqual(
     passes.map(({ id }) => id),
-    A2_TIMING_PASS_IDS,
-    'timing pass coverage/order drifted',
+    expectedPassIds,
+    `${label} timing pass coverage/order drifted`,
     'TIMING_PASS_COVERAGE',
   );
 }
 
-export function validateA2TimingInput(timing) {
+function validateA2TimingInputForPasses(timing, expectedPassIds, expectedTimingKind, label) {
   validateSchema(timing, timingSchemaValidator, 'timing', 'Wave A2 timing input');
   assertEqual(timing.batch_id, A2_BATCH_ID, 'timing batch_id drifted', 'BATCH_ID_DRIFT');
-  validateTimingPassOrder(timing.passes);
+  assertEqual(timing.timing_kind ?? 'editorial', expectedTimingKind, `${label} timing_kind drifted`, 'TIMING_KIND_MISMATCH');
+  validateTimingPassOrder(timing.passes, expectedPassIds, label);
   if (timing.status === 'incomplete') {
     assertEqual(timing.events, [], 'incomplete timing must not retain partial synthetic events', 'INVALID_INCOMPLETE_TIMING');
     for (const pass of timing.passes) {
@@ -739,9 +893,16 @@ export function validateA2TimingInput(timing) {
   }
 
   assertCondition(timing.recording_proof_sha256 === createA2TimingProof(timing), 'timing recording proof does not match persisted events', 'TIMING_RECORDING_PROOF_MISMATCH');
-  assertEqual(timing.events.length, A2_TIMING_PASS_IDS.length * 2, 'complete timing must persist one start and one stop event per pass', 'TIMING_EVENT_COVERAGE');
-  const eventsByPass = new Map(A2_TIMING_PASS_IDS.map((id) => [id, []]));
+  assertEqual(timing.events.length, expectedPassIds.length * 2, 'complete timing must persist one start and one stop event per pass', 'TIMING_EVENT_COVERAGE');
+  const eventsByPass = new Map(expectedPassIds.map((id) => [id, []]));
   for (const event of timing.events) eventsByPass.get(event.pass_id).push(event);
+  for (let index = 1; index < timing.passes.length; index += 1) {
+    assertCondition(
+      Date.parse(timing.passes[index].started_at) >= Date.parse(timing.passes[index - 1].completed_at),
+      `timing pass ${timing.passes[index].id} starts before the previous pass stopped`,
+      'TIMING_CHRONOLOGY_MISMATCH',
+    );
+  }
   for (const pass of timing.passes) {
     assertEqual(pass.status, 'complete', `complete timing pass ${pass.id} is not complete`, 'INCOMPLETE_TIMING');
     for (const field of ['started_at', 'completed_at', 'wall_clock_seconds', 'editor_seconds', 'session_id', 'recording_source', 'work_evidence']) {
@@ -780,8 +941,71 @@ export function validateA2TimingInput(timing) {
       `${pass.id} work evidence unit_ids do not cover the A2 timing contract`,
       'TIMING_WORK_EVIDENCE_MISMATCH',
     );
+    if (pass.id === 'post-freeze-audit') {
+      assertCondition(
+        pass.work_evidence.before_sha256 === pass.reviewed_staging_sha256
+          && pass.work_evidence.after_sha256 === pass.reviewed_staging_sha256,
+        'post-freeze audit work evidence must remain bound to the frozen reviewed staging digest',
+        'AUDIT_TIMING_STAGING_BINDING_MISMATCH',
+      );
+    }
   }
   return { status: 'complete', unmeasured_pass_count: 0 };
+}
+
+export function validateA2TimingInput(timing) {
+  return validateA2TimingInputForPasses(timing, A2_TIMING_PASS_IDS, 'editorial', 'editorial');
+}
+
+export function validateA2AuditTimingInput(
+  timing,
+  {
+    auditSessionId,
+    reviewedStagingSha256,
+    auditSessionStartedAt,
+    decisionFinalizedAt,
+  } = {},
+) {
+  const result = validateA2TimingInputForPasses(
+    timing,
+    A2_AUDIT_TIMING_PASS_IDS,
+    'post-freeze-audit',
+    'post-freeze audit',
+  );
+  if (timing.status === 'incomplete') return result;
+
+  const pass = timing.passes[0];
+  if (auditSessionId) {
+    assertEqual(
+      pass.audit_session_id,
+      auditSessionId,
+      'post-freeze audit timing session binding drifted',
+      'AUDIT_TIMING_BINDING_MISMATCH',
+    );
+  }
+  if (reviewedStagingSha256) {
+    assertEqual(
+      pass.reviewed_staging_sha256,
+      reviewedStagingSha256,
+      'post-freeze audit timing staging binding drifted',
+      'AUDIT_TIMING_STAGING_BINDING_MISMATCH',
+    );
+  }
+  if (auditSessionStartedAt) {
+    assertCondition(
+      Date.parse(pass.started_at) >= Date.parse(auditSessionStartedAt),
+      'post-freeze audit timing started before the audit provenance session',
+      'AUDIT_TIMING_CHRONOLOGY_MISMATCH',
+    );
+  }
+  if (decisionFinalizedAt) {
+    assertCondition(
+      Date.parse(pass.completed_at) <= Date.parse(decisionFinalizedAt),
+      'post-freeze audit timing completed after audit decision finalization',
+      'AUDIT_TIMING_CHRONOLOGY_MISMATCH',
+    );
+  }
+  return result;
 }
 
 export async function validateA2ProvenanceArtifact({
@@ -789,7 +1013,7 @@ export async function validateA2ProvenanceArtifact({
   repositoryDirectory,
   subjectKind,
 } = {}) {
-  const verified = input?.source_kind === 'human-authored' && input?.status === 'complete';
+  const verified = VERIFIED_SOURCE_KINDS.includes(input?.source_kind) && input?.status === 'complete';
   if (!verified) return null;
   assertCondition(
     typeof repositoryDirectory === 'string' && repositoryDirectory.length > 0,

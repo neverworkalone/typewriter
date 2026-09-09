@@ -408,6 +408,7 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
   const processedStartCount = metricsArtifact.derived.selection.processed_start_count
     ?? metricsArtifact.derived.selection.selected_start_count;
   const totalEditorSeconds = timing.total_editor_seconds;
+  const hasEditorialReviewFlag = Object.hasOwn(verification, 'editorial_review_complete');
   const metrics = {
     correction_rate_of_selected: decisions.correction_rate_of_selected,
     relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
@@ -429,7 +430,12 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     audit_status: audit.status,
     audit_independent: audit.independent,
     open_audit_blocker_count: audit.open_blocker_count,
-    human_editorial_review_complete: verification.human_editorial_review_complete,
+    ...(hasEditorialReviewFlag
+      ? { editorial_review_complete: verification.editorial_review_complete }
+      : {}),
+    ...(Object.hasOwn(verification, 'human_editorial_review_complete')
+      ? { human_editorial_review_complete: verification.human_editorial_review_complete }
+      : {}),
     canonical_integrity: verification.canonical_integrity,
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
@@ -961,6 +967,8 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
 export function evaluateExpansionGate(metrics, plan) {
   const relationNoiseRate = metrics.relation_noise_rate_of_candidates
     ?? metrics.relation_noise_rate_of_before;
+  const editorialReviewComplete = metrics.editorial_review_complete
+    ?? metrics.human_editorial_review_complete;
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = {
@@ -975,7 +983,7 @@ export function evaluateExpansionGate(metrics, plan) {
     audit_complete: metrics.audit_status === 'complete',
     audit_independent: metrics.audit_independent,
     open_audit_blockers: metrics.open_audit_blocker_count <= plan.gate.open_audit_blockers_max,
-    human_editorial_review_complete: metrics.human_editorial_review_complete,
+    editorial_review_complete: editorialReviewComplete,
     canonical_integrity: metrics.canonical_integrity,
     deterministic_sqlite: metrics.deterministic_sqlite,
     search_product_regression: metrics.search_product_regression,
@@ -1168,6 +1176,75 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
     `${stage.stage_id} decision does not match the gate status`,
     'DECISION_MISMATCH',
   );
+  if (stage.stage_id === 'm5-10a-wave-a2-plus-50') {
+    assertEqual(
+      stage.ready_to_create,
+      stage.gate_status === 'pass',
+      `${stage.stage_id} ready_to_create must reflect gate readiness only`,
+      'NEXT_STAGE_READINESS_MISMATCH',
+    );
+    assertEqual(
+      stage.next_stage_created,
+      false,
+      `${stage.stage_id} cannot claim a created next-stage task without a real reference`,
+      'NEXT_STAGE_CREATED_WITHOUT_REFERENCE',
+    );
+    assertEqual(
+      stage.next_stage_authorized,
+      false,
+      `${stage.stage_id} cannot authorize a next stage without a separately authorized task`,
+      'NEXT_STAGE_AUTHORIZATION_MISMATCH',
+    );
+    assertEqual(
+      stage.correction_plan.status,
+      stage.gate_status === 'fail' ? 'required' : 'not-required',
+      `${stage.stage_id} correction plan status does not match the gate`,
+      'CORRECTION_PLAN_STATUS_MISMATCH',
+    );
+    if (stage.gate_status === 'pass') {
+      assertEqual(
+        stage.correction_plan.expected_saving_editor_seconds,
+        0,
+        `${stage.stage_id} passing result cannot claim a pending correction saving`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+      const correctionPlanText = [
+        stage.correction_plan.cause,
+        stage.correction_plan.planned_change,
+        stage.correction_plan.next_validation.note,
+      ].join(' ');
+      assertCondition(
+        !/\bHOLD\b|re-evaluat|do not import|authorize Wave B/iu.test(correctionPlanText),
+        `${stage.stage_id} passing result contains an operative HOLD or re-evaluation directive`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+      assertCondition(
+        /^No retry is required by this passing result\b/iu.test(stage.correction_plan.next_validation.note),
+        `${stage.stage_id} passing result must declare that no retry is required`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+    } else {
+      assertCondition(
+        stage.correction_plan.expected_saving_editor_seconds > 0,
+        `${stage.stage_id} failed result must declare a positive correction saving`,
+        'CORRECTION_PLAN_CONTRADICTION',
+      );
+    }
+    const breakdownEditorSeconds = stage.correction_plan.measured_breakdown
+      .reduce((total, item) => total + item.editor_seconds, 0);
+    assertCondition(
+      breakdownEditorSeconds > 0 && breakdownEditorSeconds <= stage.metrics.total_editor_seconds,
+      `${stage.stage_id} correction plan breakdown is outside the measured editor total`,
+      'CORRECTION_PLAN_METRIC_MISMATCH',
+    );
+    assertNear(
+      stage.correction_plan.measured_breakdown
+        .reduce((total, item) => total + item.share_of_total, 0),
+      breakdownEditorSeconds / stage.metrics.total_editor_seconds,
+      `${stage.stage_id} correction plan shares do not match measured editor seconds`,
+      'CORRECTION_PLAN_METRIC_MISMATCH',
+    );
+  }
   if (stage.gate_status === 'fail') {
     assertEqual(
       stage.next_stage_authorized,

@@ -41,10 +41,10 @@ test('validates the M5 inventory and keeps independent start counts', async () =
   const summary = await validateTargetInventory();
 
   assert.equal(summary.inventoryEntryCount, 713);
-  assert.equal(summary.canonicalRecordCount, 620);
-  assert.equal(summary.currentStartCount, 578);
+  assert.equal(summary.canonicalRecordCount, 670);
+  assert.equal(summary.currentStartCount, 628);
   assert.equal(summary.currentReferenceOnlyCount, 42);
-  assert.equal(summary.candidateStartCount, 59);
+  assert.equal(summary.candidateStartCount, 9);
   assert.equal(summary.plannedStartCount, 637);
   assert.equal(summary.heldCount, 30);
   assert.equal(summary.duplicateCount, 2);
@@ -71,7 +71,7 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
   try {
     const generated = await generateTargetInventory({ outputPath });
     assert.equal(generated.entries.length, 713);
-    assert.equal(generated.canonical_snapshot.record_count, 620);
+    assert.equal(generated.canonical_snapshot.record_count, 670);
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'm5-001').source,
       'canonical',
@@ -93,13 +93,13 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
 test('inventory candidates remain outside canonical input and SQLite build scope', async () => {
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  assert.equal(canonical.records.length, 620);
+  assert.equal(canonical.records.length, 670);
   assert.equal(canonical.records.some(({ record }) => record.id === 'm5-001'), false);
   assert.equal(canonical.records.some(({ record }) => record.id === 'w301'), true);
   assert.equal(canonical.records.some(({ record }) => record.lemma === '말문이 막히다'), false);
 
   const generatedA2Candidate = (await readInventory()).entries.find(
-    (entry) => entry.inventory_id === 'm5-307',
+    (entry) => entry.inventory_id === 'm5-244',
   );
   assert.equal(generatedA2Candidate.source, 'editorial');
   assert.equal(generatedA2Candidate.status, 'candidate');

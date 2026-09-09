@@ -56,9 +56,11 @@ read this directory.
 `data/batches/` is a second M5 exception used for reviewable manifests, relation
 diff ledgers, and derived calibration measurements. A manifest records the target
 inventory revision, generator/model/prompt identity, review status, record
-decisions, final canonical IDs, five required timing passes, any post-review
-follow-up passes and their measurement status, and the relation-diff artifact
-digest. A metrics file is generated from those sources and canonical records; it
+decisions, final canonical IDs, required timing passes (five editorial passes
+for the baseline contract plus any batch-specific pass such as A2's distinct
+post-freeze audit), any post-review follow-up passes and their measurement
+status, and the relation-diff artifact digest. A metrics file is generated from
+those sources and canonical records; it
 may record counts, rates, timing totals or measured lower bounds, audit findings,
 and validation outcomes, but neither file may contain raw model responses, draft
 text, confidence scores, secrets, or local staging paths.
@@ -79,24 +81,33 @@ The M5-10A process-correction and repair-authorization artifacts extend that aud
 boundary after the failed Wave A result. They bind the six sense-preflight
 boundaries, record-level evidence checkpoints, the noncanonical 20-case
 candidate-generation calibration, historical relation pre-screen denominator,
-separate human-audit input and derived admission/noise metrics, timing contract,
+separate audit input and derived admission/noise metrics, timing contract,
 and machine verification results by path and SHA-256. The builder requires the
 audit input as a separate source and never treats its own generated output as an
 independent editorial review. The authorization is limited to #96 Wave A2 (+50
-from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The separate
-A2 execution report records the proposed addition in staging; the process
-correction itself preserves the 578-start pre-A2 source snapshot, and product
-canonical data remains unchanged until verified review completes.
+from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The completed
+A2 execution imported only the zero-blocker reviewed result; the corrected
+chronological timing gate passes, including the measured post-freeze audit, so
+the current canonical data is 628 starts.
+The stage is ready to create a next task, but the builder keeps the task
+creation and authorization flags false until a real, separately authorized task
+exists.
 The A2 structured editorial and audit metadata may be tracked in this directory
 when it contains only target selection, proposal identity/decision state,
-the external proposal artifact digest, structured review state, and the HOLD
-cause; it must not carry candidate record bodies, raw draft text, or external
-source text. An explicitly
+the external proposal artifact digest, structured review state, separate
+decision-artifact bindings, and any measured correction plan; it must not carry
+candidate record bodies, raw draft text, or external source text. An explicitly
 unverified/incomplete input cannot produce a completed import claim. A completed
 input additionally requires a provenance artifact that binds its actor, UUID
-session, subject digest, completion time, and artifact digest. Candidate record
-bodies and the reviewed canonical JSONL passed to the import gate stay in a
-temporary workspace outside the repository.
+session, subject digest, completion time, and artifact digest. Decision artifacts
+also bind a `finalized_at` timestamp into their complete-file digest; editorial
+finalization must follow the last editorial timing stop and precede completion.
+Wave A2 additionally binds a separate post-freeze audit timing artifact from
+audit start through a stop before audit decision finalization. The actor may be
+human or Codex; a separate audit session and artifact establish independence
+even when the actor is the same Codex. Candidate record bodies and the reviewed
+canonical JSONL passed to the import gate stay in a temporary workspace outside
+the repository.
 
 When a later batch advances `data/canonical/`, a historical canonical directory
 may be retained under `data/batches/` when a source-bound stage report still

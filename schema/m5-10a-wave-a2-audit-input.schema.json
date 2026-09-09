@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-wave-a2-audit-input.schema.json",
-  "title": "Typewriter M5-10A Wave A2 audit proposal input",
-  "description": "A separately recorded audit proposal. Only a verified session by a distinct human actor may claim an independent completed audit, and the completed audit binds the final reviewed canonical staging digest.",
+  "title": "Typewriter M5-10A Wave A2 audit pass input",
+  "description": "A separately recorded audit pass. Only a verified, separate pass may claim an independent completed audit, and the completed audit binds the final reviewed canonical staging digest. The same Codex actor may perform both passes when the session and artifact are distinct.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -25,7 +25,7 @@
     "schema_version": { "const": "2" },
     "audit_id": { "type": "string", "pattern": "^m5-10a-wave-a2-audit-[0-9]{8}$" },
     "batch_id": { "type": "string", "pattern": "^m5-[0-9]+-[a-z0-9][a-z0-9-]*$" },
-    "source_kind": { "enum": ["human-authored", "unverified-draft"] },
+    "source_kind": { "enum": ["human-authored", "codex-authored", "unverified-draft"] },
     "provenance": { "$ref": "#/$defs/provenance" },
     "editorial_input_id": { "type": "string", "pattern": "^m5-10a-wave-a2-editorial-input-[0-9]{8}$" },
     "auditor_id": { "type": "string", "pattern": "\\S" },
@@ -43,6 +43,9 @@
       "items": { "$ref": "#/$defs/relationReview" }
     },
     "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "editorial_timing_artifact": { "$ref": "#/$defs/timingArtifact" },
+    "timing_artifact": { "$ref": "#/$defs/auditTimingArtifact" },
+    "decision_artifact": { "$ref": "#/$defs/decisionArtifact" },
     "status": { "enum": ["incomplete", "complete"] },
     "findings": {
       "type": "array",
@@ -58,7 +61,16 @@
       },
       "then": {
         "properties": { "status": { "const": "complete" } },
-        "required": ["reviewed_staging_sha256"]
+        "required": ["reviewed_staging_sha256", "editorial_timing_artifact", "timing_artifact", "decision_artifact"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "source_kind": { "const": "codex-authored" } }
+      },
+      "then": {
+        "properties": { "status": { "const": "complete" } },
+        "required": ["reviewed_staging_sha256", "editorial_timing_artifact", "timing_artifact", "decision_artifact"]
       }
     },
     {
@@ -94,7 +106,7 @@
       ],
       "properties": {
         "verification_status": { "enum": ["verified", "unverified"] },
-        "actor_kind": { "enum": ["human", "unknown"] },
+        "actor_kind": { "enum": ["human", "codex", "unknown"] },
         "actor_id": { "type": "string", "pattern": "\\S" },
         "session_id": {
           "type": ["string", "null"],
@@ -109,6 +121,44 @@
           "pattern": "^[a-f0-9]{64}$"
         },
         "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "timingArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "started_at", "completed_at"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "auditTimingArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "started_at", "completed_at", "audit_session_id", "reviewed_staging_sha256"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "audit_session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "decisionArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "created_at", "finalized_at"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.(json|jsonl)$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "finalized_at": { "type": "string", "format": "date-time" }
       }
     },
     "relationReview": {

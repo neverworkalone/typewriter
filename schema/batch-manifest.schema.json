@@ -389,6 +389,14 @@
               "type": "string",
               "pattern": "^[a-f0-9]{64}$"
             },
+            "audit_source_artifact": {
+              "type": "string",
+              "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
+            },
+            "audit_source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
             "passes": {
               "type": "array",
               "minItems": 5,
@@ -437,6 +445,7 @@
             "feedback-fixes",
             "final-audit",
             "held-rejected",
+            "post-freeze-audit",
             "post-review-audit",
             "post-review-fixes"
           ]
@@ -474,6 +483,14 @@
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
         },
+        "audit_session_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "reviewed_staging_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
         "recording_source": {
           "const": "timing-recorder-v1"
         },
@@ -492,7 +509,7 @@
       "required": ["unit_kind", "unit_count", "unit_ids", "before_sha256", "after_sha256", "note"],
       "properties": {
         "unit_kind": {
-          "enum": ["selected-target", "boundary-check", "sense-correction", "final-audit-item", "buffer-decision"]
+          "enum": ["selected-target", "boundary-check", "sense-correction", "final-audit-item", "buffer-decision", "post-freeze-audit-item"]
         },
         "unit_count": {
           "type": "integer",

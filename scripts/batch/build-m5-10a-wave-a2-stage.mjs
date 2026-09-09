@@ -8,6 +8,7 @@ import {
   sha256File,
   validateExpansionStage,
 } from './validate-m5-8-process.mjs';
+import { A2_TIMING_WORK_UNIT_CONTRACT } from './validate-m5-10a-wave-a2-inputs.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -68,10 +69,57 @@ function stageMetrics(metricsArtifact, verification) {
     audit_status: audit.status,
     audit_independent: audit.independent,
     open_audit_blocker_count: audit.open_blocker_count,
+    editorial_review_complete: verification.editorial_review_complete,
     human_editorial_review_complete: verification.human_editorial_review_complete,
     canonical_integrity: verification.canonical_integrity,
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
+  };
+}
+
+function correctionPlan(metricsArtifact, gateStatus) {
+  const timing = metricsArtifact.derived.timing;
+  const totalEditorSeconds = timing.total_editor_seconds;
+  const correctionRequired = gateStatus === 'fail';
+  const measuredBreakdown = ['target-preparation', 'initial-review'].map((passId) => {
+    const pass = timing.passes[passId];
+    return {
+      pass_id: passId,
+      editor_seconds: pass.editor_seconds,
+      unit_count: A2_TIMING_WORK_UNIT_CONTRACT[passId].unit_ids.length,
+      share_of_total: totalEditorSeconds === null ? 0 : pass.editor_seconds / totalEditorSeconds,
+    };
+  });
+  return {
+    status: correctionRequired ? 'required' : 'not-required',
+    cause: correctionRequired
+      ? 'Target preparation and the six-boundary initial review account for the measured cost; repeated evidence drafting and setup must be reduced without removing any boundary check.'
+      : 'No correction is required: the corrected chronological timing result is within the fixed editor-time gate.',
+    measured_breakdown: measuredBreakdown,
+    planned_change: correctionRequired
+      ? 'Use a separately authored record decision worksheet keyed to the six boundary IDs, capture each record-specific observation once, and reuse only that supplied evidence in the recorder; keep all 50 starts and all six boundaries in scope.'
+      : 'No process correction is scheduled for this passing result; retain the fixed gates and separate decision-artifact bindings.',
+    expected_saving_editor_seconds: correctionRequired ? 200 : 0,
+    next_validation: {
+      selected_start_count: correctionRequired ? 10 : 50,
+      candidate_buffer: correctionRequired ? 2 : 8,
+      canonical_import_authorized: false,
+      note: correctionRequired
+        ? 'Run a ten-start process-correction retry with a two-row buffer; do not import or authorize Wave B from this retry until the fixed gate is re-evaluated.'
+        : 'No retry is required by this passing result; any next-stage work still requires a real task and separate authorization.',
+    },
+    fixed_gate: {
+      editor_seconds_per_processed_start_max: 12,
+      relation_noise_rate_max: 0.25,
+    },
+  };
+}
+
+export function nextStageState(gateStatus) {
+  return {
+    ready_to_create: gateStatus === 'pass',
+    next_stage_created: false,
+    next_stage_authorized: false,
   };
 }
 
@@ -168,8 +216,8 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
     },
     gate_status: gate.gate_status,
     decision: gate.decision,
-    next_stage_created: false,
-    next_stage_authorized: false,
+    ...nextStageState(gate.gate_status),
+    correction_plan: correctionPlan(metrics, gate.gate_status),
   };
   await writeFile(outputPath, `${JSON.stringify(stage, null, 2)}\n`, 'utf8');
   await validateExpansionStage(stage, plan);

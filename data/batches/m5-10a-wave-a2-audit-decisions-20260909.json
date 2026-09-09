@@ -1,22 +1,14 @@
 {
-  "schema_version": "2",
-  "audit_id": "m5-10a-wave-a2-audit-20260909",
+  "schema_version": "1",
+  "artifact_id": "m5-10a-wave-a2-audit-decisions-20260909",
   "batch_id": "m5-10-wave-a2-20260909",
   "source_kind": "codex-authored",
-  "provenance": {
-    "verification_status": "verified",
-    "actor_kind": "codex",
-    "actor_id": "codex-wave-a2-editorial",
-    "session_id": "9aa47886-2841-4b36-8710-d1076371de1f",
-    "artifact": "data/batches/m5-10a-wave-a2-provenance-audit-20260909.json",
-    "sha256": "7dbd33886ef7c8652ffe3158b7819d221962e6e0384e7ddce6ac96226872c023",
-    "note": "Audit output is derived from the separately supplied audit decision artifact over the frozen editorial staging."
-  },
+  "actor_kind": "codex",
+  "actor_id": "codex-wave-a2-editorial",
+  "session_id": "9aa47886-2841-4b36-8710-d1076371de1f",
+  "created_at": "2026-09-09T12:59:38.935Z",
   "editorial_input_id": "m5-10a-wave-a2-editorial-input-20260909",
-  "auditor_id": "codex-wave-a2-editorial",
-  "independent": true,
-  "created_at": "2026-09-09T12:58:06.219Z",
-  "completed_at": "2026-09-09T13:00:16.176Z",
+  "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
   "reviewed_record_ids": [
     "w579",
     "w580",
@@ -179,28 +171,6 @@
       }
     }
   ],
-  "editorial_timing_artifact": {
-    "path": "data/batches/m5-10a-wave-a2-timing-input.json",
-    "sha256": "43768d85b19dccc935eeb0e81ee13e77750a04aababe7253bee195fc5f5ae682",
-    "started_at": "2026-09-09T11:57:09.441Z",
-    "completed_at": "2026-09-09T12:07:35.054Z"
-  },
-  "timing_artifact": {
-    "path": "data/batches/m5-10a-wave-a2-audit-timing-input.json",
-    "sha256": "ed69ba07ef6ccc529132f23fb5cb47fe2463f92f4857ec6c14ee7c722e079e0a",
-    "started_at": "2026-09-09T12:58:11.798Z",
-    "completed_at": "2026-09-09T12:59:06.860Z",
-    "audit_session_id": "9aa47886-2841-4b36-8710-d1076371de1f",
-    "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8"
-  },
-  "decision_artifact": {
-    "path": "data/batches/m5-10a-wave-a2-audit-decisions-20260909.json",
-    "sha256": "6753dc4e9bbf3ab2f263cbb69e46638f0771448e575db607b915c28174b2a43d",
-    "created_at": "2026-09-09T12:59:38.935Z",
-    "finalized_at": "2026-09-09T12:59:38.935Z"
-  },
-  "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-  "status": "complete",
   "findings": [
     {
       "id": "a2-audit-sense-boundaries",
@@ -263,5 +233,6 @@
       "note": "All five editorial passes and the distinct post-freeze audit pass have recorder start/stop events, measured duration, and exact work-unit evidence; no unmeasured pass remains."
     }
   ],
-  "note": "Separately supplied Codex audit decisions finalized after the measured post-freeze audit over the frozen editorial staging."
+  "note": "Separately supplied Codex audit decisions finalized after the measured post-freeze audit over the frozen editorial staging.",
+  "finalized_at": "2026-09-09T12:59:38.935Z"
 }
