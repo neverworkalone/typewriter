@@ -18,7 +18,7 @@
       "properties": {
         "fixture": { "const": "tests/fixtures/m5-10a-relation-generation-calibration.json" },
         "fixture_sha256": { "$ref": "#/$defs/sha256" },
-        "canonical_directory": { "const": "data/canonical" },
+        "canonical_directory": { "const": "data/batches/m5-10a-wave-a-base-canonical" },
         "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
         "expansion_plan": { "const": "data/batches/m5-8-expansion-plan.json" },
         "expansion_plan_sha256": { "$ref": "#/$defs/sha256" },

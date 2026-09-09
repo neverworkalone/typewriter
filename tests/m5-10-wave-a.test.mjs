@@ -20,6 +20,7 @@ import { validateRelationDiff } from '../scripts/batch/relation-diff.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CANONICAL_IMPORT_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-a.jsonl');
+const WAVE_A_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
 const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-9-postimport-canonical');
 const SENSE_REGRESSION_PATH = path.resolve('tests/fixtures/m5-10-wave-a-sense-regressions.json');
 
@@ -35,7 +36,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     readJson('m5-10-wave-a-metrics.json'),
     readJson('m5-9a-wave-a-plus-50.json'),
     readJson('m5-8-expansion-plan.json'),
-    readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(WAVE_A_CANONICAL_DIRECTORY),
     readFile(SENSE_REGRESSION_PATH, 'utf8').then(JSON.parse),
   ]);
 

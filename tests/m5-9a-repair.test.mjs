@@ -1090,7 +1090,9 @@ test('timing CLI records feedback and session timestamps from its current clock'
 });
 
 test('M5-9A repair leaves canonical counts unchanged', async () => {
-  const { records } = await readCanonicalRecords();
+  const { records } = await readCanonicalRecords(
+    path.resolve('data/batches/m5-10a-wave-a-base-canonical'),
+  );
   assert.equal(records.length, 620);
   assert.equal(records.filter(({ record }) => record.role === 'start').length, 578);
   assert.equal(records.filter(({ record }) => record.role === 'reference-only').length, 42);

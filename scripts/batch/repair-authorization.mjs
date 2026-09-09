@@ -12,7 +12,9 @@ import { validateRelationScreen } from './relation-screen.mjs';
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const REPAIR_AUTHORIZATION_SCHEMA = require('../../schema/m5-9-repair-authorization.schema.json');
+const M5_10A_REPAIR_AUTHORIZATION_SCHEMA = require('../../schema/m5-10a-repair-authorization.schema.json');
 const repairAuthorizationSchemaValidator = new Ajv2020({ allErrors: true }).compile(REPAIR_AUTHORIZATION_SCHEMA);
+const m5A10RepairAuthorizationSchemaValidator = new Ajv2020({ allErrors: true }).compile(M5_10A_REPAIR_AUTHORIZATION_SCHEMA);
 
 export const DEFAULT_REPAIR_AUTHORIZATION_PATH = path.resolve(
   SCRIPT_DIRECTORY,
@@ -56,6 +58,17 @@ function validateSchema(authorization) {
     error
       ? `repair authorization schema validation failed at ${schemaErrorPath(error)} ${error.message}`
       : 'repair authorization schema validation failed',
+    'SCHEMA_ERROR',
+  );
+}
+
+function validateM5A10ASchema(authorization) {
+  if (m5A10RepairAuthorizationSchemaValidator(authorization)) return;
+  const error = m5A10RepairAuthorizationSchemaValidator.errors?.[0];
+  fail(
+    error
+      ? `M5-10A repair authorization schema validation failed at ${schemaErrorPath(error)} ${error.message}`
+      : 'M5-10A repair authorization schema validation failed',
     'SCHEMA_ERROR',
   );
 }
@@ -133,6 +146,33 @@ function validateFailedStage(authorization, failedStage) {
     authorization.failed_stage.canonical_snapshot,
     EXPECTED_FAILED_STAGE_SNAPSHOT,
     'repair authorization must preserve the M5-9 failed-stage snapshot',
+    'CANONICAL_SNAPSHOT_MISMATCH',
+  );
+}
+
+function validateM5A10AFailedStage(authorization, failedStage) {
+  if (!failedStage || typeof failedStage !== 'object') {
+    fail('failed stage report must be loaded before repair authorization validation', 'MISSING_FAILED_STAGE');
+  }
+  assertEqual(failedStage.stage_id, authorization.failed_stage.stage_id, 'failed stage ID drifted', 'FAILED_STAGE_MISMATCH');
+  assertEqual(failedStage.gate_status, 'fail', 'repair authorization must point to a failed stage', 'FAILED_STAGE_GATE_MISMATCH');
+  assertEqual(failedStage.decision, 'HOLD PROCESS', 'repair authorization must preserve HOLD PROCESS', 'FAILED_STAGE_DECISION_MISMATCH');
+  assertEqual(
+    failedStage.next_stage_authorized,
+    false,
+    'failed stage must not authorize its next stage',
+    'FAILED_STAGE_AUTHORIZATION_MISMATCH',
+  );
+  assertEqual(
+    failedStage.actual?.canonical_snapshot,
+    authorization.failed_stage.canonical_snapshot,
+    'failed stage snapshot drifted in M5-10A repair authorization',
+    'FAILED_STAGE_SNAPSHOT_MISMATCH',
+  );
+  assertEqual(
+    authorization.failed_stage.canonical_snapshot,
+    authorization.canonical_snapshot,
+    'M5-10A repair authorization snapshots are inconsistent',
     'CANONICAL_SNAPSHOT_MISMATCH',
   );
 }
@@ -312,6 +352,52 @@ export async function loadAndValidateRepairAuthorization({
     }
   }
   const authorization = authorizationSource.value;
+  if (authorization.process_revision === 'm5-10a-process-correction-v1') {
+    validateM5A10ASchema(authorization);
+    const expectedFailedStagePath = resolveRepositoryPath(
+      authorization.source.failed_stage_report,
+      'M5-10A repairAuthorization.source.failed_stage_report',
+    );
+    if (failedStagePath !== undefined) {
+      assertEqual(
+        path.resolve(failedStagePath),
+        expectedFailedStagePath,
+        'M5-10A failed stage source path does not match repair authorization',
+        'SOURCE_PATH_MISMATCH',
+      );
+    }
+    if (failedStageSha256 !== undefined) {
+      assertEqual(
+        failedStageSha256,
+        authorization.source.failed_stage_report_sha256,
+        'M5-10A failed stage source digest does not match repair authorization',
+        'SOURCE_DIGEST_MISMATCH',
+      );
+    }
+    const processPath = resolveRepositoryPath(
+      authorization.source.process_correction,
+      'M5-10A repairAuthorization.source.process_correction',
+    );
+    const processSource = await readJsonFile(processPath, 'M5-10A process correction source');
+    assertEqual(
+      processSource.sha256,
+      authorization.source.process_correction_sha256,
+      'M5-10A process correction source digest does not match repair authorization',
+      'SOURCE_DIGEST_MISMATCH',
+    );
+    validateM5A10AFailedStage(authorization, failedStage);
+    return {
+      authorization_id: authorization.authorization_id,
+      process_revision: authorization.process_revision,
+      failed_stage_id: authorization.failed_stage.stage_id,
+      canonical_snapshot: { ...authorization.canonical_snapshot },
+      relation_regression: { ...authorization.relation_regression },
+      target_wave: authorization.authorization.target_wave,
+      net_start_increase: authorization.authorization.net_start_increase,
+      cumulative_start_target: authorization.authorization.cumulative_start_target,
+      decision: authorization.decision,
+    };
+  }
   validateSchema(authorization);
 
   const relationScreenPath = resolveRepositoryPath(

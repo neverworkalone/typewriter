@@ -216,6 +216,15 @@ Wave B was not started and the Wave A stage report keeps
 under `data/batches/m5-9-postimport-canonical/` so its failed report remains
 reproducible after the current canonical directory advances.
 
+## M5-10A Wave A2 result
+
+The authorized A2 execution is recorded in
+[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It selects 58
+starts, imports 50 after six-boundary sense/POS review, and advances the canonical
+snapshot from 578 to 628 starts. The stage gate passes with six admitted
+relations and complete timing/audit evidence. The stage keeps
+`next_stage_authorized: false`; Wave B is a separate, not-yet-authorized step.
+
 ## M5-10A process correction and A2 authorization
 
 Issue #107 records the process correction after the Wave A failure. It does not

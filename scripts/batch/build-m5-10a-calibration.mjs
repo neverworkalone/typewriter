@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_CALIBRATION_ARTIFACT_PATH,
   DEFAULT_CALIBRATION_AUDIT_PATH,
+  DEFAULT_CALIBRATION_CANONICAL_DIRECTORY,
   DEFAULT_CALIBRATION_FIXTURE_PATH,
   DEFAULT_CALIBRATION_PLAN_PATH,
   DEFAULT_CALIBRATION_TIMING_PATH,
@@ -19,7 +20,7 @@ import { hashCanonicalDirectory, validateExpansionPlan } from './validate-m5-8-p
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_CANONICAL_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../../data/canonical');
+const DEFAULT_CANONICAL_DIRECTORY = DEFAULT_CALIBRATION_CANONICAL_DIRECTORY;
 const DEFAULT_PROCESS_PATH = path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-10a-process-correction.json');
 const DEFAULT_REPAIR_PATH = path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-10a-repair-authorization.json');
 const CALIBRATION_AUDIT_PATH = 'data/batches/m5-10a-relation-calibration-audit.json';
@@ -62,7 +63,7 @@ function buildArtifact({ fixtureSource, planSource, timingSource, auditSource, c
   const source = {
     fixture: 'tests/fixtures/m5-10a-relation-generation-calibration.json',
     fixture_sha256: fixtureSource.sha256,
-    canonical_directory: 'data/canonical',
+    canonical_directory: 'data/batches/m5-10a-wave-a-base-canonical',
     canonical_directory_sha256: canonical.directorySha256,
     expansion_plan: 'data/batches/m5-8-expansion-plan.json',
     expansion_plan_sha256: planSource.sha256,

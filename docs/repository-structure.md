@@ -83,8 +83,9 @@ separate human-audit input and derived admission/noise metrics, timing contract,
 and machine verification results by path and SHA-256. The builder requires the
 audit input as a separate source and never treats its own generated output as an
 independent editorial review. The authorization is limited to #96 Wave A2 (+50
-from 578 to 628); it explicitly leaves Wave B (+150) unauthorized and does not change the
-canonical source.
+from 578 to 628); it explicitly leaves Wave B (+150) unauthorized. The separate
+A2 execution report records the resulting canonical addition; the process
+correction itself preserves the 578-start pre-A2 source snapshot.
 The reviewed canonical JSONL passed to the import gate stays in a temporary
 workspace outside the repository.
 

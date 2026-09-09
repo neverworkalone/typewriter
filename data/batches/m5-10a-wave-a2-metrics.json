@@ -1,0 +1,131 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "source": {
+    "manifest": "data/batches/m5-10-wave-a2.json",
+    "relation_diff": "data/batches/m5-10a-wave-a2-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 58,
+      "processed_start_count": 56
+    },
+    "decisions": {
+      "included": 35,
+      "corrected": 15,
+      "held": 3,
+      "rejected": 3,
+      "deferred": 2,
+      "importable_start_count": 50,
+      "correction_rate_of_selected": 0.26785714285714285,
+      "correction_rate_of_importable": 0.3,
+      "held_rate": 0.05357142857142857,
+      "rejected_rate": 0.05357142857142857,
+      "held_or_rejected_rate": 0.10714285714285714,
+      "sense_field_correction_count": 15,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 50,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 50,
+      "imported_sense_count": 65,
+      "imported_relation_count": 6,
+      "imported_expression_count": 4,
+      "relation_type_counts": {
+        "mood": 3,
+        "near": 2,
+        "sensory": 1
+      }
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 6,
+      "added_count": 6,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": -6,
+      "noise_event_count": 0,
+      "noise_rate_of_before": 0,
+      "classification_counts": {},
+      "candidate_count": 6,
+      "admitted_candidate_count": 6,
+      "rejected_candidate_count": 0,
+      "noise_denominator_count": 6,
+      "noise_rate_of_candidates": 0
+    },
+    "timing": {
+      "status": "complete",
+      "passes": {
+        "target-preparation": {
+          "status": "complete",
+          "wall_clock_seconds": 5.035,
+          "editor_seconds": 5.035
+        },
+        "initial-review": {
+          "status": "complete",
+          "wall_clock_seconds": 5.443,
+          "editor_seconds": 5.443
+        },
+        "feedback-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 5.324,
+          "editor_seconds": 5.324
+        },
+        "final-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 7.677,
+          "editor_seconds": 7.677
+        },
+        "held-rejected": {
+          "status": "complete",
+          "wall_clock_seconds": 4.439,
+          "editor_seconds": 4.439
+        }
+      },
+      "total_wall_clock_seconds": 27.918,
+      "total_editor_seconds": 27.918,
+      "measured_wall_clock_seconds": 27.918,
+      "measured_editor_seconds": 27.918,
+      "unmeasured_passes": []
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 3,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {
+        "sense": 1,
+        "relation-noise": 1,
+        "reference-closure": 1
+      }
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 50,
+      "scoped_single_sense_count": 35,
+      "split_record_count": 15,
+      "split_canonical_ids": [
+        "w588",
+        "w595",
+        "w598",
+        "w599",
+        "w603",
+        "w604",
+        "w606",
+        "w609",
+        "w617",
+        "w618",
+        "w619",
+        "w620",
+        "w621",
+        "w622",
+        "w628"
+      ]
+    }
+  }
+}

@@ -73,6 +73,8 @@ audit and fixes explicit.
 
 The failed M5-9 source remains reproducible from
 `data/batches/m5-9-postimport-canonical/`; Wave B requires a new authorized run
-after the held cost/process result is addressed. Re-run the stage gate with:
+after the held cost/process result is addressed. The 578-start Wave A output is
+also retained under `data/batches/m5-10a-wave-a-base-canonical/` as the immutable
+input snapshot for the authorized A2 run. Re-run the stage gate with:
 
     npm run batch:stage:check -- --stage=data/batches/m5-9a-wave-a-plus-50.json

@@ -28,7 +28,7 @@ function createManifest() {
     schema_version: '1',
     batch_id: 'm5-2-fixture',
     inventory_id: 'm5-core-5k',
-    inventory_revision: 'm5-7',
+    inventory_revision: 'm5-10',
     generator: {
       model_id: 'fixture-model',
       tool_version: 'fixture-tool-1',
@@ -44,9 +44,9 @@ function createManifest() {
     records: [
       {
         source: 'inventory',
-        inventory_id: 'm5-135',
+        inventory_id: 'm5-363',
         role: 'start',
-        canonical_id: 'w579',
+        canonical_id: 'w629',
         decision: 'corrected',
         corrected_fields: ['senses'],
         decision_note: '검수 과정에서 감정의 품사와 관계 대상을 확정했다.',
@@ -56,7 +56,7 @@ function createManifest() {
         role: 'reference-only',
         canonical_id: 'r052',
         decision: 'included',
-        related_to: ['w579'],
+        related_to: ['w629'],
         decision_note: '승격 record의 relation target을 닫기 위한 참조 record다.',
       },
     ],
@@ -66,14 +66,14 @@ function createManifest() {
 function createStagedRecords() {
   return [
     {
-      id: 'w579',
+      id: 'w629',
       record_type: 'entry',
       role: 'start',
-      candidate_id: 'w579',
+      candidate_id: 'w629',
       lemma: '검수표적',
       search_forms: ['검수표적'],
       senses: [{
-        id: 'w579-s1',
+      id: 'w629-s1',
         pos: 'noun',
         gloss: '벅찬 기쁨이나 감동이 북받치는 마음.',
         relations: [{
@@ -326,7 +326,7 @@ test('validates a reviewed target plus reference closure and writes only an exte
     const summary = await validateBatch(fixture);
 
     assert.equal(summary.manifest.batch_id, 'm5-2-fixture');
-    assert.equal(summary.canonicalRecordCount, 620);
+    assert.equal(summary.canonicalRecordCount, 670);
     assert.equal(summary.stagedRecordCount, 2);
     assert.equal(summary.targetCount, 1);
     assert.equal(summary.referenceClosureCount, 1);
@@ -345,12 +345,12 @@ test('validates a reviewed target plus reference closure and writes only an exte
     const importedRecords = await readCanonicalRecords(outputPath);
     assert.deepEqual(
       importedRecords.records.map(({ record }) => record.id),
-      ['r052', 'w579'],
+      ['r052', 'w629'],
     );
 
     const after = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
     assert.equal(after.records.length, before.records.length);
-    assert.equal(after.records.some(({ record }) => record.id === 'w579'), false);
+    assert.equal(after.records.some(({ record }) => record.id === 'w629'), false);
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }
@@ -445,10 +445,10 @@ test('rejects unapproved staged rows and non-deterministic canonical IDs', async
     );
 
     const manifest = await readManifest(fixture.manifestPath);
-    records[0].id = 'w580';
-    records[0].candidate_id = 'w580';
-    records[0].senses[0].id = 'w580-s1';
-    manifest.records[0].canonical_id = 'w580';
+    records[0].id = 'w630';
+    records[0].candidate_id = 'w630';
+    records[0].senses[0].id = 'w630-s1';
+    manifest.records[0].canonical_id = 'w630';
     await writeFixtureFiles({ directory: fixture.directory, manifest, records });
     await assert.rejects(
       validateBatch({

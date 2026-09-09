@@ -1,0 +1,149 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "before_count": 0,
+  "after_count": 6,
+  "events": [
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0001",
+      "relation_id": "m5-10-wave-a2-rel-001",
+      "operation": "add",
+      "source_sense": "w579-s1",
+      "after": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0002",
+      "relation_id": "m5-10-wave-a2-rel-002",
+      "operation": "add",
+      "source_sense": "w587-s1",
+      "after": {
+        "target": "w306",
+        "target_sense": "w306-s1",
+        "type": "near"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0003",
+      "relation_id": "m5-10-wave-a2-rel-003",
+      "operation": "add",
+      "source_sense": "w589-s1",
+      "after": {
+        "target": "w001",
+        "target_sense": "w001-s1",
+        "type": "mood"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0004",
+      "relation_id": "m5-10-wave-a2-rel-004",
+      "operation": "add",
+      "source_sense": "w607-s1",
+      "after": {
+        "target": "w066",
+        "target_sense": "w066-s2",
+        "type": "sensory"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0005",
+      "relation_id": "m5-10-wave-a2-rel-005",
+      "operation": "add",
+      "source_sense": "w621-s2",
+      "after": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "near"
+      }
+    },
+    {
+      "event_id": "m5-10-wave-a2-20260909-event-0006",
+      "relation_id": "m5-10-wave-a2-rel-006",
+      "operation": "add",
+      "source_sense": "w628-s2",
+      "after": {
+        "target": "w008",
+        "target_sense": "w008-s1",
+        "type": "mood"
+      }
+    }
+  ],
+  "source_note": "A2 pure-add relation snapshot: every admitted relation was reviewed after complete six-boundary sense preflight.",
+  "candidate_reviews": [
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-001",
+      "relation_id": "m5-10-wave-a2-rel-001",
+      "source_sense": "w579-s1",
+      "relation": {
+        "target": "w018",
+        "target_sense": "w018-s1",
+        "type": "mood"
+      },
+      "decision": "admit",
+      "review_note": "w579-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 mood으로 채택했다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-002",
+      "relation_id": "m5-10-wave-a2-rel-002",
+      "source_sense": "w587-s1",
+      "relation": {
+        "target": "w306",
+        "target_sense": "w306-s1",
+        "type": "near"
+      },
+      "decision": "admit",
+      "review_note": "w587-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 near으로 채택했다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-003",
+      "relation_id": "m5-10-wave-a2-rel-003",
+      "source_sense": "w589-s1",
+      "relation": {
+        "target": "w001",
+        "target_sense": "w001-s1",
+        "type": "mood"
+      },
+      "decision": "admit",
+      "review_note": "w589-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 mood으로 채택했다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-004",
+      "relation_id": "m5-10-wave-a2-rel-004",
+      "source_sense": "w607-s1",
+      "relation": {
+        "target": "w066",
+        "target_sense": "w066-s2",
+        "type": "sensory"
+      },
+      "decision": "admit",
+      "review_note": "w607-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 sensory으로 채택했다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-005",
+      "relation_id": "m5-10-wave-a2-rel-005",
+      "source_sense": "w621-s2",
+      "relation": {
+        "target": "w009",
+        "target_sense": "w009-s1",
+        "type": "near"
+      },
+      "decision": "admit",
+      "review_note": "w621-s2 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 near으로 채택했다."
+    },
+    {
+      "candidate_id": "m5-10-wave-a2-candidate-006",
+      "relation_id": "m5-10-wave-a2-rel-006",
+      "source_sense": "w628-s2",
+      "relation": {
+        "target": "w008",
+        "target_sense": "w008-s1",
+        "type": "mood"
+      },
+      "decision": "admit",
+      "review_note": "w628-s2 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 mood으로 채택했다."
+    }
+  ]
+}

@@ -260,7 +260,7 @@ test('M5-7 new 40-start batch reproduces the updated expansion gate result', asy
     [...Array(38).fill('current'), 'held', 'held'],
   );
 
-  assert.equal(canonicalResult.records.length, 620);
+  assert.equal(canonicalResult.records.length, 670);
 });
 
 test('M5-7 imported starts and expressions are searchable while held rows stay out', async () => {

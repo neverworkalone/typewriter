@@ -6,7 +6,7 @@ Issue #107 corrects the review process after the failed #96 Wave A result. It
 does not change canonical data, convert the historical `HOLD PROCESS` result to
 a pass, or authorize Wave B.
 
-The current canonical snapshot remains:
+The pre-A2 canonical snapshot preserved by this process correction is:
 
 ```text
 620 records / 578 starts / 42 reference-only / 743 senses / 467 relations / 39 expressions
@@ -189,3 +189,11 @@ Wave B:     net +150, unauthorized until A2 passes and is separately authorized
 The candidate buffer must be declared before selection, and canonical mutation is
 false in the authorization. No Wave B batch, quota, canonical start, or M6 work
 is created by #107.
+
+## Wave A2 execution
+
+Issue #96 Wave A2 was executed after this authorization. Its separate report is
+[`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It imports 50
+reviewed starts from the declared 58-start selection, reaches 628 starts, and
+passes the bounded stage gate. The A2 stage still sets
+`next_stage_authorized: false`; Wave B is not included in the A2 batch.

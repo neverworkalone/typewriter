@@ -6,9 +6,9 @@
   "process_revision": "m5-10a-process-correction-v1",
   "source": {
     "failed_stage_report": "data/batches/m5-9a-wave-a-plus-50.json",
-    "failed_stage_report_sha256": "070526553c12b73055a98aa243d5142b46b2e6a9f21da31c2a915160491cc487",
+    "failed_stage_report_sha256": "7fbaa5df9c402f184e2e28be39ef54787de51fcf2dd1c1c17708ebc14da82b90",
     "process_correction": "data/batches/m5-10a-process-correction.json",
-    "process_correction_sha256": "5c890f7229555cbca2925dddcee92b4c69cd848ab64a5e9d93905f022af2abff"
+    "process_correction_sha256": "2ec628acd9fcc1289331f431094b079511268d810237d435d90a13d10c33d31d"
   },
   "failed_stage": {
     "stage_id": "m5-9a-wave-a-plus-50",
@@ -48,7 +48,7 @@
   "candidate_generation": {
     "process_revision": "m5-10a-relation-generation-v3",
     "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
-    "calibration_artifact_sha256": "d03de45fc85ebc308c4992260a11c989196e204e8291032f9b8e1230d1be5147",
+    "calibration_artifact_sha256": "8bbc915eab3a3f4b3e34ae6964b0f30ae2b9aabac11cf5adb202fa8c4d57b72a",
     "calibration_case_count": 20,
     "request_count": 20,
     "raw_proposal_count": 9,

@@ -8,10 +8,9 @@ import {
   DEFAULT_SOURCE_ARTIFACT,
   validateRelationAdmissionRegression,
 } from '../scripts/batch/validate-relation-admission.mjs';
-import {
-  DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
-} from '../scripts/validate/canonical-jsonl.mjs';
+import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
+
+const WAVE_A_CANONICAL_DIRECTORY = path.resolve('data/batches/m5-10a-wave-a-base-canonical');
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
@@ -57,7 +56,7 @@ test('relation admission regression validation does not approve a changed expect
 });
 
 test('M5-6 admission controls remain present after the M5-7 import', async () => {
-  const { records } = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const { records } = await readCanonicalRecords(WAVE_A_CANONICAL_DIRECTORY);
   const recordValues = records.map(({ record }) => record);
   const countRelations = recordValues.reduce(
     (counts, record) => {

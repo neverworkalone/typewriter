@@ -110,6 +110,14 @@ const EXPECTED_M5_3_RELATION_BASELINE = Object.freeze({
   before_count: 139,
 });
 
+const A2_REPAIR_STAGE = Object.freeze({
+  stage_id: 'm5-10a-wave-a2-plus-50',
+  target_net_start_increase: 50,
+  cumulative_start_target: 628,
+  previous_stage_id: 'm5-9a-wave-a-plus-50',
+  requires_repair_authorization: true,
+});
+
 const EXPECTED_SENSE_REGRESSIONS = Object.freeze([
   { canonical_id: 'w405', expected_sense_count: 2, expected_pos: ['adjective', 'adjective'] },
   { canonical_id: 'w406', expected_sense_count: 1, expected_pos: ['verb'] },
@@ -674,6 +682,16 @@ function resolveStageContext(stage, plan) {
     ({ stage_id: stageId }) => stageId === plan.repair_resume.parent_stage_id,
   );
   const { wave_a: waveA, wave_b: waveB } = plan.repair_resume;
+  if (stage.stage_id === A2_REPAIR_STAGE.stage_id) {
+    return {
+      kind: 'repair-wave-a2',
+      contract: A2_REPAIR_STAGE,
+      ladderIndex: parentStageIndex,
+      previousStageId: A2_REPAIR_STAGE.previous_stage_id,
+      previousStageIds: [A2_REPAIR_STAGE.previous_stage_id],
+      baseStartCount: A2_REPAIR_STAGE.cumulative_start_target - A2_REPAIR_STAGE.target_net_start_increase,
+    };
+  }
   if (stage.stage_id === waveA.stage_id) {
     return {
       kind: 'repair-wave-a',
@@ -742,7 +760,7 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
     `${stage.stage_id} previous stage report does not match the allowed process chain`,
     'STAGE_CHAIN_MISMATCH',
   );
-  if (stageContext.kind === 'repair-wave-a') {
+  if (stageContext.kind === 'repair-wave-a' || stageContext.kind === 'repair-wave-a2') {
     assertEqual(
       previousStage.gate_status,
       'fail',

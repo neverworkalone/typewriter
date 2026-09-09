@@ -1,0 +1,3936 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "inventory_id": "m5-core-5k",
+  "inventory_revision": "m5-10",
+  "generator": {
+    "model_id": "human-editorial-expansion",
+    "tool_version": "typewriter-m5-10a-wave-a2-1",
+    "prompt_version": "m5-10a-wave-a2-v1"
+  },
+  "generated_at": "2026-09-09T02:52:40.817Z",
+  "review": {
+    "status": "complete",
+    "reviewer": "typewriter-wave-a2-editorial-review",
+    "completed_at": "2026-09-09T02:52:40.817Z"
+  },
+  "sense_review": {
+    "status": "complete",
+    "reviewed_start_count": 50,
+    "scoped_single_sense_count": 35,
+    "split_record_count": 15,
+    "split_canonical_ids": [
+      "w588",
+      "w595",
+      "w598",
+      "w599",
+      "w603",
+      "w604",
+      "w606",
+      "w609",
+      "w617",
+      "w618",
+      "w619",
+      "w620",
+      "w621",
+      "w622",
+      "w628"
+    ],
+    "note": "A2 importable 50개를 lemma/POS와 physical/figurative, homonym/POS, sensory/emotion/state/action, directional symmetry, compound/spaced phrase, word/idiom 여섯 경계로 전수 검토했다. 15개는 독립 sense 경계를 확인해 corrected로 반영했고 relation 검토는 complete preflight 이후에만 진행했다.",
+    "preflight": {
+      "process_revision": "m5-10a-process-correction-v1",
+      "boundary_ids": [
+        "physical-figurative",
+        "homonym-pos",
+        "sensory-emotion-state-action",
+        "directional-symmetry",
+        "compound-spaced-phrase",
+        "word-idiom"
+      ],
+      "record_checkpoints": [
+        {
+          "inventory_id": "m5-307",
+          "canonical_id": "w579",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-307 w579 환희 physical-figurative: w579-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w579-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-307 w579 환희 homonym-pos: w579-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w579-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-307 w579 환희 sensory-emotion-state-action: w579-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w579-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-307 w579 환희 directional-symmetry: w579-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w579-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-307 w579 환희 compound-spaced-phrase: w579-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w579-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-307 w579 환희 word-idiom: w579-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w579-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-307 w579 환희: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-308",
+          "canonical_id": "w580",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-308 w580 연민 physical-figurative: w580-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w580-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-308 w580 연민 homonym-pos: w580-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w580-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-308 w580 연민 sensory-emotion-state-action: w580-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w580-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-308 w580 연민 directional-symmetry: w580-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w580-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-308 w580 연민 compound-spaced-phrase: w580-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w580-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-308 w580 연민 word-idiom: w580-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w580-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-308 w580 연민: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-309",
+          "canonical_id": "w581",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-309 w581 유대감 physical-figurative: w581-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w581-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-309 w581 유대감 homonym-pos: w581-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w581-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-309 w581 유대감 sensory-emotion-state-action: w581-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w581-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-309 w581 유대감 directional-symmetry: w581-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w581-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-309 w581 유대감 compound-spaced-phrase: w581-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w581-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-309 w581 유대감 word-idiom: w581-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w581-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-309 w581 유대감: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-310",
+          "canonical_id": "w582",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-310 w582 친밀감 physical-figurative: w582-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w582-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-310 w582 친밀감 homonym-pos: w582-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w582-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-310 w582 친밀감 sensory-emotion-state-action: w582-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w582-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-310 w582 친밀감 directional-symmetry: w582-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w582-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-310 w582 친밀감 compound-spaced-phrase: w582-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w582-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-310 w582 친밀감 word-idiom: w582-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w582-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-310 w582 친밀감: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-311",
+          "canonical_id": "w583",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-311 w583 해방감 physical-figurative: w583-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w583-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-311 w583 해방감 homonym-pos: w583-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w583-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-311 w583 해방감 sensory-emotion-state-action: w583-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w583-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-311 w583 해방감 directional-symmetry: w583-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w583-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-311 w583 해방감 compound-spaced-phrase: w583-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w583-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-311 w583 해방감 word-idiom: w583-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w583-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-311 w583 해방감: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-312",
+          "canonical_id": "w584",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-312 w584 불편함 physical-figurative: w584-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w584-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-312 w584 불편함 homonym-pos: w584-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w584-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-312 w584 불편함 sensory-emotion-state-action: w584-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w584-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-312 w584 불편함 directional-symmetry: w584-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w584-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-312 w584 불편함 compound-spaced-phrase: w584-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w584-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-312 w584 불편함 word-idiom: w584-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w584-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-312 w584 불편함: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-313",
+          "canonical_id": "w585",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-313 w585 혼란 physical-figurative: w585-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w585-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-313 w585 혼란 homonym-pos: w585-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w585-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-313 w585 혼란 sensory-emotion-state-action: w585-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w585-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-313 w585 혼란 directional-symmetry: w585-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w585-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-313 w585 혼란 compound-spaced-phrase: w585-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w585-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-313 w585 혼란 word-idiom: w585-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w585-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-313 w585 혼란: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-314",
+          "canonical_id": "w586",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-314 w586 난처함 physical-figurative: w586-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w586-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-314 w586 난처함 homonym-pos: w586-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w586-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-314 w586 난처함 sensory-emotion-state-action: w586-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w586-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-314 w586 난처함 directional-symmetry: w586-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w586-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-314 w586 난처함 compound-spaced-phrase: w586-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w586-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-314 w586 난처함 word-idiom: w586-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w586-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-314 w586 난처함: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-315",
+          "canonical_id": "w587",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-315 w587 자책 physical-figurative: w587-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w587-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-315 w587 자책 homonym-pos: w587-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w587-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-315 w587 자책 sensory-emotion-state-action: w587-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w587-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-315 w587 자책 directional-symmetry: w587-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w587-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-315 w587 자책 compound-spaced-phrase: w587-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w587-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-315 w587 자책 word-idiom: w587-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w587-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-315 w587 자책: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-316",
+          "canonical_id": "w588",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "noun",
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-316 w588 동요 physical-figurative: w588-s1, w588-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w588-s1",
+                "w588-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-316 w588 동요 homonym-pos: w588-s1, w588-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w588-s1",
+                "w588-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-316 w588 동요 sensory-emotion-state-action: w588-s1, w588-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w588-s1",
+                "w588-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-316 w588 동요 directional-symmetry: w588-s1, w588-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w588-s1",
+                "w588-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-316 w588 동요 compound-spaced-phrase: w588-s1, w588-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w588-s1",
+                "w588-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-316 w588 동요 word-idiom: w588-s1, w588-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w588-s1",
+                "w588-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-316 w588 동요: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-317",
+          "canonical_id": "w589",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-317 w589 고즈넉하다 physical-figurative: w589-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w589-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-317 w589 고즈넉하다 homonym-pos: w589-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w589-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-317 w589 고즈넉하다 sensory-emotion-state-action: w589-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w589-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-317 w589 고즈넉하다 directional-symmetry: w589-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w589-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-317 w589 고즈넉하다 compound-spaced-phrase: w589-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w589-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-317 w589 고즈넉하다 word-idiom: w589-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w589-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-317 w589 고즈넉하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-318",
+          "canonical_id": "w590",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-318 w590 나른하다 physical-figurative: w590-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w590-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-318 w590 나른하다 homonym-pos: w590-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w590-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-318 w590 나른하다 sensory-emotion-state-action: w590-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w590-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-318 w590 나른하다 directional-symmetry: w590-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w590-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-318 w590 나른하다 compound-spaced-phrase: w590-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w590-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-318 w590 나른하다 word-idiom: w590-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w590-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-318 w590 나른하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-319",
+          "canonical_id": "w591",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-319 w591 명랑하다 physical-figurative: w591-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w591-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-319 w591 명랑하다 homonym-pos: w591-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w591-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-319 w591 명랑하다 sensory-emotion-state-action: w591-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w591-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-319 w591 명랑하다 directional-symmetry: w591-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w591-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-319 w591 명랑하다 compound-spaced-phrase: w591-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w591-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-319 w591 명랑하다 word-idiom: w591-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w591-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-319 w591 명랑하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-320",
+          "canonical_id": "w592",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-320 w592 우아하다 physical-figurative: w592-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w592-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-320 w592 우아하다 homonym-pos: w592-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w592-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-320 w592 우아하다 sensory-emotion-state-action: w592-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w592-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-320 w592 우아하다 directional-symmetry: w592-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w592-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-320 w592 우아하다 compound-spaced-phrase: w592-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w592-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-320 w592 우아하다 word-idiom: w592-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w592-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-320 w592 우아하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-321",
+          "canonical_id": "w593",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-321 w593 너그럽다 physical-figurative: w593-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w593-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-321 w593 너그럽다 homonym-pos: w593-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w593-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-321 w593 너그럽다 sensory-emotion-state-action: w593-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w593-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-321 w593 너그럽다 directional-symmetry: w593-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w593-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-321 w593 너그럽다 compound-spaced-phrase: w593-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w593-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-321 w593 너그럽다 word-idiom: w593-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w593-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-321 w593 너그럽다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-322",
+          "canonical_id": "w594",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-322 w594 냉철하다 physical-figurative: w594-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w594-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-322 w594 냉철하다 homonym-pos: w594-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w594-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-322 w594 냉철하다 sensory-emotion-state-action: w594-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w594-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-322 w594 냉철하다 directional-symmetry: w594-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w594-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-322 w594 냉철하다 compound-spaced-phrase: w594-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w594-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-322 w594 냉철하다 word-idiom: w594-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w594-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-322 w594 냉철하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-323",
+          "canonical_id": "w595",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "adjective",
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-323 w595 꼿꼿하다 physical-figurative: w595-s1, w595-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w595-s1",
+                "w595-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-323 w595 꼿꼿하다 homonym-pos: w595-s1, w595-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w595-s1",
+                "w595-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-323 w595 꼿꼿하다 sensory-emotion-state-action: w595-s1, w595-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w595-s1",
+                "w595-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-323 w595 꼿꼿하다 directional-symmetry: w595-s1, w595-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w595-s1",
+                "w595-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-323 w595 꼿꼿하다 compound-spaced-phrase: w595-s1, w595-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w595-s1",
+                "w595-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-323 w595 꼿꼿하다 word-idiom: w595-s1, w595-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w595-s1",
+                "w595-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-323 w595 꼿꼿하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-324",
+          "canonical_id": "w596",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-324 w596 가냘프다 physical-figurative: w596-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w596-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-324 w596 가냘프다 homonym-pos: w596-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w596-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-324 w596 가냘프다 sensory-emotion-state-action: w596-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w596-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-324 w596 가냘프다 directional-symmetry: w596-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w596-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-324 w596 가냘프다 compound-spaced-phrase: w596-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w596-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-324 w596 가냘프다 word-idiom: w596-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w596-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-324 w596 가냘프다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-325",
+          "canonical_id": "w597",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-325 w597 엉성하다 physical-figurative: w597-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w597-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-325 w597 엉성하다 homonym-pos: w597-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w597-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-325 w597 엉성하다 sensory-emotion-state-action: w597-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w597-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-325 w597 엉성하다 directional-symmetry: w597-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w597-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-325 w597 엉성하다 compound-spaced-phrase: w597-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w597-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-325 w597 엉성하다 word-idiom: w597-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w597-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-325 w597 엉성하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-326",
+          "canonical_id": "w598",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-326 w598 흐트러지다 physical-figurative: w598-s1, w598-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w598-s1",
+                "w598-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-326 w598 흐트러지다 homonym-pos: w598-s1, w598-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w598-s1",
+                "w598-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-326 w598 흐트러지다 sensory-emotion-state-action: w598-s1, w598-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w598-s1",
+                "w598-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-326 w598 흐트러지다 directional-symmetry: w598-s1, w598-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w598-s1",
+                "w598-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-326 w598 흐트러지다 compound-spaced-phrase: w598-s1, w598-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w598-s1",
+                "w598-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-326 w598 흐트러지다 word-idiom: w598-s1, w598-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w598-s1",
+                "w598-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-326 w598 흐트러지다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-327",
+          "canonical_id": "w599",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "adjective",
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-327 w599 선선하다 physical-figurative: w599-s1, w599-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w599-s1",
+                "w599-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-327 w599 선선하다 homonym-pos: w599-s1, w599-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w599-s1",
+                "w599-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-327 w599 선선하다 sensory-emotion-state-action: w599-s1, w599-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w599-s1",
+                "w599-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-327 w599 선선하다 directional-symmetry: w599-s1, w599-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w599-s1",
+                "w599-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-327 w599 선선하다 compound-spaced-phrase: w599-s1, w599-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w599-s1",
+                "w599-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-327 w599 선선하다 word-idiom: w599-s1, w599-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w599-s1",
+                "w599-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-327 w599 선선하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-328",
+          "canonical_id": "w600",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-328 w600 포슬포슬하다 physical-figurative: w600-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w600-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-328 w600 포슬포슬하다 homonym-pos: w600-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w600-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-328 w600 포슬포슬하다 sensory-emotion-state-action: w600-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w600-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-328 w600 포슬포슬하다 directional-symmetry: w600-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w600-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-328 w600 포슬포슬하다 compound-spaced-phrase: w600-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w600-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-328 w600 포슬포슬하다 word-idiom: w600-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w600-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-328 w600 포슬포슬하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-329",
+          "canonical_id": "w601",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-329 w601 알록달록하다 physical-figurative: w601-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w601-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-329 w601 알록달록하다 homonym-pos: w601-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w601-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-329 w601 알록달록하다 sensory-emotion-state-action: w601-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w601-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-329 w601 알록달록하다 directional-symmetry: w601-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w601-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-329 w601 알록달록하다 compound-spaced-phrase: w601-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w601-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-329 w601 알록달록하다 word-idiom: w601-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w601-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-329 w601 알록달록하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-330",
+          "canonical_id": "w602",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-330 w602 까무잡잡하다 physical-figurative: w602-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w602-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-330 w602 까무잡잡하다 homonym-pos: w602-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w602-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-330 w602 까무잡잡하다 sensory-emotion-state-action: w602-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w602-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-330 w602 까무잡잡하다 directional-symmetry: w602-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w602-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-330 w602 까무잡잡하다 compound-spaced-phrase: w602-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w602-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-330 w602 까무잡잡하다 word-idiom: w602-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w602-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-330 w602 까무잡잡하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-331",
+          "canonical_id": "w603",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "adjective",
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-331 w603 쨍쨍하다 physical-figurative: w603-s1, w603-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w603-s1",
+                "w603-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-331 w603 쨍쨍하다 homonym-pos: w603-s1, w603-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w603-s1",
+                "w603-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-331 w603 쨍쨍하다 sensory-emotion-state-action: w603-s1, w603-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w603-s1",
+                "w603-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-331 w603 쨍쨍하다 directional-symmetry: w603-s1, w603-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w603-s1",
+                "w603-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-331 w603 쨍쨍하다 compound-spaced-phrase: w603-s1, w603-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w603-s1",
+                "w603-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-331 w603 쨍쨍하다 word-idiom: w603-s1, w603-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w603-s1",
+                "w603-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-331 w603 쨍쨍하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-332",
+          "canonical_id": "w604",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "adjective",
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-332 w604 푸석하다 physical-figurative: w604-s1, w604-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w604-s1",
+                "w604-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-332 w604 푸석하다 homonym-pos: w604-s1, w604-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w604-s1",
+                "w604-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-332 w604 푸석하다 sensory-emotion-state-action: w604-s1, w604-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w604-s1",
+                "w604-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-332 w604 푸석하다 directional-symmetry: w604-s1, w604-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w604-s1",
+                "w604-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-332 w604 푸석하다 compound-spaced-phrase: w604-s1, w604-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w604-s1",
+                "w604-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-332 w604 푸석하다 word-idiom: w604-s1, w604-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w604-s1",
+                "w604-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-332 w604 푸석하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-333",
+          "canonical_id": "w605",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-333 w605 싱그럽다 physical-figurative: w605-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w605-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-333 w605 싱그럽다 homonym-pos: w605-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w605-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-333 w605 싱그럽다 sensory-emotion-state-action: w605-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w605-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-333 w605 싱그럽다 directional-symmetry: w605-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w605-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-333 w605 싱그럽다 compound-spaced-phrase: w605-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w605-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-333 w605 싱그럽다 word-idiom: w605-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w605-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-333 w605 싱그럽다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-334",
+          "canonical_id": "w606",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "adjective",
+            "adjective"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-334 w606 텁텁하다 physical-figurative: w606-s1, w606-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w606-s1",
+                "w606-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-334 w606 텁텁하다 homonym-pos: w606-s1, w606-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w606-s1",
+                "w606-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-334 w606 텁텁하다 sensory-emotion-state-action: w606-s1, w606-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w606-s1",
+                "w606-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-334 w606 텁텁하다 directional-symmetry: w606-s1, w606-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w606-s1",
+                "w606-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-334 w606 텁텁하다 compound-spaced-phrase: w606-s1, w606-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w606-s1",
+                "w606-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-334 w606 텁텁하다 word-idiom: w606-s1, w606-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w606-s1",
+                "w606-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-334 w606 텁텁하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-335",
+          "canonical_id": "w607",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-335 w607 윤슬 physical-figurative: w607-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w607-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-335 w607 윤슬 homonym-pos: w607-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w607-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-335 w607 윤슬 sensory-emotion-state-action: w607-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w607-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-335 w607 윤슬 directional-symmetry: w607-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w607-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-335 w607 윤슬 compound-spaced-phrase: w607-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w607-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-335 w607 윤슬 word-idiom: w607-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w607-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-335 w607 윤슬: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-336",
+          "canonical_id": "w608",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-336 w608 물비늘 physical-figurative: w608-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w608-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-336 w608 물비늘 homonym-pos: w608-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w608-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-336 w608 물비늘 sensory-emotion-state-action: w608-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w608-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-336 w608 물비늘 directional-symmetry: w608-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w608-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-336 w608 물비늘 compound-spaced-phrase: w608-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w608-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-336 w608 물비늘 word-idiom: w608-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w608-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-336 w608 물비늘: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-337",
+          "canonical_id": "w609",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "noun",
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-337 w609 바람결 physical-figurative: w609-s1, w609-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w609-s1",
+                "w609-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-337 w609 바람결 homonym-pos: w609-s1, w609-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w609-s1",
+                "w609-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-337 w609 바람결 sensory-emotion-state-action: w609-s1, w609-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w609-s1",
+                "w609-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-337 w609 바람결 directional-symmetry: w609-s1, w609-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w609-s1",
+                "w609-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-337 w609 바람결 compound-spaced-phrase: w609-s1, w609-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w609-s1",
+                "w609-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-337 w609 바람결 word-idiom: w609-s1, w609-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w609-s1",
+                "w609-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-337 w609 바람결: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-338",
+          "canonical_id": "w610",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-338 w610 숲길 physical-figurative: w610-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w610-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-338 w610 숲길 homonym-pos: w610-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w610-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-338 w610 숲길 sensory-emotion-state-action: w610-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w610-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-338 w610 숲길 directional-symmetry: w610-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w610-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-338 w610 숲길 compound-spaced-phrase: w610-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w610-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-338 w610 숲길 word-idiom: w610-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w610-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-338 w610 숲길: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-339",
+          "canonical_id": "w611",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-339 w611 들녘 physical-figurative: w611-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w611-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-339 w611 들녘 homonym-pos: w611-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w611-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-339 w611 들녘 sensory-emotion-state-action: w611-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w611-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-339 w611 들녘 directional-symmetry: w611-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w611-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-339 w611 들녘 compound-spaced-phrase: w611-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w611-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-339 w611 들녘 word-idiom: w611-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w611-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-339 w611 들녘: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-340",
+          "canonical_id": "w612",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-340 w612 골짜기 physical-figurative: w612-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w612-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-340 w612 골짜기 homonym-pos: w612-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w612-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-340 w612 골짜기 sensory-emotion-state-action: w612-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w612-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-340 w612 골짜기 directional-symmetry: w612-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w612-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-340 w612 골짜기 compound-spaced-phrase: w612-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w612-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-340 w612 골짜기 word-idiom: w612-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w612-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-340 w612 골짜기: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-341",
+          "canonical_id": "w613",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-341 w613 산등성이 physical-figurative: w613-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w613-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-341 w613 산등성이 homonym-pos: w613-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w613-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-341 w613 산등성이 sensory-emotion-state-action: w613-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w613-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-341 w613 산등성이 directional-symmetry: w613-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w613-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-341 w613 산등성이 compound-spaced-phrase: w613-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w613-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-341 w613 산등성이 word-idiom: w613-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w613-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-341 w613 산등성이: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-342",
+          "canonical_id": "w614",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-342 w614 나루터 physical-figurative: w614-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w614-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-342 w614 나루터 homonym-pos: w614-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w614-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-342 w614 나루터 sensory-emotion-state-action: w614-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w614-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-342 w614 나루터 directional-symmetry: w614-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w614-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-342 w614 나루터 compound-spaced-phrase: w614-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w614-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-342 w614 나루터 word-idiom: w614-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w614-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-342 w614 나루터: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-343",
+          "canonical_id": "w615",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-343 w615 기와 physical-figurative: w615-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w615-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-343 w615 기와 homonym-pos: w615-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w615-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-343 w615 기와 sensory-emotion-state-action: w615-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w615-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-343 w615 기와 directional-symmetry: w615-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w615-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-343 w615 기와 compound-spaced-phrase: w615-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w615-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-343 w615 기와 word-idiom: w615-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w615-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-343 w615 기와: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-344",
+          "canonical_id": "w616",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "noun"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-344 w616 장독 physical-figurative: w616-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w616-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-344 w616 장독 homonym-pos: w616-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w616-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-344 w616 장독 sensory-emotion-state-action: w616-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w616-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-344 w616 장독 directional-symmetry: w616-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w616-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-344 w616 장독 compound-spaced-phrase: w616-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w616-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-344 w616 장독 word-idiom: w616-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w616-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-344 w616 장독: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-345",
+          "canonical_id": "w617",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-345 w617 가로지르다 physical-figurative: w617-s1, w617-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w617-s1",
+                "w617-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-345 w617 가로지르다 homonym-pos: w617-s1, w617-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w617-s1",
+                "w617-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-345 w617 가로지르다 sensory-emotion-state-action: w617-s1, w617-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w617-s1",
+                "w617-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-345 w617 가로지르다 directional-symmetry: w617-s1, w617-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w617-s1",
+                "w617-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-345 w617 가로지르다 compound-spaced-phrase: w617-s1, w617-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w617-s1",
+                "w617-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-345 w617 가로지르다 word-idiom: w617-s1, w617-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w617-s1",
+                "w617-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-345 w617 가로지르다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-346",
+          "canonical_id": "w618",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-346 w618 끌어당기다 physical-figurative: w618-s1, w618-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w618-s1",
+                "w618-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-346 w618 끌어당기다 homonym-pos: w618-s1, w618-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w618-s1",
+                "w618-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-346 w618 끌어당기다 sensory-emotion-state-action: w618-s1, w618-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w618-s1",
+                "w618-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-346 w618 끌어당기다 directional-symmetry: w618-s1, w618-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w618-s1",
+                "w618-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-346 w618 끌어당기다 compound-spaced-phrase: w618-s1, w618-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w618-s1",
+                "w618-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-346 w618 끌어당기다 word-idiom: w618-s1, w618-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w618-s1",
+                "w618-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-346 w618 끌어당기다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-347",
+          "canonical_id": "w619",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-347 w619 밀쳐내다 physical-figurative: w619-s1, w619-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w619-s1",
+                "w619-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-347 w619 밀쳐내다 homonym-pos: w619-s1, w619-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w619-s1",
+                "w619-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-347 w619 밀쳐내다 sensory-emotion-state-action: w619-s1, w619-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w619-s1",
+                "w619-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-347 w619 밀쳐내다 directional-symmetry: w619-s1, w619-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w619-s1",
+                "w619-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-347 w619 밀쳐내다 compound-spaced-phrase: w619-s1, w619-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w619-s1",
+                "w619-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-347 w619 밀쳐내다 word-idiom: w619-s1, w619-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w619-s1",
+                "w619-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-347 w619 밀쳐내다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-348",
+          "canonical_id": "w620",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-348 w620 일렁이다 physical-figurative: w620-s1, w620-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w620-s1",
+                "w620-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-348 w620 일렁이다 homonym-pos: w620-s1, w620-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w620-s1",
+                "w620-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-348 w620 일렁이다 sensory-emotion-state-action: w620-s1, w620-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w620-s1",
+                "w620-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-348 w620 일렁이다 directional-symmetry: w620-s1, w620-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w620-s1",
+                "w620-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-348 w620 일렁이다 compound-spaced-phrase: w620-s1, w620-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w620-s1",
+                "w620-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-348 w620 일렁이다 word-idiom: w620-s1, w620-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w620-s1",
+                "w620-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-348 w620 일렁이다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-349",
+          "canonical_id": "w621",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-349 w621 잦아들다 physical-figurative: w621-s1, w621-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w621-s1",
+                "w621-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-349 w621 잦아들다 homonym-pos: w621-s1, w621-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w621-s1",
+                "w621-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-349 w621 잦아들다 sensory-emotion-state-action: w621-s1, w621-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w621-s1",
+                "w621-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-349 w621 잦아들다 directional-symmetry: w621-s1, w621-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w621-s1",
+                "w621-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-349 w621 잦아들다 compound-spaced-phrase: w621-s1, w621-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w621-s1",
+                "w621-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-349 w621 잦아들다 word-idiom: w621-s1, w621-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w621-s1",
+                "w621-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-349 w621 잦아들다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-350",
+          "canonical_id": "w622",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "verb",
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-350 w622 헤아리다 physical-figurative: w622-s1, w622-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w622-s1",
+                "w622-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-350 w622 헤아리다 homonym-pos: w622-s1, w622-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w622-s1",
+                "w622-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-350 w622 헤아리다 sensory-emotion-state-action: w622-s1, w622-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w622-s1",
+                "w622-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-350 w622 헤아리다 directional-symmetry: w622-s1, w622-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w622-s1",
+                "w622-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-350 w622 헤아리다 compound-spaced-phrase: w622-s1, w622-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w622-s1",
+                "w622-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-350 w622 헤아리다 word-idiom: w622-s1, w622-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w622-s1",
+                "w622-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-350 w622 헤아리다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-351",
+          "canonical_id": "w623",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-351 w623 흘깃보다 physical-figurative: w623-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w623-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-351 w623 흘깃보다 homonym-pos: w623-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w623-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-351 w623 흘깃보다 sensory-emotion-state-action: w623-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w623-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-351 w623 흘깃보다 directional-symmetry: w623-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w623-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-351 w623 흘깃보다 compound-spaced-phrase: w623-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w623-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-351 w623 흘깃보다 word-idiom: w623-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w623-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-351 w623 흘깃보다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-352",
+          "canonical_id": "w624",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "verb"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-352 w624 배회하다 physical-figurative: w624-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w624-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-352 w624 배회하다 homonym-pos: w624-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w624-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-352 w624 배회하다 sensory-emotion-state-action: w624-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w624-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-352 w624 배회하다 directional-symmetry: w624-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w624-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-352 w624 배회하다 compound-spaced-phrase: w624-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w624-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-352 w624 배회하다 word-idiom: w624-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w624-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-352 w624 배회하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-353",
+          "canonical_id": "w625",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "expression"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-353 w625 말을 잇다 physical-figurative: w625-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w625-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-353 w625 말을 잇다 homonym-pos: w625-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w625-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-353 w625 말을 잇다 sensory-emotion-state-action: w625-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w625-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-353 w625 말을 잇다 directional-symmetry: w625-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w625-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-353 w625 말을 잇다 compound-spaced-phrase: w625-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w625-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-353 w625 말을 잇다 word-idiom: w625-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w625-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-353 w625 말을 잇다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-354",
+          "canonical_id": "w626",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "expression"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-354 w626 마음을 굳히다 physical-figurative: w626-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w626-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-354 w626 마음을 굳히다 homonym-pos: w626-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w626-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-354 w626 마음을 굳히다 sensory-emotion-state-action: w626-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w626-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-354 w626 마음을 굳히다 directional-symmetry: w626-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w626-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-354 w626 마음을 굳히다 compound-spaced-phrase: w626-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w626-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-354 w626 마음을 굳히다 word-idiom: w626-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w626-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-354 w626 마음을 굳히다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-355",
+          "canonical_id": "w627",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 1,
+          "observed_pos": [
+            "expression"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-355 w627 눈을 맞추다 physical-figurative: w627-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w627-s1"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-355 w627 눈을 맞추다 homonym-pos: w627-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w627-s1"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-355 w627 눈을 맞추다 sensory-emotion-state-action: w627-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w627-s1"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-355 w627 눈을 맞추다 directional-symmetry: w627-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w627-s1"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-355 w627 눈을 맞추다 compound-spaced-phrase: w627-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w627-s1"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-355 w627 눈을 맞추다 word-idiom: w627-s1를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w627-s1"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-355 w627 눈을 맞추다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다."
+        },
+        {
+          "inventory_id": "m5-356",
+          "canonical_id": "w628",
+          "status": "complete",
+          "lemma_pos": "checked",
+          "observed_sense_count": 2,
+          "observed_pos": [
+            "expression",
+            "expression"
+          ],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "checked",
+              "rationale": "m5-356 w628 숨이 트이다 physical-figurative: w628-s1, w628-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w628-s1",
+                "w628-s2"
+              ]
+            },
+            "homonym-pos": {
+              "status": "checked",
+              "rationale": "m5-356 w628 숨이 트이다 homonym-pos: w628-s1, w628-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w628-s1",
+                "w628-s2"
+              ]
+            },
+            "sensory-emotion-state-action": {
+              "status": "checked",
+              "rationale": "m5-356 w628 숨이 트이다 sensory-emotion-state-action: w628-s1, w628-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w628-s1",
+                "w628-s2"
+              ]
+            },
+            "directional-symmetry": {
+              "status": "checked",
+              "rationale": "m5-356 w628 숨이 트이다 directional-symmetry: w628-s1, w628-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w628-s1",
+                "w628-s2"
+              ]
+            },
+            "compound-spaced-phrase": {
+              "status": "checked",
+              "rationale": "m5-356 w628 숨이 트이다 compound-spaced-phrase: w628-s1, w628-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w628-s1",
+                "w628-s2"
+              ]
+            },
+            "word-idiom": {
+              "status": "checked",
+              "rationale": "m5-356 w628 숨이 트이다 word-idiom: w628-s1, w628-s2를 실제 sense 경계로 대조해 확인했다.",
+              "sense_ids": [
+                "w628-s1",
+                "w628-s2"
+              ]
+            }
+          },
+          "missing_boundary_ids": [],
+          "note": "m5-356 w628 숨이 트이다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다."
+        },
+        {
+          "inventory_id": "m5-357",
+          "status": "held",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 m5-357 physical-figurative: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 m5-357 homonym-pos: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 m5-357 sensory-emotion-state-action: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 m5-357 directional-symmetry: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 m5-357 compound-spaced-phrase: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-357 m5-357 word-idiom: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-357 m5-357: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다."
+        },
+        {
+          "inventory_id": "m5-358",
+          "status": "held",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 m5-358 physical-figurative: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 m5-358 homonym-pos: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 m5-358 sensory-emotion-state-action: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 m5-358 directional-symmetry: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 m5-358 compound-spaced-phrase: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-358 m5-358 word-idiom: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-358 m5-358: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다."
+        },
+        {
+          "inventory_id": "m5-359",
+          "status": "held",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 m5-359 physical-figurative: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 m5-359 homonym-pos: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 m5-359 sensory-emotion-state-action: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 m5-359 directional-symmetry: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 m5-359 compound-spaced-phrase: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-359 m5-359 word-idiom: decision=held이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-359 m5-359: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다."
+        },
+        {
+          "inventory_id": "m5-360",
+          "status": "rejected",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 m5-360 physical-figurative: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 m5-360 homonym-pos: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 m5-360 sensory-emotion-state-action: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 m5-360 directional-symmetry: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 m5-360 compound-spaced-phrase: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-360 m5-360 word-idiom: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-360 m5-360: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다."
+        },
+        {
+          "inventory_id": "m5-361",
+          "status": "rejected",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 m5-361 physical-figurative: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 m5-361 homonym-pos: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 m5-361 sensory-emotion-state-action: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 m5-361 directional-symmetry: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 m5-361 compound-spaced-phrase: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-361 m5-361 word-idiom: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-361 m5-361: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다."
+        },
+        {
+          "inventory_id": "m5-362",
+          "status": "rejected",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 m5-362 physical-figurative: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 m5-362 homonym-pos: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 m5-362 sensory-emotion-state-action: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 m5-362 directional-symmetry: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 m5-362 compound-spaced-phrase: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-362 m5-362 word-idiom: decision=rejected이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-362 m5-362: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다."
+        },
+        {
+          "inventory_id": "m5-363",
+          "status": "deferred",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 m5-363 physical-figurative: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 m5-363 homonym-pos: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 m5-363 sensory-emotion-state-action: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 m5-363 directional-symmetry: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 m5-363 compound-spaced-phrase: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-363 m5-363 word-idiom: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-363 m5-363: 다음 단계에서 검토할 reserve 항목으로 deferred 처리했다."
+        },
+        {
+          "inventory_id": "m5-364",
+          "status": "deferred",
+          "lemma_pos": "not-reviewed",
+          "observed_sense_count": 0,
+          "observed_pos": [],
+          "boundary_checks": {
+            "physical-figurative": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 m5-364 physical-figurative: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "homonym-pos": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 m5-364 homonym-pos: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "sensory-emotion-state-action": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 m5-364 sensory-emotion-state-action: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "directional-symmetry": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 m5-364 directional-symmetry: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "compound-spaced-phrase": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 m5-364 compound-spaced-phrase: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            },
+            "word-idiom": {
+              "status": "not-reviewed",
+              "rationale": "m5-364 m5-364 word-idiom: decision=deferred이므로 A2 import 전 경계를 검토하지 않았다.",
+              "sense_ids": []
+            }
+          },
+          "missing_boundary_ids": [
+            "physical-figurative",
+            "homonym-pos",
+            "sensory-emotion-state-action",
+            "directional-symmetry",
+            "compound-spaced-phrase",
+            "word-idiom"
+          ],
+          "note": "m5-364 m5-364: 다음 단계에서 검토할 reserve 항목으로 deferred 처리했다."
+        }
+      ]
+    }
+  },
+  "measurement": {
+    "schema_version": "1",
+    "relation_diff": {
+      "artifact": "data/batches/m5-10a-wave-a2-relation-diff.json",
+      "sha256": "745818859da0a7028181af4d35b4f83b6ec4c953838d6c2fcde448257aeef836"
+    },
+    "timing": {
+      "contract_version": "m5-10a-v1",
+      "status": "complete",
+      "passes": [
+        {
+          "id": "target-preparation",
+          "status": "complete",
+          "started_at": "2026-09-09T02:52:47.901Z",
+          "session_id": "437671c5-8f3d-4d0b-87ad-acee6d6b0518",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-09T02:52:52.936Z",
+          "wall_clock_seconds": 5.035,
+          "editor_seconds": 5.035
+        },
+        {
+          "id": "initial-review",
+          "status": "complete",
+          "started_at": "2026-09-09T02:52:59.221Z",
+          "session_id": "477921e6-2495-430e-a54e-e6d23fddaa9a",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-09T02:53:04.664Z",
+          "wall_clock_seconds": 5.443,
+          "editor_seconds": 5.443
+        },
+        {
+          "id": "feedback-fixes",
+          "status": "complete",
+          "started_at": "2026-09-09T02:53:10.523Z",
+          "session_id": "1e8c7fbe-61ec-416f-ae1f-325628da878c",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-09T02:53:15.847Z",
+          "wall_clock_seconds": 5.324,
+          "editor_seconds": 5.324
+        },
+        {
+          "id": "final-audit",
+          "status": "complete",
+          "started_at": "2026-09-09T02:53:20.758Z",
+          "session_id": "0331321c-118a-4e6e-8464-d6ea263dde69",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-09T02:53:28.435Z",
+          "wall_clock_seconds": 7.677,
+          "editor_seconds": 7.677
+        },
+        {
+          "id": "held-rejected",
+          "status": "complete",
+          "started_at": "2026-09-09T02:53:34.394Z",
+          "session_id": "03000b7e-fdc6-4f08-b631-47897860de29",
+          "recording_source": "timing-recorder-v1",
+          "completed_at": "2026-09-09T02:53:38.833Z",
+          "wall_clock_seconds": 4.439,
+          "editor_seconds": 4.439
+        }
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "findings": [
+        {
+          "id": "m5-10a-wave-a2-sense-boundaries",
+          "category": "sense",
+          "severity": "info",
+          "status": "resolved",
+          "note": "50개 importable start를 여섯 sense boundary로 전수 확인했고 15개 corrected split을 canonical과 preflight에 일치시켰다."
+        },
+        {
+          "id": "m5-10a-wave-a2-relation-admission",
+          "category": "relation-noise",
+          "severity": "info",
+          "status": "resolved",
+          "note": "6개 relation candidate를 source/target sense와 writer-facing relation type으로 독립 대조해 모두 admit했다."
+        },
+        {
+          "id": "m5-10a-wave-a2-scope",
+          "category": "reference-closure",
+          "severity": "info",
+          "status": "resolved",
+          "note": "A2는 새 reference-only record 없이 기존 target sense만 사용하며 Wave B는 별도 authorization 전까지 시작하지 않는다."
+        }
+      ]
+    }
+  },
+  "records": [
+    {
+      "source": "inventory",
+      "inventory_id": "m5-307",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-307 w579 환희: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w579"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-308",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-308 w580 연민: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w580"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-309",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-309 w581 유대감: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w581"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-310",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-310 w582 친밀감: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w582"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-311",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-311 w583 해방감: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w583"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-312",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-312 w584 불편함: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w584"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-313",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-313 w585 혼란: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w585"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-314",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-314 w586 난처함: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w586"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-315",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-315 w587 자책: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w587"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-316",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-316 w588 동요: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w588",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-317",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-317 w589 고즈넉하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w589"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-318",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-318 w590 나른하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w590"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-319",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-319 w591 명랑하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w591"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-320",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-320 w592 우아하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w592"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-321",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-321 w593 너그럽다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w593"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-322",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-322 w594 냉철하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w594"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-323",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-323 w595 꼿꼿하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w595",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-324",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-324 w596 가냘프다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w596"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-325",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-325 w597 엉성하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w597"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-326",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-326 w598 흐트러지다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w598",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-327",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-327 w599 선선하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w599",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-328",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-328 w600 포슬포슬하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w600"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-329",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-329 w601 알록달록하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w601"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-330",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-330 w602 까무잡잡하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w602"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-331",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-331 w603 쨍쨍하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w603",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-332",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-332 w604 푸석하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w604",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-333",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-333 w605 싱그럽다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w605"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-334",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-334 w606 텁텁하다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w606",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-335",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-335 w607 윤슬: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w607"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-336",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-336 w608 물비늘: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w608"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-337",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-337 w609 바람결: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w609",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-338",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-338 w610 숲길: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w610"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-339",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-339 w611 들녘: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w611"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-340",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-340 w612 골짜기: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w612"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-341",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-341 w613 산등성이: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w613"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-342",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-342 w614 나루터: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w614"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-343",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-343 w615 기와: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w615"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-344",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-344 w616 장독: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w616"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-345",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-345 w617 가로지르다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w617",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-346",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-346 w618 끌어당기다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w618",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-347",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-347 w619 밀쳐내다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w619",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-348",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-348 w620 일렁이다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w620",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-349",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-349 w621 잦아들다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w621",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-350",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-350 w622 헤아리다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w622",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-351",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-351 w623 흘깃보다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w623"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-352",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-352 w624 배회하다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w624"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-353",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-353 w625 말을 잇다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w625"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-354",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-354 w626 마음을 굳히다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w626"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-355",
+      "role": "start",
+      "decision": "included",
+      "decision_note": "m5-355 w627 눈을 맞추다: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.",
+      "canonical_id": "w627"
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-356",
+      "role": "start",
+      "decision": "corrected",
+      "decision_note": "m5-356 w628 숨이 트이다: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.",
+      "canonical_id": "w628",
+      "corrected_fields": [
+        "senses"
+      ]
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-357",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "m5-357 m5-357: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-358",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "m5-358 m5-358: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-359",
+      "role": "start",
+      "decision": "held",
+      "decision_note": "m5-359 m5-359: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-360",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "m5-360 m5-360: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-361",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "m5-361 m5-361: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-362",
+      "role": "start",
+      "decision": "rejected",
+      "decision_note": "m5-362 m5-362: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-363",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "m5-363 m5-363: 다음 단계에서 검토할 reserve 항목으로 deferred 처리했다."
+    },
+    {
+      "source": "inventory",
+      "inventory_id": "m5-364",
+      "role": "start",
+      "decision": "deferred",
+      "decision_note": "m5-364 m5-364: 다음 단계에서 검토할 reserve 항목으로 deferred 처리했다."
+    }
+  ]
+}
