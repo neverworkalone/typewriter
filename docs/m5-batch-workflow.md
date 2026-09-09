@@ -216,8 +216,67 @@ Wave B was not started and the Wave A stage report keeps
 under `data/batches/m5-9-postimport-canonical/` so its failed report remains
 reproducible after the current canonical directory advances.
 
-For future batches using the repaired timing contract, set
-measurement.timing.contract_version to m5-9a-v1. The timing recorder records the
+## M5-10A process correction and A2 authorization
+
+Issue #107 records the process correction after the Wave A failure. It does not
+promote the failed Wave A gate, add canonical rows, or authorize Wave B. The
+source-bound process artifact is
+[`data/batches/m5-10a-process-correction.json`](../data/batches/m5-10a-process-correction.json),
+and its executable check is `npm run batch:m5-10a:process:check`.
+
+The next sense review must record one `sense_review.preflight.record_checkpoints`
+entry for every selected inventory start. Each checkpoint records the inventory
+ID, importability status, lemma/POS review state, observed sense count and POS
+values, six boundary evidence objects (`status`, record-specific `rationale`,
+and `sense_ids`), omitted boundary IDs, and a note. The six
+boundaries are:
+
+1. physical versus figurative usage;
+2. homonym and part-of-speech separation;
+3. sensory, emotion, state, and action separation;
+4. directional symmetry such as upper/lower or inside/outside;
+5. compound word versus spaced phrase; and
+6. ordinary word versus idiom.
+
+An importable checkpoint is complete only when its canonical ID, observed sense
+facts, lemma/POS review, at least one checked boundary, and all boundary evidence
+are complete. Checked evidence must cite a sense from that record; `not-applicable`
+and `not-reviewed` cite no sense, and copied or generic rationale is rejected. A
+missing boundary is explicitly listed and blocks relation review for that record.
+The regression fixture contains 21 known Wave A sense-boundary cases; its exact
+case IDs and boundary coverage are digest-bound to the process artifact.
+
+Relation admission keeps the relation list empty until sense preflight is complete.
+The historical 25-proposal regression remains 13 pre-screen passes and 12
+pre-screen rejections for failure reproducibility only. Upstream correction is
+proven separately by the source-bound, noncanonical 20-case calibration dry-run:
+its fixed generator emits zero pre-screened noise candidates; a separately
+authored audit input supplies per-proposal decisions, and the validator derives
+the raw-proposal noise rate from those decisions. That audited rate must stay
+below the 25% relation-noise and 12 editor-seconds-per-processed-start gates.
+The builder refuses to authorize a run without the audit input. Run
+`npm run batch:m5-10a:calibration:check` before the process and repair checks.
+
+The M5-10A timing contract distinguishes human editorial passes from mechanical
+count, digest, import, tuple, SQLite, search, and package checks. Mechanical
+validation is recorded as verification evidence and never subtracted from editor
+seconds. A complete timing result must have measurements for the five required
+passes and every recorded follow-up pair; an unmeasured pass keeps the gate
+incomplete.
+
+The digest-bound authorization is
+[`data/batches/m5-10a-repair-authorization.json`](../data/batches/m5-10a-repair-authorization.json),
+validated with `npm run batch:m5-10a:repair:check`. It preserves the failed Wave A
+metrics (37.5% relation noise and 40.1969 editor seconds per processed start),
+keeps the canonical snapshot at 578 starts, and authorizes only #96 Wave A2:
+exactly +50 starts, from 578 to 628. It does not authorize the +150 Wave B step;
+Wave B still requires a passing A2 result and a later authorization.
+
+Legacy manifests that predate M5-10A continue to use
+measurement.timing.contract_version `m5-9a-v1`. Batches using the M5-10A process
+correction carry `sense_review.preflight.process_revision` set to
+`m5-10a-process-correction-v1`; the timing recorder then records
+`measurement.timing.contract_version` as `m5-10a-v1`. The timing recorder records the
 current feedback event with `npm run batch:timing:feedback`, then records each
 session with `npm run batch:timing:start` and `npm run batch:timing:stop`.
 The stop command derives wall-clock/editor seconds from its start/stop pair;
@@ -226,9 +285,11 @@ rejects timing values on unmeasured passes and requires paired one-based
 follow-up cycles. A session left in progress or a follow-up with missing work
 keeps the derived timing incomplete; no time is estimated or backfilled.
 `final-audit` and post-review audit time must include the human semantic checks
-they claim. CI's mechanical count/digest/import/tuple checks are validation
-evidence and must not be used to reduce editor seconds; representative semantic
-regressions should run before the full-sample audit.
+they claim. M5-10A's final-audit timing pass must also carry the complete audited
+case-ID set and raw-proposal digest, and the calibration audit session must equal
+that timed pass session. CI's mechanical count/digest/import/tuple checks are
+validation evidence and must not be used to reduce editor seconds; representative
+semantic regressions should run before the full-sample audit.
 
 ## M5-4 draft and review contract
 

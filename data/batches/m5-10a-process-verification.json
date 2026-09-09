@@ -1,0 +1,61 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10a-process-verification-20260908",
+  "process_revision": "m5-10a-process-correction-v1",
+  "canonical_snapshot": {
+    "record_count": 620,
+    "start_count": 578,
+    "reference_only_count": 42,
+    "sense_count": 743,
+    "relation_count": 467,
+    "expression_count": 39
+  },
+  "machine_validation_excluded_from_editor_seconds": true,
+  "checks": {
+    "canonical_integrity": {
+      "status": "passed",
+      "command": "npm run validate"
+    },
+    "deterministic_sqlite": {
+      "status": "passed",
+      "command": "npm run verify:m2 -- --allow-dirty"
+    },
+    "search_product_regression": {
+      "status": "passed",
+      "command": "npm run validate:search"
+    },
+    "candidate_generation_calibration": {
+      "status": "passed",
+      "command": "npm run batch:m5-10a:calibration:check"
+    },
+    "package": {
+      "status": "passed",
+      "non_minified": {
+        "status": "passed",
+        "command": "npm run package",
+        "unpacked_file_count": 23,
+        "dictionary_snapshot": {
+          "record_count": 620,
+          "start_count": 578,
+          "reference_only_count": 42,
+          "sense_count": 743,
+          "relation_count": 467,
+          "expression_count": 39
+        }
+      },
+      "minified": {
+        "status": "passed",
+        "command": "npm run package:minify",
+        "unpacked_file_count": 23,
+        "dictionary_snapshot": {
+          "record_count": 620,
+          "start_count": 578,
+          "reference_only_count": 42,
+          "sense_count": 743,
+          "relation_count": 467,
+          "expression_count": 39
+        }
+      }
+    }
+  }
+}

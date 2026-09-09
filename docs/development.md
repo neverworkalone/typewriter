@@ -129,6 +129,31 @@ npm run batch:import -- \
 
 npm run batch:process:check
 npm run batch:repair:check
+# Start and stop each calibration pass explicitly; the command persists its session.
+npm run batch:m5-10a:calibration:timing -- \
+  --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json
+npm run batch:m5-10a:calibration:timing -- \
+  --action=stop --pass=target-preparation \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
+npm run batch:m5-10a:calibration:timing -- \
+  --action=start --pass=final-audit \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
+# Stop final-audit only after reviewing all 20 cases; include the generated raw-proposal digest.
+npm run batch:m5-10a:calibration:timing -- \
+  --action=stop --pass=final-audit \
+  --case-ids=m5-10a-cal-001,...,m5-10a-cal-020 \
+  --raw-proposal-sha256=<sha256> \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
+# Commit a separately authored per-case audit input before building. The builder
+# refuses a missing audit and derives counts/rates/gate status from its decisions.
+# The default path is data/batches/m5-10a-relation-calibration-audit.json.
+npm run batch:m5-10a:calibration:build
+npm run batch:m5-10a:calibration:check
+npm run batch:m5-10a:process:check
+npm run batch:m5-10a:repair:check
 npm run batch:timing:feedback -- \
   --manifest=/tmp/typewriter-wave/manifest.json \
   --output=/tmp/typewriter-wave/feedback.json
@@ -188,12 +213,15 @@ package, integrated audit, and regression commands as the local workflow:
 8. `node scripts/verify/m2-pipeline.mjs`
 9. `node --test tests/*.test.mjs`
 10. `node --test tests/batch-workflow.test.mjs`
-11. `npm run test:unit`
-12. `npm run build`
-13. `npm run package`
-14. Chrome verification of the non-minified product package
-15. `npm run package:minify`
-16. Chrome verification of the minified product package
+11. `npm run batch:m5-10a:calibration:check`
+12. `npm run batch:m5-10a:process:check`
+13. `npm run batch:m5-10a:repair:check`
+14. `npm run test:unit`
+15. `npm run build`
+16. `npm run package`
+17. Chrome verification of the non-minified product package
+18. `npm run package:minify`
+19. Chrome verification of the minified product package
 
 The workflow proves that the documented JSONL, dataset, normalization, SQLite,
 reproducibility, integrated audit, product package, and both Chrome-loaded release

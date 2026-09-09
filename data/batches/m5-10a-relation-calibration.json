@@ -1,0 +1,569 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10a-relation-calibration-20260909",
+  "process_revision": "m5-10a-relation-generation-v3",
+  "canonical_mutation": false,
+  "source": {
+    "fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
+    "fixture_sha256": "9ceb1d9c4da6bcc3812a1ad3556f194652f8ec79ac80437e8caff9779e2462bf",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "3f26930a626278c8c281b914dda3fcbcf2c407b71ff87464718422683ba7ed98",
+    "expansion_plan": "data/batches/m5-8-expansion-plan.json",
+    "expansion_plan_sha256": "aaa2f9167ab823fc70feb7f261fc319fbe2f2f0a9412d70e3fee9290f283c8b4",
+    "relation_calibration_timing": "data/batches/m5-10a-relation-calibration-timing.json",
+    "relation_calibration_timing_sha256": "cc4479dad22e7627f1f28252bfd9b18322c72bd3f5b697e2f648b5efa1c25600",
+    "relation_calibration_audit": "data/batches/m5-10a-relation-calibration-audit.json",
+    "relation_calibration_audit_sha256": "f25d877cc0dc3d357440cf1000cb8e9c45289ffc6b046f856fe4b52220e0fb97"
+  },
+  "canonical_snapshot": {
+    "record_count": 620,
+    "start_count": 578,
+    "reference_only_count": 42,
+    "sense_count": 743,
+    "relation_count": 467,
+    "expression_count": 39
+  },
+  "calibration": {
+    "case_count": 20,
+    "preflight": {
+      "status": "complete",
+      "case_count": 20,
+      "evidence_case_count": 20,
+      "unresolved_boundary_count": 0,
+      "duplicate_evidence_count": 0,
+      "checked_boundary_counts": {
+        "physical-figurative": 8,
+        "homonym-pos": 7,
+        "sensory-emotion-state-action": 15,
+        "directional-symmetry": 7,
+        "compound-spaced-phrase": 5,
+        "word-idiom": 5
+      }
+    },
+    "generation": {
+      "request_count": 20,
+      "raw_proposal_count": 9,
+      "generation_suppressed_count": 0,
+      "not_generated_count": 11,
+      "not_generated_case_ids": [
+        "m5-10a-cal-001",
+        "m5-10a-cal-003",
+        "m5-10a-cal-004",
+        "m5-10a-cal-005",
+        "m5-10a-cal-006",
+        "m5-10a-cal-008",
+        "m5-10a-cal-013",
+        "m5-10a-cal-016",
+        "m5-10a-cal-018",
+        "m5-10a-cal-019",
+        "m5-10a-cal-020"
+      ],
+      "pre_screen_noise_count": 0,
+      "noise_rate_of_raw_proposals": 0,
+      "suppressed_category_counts": {}
+    },
+    "timing": {
+      "status": "complete",
+      "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
+      "timing_source_sha256": "cc4479dad22e7627f1f28252bfd9b18322c72bd3f5b697e2f648b5efa1c25600",
+      "processed_start_count": 20,
+      "editor_seconds": 66.211,
+      "editor_seconds_per_processed_start": 3.31055,
+      "unmeasured_pass_count": 0,
+      "machine_validation_excluded_from_editor_seconds": true,
+      "final_audit_pass_session_id": "48313400-662f-4ab4-a914-d67b0a6d7da4",
+      "final_audit_case_count": 20,
+      "final_audit_case_ids": [
+        "m5-10a-cal-001",
+        "m5-10a-cal-002",
+        "m5-10a-cal-003",
+        "m5-10a-cal-004",
+        "m5-10a-cal-005",
+        "m5-10a-cal-006",
+        "m5-10a-cal-007",
+        "m5-10a-cal-008",
+        "m5-10a-cal-009",
+        "m5-10a-cal-010",
+        "m5-10a-cal-011",
+        "m5-10a-cal-012",
+        "m5-10a-cal-013",
+        "m5-10a-cal-014",
+        "m5-10a-cal-015",
+        "m5-10a-cal-016",
+        "m5-10a-cal-017",
+        "m5-10a-cal-018",
+        "m5-10a-cal-019",
+        "m5-10a-cal-020"
+      ],
+      "final_audit_raw_proposal_sha256": "28b1fb299c939f5dfb65ef386658367af4db938960fe21f8e34116a7c6b9d8df"
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "generator_id": "m5-10a-relation-generation-v3",
+      "initial_review_id": "m5-10a-initial-review",
+      "reviewed_case_count": 20,
+      "reviewed_raw_proposal_count": 9,
+      "human_admitted_count": 9,
+      "human_rejected_count": 0,
+      "correction_count": 0,
+      "correction_rate": 0,
+      "confirmed_noise_count": 0,
+      "noise_rate_of_raw_proposals": 0,
+      "open_blocker_count": 0,
+      "auditor_id": "independent-editorial-auditor",
+      "audited_at": "2026-09-09T01:53:31.616Z",
+      "audit_session_id": "48313400-662f-4ab4-a914-d67b0a6d7da4",
+      "audit_input_sha256": "f25d877cc0dc3d357440cf1000cb8e9c45289ffc6b046f856fe4b52220e0fb97",
+      "raw_proposal_sha256": "28b1fb299c939f5dfb65ef386658367af4db938960fe21f8e34116a7c6b9d8df",
+      "case_reviews": [
+        {
+          "case_id": "m5-10a-cal-001",
+          "source_sense": "w003-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-001 independent audit checked source sense w003-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-002",
+          "source_sense": "w006-s1",
+          "target_sense": "r037-s1",
+          "relation_type": "near",
+          "direction": {
+            "from": "w006-s1",
+            "to": "r037-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-002 independent audit checked source sense w006-s1 against target sense r037-s1; 공허 is a close writer-useful alternative for the source's 허전한 feeling under the near contract."
+        },
+        {
+          "case_id": "m5-10a-cal-003",
+          "source_sense": "w008-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-003 independent audit checked source sense w008-s1; the earlier 마음이 놓이다 state expression was not generated as an action relation, leaving a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-004",
+          "source_sense": "w010-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-004 independent audit checked source sense w010-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-005",
+          "source_sense": "w014-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-005 independent audit checked source sense w014-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-006",
+          "source_sense": "w022-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-006 independent audit checked source sense w022-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-007",
+          "source_sense": "w026-s1",
+          "target_sense": "w370-s1",
+          "relation_type": "near",
+          "direction": {
+            "from": "w026-s1",
+            "to": "w370-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-007 independent audit checked source sense w026-s1 against target sense w370-s1; 차분하다 is a close writer-useful alternative for the source's calm emotional register under the near contract."
+        },
+        {
+          "case_id": "m5-10a-cal-008",
+          "source_sense": "w037-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-008 independent audit checked source sense w037-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-009",
+          "source_sense": "w040-s1",
+          "target_sense": "r030-s1",
+          "relation_type": "near",
+          "direction": {
+            "from": "w040-s1",
+            "to": "r030-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-009 independent audit checked source sense w040-s1 against target sense r030-s1; 또렷하다 preserves the source's clear visual or auditory quality under the near contract."
+        },
+        {
+          "case_id": "m5-10a-cal-010",
+          "source_sense": "w062-s1",
+          "target_sense": "r001-s1",
+          "relation_type": "sensory",
+          "direction": {
+            "from": "w062-s1",
+            "to": "r001-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-010 independent audit checked source sense w062-s1 against target sense r001-s1; 향내 shares the source's smell imagery and is valid under the sensory contract."
+        },
+        {
+          "case_id": "m5-10a-cal-011",
+          "source_sense": "w086-s1",
+          "target_sense": "w087-s1",
+          "relation_type": "near",
+          "direction": {
+            "from": "w086-s1",
+            "to": "w087-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-011 independent audit checked source sense w086-s1 against target sense w087-s1; 울림 is a close writer-useful sound alternative under the near contract."
+        },
+        {
+          "case_id": "m5-10a-cal-012",
+          "source_sense": "w077-s1",
+          "target_sense": "w409-s1",
+          "relation_type": "sensory",
+          "direction": {
+            "from": "w077-s1",
+            "to": "w409-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-012 independent audit checked source sense w077-s1 against target sense w409-s1; 눅진하다 carries the source's humid tactile impression and is valid under the sensory contract."
+        },
+        {
+          "case_id": "m5-10a-cal-013",
+          "source_sense": "w020-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-013 independent audit checked source sense w020-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-014",
+          "source_sense": "w015-s1",
+          "target_sense": "w440-s1",
+          "relation_type": "near",
+          "direction": {
+            "from": "w015-s1",
+            "to": "w440-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-014 independent audit checked source sense w015-s1 against target sense w440-s1; 시샘 is a close writer-useful jealousy-related alternative under the near contract."
+        },
+        {
+          "case_id": "m5-10a-cal-015",
+          "source_sense": "w063-s1",
+          "target_sense": "w062-s1",
+          "relation_type": "sensory",
+          "direction": {
+            "from": "w063-s1",
+            "to": "w062-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-015 independent audit checked source sense w063-s1 against target sense w062-s1; 냄새 provides a broader smell image for the source's unpleasant odor and is valid under the sensory contract."
+        },
+        {
+          "case_id": "m5-10a-cal-016",
+          "source_sense": "w024-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-016 independent audit checked source sense w024-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-017",
+          "source_sense": "w011-s1",
+          "target_sense": "r032-s1",
+          "relation_type": "near",
+          "direction": {
+            "from": "w011-s1",
+            "to": "r032-s1"
+          },
+          "outcome": "raw-proposal",
+          "decision": "admit",
+          "admission": "admitted",
+          "noise_assessment": "clean",
+          "correction": "none",
+          "note": "m5-10a-cal-017 independent audit checked source sense w011-s1 against target sense r032-s1; 뉘우침 is a close writer-useful alternative focused on recognizing a past wrong under the near contract."
+        },
+        {
+          "case_id": "m5-10a-cal-018",
+          "source_sense": "w091-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-018 independent audit checked source sense w091-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-019",
+          "source_sense": "w025-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-019 independent audit checked source sense w025-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        },
+        {
+          "case_id": "m5-10a-cal-020",
+          "source_sense": "w027-s1",
+          "outcome": "no-valid-candidate",
+          "decision": "not-applicable",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
+          "correction": "none",
+          "note": "m5-10a-cal-020 independent audit checked source sense w027-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+        }
+      ],
+      "findings": [
+        {
+          "id": "m5-10a-calibration-content-gate",
+          "status": "closed",
+          "note": "The independent final audit reviewed all twenty source-only requests: nine generated proposals and eleven normal no-candidate results. The four previously identified false-positive patterns are absent from the final proposal set, and no open blocker remains."
+        }
+      ]
+    },
+    "fixed_gate": {
+      "status": "passed",
+      "relation_noise_rate_max": 0.25,
+      "editor_seconds_per_processed_start_max": 12,
+      "correction_rate_max": 0.5,
+      "unmeasured_timing_passes_max": 0,
+      "open_audit_blockers_max": 0
+    }
+  },
+  "raw_proposals": [
+    {
+      "case_id": "m5-10a-cal-002",
+      "source_sense": "w006-s1",
+      "relation": {
+        "target": "r037",
+        "target_sense": "r037-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w006-s1",
+        "to": "r037-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-007",
+      "source_sense": "w026-s1",
+      "relation": {
+        "target": "w370",
+        "target_sense": "w370-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w026-s1",
+        "to": "w370-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-009",
+      "source_sense": "w040-s1",
+      "relation": {
+        "target": "r030",
+        "target_sense": "r030-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w040-s1",
+        "to": "r030-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-010",
+      "source_sense": "w062-s1",
+      "relation": {
+        "target": "r001",
+        "target_sense": "r001-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w062-s1",
+        "to": "r001-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-011",
+      "source_sense": "w086-s1",
+      "relation": {
+        "target": "w087",
+        "target_sense": "w087-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w086-s1",
+        "to": "w087-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-012",
+      "source_sense": "w077-s1",
+      "relation": {
+        "target": "w409",
+        "target_sense": "w409-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w077-s1",
+        "to": "w409-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-014",
+      "source_sense": "w015-s1",
+      "relation": {
+        "target": "w440",
+        "target_sense": "w440-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w015-s1",
+        "to": "w440-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-015",
+      "source_sense": "w063-s1",
+      "relation": {
+        "target": "w062",
+        "target_sense": "w062-s1",
+        "type": "sensory"
+      },
+      "direction": {
+        "from": "w063-s1",
+        "to": "w062-s1"
+      }
+    },
+    {
+      "case_id": "m5-10a-cal-017",
+      "source_sense": "w011-s1",
+      "relation": {
+        "target": "r032",
+        "target_sense": "r032-s1",
+        "type": "near"
+      },
+      "direction": {
+        "from": "w011-s1",
+        "to": "r032-s1"
+      }
+    }
+  ],
+  "generation_suppressions": [],
+  "not_generated_cases": [
+    {
+      "case_id": "m5-10a-cal-001",
+      "source_sense": "w003-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-003",
+      "source_sense": "w008-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-004",
+      "source_sense": "w010-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-005",
+      "source_sense": "w014-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-006",
+      "source_sense": "w022-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-008",
+      "source_sense": "w037-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-013",
+      "source_sense": "w020-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-016",
+      "source_sense": "w024-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-018",
+      "source_sense": "w091-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-019",
+      "source_sense": "w025-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-020",
+      "source_sense": "w027-s1",
+      "reason": "no-contract-valid-candidate"
+    }
+  ]
+}

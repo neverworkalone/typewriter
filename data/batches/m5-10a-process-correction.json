@@ -1,0 +1,327 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10a-process-correction-20260908",
+  "issue": 107,
+  "parent_issue": 7,
+  "process_revision": "m5-10a-process-correction-v1",
+  "canonical_scope": {
+    "canonical_mutation": false,
+    "snapshot": {
+      "record_count": 620,
+      "start_count": 578,
+      "reference_only_count": 42,
+      "sense_count": 743,
+      "relation_count": 467,
+      "expression_count": 39
+    },
+    "wave_a2": {
+      "target_issue": 96,
+      "target_wave": "wave-a2-plus-50-validation",
+      "base_start_count": 578,
+      "net_start_increase": 50,
+      "cumulative_start_target": 628,
+      "requires_repair_authorization": true
+    },
+    "wave_b": {
+      "target_issue": 96,
+      "target_wave": "wave-b-plus-150",
+      "net_start_increase": 150,
+      "requires_wave_a2_pass": true,
+      "authorized": false
+    }
+  },
+  "sense_preflight": {
+    "boundary_ids": [
+      "physical-figurative",
+      "homonym-pos",
+      "sensory-emotion-state-action",
+      "directional-symmetry",
+      "compound-spaced-phrase",
+      "word-idiom"
+    ],
+    "boundaries": [
+      {
+        "id": "physical-figurative",
+        "question": "물리적 장면과 비유적 용법을 별도 sense로 나눴는가?",
+        "omission_record": "missing_boundary_ids",
+        "blocks_relation_review": true
+      },
+      {
+        "id": "homonym-pos",
+        "question": "같은 표면형의 동음이의어와 품사 차이를 확인했는가?",
+        "omission_record": "missing_boundary_ids",
+        "blocks_relation_review": true
+      },
+      {
+        "id": "sensory-emotion-state-action",
+        "question": "감각·정서·상태·행동의 의미를 서로 섞지 않았는가?",
+        "omission_record": "missing_boundary_ids",
+        "blocks_relation_review": true
+      },
+      {
+        "id": "directional-symmetry",
+        "question": "상하·안팎 등 방향 대칭어를 나란히 확인했는가?",
+        "omission_record": "missing_boundary_ids",
+        "blocks_relation_review": true
+      },
+      {
+        "id": "compound-spaced-phrase",
+        "question": "붙여 쓰는 합성어와 띄어 쓰는 구를 구분했는가?",
+        "omission_record": "missing_boundary_ids",
+        "blocks_relation_review": true
+      },
+      {
+        "id": "word-idiom",
+        "question": "일반 단어와 관용 표현의 경계를 확인했는가?",
+        "omission_record": "missing_boundary_ids",
+        "blocks_relation_review": true
+      }
+    ],
+    "manifest_checkpoint": {
+      "location": "manifest.sense_review.preflight",
+      "coverage": "every-selected-start-exactly-once",
+      "required_record_fields": [
+        "inventory_id",
+        "status",
+        "lemma_pos",
+        "observed_sense_count",
+        "observed_pos",
+        "boundary_checks",
+        "missing_boundary_ids",
+        "note"
+      ],
+      "status_mapping": "included-or-corrected=complete; held=held; rejected=rejected; deferred=deferred",
+      "complete_rule": "complete requires lemma_pos=checked, observed sense/POS values, at least one checked boundary, and no missing boundary",
+      "evidence_rule": "every boundary_checks entry requires status, record-specific rationale, and sense_ids; checked cites a real sense and not-applicable/not-reviewed cite none",
+      "missing_boundary_rule": "missing_boundary_ids equals every boundary_checks entry marked not-reviewed",
+      "relation_gate_rule": "relation review may start only for a complete checkpoint with zero missing boundaries"
+    },
+    "regression_fixture": {
+      "path": "tests/fixtures/m5-10-wave-a-sense-regressions.json",
+      "sha256": "ec60907c8116771a63389274778b9d9c2cdda074ec1a3dd62d89cacc4ab87fc4",
+      "sense_case_count": 21,
+      "required_split_count": 21,
+      "required_boundary_coverage": {
+        "physical-figurative": 17,
+        "homonym-pos": 1,
+        "sensory-emotion-state-action": 7,
+        "directional-symmetry": 2,
+        "compound-spaced-phrase": 1,
+        "word-idiom": 3
+      },
+      "required_case_ids": [
+        "w535",
+        "w536",
+        "w542",
+        "w546",
+        "w547",
+        "w548",
+        "w549",
+        "w552",
+        "w556",
+        "w558",
+        "w559",
+        "w560",
+        "w561",
+        "w562",
+        "w563",
+        "w565",
+        "w566",
+        "w567",
+        "w568",
+        "w569",
+        "w578"
+      ]
+    }
+  },
+  "relation_pre_screen": {
+    "process_revision": "m5-9a-relation-admission-v1",
+    "evidence_role": "historical-failure-preservation-only",
+    "policy": {
+      "default_relation_output": "empty",
+      "quota": "none",
+      "candidate_fields": [
+        "source_sense",
+        "target_sense",
+        "direction",
+        "type",
+        "writer_use_note"
+      ],
+      "method": "tuple-and-semantic-review",
+      "human_admission_required": true,
+      "pre_screen_failure_categories": [
+        "incidental-co-occurrence",
+        "generic-result-or-reaction",
+        "arbitrary-modifier-or-place",
+        "broad-common-category",
+        "unsupported-cross-sensory",
+        "sense-target-type-error"
+      ],
+      "sense_preflight_required": true,
+      "success_evidence": "candidate_generation.calibration"
+    },
+    "source": {
+      "relation_screen": "data/batches/m5-9a-relation-screen.json",
+      "relation_screen_sha256": "7e696f9be1e71a490bf2785035530ee079771c62498e6e7436a52184f8706973",
+      "relation_diff": "data/batches/m5-9-expansion-relation-diff.json",
+      "relation_diff_sha256": "b9b70d553286d82b79aaa40f438165fef0b8a32f71b36b945170301589258153"
+    },
+    "denominator": {
+      "proposal_count": 25,
+      "pre_screened_count": 25,
+      "pre_screen_pass_count": 13,
+      "pre_screen_rejected_count": 12,
+      "human_admission_denominator": 13,
+      "human_admission_reviewed_count": 13,
+      "human_admitted_count": 13,
+      "human_rejected_count": 0,
+      "final_relation_count": 13
+    },
+    "failure_category_counts": {
+      "arbitrary-modifier-or-place": 3,
+      "broad-common-category": 2,
+      "generic-result-or-reaction": 7
+    }
+  },
+  "candidate_generation": {
+    "process_revision": "m5-10a-relation-generation-v3",
+    "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
+    "calibration_artifact_sha256": "d03de45fc85ebc308c4992260a11c989196e204e8291032f9b8e1230d1be5147",
+    "calibration_case_count": 20,
+    "request_count": 20,
+    "raw_proposal_count": 9,
+    "generation_suppressed_count": 0,
+    "not_generated_count": 11,
+    "not_generated_case_ids": [
+      "m5-10a-cal-001",
+      "m5-10a-cal-003",
+      "m5-10a-cal-004",
+      "m5-10a-cal-005",
+      "m5-10a-cal-006",
+      "m5-10a-cal-008",
+      "m5-10a-cal-013",
+      "m5-10a-cal-016",
+      "m5-10a-cal-018",
+      "m5-10a-cal-019",
+      "m5-10a-cal-020"
+    ],
+    "pre_screen_noise_count": 0,
+    "noise_rate_of_raw_proposals": 0,
+    "audited_noise_count": 0,
+    "audited_noise_rate_of_raw_proposals": 0,
+    "editor_seconds_per_processed_start": 3.31055,
+    "correction_rate": 0,
+    "unmeasured_pass_count": 0,
+    "preflight_case_count": 20,
+    "preflight_evidence_case_count": 20,
+    "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
+    "timing_source_sha256": "cc4479dad22e7627f1f28252bfd9b18322c72bd3f5b697e2f648b5efa1c25600",
+    "fixed_gate_status": "passed"
+  },
+  "timing_boundary": {
+    "contract_version": "m5-10a-v1",
+    "required_passes": [
+      "target-preparation",
+      "initial-review",
+      "feedback-fixes",
+      "final-audit",
+      "held-rejected"
+    ],
+    "follow_up_passes": [
+      "post-review-audit",
+      "post-review-fixes"
+    ],
+    "human_editorial_passes": [
+      "target-preparation",
+      "initial-review",
+      "feedback-fixes",
+      "final-audit",
+      "held-rejected",
+      "post-review-audit",
+      "post-review-fixes"
+    ],
+    "machine_validation": {
+      "editor_seconds_included": false,
+      "source_of_truth": "verification artifact",
+      "recorded_as": "machine validation result, not semantic review time"
+    },
+    "duration_source": "completed_at-minus-started_at",
+    "feedback_timestamp_source": "recorded-review-event",
+    "unmeasured_result": "timing-incomplete-and-gate-fails"
+  },
+  "source": {
+    "failed_stage_report": "data/batches/m5-9a-wave-a-plus-50.json",
+    "failed_stage_report_sha256": "070526553c12b73055a98aa243d5142b46b2e6a9f21da31c2a915160491cc487",
+    "wave_a_manifest": "data/batches/m5-10-wave-a.json",
+    "wave_a_manifest_sha256": "dfa26d82b83eafee4f957d6320ead3e193dce45b192845c5f84b8b35fe2d6720",
+    "wave_a_metrics": "data/batches/m5-10-wave-a-metrics.json",
+    "wave_a_metrics_sha256": "13dd6765b0582c7af47464dd45b9f731e6c3c6a7ef52bbf29a9309ae210205c2",
+    "wave_a_relation_diff": "data/batches/m5-10-wave-a-relation-diff.json",
+    "wave_a_relation_diff_sha256": "55e508094ca3b62863213b582a97fd575aa90a0fc26708cc333a33185f7d64e0",
+    "wave_a_relation_screen": "data/batches/m5-10-wave-a-relation-screen.json",
+    "wave_a_relation_screen_sha256": "31e39c9eaedb276193a1e039a62792a864e51033ec275717f59e8f2072570e52",
+    "relation_regression_screen": "data/batches/m5-9a-relation-screen.json",
+    "relation_regression_screen_sha256": "7e696f9be1e71a490bf2785035530ee079771c62498e6e7436a52184f8706973",
+    "relation_calibration": "data/batches/m5-10a-relation-calibration.json",
+    "relation_calibration_sha256": "d03de45fc85ebc308c4992260a11c989196e204e8291032f9b8e1230d1be5147",
+    "relation_calibration_fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
+    "relation_calibration_fixture_sha256": "9ceb1d9c4da6bcc3812a1ad3556f194652f8ec79ac80437e8caff9779e2462bf",
+    "sense_regression_fixture": "tests/fixtures/m5-10-wave-a-sense-regressions.json",
+    "sense_regression_fixture_sha256": "ec60907c8116771a63389274778b9d9c2cdda074ec1a3dd62d89cacc4ab87fc4",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "3f26930a626278c8c281b914dda3fcbcf2c407b71ff87464718422683ba7ed98",
+    "wave_a_verification": "data/batches/m5-10-wave-a-verification.json",
+    "wave_a_verification_sha256": "1a1efa528d8bcc57b5206ff77f48a2fe2e97098d88686ef9c63482bac496bc34",
+    "relation_calibration_timing": "data/batches/m5-10a-relation-calibration-timing.json",
+    "relation_calibration_timing_sha256": "cc4479dad22e7627f1f28252bfd9b18322c72bd3f5b697e2f648b5efa1c25600",
+    "relation_calibration_audit": "data/batches/m5-10a-relation-calibration-audit.json",
+    "relation_calibration_audit_sha256": "f25d877cc0dc3d357440cf1000cb8e9c45289ffc6b046f856fe4b52220e0fb97"
+  },
+  "verification": {
+    "artifact": "data/batches/m5-10a-process-verification.json",
+    "sha256": "a99363242e63c27cd52de173185f5f2aca05a29dad8af598090532f103e4f5a7"
+  },
+  "audit": {
+    "status": "complete",
+    "independent": true,
+    "open_blocker_count": 0,
+    "findings": [
+      {
+        "id": "m5-10a-sense-preflight",
+        "category": "sense-boundary-checkpoint",
+        "status": "closed",
+        "note": "6개 boundary를 record별 evidence checkpoint와 missing_boundary_ids로 기록하고, Wave A에서 발견된 21개 split 사례를 회귀 fixture로 묶었다."
+      },
+      {
+        "id": "m5-10a-relation-denominator",
+        "category": "relation-pre-screen",
+        "status": "closed",
+        "note": "25개 historical proposal 전체를 유지하면서 13개 human-admission 분모와 12개 pre-screen reject를 재현한다. 이는 실패 보존용이며 upstream correction 성공 증거가 아니다."
+      },
+      {
+        "id": "m5-10a-candidate-generation-calibration",
+        "category": "relation-candidate-generation",
+        "status": "closed",
+        "note": "Twenty unlabelled, noncanonical requests were independently audited; 9 raw proposals were admitted, 0 were classified as noise, 0 required correction, and 11 requests remained visible as normal no-candidate results. Recorder-proven time, correction, and noise gates passed."
+      },
+      {
+        "id": "m5-10a-timing-boundary",
+        "category": "timing-measurement",
+        "status": "closed",
+        "note": "사람의 semantic pass만 editor seconds에 포함하고 기계 검증은 별도 verification으로 기록하며, 미측정 pass는 timing incomplete와 gate fail로 처리한다."
+      },
+      {
+        "id": "m5-10a-canonical-invariant",
+        "category": "canonical-boundary",
+        "status": "closed",
+        "note": "현재 canonical snapshot 578 starts를 변경하지 않고 #96 Wave A의 620 records 결과를 source digest로 보존한다."
+      },
+      {
+        "id": "m5-10a-wave-scope",
+        "category": "authorization-scope",
+        "status": "closed",
+        "note": "repair authorization은 Wave A2 +50만 허용하고 Wave B +150은 Wave A2 pass 전까지 허용하지 않는다."
+      }
+    ]
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "schema_version": "1",
+  "audit_id": "m5-10a-relation-calibration-audit-20260909",
+  "process_revision": "m5-10a-relation-generation-v3",
+  "generator_id": "m5-10a-relation-generation-v3",
+  "initial_review_id": "m5-10a-initial-review",
+  "auditor_id": "independent-editorial-auditor",
+  "independent": true,
+  "audited_at": "2026-09-09T01:53:31.616Z",
+  "audit_session_id": "48313400-662f-4ab4-a914-d67b0a6d7da4",
+  "overall_timing_session_id": "5e5930c1-6256-420e-8544-058179c9b95e",
+  "raw_proposal_sha256": "28b1fb299c939f5dfb65ef386658367af4db938960fe21f8e34116a7c6b9d8df",
+  "open_blocker_count": 0,
+  "findings": [
+    {
+      "id": "m5-10a-calibration-content-gate",
+      "status": "closed",
+      "note": "The independent final audit reviewed all twenty source-only requests: nine generated proposals and eleven normal no-candidate results. The four previously identified false-positive patterns are absent from the final proposal set, and no open blocker remains."
+    }
+  ],
+  "case_reviews": [
+    {
+      "case_id": "m5-10a-cal-001",
+      "source_sense": "w003-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-001 independent audit checked source sense w003-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-002",
+      "source_sense": "w006-s1",
+      "target_sense": "r037-s1",
+      "relation_type": "near",
+      "direction": { "from": "w006-s1", "to": "r037-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-002 independent audit checked source sense w006-s1 against target sense r037-s1; 공허 is a close writer-useful alternative for the source's 허전한 feeling under the near contract."
+    },
+    {
+      "case_id": "m5-10a-cal-003",
+      "source_sense": "w008-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-003 independent audit checked source sense w008-s1; the earlier 마음이 놓이다 state expression was not generated as an action relation, leaving a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-004",
+      "source_sense": "w010-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-004 independent audit checked source sense w010-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-005",
+      "source_sense": "w014-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-005 independent audit checked source sense w014-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-006",
+      "source_sense": "w022-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-006 independent audit checked source sense w022-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-007",
+      "source_sense": "w026-s1",
+      "target_sense": "w370-s1",
+      "relation_type": "near",
+      "direction": { "from": "w026-s1", "to": "w370-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-007 independent audit checked source sense w026-s1 against target sense w370-s1; 차분하다 is a close writer-useful alternative for the source's calm emotional register under the near contract."
+    },
+    {
+      "case_id": "m5-10a-cal-008",
+      "source_sense": "w037-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-008 independent audit checked source sense w037-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-009",
+      "source_sense": "w040-s1",
+      "target_sense": "r030-s1",
+      "relation_type": "near",
+      "direction": { "from": "w040-s1", "to": "r030-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-009 independent audit checked source sense w040-s1 against target sense r030-s1; 또렷하다 preserves the source's clear visual or auditory quality under the near contract."
+    },
+    {
+      "case_id": "m5-10a-cal-010",
+      "source_sense": "w062-s1",
+      "target_sense": "r001-s1",
+      "relation_type": "sensory",
+      "direction": { "from": "w062-s1", "to": "r001-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-010 independent audit checked source sense w062-s1 against target sense r001-s1; 향내 shares the source's smell imagery and is valid under the sensory contract."
+    },
+    {
+      "case_id": "m5-10a-cal-011",
+      "source_sense": "w086-s1",
+      "target_sense": "w087-s1",
+      "relation_type": "near",
+      "direction": { "from": "w086-s1", "to": "w087-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-011 independent audit checked source sense w086-s1 against target sense w087-s1; 울림 is a close writer-useful sound alternative under the near contract."
+    },
+    {
+      "case_id": "m5-10a-cal-012",
+      "source_sense": "w077-s1",
+      "target_sense": "w409-s1",
+      "relation_type": "sensory",
+      "direction": { "from": "w077-s1", "to": "w409-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-012 independent audit checked source sense w077-s1 against target sense w409-s1; 눅진하다 carries the source's humid tactile impression and is valid under the sensory contract."
+    },
+    {
+      "case_id": "m5-10a-cal-013",
+      "source_sense": "w020-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-013 independent audit checked source sense w020-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-014",
+      "source_sense": "w015-s1",
+      "target_sense": "w440-s1",
+      "relation_type": "near",
+      "direction": { "from": "w015-s1", "to": "w440-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-014 independent audit checked source sense w015-s1 against target sense w440-s1; 시샘 is a close writer-useful jealousy-related alternative under the near contract."
+    },
+    {
+      "case_id": "m5-10a-cal-015",
+      "source_sense": "w063-s1",
+      "target_sense": "w062-s1",
+      "relation_type": "sensory",
+      "direction": { "from": "w063-s1", "to": "w062-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-015 independent audit checked source sense w063-s1 against target sense w062-s1; 냄새 provides a broader smell image for the source's unpleasant odor and is valid under the sensory contract."
+    },
+    {
+      "case_id": "m5-10a-cal-016",
+      "source_sense": "w024-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-016 independent audit checked source sense w024-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-017",
+      "source_sense": "w011-s1",
+      "target_sense": "r032-s1",
+      "relation_type": "near",
+      "direction": { "from": "w011-s1", "to": "r032-s1" },
+      "outcome": "raw-proposal",
+      "decision": "admit",
+      "noise_assessment": "clean",
+      "correction": "none",
+      "evidence": "m5-10a-cal-017 independent audit checked source sense w011-s1 against target sense r032-s1; 뉘우침 is a close writer-useful alternative focused on recognizing a past wrong under the near contract."
+    },
+    {
+      "case_id": "m5-10a-cal-018",
+      "source_sense": "w091-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-018 independent audit checked source sense w091-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-019",
+      "source_sense": "w025-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-019 independent audit checked source sense w025-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    },
+    {
+      "case_id": "m5-10a-cal-020",
+      "source_sense": "w027-s1",
+      "outcome": "no-valid-candidate",
+      "decision": "not-applicable",
+      "noise_assessment": "not-applicable",
+      "correction": "none",
+      "evidence": "m5-10a-cal-020 independent audit checked source sense w027-s1; no contract-valid canonical target was generated, so the request remains a normal no-candidate result."
+    }
+  ]
+}

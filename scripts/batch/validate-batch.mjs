@@ -44,6 +44,21 @@ const OPTIONAL_MEASUREMENT_PASS_IDS = Object.freeze([
   'post-review-audit',
   'post-review-fixes',
 ]);
+const STRICT_TIMING_CONTRACT_VERSIONS = Object.freeze([
+  'm5-9a-v1',
+  'm5-10a-v1',
+]);
+
+export const M5_10A_PROCESS_REVISION = 'm5-10a-process-correction-v1';
+export const M5_10A_SENSE_BOUNDARY_IDS = Object.freeze([
+  'physical-figurative',
+  'homonym-pos',
+  'sensory-emotion-state-action',
+  'directional-symmetry',
+  'compound-spaced-phrase',
+  'word-idiom',
+]);
+const PREFLIGHT_BOUNDARY_STATUSES = Object.freeze(['checked', 'not-applicable', 'not-reviewed']);
 
 export class BatchValidationError extends Error {
   constructor(message, code = 'BATCH_VALIDATION_ERROR') {
@@ -263,7 +278,9 @@ function validateTimingDuration(pass, label, strict) {
 
 export function validateTimingMeasurement(
   measurement,
-  { strict = measurement?.timing?.contract_version === 'm5-9a-v1' } = {},
+  {
+    strict = STRICT_TIMING_CONTRACT_VERSIONS.includes(measurement?.timing?.contract_version),
+  } = {},
 ) {
   if (!measurement) return;
 
@@ -430,6 +447,7 @@ function validateSenseReview(review, manifest) {
 
   requireString(review.note, 'manifest.sense_review.note');
   requireUnique(review.split_canonical_ids, 'manifest.sense_review.split_canonical_ids');
+  validateSensePreflight(review.preflight, manifest);
   if (review.status !== 'complete') return;
 
   const importableStarts = manifest.records.filter(
@@ -466,6 +484,231 @@ function validateSenseReview(review, manifest) {
       'manifest.sense_review.split_canonical_ids must be corrected sense records',
       'SENSE_REVIEW_CORRECTION_MISMATCH',
     );
+  }
+
+}
+
+function assertJsonEqual(actual, expected, message, code) {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    fail(`${message}: expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`, code);
+  }
+}
+
+function expectedPreflightStatus(decision) {
+  if (decision === 'included' || decision === 'corrected') return 'complete';
+  return decision;
+}
+
+export function validateSensePreflight(preflight, manifest) {
+  if (!preflight) return;
+
+  assertJsonEqual(
+    preflight.process_revision,
+    M5_10A_PROCESS_REVISION,
+    'manifest.sense_review.preflight process revision drifted',
+    'PREFLIGHT_PROCESS_REVISION_MISMATCH',
+  );
+  assertJsonEqual(
+    preflight.boundary_ids,
+    M5_10A_SENSE_BOUNDARY_IDS,
+    'manifest.sense_review.preflight boundary IDs drifted',
+    'PREFLIGHT_BOUNDARY_DEFINITION_MISMATCH',
+  );
+
+  const selectedStarts = manifest.records.filter(
+    (record) => record.source === 'inventory' && record.role === 'start',
+  );
+  const selectedByInventoryId = new Map(
+    selectedStarts.map((record) => [record.inventory_id, record]),
+  );
+  const checkpointIds = preflight.record_checkpoints.map(({ inventory_id: inventoryId }) => inventoryId);
+  requireUnique(checkpointIds, 'manifest.sense_review.preflight.record_checkpoints.inventory_id');
+  assertJsonEqual(
+    checkpointIds.sort(),
+    selectedStarts.map(({ inventory_id: inventoryId }) => inventoryId).sort(),
+    'manifest.sense_review.preflight must cover every selected start exactly once',
+    'PREFLIGHT_COVERAGE_MISMATCH',
+  );
+
+  const rationaleOwners = new Map();
+  for (const [index, checkpoint] of preflight.record_checkpoints.entries()) {
+    const label = `manifest.sense_review.preflight.record_checkpoints[${index}]`;
+    const manifestRecord = selectedByInventoryId.get(checkpoint.inventory_id);
+    if (!manifestRecord) {
+      fail(`${label} references an unselected inventory target`, 'PREFLIGHT_COVERAGE_MISMATCH');
+    }
+    assertJsonEqual(
+      checkpoint.status,
+      expectedPreflightStatus(manifestRecord.decision),
+      `${label}.status does not match the manifest decision`,
+      'PREFLIGHT_DECISION_MISMATCH',
+    );
+    if (checkpoint.status === 'complete') {
+      assertJsonEqual(
+        checkpoint.canonical_id,
+        manifestRecord.canonical_id,
+        `${label}.canonical_id does not match the manifest record`,
+        'PREFLIGHT_CANONICAL_MISMATCH',
+      );
+      if (checkpoint.lemma_pos !== 'checked') {
+        fail(`${label}.lemma_pos must be checked for a complete checkpoint`, 'PREFLIGHT_INCOMPLETE');
+      }
+      if (checkpoint.observed_sense_count < 1 || checkpoint.observed_pos.length < 1) {
+        fail(`${label} complete checkpoint must record observed sense and POS values`, 'PREFLIGHT_INCOMPLETE');
+      }
+    } else if (Object.hasOwn(checkpoint, 'canonical_id')) {
+      fail(`${label} non-importable checkpoint must not carry canonical_id`, 'PREFLIGHT_CANONICAL_MISMATCH');
+    }
+
+    let checkedBoundaryCount = 0;
+    const missingBoundaryIds = M5_10A_SENSE_BOUNDARY_IDS.filter(
+      (boundaryId) => checkpoint.boundary_checks[boundaryId].status === 'not-reviewed',
+    );
+    assertJsonEqual(
+      [...checkpoint.missing_boundary_ids].sort(),
+      [...missingBoundaryIds].sort(),
+      `${label}.missing_boundary_ids does not describe the boundary checks`,
+      'PREFLIGHT_BOUNDARY_MISMATCH',
+    );
+    for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+      const evidence = checkpoint.boundary_checks[boundaryId];
+      if (!PREFLIGHT_BOUNDARY_STATUSES.includes(evidence.status)) {
+        fail(`${label}.boundary_checks.${boundaryId} has an invalid status`, 'PREFLIGHT_BOUNDARY_MISMATCH');
+      }
+      requireString(
+        evidence.rationale,
+        `${label}.boundary_checks.${boundaryId}.rationale`,
+      );
+      if (!evidence.rationale.includes(checkpoint.inventory_id)) {
+        fail(
+          `${label}.boundary_checks.${boundaryId}.rationale must identify the inventory record`,
+          'PREFLIGHT_EVIDENCE_MISMATCH',
+        );
+      }
+      const evidenceOwner = rationaleOwners.get(evidence.rationale);
+      if (evidenceOwner && evidenceOwner !== checkpoint.inventory_id) {
+        fail(
+          `${label}.boundary_checks.${boundaryId}.rationale is reused across records`,
+          'PREFLIGHT_GENERIC_EVIDENCE',
+        );
+      }
+      rationaleOwners.set(evidence.rationale, checkpoint.inventory_id);
+      if (evidence.status === 'checked') {
+        checkedBoundaryCount += 1;
+        if (evidence.sense_ids.length < 1) {
+          fail(
+            `${label}.boundary_checks.${boundaryId} checked evidence must cite at least one sense`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+        if (checkpoint.status === 'complete' && evidence.sense_ids.some(
+          (senseId) => !senseId.startsWith(`${checkpoint.canonical_id}-s`),
+        )) {
+          fail(
+            `${label}.boundary_checks.${boundaryId} cites a sense outside its canonical record`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+        if (evidence.sense_ids.some((senseId) => !evidence.rationale.includes(senseId))) {
+          fail(
+            `${label}.boundary_checks.${boundaryId}.rationale must cite every checked sense`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+      } else if (evidence.sense_ids.length > 0) {
+        fail(
+          `${label}.boundary_checks.${boundaryId} non-checked evidence must not cite senses`,
+          'PREFLIGHT_EVIDENCE_MISMATCH',
+        );
+      }
+    }
+    if (checkpoint.status === 'complete' && checkedBoundaryCount === 0) {
+      fail(`${label} must contain at least one checked sense boundary`, 'PREFLIGHT_INCOMPLETE');
+    }
+    if (checkpoint.status === 'complete' && missingBoundaryIds.length > 0) {
+      fail(`${label} cannot be complete while a sense boundary is not reviewed`, 'PREFLIGHT_INCOMPLETE');
+    }
+  }
+}
+
+export function validateSensePreflightRecords(manifest, recordInfos) {
+  const preflight = manifest.sense_review?.preflight;
+  if (!preflight) return;
+
+  const recordsById = new Map(
+    recordInfos.map(({ record }) => [record.id, record]),
+  );
+  const manifestByCanonicalId = new Map(
+    manifest.records
+      .filter((record) => Object.hasOwn(record, 'canonical_id'))
+      .map((record) => [record.canonical_id, record]),
+  );
+  const checkpointsByInventoryId = new Map(
+    preflight.record_checkpoints.map((checkpoint) => [checkpoint.inventory_id, checkpoint]),
+  );
+  for (const checkpoint of preflight.record_checkpoints) {
+    if (checkpoint.status !== 'complete') continue;
+    const record = recordsById.get(checkpoint.canonical_id);
+    if (!record) {
+      fail(
+        `preflight checkpoint ${checkpoint.inventory_id} canonical record is missing from staged records`,
+        'PREFLIGHT_CANONICAL_MISMATCH',
+      );
+    }
+    assertJsonEqual(
+      checkpoint.observed_sense_count,
+      record.senses.length,
+      `preflight checkpoint ${checkpoint.inventory_id} sense count drifted`,
+      'PREFLIGHT_CANONICAL_MISMATCH',
+    );
+    assertJsonEqual(
+      checkpoint.observed_pos,
+      record.senses.map(({ pos }) => pos),
+      `preflight checkpoint ${checkpoint.inventory_id} POS values drifted`,
+      'PREFLIGHT_CANONICAL_MISMATCH',
+    );
+    const recordSenseIds = new Set(record.senses.map(({ id }) => id));
+    for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+      const evidence = checkpoint.boundary_checks[boundaryId];
+      if (evidence.status !== 'checked') continue;
+      for (const senseId of evidence.sense_ids) {
+        if (!recordSenseIds.has(senseId)) {
+          fail(
+            `preflight checkpoint ${checkpoint.inventory_id} ${boundaryId} cites a missing sense`,
+            'PREFLIGHT_CANONICAL_MISMATCH',
+          );
+        }
+        if (!evidence.rationale.includes(senseId)) {
+          fail(
+            `preflight checkpoint ${checkpoint.inventory_id} ${boundaryId} evidence does not explain its sense`,
+            'PREFLIGHT_EVIDENCE_MISMATCH',
+          );
+        }
+      }
+    }
+  }
+
+  for (const { record } of recordInfos) {
+    if (record.role !== 'start' || !record.senses.some(({ relations }) => (relations?.length ?? 0) > 0)) continue;
+    const manifestRecord = manifestByCanonicalId.get(record.id);
+    const checkpoint = manifestRecord
+      ? checkpointsByInventoryId.get(manifestRecord.inventory_id)
+      : undefined;
+    if (!checkpoint || checkpoint.status !== 'complete' || checkpoint.missing_boundary_ids.length > 0) {
+      fail(
+        `relation-bearing record ${record.id} lacks a complete sense preflight checkpoint`,
+        'PREFLIGHT_RELATION_GATE',
+      );
+    }
+    for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+      const evidence = checkpoint.boundary_checks[boundaryId];
+      if (evidence.status === 'not-reviewed') {
+        fail(
+          `relation-bearing record ${record.id} lacks evidence for ${boundaryId}`,
+          'PREFLIGHT_RELATION_GATE',
+        );
+      }
+    }
   }
 }
 
@@ -769,6 +1012,7 @@ export async function validateBatch({
   }
 
   validateStagedMapping(manifest.records, stagedResult.records);
+  validateSensePreflightRecords(manifest, stagedResult.records);
   validateDeterministicCanonicalIds(manifest.records, stagedResult.records, canonicalResult.records);
   validateDeterministicSenseIds(stagedResult.records);
   validateNoDuplicateLexicalKeys([...canonicalResult.records, ...stagedResult.records]);

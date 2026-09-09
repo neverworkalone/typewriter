@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration-audit.schema.json",
+  "title": "Typewriter M5-10A independent relation calibration audit input",
+  "description": "A separately authored editorial audit of every source-only calibration request. It contains case judgments and evidence only; derived counts and gate status are calculated by the calibration validator.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "audit_id",
+    "process_revision",
+    "generator_id",
+    "initial_review_id",
+    "auditor_id",
+    "independent",
+    "audited_at",
+    "audit_session_id",
+    "overall_timing_session_id",
+    "raw_proposal_sha256",
+    "open_blocker_count",
+    "findings",
+    "case_reviews"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "audit_id": { "type": "string", "pattern": "^m5-10a-relation-calibration-audit-[0-9]{8}$" },
+    "process_revision": { "const": "m5-10a-relation-generation-v3" },
+    "generator_id": { "const": "m5-10a-relation-generation-v3" },
+    "initial_review_id": { "const": "m5-10a-initial-review" },
+    "auditor_id": { "type": "string", "pattern": "\\S" },
+    "independent": { "const": true },
+    "audited_at": { "type": "string", "format": "date-time" },
+    "audit_session_id": { "$ref": "#/$defs/uuid" },
+    "overall_timing_session_id": { "$ref": "#/$defs/uuid" },
+    "raw_proposal_sha256": { "$ref": "#/$defs/sha256" },
+    "open_blocker_count": { "type": "integer", "minimum": 0 },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "case_reviews": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/caseReview" }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "note"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "status": { "enum": ["closed", "open"] },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "caseReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "source_sense",
+        "outcome",
+        "decision",
+        "noise_assessment",
+        "correction",
+        "evidence"
+      ],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" },
+        "source_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+        "target_sense": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+        "relation_type": { "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"] },
+        "direction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" },
+            "to": { "type": "string", "pattern": "^[wr][0-9]{3,}-s[0-9]+$" }
+          }
+        },
+        "outcome": { "enum": ["raw-proposal", "no-valid-candidate"] },
+        "decision": { "enum": ["admit", "reject", "correct", "not-applicable"] },
+        "noise_assessment": { "enum": ["clean", "noise", "not-applicable"] },
+        "correction": { "enum": ["none", "corrected"] },
+        "evidence": { "type": "string", "pattern": "\\S" }
+      },
+      "oneOf": [
+        {
+          "required": ["target_sense", "relation_type", "direction"],
+          "properties": {
+            "outcome": { "const": "raw-proposal" },
+            "decision": { "enum": ["admit", "reject", "correct"] },
+            "noise_assessment": { "enum": ["clean", "noise"] }
+          }
+        },
+        {
+          "not": {
+            "anyOf": [
+              { "required": ["target_sense"] },
+              { "required": ["relation_type"] },
+              { "required": ["direction"] }
+            ]
+          },
+          "properties": {
+            "outcome": { "const": "no-valid-candidate" },
+            "decision": { "const": "not-applicable" },
+            "noise_assessment": { "const": "not-applicable" },
+            "correction": { "const": "none" }
+          }
+        }
+      ]
+    }
+  }
+}

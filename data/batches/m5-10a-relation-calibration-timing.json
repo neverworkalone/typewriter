@@ -1,0 +1,89 @@
+{
+  "schema_version": "1",
+  "recorder_version": "timing-recorder-v1",
+  "recording_source": "timing-recorder-v1",
+  "recorder_command": "node scripts/batch/record-m5-10a-calibration-timing.mjs",
+  "session_id": "5e5930c1-6256-420e-8544-058179c9b95e",
+  "clock_source": "system-clock",
+  "recorded_at": "2026-09-09T01:53:31.616Z",
+  "processed_start_count": 20,
+  "passes": [
+    {
+      "id": "target-preparation",
+      "status": "complete",
+      "started_at": "2026-09-09T01:52:05.257Z",
+      "session_id": "3773b60b-7623-44bb-8593-5574029505cf",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-09T01:52:13.885Z",
+      "wall_clock_seconds": 8.628,
+      "editor_seconds": 8.628
+    },
+    {
+      "id": "initial-review",
+      "status": "complete",
+      "started_at": "2026-09-09T01:52:20.417Z",
+      "session_id": "1b490432-08cf-40da-a5f5-cf06f79bf057",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-09T01:52:34.325Z",
+      "wall_clock_seconds": 13.908,
+      "editor_seconds": 13.908
+    },
+    {
+      "id": "feedback-fixes",
+      "status": "complete",
+      "started_at": "2026-09-09T01:52:41.460Z",
+      "session_id": "3bada551-7376-438b-9e49-2209a542f290",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-09T01:52:41.775Z",
+      "wall_clock_seconds": 0.315,
+      "editor_seconds": 0.315
+    },
+    {
+      "id": "final-audit",
+      "status": "complete",
+      "started_at": "2026-09-09T01:52:48.070Z",
+      "session_id": "48313400-662f-4ab4-a914-d67b0a6d7da4",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-09T01:53:31.239Z",
+      "wall_clock_seconds": 43.169,
+      "editor_seconds": 43.169,
+      "work_evidence": {
+        "case_ids": [
+          "m5-10a-cal-001",
+          "m5-10a-cal-002",
+          "m5-10a-cal-003",
+          "m5-10a-cal-004",
+          "m5-10a-cal-005",
+          "m5-10a-cal-006",
+          "m5-10a-cal-007",
+          "m5-10a-cal-008",
+          "m5-10a-cal-009",
+          "m5-10a-cal-010",
+          "m5-10a-cal-011",
+          "m5-10a-cal-012",
+          "m5-10a-cal-013",
+          "m5-10a-cal-014",
+          "m5-10a-cal-015",
+          "m5-10a-cal-016",
+          "m5-10a-cal-017",
+          "m5-10a-cal-018",
+          "m5-10a-cal-019",
+          "m5-10a-cal-020"
+        ],
+        "case_count": 20,
+        "raw_proposal_sha256": "28b1fb299c939f5dfb65ef386658367af4db938960fe21f8e34116a7c6b9d8df"
+      }
+    },
+    {
+      "id": "held-rejected",
+      "status": "complete",
+      "started_at": "2026-09-09T01:53:31.424Z",
+      "session_id": "b1b26936-4be8-46f2-948c-f1d09b1f21c1",
+      "recording_source": "timing-recorder-v1",
+      "completed_at": "2026-09-09T01:53:31.615Z",
+      "wall_clock_seconds": 0.191,
+      "editor_seconds": 0.191
+    }
+  ],
+  "recording_proof_sha256": "557b039077105c4329ba8ba39f54d691e2de2da4def95045cf791a84d0f3de13"
+}

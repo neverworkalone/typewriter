@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration-timing.schema.json",
+  "title": "Typewriter M5-10A calibration timing recorder output",
+  "description": "Timing-recorder-produced session evidence. Timestamp, session, duration, and final-audit coverage values are not accepted as manual calibration inputs. The final audit must record the 20 audited calibration cases and the raw-proposal digest while that pass is running.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "recorder_version",
+    "recording_source",
+    "recorder_command",
+    "session_id",
+    "clock_source",
+    "recorded_at",
+    "processed_start_count",
+    "passes",
+    "recording_proof_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "recorder_version": { "const": "timing-recorder-v1" },
+    "recording_source": { "const": "timing-recorder-v1" },
+    "recorder_command": { "const": "node scripts/batch/record-m5-10a-calibration-timing.mjs" },
+    "session_id": { "$ref": "#/$defs/uuid" },
+    "clock_source": { "const": "system-clock" },
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "processed_start_count": { "type": "integer", "const": 20 },
+    "passes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/pass" }
+    },
+    "recording_proof_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "pass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "started_at",
+        "completed_at",
+        "wall_clock_seconds",
+        "editor_seconds",
+        "session_id",
+        "recording_source"
+      ],
+      "properties": {
+        "id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-audit", "held-rejected"] },
+        "status": { "const": "complete" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "wall_clock_seconds": { "type": "number", "minimum": 0 },
+        "editor_seconds": { "type": "number", "minimum": 0 },
+        "session_id": { "$ref": "#/$defs/uuid" },
+        "recording_source": { "const": "timing-recorder-v1" },
+        "work_evidence": { "$ref": "#/$defs/workEvidence" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "id": { "const": "final-audit" } } },
+          "then": { "required": ["work_evidence"] },
+          "else": { "not": { "required": ["work_evidence"] } }
+        }
+      ]
+    },
+    "workEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_ids", "case_count", "raw_proposal_sha256"],
+      "properties": {
+        "case_ids": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" }
+        },
+        "case_count": { "type": "integer", "const": 20 },
+        "raw_proposal_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
