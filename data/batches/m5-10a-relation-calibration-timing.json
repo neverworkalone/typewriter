@@ -3,61 +3,87 @@
   "recorder_version": "timing-recorder-v1",
   "recording_source": "timing-recorder-v1",
   "recorder_command": "node scripts/batch/record-m5-10a-calibration-timing.mjs",
-  "session_id": "5f77133c-a920-462c-835f-abf94730180b",
+  "session_id": "adb80c43-5d3d-4dea-a64a-82b7c93a3c13",
   "clock_source": "system-clock",
-  "recorded_at": "2026-09-08T15:20:11.577Z",
+  "recorded_at": "2026-09-09T01:12:46.053Z",
   "processed_start_count": 20,
   "passes": [
     {
       "id": "target-preparation",
       "status": "complete",
-      "started_at": "2026-09-08T15:19:19.550Z",
-      "session_id": "fd3ce580-0fb7-4e80-9517-58c74e6fa590",
+      "started_at": "2026-09-09T01:09:09.289Z",
+      "session_id": "5e39ba27-50fb-4b1c-b2fa-6e8d5b23b7fb",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-08T15:19:28.152Z",
-      "wall_clock_seconds": 8.602,
-      "editor_seconds": 8.602
+      "completed_at": "2026-09-09T01:09:43.118Z",
+      "wall_clock_seconds": 33.829,
+      "editor_seconds": 33.829
     },
     {
       "id": "initial-review",
       "status": "complete",
-      "started_at": "2026-09-08T15:19:52.565Z",
-      "session_id": "e355c83c-ac50-43d1-a33f-1d2f1bb3cb72",
+      "started_at": "2026-09-09T01:09:58.755Z",
+      "session_id": "35dd4202-5a84-4a7d-90a9-e86ee9c0d144",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-08T15:20:10.627Z",
-      "wall_clock_seconds": 18.062,
-      "editor_seconds": 18.062
+      "completed_at": "2026-09-09T01:10:15.015Z",
+      "wall_clock_seconds": 16.26,
+      "editor_seconds": 16.26
     },
     {
       "id": "feedback-fixes",
       "status": "complete",
-      "started_at": "2026-09-08T15:20:10.785Z",
-      "session_id": "ce9276b2-0d9d-49a8-9907-b3d9d240227d",
+      "started_at": "2026-09-09T01:10:22.088Z",
+      "session_id": "eb9f2910-d323-4f8f-a727-6cdab38e7d79",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-08T15:20:10.943Z",
-      "wall_clock_seconds": 0.158,
-      "editor_seconds": 0.158
+      "completed_at": "2026-09-09T01:10:51.031Z",
+      "wall_clock_seconds": 28.943,
+      "editor_seconds": 28.943
     },
     {
       "id": "final-audit",
       "status": "complete",
-      "started_at": "2026-09-08T15:20:11.098Z",
-      "session_id": "870be189-af96-4d36-bc44-8aaa89484fb6",
+      "started_at": "2026-09-09T01:10:58.528Z",
+      "session_id": "eb2622cc-e094-4271-997e-9623e02a574d",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-08T15:20:11.257Z",
-      "wall_clock_seconds": 0.159,
-      "editor_seconds": 0.159
+      "completed_at": "2026-09-09T01:12:32.585Z",
+      "wall_clock_seconds": 94.057,
+      "editor_seconds": 94.057,
+      "work_evidence": {
+        "case_ids": [
+          "m5-10a-cal-001",
+          "m5-10a-cal-002",
+          "m5-10a-cal-003",
+          "m5-10a-cal-004",
+          "m5-10a-cal-005",
+          "m5-10a-cal-006",
+          "m5-10a-cal-007",
+          "m5-10a-cal-008",
+          "m5-10a-cal-009",
+          "m5-10a-cal-010",
+          "m5-10a-cal-011",
+          "m5-10a-cal-012",
+          "m5-10a-cal-013",
+          "m5-10a-cal-014",
+          "m5-10a-cal-015",
+          "m5-10a-cal-016",
+          "m5-10a-cal-017",
+          "m5-10a-cal-018",
+          "m5-10a-cal-019",
+          "m5-10a-cal-020"
+        ],
+        "case_count": 20,
+        "raw_proposal_sha256": "013ef2a83460a073b766cd723cb865031ced222e7c7a181cc5a8e54ea8f6d26d"
+      }
     },
     {
       "id": "held-rejected",
       "status": "complete",
-      "started_at": "2026-09-08T15:20:11.419Z",
-      "session_id": "c81998be-62b5-4f3d-b76b-c581074cb2f4",
+      "started_at": "2026-09-09T01:12:45.865Z",
+      "session_id": "85947c1c-1a09-4acb-aee5-d31ef3492109",
       "recording_source": "timing-recorder-v1",
-      "completed_at": "2026-09-08T15:20:11.576Z",
-      "wall_clock_seconds": 0.157,
-      "editor_seconds": 0.157
+      "completed_at": "2026-09-09T01:12:46.052Z",
+      "wall_clock_seconds": 0.187,
+      "editor_seconds": 0.187
     }
   ],
-  "recording_proof_sha256": "7426a897b419139d06b6a11e77ed61d416a99c2998d2a04209faed9951cc3b75"
+  "recording_proof_sha256": "874a8c5aaf8347c307b78877ae7fac74c660adee6628298b63061559991ea96c"
 }

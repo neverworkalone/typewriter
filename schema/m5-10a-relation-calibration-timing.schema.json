@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10a-relation-calibration-timing.schema.json",
   "title": "Typewriter M5-10A calibration timing recorder output",
-  "description": "Timing-recorder-produced session evidence. Timestamp, session, and duration values are not accepted as manual calibration inputs.",
+  "description": "Timing-recorder-produced session evidence. Timestamp, session, duration, and final-audit coverage values are not accepted as manual calibration inputs. The final audit must record the 20 audited calibration cases and the raw-proposal digest while that pass is running.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -64,7 +64,31 @@
         "wall_clock_seconds": { "type": "number", "minimum": 0 },
         "editor_seconds": { "type": "number", "minimum": 0 },
         "session_id": { "$ref": "#/$defs/uuid" },
-        "recording_source": { "const": "timing-recorder-v1" }
+        "recording_source": { "const": "timing-recorder-v1" },
+        "work_evidence": { "$ref": "#/$defs/workEvidence" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "id": { "const": "final-audit" } } },
+          "then": { "required": ["work_evidence"] },
+          "else": { "not": { "required": ["work_evidence"] } }
+        }
+      ]
+    },
+    "workEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_ids", "case_count", "raw_proposal_sha256"],
+      "properties": {
+        "case_ids": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^m5-10a-cal-[0-9]{3}$" }
+        },
+        "case_count": { "type": "integer", "const": 20 },
+        "raw_proposal_sha256": { "$ref": "#/$defs/sha256" }
       }
     }
   }

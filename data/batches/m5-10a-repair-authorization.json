@@ -8,7 +8,7 @@
     "failed_stage_report": "data/batches/m5-9a-wave-a-plus-50.json",
     "failed_stage_report_sha256": "070526553c12b73055a98aa243d5142b46b2e6a9f21da31c2a915160491cc487",
     "process_correction": "data/batches/m5-10a-process-correction.json",
-    "process_correction_sha256": "cf77d6c9ba998f92ba47a6056e2811b1e2b3afa28efec9c5b3412dd7983740c3"
+    "process_correction_sha256": "71c23aaea378cf3b4b3f51edff01333285b8eff0eff100835d02a8fbebd4a6e9"
   },
   "failed_stage": {
     "stage_id": "m5-9a-wave-a-plus-50",
@@ -48,20 +48,31 @@
   "candidate_generation": {
     "process_revision": "m5-10a-relation-generation-v3",
     "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
-    "calibration_artifact_sha256": "b3defcb065ba6485f97705eb0b4ddc7e037839bbbb53c02f2a8a66ba6076c3d8",
+    "calibration_artifact_sha256": "8d2a843bbba81aff38d1a7f3997ad9c4f87b5d27f887168286a12daef0becd29",
     "calibration_case_count": 20,
     "request_count": 20,
-    "raw_proposal_count": 20,
+    "raw_proposal_count": 12,
     "generation_suppressed_count": 0,
+    "not_generated_count": 8,
+    "not_generated_case_ids": [
+      "m5-10a-cal-001",
+      "m5-10a-cal-004",
+      "m5-10a-cal-006",
+      "m5-10a-cal-013",
+      "m5-10a-cal-016",
+      "m5-10a-cal-018",
+      "m5-10a-cal-019",
+      "m5-10a-cal-020"
+    ],
     "pre_screen_noise_count": 0,
     "noise_rate_of_raw_proposals": 0,
-    "editor_seconds_per_processed_start": 1.3569,
+    "editor_seconds_per_processed_start": 8.6638,
     "correction_rate": 0,
     "unmeasured_pass_count": 0,
     "preflight_case_count": 20,
     "preflight_evidence_case_count": 20,
     "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
-    "timing_source_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37",
+    "timing_source_sha256": "cda6f1383edeb4300cca74a8c3b262d473bb4f6a4f45295931f4f6b72a33e4ac",
     "fixed_gate_status": "passed"
   },
   "timing_contract": {

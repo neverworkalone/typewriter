@@ -73,6 +73,24 @@ function requirePass(args) {
   return args.pass;
 }
 
+function workEvidenceFromArgs(args, passId) {
+  const hasCaseIds = Object.hasOwn(args, 'case-ids');
+  const hasDigest = Object.hasOwn(args, 'raw-proposal-sha256');
+  if (passId !== 'final-audit' && (hasCaseIds || hasDigest)) {
+    throw new Error('--case-ids and --raw-proposal-sha256 are only accepted when stopping final-audit');
+  }
+  if (passId !== 'final-audit') return undefined;
+  if (!hasCaseIds || !hasDigest) {
+    throw new Error('stopping final-audit requires --case-ids and --raw-proposal-sha256');
+  }
+  const caseIds = args['case-ids'].split(',').map((caseId) => caseId.trim()).filter(Boolean);
+  return {
+    case_ids: caseIds,
+    case_count: caseIds.length,
+    raw_proposal_sha256: args['raw-proposal-sha256'],
+  };
+}
+
 function startPass(session, passId) {
   const passIndex = CALIBRATION_TIMING_PASS_IDS.indexOf(passId);
   const pass = session.passes[passIndex];
@@ -88,11 +106,11 @@ function startPass(session, passId) {
   return session;
 }
 
-function stopPass(session, passId) {
+function stopPass(session, passId, workEvidence) {
   const passIndex = CALIBRATION_TIMING_PASS_IDS.indexOf(passId);
   const pass = session.passes[passIndex];
   if (pass.status !== 'in-progress') throw new Error(`${passId} has no active recorder start`);
-  session.passes[passIndex] = stopCalibrationTimingPass(pass);
+  session.passes[passIndex] = stopCalibrationTimingPass(pass, { workEvidence });
   if (session.passes.every(({ status }) => status === 'complete')) {
     return finalizeCalibrationTimingRecording(session);
   }
@@ -131,7 +149,9 @@ export async function main(argv = process.argv.slice(2)) {
   const inputPath = path.resolve(args.input);
   const session = await readJson(inputPath);
   assertSession(session);
-  const updated = stopPass(session, requirePass(args));
+  const passId = requirePass(args);
+  const workEvidence = workEvidenceFromArgs(args, passId);
+  const updated = stopPass(session, passId, workEvidence);
   await writeJson(outputPath, updated);
   const final = !updated.status;
   console.log(`${final ? 'Finalized' : 'Stopped'} explicit calibration timing pass ${args.pass} in ${path.relative(process.cwd(), outputPath)}.`);

@@ -110,8 +110,10 @@ test('M5-10A process correction and repair authorization remain source-bound', a
     calibration_artifact_sha256: process.candidate_generation.calibration_artifact_sha256,
     calibration_case_count: 20,
     request_count: 20,
-    raw_proposal_count: 20,
+    raw_proposal_count: process.candidate_generation.raw_proposal_count,
     generation_suppressed_count: 0,
+    not_generated_count: process.candidate_generation.not_generated_count,
+    not_generated_case_ids: process.candidate_generation.not_generated_case_ids,
     pre_screen_noise_count: 0,
     noise_rate_of_raw_proposals: 0,
     editor_seconds_per_processed_start: process.candidate_generation.editor_seconds_per_processed_start,
@@ -245,9 +247,10 @@ test('M5-10A calibration is an upstream fixed gate, not historical classificatio
   const calibration = await validateM5A10ACalibration({ artifactPath: DEFAULT_CALIBRATION_ARTIFACT_PATH });
   assert.equal(calibration.case_count, 20);
   assert.equal(calibration.request_count, 20);
-  assert.equal(calibration.raw_proposal_count, 20);
+  assert.equal(calibration.raw_proposal_count + calibration.not_generated_count, 20);
+  assert.ok(calibration.not_generated_count > 0);
   assert.equal(calibration.generation_suppressed_count, 0);
-  assert.equal(calibration.generated_candidate_count, 20);
+  assert.equal(calibration.generated_candidate_count, calibration.raw_proposal_count);
   assert.equal(calibration.suppressed_candidate_count, 0);
   assert.equal(calibration.pre_screen_noise_count, 0);
   assert.equal(calibration.noise_rate_of_raw_proposals, 0);
@@ -280,6 +283,8 @@ test('M5-10A calibration rejects oracle labels, unseen negatives, and canonical 
     request_count: result.request_count,
     raw_proposal_count: result.raw_proposal_count,
     generation_suppressed_count: result.generation_suppressed_count,
+    not_generated_count: result.not_generated_count,
+    not_generated_cases: [...result.not_generated_cases].sort((a, b) => a.case_id.localeCompare(b.case_id)),
     pre_screen_noise_count: result.pre_screen_noise_count,
     noise_rate_of_raw_proposals: result.noise_rate_of_raw_proposals,
     suppressed_category_counts: result.suppressed_category_counts,
@@ -305,7 +310,8 @@ test('M5-10A calibration rejects oracle labels, unseen negatives, and canonical 
   shuffled.cases.reverse();
   assert.deepEqual(stable(generateRelationCandidates(labeled, canonical.records)), stable(baseline));
   assert.deepEqual(stable(generateRelationCandidates(shuffled, canonical.records)), stable(baseline));
-  assert.equal(baseline.generated_candidates.length, 20);
+  assert.equal(baseline.generated_candidates.length + baseline.not_generated_cases.length, 20);
+  assert.ok(baseline.not_generated_cases.length > 0);
   assert.deepEqual(baseline.suppressed_candidates, []);
   const canonicalTuples = new Set(canonical.records.flatMap(({ record }) => record.senses.flatMap((sense) => (
     (sense.relations ?? []).map((relation) => `${sense.id}\u0000${relation.target_sense}\u0000${relation.type}`)
@@ -340,11 +346,11 @@ test('M5-10A relation contracts classify type independently from actual gloss co
   );
   assert.equal(
     classifyRelationRequest(request('w003-s1', { ...sharedPair, type: 'near' }), canonical.records),
-    undefined,
+    'incidental-co-occurrence',
   );
   assert.equal(
     classifyRelationRequest(request('w003-s1', { ...sharedPair, type: 'mood' }), canonical.records),
-    undefined,
+    'incidental-co-occurrence',
   );
 
   const unseenBroadRecord = {
@@ -371,11 +377,66 @@ test('M5-10A relation contracts classify type independently from actual gloss co
   );
 });
 
+test('M5-10A negative relation regressions cannot pass the content gate', async () => {
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const request = (sourceSense, target, type) => ({
+    source_sense: sourceSense,
+    relation: { target: target.split('-s')[0], target_sense: target, type },
+    direction: { from: sourceSense, to: target },
+  });
+  const regressions = [
+    ['w024-s1', 'w004-s1', 'near'],
+    ['w020-s1', 'w004-s1', 'near'],
+    ['w027-s1', 'w004-s1', 'near'],
+    ['w011-s1', 'r037-s1', 'near'],
+    ['w025-s1', 'w005-s1', 'near'],
+    ['w091-s1', 'r006-s1', 'sensory'],
+  ];
+  for (const [sourceSense, targetSense, type] of regressions) {
+    assert.equal(
+      classifyRelationRequest(request(sourceSense, targetSense, type), canonical.records),
+      type === 'sensory' ? 'unsupported-cross-sensory' : 'incidental-co-occurrence',
+      `${sourceSense} -> ${targetSense} must remain a negative regression`,
+    );
+  }
+  assert.equal(
+    classifyRelationRequest(request('w040-s1', 'r030-s1', 'sensory'), canonical.records),
+    'unsupported-cross-sensory',
+  );
+  assert.equal(
+    classifyRelationRequest(request('w040-s1', 'r030-s1', 'near'), canonical.records),
+    undefined,
+    '선명하다 -> 또렷하다 must be classified as near, not sensory',
+  );
+
+  const fixture = await readJson('tests/fixtures/m5-10a-relation-generation-calibration.json');
+  const generated = generateRelationCandidates(fixture, canonical.records);
+  for (const [sourceSense, targetSense] of regressions) {
+    assert.equal(
+      generated.generated_candidates.some((candidate) => (
+        candidate.source_sense === sourceSense && candidate.relation.target_sense === targetSense
+      )),
+      false,
+      `${sourceSense} -> ${targetSense} must not be emitted by source-only generation`,
+    );
+  }
+  assert.equal(
+    generated.generated_candidates.some((candidate) => (
+      candidate.source_sense === 'w040-s1' && candidate.relation.target_sense === 'r030-s1'
+        && candidate.relation.type === 'sensory'
+    )),
+    false,
+  );
+});
+
 test('M5-10A calibration rejects noise, time, audit, digest, preflight, and timing provenance tampering', async () => {
   const mutations = [
     ['noise', (artifact) => { artifact.calibration.generation.noise_rate_of_raw_proposals = 0.5; }],
     ['time', (artifact) => { artifact.calibration.timing.editor_seconds = 260; }],
     ['audit', (artifact) => { artifact.calibration.audit.open_blocker_count = 1; }],
+    ['audit-zero-coverage', (artifact) => { artifact.calibration.audit.case_reviews = []; }],
+    ['audit-partial-coverage', (artifact) => { artifact.calibration.audit.case_reviews = artifact.calibration.audit.case_reviews.slice(0, 1); }],
+    ['audit-digest-only', (artifact) => { delete artifact.calibration.audit.case_reviews; }],
     ['digest', (artifact) => { artifact.source.fixture_sha256 = '0'.repeat(64); }],
     ['preflight', (artifact) => { artifact.calibration.preflight.evidence_case_count = 19; }],
   ];
@@ -399,6 +460,9 @@ test('M5-10A calibration rejects noise, time, audit, digest, preflight, and timi
   const timing = await readJson('data/batches/m5-10a-relation-calibration-timing.json');
   timing.session_id = 'm5-10a-hand-written-session';
   assertErrorCode(() => verifyCalibrationTimingRecording(timing), 'TIMING_PROVENANCE_REQUIRED');
+  const missingAuditCoverage = await readJson('data/batches/m5-10a-relation-calibration-timing.json');
+  delete missingAuditCoverage.passes.find(({ id }) => id === 'final-audit').work_evidence;
+  assertErrorCode(() => verifyCalibrationTimingRecording(missingAuditCoverage), 'TIMING_AUDIT_COVERAGE_REQUIRED');
 });
 
 test('M5-10A calibration rejects regular boilerplate in sense evidence', async () => {
@@ -452,6 +516,48 @@ test('calibration timing requires explicit persisted start/stop events', () => {
   assert.throws(
     () => finalizeCalibrationTimingRecording(session),
     (error) => error?.code === 'TIMING_PROVENANCE_REQUIRED',
+  );
+
+  const finalAudit = createCalibrationTimingSession({ processedStartCount: 20 });
+  finalAudit.passes[3] = startCalibrationTimingPass({
+    passId: 'final-audit',
+    now: '2026-09-09T00:00:00.000Z',
+  });
+  assertErrorCode(
+    () => stopCalibrationTimingPass(finalAudit.passes[3], { now: '2026-09-09T00:00:20.000Z' }),
+    'TIMING_AUDIT_COVERAGE_REQUIRED',
+  );
+  assertErrorCode(
+    () => stopCalibrationTimingPass(finalAudit.passes[3], {
+      now: '2026-09-09T00:00:20.000Z',
+      workEvidence: {
+        case_ids: ['m5-10a-cal-001'],
+        case_count: 1,
+        raw_proposal_sha256: 'a'.repeat(64),
+      },
+    }),
+    'TIMING_AUDIT_COVERAGE_REQUIRED',
+  );
+  assertErrorCode(
+    () => stopCalibrationTimingPass(finalAudit.passes[3], {
+      now: '2026-09-09T00:00:20.000Z',
+      workEvidence: {
+        case_count: 20,
+        raw_proposal_sha256: 'a'.repeat(64),
+      },
+    }),
+    'TIMING_AUDIT_COVERAGE_REQUIRED',
+  );
+  assertErrorCode(
+    () => stopCalibrationTimingPass(finalAudit.passes[3], {
+      now: '2026-09-09T00:00:00.500Z',
+      workEvidence: {
+        case_ids: Array.from({ length: 20 }, (_, index) => `m5-10a-cal-${String(index + 1).padStart(3, '0')}`),
+        case_count: 20,
+        raw_proposal_sha256: 'a'.repeat(64),
+      },
+    }),
+    'TIMING_AUDIT_DURATION_TOO_SHORT',
   );
 });
 

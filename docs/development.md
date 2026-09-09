@@ -136,6 +136,18 @@ npm run batch:m5-10a:calibration:timing -- \
   --action=stop --pass=target-preparation \
   --input=/tmp/typewriter-m5-10a-timing-session.json \
   --output=/tmp/typewriter-m5-10a-timing-session.json
+npm run batch:m5-10a:calibration:timing -- \
+  --action=start --pass=final-audit \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
+# Stop final-audit only after reviewing all 20 cases; include the generated raw-proposal digest.
+npm run batch:m5-10a:calibration:timing -- \
+  --action=stop --pass=final-audit \
+  --case-ids=m5-10a-cal-001,...,m5-10a-cal-020 \
+  --raw-proposal-sha256=<sha256> \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
+npm run batch:m5-10a:calibration:build
 npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 npm run batch:m5-10a:repair:check

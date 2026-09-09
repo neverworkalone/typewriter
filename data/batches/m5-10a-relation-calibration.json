@@ -11,7 +11,7 @@
     "expansion_plan": "data/batches/m5-8-expansion-plan.json",
     "expansion_plan_sha256": "aaa2f9167ab823fc70feb7f261fc319fbe2f2f0a9412d70e3fee9290f283c8b4",
     "relation_calibration_timing": "data/batches/m5-10a-relation-calibration-timing.json",
-    "relation_calibration_timing_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37"
+    "relation_calibration_timing_sha256": "cda6f1383edeb4300cca74a8c3b262d473bb4f6a4f45295931f4f6b72a33e4ac"
   },
   "canonical_snapshot": {
     "record_count": 620,
@@ -40,8 +40,19 @@
     },
     "generation": {
       "request_count": 20,
-      "raw_proposal_count": 20,
+      "raw_proposal_count": 12,
       "generation_suppressed_count": 0,
+      "not_generated_count": 8,
+      "not_generated_case_ids": [
+        "m5-10a-cal-001",
+        "m5-10a-cal-004",
+        "m5-10a-cal-006",
+        "m5-10a-cal-013",
+        "m5-10a-cal-016",
+        "m5-10a-cal-018",
+        "m5-10a-cal-019",
+        "m5-10a-cal-020"
+      ],
       "pre_screen_noise_count": 0,
       "noise_rate_of_raw_proposals": 0,
       "suppressed_category_counts": {}
@@ -49,12 +60,37 @@
     "timing": {
       "status": "complete",
       "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
-      "timing_source_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37",
+      "timing_source_sha256": "cda6f1383edeb4300cca74a8c3b262d473bb4f6a4f45295931f4f6b72a33e4ac",
       "processed_start_count": 20,
-      "editor_seconds": 27.138,
-      "editor_seconds_per_processed_start": 1.3569,
+      "editor_seconds": 173.276,
+      "editor_seconds_per_processed_start": 8.6638,
       "unmeasured_pass_count": 0,
-      "machine_validation_excluded_from_editor_seconds": true
+      "machine_validation_excluded_from_editor_seconds": true,
+      "final_audit_pass_session_id": "eb2622cc-e094-4271-997e-9623e02a574d",
+      "final_audit_case_count": 20,
+      "final_audit_case_ids": [
+        "m5-10a-cal-001",
+        "m5-10a-cal-002",
+        "m5-10a-cal-003",
+        "m5-10a-cal-004",
+        "m5-10a-cal-005",
+        "m5-10a-cal-006",
+        "m5-10a-cal-007",
+        "m5-10a-cal-008",
+        "m5-10a-cal-009",
+        "m5-10a-cal-010",
+        "m5-10a-cal-011",
+        "m5-10a-cal-012",
+        "m5-10a-cal-013",
+        "m5-10a-cal-014",
+        "m5-10a-cal-015",
+        "m5-10a-cal-016",
+        "m5-10a-cal-017",
+        "m5-10a-cal-018",
+        "m5-10a-cal-019",
+        "m5-10a-cal-020"
+      ],
+      "final_audit_raw_proposal_sha256": "013ef2a83460a073b766cd723cb865031ced222e7c7a181cc5a8e54ea8f6d26d"
     },
     "audit": {
       "status": "complete",
@@ -62,11 +98,13 @@
       "generator_id": "m5-10a-relation-generation-v3",
       "initial_review_id": "m5-10a-initial-review",
       "auditor_id": "independent-editorial-auditor",
-      "audited_at": "2026-09-08T15:20:59.761Z",
-      "audit_session_id": "86e37b18-e304-41c8-9d44-b197b99a12d2",
+      "audited_at": "2026-09-09T01:19:15.069Z",
+      "audit_session_id": "eb2622cc-e094-4271-997e-9623e02a574d",
+      "audit_input_sha256": "d69bab95154be302bcfc472d608242dba015cf98467e645b4bb8d646a603b3c8",
+      "raw_proposal_sha256": "013ef2a83460a073b766cd723cb865031ced222e7c7a181cc5a8e54ea8f6d26d",
       "reviewed_case_count": 20,
-      "reviewed_raw_proposal_count": 20,
-      "human_admitted_count": 20,
+      "reviewed_raw_proposal_count": 12,
+      "human_admitted_count": 12,
       "human_rejected_count": 0,
       "correction_count": 0,
       "correction_rate": 0,
@@ -76,17 +114,11 @@
         {
           "case_id": "m5-10a-cal-001",
           "source_sense": "w003-s1",
-          "target_sense": "w004-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w003-s1",
-            "to": "w004-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-001: independent audit compared generated 설렘 (좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌) with 그리움 (떠나 있거나 잃은 대상이 다시 가까이 있기를 바라는 마음) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-001: independent final audit checked 설렘 (좋은 일이 일어나기를 기다리며 마음이 들뜨는 느낌) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-002",
@@ -101,37 +133,31 @@
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-002: independent audit compared generated 쓸쓸함 (곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌) with 공허 (안이 비어 있는 듯 허전하고 의미가 빠진 느낌) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-002: independent final audit compared generated 쓸쓸함 (곁에 사람이 없거나 마음을 나눌 곳이 없어 허전한 느낌) with 공허 (안이 비어 있는 듯 허전하고 의미가 빠진 느낌) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-003",
           "source_sense": "w008-s1",
-          "target_sense": "w454-s1",
-          "relation_type": "near",
+          "target_sense": "w288-s1",
+          "relation_type": "action",
           "direction": {
             "from": "w008-s1",
-            "to": "w454-s1"
+            "to": "w288-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-003: independent audit compared generated 안도 (걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태) with 성급하다 (마음이 급해 차분히 기다리거나 살피지 못하다) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-003: independent final audit compared generated 안도 (걱정하던 일이 풀리거나 위험을 넘겨 마음이 놓이는 상태) with 마음이 놓이다 (걱정하던 일이 풀려 마음이 편해지다) under the action content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-004",
           "source_sense": "w010-s1",
-          "target_sense": "w002-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w010-s1",
-            "to": "w002-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-004: independent audit compared generated 망설임 (결정이나 행동을 바로 하지 못하고 머뭇거리는 마음) with 불안 (앞일이나 상황을 확신하지 못해 마음이 편하지 않은 상태) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-004: independent final audit checked 망설임 (결정이나 행동을 바로 하지 못하고 머뭇거리는 마음) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-005",
@@ -146,58 +172,52 @@
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-005: independent audit compared generated 원망 (부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음) with 상처 (말이나 사건으로 마음에 남은 아픔이나 흔적) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-005: independent final audit compared generated 원망 (부당한 대우나 상처를 준 대상을 미워하며 탓하는 마음) with 상처 (말이나 사건으로 마음에 남은 아픔이나 흔적) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-006",
           "source_sense": "w022-s1",
-          "target_sense": "w004-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w022-s1",
-            "to": "w004-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-006: independent audit compared generated 기대 (앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음) with 그리움 (떠나 있거나 잃은 대상이 다시 가까이 있기를 바라는 마음) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-006: independent final audit checked 기대 (앞으로 좋은 일이 일어나거나 원하는 결과를 얻기를 기다리는 마음) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-007",
           "source_sense": "w026-s1",
-          "target_sense": "w036-s1",
+          "target_sense": "w370-s1",
           "relation_type": "near",
           "direction": {
             "from": "w026-s1",
-            "to": "w036-s1"
+            "to": "w370-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-007: independent audit compared generated 담담하다 (감정의 흔들림을 크게 드러내지 않고 차분하다) with 어색하다 (사람이나 상황 사이가 자연스럽지 않아 말과 행동이 굳다) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-007: independent final audit compared generated 담담하다 (감정의 흔들림을 크게 드러내지 않고 차분하다) with 차분하다 (마음이나 움직임이 가라앉아 조용하고 안정되어 있다) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-008",
           "source_sense": "w037-s1",
-          "target_sense": "w026-s1",
+          "target_sense": "w449-s1",
           "relation_type": "near",
           "direction": {
             "from": "w037-s1",
-            "to": "w026-s1"
+            "to": "w449-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-008: independent audit compared generated 자연스럽다 (사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다) with 담담하다 (감정의 흔들림을 크게 드러내지 않고 차분하다) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-008: independent final audit compared generated 자연스럽다 (사람의 말과 행동이나 장면의 흐름이 억지스럽지 않고 편안하다) with 무던하다 (성격이나 태도가 까다롭지 않고 너그럽고 편안하다) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-009",
           "source_sense": "w040-s1",
           "target_sense": "r030-s1",
-          "relation_type": "sensory",
+          "relation_type": "near",
           "direction": {
             "from": "w040-s1",
             "to": "r030-s1"
@@ -206,7 +226,7 @@
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-009: independent audit compared generated 선명하다 (빛깔이나 윤곽이 흐리지 않고 뚜렷하다) with 또렷하다 (모양이나 소리가 뚜렷하게 드러나다) under the sensory contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-009: independent final audit compared generated 선명하다 (빛깔이나 윤곽이 흐리지 않고 뚜렷하다) with 또렷하다 (모양이나 소리가 뚜렷하게 드러나다) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-010",
@@ -221,167 +241,136 @@
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-010: independent audit compared generated 냄새 (코로 맡아 느끼는 기운이나 향의 성질) with 향내 (냄새로 느껴지는 향기) under the sensory contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-010: independent final audit compared generated 냄새 (코로 맡아 느끼는 기운이나 향의 성질) with 향내 (냄새로 느껴지는 향기) under the sensory content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-011",
           "source_sense": "w086-s1",
-          "target_sense": "r006-s1",
-          "relation_type": "sensory",
+          "target_sense": "w087-s1",
+          "relation_type": "near",
           "direction": {
             "from": "w086-s1",
-            "to": "r006-s1"
+            "to": "w087-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-011: independent audit compared generated 소리 (물체의 움직임이나 목소리에서 귀로 느끼는 울림) with 음성 (사람의 목에서 나오는 소리) under the sensory contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-011: independent final audit compared generated 소리 (물체의 움직임이나 목소리에서 귀로 느끼는 울림) with 울림 (소리가 퍼지거나 되돌아와 길게 느껴지는 현상) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-012",
           "source_sense": "w077-s1",
-          "target_sense": "w078-s1",
+          "target_sense": "w409-s1",
           "relation_type": "sensory",
           "direction": {
             "from": "w077-s1",
-            "to": "w078-s1"
+            "to": "w409-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-012: independent audit compared generated 습기 (공기나 물체에 포함되어 눅눅하게 느껴지는 수분) with 건조 (수분이 적어 마르고 눅눅하지 않은 상태) under the sensory contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-012: independent final audit compared generated 습기 (공기나 물체에 포함되어 눅눅하게 느껴지는 수분) with 눅진하다 (습기와 열기가 겹쳐 물기 있고 무거운 느낌이 난다) under the sensory content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-013",
           "source_sense": "w020-s1",
-          "target_sense": "w004-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w020-s1",
-            "to": "w004-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-013: independent audit compared generated 절망 (바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음) with 그리움 (떠나 있거나 잃은 대상이 다시 가까이 있기를 바라는 마음) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-013: independent final audit checked 절망 (바라던 일이 이루어질 가능성이 없다고 느끼며 모든 희망을 잃은 마음) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-014",
           "source_sense": "w015-s1",
-          "target_sense": "w005-s1",
+          "target_sense": "w308-s1",
           "relation_type": "near",
           "direction": {
             "from": "w015-s1",
-            "to": "w005-s1"
+            "to": "w308-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-014: independent audit compared generated 질투 (다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음) with 서운함 (기대했던 관심이나 배려를 받지 못해 마음이 상한 느낌) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-014: independent final audit compared generated 질투 (다른 사람이 가진 사랑이나 관심을 빼앗길까 불편해하는 마음) with 애증 (한 대상에게 사랑과 미움이 동시에 향하는 감정) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-015",
           "source_sense": "w063-s1",
-          "target_sense": "r001-s1",
+          "target_sense": "w062-s1",
           "relation_type": "sensory",
           "direction": {
             "from": "w063-s1",
-            "to": "r001-s1"
+            "to": "w062-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-015: independent audit compared generated 악취 (불쾌하고 역하게 느껴지는 냄새) with 향내 (냄새로 느껴지는 향기) under the sensory contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-015: independent final audit compared generated 악취 (불쾌하고 역하게 느껴지는 냄새) with 냄새 (코로 맡아 느끼는 기운이나 향의 성질) under the sensory content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-016",
           "source_sense": "w024-s1",
-          "target_sense": "w004-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w024-s1",
-            "to": "w004-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-016: independent audit compared generated 믿음 (사람이나 사실을 의심하지 않고 옳다고 여기는 마음) with 그리움 (떠나 있거나 잃은 대상이 다시 가까이 있기를 바라는 마음) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-016: independent final audit checked 믿음 (사람이나 사실을 의심하지 않고 옳다고 여기는 마음) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-017",
           "source_sense": "w011-s1",
-          "target_sense": "r037-s1",
+          "target_sense": "r032-s1",
           "relation_type": "near",
           "direction": {
             "from": "w011-s1",
-            "to": "r037-s1"
+            "to": "r032-s1"
           },
           "outcome": "raw-proposal",
           "admission": "admitted",
           "noise_assessment": "clean",
           "correction": "none",
-          "note": "m5-10a-cal-017: independent audit compared generated 후회 (지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음) with 공허 (안이 비어 있는 듯 허전하고 의미가 빠진 느낌) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-017: independent final audit compared generated 후회 (지난 선택이나 행동을 잘못했다고 느끼며 아쉬워하는 마음) with 뉘우침 (지난 행동을 잘못했다고 깨닫고 마음에 새기는 일) under the near content contract; the source-only proposal was admitted as clean."
         },
         {
           "case_id": "m5-10a-cal-018",
           "source_sense": "w091-s1",
-          "target_sense": "r006-s1",
-          "relation_type": "sensory",
-          "direction": {
-            "from": "w091-s1",
-            "to": "r006-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-018: independent audit compared generated 빗소리 (비가 내릴 때 이어지는 물방울의 소리) with 음성 (사람의 목에서 나오는 소리) under the sensory contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-018: independent final audit checked 빗소리 (비가 내릴 때 이어지는 물방울의 소리) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-019",
           "source_sense": "w025-s1",
-          "target_sense": "w005-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w025-s1",
-            "to": "w005-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-019: independent audit compared generated 무심하다 (관심이나 감정을 겉으로 드러내지 않고 지나치다) with 서운함 (기대했던 관심이나 배려를 받지 못해 마음이 상한 느낌) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-019: independent final audit checked 무심하다 (관심이나 감정을 겉으로 드러내지 않고 지나치다) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         },
         {
           "case_id": "m5-10a-cal-020",
           "source_sense": "w027-s1",
-          "target_sense": "w004-s1",
-          "relation_type": "near",
-          "direction": {
-            "from": "w027-s1",
-            "to": "w004-s1"
-          },
-          "outcome": "raw-proposal",
-          "admission": "admitted",
-          "noise_assessment": "clean",
+          "outcome": "no-valid-candidate",
+          "admission": "not-applicable",
+          "noise_assessment": "not-applicable",
           "correction": "none",
-          "note": "m5-10a-cal-020: independent audit compared generated 초조 (결과를 기다리며 마음이 급하고 불안한 상태) with 그리움 (떠나 있거나 잃은 대상이 다시 가까이 있기를 바라는 마음) under the near contract; the source-only proposal was admitted as clean."
+          "note": "m5-10a-cal-020: independent final audit checked 초조 (결과를 기다리며 마음이 급하고 불안한 상태) and found no contract-valid canonical target; no relation was generated and the request remains visible as a normal no-candidate result."
         }
       ],
       "findings": [
         {
           "id": "m5-10a-calibration-content-gate",
           "status": "closed",
-          "note": "An independent editorial audit reviewed all twenty source-only generated proposals against canonical gloss/use content; no correction, noise, or open blocker remained."
+          "note": "The independent final audit reviewed all twenty source-only requests, including 12 raw proposals and 8 normal no-candidate results; the listed negative regressions remained absent and no open blocker remained."
         }
-      ],
-      "audit_input_sha256": "ea13ecd3bd6a4cd733afb524528ab044b6679f3e1fc36ea22d6b72e598c3180e"
+      ]
     },
     "fixed_gate": {
       "status": "passed",
@@ -393,19 +382,6 @@
     }
   },
   "raw_proposals": [
-    {
-      "case_id": "m5-10a-cal-001",
-      "source_sense": "w003-s1",
-      "relation": {
-        "target": "w004",
-        "target_sense": "w004-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w003-s1",
-        "to": "w004-s1"
-      }
-    },
     {
       "case_id": "m5-10a-cal-002",
       "source_sense": "w006-s1",
@@ -423,26 +399,13 @@
       "case_id": "m5-10a-cal-003",
       "source_sense": "w008-s1",
       "relation": {
-        "target": "w454",
-        "target_sense": "w454-s1",
-        "type": "near"
+        "target": "w288",
+        "target_sense": "w288-s1",
+        "type": "action"
       },
       "direction": {
         "from": "w008-s1",
-        "to": "w454-s1"
-      }
-    },
-    {
-      "case_id": "m5-10a-cal-004",
-      "source_sense": "w010-s1",
-      "relation": {
-        "target": "w002",
-        "target_sense": "w002-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w010-s1",
-        "to": "w002-s1"
+        "to": "w288-s1"
       }
     },
     {
@@ -459,42 +422,29 @@
       }
     },
     {
-      "case_id": "m5-10a-cal-006",
-      "source_sense": "w022-s1",
-      "relation": {
-        "target": "w004",
-        "target_sense": "w004-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w022-s1",
-        "to": "w004-s1"
-      }
-    },
-    {
       "case_id": "m5-10a-cal-007",
       "source_sense": "w026-s1",
       "relation": {
-        "target": "w036",
-        "target_sense": "w036-s1",
+        "target": "w370",
+        "target_sense": "w370-s1",
         "type": "near"
       },
       "direction": {
         "from": "w026-s1",
-        "to": "w036-s1"
+        "to": "w370-s1"
       }
     },
     {
       "case_id": "m5-10a-cal-008",
       "source_sense": "w037-s1",
       "relation": {
-        "target": "w026",
-        "target_sense": "w026-s1",
+        "target": "w449",
+        "target_sense": "w449-s1",
         "type": "near"
       },
       "direction": {
         "from": "w037-s1",
-        "to": "w026-s1"
+        "to": "w449-s1"
       }
     },
     {
@@ -503,7 +453,7 @@
       "relation": {
         "target": "r030",
         "target_sense": "r030-s1",
-        "type": "sensory"
+        "type": "near"
       },
       "direction": {
         "from": "w040-s1",
@@ -527,132 +477,109 @@
       "case_id": "m5-10a-cal-011",
       "source_sense": "w086-s1",
       "relation": {
-        "target": "r006",
-        "target_sense": "r006-s1",
-        "type": "sensory"
+        "target": "w087",
+        "target_sense": "w087-s1",
+        "type": "near"
       },
       "direction": {
         "from": "w086-s1",
-        "to": "r006-s1"
+        "to": "w087-s1"
       }
     },
     {
       "case_id": "m5-10a-cal-012",
       "source_sense": "w077-s1",
       "relation": {
-        "target": "w078",
-        "target_sense": "w078-s1",
+        "target": "w409",
+        "target_sense": "w409-s1",
         "type": "sensory"
       },
       "direction": {
         "from": "w077-s1",
-        "to": "w078-s1"
-      }
-    },
-    {
-      "case_id": "m5-10a-cal-013",
-      "source_sense": "w020-s1",
-      "relation": {
-        "target": "w004",
-        "target_sense": "w004-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w020-s1",
-        "to": "w004-s1"
+        "to": "w409-s1"
       }
     },
     {
       "case_id": "m5-10a-cal-014",
       "source_sense": "w015-s1",
       "relation": {
-        "target": "w005",
-        "target_sense": "w005-s1",
+        "target": "w308",
+        "target_sense": "w308-s1",
         "type": "near"
       },
       "direction": {
         "from": "w015-s1",
-        "to": "w005-s1"
+        "to": "w308-s1"
       }
     },
     {
       "case_id": "m5-10a-cal-015",
       "source_sense": "w063-s1",
       "relation": {
-        "target": "r001",
-        "target_sense": "r001-s1",
+        "target": "w062",
+        "target_sense": "w062-s1",
         "type": "sensory"
       },
       "direction": {
         "from": "w063-s1",
-        "to": "r001-s1"
-      }
-    },
-    {
-      "case_id": "m5-10a-cal-016",
-      "source_sense": "w024-s1",
-      "relation": {
-        "target": "w004",
-        "target_sense": "w004-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w024-s1",
-        "to": "w004-s1"
+        "to": "w062-s1"
       }
     },
     {
       "case_id": "m5-10a-cal-017",
       "source_sense": "w011-s1",
       "relation": {
-        "target": "r037",
-        "target_sense": "r037-s1",
+        "target": "r032",
+        "target_sense": "r032-s1",
         "type": "near"
       },
       "direction": {
         "from": "w011-s1",
-        "to": "r037-s1"
+        "to": "r032-s1"
       }
+    }
+  ],
+  "generation_suppressions": [],
+  "not_generated_cases": [
+    {
+      "case_id": "m5-10a-cal-001",
+      "source_sense": "w003-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-004",
+      "source_sense": "w010-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-006",
+      "source_sense": "w022-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-013",
+      "source_sense": "w020-s1",
+      "reason": "no-contract-valid-candidate"
+    },
+    {
+      "case_id": "m5-10a-cal-016",
+      "source_sense": "w024-s1",
+      "reason": "no-contract-valid-candidate"
     },
     {
       "case_id": "m5-10a-cal-018",
       "source_sense": "w091-s1",
-      "relation": {
-        "target": "r006",
-        "target_sense": "r006-s1",
-        "type": "sensory"
-      },
-      "direction": {
-        "from": "w091-s1",
-        "to": "r006-s1"
-      }
+      "reason": "no-contract-valid-candidate"
     },
     {
       "case_id": "m5-10a-cal-019",
       "source_sense": "w025-s1",
-      "relation": {
-        "target": "w005",
-        "target_sense": "w005-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w025-s1",
-        "to": "w005-s1"
-      }
+      "reason": "no-contract-valid-candidate"
     },
     {
       "case_id": "m5-10a-cal-020",
       "source_sense": "w027-s1",
-      "relation": {
-        "target": "w004",
-        "target_sense": "w004-s1",
-        "type": "near"
-      },
-      "direction": {
-        "from": "w027-s1",
-        "to": "w004-s1"
-      }
+      "reason": "no-contract-valid-candidate"
     }
-  ],
-  "generation_suppressions": []
+  ]
 }

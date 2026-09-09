@@ -66,11 +66,13 @@ The deterministic generator in `scripts/batch/relation-generation.mjs` consumes
 that fixture and the current canonical senses. The fixture contains only a
 source sense and its preflight evidence: it has no target, relation type,
 direction, expected action, generation basis, suppression label, or writer-use
-oracle. The generator independently selects one target and one relation type
+oracle. The generator independently selects a target and relation type
 from actual gloss content and separate contracts for `direct`, `near`, `mood`,
-`scene`, `sensory`, `action`, and `association`. The source-bound result
-accounts for all 20 unlabelled requests as 20 raw proposals and zero upstream
-suppression; the denominator therefore cannot hide a pre-labelled bad tuple.
+`scene`, `sensory`, `action`, and `association`. A request with no
+contract-valid, writer-useful target remains visible as a normal
+`no-valid-candidate` result; it is not forced into a relation or silently
+counted as an upstream suppression. The source-bound result therefore accounts
+for all 20 unlabelled requests without hiding a pre-labelled bad tuple.
 None of the calibration cases is imported into canonical data, every generated
 target remains inside the pre-existing scope, and every generated tuple is
 checked to be absent from the canonical relation set.
@@ -78,8 +80,9 @@ checked to be absent from the canonical relation set.
 The fixed gate requires all 20 calibration cases to have record-specific,
 non-boilerplate boundary evidence. Checked evidence carries the observed
 canonical gloss and a meaning/use note; `not-applicable` evidence carries an
-explicit reason and no sense claim. The full audit reviews all 20 requests and
-all 20 raw proposals, recomputes noise, correction rate, and admission counts,
+explicit reason and no sense claim. The full audit reviews all 20 requests,
+including no-candidate results, and every raw proposal, recomputes noise,
+correction rate, and admission counts,
 and leaves zero open blockers. The audit records a distinct auditor identity,
 audit timestamp, UUID session, and digest over the current fixture/output/timing
 inputs; `independent: true` alone is not accepted. Editor time is read only from
@@ -123,9 +126,23 @@ editorial passes—target preparation, initial review, feedback fixes, final aud
 and held/rejected decisions—and each recorded post-review audit/fixes pair.
 For the calibration artifact, run `batch:m5-10a:calibration:timing` with
 `--action=start|stop`, `--pass=<required pass>`, and persisted `--input` /
-`--output` session paths. The recorder derives duration from explicit current-clock
-start/stop events and emits the final artifact only after all five passes have
-been stopped. It still requires feedback timestamps for follow-up cycles.
+`--output` session paths. Stopping `final-audit` additionally requires the
+audited case IDs and raw-proposal SHA-256 digest:
+
+```sh
+npm run batch:m5-10a:calibration:timing -- \
+  --action=stop --pass=final-audit \
+  --case-ids=m5-10a-cal-001,...,m5-10a-cal-020 \
+  --raw-proposal-sha256=<sha256> \
+  --input=/tmp/typewriter-m5-10a-timing-session.json \
+  --output=/tmp/typewriter-m5-10a-timing-session.json
+```
+
+The recorder derives duration from explicit current-clock start/stop events and
+emits the final artifact only after all five passes have been stopped. The
+final-audit session requires complete 20-case coverage and is the audit session
+bound into the calibration artifact; a short or coverage-free audit is rejected.
+It still requires feedback timestamps for follow-up cycles.
 
 Mechanical count, digest, import, tuple, canonical, SQLite, search, and package
 checks are verification evidence, not editorial work. They are explicitly

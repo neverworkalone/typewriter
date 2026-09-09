@@ -314,6 +314,8 @@ function validateCandidateGeneration(process, calibrationResult) {
     request_count: calibrationResult.request_count,
     raw_proposal_count: calibrationResult.raw_proposal_count,
     generation_suppressed_count: calibrationResult.generation_suppressed_count,
+    not_generated_count: calibrationResult.not_generated_count,
+    not_generated_case_ids: calibrationResult.not_generated_case_ids,
     pre_screen_noise_count: calibrationResult.pre_screen_noise_count,
     noise_rate_of_raw_proposals: calibrationResult.noise_rate_of_raw_proposals,
     editor_seconds_per_processed_start: calibrationResult.editor_seconds_per_processed_start,

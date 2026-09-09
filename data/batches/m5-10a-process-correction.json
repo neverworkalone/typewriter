@@ -186,20 +186,31 @@
   "candidate_generation": {
     "process_revision": "m5-10a-relation-generation-v3",
     "calibration_artifact": "data/batches/m5-10a-relation-calibration.json",
-    "calibration_artifact_sha256": "b3defcb065ba6485f97705eb0b4ddc7e037839bbbb53c02f2a8a66ba6076c3d8",
+    "calibration_artifact_sha256": "8d2a843bbba81aff38d1a7f3997ad9c4f87b5d27f887168286a12daef0becd29",
     "calibration_case_count": 20,
     "request_count": 20,
-    "raw_proposal_count": 20,
+    "raw_proposal_count": 12,
     "generation_suppressed_count": 0,
+    "not_generated_count": 8,
+    "not_generated_case_ids": [
+      "m5-10a-cal-001",
+      "m5-10a-cal-004",
+      "m5-10a-cal-006",
+      "m5-10a-cal-013",
+      "m5-10a-cal-016",
+      "m5-10a-cal-018",
+      "m5-10a-cal-019",
+      "m5-10a-cal-020"
+    ],
     "pre_screen_noise_count": 0,
     "noise_rate_of_raw_proposals": 0,
-    "editor_seconds_per_processed_start": 1.3569,
+    "editor_seconds_per_processed_start": 8.6638,
     "correction_rate": 0,
     "unmeasured_pass_count": 0,
     "preflight_case_count": 20,
     "preflight_evidence_case_count": 20,
     "timing_source": "data/batches/m5-10a-relation-calibration-timing.json",
-    "timing_source_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37",
+    "timing_source_sha256": "cda6f1383edeb4300cca74a8c3b262d473bb4f6a4f45295931f4f6b72a33e4ac",
     "fixed_gate_status": "passed"
   },
   "timing_boundary": {
@@ -247,7 +258,7 @@
     "relation_regression_screen": "data/batches/m5-9a-relation-screen.json",
     "relation_regression_screen_sha256": "7e696f9be1e71a490bf2785035530ee079771c62498e6e7436a52184f8706973",
     "relation_calibration": "data/batches/m5-10a-relation-calibration.json",
-    "relation_calibration_sha256": "b3defcb065ba6485f97705eb0b4ddc7e037839bbbb53c02f2a8a66ba6076c3d8",
+    "relation_calibration_sha256": "8d2a843bbba81aff38d1a7f3997ad9c4f87b5d27f887168286a12daef0becd29",
     "relation_calibration_fixture": "tests/fixtures/m5-10a-relation-generation-calibration.json",
     "relation_calibration_fixture_sha256": "9ceb1d9c4da6bcc3812a1ad3556f194652f8ec79ac80437e8caff9779e2462bf",
     "sense_regression_fixture": "tests/fixtures/m5-10-wave-a-sense-regressions.json",
@@ -257,7 +268,7 @@
     "wave_a_verification": "data/batches/m5-10-wave-a-verification.json",
     "wave_a_verification_sha256": "1a1efa528d8bcc57b5206ff77f48a2fe2e97098d88686ef9c63482bac496bc34",
     "relation_calibration_timing": "data/batches/m5-10a-relation-calibration-timing.json",
-    "relation_calibration_timing_sha256": "1917719d41c62b63e92ba21b4cee32ba9644386087ae7536f2e432784ad9bd37"
+    "relation_calibration_timing_sha256": "cda6f1383edeb4300cca74a8c3b262d473bb4f6a4f45295931f4f6b72a33e4ac"
   },
   "verification": {
     "artifact": "data/batches/m5-10a-process-verification.json",
@@ -284,7 +295,7 @@
         "id": "m5-10a-candidate-generation-calibration",
         "category": "relation-candidate-generation",
         "status": "closed",
-        "note": "Twenty unlabelled, noncanonical requests were content-classified; thirteen raw proposals passed a full human audit, seven requests were suppressed upstream, and recorder-proven time/correction/noise gates passed."
+        "note": "Twenty unlabelled, noncanonical requests were content-classified; 12 raw proposals passed a full human audit and 8 requests remained visible as normal no-candidate results. Recorder-proven time/correction/noise gates passed."
       },
       {
         "id": "m5-10a-timing-boundary",

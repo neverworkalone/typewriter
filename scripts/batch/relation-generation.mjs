@@ -22,11 +22,11 @@ const SENSORY_DOMAINS = Object.freeze(['olfactory', 'auditory', 'visual', 'tacti
 const EMOTION_OR_STATE_DOMAINS = Object.freeze(['emotion', 'state']);
 
 const DOMAIN_PATTERNS = Object.freeze({
-  emotion: /마음|감정|느낌|기쁨|슬픔|외롭|허전|두려|걱정|희망|기대|사랑|미움|분노|탓|미워|부끄럽|아쉽|긴장|불안|설렘|그리움|감격|감탄|자부심|후회|망설|질투|믿음|절망|원망|서운/u,
+  emotion: /마음|감정|느낌|기쁨|슬픔|외롭|허전|두려|걱정|희망|사랑|미움|분노|탓|미워|부끄럽|아쉽|긴장|불안|설렘|그리움|감격|감탄|자부심|후회|망설|질투|믿음|절망|원망|서운/u,
   state: /상태|상황|차분|편안|자연스럽|가라앉|팽팽|가능성|놓이는|끝난|느슨|방향|방법|부담|빠르|속도|흐름|익숙|낯설|어지럽지|잔잔|머뭇|답답|급하고/u,
   olfactory: /냄새|향|코로|맡아|악취|단내|향기/u,
   auditory: /소리|울림|목소리|귀로|되울|메아리/u,
-  visual: /빛|색|윤곽|밝|어둠|보이|시선|눈|선명|뚜렷|희미/u,
+  visual: /빛|색|윤곽|모양|밝|어둠|보이|시선|눈/u,
   tactile: /피부|촉감|수분|눅눅|물기|축축|젖|온도|차갑|뜨겁|부드|거칠|습기/u,
   place: /집|건물|공간|자리|바깥|빈 터|마당|하늘|날씨/u,
   object: /물체|사물|도구|편지|옷|신발|창|우물/u,
@@ -61,6 +61,36 @@ const ASSOCIATION_GROUPS = new Set([
   'spatial_scene',
 ]);
 
+// These words describe the carrier of a definition rather than the writer-useful
+// concept being compared. Shared carrier words are useful for candidate search,
+// but are never sufficient evidence for a relation admission.
+const GENERIC_LEXICAL_TOKENS = new Set([
+  '마음', '느낌', '상태', '상황', '감정', '사람', '대상', '일', '것', '수', '곳',
+  '말', '행동', '기운', '성질', '모양', '부분', '경우', '정도', '모든', '여러',
+  '어떤', '소리', '냄새', '향', '빛', '색', '물', '수분', '느끼', '생각',
+  '관심', '배려', '비', '날씨', '공기', '잃', '기다리', '바라', '이루어',
+  '생기', '되', '있', '없', '남', '여기', '이어', '이어지', '느껴지', '움직임',
+  '다른', '촉감', '감각', '가운데', '하나', '골라', '일어나', '좋',
+]);
+const LEXICAL_SUFFIXES = Object.freeze([
+  '으로부터', '에서는', '에게서', '하면서', '이라서', '이며', '하고', '하며',
+  '거나', '면서', '이고', '처럼', '까지', '부터', '으로', '에서', '에게',
+  '이나', '기에', '도록', '기를', '다고', '는데', '지만', '하는', '했다',
+  '하다', '한', '할', '을', '를', '은', '는', '이', '가', '에', '도', '로',
+  '던', '든', '하게',
+  '와', '과', '의', '며', '고', '다', '지',
+]);
+const OPPOSING_MARKER_PAIRS = Object.freeze([
+  [/설렘|기대|희망|기쁨|안도|믿음|긍정/u, /절망|불안|초조|허탈|허무|공허|건조|메마르/u],
+  [/믿음|신뢰|옳다고\s*여기/u, /의심|불신|믿지\s*못/u],
+  [/습기|눅눅|축축|젖|수분/u, /건조|마르|메마르/u],
+  [/선명|뚜렷|밝/u, /흐릿|희미|어둡/u],
+  [/자연스럽|편안|차분/u, /어색|부자연|불편/u],
+  [/향기|향내|단내|좋은\s*냄새/u, /악취|역한|불쾌한\s*냄새/u],
+  [/소리|울림|목소리/u, /고요|잠잠|조용|잦아들/u],
+]);
+const NEGATED_LEXICAL_CONTEXT = /^(?:않|없|못|아니)/u;
+
 export class RelationGenerationError extends Error {
   constructor(message, code = 'RELATION_GENERATION_ERROR') {
     super(message);
@@ -94,6 +124,144 @@ function senseText({ record, sense }) {
 
 function normalizedText(entry) {
   return senseText(entry).normalize('NFC');
+}
+
+function normalizeLexicalToken(token) {
+  let value = token.normalize('NFC').replace(/[^\p{L}]/gu, '');
+  for (const suffix of LEXICAL_SUFFIXES) {
+    if (value.length >= suffix.length + 1 && value.endsWith(suffix)) {
+      value = value.slice(0, -suffix.length);
+      break;
+    }
+  }
+  return value;
+}
+
+function lexicalTokens(entry) {
+  return [...new Set(
+    `${entry.record.lemma ?? ''} ${entry.sense.gloss ?? ''}`
+      .split(/\s+/u)
+      .map(normalizeLexicalToken)
+      .filter((token) => token.length >= 2 && !GENERIC_LEXICAL_TOKENS.has(token)),
+  )];
+}
+
+function glossLexicalTokens(entry) {
+  return [...new Set(
+    `${entry.sense.gloss ?? ''}`
+      .split(/\s+/u)
+      .map(normalizeLexicalToken)
+      .filter((token) => token.length >= 2 && !GENERIC_LEXICAL_TOKENS.has(token)),
+  )];
+}
+
+function compactLemmaTokens(entry) {
+  return `${entry.record.lemma ?? ''}`
+    .split(/\s+/u)
+    .map(normalizeLexicalToken)
+    .filter((token) => token.length >= 2);
+}
+
+function rawLemmaTokens(entry) {
+  return `${entry.record.lemma ?? ''}`
+    .split(/\s+/u)
+    .map((token) => token.normalize('NFC').replace(/[^\p{L}]/gu, ''))
+    .filter((token) => token.length >= 2);
+}
+
+function lexicalTokenMatches(left, right) {
+  return left === right
+    || (left.length >= 3 && right.length >= 3 && (left.startsWith(right) || right.startsWith(left)));
+}
+
+function sharedLexicalAnchors(source, target) {
+  const targetTokens = lexicalTokens(target);
+  return lexicalTokens(source)
+    .filter((sourceToken) => targetTokens.some((targetToken) => lexicalTokenMatches(sourceToken, targetToken)))
+    .filter((token, index, tokens) => tokens.indexOf(token) === index);
+}
+
+function sharedGlossAnchors(source, target) {
+  const targetTokens = glossLexicalTokens(target);
+  return glossLexicalTokens(source)
+    .filter((sourceToken) => targetTokens.some((targetToken) => lexicalTokenMatches(sourceToken, targetToken)))
+    .filter((token, index, tokens) => tokens.indexOf(token) === index);
+}
+
+function crossLemmaGlossAnchors(source, target) {
+  const sourceLemmas = compactLemmaTokens(source)
+    .filter((token) => !GENERIC_LEXICAL_TOKENS.has(token));
+  const targetLemmas = compactLemmaTokens(target)
+    .filter((token) => !GENERIC_LEXICAL_TOKENS.has(token));
+  const sourceGloss = glossLexicalTokens(source);
+  const targetGloss = glossLexicalTokens(target);
+  return [
+    ...sourceLemmas.filter((lemma) => targetGloss.some((token) => lexicalTokenMatches(lemma, token))),
+    ...targetLemmas.filter((lemma) => sourceGloss.some((token) => lexicalTokenMatches(lemma, token))),
+  ].filter((token, index, tokens) => tokens.indexOf(token) === index);
+}
+
+function writerUseAnchors(source, target) {
+  return [
+    ...sharedGlossAnchors(source, target),
+    ...crossLemmaGlossAnchors(source, target),
+  ].filter((token, index, tokens) => tokens.indexOf(token) === index);
+}
+
+function hasNegatedAnchor(entry, anchor) {
+  const tokens = `${entry.record.lemma ?? ''} ${entry.sense.gloss ?? ''}`
+    .split(/\s+/u)
+    .map((rawToken) => rawToken.normalize('NFC'));
+  return tokens.some((rawToken, index) => {
+      const token = normalizeLexicalToken(rawToken);
+      if (!lexicalTokenMatches(token, anchor)) return false;
+      const following = tokens.slice(index, index + 3).join('');
+      return NEGATED_LEXICAL_CONTEXT.test(rawToken)
+        || /(?:지|지?만)(?:않|못|없)/u.test(following)
+        || /^(?:않|못|없|아니)/u.test(tokens[index + 1] ?? '');
+    });
+}
+
+function hasOpposingMarkers(source, target) {
+  const sourceText = normalizedText(source);
+  const targetText = normalizedText(target);
+  return OPPOSING_MARKER_PAIRS.some(([left, right]) => (
+    (left.test(sourceText) && right.test(targetText))
+      || (right.test(sourceText) && left.test(targetText))
+  ));
+}
+
+function hasWriterUseBridge(source, target) {
+  const anchors = writerUseAnchors(source, target);
+  return anchors.length > 0
+    && !hasOpposingMarkers(source, target)
+    && anchors.some((anchor) => !hasNegatedAnchor(source, anchor) && !hasNegatedAnchor(target, anchor));
+}
+
+function lemmaBridge(source, target) {
+  const sourceText = normalizedText(source).replace(/\s+/gu, '');
+  const targetText = normalizedText(target).replace(/\s+/gu, '');
+  const sourceLemmas = rawLemmaTokens(source);
+  const targetLemmas = rawLemmaTokens(target);
+  return sourceLemmas.some((lemma) => targetText.includes(lemma))
+    || targetLemmas.some((lemma) => sourceText.includes(lemma))
+    || sourceLemmas.some((sourceLemma) => targetLemmas.some((targetLemma) => (
+      sourceLemma.length >= 2
+        && targetLemma.length >= 2
+        && (sourceLemma.includes(targetLemma) || targetLemma.includes(sourceLemma))
+    )));
+}
+
+function hasSensoryWriterBridge(source, target) {
+  return lemmaBridge(source, target)
+    && !hasOpposingMarkers(source, target);
+}
+
+function hasActionWriterBridge(source, target) {
+  const anchors = writerUseAnchors(source, target);
+  return anchors.length >= 2
+    && !hasOpposingMarkers(source, target)
+    && anchors.some((anchor) => !hasNegatedAnchor(source, anchor) && !hasNegatedAnchor(target, anchor));
 }
 
 export function inferDomains(entry) {
@@ -136,27 +304,27 @@ function hasEmotionOrState(domains) {
   return EMOTION_OR_STATE_DOMAINS.some((domain) => domains.has(domain));
 }
 
-function hasMeaningfulGroupOverlap(source, target) {
-  const sourceGroups = inferSemanticGroups(source);
-  const targetGroups = inferSemanticGroups(target);
-  return [...sourceGroups].some((group) => targetGroups.has(group));
-}
-
 function sharedSemanticGroups(source, target) {
   const targetGroups = inferSemanticGroups(target);
   return [...inferSemanticGroups(source)].filter((group) => targetGroups.has(group));
 }
 
 function hasNearSemanticOverlap(source, target) {
-  return sharedSemanticGroups(source, target).length > 0;
+  if (source.sense.pos !== target.sense.pos || !hasWriterUseBridge(source, target)) return false;
+  const sourceDomains = inferDomains(source);
+  const targetDomains = inferDomains(target);
+  return (hasEmotionOrState(sourceDomains) && hasEmotionOrState(targetDomains))
+    || hasSharedSensoryDomain(sourceDomains, targetDomains);
 }
 
 function hasMoodGroupRelation(source, target) {
-  return sharedSemanticGroups(source, target).some((group) => MOOD_GROUPS.has(group));
+  return sharedSemanticGroups(source, target).some((group) => MOOD_GROUPS.has(group))
+    && hasWriterUseBridge(source, target);
 }
 
 function hasAssociationGroupRelation(source, target) {
-  return sharedSemanticGroups(source, target).some((group) => ASSOCIATION_GROUPS.has(group));
+  return sharedSemanticGroups(source, target).some((group) => ASSOCIATION_GROUPS.has(group))
+    && hasWriterUseBridge(source, target);
 }
 
 function directGlossEvidence(source, target) {
@@ -194,17 +362,19 @@ function classifyRelationContract(relationType, source, target) {
   }
   if (relationType === 'scene') {
     return hasSharedDomain(sourceDomains, targetDomains, ['place', 'object', 'weather', 'visual'])
+      && lemmaBridge(source, target)
       ? undefined
       : 'arbitrary-modifier-or-place';
   }
   if (relationType === 'action') {
-    return hasEmotionOrState(sourceDomains) && targetDomains.has('action')
+    return hasEmotionOrState(sourceDomains) && targetDomains.has('action') && hasActionWriterBridge(source, target)
       ? undefined
       : 'incidental-co-occurrence';
   }
   if (relationType === 'sensory') {
     if (sourceSensory.length > 0 && targetSensory.length > 0) {
       return hasSharedSensoryDomain(sourceDomains, targetDomains)
+        && hasSensoryWriterBridge(source, target)
         ? undefined
         : 'unsupported-cross-sensory';
     }
@@ -251,30 +421,28 @@ function recordNumber(id) {
 function relationTypeFor(source, target) {
   const sourceDomains = inferDomains(source);
   const targetDomains = inferDomains(target);
-  const sharedSensory = hasSharedSensoryDomain(sourceDomains, targetDomains);
-  if (sharedSensory) return 'sensory';
-  if (hasEmotionOrState(sourceDomains) && targetDomains.has('action')) return 'action';
+  if (hasNearSemanticOverlap(source, target)) return 'near';
   if (hasEmotionOrState(sourceDomains)
-    && hasEmotionOrState(targetDomains)
-    && hasMeaningfulGroupOverlap(source, target)) {
-    return 'near';
-  }
-  if (hasSharedDomain(sourceDomains, targetDomains, ['place', 'object', 'weather', 'visual'])) {
-    return 'scene';
-  }
-  if (hasMeaningfulGroupOverlap(source, target)) return 'mood';
+    && targetDomains.has('action')
+    && hasActionWriterBridge(source, target)) return 'action';
+  if (hasSharedSensoryDomain(sourceDomains, targetDomains)
+    && hasSensoryWriterBridge(source, target)) return 'sensory';
+  if (hasSharedDomain(sourceDomains, targetDomains, ['place', 'object', 'weather', 'visual'])
+    && lemmaBridge(source, target)) return 'scene';
   return undefined;
 }
 
 function proposalScore(source, target, relationType) {
   const sharedGroups = [...inferSemanticGroups(source)].filter((group) => inferSemanticGroups(target).has(group)).length;
+  const sharedAnchors = sharedLexicalAnchors(source, target).length;
   const sourceDomains = inferDomains(source);
   const targetDomains = inferDomains(target);
   const samePos = source.sense.pos === target.sense.pos ? 3 : 0;
-  const sameSensory = hasSharedSensoryDomain(sourceDomains, targetDomains) ? 20 : 0;
+  const lexicalBridge = lemmaBridge(source, target) ? 25 : 0;
+  const sameSensory = hasSharedSensoryDomain(sourceDomains, targetDomains) ? 10 : 0;
   const sameScene = hasSharedDomain(sourceDomains, targetDomains, ['place', 'object', 'weather', 'visual']) ? 5 : 0;
-  const typeBonus = relationType === 'near' || relationType === 'sensory' ? 2 : 0;
-  return sharedGroups * 100 + sameSensory + sameScene + samePos + typeBonus;
+  const typeBonus = relationType === 'near' || relationType === 'sensory' ? 4 : 0;
+  return sharedAnchors * 100 + lexicalBridge + sharedGroups * 10 + sameSensory + sameScene + samePos + typeBonus;
 }
 
 function selectTarget(source, senseById, canonicalTuples, usedTuples) {
@@ -315,9 +483,10 @@ function generated(caseRecord, source, selected) {
 }
 
 /**
- * Generate one independently selected relation proposal for every source-only
- * calibration case. A source without a contract-valid target is an error: it
- * must not silently reduce the denominator by becoming a pre-screen skip.
+ * Generate an independently selected relation proposal when the canonical
+ * sense content supplies a contract-valid, writer-useful target. A source
+ * without such a target is a normal no-candidate result, not a quota failure or
+ * a hidden pre-screen suppression.
  */
 export function generateRelationCandidates(fixture, canonicalRecords) {
   if (!fixture || !Array.isArray(fixture.cases)) {
@@ -330,6 +499,7 @@ export function generateRelationCandidates(fixture, canonicalRecords) {
   const senseById = buildSenseIndex(canonicalRecords);
   const canonicalTuples = canonicalRelationTuples(canonicalRecords);
   const generatedCandidates = [];
+  const notGeneratedCases = [];
   const usedTuples = new Set();
   const caseIds = new Set();
   const orderedCases = [...fixture.cases].sort((left, right) => left.case_id.localeCompare(right.case_id));
@@ -339,7 +509,14 @@ export function generateRelationCandidates(fixture, canonicalRecords) {
     const source = senseById.get(caseRecord.source_sense);
     if (!source) fail(`${caseRecord.case_id} source sense is missing`, 'CALIBRATION_SOURCE_SENSE_MISSING');
     const selected = selectTarget(source, senseById, canonicalTuples, usedTuples);
-    if (!selected) fail(`${caseRecord.case_id} has no contract-valid generated target`, 'RELATION_GENERATION_NO_VALID_TARGET');
+    if (!selected) {
+      notGeneratedCases.push({
+        case_id: caseRecord.case_id,
+        source_sense: source.sense.id,
+        reason: 'no-contract-valid-candidate',
+      });
+      continue;
+    }
     const candidate = generated(caseRecord, source, selected);
     const tuple = `${candidate.source_sense}\u0000${candidate.relation.target_sense}\u0000${candidate.relation.type}`;
     usedTuples.add(tuple);
@@ -356,5 +533,7 @@ export function generateRelationCandidates(fixture, canonicalRecords) {
     suppressed_category_counts: {},
     generated_candidates: generatedCandidates,
     suppressed_candidates: [],
+    not_generated_count: notGeneratedCases.length,
+    not_generated_cases: notGeneratedCases,
   };
 }

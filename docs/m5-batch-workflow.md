@@ -282,9 +282,11 @@ rejects timing values on unmeasured passes and requires paired one-based
 follow-up cycles. A session left in progress or a follow-up with missing work
 keeps the derived timing incomplete; no time is estimated or backfilled.
 `final-audit` and post-review audit time must include the human semantic checks
-they claim. CI's mechanical count/digest/import/tuple checks are validation
-evidence and must not be used to reduce editor seconds; representative semantic
-regressions should run before the full-sample audit.
+they claim. M5-10A's final-audit timing pass must also carry the complete audited
+case-ID set and raw-proposal digest, and the calibration audit session must equal
+that timed pass session. CI's mechanical count/digest/import/tuple checks are
+validation evidence and must not be used to reduce editor seconds; representative
+semantic regressions should run before the full-sample audit.
 
 ## M5-4 draft and review contract
 
