@@ -1,0 +1,112 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-10-wave-b-20260909",
+  "source": {
+    "manifest": "data/batches/m5-10-wave-b.json",
+    "relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 170,
+      "processed_start_count": 160
+    },
+    "decisions": {
+      "included": 150,
+      "corrected": 0,
+      "held": 10,
+      "rejected": 0,
+      "deferred": 10,
+      "importable_start_count": 150,
+      "correction_rate_of_selected": 0,
+      "correction_rate_of_importable": 0,
+      "held_rate": 0.0625,
+      "rejected_rate": 0,
+      "held_or_rejected_rate": 0.0625,
+      "sense_field_correction_count": 0,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 150,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 150,
+      "imported_sense_count": 150,
+      "imported_relation_count": 0,
+      "imported_expression_count": 20,
+      "relation_type_counts": {}
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 0,
+      "added_count": 0,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": 0,
+      "noise_event_count": 0,
+      "noise_rate_of_before": 0,
+      "classification_counts": {}
+    },
+    "timing": {
+      "status": "complete",
+      "passes": {
+        "target-preparation": {
+          "status": "complete",
+          "wall_clock_seconds": 0.362,
+          "editor_seconds": 0.362
+        },
+        "initial-review": {
+          "status": "complete",
+          "wall_clock_seconds": 0.351,
+          "editor_seconds": 0.351
+        },
+        "feedback-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 0.346,
+          "editor_seconds": 0.346
+        },
+        "final-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 0.354,
+          "editor_seconds": 0.354
+        },
+        "held-rejected": {
+          "status": "complete",
+          "wall_clock_seconds": 0.513,
+          "editor_seconds": 0.513
+        },
+        "post-freeze-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 5.663,
+          "editor_seconds": 5.663
+        }
+      },
+      "total_wall_clock_seconds": 7.589,
+      "total_editor_seconds": 7.589,
+      "measured_wall_clock_seconds": 7.589,
+      "measured_editor_seconds": 7.589,
+      "unmeasured_passes": []
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 5,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {
+        "sense": 2,
+        "relation-noise": 1,
+        "timing-measurement": 1,
+        "reference-closure": 1
+      }
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 150,
+      "scoped_single_sense_count": 150,
+      "split_record_count": 0,
+      "split_canonical_ids": []
+    }
+  }
+}

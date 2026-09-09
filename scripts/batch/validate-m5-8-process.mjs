@@ -476,7 +476,10 @@ function proposalDecisionsFromArtifacts(metricsArtifact) {
   };
 }
 
-export async function loadExpansionStageSources(stage) {
+export async function loadExpansionStageSources(
+  stage,
+  { canonicalDirectoryOverride } = {},
+) {
   validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
 
   const sourcePaths = {
@@ -492,12 +495,13 @@ export async function loadExpansionStageSources(stage) {
     ),
     verification: resolveSourcePath(stage.source.verification, 'stage.source.verification'),
   };
+  const canonicalReadDirectory = canonicalDirectoryOverride ?? sourcePaths.canonical_directory;
   const [manifestArtifact, metricsArtifact, relationDiffArtifact, verificationArtifact, canonical, relationScreenArtifact] = await Promise.all([
     readSourceJson(sourcePaths.manifest, 'stage manifest'),
     readSourceJson(sourcePaths.metrics, 'stage metrics artifact'),
     readSourceJson(sourcePaths.relation_diff, 'stage relation diff'),
     readSourceJson(sourcePaths.verification, 'stage verification artifact'),
-    readCanonicalSource(sourcePaths.canonical_directory),
+    readCanonicalSource(canonicalReadDirectory),
     sourcePaths.relation_screen
       ? readSourceJson(sourcePaths.relation_screen, 'stage relation screen artifact')
       : Promise.resolve(undefined),
@@ -1280,6 +1284,7 @@ async function validateExpansionStageInternal(
   stage,
   plan,
   visitedStageIds = new Set(),
+  sourceOptions = {},
 ) {
   validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
   validateExpansionPlan(plan);
@@ -1292,13 +1297,13 @@ async function validateExpansionStageInternal(
   nextVisitedStageIds.add(stage.stage_id);
   const stageContext = resolveStageContext(stage, plan);
 
-  const loadedSources = await loadExpansionStageSources(stage);
+  const loadedSources = await loadExpansionStageSources(stage, sourceOptions);
   await validatePreviousStageReport(stage, plan, stageContext, nextVisitedStageIds);
   return validateExpansionStageValues(stage, plan, stageContext, loadedSources);
 }
 
-export async function validateExpansionStage(stage, plan) {
-  return validateExpansionStageInternal(stage, plan);
+export async function validateExpansionStage(stage, plan, sourceOptions = {}) {
+  return validateExpansionStageInternal(stage, plan, new Set(), sourceOptions);
 }
 
 function canonicalSummary(recordInfos) {

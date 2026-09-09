@@ -22,6 +22,7 @@ import {
 const PLAN_PATH = path.resolve('data/batches/m5-8-expansion-plan.json');
 const FIXTURE_PATH = path.resolve('tests/fixtures/m5-8-process-regressions.json');
 const RELATION_DIFF_PATH = path.resolve('data/batches/m5-7-recalibration-relation-diff.json');
+const HISTORICAL_CANONICAL_DIRECTORY = path.resolve('data/batches/m5-10-wave-b-base-canonical');
 let fixtureSequence = 0;
 
 async function readJson(filePath) {
@@ -141,7 +142,7 @@ async function createRelationDiffFixture() {
   const batchId = `m5-8-process-test-${process.pid}`;
   const relationDiffPath = path.resolve(
     'data/batches',
-    `m5-8-process-test-${process.pid}-${fixtureSequence += 1}.json`,
+    `test-m5-8-process-${process.pid}-${fixtureSequence += 1}.json`,
   );
   const relationDiff = {
     schema_version: '1',
@@ -603,7 +604,11 @@ test('stage source loading binds metrics and verification to real artifacts', as
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-8-stage-'));
   try {
     const manifestPath = path.resolve('data/batches/m5-7-recalibration.json');
-    const metricsPath = path.resolve('data/batches/m5-7-recalibration-metrics.json');
+    const committedMetricsPath = path.resolve('data/batches/m5-7-recalibration-metrics.json');
+    const metrics = await readJson(committedMetricsPath);
+    metrics.source.canonical_directory = 'data/batches/m5-10-wave-b-base-canonical';
+    const metricsPath = path.join(directory, 'metrics.json');
+    await writeFile(metricsPath, `${JSON.stringify(metrics, null, 2)}\n`, 'utf8');
     const relationDiffPath = RELATION_DIFF_PATH;
     const verificationPath = path.join(directory, 'verification.json');
     await writeFile(verificationPath, `${JSON.stringify({
@@ -623,8 +628,8 @@ test('stage source loading binds metrics and verification to real artifacts', as
       metrics_sha256: await sha256File(metricsPath),
       relation_diff: relationDiffPath,
       relation_diff_sha256: await sha256File(relationDiffPath),
-      canonical_directory: DEFAULT_CANONICAL_DIRECTORY,
-      canonical_sha256: await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY),
+      canonical_directory: HISTORICAL_CANONICAL_DIRECTORY,
+      canonical_sha256: await hashCanonicalDirectory(HISTORICAL_CANONICAL_DIRECTORY),
       verification: verificationPath,
       verification_sha256: await sha256File(verificationPath),
     };

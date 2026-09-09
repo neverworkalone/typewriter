@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10-wave-b-audit-decisions.schema.json",
+  "title": "Typewriter M5-10 Wave B supplied audit decisions",
+  "description": "A separately authored audit result consumed by the Wave B audit recorder. It is not a completed audit claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "batch_id",
+    "source_kind",
+    "actor_kind",
+    "actor_id",
+    "session_id",
+    "audit_id",
+    "editorial_input_id",
+    "created_at",
+    "finalized_at",
+    "reviewed_staging_sha256",
+    "reviewed_record_ids",
+    "reviewed_buffer_inventory_ids",
+    "relation_reviews",
+    "findings",
+    "note"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10-wave-b-audit-decisions-20260909" },
+    "batch_id": { "const": "m5-10-wave-b-20260909" },
+    "source_kind": { "const": "codex-authored" },
+    "actor_kind": { "const": "codex" },
+    "actor_id": { "type": "string", "pattern": "\\S" },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "audit_id": { "const": "m5-10-wave-b-audit-20260909" },
+    "editorial_input_id": { "const": "m5-10-wave-b-editorial-input-20260909" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
+    "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "reviewed_record_ids": {
+      "type": "array",
+      "minItems": 150,
+      "maxItems": 150,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^w[0-9]{3,}$" }
+    },
+    "reviewed_buffer_inventory_ids": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^m5-[0-9]+$" }
+    },
+    "relation_reviews": {
+      "type": "array",
+      "maxItems": 0,
+      "items": { "type": "object" }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "type": "object" }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  }
+}

@@ -171,6 +171,7 @@ export async function validateWaveA2({
   planPath = DEFAULT_PLAN_PATH,
   verificationPath = DEFAULT_VERIFICATION_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  canonicalSourcePath = canonicalDirectory,
   stagedRecordsPath,
   inventoryPath = DEFAULT_INVENTORY_PATH,
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
@@ -512,7 +513,7 @@ export async function validateWaveA2({
   const expectedMetricsSource = {
     manifest: relativeSourcePath(manifestPath),
     relation_diff: relativeSourcePath(relationDiffPath),
-    canonical_directory: relativeSourcePath(canonicalDirectory),
+    canonical_directory: relativeSourcePath(canonicalSourcePath),
   };
   assert.deepEqual(
     metricsSource.value.source,
@@ -532,7 +533,11 @@ export async function validateWaveA2({
     'metrics timing status drifted from the raw timing input',
   );
 
-  const stageResult = await validateExpansionStage(stageSource.value, planSource.value);
+  const stageResult = await validateExpansionStage(
+    stageSource.value,
+    planSource.value,
+    { canonicalDirectoryOverride: canonicalDirectory },
+  );
   assert.deepEqual(
     stageResult,
     {
@@ -587,6 +592,7 @@ if (isMainModule) {
     planPath: args.plan ?? DEFAULT_PLAN_PATH,
     verificationPath: args.verification ?? DEFAULT_VERIFICATION_PATH,
     canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
+    canonicalSourcePath: args['canonical-source-dir'],
     stagedRecordsPath: args.staged,
     inventoryPath: args.inventory ?? DEFAULT_INVENTORY_PATH,
     baseCanonicalDirectory: args['base-canonical-dir'] ?? DEFAULT_BASE_CANONICAL_DIRECTORY,

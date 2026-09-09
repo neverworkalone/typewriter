@@ -37,14 +37,14 @@ const EXPECTED_METADATA = Object.freeze({
   normalization_version: '1',
   build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
   build_tool_version: '1',
-  record_count: '670',
-  start_count: '628',
+  record_count: '820',
+  start_count: '778',
   reference_only_count: '42',
-  candidate_count: '628',
-  search_form_count: '746',
-  sense_count: '809',
+  candidate_count: '778',
+  search_form_count: '896',
+  sense_count: '959',
   relation_count: '473',
-  expression_count: '43',
+  expression_count: '63',
 });
 
 const CODE_FILE_PATTERN = /\.(?:css|html|js|json|mjs)$/i;

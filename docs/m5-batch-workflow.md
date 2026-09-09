@@ -239,6 +239,36 @@ recorded after the last editorial timing stop; the post-freeze audit timing
 starts after editorial completion and stops before audit decision finalization
 in the distinct audit session.
 
+## M5-10 Wave B result
+
+Issue #96's Wave B is recorded in
+[`m5-10-wave-b-report.md`](m5-10-wave-b-report.md). It consumes the passing A2
+report and a separate digest-bound Wave B authorization, then processes 170
+selected starts: 150 are included and imported, 10 are held, and 10 are
+deferred. The 20-row buffer is therefore not counted as completed sense review;
+the canonical snapshot advances exactly from 628 to 778 starts.
+
+The Wave B editorial and audit completion recorders consume separately supplied
+decision artifacts. They do not generate record decisions, relation findings, or
+an audit verdict. The editorial input records all six sense-boundary checks for
+the 150 imported starts; the relation diff remains empty because this wave has
+no relation quota. A distinct post-freeze audit session checks the frozen
+reviewed-staging digest. Its five findings are resolved and it leaves zero open
+blockers. The tracked verification artifact explicitly distinguishes
+`editorial_review_complete: true` from
+`human_editorial_review_complete: false`.
+
+The five editorial timing passes and the distinct post-freeze audit pass are
+complete and chronological. Their source-derived total is 7.589 seconds across
+160 processed starts. This is the recorder-bound measured interval used by the
+gate, not a claim about human effort or a substitute for semantic review. The
+Wave B stage is `APPROVE BOUNDED`, but `ready_to_create`,
+`next_stage_created`, and `next_stage_authorized` remain false. No later stage
+artifact or task is created implicitly.
+
+The proposal and reviewed staging JSONL remain outside the repository; tracked
+metadata stores their SHA-256 digests and never copies raw proposal bodies.
+
 ## M5-10A process correction and A2 authorization
 
 Issue #107 records the process correction after the Wave A failure. It does not

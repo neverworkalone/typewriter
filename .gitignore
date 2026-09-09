@@ -22,6 +22,10 @@ data/draft/
 data/reference/
 data/local/
 
+# Temporary relation-diff files created by batch-tooling tests
+data/batches/test-m5-8-process-*.json
+data/batches/test-m5-9a-*.json
+
 # Local configuration and credentials
 .env
 .env.*
