@@ -124,8 +124,10 @@ record-level sense evidence, a source-bound noncanonical 20-case candidate-gener
 calibration, and independent relation/timing checkpoints while preserving the
 578-start pre-A2 base snapshot. The #96 Wave A2 result is recorded in
 [`docs/m5-10a-wave-a2-report.md`](docs/m5-10a-wave-a2-report.md); it reaches 628
-starts with a passing bounded gate, while Wave B remains separately unauthorized.
-Run `npm run batch:m5-10a:calibration:check` before the process/repair checks.
+starts but remains `HOLD PROCESS` because its editor-session timing is still
+unmeasured; Wave B remains separately unauthorized. Run
+`npm run batch:m5-10a:calibration:check` and
+`npm run batch:m5-10a:wave-a2:check` before the process/repair checks.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

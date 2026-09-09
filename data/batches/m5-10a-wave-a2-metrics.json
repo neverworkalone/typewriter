@@ -30,13 +30,14 @@
       "imported_start_count": 50,
       "imported_reference_only_count": 0,
       "imported_record_count": 50,
-      "imported_sense_count": 65,
+      "imported_sense_count": 67,
       "imported_relation_count": 6,
       "imported_expression_count": 4,
       "relation_type_counts": {
         "mood": 3,
-        "near": 2,
-        "sensory": 1
+        "near": 1,
+        "sensory": 1,
+        "association": 1
       }
     },
     "relation_diff": {
@@ -58,48 +59,54 @@
       "noise_rate_of_candidates": 0
     },
     "timing": {
-      "status": "complete",
+      "status": "incomplete",
       "passes": {
         "target-preparation": {
-          "status": "complete",
-          "wall_clock_seconds": 5.035,
-          "editor_seconds": 5.035
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         },
         "initial-review": {
-          "status": "complete",
-          "wall_clock_seconds": 5.443,
-          "editor_seconds": 5.443
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         },
         "feedback-fixes": {
-          "status": "complete",
-          "wall_clock_seconds": 5.324,
-          "editor_seconds": 5.324
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         },
         "final-audit": {
-          "status": "complete",
-          "wall_clock_seconds": 7.677,
-          "editor_seconds": 7.677
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         },
         "held-rejected": {
-          "status": "complete",
-          "wall_clock_seconds": 4.439,
-          "editor_seconds": 4.439
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
         }
       },
-      "total_wall_clock_seconds": 27.918,
-      "total_editor_seconds": 27.918,
-      "measured_wall_clock_seconds": 27.918,
-      "measured_editor_seconds": 27.918,
-      "unmeasured_passes": []
+      "total_wall_clock_seconds": null,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 0,
+      "measured_editor_seconds": 0,
+      "unmeasured_passes": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected"
+      ]
     },
     "audit": {
       "status": "complete",
       "independent": true,
-      "finding_count": 3,
+      "finding_count": 4,
       "open_finding_count": 0,
       "open_blocker_count": 0,
       "finding_counts": {
-        "sense": 1,
+        "sense": 2,
         "relation-noise": 1,
         "reference-closure": 1
       }

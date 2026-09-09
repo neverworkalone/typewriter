@@ -27,7 +27,7 @@ test('validates the pilot dataset counts and current completeness regression', a
     {
       fileCount: 7,
       recordCount: 670,
-      senseCount: 808,
+      senseCount: 810,
       relationCount: 473,
       candidateCount: 628,
     },

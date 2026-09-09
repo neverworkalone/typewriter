@@ -221,8 +221,9 @@ reproducible after the current canonical directory advances.
 The authorized A2 execution is recorded in
 [`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It selects 58
 starts, imports 50 after six-boundary sense/POS review, and advances the canonical
-snapshot from 578 to 628 starts. The stage gate passes with six admitted
-relations and complete timing/audit evidence. The stage keeps
+snapshot from 578 to 628 starts. Six relations are admitted and the independent
+audit input is complete, but the stage gate remains `HOLD PROCESS` because the
+separate A2 timing input has five unmeasured passes. The stage keeps
 `next_stage_authorized: false`; Wave B is a separate, not-yet-authorized step.
 
 ## M5-10A process correction and A2 authorization
@@ -272,6 +273,14 @@ validation is recorded as verification evidence and never subtracted from editor
 seconds. A complete timing result must have measurements for the five required
 passes and every recorded follow-up pair; an unmeasured pass keeps the gate
 incomplete.
+
+Wave A2 binds those claims to
+`data/batches/m5-10a-wave-a2-timing-input.json`. The earlier 27.918-second
+command-runtime claim is invalid and is not copied into the new manifest. Use
+`npm run batch:m5-10a:wave-a2:timing` to record each pass from current-clock
+start/stop events; every completed pass must also cite the exact A2 work-unit
+set and before/after artifact digests. Until that recorder output exists, the
+builder emits `timing.status: "incomplete"` and the stage remains `HOLD PROCESS`.
 
 The digest-bound authorization is
 [`data/batches/m5-10a-repair-authorization.json`](../data/batches/m5-10a-repair-authorization.json),

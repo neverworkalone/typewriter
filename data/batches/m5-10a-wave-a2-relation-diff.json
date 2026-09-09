@@ -56,7 +56,7 @@
       "after": {
         "target": "w009",
         "target_sense": "w009-s1",
-        "type": "near"
+        "type": "association"
       }
     },
     {
@@ -71,7 +71,7 @@
       }
     }
   ],
-  "source_note": "A2 pure-add relation snapshot: every admitted relation was reviewed after complete six-boundary sense preflight.",
+  "source_note": "A2 pure-add relation snapshot: the six admitted tuples are bound to separate editorial and independent-audit review inputs; w621-s2 is retained as an association for a state-changing action.",
   "candidate_reviews": [
     {
       "candidate_id": "m5-10-wave-a2-candidate-001",
@@ -83,7 +83,7 @@
         "type": "mood"
       },
       "decision": "admit",
-      "review_note": "w579-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 mood으로 채택했다."
+      "review_note": "w579-s1 환희의 고양된 기쁨과 w018-s1 기쁨의 정서 범위를 비교했다. 직접 대체보다 강도가 다른 정서의 결을 잇는 mood로 채택했다."
     },
     {
       "candidate_id": "m5-10-wave-a2-candidate-002",
@@ -95,7 +95,7 @@
         "type": "near"
       },
       "decision": "admit",
-      "review_note": "w587-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 near으로 채택했다."
+      "review_note": "w587-s1 자책과 w306-s1 죄책감은 모두 자기 비난과 관련되지만 원인과 초점이 다르다. 부분적으로 가까운 의미를 보이는 near로 채택했다."
     },
     {
       "candidate_id": "m5-10-wave-a2-candidate-003",
@@ -107,7 +107,7 @@
         "type": "mood"
       },
       "decision": "admit",
-      "review_note": "w589-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 mood으로 채택했다."
+      "review_note": "w589-s1 고즈넉하다가 만드는 고요하고 아늑한 분위기와 w001-s1 고요의 정서적 색을 대조했다. 정취가 더해진 분위기 연결이므로 mood로 채택했다."
     },
     {
       "candidate_id": "m5-10-wave-a2-candidate-004",
@@ -119,7 +119,7 @@
         "type": "sensory"
       },
       "decision": "admit",
-      "review_note": "w607-s1 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 sensory으로 채택했다."
+      "review_note": "w607-s1 윤슬의 물결 위 반짝임과 w066-s2 빛의 표면 밝기를 시각 이미지로 대조했다. 의미 대체가 아닌 공유 감각이므로 sensory로 채택했다."
     },
     {
       "candidate_id": "m5-10-wave-a2-candidate-005",
@@ -128,10 +128,10 @@
       "relation": {
         "target": "w009",
         "target_sense": "w009-s1",
-        "type": "near"
+        "type": "association"
       },
       "decision": "admit",
-      "review_note": "w621-s2 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 near으로 채택했다."
+      "review_note": "w621-s2 잦아들다와 w009-s1 긴장은 각각 감정의 상태와 그 세기가 낮아지는 변화를 가리킨다. 동의어나 near가 아니라 함께 떠올릴 상태·변화의 association으로 채택했다."
     },
     {
       "candidate_id": "m5-10-wave-a2-candidate-006",
@@ -143,7 +143,7 @@
         "type": "mood"
       },
       "decision": "admit",
-      "review_note": "w628-s2 관계 후보를 해당 감각 경계와 target sense를 확인한 뒤 mood으로 채택했다."
+      "review_note": "w628-s2 숨이 트이다의 비유적 안도와 w008-s1 안도는 막힘이 풀린 뒤의 정서적 방향을 공유한다. 상황 표현과 감정 이름의 mood로 채택했다."
     }
   ]
 }

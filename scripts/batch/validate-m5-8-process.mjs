@@ -920,6 +920,36 @@ async function validatePreviousStageReport(stage, plan, stageContext, visitedSta
   );
 }
 
+export function evaluateExpansionGate(metrics, plan) {
+  const relationNoiseRate = metrics.relation_noise_rate_of_candidates
+    ?? metrics.relation_noise_rate_of_before;
+  const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
+    / plan.gate.relation_noise_baseline.before_count;
+  const qualityPasses = {
+    correction_rate: metrics.correction_rate_of_selected <= plan.gate.correction_rate_max,
+    relation_noise_rate: relationNoiseRate <= plan.gate.relation_noise_rate_max,
+    relation_noise_below_baseline: !plan.gate.relation_noise_below_m5_3_baseline_required
+      || relationNoiseRate < baselineRate,
+    editor_seconds_per_selected_start: Number.isFinite(metrics.editor_seconds_per_selected_start)
+      && metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
+    timing_complete: metrics.timing_status === 'complete',
+    unmeasured_timing_passes: metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
+    audit_complete: metrics.audit_status === 'complete',
+    audit_independent: metrics.audit_independent,
+    open_audit_blockers: metrics.open_audit_blocker_count <= plan.gate.open_audit_blockers_max,
+    human_editorial_review_complete: metrics.human_editorial_review_complete,
+    canonical_integrity: metrics.canonical_integrity,
+    deterministic_sqlite: metrics.deterministic_sqlite,
+    search_product_regression: metrics.search_product_regression,
+  };
+  const gate_status = Object.values(qualityPasses).every(Boolean) ? 'pass' : 'fail';
+  return {
+    quality_passes: qualityPasses,
+    gate_status,
+    decision: gate_status === 'pass' ? 'APPROVE BOUNDED' : plan.gate.failure_decision,
+  };
+}
+
 function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts) {
   const plannedStage = stageContext.contract;
   validateLoadedStageSources(stage, sourceArtifacts);
@@ -1051,37 +1081,16 @@ function validateExpansionStageValues(stage, plan, stageContext, sourceArtifacts
     );
   }
 
-  const relationNoiseRate = stage.metrics.relation_noise_rate_of_candidates
-    ?? stage.metrics.relation_noise_rate_of_before;
-  const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
-    / plan.gate.relation_noise_baseline.before_count;
-  const qualityPasses = [
-    stage.metrics.correction_rate_of_selected <= plan.gate.correction_rate_max,
-    relationNoiseRate <= plan.gate.relation_noise_rate_max,
-    !plan.gate.relation_noise_below_m5_3_baseline_required
-      || relationNoiseRate < baselineRate,
-    Number.isFinite(stage.metrics.editor_seconds_per_selected_start)
-      && stage.metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
-    stage.metrics.timing_status === 'complete',
-    stage.metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
-    stage.metrics.audit_status === 'complete',
-    stage.metrics.audit_independent,
-    stage.metrics.open_audit_blocker_count <= plan.gate.open_audit_blockers_max,
-    stage.metrics.human_editorial_review_complete,
-    stage.metrics.canonical_integrity,
-    stage.metrics.deterministic_sqlite,
-    stage.metrics.search_product_regression,
-  ];
-  const expectedGateStatus = qualityPasses.every(Boolean) ? 'pass' : 'fail';
+  const gate = evaluateExpansionGate(stage.metrics, plan);
   assertEqual(
     stage.gate_status,
-    expectedGateStatus,
+    gate.gate_status,
     `${stage.stage_id} gate status does not match source-derived metrics`,
     'GATE_STATUS_MISMATCH',
   );
   assertEqual(
     stage.decision,
-    stage.gate_status === 'pass' ? 'APPROVE BOUNDED' : plan.gate.failure_decision,
+    gate.decision,
     `${stage.stage_id} decision does not match the gate status`,
     'DECISION_MISMATCH',
   );

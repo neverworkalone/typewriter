@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "timing_id": "m5-10a-wave-a2-timing-20260909",
+  "batch_id": "m5-10-wave-a2-20260909",
+  "recorder_version": "timing-recorder-v1",
+  "recording_source": "timing-recorder-v1",
+  "recorder_command": "node scripts/batch/record-m5-10a-wave-a2-timing.mjs",
+  "processed_start_count": 56,
+  "status": "incomplete",
+  "passes": [
+    { "id": "target-preparation", "status": "unmeasured" },
+    { "id": "initial-review", "status": "unmeasured" },
+    { "id": "feedback-fixes", "status": "unmeasured" },
+    { "id": "final-audit", "status": "unmeasured" },
+    { "id": "held-rejected", "status": "unmeasured" }
+  ],
+  "events": [],
+  "note": "이전 command-duration 값은 실제 편집 세션의 시작·종료 이벤트와 작업 증거에 연결되지 않아 무효화했다. active editor session을 recorder로 남기기 전까지 A2 timing은 incomplete로 유지한다."
+}

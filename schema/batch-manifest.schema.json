@@ -56,6 +56,14 @@
         "completed_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "input_artifact": {
+          "type": "string",
+          "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
+        },
+        "input_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       }
     },
@@ -319,6 +327,14 @@
             "contract_version": {
               "enum": ["m5-9a-v1", "m5-10a-v1"]
             },
+            "source_artifact": {
+              "type": "string",
+              "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
+            },
+            "source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
             "passes": {
               "type": "array",
               "minItems": 5,
@@ -335,6 +351,14 @@
               "enum": ["complete", "incomplete"]
             },
             "independent": { "type": "boolean" },
+            "source_artifact": {
+              "type": "string",
+              "pattern": "^data/batches/[a-z0-9][a-z0-9-]*\\.json$"
+            },
+            "source_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
             "findings": {
               "type": "array",
               "items": { "$ref": "#/$defs/auditFinding" }
@@ -395,6 +419,41 @@
         "recording_source": {
           "const": "timing-recorder-v1"
         },
+        "work_evidence": {
+          "$ref": "#/$defs/timingWorkEvidence"
+        },
+        "note": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      }
+    },
+    "timingWorkEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_kind", "unit_count", "unit_ids", "before_sha256", "after_sha256", "note"],
+      "properties": {
+        "unit_kind": {
+          "enum": ["selected-target", "boundary-check", "sense-correction", "final-audit-item", "buffer-decision"]
+        },
+        "unit_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "before_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "after_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
         "note": {
           "type": "string",
           "pattern": "\\S"
@@ -413,7 +472,8 @@
             "relation-noise",
             "direct-replacement",
             "sense",
-            "reference-closure"
+            "reference-closure",
+            "timing-measurement"
           ]
         },
         "severity": {
@@ -421,6 +481,12 @@
         },
         "status": {
           "enum": ["open", "resolved"]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "\\S" }
         },
         "note": {
           "type": "string",

@@ -194,6 +194,7 @@ is created by #107.
 
 Issue #96 Wave A2 was executed after this authorization. Its separate report is
 [`docs/m5-10a-wave-a2-report.md`](m5-10a-wave-a2-report.md). It imports 50
-reviewed starts from the declared 58-start selection, reaches 628 starts, and
-passes the bounded stage gate. The A2 stage still sets
-`next_stage_authorized: false`; Wave B is not included in the A2 batch.
+reviewed starts from the declared 58-start selection and reaches 628 starts, but
+its bounded stage remains `HOLD PROCESS` until the separate editor-session timing
+input contains real recorder start/stop events and work evidence. The A2 stage
+still sets `next_stage_authorized: false`; Wave B is not included in the A2 batch.

@@ -31,7 +31,7 @@ test('normalizes the pilot without losing records, senses, relations, or notes',
   assert.equal(model.records.length, 670);
   assert.equal(
     model.records.reduce((count, record) => count + record.senses.length, 0),
-    808,
+    810,
   );
   assert.equal(
     model.records.reduce(

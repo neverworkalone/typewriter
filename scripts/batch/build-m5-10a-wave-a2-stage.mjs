@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  evaluateExpansionGate,
   hashCanonicalDirectory,
   sha256File,
   validateExpansionStage,
@@ -46,7 +47,7 @@ function canonicalSummary(recordInfos) {
   };
 }
 
-function stageMetrics(metricsArtifact) {
+function stageMetrics(metricsArtifact, verification) {
   const { decisions, relation_diff: relationDiff, timing, audit } = metricsArtifact.derived;
   const processedStartCount = metricsArtifact.derived.selection.processed_start_count
     ?? metricsArtifact.derived.selection.selected_start_count;
@@ -67,10 +68,10 @@ function stageMetrics(metricsArtifact) {
     audit_status: audit.status,
     audit_independent: audit.independent,
     open_audit_blocker_count: audit.open_blocker_count,
-    human_editorial_review_complete: true,
-    canonical_integrity: true,
-    deterministic_sqlite: true,
-    search_product_regression: true,
+    human_editorial_review_complete: verification.human_editorial_review_complete,
+    canonical_integrity: verification.canonical_integrity,
+    deterministic_sqlite: verification.deterministic_sqlite,
+    search_product_regression: verification.search_product_regression,
   };
 }
 
@@ -82,10 +83,11 @@ async function sourceReference(filePath) {
 }
 
 export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
-  const [plan, manifest, metrics, canonical, baseCanonical] = await Promise.all([
+  const [plan, manifest, metrics, verification, canonical, baseCanonical] = await Promise.all([
     readJson(PLAN_PATH),
     readJson(MANIFEST_PATH),
     readJson(METRICS_PATH),
+    readJson(VERIFICATION_PATH),
     import('../validate/canonical-jsonl.mjs').then(({ readCanonicalRecords }) => readCanonicalRecords(CANONICAL_DIRECTORY)),
     import('../validate/canonical-jsonl.mjs').then(({ readCanonicalRecords }) => readCanonicalRecords(BASE_CANONICAL_DIRECTORY)),
   ]);
@@ -109,6 +111,8 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
   };
   const candidateBuffer = selectedStartCount - importedStartCount;
   const usedBuffer = decisions.held_start_count + decisions.rejected_start_count;
+  const metricsFromSources = stageMetrics(metrics, verification);
+  const gate = evaluateExpansionGate(metricsFromSources, plan);
   const stage = {
     schema_version: '1',
     stage_id: 'm5-10a-wave-a2-plus-50',
@@ -134,7 +138,7 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
       canonical_snapshot: canonicalSummary(canonical.records),
       imported_start_count: importedStartCount,
     },
-    metrics: stageMetrics(metrics),
+    metrics: metricsFromSources,
     source: {
       manifest: manifestSource.path,
       manifest_sha256: manifestSource.sha256,
@@ -147,8 +151,8 @@ export async function buildWaveA2Stage({ outputPath = STAGE_PATH } = {}) {
       verification: verificationSource.path,
       verification_sha256: verificationSource.sha256,
     },
-    gate_status: 'pass',
-    decision: 'APPROVE BOUNDED',
+    gate_status: gate.gate_status,
+    decision: gate.decision,
     next_stage_created: false,
     next_stage_authorized: false,
   };

@@ -5,310 +5,306 @@ import { fileURLToPath } from 'node:url';
 
 import {
   M5_10A_PROCESS_REVISION,
-  M5_10A_SENSE_BOUNDARY_IDS,
   validateBatchManifest,
 } from './validate-batch.mjs';
+import {
+  A2_BATCH_ID,
+  A2_INVENTORY_ID,
+  A2_INVENTORY_REVISION,
+  validateA2AuditInput,
+  validateA2EditorialInput,
+  validateA2TimingInput,
+} from './validate-m5-10a-wave-a2-inputs.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_OUTPUT_PATH = path.resolve(
+export const DEFAULT_OUTPUT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-10-wave-a2.json',
 );
-const DEFAULT_RELATION_DIFF_PATH = path.resolve(
+export const DEFAULT_RELATION_DIFF_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/batches/m5-10a-wave-a2-relation-diff.json',
 );
-const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
+export const DEFAULT_EDITORIAL_INPUT_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-wave-a2-editorial-input.json',
+);
+export const DEFAULT_AUDIT_INPUT_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-wave-a2-audit-input.json',
+);
+export const DEFAULT_TIMING_INPUT_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/batches/m5-10a-wave-a2-timing-input.json',
+);
+export const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/canonical',
 );
-const CORRECTED_CANONICAL_IDS = new Set([
-  'w588',
-  'w595',
-  'w598',
-  'w599',
-  'w603',
-  'w604',
-  'w606',
-  'w609',
-  'w617',
-  'w618',
-  'w619',
-  'w620',
-  'w621',
-  'w622',
-  'w628',
-]);
-const BUFFER_DECISIONS = Object.freeze({
-  'm5-357': 'held',
-  'm5-358': 'held',
-  'm5-359': 'held',
-  'm5-360': 'rejected',
-  'm5-361': 'rejected',
-  'm5-362': 'rejected',
-  'm5-363': 'deferred',
-  'm5-364': 'deferred',
-});
-const BATCH_ID = 'm5-10-wave-a2-20260909';
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-async function fileSha256(filePath) {
-  return sha256(await readFile(filePath));
-}
-
-function canonicalById(recordInfos) {
-  return new Map(recordInfos.map(({ record }) => [record.id, record]));
-}
-
-function decisionFor(inventoryId, canonicalId) {
-  if (canonicalId) return CORRECTED_CANONICAL_IDS.has(canonicalId) ? 'corrected' : 'included';
-  return BUFFER_DECISIONS[inventoryId];
-}
-
-function inventoryIdFor(index) {
-  return `m5-${String(index).padStart(3, '0')}`;
-}
-
-function canonicalIdFor(index) {
-  return `w${index}`;
-}
-
-function decisionNote({ inventoryId, canonicalId, decision, lemma }) {
-  if (decision === 'corrected') {
-    return `${inventoryId} ${canonicalId} ${lemma}: 여섯 sense 경계를 전수 확인하고 독립된 의미를 분리해 corrected로 포함했다.`;
+async function readJsonSource(filePath, label) {
+  let bytes;
+  try {
+    bytes = await readFile(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      const missing = new Error(`${label} does not exist: ${filePath}`);
+      missing.code = 'MISSING_A2_INPUT';
+      throw missing;
+    }
+    throw error;
   }
-  if (decision === 'included') {
-    return `${inventoryId} ${canonicalId} ${lemma}: lemma/POS와 여섯 sense 경계를 확인해 included로 포함했다.`;
+  let value;
+  try {
+    value = JSON.parse(bytes.toString('utf8'));
+  } catch (error) {
+    const invalid = new Error(`${label} is not valid JSON: ${error.message}`);
+    invalid.code = 'INVALID_A2_INPUT_JSON';
+    throw invalid;
   }
-  if (decision === 'held') {
-    return `${inventoryId} ${lemma}: 경계 확인을 더 진행해야 하므로 이번 A2에서는 held로 남겼다.`;
-  }
-  if (decision === 'rejected') {
-    return `${inventoryId} ${lemma}: 현재 writer-facing 범위에서 안정적인 admission 근거가 부족해 rejected로 닫았다.`;
-  }
-  return `${inventoryId} ${lemma}: 다음 단계에서 검토할 reserve 항목으로 deferred 처리했다.`;
+  return { value, sha256: sha256(bytes) };
 }
 
-function completeBoundaryChecks({ inventoryId, canonicalId, lemma, senseIds }) {
-  return Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => [
+function isImportable(decision) {
+  return decision === 'included' || decision === 'corrected';
+}
+
+function manifestRecord(recordReview) {
+  const record = {
+    source: 'inventory',
+    inventory_id: recordReview.inventory_id,
+    role: 'start',
+    decision: recordReview.decision,
+    decision_note: recordReview.decision_note,
+  };
+  if (isImportable(recordReview.decision)) record.canonical_id = recordReview.canonical_id;
+  if (recordReview.decision === 'corrected') record.corrected_fields = [...recordReview.corrected_fields];
+  return record;
+}
+
+function preflightBoundaryChecks(recordReview, canonicalRecord) {
+  const senseIds = canonicalRecord.senses.map(({ id }) => id);
+  return Object.fromEntries(Object.entries(recordReview.boundary_evidence).map(([boundaryId, evidence]) => [
     boundaryId,
     {
-      status: 'checked',
-      rationale: `${inventoryId} ${canonicalId} ${lemma} ${boundaryId}: ${senseIds.join(', ')}를 실제 sense 경계로 대조해 확인했다.`,
-      sense_ids: [...senseIds],
+      status: evidence.status,
+      rationale: `${recordReview.inventory_id} ${canonicalRecord.id} ${canonicalRecord.lemma} ${boundaryId}: ${evidence.note} [${senseIds.join(', ')}]`,
+      sense_ids: [...evidence.sense_ids],
     },
   ]));
 }
 
-function unresolvedBoundaryChecks({ inventoryId, lemma, decision }) {
-  return Object.fromEntries(M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => [
+function unresolvedBoundaryChecks(recordReview) {
+  const reason = recordReview.unreviewed_note;
+  return Object.fromEntries([
+    'physical-figurative',
+    'homonym-pos',
+    'sensory-emotion-state-action',
+    'directional-symmetry',
+    'compound-spaced-phrase',
+    'word-idiom',
+  ].map((boundaryId) => [
     boundaryId,
     {
       status: 'not-reviewed',
-      rationale: `${inventoryId} ${lemma} ${boundaryId}: decision=${decision}이므로 A2 import 전 경계를 검토하지 않았다.`,
+      rationale: `${recordReview.inventory_id} ${boundaryId}: ${reason}`,
       sense_ids: [],
     },
   ]));
 }
 
-function createPreflightCheckpoint({ inventoryId, canonicalId, record, decision }) {
-  const note = decisionNote({
-    inventoryId,
-    canonicalId,
-    decision,
-    lemma: record?.lemma ?? inventoryId,
-  });
-  if (canonicalId && record) {
-    const senseIds = record.senses.map(({ id }) => id);
+function preflightCheckpoint(recordReview, canonicalById) {
+  if (isImportable(recordReview.decision)) {
+    const canonicalRecord = canonicalById.get(recordReview.canonical_id);
     return {
-      inventory_id: inventoryId,
-      canonical_id: canonicalId,
+      inventory_id: recordReview.inventory_id,
+      canonical_id: recordReview.canonical_id,
       status: 'complete',
       lemma_pos: 'checked',
-      observed_sense_count: record.senses.length,
-      observed_pos: record.senses.map(({ pos }) => pos),
-      boundary_checks: completeBoundaryChecks({
-        inventoryId,
-        canonicalId,
-        lemma: record.lemma,
-        senseIds,
-      }),
+      observed_sense_count: recordReview.observed_sense_count,
+      observed_pos: [...recordReview.observed_pos],
+      boundary_checks: preflightBoundaryChecks(recordReview, canonicalRecord),
       missing_boundary_ids: [],
-      note,
+      note: recordReview.decision_note,
     };
   }
-
   return {
-    inventory_id: inventoryId,
-    status: decision,
+    inventory_id: recordReview.inventory_id,
+    status: recordReview.decision,
     lemma_pos: 'not-reviewed',
     observed_sense_count: 0,
     observed_pos: [],
-    boundary_checks: unresolvedBoundaryChecks({
-      inventoryId,
-      lemma: record?.lemma ?? inventoryId,
-      decision,
-    }),
-    missing_boundary_ids: [...M5_10A_SENSE_BOUNDARY_IDS],
-    note,
+    boundary_checks: unresolvedBoundaryChecks(recordReview),
+    missing_boundary_ids: [
+      'physical-figurative',
+      'homonym-pos',
+      'sensory-emotion-state-action',
+      'directional-symmetry',
+      'compound-spaced-phrase',
+      'word-idiom',
+    ],
+    note: recordReview.unreviewed_note,
   };
 }
 
-function createManifest({ recordsById, relationDiffSha256, generatedAt }) {
-  const selected = [];
-  for (let index = 579; index <= 628; index += 1) {
-    const canonicalId = canonicalIdFor(index);
-    const inventoryId = inventoryIdFor(index - 272);
-    selected.push({ inventoryId, canonicalId, record: recordsById.get(canonicalId) });
-  }
-  for (let index = 357; index <= 364; index += 1) {
-    const inventoryId = inventoryIdFor(index);
-    selected.push({ inventoryId, record: undefined });
-  }
-
-  const manifestRecords = selected.map(({ inventoryId, canonicalId, record }) => {
-    const decision = decisionFor(inventoryId, canonicalId);
-    const manifestRecord = {
-      source: 'inventory',
-      inventory_id: inventoryId,
-      role: 'start',
-      decision,
-      decision_note: decisionNote({
-        inventoryId,
-        canonicalId,
-        decision,
-        lemma: record?.lemma ?? inventoryId,
-      }),
-    };
-    if (canonicalId && (decision === 'included' || decision === 'corrected')) {
-      manifestRecord.canonical_id = canonicalId;
-    }
-    if (decision === 'corrected') manifestRecord.corrected_fields = ['senses'];
-    return manifestRecord;
+export function createWaveA2Manifest({
+  editorialInput,
+  auditInput,
+  timingInput,
+  canonicalRecords,
+  editorialInputSource,
+  auditInputSource,
+  timingInputSource,
+  relationDiffSource,
+} = {}) {
+  const editorial = validateA2EditorialInput({ input: editorialInput, canonicalRecords });
+  const audit = validateA2AuditInput({
+    audit: auditInput,
+    editorialInput: editorial,
+    relationDiff: relationDiffSource.value,
+    canonicalRecords,
   });
+  const timing = validateA2TimingInput(timingInput);
+  const canonicalById = new Map(canonicalRecords.map((item) => {
+    const record = item.record ?? item;
+    return [record.id, record];
+  }));
 
-  const correctedCanonicalIds = selected
-    .filter(({ canonicalId }) => canonicalId && CORRECTED_CANONICAL_IDS.has(canonicalId))
-    .map(({ canonicalId }) => canonicalId);
-  const preflight = selected.map(({ inventoryId, canonicalId, record }) => (
-    createPreflightCheckpoint({
-      inventoryId,
-      canonicalId: canonicalId && decisionFor(inventoryId, canonicalId) !== 'deferred'
-        ? canonicalId
-        : undefined,
-      record,
-      decision: decisionFor(inventoryId, canonicalId),
-    })
-  ));
-
-  return {
+  const manifest = {
     schema_version: '1',
-    batch_id: BATCH_ID,
-    inventory_id: 'm5-core-5k',
-    inventory_revision: 'm5-10',
+    batch_id: A2_BATCH_ID,
+    inventory_id: A2_INVENTORY_ID,
+    inventory_revision: A2_INVENTORY_REVISION,
     generator: {
       model_id: 'human-editorial-expansion',
-      tool_version: 'typewriter-m5-10a-wave-a2-1',
-      prompt_version: 'm5-10a-wave-a2-v1',
+      tool_version: 'typewriter-m5-10a-wave-a2-2',
+      prompt_version: 'm5-10a-wave-a2-v2',
     },
-    generated_at: generatedAt,
+    generated_at: editorial.reviewed_at,
     review: {
-      status: 'complete',
-      reviewer: 'typewriter-wave-a2-editorial-review',
-      completed_at: generatedAt,
+      status: editorial.status,
+      reviewer: editorial.reviewer_id,
+      completed_at: editorial.reviewed_at,
+      input_artifact: editorialInputSource.path,
+      input_sha256: editorialInputSource.sha256,
     },
     sense_review: {
-      status: 'complete',
-      reviewed_start_count: 50,
-      scoped_single_sense_count: 35,
-      split_record_count: correctedCanonicalIds.length,
-      split_canonical_ids: correctedCanonicalIds,
-      note: 'A2 importable 50개를 lemma/POS와 physical/figurative, homonym/POS, sensory/emotion/state/action, directional symmetry, compound/spaced phrase, word/idiom 여섯 경계로 전수 검토했다. 15개는 독립 sense 경계를 확인해 corrected로 반영했고 relation 검토는 complete preflight 이후에만 진행했다.',
+      status: editorial.status,
+      reviewed_start_count: editorial.sense_review.reviewed_start_count,
+      scoped_single_sense_count: editorial.sense_review.scoped_single_sense_count,
+      split_record_count: editorial.sense_review.split_record_count,
+      split_canonical_ids: [...editorial.sense_review.split_canonical_ids],
+      note: editorial.sense_review.note,
       preflight: {
         process_revision: M5_10A_PROCESS_REVISION,
-        boundary_ids: [...M5_10A_SENSE_BOUNDARY_IDS],
-        record_checkpoints: preflight,
+        boundary_ids: [...editorial.sense_review.boundary_ids],
+        record_checkpoints: editorial.records.map((recordReview) => (
+          preflightCheckpoint(recordReview, canonicalById)
+        )),
       },
     },
     measurement: {
       schema_version: '1',
       relation_diff: {
-        artifact: 'data/batches/m5-10a-wave-a2-relation-diff.json',
-        sha256: relationDiffSha256,
+        artifact: relationDiffSource.path,
+        sha256: relationDiffSource.sha256,
       },
       timing: {
         contract_version: 'm5-10a-v1',
-        status: 'incomplete',
-        passes: [
-          'target-preparation',
-          'initial-review',
-          'feedback-fixes',
-          'final-audit',
-          'held-rejected',
-        ].map((id) => ({ id, status: 'unmeasured' })),
+        source_artifact: timingInputSource.path,
+        source_sha256: timingInputSource.sha256,
+        status: timingInput.status,
+        passes: timingInput.passes.map((pass) => structuredClone(pass)),
       },
       audit: {
-        status: 'complete',
-        independent: true,
-        findings: [
-          {
-            id: 'm5-10a-wave-a2-sense-boundaries',
-            category: 'sense',
-            severity: 'info',
-            status: 'resolved',
-            note: '50개 importable start를 여섯 sense boundary로 전수 확인했고 15개 corrected split을 canonical과 preflight에 일치시켰다.',
-          },
-          {
-            id: 'm5-10a-wave-a2-relation-admission',
-            category: 'relation-noise',
-            severity: 'info',
-            status: 'resolved',
-            note: '6개 relation candidate를 source/target sense와 writer-facing relation type으로 독립 대조해 모두 admit했다.',
-          },
-          {
-            id: 'm5-10a-wave-a2-scope',
-            category: 'reference-closure',
-            severity: 'info',
-            status: 'resolved',
-            note: 'A2는 새 reference-only record 없이 기존 target sense만 사용하며 Wave B는 별도 authorization 전까지 시작하지 않는다.',
-          },
-        ],
+        source_artifact: auditInputSource.path,
+        source_sha256: auditInputSource.sha256,
+        status: audit.status,
+        independent: audit.independent,
+        findings: audit.findings.map((finding) => structuredClone(finding)),
       },
     },
-    records: manifestRecords,
+    records: editorial.records.map(manifestRecord),
   };
+  validateBatchManifest(manifest);
+  return manifest;
 }
 
 export async function buildWaveA2Manifest({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   relationDiffPath = DEFAULT_RELATION_DIFF_PATH,
+  editorialInputPath = DEFAULT_EDITORIAL_INPUT_PATH,
+  auditInputPath = DEFAULT_AUDIT_INPUT_PATH,
+  timingInputPath = DEFAULT_TIMING_INPUT_PATH,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
-  const [canonical, relationDiffSha256] = await Promise.all([
+  const [editorialInputSource, auditInputSource, timingInputSource, relationDiffSource, canonical] = await Promise.all([
+    readJsonSource(editorialInputPath, 'Wave A2 editorial input'),
+    readJsonSource(auditInputPath, 'Wave A2 audit input'),
+    readJsonSource(timingInputPath, 'Wave A2 timing input'),
+    readJsonSource(relationDiffPath, 'Wave A2 relation diff'),
     readCanonicalRecords(canonicalDirectory),
-    fileSha256(relationDiffPath),
   ]);
-  const manifest = createManifest({
-    recordsById: canonicalById(canonical.records),
-    relationDiffSha256,
-    generatedAt: new Date().toISOString(),
+  const repositoryDirectory = path.resolve(SCRIPT_DIRECTORY, '../..');
+  const manifest = createWaveA2Manifest({
+    editorialInput: editorialInputSource.value,
+    auditInput: auditInputSource.value,
+    timingInput: timingInputSource.value,
+    canonicalRecords: canonical.records,
+    editorialInputSource: {
+      path: path.relative(repositoryDirectory, editorialInputPath),
+      sha256: editorialInputSource.sha256,
+    },
+    auditInputSource: {
+      path: path.relative(repositoryDirectory, auditInputPath),
+      sha256: auditInputSource.sha256,
+    },
+    timingInputSource: {
+      path: path.relative(repositoryDirectory, timingInputPath),
+      sha256: timingInputSource.sha256,
+    },
+    relationDiffSource: {
+      path: path.relative(repositoryDirectory, relationDiffPath),
+      sha256: relationDiffSource.sha256,
+      value: relationDiffSource.value,
+    },
   });
-  validateBatchManifest(manifest);
   await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   return manifest;
+}
+
+function parseArguments(argv) {
+  const args = {};
+  for (const argument of argv) {
+    if (!argument.startsWith('--') || !argument.includes('=')) {
+      throw new Error(`arguments must use --name=value form (received ${argument})`);
+    }
+    const separator = argument.indexOf('=');
+    args[argument.slice(2, separator)] = argument.slice(separator + 1);
+  }
+  return args;
 }
 
 const isMainModule = process.argv[1]
   && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
 if (isMainModule) {
-  buildWaveA2Manifest()
+  const args = parseArguments(process.argv.slice(2));
+  buildWaveA2Manifest({
+    canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
+    relationDiffPath: args['relation-diff'] ?? DEFAULT_RELATION_DIFF_PATH,
+    editorialInputPath: args.editorial ?? DEFAULT_EDITORIAL_INPUT_PATH,
+    auditInputPath: args.audit ?? DEFAULT_AUDIT_INPUT_PATH,
+    timingInputPath: args.timing ?? DEFAULT_TIMING_INPUT_PATH,
+    outputPath: args.output ?? DEFAULT_OUTPUT_PATH,
+  })
     .then((manifest) => {
-      console.log(`Generated ${manifest.batch_id} with ${manifest.records.length} selected start(s).`);
+      console.log(`Built ${manifest.batch_id} from explicit editorial, audit, and timing inputs.`);
     })
     .catch((error) => {
       console.error(error.message);
