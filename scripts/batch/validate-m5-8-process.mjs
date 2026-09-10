@@ -992,6 +992,9 @@ export function evaluateExpansionGate(metrics, plan) {
   const rateLimit = producerThroughput
     ? metrics.producer_seconds_per_selected_start_max
     : plan.gate.editor_seconds_per_selected_start_max;
+  const editorTimePass = Number.isFinite(metrics.editor_seconds_per_selected_start)
+    && metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max
+    && (!producerThroughput || metrics.editor_time_status === 'measured');
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = {
@@ -1004,10 +1007,10 @@ export function evaluateExpansionGate(metrics, plan) {
         producer_seconds_per_selected_start: Number.isFinite(measuredRate)
           && Number.isFinite(rateLimit)
           && measuredRate <= rateLimit,
+        editor_seconds_per_selected_start: editorTimePass,
       }
       : {
-        editor_seconds_per_selected_start: Number.isFinite(measuredRate)
-          && measuredRate <= rateLimit,
+        editor_seconds_per_selected_start: editorTimePass,
       }),
     timing_complete: metrics.timing_status === 'complete',
     unmeasured_timing_passes: metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,

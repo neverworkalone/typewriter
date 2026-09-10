@@ -112,15 +112,17 @@ output digest. The work-unit count and decision artifacts are derived from those
 rows after the timing stops; precomputed `--work-json`/`--work-record` payload
 replay is rejected. The source-derived throughput rate is
 `10.150 / 160 = 0.0634375` producer seconds per processed start, below the
-separate `producer_seconds_per_selected_start_max: 1` operational gate. Editorial
+separate `producer_seconds_per_selected_start_max: 1` operational check. Editorial
 judgment time is intentionally unmeasured (`editor_time_status: unmeasured`);
-producer throughput must not be reported as editor time and does not replace the
-semantic review evidence.
+producer throughput must not be reported as editor time or replace the fixed
+editor-time expansion criterion, and it does not replace the semantic review
+evidence.
 
-The final stage reports `gate_status: pass` and `decision: APPROVE BOUNDED`.
-Its source checks bind the current canonical directory digest, the A2 report,
-the Wave B authorization, the manifest, metrics, relation diff, verification,
-and the external reviewed staging digest.
+The producer-throughput operational check passes, but the final stage reports
+`gate_status: fail` and `decision: HOLD PROCESS` because editor time is null and
+unmeasured. Its source checks bind the current canonical directory digest, the
+A2 report, the Wave B authorization, the manifest, metrics, relation diff,
+verification, and the external reviewed staging digest.
 
 ## Tracked artifacts
 

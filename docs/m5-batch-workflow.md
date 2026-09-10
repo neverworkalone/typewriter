@@ -272,10 +272,10 @@ Their source-derived producer-throughput total is 10.150 seconds across 1,562
 recorder-created work units and 160 processed starts. Each work row binds the
 unit input to a producer execution and output that occurred inside its timing
 pass; precomputed payload replay is rejected. This producer interval is used by
-the separate operational throughput gate, not as a claim about human editorial
+the separate operational throughput check, not as a claim about human editorial
 effort. Editorial judgment time remains explicitly unmeasured and does not get
-substituted by producer time. The
-Wave B stage is `APPROVE BOUNDED`, but `ready_to_create`,
+substituted by producer time. The fixed editor-time expansion criterion therefore
+fails and the Wave B stage is `HOLD PROCESS`; `ready_to_create`,
 `next_stage_created`, and `next_stage_authorized` remain false. No later stage
 artifact or task is created implicitly.
 

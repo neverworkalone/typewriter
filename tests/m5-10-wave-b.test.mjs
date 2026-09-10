@@ -25,6 +25,7 @@ import {
   validateWaveB,
   validateWaveBTimingInput,
 } from '../scripts/batch/validate-m5-10-wave-b.mjs';
+import { evaluateExpansionGate } from '../scripts/batch/validate-m5-8-process.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
@@ -42,7 +43,7 @@ async function makeStagingDirectory() {
   return { directory, stagingPath };
 }
 
-test('M5-10 Wave B validates the independent +150 gate without a browser', async () => {
+test('M5-10 Wave B validates the independent +150 result and holds the fixed cost gate', async () => {
   const { directory, stagingPath } = await makeStagingDirectory();
   try {
     const result = await validateWaveB({ stagedRecordsPath: stagingPath });
@@ -54,10 +55,12 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
     assert.equal(result.metrics.canonical_import.imported_sense_count, 157);
     assert.deepEqual(result.metrics.sense_review.split_canonical_ids, ['w719', 'w734', 'w744', 'w746', 'w750', 'w753']);
     assert.equal(result.metrics.canonical_import.imported_relation_count, 0);
-    assert.equal(result.stage.gate_status, 'pass');
+    assert.equal(result.stage.gate_status, 'fail');
+    assert.equal(result.gate.decision, 'HOLD PROCESS');
     assert.equal(result.gate.quality_passes.timing_complete, true);
     assert.equal(result.gate.quality_passes.unmeasured_timing_passes, true);
     assert.equal(result.gate.quality_passes.producer_seconds_per_selected_start, true);
+    assert.equal(result.gate.quality_passes.editor_seconds_per_selected_start, false);
     assert.equal(result.metrics.timing.measurement_kind, 'producer-throughput');
     assert.equal(result.metrics.timing.total_editor_seconds, null);
     assert.equal(result.metrics.timing.editor_time_status, 'unmeasured');
@@ -77,6 +80,33 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('producer throughput cannot replace the fixed editor-time expansion gate', async () => {
+  const plan = await readJson(path.join(BATCH_DIRECTORY, 'm5-8-expansion-plan.json'));
+  const gate = evaluateExpansionGate({
+    correction_rate_of_selected: 0,
+    relation_noise_rate_of_candidates: 0,
+    measurement_kind: 'producer-throughput',
+    producer_seconds_per_selected_start: 0.001,
+    producer_seconds_per_selected_start_max: 1,
+    editor_seconds_per_selected_start: null,
+    editor_time_status: 'unmeasured',
+    timing_status: 'complete',
+    unmeasured_timing_pass_count: 0,
+    audit_status: 'complete',
+    audit_independent: true,
+    open_audit_blocker_count: 0,
+    editorial_review_complete: true,
+    canonical_integrity: true,
+    deterministic_sqlite: true,
+    search_product_regression: true,
+  }, plan);
+
+  assert.equal(gate.quality_passes.producer_seconds_per_selected_start, true);
+  assert.equal(gate.quality_passes.editor_seconds_per_selected_start, false);
+  assert.equal(gate.gate_status, 'fail');
+  assert.equal(gate.decision, 'HOLD PROCESS');
 });
 
 test('Wave B validates post-freeze timing against the runtime staging path', async () => {
