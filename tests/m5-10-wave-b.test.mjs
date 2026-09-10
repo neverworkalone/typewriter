@@ -17,9 +17,11 @@ import {
   DEFAULT_TIMING_INPUT_PATH,
   DEFAULT_VERIFICATION_PATH,
   WaveBValidationError,
+  createWaveBTimingProof,
   validateWaveBChronology,
   validateWaveBSemanticRegression,
   validateWaveB,
+  validateWaveBTimingInput,
 } from '../scripts/batch/validate-m5-10-wave-b.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
@@ -53,6 +55,26 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
     assert.equal(result.stage.gate_status, 'pass');
     assert.equal(result.gate.quality_passes.timing_complete, true);
     assert.equal(result.gate.quality_passes.unmeasured_timing_passes, true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('Wave B validates post-freeze timing against the runtime staging path', async () => {
+  const { directory, stagingPath } = await makeStagingDirectory();
+  try {
+    const editorial = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
+    const audit = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-audit-input.json'));
+    const auditTiming = await readJson(DEFAULT_AUDIT_TIMING_INPUT_PATH);
+    auditTiming.reviewed_staging_artifact.path = path.join(directory, 'materialized-reviewed.jsonl');
+    auditTiming.recording_proof_sha256 = createWaveBTimingProof(auditTiming);
+
+    assert.doesNotThrow(() => validateWaveBTimingInput(auditTiming, {
+      timingKind: 'post-freeze-audit',
+      reviewedStagingSha256: editorial.reviewed_staging_sha256,
+      reviewedStagingPath: stagingPath,
+      auditSessionId: audit.provenance.session_id,
+    }));
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -282,7 +304,7 @@ test('Wave B rejects an incomplete reviewed staging shard before promotion', asy
     await writeFile(stagingPath, `${rows.slice(0, -1).join('\n')}\n`, 'utf8');
     await assert.rejects(
       validateWaveB({ stagedRecordsPath: stagingPath }),
-      (error) => (error instanceof WaveBValidationError && ['MISSING_STAGED_RECORD', 'COVERAGE_MISMATCH', 'STAGED_COUNT_MISMATCH'].includes(error.code))
+      (error) => (error instanceof WaveBValidationError && ['MISSING_STAGED_RECORD', 'COVERAGE_MISMATCH', 'STAGED_COUNT_MISMATCH', 'TIMING_ARTIFACT_DIGEST_MISMATCH'].includes(error.code))
         || error.code === 'REVIEWED_STAGING_DIGEST_MISMATCH',
     );
   } finally {

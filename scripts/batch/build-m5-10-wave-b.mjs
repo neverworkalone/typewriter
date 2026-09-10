@@ -222,7 +222,7 @@ export async function buildArtifacts({
   assertDecisionBindings(editorial, audit, editorialDecisionSource, auditDecisionSource);
   assertReviewedStaging(staged, stagedBytes, editorial);
   validateWaveBTimingInput(timingSource.value, { timingKind: 'editorial', reviewedStagingSha256: editorial.reviewed_staging_sha256, auditSessionId: audit.provenance.session_id });
-  validateWaveBTimingInput(auditTimingSource.value, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorial.reviewed_staging_sha256, auditSessionId: audit.provenance.session_id });
+  validateWaveBTimingInput(auditTimingSource.value, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorial.reviewed_staging_sha256, reviewedStagingPath: resolvedStagingPath, auditSessionId: audit.provenance.session_id });
   if (editorial.timing_artifact.path !== relativeSourcePath(timingInputPath) || editorial.timing_artifact.sha256 !== timingSource.sha256) throw new Error('editorial timing source binding drifted');
   if (audit.timing_artifact.path !== relativeSourcePath(auditTimingInputPath) || audit.timing_artifact.sha256 !== auditTimingSource.sha256) throw new Error('audit timing source binding drifted');
   if (audit.editorial_timing_artifact.path !== relativeSourcePath(timingInputPath) || audit.editorial_timing_artifact.sha256 !== timingSource.sha256) throw new Error('audit editorial timing source binding drifted');
@@ -250,6 +250,7 @@ export async function buildArtifacts({
     auditInputSource: { path: relativeSourcePath(auditInputPath), sha256: auditSource.sha256 },
     timingInputSource: { path: relativeSourcePath(timingInputPath), sha256: timingSource.sha256 },
     auditTimingInputSource: { path: relativeSourcePath(auditTimingInputPath), sha256: auditTimingSource.sha256 },
+    reviewedStagingPath: resolvedStagingPath,
   });
   await writeJson(outputPath, manifest);
   const manifestSource = await readJsonSource(outputPath, 'Wave B manifest');

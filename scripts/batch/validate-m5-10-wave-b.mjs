@@ -146,15 +146,17 @@ function resolveArtifactPath(filePath) {
   return path.isAbsolute(filePath) ? filePath : path.resolve(REPOSITORY_DIRECTORY, filePath);
 }
 
-function validateTimingArtifact(artifact, label) {
+function validateTimingArtifact(artifact, label, { pathOverride } = {}) {
   if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact)) fail(`${label} must be an artifact reference`, 'TIMING_ARTIFACT_MISSING');
   requireString(artifact.path, `${label}.path`);
   requireSha256(artifact.sha256, `${label}.sha256`);
+  if (pathOverride !== undefined) requireString(pathOverride, `${label} runtime path`);
+  const artifactPath = pathOverride ?? artifact.path;
   let bytes;
   try {
-    bytes = readFileSync(resolveArtifactPath(artifact.path));
+    bytes = readFileSync(resolveArtifactPath(artifactPath));
   } catch (error) {
-    if (error.code === 'ENOENT') fail(`${label} does not exist: ${artifact.path}`, 'TIMING_ARTIFACT_MISSING');
+    if (error.code === 'ENOENT') fail(`${label} does not exist: ${artifactPath}`, 'TIMING_ARTIFACT_MISSING');
     throw error;
   }
   assertEqual(sha256Bytes(bytes), artifact.sha256, `${label}.sha256 was not computed from the artifact bytes`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
@@ -903,7 +905,7 @@ export function validateWaveBChronology({ editorialInput, auditInput, timingInpu
   return { editorialFirst, editorialLast, auditFirst, auditLast };
 }
 
-export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSha256, auditSessionId, expectedUnitIdsByPass } = {}) {
+export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSha256, reviewedStagingPath, auditSessionId, expectedUnitIdsByPass } = {}) {
   if (!timing || typeof timing !== 'object' || Array.isArray(timing)) fail('Wave B timing input must be an object', 'INVALID_TIMING_INPUT');
   assertEqual(timing.schema_version, '2', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
   assertEqual(timing.batch_id, WAVE_B_BATCH_ID, 'Wave B timing batch_id drifted', 'BATCH_ID_MISMATCH');
@@ -917,7 +919,7 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
   assertEqual(timing.processed_start_count, WAVE_B_PROCESSED_START_COUNT, 'Wave B timing processed count drifted', 'PROCESSED_COUNT_MISMATCH');
   const expectedPassIds = timingKind === 'editorial' ? WAVE_B_TIMING_PASS_IDS : WAVE_B_AUDIT_TIMING_PASS_IDS;
   if (timingKind === 'post-freeze-audit') {
-    const stagingArtifact = validateTimingArtifact(timing.reviewed_staging_artifact, 'post-freeze audit reviewed staging artifact');
+    const stagingArtifact = validateTimingArtifact(timing.reviewed_staging_artifact, 'post-freeze audit reviewed staging artifact', { pathOverride: reviewedStagingPath });
     assertEqual(stagingArtifact.sha256, reviewedStagingSha256, 'post-freeze audit staging artifact digest drifted', 'AUDIT_TIMING_BINDING');
     assertEqual(timing.reviewed_staging_sha256, stagingArtifact.sha256, 'post-freeze audit staging digest was not recorder-derived', 'AUDIT_TIMING_BINDING');
   } else if (Object.hasOwn(timing, 'reviewed_staging_artifact') || Object.hasOwn(timing, 'reviewed_staging_sha256')) {
@@ -1013,11 +1015,11 @@ function preflightCheckpoint(recordReview, processed) {
   return checkpoint;
 }
 
-export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource } = {}) {
+export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, reviewedStagingPath } = {}) {
   validateWaveBAuditInput({ audit: auditInput, editorialInput, relationDiff: relationDiffSource.value });
   const expectedUnitIdsByPass = deriveWaveBTimingUnitSets({ editorialInput, auditInput });
   validateWaveBTimingInput(timingInput, { timingKind: 'editorial', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
-  validateWaveBTimingInput(auditTimingInput, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
+  validateWaveBTimingInput(auditTimingInput, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, reviewedStagingPath, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
   validateWaveBTimingDecisionWork({ timingInput, auditTimingInput, editorialInput, auditInput });
   validateWaveBChronology({ editorialInput, auditInput, timingInput, auditTimingInput });
   const manifest = {
@@ -1258,7 +1260,8 @@ export async function validateWaveB({
   proposalPath,
 } = {}) {
   if (!stagedRecordsPath) fail('Wave B validation requires an external --staged path', 'MISSING_STAGED_PATH');
-  assertExternalStagingPath(stagedRecordsPath);
+  const resolvedStagedRecordsPath = path.resolve(stagedRecordsPath);
+  assertExternalStagingPath(resolvedStagedRecordsPath);
   const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, verificationSource, planSource, authorizationSource] = await Promise.all([
     readJsonSource(manifestPath, 'Wave B manifest'),
     readJsonSource(editorialInputPath, 'Wave B editorial input'),
@@ -1275,7 +1278,7 @@ export async function validateWaveB({
   const [canonical, baseCanonical, staged, canonicalSha256] = await Promise.all([
     readCanonicalRecords(canonicalDirectory),
     readCanonicalRecords(baseCanonicalDirectory),
-    readCanonicalRecords(stagedRecordsPath),
+    readCanonicalRecords(resolvedStagedRecordsPath),
     hashCanonicalDirectory(canonicalDirectory),
   ]);
   const editorialDecisionPath = path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path);
@@ -1311,7 +1314,7 @@ export async function validateWaveB({
   ]);
   const expectedUnitIdsByPass = deriveWaveBTimingUnitSets({ editorialInput: editorialSource.value, auditInput: auditSource.value });
   validateWaveBTimingInput(timingSource.value, { timingKind: 'editorial', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, auditSessionId: auditSource.value.provenance.session_id, expectedUnitIdsByPass });
-  validateWaveBTimingInput(auditTimingSource.value, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, auditSessionId: auditSource.value.provenance.session_id, expectedUnitIdsByPass });
+  validateWaveBTimingInput(auditTimingSource.value, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, reviewedStagingPath: resolvedStagedRecordsPath, auditSessionId: auditSource.value.provenance.session_id, expectedUnitIdsByPass });
   validateWaveBTimingDecisionWork({ timingInput: timingSource.value, auditTimingInput: auditTimingSource.value, editorialInput: editorialSource.value, auditInput: auditSource.value });
   validateWaveBChronology({
     editorialInput: editorialSource.value,
@@ -1345,9 +1348,10 @@ export async function validateWaveB({
     auditInputSource: { path: relativeSourcePath(auditInputPath), sha256: auditSource.sha256 },
     timingInputSource: { path: relativeSourcePath(timingInputPath), sha256: timingSource.sha256 },
     auditTimingInputSource: { path: relativeSourcePath(auditTimingInputPath), sha256: auditTimingSource.sha256 },
+    reviewedStagingPath: resolvedStagedRecordsPath,
   });
   assertEqual(manifestSource.value, projectedManifest, 'Wave B manifest differs from explicit input artifacts', 'MANIFEST_DRIFT');
-  const batchResult = await validateBatch({ manifestPath, stagedRecordsPath, inventoryPath, canonicalDirectory: baseCanonicalDirectory });
+  const batchResult = await validateBatch({ manifestPath, stagedRecordsPath: resolvedStagedRecordsPath, inventoryPath, canonicalDirectory: baseCanonicalDirectory });
   exactIds(staged.records.map(recordOf).map(({ id }) => id), WAVE_B_IMPORTED_CANONICAL_IDS, 'Wave B reviewed staging');
   assertEqual(staged.records.length, WAVE_B_IMPORTED_START_COUNT, 'Wave B reviewed staging count drifted', 'STAGED_COUNT_MISMATCH');
   const verification = verificationSource.value;
