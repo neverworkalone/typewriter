@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "authorization_id": "m5-10-wave-b-authorization-20260909",
+  "issue": 96,
+  "parent_issue": 7,
+  "source_kind": "user-request",
+  "authorized_at": "2026-09-09T14:43:48.568Z",
+  "decision": "AUTHORIZE WAVE B",
+  "previous_gate": {
+    "path": "data/batches/m5-10a-wave-a2.json",
+    "sha256": "f2a50760d48ccb7499d84c001ac31d79a9d60b0564a76241d3b88a3721e77ae2",
+    "actual_start_count": 628,
+    "gate_status": "pass",
+    "decision": "APPROVE BOUNDED"
+  },
+  "wave": {
+    "stage_id": "m5-10-wave-b-plus-150",
+    "net_start_increase": 150,
+    "cumulative_start_target": 778,
+    "selected_start_count": 170,
+    "candidate_buffer": 20
+  },
+  "proposal_sha256": "60a430455dc30c93f8497326654676f04489cf5a316693c01ceb661f6b9f3765",
+  "canonical_mutation": false,
+  "note": "User explicitly authorized #96 after the independent Wave A2 gate passed; this authorization is limited to the bounded Wave B +150 import and does not authorize a later stage."
+}

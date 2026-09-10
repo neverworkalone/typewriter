@@ -195,6 +195,13 @@
         "unmeasured_passes"
       ],
       "properties": {
+        "measurement_kind": {
+          "enum": ["editorial-time", "producer-throughput"]
+        },
+        "producer_seconds_per_selected_start_max": {
+          "type": "number",
+          "minimum": 0
+        },
         "status": { "enum": ["complete", "incomplete"] },
         "passes": {
           "type": "object",
@@ -218,6 +225,21 @@
           "type": "number",
           "minimum": 0
         },
+        "total_producer_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "measured_producer_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "editor_time_status": {
+          "enum": ["measured", "unmeasured", "partial"]
+        },
+        "unmeasured_editor_passes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "\\S" }
+        },
         "unmeasured_passes": {
           "type": "array",
           "items": { "type": "string", "pattern": "\\S" }
@@ -235,6 +257,10 @@
           "minimum": 0
         },
         "editor_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "producer_seconds": {
           "type": ["number", "null"],
           "minimum": 0
         }

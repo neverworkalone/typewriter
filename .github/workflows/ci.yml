@@ -82,6 +82,17 @@ jobs:
         run: >-
           npm run batch:m5-10a:wave-a2:check --
           --staged="$RUNNER_TEMP/typewriter-m5-10a-wave-a2-reviewed.jsonl"
+          --canonical-dir=data/batches/m5-10-wave-b-base-canonical
+          --canonical-source-dir=data/canonical
+
+      - name: Materialize the committed Wave B review shard
+        shell: bash
+        run: cp data/canonical/m5-10-wave-b.jsonl "$RUNNER_TEMP/typewriter-m5-10-wave-b-reviewed.jsonl"
+
+      - name: Validate M5-10 Wave B stage
+        run: >-
+          npm run batch:m5-10:wave-b:check --
+          --staged="$RUNNER_TEMP/typewriter-m5-10-wave-b-reviewed.jsonl"
 
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs

@@ -293,6 +293,8 @@ function validateRelationDiffAgainstCanonical(relationDiff, importedRecords) {
 
 function deriveTiming(measurement) {
   if (!measurement?.timing) fail('manifest.measurement.timing is required', 'MISSING_TIMING');
+  const measurementKind = measurement.timing.measurement_kind ?? 'editorial-time';
+  const producerThroughput = measurementKind === 'producer-throughput';
   const passes = measurement.timing.passes;
   const passEntries = passes.map((pass) => ({ pass, key: timingPassKey(pass) }));
   const passById = new Map(
@@ -310,41 +312,59 @@ function deriveTiming(measurement) {
   let allComplete = true;
   let measuredWallClock = 0;
   let measuredEditor = 0;
+  let measuredProducer = 0;
   for (const { pass, key } of passEntries) {
     const wallClock = pass.wall_clock_seconds ?? null;
     const editor = pass.editor_seconds ?? null;
+    const producer = pass.producer_seconds ?? null;
     const complete = pass.status === 'complete'
       && Number.isFinite(wallClock)
-      && Number.isFinite(editor);
+      && (producerThroughput ? Number.isFinite(producer) : Number.isFinite(editor));
     if (!complete) {
       allComplete = false;
       unmeasuredPasses.push(key);
     }
     if (Number.isFinite(wallClock)) measuredWallClock += wallClock;
     if (Number.isFinite(editor)) measuredEditor += editor;
-    derivedPasses[key] = {
-      status: pass.status,
-      wall_clock_seconds: wallClock,
-      editor_seconds: editor,
-    };
+    if (Number.isFinite(producer)) measuredProducer += producer;
+    derivedPasses[key] = producerThroughput
+      ? {
+        status: pass.status,
+        wall_clock_seconds: wallClock,
+        producer_seconds: producer,
+      }
+      : {
+        status: pass.status,
+        wall_clock_seconds: wallClock,
+        editor_seconds: editor,
+      };
   }
 
   if (measurement.timing.status === 'complete' && !allComplete) {
     fail(
-      `timing is declared complete but is missing wall-clock/editor measurements for ${unmeasuredPasses.join(', ')}`,
+      `timing is declared complete but is missing required measurements for ${unmeasuredPasses.join(', ')}`,
       'INCOMPLETE_TIMING',
     );
   }
   const completeTiming = measurement.timing.status === 'complete' && allComplete;
-  return {
+  const derived = {
     status: completeTiming ? 'complete' : 'incomplete',
     passes: derivedPasses,
     total_wall_clock_seconds: completeTiming ? measuredWallClock : null,
-    total_editor_seconds: completeTiming ? measuredEditor : null,
+    total_editor_seconds: producerThroughput ? null : (completeTiming ? measuredEditor : null),
     measured_wall_clock_seconds: measuredWallClock,
-    measured_editor_seconds: measuredEditor,
+    measured_editor_seconds: producerThroughput ? 0 : measuredEditor,
     unmeasured_passes: unmeasuredPasses,
   };
+  if (producerThroughput) {
+    derived.measurement_kind = measurementKind;
+    derived.producer_seconds_per_selected_start_max = measurement.timing.producer_seconds_per_selected_start_max;
+    derived.total_producer_seconds = completeTiming ? measuredProducer : null;
+    derived.measured_producer_seconds = measuredProducer;
+    derived.editor_time_status = 'unmeasured';
+    derived.unmeasured_editor_passes = passEntries.map(({ key }) => key);
+  }
+  return derived;
 }
 
 function deriveAudit(measurement) {

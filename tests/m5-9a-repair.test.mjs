@@ -54,7 +54,7 @@ async function createRepairWaveStageFixture() {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-9a-wave-'));
   const relationDiffPath = path.resolve(
     'data/batches',
-    `m5-9a-wave-a-test-${process.pid}-${sequence}.json`,
+    `test-m5-9a-wave-a-${process.pid}-${sequence}.json`,
   );
   try {
     const baseCanonical = await readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY);
@@ -345,7 +345,7 @@ async function createFollowOnStageFixture({
   const stageDirectory = path.join(directory, stageLabel);
   const relationDiffPath = path.resolve(
     'data/batches',
-    `m5-9a-repair-chain-${process.pid}-${sequence}.json`,
+    `test-m5-9a-repair-chain-${process.pid}-${sequence}.json`,
   );
   try {
     const canonicalDirectory = path.join(stageDirectory, 'canonical');

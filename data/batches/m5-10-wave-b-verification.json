@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "batch_id": "m5-10-wave-b-20260909",
+  "editorial_review_complete": true,
+  "human_editorial_review_complete": false,
+  "canonical_integrity": true,
+  "deterministic_sqlite": true,
+  "search_product_regression": true,
+  "checks": [
+    {
+      "id": "canonical-jsonl-and-integrity",
+      "status": "pass",
+      "command": "npm run validate"
+    },
+    {
+      "id": "target-inventory-and-determinism",
+      "status": "pass",
+      "command": "npm run validate:inventory && npm run inventory:generate"
+    },
+    {
+      "id": "sqlite-reproducibility",
+      "status": "pass",
+      "command": "npm run build:dictionary && npm run verify:m2"
+    },
+    {
+      "id": "search-regressions",
+      "status": "pass",
+      "command": "npm run validate:search"
+    },
+    {
+      "id": "wave-b-input-contract",
+      "status": "pass",
+      "command": "npm run batch:m5-10:wave-b:check"
+    }
+  ],
+  "note": "Verification flags are set only after the independent Wave B validator and the deterministic repository regression suite pass."
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10-wave-b-editorial-decisions.schema.json",
+  "title": "Typewriter M5-10 Wave B recorder-finalized editorial decisions",
+  "description": "A recorder-finalized editorial decision artifact reconstructed from Wave B record-level work rows. It is not a completed editorial claim until the linked editorial input is validated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "batch_id",
+    "source_kind",
+    "actor_kind",
+    "actor_id",
+    "session_id",
+    "input_id",
+    "created_at",
+    "finalized_at",
+    "proposal_staging_sha256",
+    "reviewed_staging_sha256",
+    "records",
+    "note"
+  ],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10-wave-b-editorial-decisions-20260909" },
+    "batch_id": { "const": "m5-10-wave-b-20260909" },
+    "source_kind": { "const": "codex-authored" },
+    "actor_kind": { "const": "codex" },
+    "actor_id": { "type": "string", "pattern": "\\S" },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "input_id": { "const": "m5-10-wave-b-editorial-input-20260909" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
+    "proposal_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "reviewed_staging_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "records": {
+      "type": "array",
+      "minItems": 170,
+      "maxItems": 170,
+      "items": { "type": "object" }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  }
+}

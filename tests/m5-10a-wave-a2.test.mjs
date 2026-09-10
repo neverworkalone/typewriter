@@ -52,6 +52,7 @@ const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
 const A2_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2-preimport-inventory.json');
 const A2_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a-base-canonical');
+const A2_POSTIMPORT_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-base-canonical');
 const A2_BOUNDARY_IDS = [
   'physical-figurative',
   'homonym-pos',
@@ -498,7 +499,7 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
     readBatchJson('m5-10a-wave-a2-metrics.json'),
     readBatchJson('m5-10a-wave-a2.json'),
     readBatchJson('m5-8-expansion-plan.json'),
-    readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(A2_POSTIMPORT_CANONICAL_DIRECTORY),
   ]);
 
   assert.equal(manifest.batch_id, 'm5-10-wave-a2-20260909');
@@ -557,7 +558,11 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
       serializeCanonicalRecords(canonical.records.filter(({ record }) => reviewedIds.includes(record.id))),
       'utf8',
     );
-    assert.deepEqual((await validateWaveA2({ stagedRecordsPath: reviewedStagingPath })).batch, {
+    assert.deepEqual((await validateWaveA2({
+      stagedRecordsPath: reviewedStagingPath,
+      canonicalDirectory: A2_POSTIMPORT_CANONICAL_DIRECTORY,
+      canonicalSourcePath: CURRENT_CANONICAL_DIRECTORY,
+    })).batch, {
       batch_id: 'm5-10-wave-a2-20260909',
       validation_status: 'validated',
       selected_start_count: 58,
@@ -610,7 +615,11 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
   assert.equal(metrics.derived.audit.open_blocker_count, 0);
   assert.equal(metrics.derived.sense_review.status, 'complete');
 
-  assert.deepEqual(await validateExpansionStage(stage, plan), {
+  assert.deepEqual(await validateExpansionStage(
+    stage,
+    plan,
+    { canonicalDirectoryOverride: A2_POSTIMPORT_CANONICAL_DIRECTORY },
+  ), {
     stage_id: 'm5-10a-wave-a2-plus-50',
     imported_start_count: 50,
     candidate_buffer: 8,
@@ -656,7 +665,11 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
   const contradictoryStage = structuredClone(stage);
   contradictoryStage.correction_plan.next_validation.note = 'Run a retry and HOLD Wave B until re-evaluated.';
   await assert.rejects(
-    validateExpansionStage(contradictoryStage, plan),
+    validateExpansionStage(
+      contradictoryStage,
+      plan,
+      { canonicalDirectoryOverride: A2_POSTIMPORT_CANONICAL_DIRECTORY },
+    ),
     (error) => error.code === 'CORRECTION_PLAN_CONTRADICTION',
   );
 });
@@ -667,7 +680,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     readBatchJson('m5-10a-wave-a2-audit-input.json'),
     readBatchJson('m5-10a-wave-a2-timing-input.json'),
     readBatchJson('m5-10a-wave-a2-relation-diff.json'),
-    readCanonicalRecords(CURRENT_CANONICAL_DIRECTORY),
+    readCanonicalRecords(A2_POSTIMPORT_CANONICAL_DIRECTORY),
   ]);
   const referenceRecords = createSelfAuthoredA2ReferenceRecords(editorial, canonical.records);
   const reviewedStagingBytes = Buffer.from(

@@ -239,6 +239,49 @@ recorded after the last editorial timing stop; the post-freeze audit timing
 starts after editorial completion and stops before audit decision finalization
 in the distinct audit session.
 
+## M5-10 Wave B result
+
+Issue #96's Wave B is recorded in
+[`m5-10-wave-b-report.md`](m5-10-wave-b-report.md). It consumes the passing A2
+report and a separate digest-bound Wave B authorization, then processes 170
+selected starts: 144 are included, 6 are sense-corrected and imported, 10 are
+held, and 10 are deferred. The 20-row buffer is therefore not counted as
+completed sense review; the canonical snapshot advances exactly from 628 to
+778 starts and contains 157 imported senses.
+
+The Wave B editorial and audit completion recorders generate their decision
+artifacts only after the corresponding timing pass stops. The artifacts are
+reconstructed 1:1 from recorder-owned work rows: editorial boundary and record
+decisions from the editorial timing log, and relation/audit coverage and
+findings from the independent post-freeze timing log. A pre-finalized decision
+artifact is rejected. The editorial input records all six sense-boundary checks for
+the 150 imported starts; six known homonym/polysemy records are corrected into
+explicit sense sets and the 12-case declaration-driven semantic regression
+corpus is checked during proposal preflight and canonical validation. The relation diff remains empty
+because this wave has no relation quota. A distinct post-freeze audit session
+checks the frozen reviewed-staging digest. The tracked verification artifact explicitly distinguishes
+`editorial_review_complete: true` from
+`human_editorial_review_complete: false`.
+
+The independent audit now derives its result from the record, relation, and
+timing comparisons: the current source-bound inputs produce zero findings and
+zero open blockers. A producer mismatch becomes an open finding during audit;
+it is not silently converted into a resolved finding. The five editorial timing
+passes and the distinct post-freeze audit pass are complete and chronological.
+Their source-derived producer-throughput total is 10.150 seconds across 1,562
+recorder-created work units and 160 processed starts. Each work row binds the
+unit input to a producer execution and output that occurred inside its timing
+pass; precomputed payload replay is rejected. This producer interval is used by
+the separate operational throughput check, not as a claim about human editorial
+effort. Editorial judgment time remains explicitly unmeasured and does not get
+substituted by producer time. The fixed editor-time expansion criterion therefore
+fails and the Wave B stage is `HOLD PROCESS`; `ready_to_create`,
+`next_stage_created`, and `next_stage_authorized` remain false. No later stage
+artifact or task is created implicitly.
+
+The proposal and reviewed staging JSONL remain outside the repository; tracked
+metadata stores their SHA-256 digests and never copies raw proposal bodies.
+
 ## M5-10A process correction and A2 authorization
 
 Issue #107 records the process correction after the Wave A failure. It does not
@@ -397,8 +440,8 @@ retarget or retype measurable instead of hiding it in a rewritten final JSONL.
 The final artifact may add a controlled failure type to each reviewed event, but it
 never includes the draft prose or external source text.
 
-The baseline timing contract has five required editorial passes in every new
-measurement manifest:
+The baseline editorial-time contract has five required editorial passes in every
+new measurement manifest:
 
 1. `target-preparation`
 2. `initial-review`
@@ -406,9 +449,14 @@ measurement manifest:
 4. `final-audit`
 5. `held-rejected`
 
-Each pass records wall-clock seconds and editor seconds separately. A manifest may
-be marked `incomplete` while an older baseline is being repaired, but a completed
-metrics artifact is rejected if any required pass is missing either measurement.
+Each editorial-time pass records wall-clock seconds and editor seconds separately.
+A manifest may be marked `incomplete` while an older baseline is being repaired,
+but a completed metrics artifact is rejected if any required pass is missing
+either measurement. Wave B's `m5-10b-v3` contract is an explicit
+`producer-throughput` variant: it records `producer_seconds` for recorder-invoked
+producer executions, forbids `editor_seconds`, and marks editorial judgment time
+as unmeasured. Its separate producer throughput gate must not be interpreted as
+the historical 12-second editor-time gate.
 Wave A2 adds one required `post-freeze-audit` pass in a distinct timing artifact
 after editorial completion; that pass is combined with the five editorial passes
 for the A2 source-derived total and gate.

@@ -49,6 +49,7 @@ const OPTIONAL_MEASUREMENT_PASS_IDS = Object.freeze([
 const STRICT_TIMING_CONTRACT_VERSIONS = Object.freeze([
   'm5-9a-v1',
   'm5-10a-v1',
+  'm5-10b-v3',
 ]);
 
 export const M5_10A_PROCESS_REVISION = 'm5-10a-process-correction-v1';
@@ -251,16 +252,17 @@ function validateManifestSchema(manifest) {
   fail(`batch manifest schema validation failed: ${detail}`, error ? schemaErrorCode(error) : 'SCHEMA_ERROR');
 }
 
-function validateTimingDuration(pass, label, strict) {
+function validateTimingDuration(pass, label, strict, measurementKind) {
   const hasWallClock = Object.hasOwn(pass, 'wall_clock_seconds');
   const hasEditorSeconds = Object.hasOwn(pass, 'editor_seconds');
+  const hasProducerSeconds = Object.hasOwn(pass, 'producer_seconds');
   const hasStartedAt = Object.hasOwn(pass, 'started_at');
   const hasCompletedAt = Object.hasOwn(pass, 'completed_at');
   const hasSessionId = Object.hasOwn(pass, 'session_id');
   const hasRecordingSource = Object.hasOwn(pass, 'recording_source');
 
   if (pass.status === 'unmeasured') {
-    if (hasStartedAt || hasCompletedAt || hasWallClock || hasEditorSeconds
+    if (hasStartedAt || hasCompletedAt || hasWallClock || hasEditorSeconds || hasProducerSeconds
       || hasSessionId || hasRecordingSource) {
       fail(
         `${label} is unmeasured but contains a timing measurement; do not estimate or backfill it`,
@@ -288,7 +290,7 @@ function validateTimingDuration(pass, label, strict) {
     if (!hasStartedAt) {
       fail(`${label} in-progress session must record started_at`, 'MISSING_TIMING_TIMESTAMP');
     }
-    if (hasCompletedAt || hasWallClock || hasEditorSeconds) {
+    if (hasCompletedAt || hasWallClock || hasEditorSeconds || hasProducerSeconds) {
       fail(
         `${label} in-progress session cannot contain stop or duration values`,
         'IN_PROGRESS_TIMING_VALUE',
@@ -313,7 +315,20 @@ function validateTimingDuration(pass, label, strict) {
       'TIMING_DURATION_DRIFT',
     );
   }
-  if (pass.status === 'complete' && !hasEditorSeconds) {
+  if (measurementKind === 'producer-throughput') {
+    if (hasEditorSeconds) {
+      fail(`${label} producer-throughput measurement must not claim editor_seconds`, 'EDITOR_TIME_MISATTRIBUTED');
+    }
+    if (pass.status === 'complete' && !hasProducerSeconds) {
+      fail(`${label} is complete but lacks producer_seconds`, 'INCOMPLETE_TIMING');
+    }
+    if (hasProducerSeconds && Math.abs(pass.producer_seconds - elapsedSeconds) > 1e-6) {
+      fail(
+        `${label}.producer_seconds must equal completed_at - started_at`,
+        'TIMING_DURATION_DRIFT',
+      );
+    }
+  } else if (pass.status === 'complete' && !hasEditorSeconds) {
     fail(`${label} is complete but lacks editor_seconds`, 'INCOMPLETE_TIMING');
   }
 }
@@ -326,6 +341,20 @@ export function validateTimingMeasurement(
 ) {
   if (!measurement) return;
 
+  const measurementKind = measurement.timing.measurement_kind ?? 'editorial-time';
+  if (!['editorial-time', 'producer-throughput'].includes(measurementKind)) {
+    fail(`manifest.measurement.timing.measurement_kind is invalid: ${measurementKind}`, 'INVALID_TIMING_MEASUREMENT_KIND');
+  }
+  if (measurement.timing.contract_version === 'm5-10b-v3' && measurementKind !== 'producer-throughput') {
+    fail('m5-10b-v3 timing must declare producer-throughput measurement_kind', 'TIMING_MEASUREMENT_KIND_MISMATCH');
+  }
+  if (measurementKind === 'producer-throughput' && measurement.timing.contract_version !== 'm5-10b-v3') {
+    fail('producer-throughput timing must use contract m5-10b-v3', 'TIMING_MEASUREMENT_KIND_MISMATCH');
+  }
+  if (measurementKind === 'producer-throughput'
+    && measurement.timing.producer_seconds_per_selected_start_max !== 1) {
+    fail('producer-throughput timing must declare the fixed producer throughput limit', 'TIMING_MEASUREMENT_KIND_MISMATCH');
+  }
   const passes = measurement.timing.passes;
   const requiredPassIds = passes
     .filter((pass) => MEASUREMENT_PASS_IDS.includes(pass.id))
@@ -387,9 +416,12 @@ export function validateTimingMeasurement(
       && Date.parse(pass.started_at) < Date.parse(pass.feedback_received_at)) {
       fail(`${label} started_at must not precede feedback_received_at`, 'TIMING_BEFORE_FEEDBACK');
     }
-    if (pass.status === 'complete' && (!Number.isFinite(pass.wall_clock_seconds) || !Number.isFinite(pass.editor_seconds))) {
+    const completeDuration = measurementKind === 'producer-throughput'
+      ? Number.isFinite(pass.wall_clock_seconds) && Number.isFinite(pass.producer_seconds)
+      : Number.isFinite(pass.wall_clock_seconds) && Number.isFinite(pass.editor_seconds);
+    if (pass.status === 'complete' && !completeDuration) {
       fail(
-        `${label} is complete but lacks wall-clock and editor seconds`,
+        `${label} is complete but lacks its required duration measurements`,
         'INCOMPLETE_TIMING',
       );
     }
@@ -399,7 +431,7 @@ export function validateTimingMeasurement(
         'INCOMPLETE_TIMING',
       );
     }
-    if (strict) validateTimingDuration(pass, label, strict);
+    if (strict) validateTimingDuration(pass, label, strict, measurementKind);
   }
   const optionalCycles = new Set();
   for (const [id, group] of optionalPassesById) {

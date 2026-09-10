@@ -425,6 +425,18 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     editor_seconds_per_selected_start: totalEditorSeconds === null || processedStartCount === 0
       ? null
       : totalEditorSeconds / processedStartCount,
+    ...(timing.measurement_kind === 'producer-throughput'
+      ? {
+        measurement_kind: timing.measurement_kind,
+        producer_seconds_per_selected_start_max: timing.producer_seconds_per_selected_start_max,
+        total_producer_seconds: timing.total_producer_seconds,
+        measured_producer_seconds: timing.measured_producer_seconds,
+        producer_seconds_per_selected_start: timing.total_producer_seconds === null || processedStartCount === 0
+          ? null
+          : timing.total_producer_seconds / processedStartCount,
+        editor_time_status: timing.editor_time_status,
+      }
+      : {}),
     timing_status: timing.status,
     unmeasured_timing_pass_count: timing.unmeasured_passes.length,
     audit_status: audit.status,
@@ -476,7 +488,10 @@ function proposalDecisionsFromArtifacts(metricsArtifact) {
   };
 }
 
-export async function loadExpansionStageSources(stage) {
+export async function loadExpansionStageSources(
+  stage,
+  { canonicalDirectoryOverride } = {},
+) {
   validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
 
   const sourcePaths = {
@@ -492,12 +507,13 @@ export async function loadExpansionStageSources(stage) {
     ),
     verification: resolveSourcePath(stage.source.verification, 'stage.source.verification'),
   };
+  const canonicalReadDirectory = canonicalDirectoryOverride ?? sourcePaths.canonical_directory;
   const [manifestArtifact, metricsArtifact, relationDiffArtifact, verificationArtifact, canonical, relationScreenArtifact] = await Promise.all([
     readSourceJson(sourcePaths.manifest, 'stage manifest'),
     readSourceJson(sourcePaths.metrics, 'stage metrics artifact'),
     readSourceJson(sourcePaths.relation_diff, 'stage relation diff'),
     readSourceJson(sourcePaths.verification, 'stage verification artifact'),
-    readCanonicalSource(sourcePaths.canonical_directory),
+    readCanonicalSource(canonicalReadDirectory),
     sourcePaths.relation_screen
       ? readSourceJson(sourcePaths.relation_screen, 'stage relation screen artifact')
       : Promise.resolve(undefined),
@@ -969,6 +985,16 @@ export function evaluateExpansionGate(metrics, plan) {
     ?? metrics.relation_noise_rate_of_before;
   const editorialReviewComplete = metrics.editorial_review_complete
     ?? metrics.human_editorial_review_complete;
+  const producerThroughput = metrics.measurement_kind === 'producer-throughput';
+  const measuredRate = producerThroughput
+    ? metrics.producer_seconds_per_selected_start
+    : metrics.editor_seconds_per_selected_start;
+  const rateLimit = producerThroughput
+    ? metrics.producer_seconds_per_selected_start_max
+    : plan.gate.editor_seconds_per_selected_start_max;
+  const editorTimePass = Number.isFinite(metrics.editor_seconds_per_selected_start)
+    && metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max
+    && (!producerThroughput || metrics.editor_time_status === 'measured');
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = {
@@ -976,8 +1002,16 @@ export function evaluateExpansionGate(metrics, plan) {
     relation_noise_rate: relationNoiseRate <= plan.gate.relation_noise_rate_max,
     relation_noise_below_baseline: !plan.gate.relation_noise_below_m5_3_baseline_required
       || relationNoiseRate < baselineRate,
-    editor_seconds_per_selected_start: Number.isFinite(metrics.editor_seconds_per_selected_start)
-      && metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
+    ...(producerThroughput
+      ? {
+        producer_seconds_per_selected_start: Number.isFinite(measuredRate)
+          && Number.isFinite(rateLimit)
+          && measuredRate <= rateLimit,
+        editor_seconds_per_selected_start: editorTimePass,
+      }
+      : {
+        editor_seconds_per_selected_start: editorTimePass,
+      }),
     timing_complete: metrics.timing_status === 'complete',
     unmeasured_timing_passes: metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
     audit_complete: metrics.audit_status === 'complete',
@@ -1280,6 +1314,7 @@ async function validateExpansionStageInternal(
   stage,
   plan,
   visitedStageIds = new Set(),
+  sourceOptions = {},
 ) {
   validateSchema(stage, stageReportSchemaValidator, 'stage', 'M5-8 stage report');
   validateExpansionPlan(plan);
@@ -1292,13 +1327,13 @@ async function validateExpansionStageInternal(
   nextVisitedStageIds.add(stage.stage_id);
   const stageContext = resolveStageContext(stage, plan);
 
-  const loadedSources = await loadExpansionStageSources(stage);
+  const loadedSources = await loadExpansionStageSources(stage, sourceOptions);
   await validatePreviousStageReport(stage, plan, stageContext, nextVisitedStageIds);
   return validateExpansionStageValues(stage, plan, stageContext, loadedSources);
 }
 
-export async function validateExpansionStage(stage, plan) {
-  return validateExpansionStageInternal(stage, plan);
+export async function validateExpansionStage(stage, plan, sourceOptions = {}) {
+  return validateExpansionStageInternal(stage, plan, new Set(), sourceOptions);
 }
 
 function canonicalSummary(recordInfos) {

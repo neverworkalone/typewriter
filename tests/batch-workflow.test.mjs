@@ -206,6 +206,7 @@ async function createIdBoundaryFixture() {
 
   const manifest = createManifest();
   manifest.batch_id = 'm5-2-id-boundary';
+  manifest.inventory_revision = inventoryFixture.revision;
   manifest.records = [{
     source: 'inventory',
     inventory_id: candidate.inventory_id,

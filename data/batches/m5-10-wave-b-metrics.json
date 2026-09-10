@@ -1,0 +1,127 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-10-wave-b-20260909",
+  "source": {
+    "manifest": "data/batches/m5-10-wave-b.json",
+    "relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 170,
+      "processed_start_count": 160
+    },
+    "decisions": {
+      "included": 144,
+      "corrected": 6,
+      "held": 10,
+      "rejected": 0,
+      "deferred": 10,
+      "importable_start_count": 150,
+      "correction_rate_of_selected": 0.0375,
+      "correction_rate_of_importable": 0.04,
+      "held_rate": 0.0625,
+      "rejected_rate": 0,
+      "held_or_rejected_rate": 0.0625,
+      "sense_field_correction_count": 6,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 150,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 150,
+      "imported_sense_count": 157,
+      "imported_relation_count": 0,
+      "imported_expression_count": 20,
+      "relation_type_counts": {}
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 0,
+      "added_count": 0,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": 0,
+      "noise_event_count": 0,
+      "noise_rate_of_before": 0,
+      "classification_counts": {}
+    },
+    "timing": {
+      "status": "complete",
+      "passes": {
+        "target-preparation": {
+          "status": "complete",
+          "wall_clock_seconds": 0.213,
+          "producer_seconds": 0.213
+        },
+        "initial-review": {
+          "status": "complete",
+          "wall_clock_seconds": 5.21,
+          "producer_seconds": 5.21
+        },
+        "feedback-fixes": {
+          "status": "complete",
+          "wall_clock_seconds": 1.363,
+          "producer_seconds": 1.363
+        },
+        "final-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 1.597,
+          "producer_seconds": 1.597
+        },
+        "held-rejected": {
+          "status": "complete",
+          "wall_clock_seconds": 0.248,
+          "producer_seconds": 0.248
+        },
+        "post-freeze-audit": {
+          "status": "complete",
+          "wall_clock_seconds": 1.519,
+          "producer_seconds": 1.519
+        }
+      },
+      "total_wall_clock_seconds": 10.149999999999999,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 10.149999999999999,
+      "measured_editor_seconds": 0,
+      "unmeasured_passes": [],
+      "measurement_kind": "producer-throughput",
+      "producer_seconds_per_selected_start_max": 1,
+      "total_producer_seconds": 10.149999999999999,
+      "measured_producer_seconds": 10.149999999999999,
+      "editor_time_status": "unmeasured",
+      "unmeasured_editor_passes": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected",
+        "post-freeze-audit"
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 0,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {}
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 150,
+      "scoped_single_sense_count": 144,
+      "split_record_count": 6,
+      "split_canonical_ids": [
+        "w719",
+        "w734",
+        "w744",
+        "w746",
+        "w750",
+        "w753"
+      ]
+    }
+  }
+}
