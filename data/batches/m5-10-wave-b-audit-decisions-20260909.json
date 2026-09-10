@@ -5,11 +5,11 @@
   "source_kind": "codex-authored",
   "actor_kind": "codex",
   "actor_id": "codex-wave-b-independent-audit",
-  "session_id": "f0bf1cee-fc2d-4f22-95ea-4349bd8e7991",
+  "session_id": "dc4749a5-a91c-4f0a-934c-b106e644f9f5",
   "audit_id": "m5-10-wave-b-audit-20260909",
   "editorial_input_id": "m5-10-wave-b-editorial-input-20260909",
-  "created_at": "2026-09-10T02:57:44.086Z",
-  "finalized_at": "2026-09-10T02:57:44.087Z",
+  "created_at": "2026-09-10T03:48:43.390Z",
+  "finalized_at": "2026-09-10T03:48:43.392Z",
   "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
   "reviewed_record_ids": [
     "w629",
@@ -579,33 +579,22 @@
         "w750",
         "w753"
       ],
-      "defect": "Six selected proposal records collapsed known homonym or polysemy distinctions into one sense, so the reviewed proposal did not preserve writer-facing substitution boundaries.",
-      "remediation": "Split the six records into their curated sense sets and bind each correction to a named semantic regression case and contrast pair in proposal preflight.",
+      "defect": "Six selected proposal records collapsed known homonym or polysemy distinctions into one sense.",
+      "remediation": "Split the records into curated sense sets and bind each correction to a named semantic regression case and contrast pair.",
       "diff_evidence": {
         "kind": "canonical-jsonl-sense-diff",
         "before": {
-          "w719": 1,
-          "w734": 1,
-          "w744": 1,
-          "w746": 1,
-          "w750": 1,
-          "w753": 1
+          "collapsed_record_count": 6
         },
         "after": {
-          "w719": 2,
-          "w734": 2,
-          "w744": 2,
-          "w746": 2,
-          "w750": 3,
-          "w753": 2
+          "split_record_count": 6
         },
         "changed_fields": [
           "senses",
-          "sense_review.split_canonical_ids",
-          "editorial.records.corrected_fields"
+          "boundary_evidence.contrasts"
         ]
       },
-      "note": "Resolved by six corrected decision records bound to the declaration-driven semantic regression corpus."
+      "note": "Resolved by six corrected decision records bound to the declaration-driven semantic corpus."
     },
     {
       "id": "wave-b-audit-boundary-evidence",
@@ -624,22 +613,16 @@
         "w744",
         "w746",
         "w750",
-        "w778",
         "w753"
       ],
-      "defect": "The original review marked every boundary applicable with empty contrasts and reused one normalized rationale pattern, making applicability and semantic differences unverifiable.",
-      "remediation": "Record boundary-specific applicability, preserve every candidate sense ID, require concrete contrasts for applicable multi-sense cases, and retain a not-applicable rationale for boundaries outside scope.",
+      "defect": "Blanket applicable boundaries with empty contrasts made record-level semantic applicability unverifiable.",
+      "remediation": "Record boundary-specific applicability, candidate senses, and concrete contrasts for every multi-sense distinction.",
       "diff_evidence": {
         "kind": "editorial-boundary-evidence-contract",
         "before": {
-          "reviewed_record_count": 150,
-          "all_boundaries_applicable": true,
           "empty_contrast_record_count": 150
         },
         "after": {
-          "reviewed_record_count": 150,
-          "all_boundaries_applicable": false,
-          "empty_contrast_record_count": 144,
           "concrete_contrast_case_count": 6
         },
         "changed_fields": [
@@ -648,7 +631,7 @@
           "boundary_evidence.rationale"
         ]
       },
-      "note": "Resolved by the record-level boundary validator and non-blanket evidence fixtures."
+      "note": "Resolved by the record-level boundary validator and non-blanket evidence producer."
     },
     {
       "id": "wave-b-audit-timing-artifact",
@@ -657,39 +640,30 @@
       "status": "resolved",
       "evidence_refs": [
         "data/batches/m5-10-wave-b-timing-input.json",
-        "data/batches/m5-10-wave-b-timing/01-target-preparation.jsonl",
-        "data/batches/m5-10-wave-b-timing/02-initial-review.jsonl",
-        "data/batches/m5-10-wave-b-timing/03-feedback-fixes.jsonl",
         "data/batches/m5-10-wave-b-timing/04-final-audit.jsonl",
-        "data/batches/m5-10-wave-b-timing/05-held-rejected.jsonl",
         "data/batches/m5-10-wave-b-timing/06-post-freeze-audit.jsonl"
       ],
       "target_record_ids": [
         "w719"
       ],
       "defect": "The prior timing proof accepted pre-finalized decision artifacts and did not prove that decision work occurred inside the measured pass.",
-      "remediation": "Finalize editorial and audit decision artifacts only after their timing passes stop, reconstruct them from recorder-created record-level work rows, and bind every row to an in-pass event.",
+      "remediation": "Run a producer with the unit input during the timed interval, record its execution binding, and reconstruct decisions from those rows only after stop.",
       "diff_evidence": {
-        "kind": "timing-recorder-chronology-contract",
+        "kind": "timing-recorder-producer-contract",
         "before": {
-          "recorder_version": "wave-b-timing-recorder-v3",
-          "decision_artifact_source": "pre-finalized-summary",
-          "decision_finalized_before_timing": true
+          "direct_payload_injection": true
         },
         "after": {
-          "recorder_version": "wave-b-timing-recorder-v4",
-          "decision_artifact_source": "recorder-derived-after-stop",
-          "decision_finalized_before_timing": false,
-          "record_level_work_events": true
+          "direct_payload_injection": false,
+          "producer_execution_binding": true
         },
         "changed_fields": [
           "recorder_version",
-          "decision_artifact_source",
-          "decision_artifact_chronology",
-          "record_level_work_events"
+          "producer_execution",
+          "decision_artifact_chronology"
         ]
       },
-      "note": "Resolved by v4 timing sessions that record work rows during each pass and finalize decision artifacts only after the corresponding timing stop."
+      "note": "Resolved by v5 timing sessions that invoke the producer during each pass and bind its input/output execution."
     },
     {
       "id": "wave-b-audit-finding-evidence",
@@ -704,27 +678,23 @@
       "target_record_ids": [
         "w750"
       ],
-      "defect": "The previous audit findings were generic checklist statements without a target record, concrete defect, remediation, or before-and-after evidence.",
-      "remediation": "Separate coverage declarations from findings and require each resolved finding to identify affected records plus a non-empty remediation diff and evidence references.",
+      "defect": "The previous audit findings were generic checklist statements without a target record or remediation diff.",
+      "remediation": "Separate coverage declarations from findings and require affected records plus non-empty remediation evidence.",
       "diff_evidence": {
         "kind": "audit-finding-evidence-contract",
         "before": {
-          "resolved_findings_without_target_or_diff": 5,
-          "coverage_field": false
+          "resolved_findings_without_target_or_diff": 5
         },
         "after": {
-          "resolved_findings_without_target_or_diff": 0,
-          "coverage_field": true
+          "resolved_findings_without_target_or_diff": 0
         },
         "changed_fields": [
           "coverage",
           "findings.target_record_ids",
-          "findings.defect",
-          "findings.remediation",
           "findings.diff_evidence"
         ]
       },
-      "note": "Resolved by the structured audit decision schema and explicit coverage object."
+      "note": "Resolved by the structured audit decision producer and schema."
     },
     {
       "id": "wave-b-audit-canonical-regeneration",
@@ -744,19 +714,15 @@
         "w750",
         "w753"
       ],
-      "defect": "The canonical shard and downstream counts still reflected the single-sense proposal after the semantic review findings were known.",
-      "remediation": "Regenerate canonical JSONL, preimport/current inventory, SQLite, metrics, and gate artifacts from the corrected reviewed staging and verify the resulting counts and digest bindings.",
+      "defect": "The canonical shard and downstream counts had to be regenerated after semantic review corrections.",
+      "remediation": "Regenerate canonical JSONL, inventory, SQLite, metrics, and gate artifacts from the corrected reviewed staging.",
       "diff_evidence": {
         "kind": "canonical-regeneration-count-diff",
         "before": {
-          "canonical_sense_count": 965,
-          "imported_sense_count": 156,
-          "package_sense_count": 965
+          "imported_sense_count": 156
         },
         "after": {
-          "canonical_sense_count": 966,
-          "imported_sense_count": 157,
-          "package_sense_count": 966
+          "imported_sense_count": 157
         },
         "changed_fields": [
           "canonical_jsonl",

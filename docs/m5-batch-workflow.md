@@ -265,8 +265,10 @@ resolved and it leaves zero open blockers. The tracked verification artifact exp
 `human_editorial_review_complete: false`.
 
 The five editorial timing passes and the distinct post-freeze audit pass are
-complete and chronological. Their source-derived total is 3.243 seconds across
-1,562 recorder-created work units and 160 processed starts. This is the
+complete and chronological. Their source-derived total is 6.130 seconds across
+1,562 recorder-created work units and 160 processed starts. Each work row binds
+the unit input to a producer execution and output that occurred inside its
+timing pass; precomputed payload replay is rejected. This is the
 recorder-bound measured interval used by the gate, not a claim about human effort
 or a substitute for semantic review. The
 Wave B stage is `APPROVE BOUNDED`, but `ready_to_create`,

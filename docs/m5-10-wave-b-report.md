@@ -65,23 +65,24 @@ one reference-closure) and zero open blockers. Each finding identifies reviewed
 records, a concrete defect and remediation, and a non-empty before/after diff;
 coverage declarations are stored separately.
 
-The chronology is source-bound; decision artifacts are created and finalized
-after the timed work they summarize:
+The chronology is source-bound; each timed work row contains a recorder-invoked
+producer execution bound to its unit input and output. Decision artifacts are
+created and finalized after the timed work they summarize:
 
 | Event | UTC |
 | --- | --- |
-| Editorial session started | `2026-09-10T02:57:40.541Z` |
-| First editorial timing pass started | `2026-09-10T02:57:40.555Z` |
-| Last editorial timing pass stopped | `2026-09-10T02:57:43.552Z` |
-| Editorial decisions created | `2026-09-10T02:57:43.620Z` |
-| Editorial decisions finalized | `2026-09-10T02:57:43.621Z` |
-| Editorial input completed | `2026-09-10T02:57:43.625Z` |
-| Independent audit session started | `2026-09-10T02:57:43.723Z` |
-| Post-freeze audit timing started | `2026-09-10T02:57:43.733Z` |
-| Post-freeze audit timing stopped | `2026-09-10T02:57:44.034Z` |
-| Audit decisions created | `2026-09-10T02:57:44.086Z` |
-| Audit decisions finalized | `2026-09-10T02:57:44.087Z` |
-| Audit input completed | `2026-09-10T02:57:44.089Z` |
+| Editorial session started | `2026-09-10T03:48:36.799Z` |
+| First editorial timing pass started | `2026-09-10T03:48:36.808Z` |
+| Last editorial timing pass stopped | `2026-09-10T03:48:42.348Z` |
+| Editorial decisions created | `2026-09-10T03:48:42.482Z` |
+| Editorial decisions finalized | `2026-09-10T03:48:42.483Z` |
+| Editorial input completed | `2026-09-10T03:48:42.490Z` |
+| Independent audit session started | `2026-09-10T03:48:42.635Z` |
+| Post-freeze audit timing started | `2026-09-10T03:48:42.639Z` |
+| Post-freeze audit timing stopped | `2026-09-10T03:48:43.287Z` |
+| Audit decisions created | `2026-09-10T03:48:43.390Z` |
+| Audit decisions finalized | `2026-09-10T03:48:43.392Z` |
+| Audit input completed | `2026-09-10T03:48:43.394Z` |
 
 The audit timing starts after editorial completion. Each decision artifact is
 created and finalized only after its corresponding timing pass stops, and both
@@ -92,20 +93,22 @@ Codex-authored.
 
 | Pass | Recorder work units | Recorder-bound seconds |
 | --- | ---: | ---: |
-| target preparation | 170 | 0.098 |
-| initial review | 900 | 1.815 |
-| feedback fixes | 150 | 0.426 |
-| final audit | 150 | 0.524 |
-| held/rejected decisions | 20 | 0.079 |
-| post-freeze audit | 172 | 0.301 |
-| **total** | **1,562** | **3.243** |
+| target preparation | 170 | 0.212 |
+| initial review | 900 | 3.321 |
+| feedback fixes | 150 | 0.793 |
+| final audit | 150 | 1.014 |
+| held/rejected decisions | 20 | 0.142 |
+| post-freeze audit | 172 | 0.648 |
+| **total** | **1,562** | **6.130** |
 
 All six passes are measured and no pass is unmeasured. Each pass appends
-record-level work rows to a cumulative JSONL artifact; the recorder derives the
-work-unit count and hashes from those rows. Boundary, decision, and audit
-payloads are recorded inside those timed work rows, and the final decision
-artifacts are reconstructed from them after the timing stops. The source-derived
-rate is `3.243 / 160 = 0.02026875` recorder-bound seconds per processed start, below
+record-level work rows to a cumulative JSONL artifact; for each row the recorder
+invokes the committed producer after opening the unit input, then records the
+producer source digest, execution interval, and output digest. The work-unit
+count and decision artifacts are derived from those rows after the timing stops;
+precomputed `--work-json`/`--work-record` payload replay is rejected. The
+source-derived rate is `6.130 / 160 = 0.0383125` recorder-bound seconds per
+processed start, below
 the fixed 12-second gate. This is the interval recorded by the timing contract;
 it is not presented as a realistic human-effort estimate and does not replace
 the semantic review evidence.

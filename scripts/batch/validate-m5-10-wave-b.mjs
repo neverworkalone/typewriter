@@ -142,6 +142,10 @@ function sha256Bytes(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function sha256Json(value) {
+  return sha256Bytes(Buffer.from(JSON.stringify(value), 'utf8'));
+}
+
 function resolveArtifactPath(filePath) {
   return path.isAbsolute(filePath) ? filePath : path.resolve(REPOSITORY_DIRECTORY, filePath);
 }
@@ -866,13 +870,53 @@ export function validateWaveBAuditInput({ audit, editorialInput, relationDiff } 
   return { verified: true, findingCount: audit.findings.length, openBlockerCount: 0 };
 }
 
+function validateWorkExecution(row, pass, passId) {
+  if (!row.input || typeof row.input !== 'object' || Array.isArray(row.input)) {
+    fail(`${passId} work row lacks recorder-bound input`, 'TIMING_INPUT_BINDING');
+  }
+  assertEqual(row.input.unit_id, row.unit_id, `${passId} work input unit binding drifted`, 'TIMING_INPUT_BINDING');
+  assertEqual(row.input.unit_kind, row.unit_kind, `${passId} work input kind binding drifted`, 'TIMING_INPUT_BINDING');
+  if (!row.input.payload || typeof row.input.payload !== 'object' || Array.isArray(row.input.payload)) {
+    fail(`${passId} work row input payload is invalid`, 'TIMING_INPUT_BINDING');
+  }
+  requireSha256(row.input.payload_sha256, `${passId} work input payload sha256`);
+  assertEqual(row.input.payload_sha256, sha256Json(row.input.payload), `${passId} work input payload digest drifted`, 'TIMING_INPUT_BINDING');
+
+  if (!row.producer || typeof row.producer !== 'object' || Array.isArray(row.producer)) {
+    fail(`${passId} work row lacks recorder-bound producer execution`, 'TIMING_PRODUCER_MISSING');
+  }
+  requireString(row.producer.module, `${passId} producer module`);
+  requireSha256(row.producer.module_sha256, `${passId} producer module sha256`);
+  assertEqual(row.producer.export, 'produce', `${passId} producer export drifted`, 'TIMING_PRODUCER_BINDING');
+  requireIsoDate(row.producer.started_at, `${passId} producer started_at`);
+  requireIsoDate(row.producer.completed_at, `${passId} producer completed_at`);
+  assertTimestampOrder(pass.started_at, row.producer.started_at, `${passId} producer start`, 'TIMING_PRODUCER_CHRONOLOGY');
+  assertTimestampOrder(row.producer.started_at, row.producer.completed_at, `${passId} producer execution`, 'TIMING_PRODUCER_CHRONOLOGY');
+  assertTimestampOrder(row.producer.completed_at, pass.completed_at, `${passId} producer completion`, 'TIMING_PRODUCER_CHRONOLOGY');
+  assertEqual(row.recorded_at, row.producer.completed_at, `${passId} work row and producer completion timestamps drifted`, 'TIMING_PRODUCER_BINDING');
+  assertEqual(row.producer.input_payload_sha256, row.input.payload_sha256, `${passId} producer input digest drifted`, 'TIMING_PRODUCER_BINDING');
+  requireSha256(row.producer.output_sha256, `${passId} producer output sha256`);
+  assertEqual(row.producer.output_sha256, sha256Json(row.payload), `${passId} producer output digest drifted`, 'TIMING_PRODUCER_BINDING');
+
+  const producerPath = resolveArtifactPath(row.producer.module);
+  let sourceBytes;
+  try {
+    sourceBytes = readFileSync(producerPath);
+  } catch (error) {
+    if (error.code === 'ENOENT') fail(`${passId} producer module does not exist: ${producerPath}`, 'TIMING_PRODUCER_MISSING');
+    throw error;
+  }
+  const sourceSha256 = sha256Bytes(sourceBytes);
+  assertEqual(sourceSha256, row.producer.module_sha256, `${passId} producer module digest drifted`, 'TIMING_PRODUCER_BINDING');
+}
+
 function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId, expectedUnitIds) {
   assertEqual(pass.id, passId, `${passId} timing pass ID drifted`, 'TIMING_SCOPE_MISMATCH');
   assertEqual(pass.status, 'complete', `${passId} timing pass is not complete`, 'TIMING_INCOMPLETE');
   requireIsoDate(pass.started_at, `${passId}.started_at`);
   requireIsoDate(pass.completed_at, `${passId}.completed_at`);
   requireUuid(pass.session_id, `${passId}.session_id`);
-  assertEqual(pass.recording_source, 'timing-recorder-v4', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(pass.recording_source, 'timing-recorder-v5', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
   const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
   if (!Number.isFinite(elapsed) || elapsed < 0) fail(`${passId} timing chronology is invalid`, 'TIMING_CHRONOLOGY');
   assertEqual(pass.wall_clock_seconds, elapsed, `${passId}.wall_clock_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
@@ -912,6 +956,7 @@ function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId
     requireString(row.unit_id, `${passId} work row unit_id`);
     requireString(row.unit_kind, `${passId} work row unit_kind`);
     if (!row.payload || typeof row.payload !== 'object' || Array.isArray(row.payload)) fail(`${passId} output work log contains an invalid payload`, 'TIMING_WORK_LOG_INVALID');
+    validateWorkExecution(row, pass, passId);
     requireIsoDate(row.recorded_at, `${passId} work row recorded_at`);
     assertTimestampOrder(pass.started_at, row.recorded_at, `${passId} work row start`, 'TIMING_WORK_LOG_CHRONOLOGY');
     assertTimestampOrder(row.recorded_at, pass.completed_at, `${passId} work row stop`, 'TIMING_WORK_LOG_CHRONOLOGY');
@@ -970,8 +1015,8 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
   assertEqual(timing.schema_version, '2', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
   assertEqual(timing.batch_id, WAVE_B_BATCH_ID, 'Wave B timing batch_id drifted', 'BATCH_ID_MISMATCH');
   assertEqual(timing.timing_kind, timingKind, 'Wave B timing kind drifted', 'TIMING_KIND_MISMATCH');
-  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v4', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
-  assertEqual(timing.recording_source, 'timing-recorder-v4', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v5', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recording_source, 'timing-recorder-v5', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.recorder_command, 'node scripts/batch/record-m5-10-wave-b-timing.mjs', 'Wave B timing recorder command drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.status, 'complete', 'Wave B timing is not complete', 'TIMING_INCOMPLETE');
   requireUuid(timing.session_id, 'timing session_id');
@@ -1028,6 +1073,10 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
       assertEqual(workEvent.unit_id, row.unit_id, `${pass.id} work event unit binding drifted`, 'TIMING_EVENT_BINDING');
       assertEqual(workEvent.unit_kind, row.unit_kind, `${pass.id} work event kind binding drifted`, 'TIMING_EVENT_BINDING');
       assertEqual(workEvent.payload_sha256, sha256Bytes(Buffer.from(JSON.stringify(row.payload), 'utf8')), `${pass.id} work event payload binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.input_payload_sha256, row.input.payload_sha256, `${pass.id} work event input binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.producer_module_sha256, row.producer.module_sha256, `${pass.id} work event producer binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.producer_started_at, row.producer.started_at, `${pass.id} producer start binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.producer_completed_at, row.producer.completed_at, `${pass.id} producer completion binding drifted`, 'TIMING_EVENT_BINDING');
     }
     const stopEvent = timing.events[eventIndex++];
     assertEqual(stopEvent, { event_id: stopEvent.event_id, pass_id: pass.id, kind: 'stop', session_id: pass.session_id, at: pass.completed_at }, `${timingKind} stop event binding drifted`, 'TIMING_EVENT_BINDING');

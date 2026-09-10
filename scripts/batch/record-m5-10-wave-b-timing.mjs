@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { copyFile, readFile, stat, writeFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   WAVE_B_AUDIT_TIMING_PASS_IDS,
@@ -15,8 +15,8 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_TIMING_PATH = path.resolve(REPOSITORY_DIRECTORY, 'data/batches/m5-10-wave-b-timing-session.json');
 const DEFAULT_AUDIT_TIMING_PATH = path.resolve(REPOSITORY_DIRECTORY, 'data/batches/m5-10-wave-b-audit-timing-session.json');
-const RECORDER_VERSION = 'wave-b-timing-recorder-v4';
-const RECORDING_SOURCE = 'timing-recorder-v4';
+const RECORDER_VERSION = 'wave-b-timing-recorder-v5';
+const RECORDING_SOURCE = 'timing-recorder-v5';
 const RECORDING_COMMAND = 'node scripts/batch/record-m5-10-wave-b-timing.mjs';
 const DATE_SUFFIX = '20260910';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -124,7 +124,7 @@ async function sessionFor(kind, args) {
     status: 'in-progress',
     passes: passIds(kind).map((id) => ({ id, status: 'unmeasured' })),
     events: [],
-    note: 'Wave B timing is complete only when every pass contains recorder-created work rows with timestamps inside the pass interval.',
+    note: 'Wave B timing is complete only when every pass contains recorder-created work rows whose producer executions and unit inputs are inside the pass interval.',
   };
   if (kind === 'post-freeze-audit') {
     if (!args['audit-session-id'] || !UUID_PATTERN.test(args['audit-session-id'])) throw new Error('post-freeze-audit start requires --audit-session-id=<UUID>');
@@ -145,30 +145,31 @@ function activePass(session, passId) {
   return { index, pass };
 }
 
-function parseWorkPayload(args) {
-  if (typeof args['work-json'] === 'string' && typeof args['work-record'] === 'string') {
-    throw new Error('work recording accepts only one of --work-json or --work-record');
+function parseWorkInput(args) {
+  if (typeof args['input-json'] === 'string' && typeof args['input-record'] === 'string') {
+    throw new Error('work input accepts only one of --input-json or --input-record');
   }
-  let payload;
-  if (args['work-record']) {
+  let input;
+  if (args['input-record']) {
+    const inputPath = path.resolve(args['input-record']);
     try {
-      payload = JSON.parse(readFileSync(path.resolve(args['work-record']), 'utf8'));
+      input = JSON.parse(readFileSync(inputPath, 'utf8'));
     } catch (error) {
-      if (error.code === 'ENOENT') throw new Error(`work record does not exist: ${path.resolve(args['work-record'])}`);
-      throw new Error(`work record is not valid JSON: ${error.message}`);
+      if (error.code === 'ENOENT') throw new Error(`work input does not exist: ${inputPath}`);
+      throw new Error(`work input is not valid JSON: ${error.message}`);
     }
-  } else if (args['work-json']) {
+  } else if (args['input-json']) {
     try {
-      payload = JSON.parse(args['work-json']);
+      input = JSON.parse(args['input-json']);
     } catch (error) {
-      throw new Error(`--work-json is not valid JSON: ${error.message}`);
+      throw new Error(`--input-json is not valid JSON: ${error.message}`);
     }
   } else {
-    throw new Error('work recording requires --work-json=<object> or --work-record=<path>');
+    throw new Error('work recording requires --input-json=<object> or --input-record=<path>');
   }
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('work payload must be a JSON object');
-  if (Object.keys(payload).length === 0) throw new Error('work payload must contain record-level evidence');
-  return payload;
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('work input must be a JSON object');
+  if (Object.keys(input).length === 0) throw new Error('work input must contain unit evidence');
+  return input;
 }
 
 async function startPass(args) {
@@ -259,14 +260,43 @@ async function recordWork(args) {
   const { index, pass } = activePass(session, args.pass);
   if (!args['unit-id']) throw new Error('work recording requires --unit-id=<id>');
   if (!args['unit-kind']) throw new Error('work recording requires --unit-kind=<kind>');
-  const payload = parseWorkPayload(args);
+  if (!args.producer) throw new Error('work recording requires --producer=<module-path>');
+  const producerPath = path.resolve(args.producer);
+  if (path.extname(producerPath) !== '.mjs') throw new Error('work producer must be an .mjs module');
+  const input = parseWorkInput(args);
   if (pass.work_events?.some(({ unit_id: unitId }) => unitId === args['unit-id'])) {
     throw new Error(`${args.pass} already recorded work unit ${args['unit-id']}`);
   }
   const outputArtifactPath = path.resolve(pass.output_artifact_path);
   const currentBytes = await readFile(outputArtifactPath);
   if (sha256Bytes(currentBytes) !== pass.output_sha256) throw new Error(`${args.pass} output artifact changed outside the recorder`);
-  const recordedAt = now();
+  let producerModule;
+  let producerSource;
+  const producerStartedAt = now();
+  try {
+    producerSource = await readFile(producerPath);
+    producerModule = await import(pathToFileURL(producerPath).href);
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error(`work producer does not exist: ${producerPath}`);
+    throw new Error(`work producer could not be loaded: ${error.message}`);
+  }
+  if (typeof producerModule.produce !== 'function') throw new Error(`work producer must export produce(): ${producerPath}`);
+  let payload;
+  try {
+    payload = await producerModule.produce({
+      passId: args.pass,
+      unitId: args['unit-id'],
+      unitKind: args['unit-kind'],
+      input: structuredClone(input),
+    });
+  } catch (error) {
+    throw new Error(`work producer failed for ${args['unit-id']}: ${error.message}`);
+  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('work producer must return a JSON object');
+  if (Object.keys(payload).length === 0) throw new Error('work producer returned an empty object');
+  const producerCompletedAt = now();
+  const recordedAt = producerCompletedAt;
+  const inputPayloadSha256 = sha256Json(input);
   const payloadSha256 = sha256Json(payload);
   const row = {
     schema_version: '1',
@@ -276,6 +306,21 @@ async function recordWork(args) {
     unit_id: args['unit-id'],
     unit_kind: args['unit-kind'],
     recorded_at: recordedAt,
+    input: {
+      unit_id: args['unit-id'],
+      unit_kind: args['unit-kind'],
+      payload: input,
+      payload_sha256: inputPayloadSha256,
+    },
+    producer: {
+      module: storedArtifactPath(producerPath),
+      module_sha256: sha256Bytes(producerSource),
+      export: 'produce',
+      started_at: producerStartedAt,
+      completed_at: producerCompletedAt,
+      input_payload_sha256: inputPayloadSha256,
+      output_sha256: payloadSha256,
+    },
     payload,
   };
   await writeFile(outputArtifactPath, `${JSON.stringify(row)}\n`, { encoding: 'utf8', flag: 'a' });
@@ -286,7 +331,17 @@ async function recordWork(args) {
     output_sha256: sha256Bytes(updatedBytes),
     work_events: [
       ...(pass.work_events ?? []),
-      { event_id: eventId, unit_id: args['unit-id'], unit_kind: args['unit-kind'], recorded_at: recordedAt, payload_sha256: payloadSha256 },
+      {
+        event_id: eventId,
+        unit_id: args['unit-id'],
+        unit_kind: args['unit-kind'],
+        recorded_at: recordedAt,
+        payload_sha256: payloadSha256,
+        input_payload_sha256: inputPayloadSha256,
+        producer_module_sha256: sha256Bytes(producerSource),
+        producer_started_at: producerStartedAt,
+        producer_completed_at: producerCompletedAt,
+      },
     ],
   };
   session.events.push({
@@ -298,6 +353,10 @@ async function recordWork(args) {
     unit_id: args['unit-id'],
     unit_kind: args['unit-kind'],
     payload_sha256: payloadSha256,
+    input_payload_sha256: inputPayloadSha256,
+    producer_module_sha256: sha256Bytes(producerSource),
+    producer_started_at: producerStartedAt,
+    producer_completed_at: producerCompletedAt,
   });
   await writeJson(outputPath, session);
   console.log(`Recorded work unit ${args['unit-id']} for ${args.pass}: ${outputPath}`);
@@ -333,11 +392,26 @@ async function stopPass(args) {
   if (expectedEventIds.some((eventId) => !eventId)) throw new Error(`${args.pass} work log contains an unbound work row`);
   for (const row of workRows) {
     if (!row.payload || typeof row.payload !== 'object' || Array.isArray(row.payload)) throw new Error(`${args.pass} work log contains an invalid payload`);
+    if (!row.input || typeof row.input !== 'object' || Array.isArray(row.input)) throw new Error(`${args.pass} work log contains no recorder-bound input`);
+    if (!row.producer || typeof row.producer !== 'object' || Array.isArray(row.producer)) throw new Error(`${args.pass} work log contains no recorder-bound producer execution`);
     if (Date.parse(row.recorded_at) < Date.parse(pass.started_at) || Date.parse(row.recorded_at) > Date.parse(completedAt)) {
       throw new Error(`${args.pass} work row timestamp is outside the timing interval`);
     }
+    if (Date.parse(row.producer.started_at) < Date.parse(pass.started_at) || Date.parse(row.producer.completed_at) > Date.parse(completedAt)) {
+      throw new Error(`${args.pass} producer execution is outside the timing interval`);
+    }
+    if (row.recorded_at !== row.producer.completed_at) throw new Error(`${args.pass} work row timestamp must equal producer completion`);
+    if (sha256Json(row.input.payload) !== row.input.payload_sha256) throw new Error(`${args.pass} work input digest changed after recording`);
+    if (row.producer.input_payload_sha256 !== row.input.payload_sha256) throw new Error(`${args.pass} producer input digest is not bound to the work input`);
+    if (row.producer.output_sha256 !== sha256Json(row.payload)) throw new Error(`${args.pass} producer output digest is not bound to the work payload`);
     if (sha256Json(row.payload) !== eventByUnitId.get(row.unit_id).payload_sha256) {
       throw new Error(`${args.pass} work row payload changed after recording`);
+    }
+    if (row.producer.module_sha256 !== eventByUnitId.get(row.unit_id).producer_module_sha256
+      || row.producer.started_at !== eventByUnitId.get(row.unit_id).producer_started_at
+      || row.producer.completed_at !== eventByUnitId.get(row.unit_id).producer_completed_at
+      || row.input.payload_sha256 !== eventByUnitId.get(row.unit_id).input_payload_sha256) {
+      throw new Error(`${args.pass} producer execution binding changed after recording`);
     }
   }
   const workEvidence = {
@@ -378,7 +452,7 @@ async function stopPass(args) {
   });
   if (session.passes.every(({ status }) => status === 'complete')) {
     session.status = 'complete';
-    session.note = 'Wave B timing completed from recorder start/stop events and recorder-created cumulative work-log rows.';
+    session.note = 'Wave B timing completed from recorder start/stop events and recorder-created work-log rows bound to timed producer executions.';
     session.recording_proof_sha256 = createWaveBTimingProof(session);
   }
   await writeJson(outputPath, session);
@@ -387,7 +461,7 @@ async function stopPass(args) {
 
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
-  for (const forbidden of ['before-sha256', 'after-sha256', 'staging-sha256', 'unit-count', 'unit-ids']) {
+  for (const forbidden of ['before-sha256', 'after-sha256', 'staging-sha256', 'unit-count', 'unit-ids', 'work-json', 'work-record']) {
     if (Object.hasOwn(args, forbidden)) throw new Error(`--${forbidden} is not accepted; timing scope is derived from recorder-created work-log rows`);
   }
   if (args.action === 'init') return initSession(args);

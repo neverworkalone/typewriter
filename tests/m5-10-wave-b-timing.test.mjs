@@ -19,9 +19,16 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
     const firstOutputPath = path.join(directory, 'first-output.jsonl');
     const secondOutputPath = path.join(directory, 'second-output.jsonl');
     const preparedOutputPath = path.join(directory, 'prepared-output.jsonl');
+    const producerPath = path.join(directory, 'producer.mjs');
     const firstInput = '{"kind":"seed","source":"self-authored"}\n';
     await writeFile(firstInputPath, firstInput, 'utf8');
     await writeFile(preparedOutputPath, '{"kind":"summary","count":1}\n', 'utf8');
+    await writeFile(producerPath, [
+      'export function produce({ unitId, unitKind, input }) {',
+      '  return { ...input, produced_by: "timed-test-producer", unit_id: unitId, unit_kind: unitKind };',
+      '}',
+      '',
+    ].join('\n'), 'utf8');
 
     await assert.rejects(
       recordWaveBTiming([
@@ -43,13 +50,25 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
       `--input-artifact=${firstInputPath}`,
       `--output-artifact=${firstOutputPath}`,
     ]);
+    await assert.rejects(
+      recordWaveBTiming([
+        '--action=work',
+        '--pass=target-preparation',
+        `--input=${sessionPath}`,
+        '--unit-id=m5-000',
+        '--unit-kind=selected-target',
+        '--work-json={"inventory_id":"m5-000"}',
+      ]),
+      /--work-json is not accepted/u,
+    );
     await recordWaveBTiming([
       '--action=work',
       '--pass=target-preparation',
       `--input=${sessionPath}`,
       '--unit-id=m5-001',
       '--unit-kind=selected-target',
-      '--work-json={"inventory_id":"m5-001","operation":"select"}',
+      `--producer=${producerPath}`,
+      '--input-json={"inventory_id":"m5-001","operation":"select"}',
     ]);
     await recordWaveBTiming([
       '--action=stop',
@@ -75,7 +94,7 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
         '--unit-kind=boundary-check',
         '--work-record=/missing/work-record.json',
       ]),
-      /work record does not exist/u,
+      /--work-record is not accepted/u,
     );
     await assert.rejects(
       recordWaveBTiming([
@@ -85,7 +104,8 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
         `--input=${sessionPath}`,
         '--unit-id=m5-001:physical-figurative',
         '--unit-kind=boundary-check',
-        '--work-json={"inventory_id":"m5-001","operation":"review"}',
+        `--producer=${producerPath}`,
+        '--input-json={"inventory_id":"m5-001","operation":"review"}',
         `--unit-count=1`,
       ]),
       /--unit-count is not accepted/u,
@@ -96,7 +116,8 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
       `--input=${sessionPath}`,
       '--unit-id=m5-001:physical-figurative',
       '--unit-kind=boundary-check',
-      '--work-json={"inventory_id":"m5-001","boundary_id":"physical-figurative","operation":"review"}',
+      `--producer=${producerPath}`,
+      '--input-json={"inventory_id":"m5-001","boundary_id":"physical-figurative","operation":"review"}',
     ]);
     await recordWaveBTiming([
       '--action=stop',
@@ -107,8 +128,8 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
 
     const session = JSON.parse(await readFile(sessionPath, 'utf8'));
     const firstPass = session.passes[0];
-    assert.equal(session.recorder_version, 'wave-b-timing-recorder-v4');
-    assert.equal(session.recording_source, 'timing-recorder-v4');
+    assert.equal(session.recorder_version, 'wave-b-timing-recorder-v5');
+    assert.equal(session.recording_source, 'timing-recorder-v5');
     assert.equal(firstPass.work_evidence.before_sha256, sha256(firstInput));
     assert.equal(firstPass.work_evidence.unit_count, 1);
     assert.deepEqual(firstPass.work_evidence.unit_ids, ['m5-001']);
@@ -120,6 +141,14 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
     assert.equal(session.events[1].unit_id, 'm5-001');
     assert.ok(Date.parse(session.events[1].at) >= Date.parse(firstPass.started_at));
     assert.ok(Date.parse(session.events[1].at) <= Date.parse(firstPass.completed_at));
+    const firstOutputRows = (await readFile(firstOutputPath, 'utf8')).trimEnd().split('\n').map((line) => JSON.parse(line));
+    const firstWorkRow = firstOutputRows.find(({ kind, unit_id: unitId }) => kind === 'work' && unitId === 'm5-001');
+    assert.deepEqual(firstWorkRow.input.payload, { inventory_id: 'm5-001', operation: 'select' });
+    assert.equal(firstWorkRow.producer.export, 'produce');
+    assert.equal(firstWorkRow.producer.input_payload_sha256, sha256(JSON.stringify(firstWorkRow.input.payload)));
+    assert.equal(firstWorkRow.producer.output_sha256, sha256(JSON.stringify(firstWorkRow.payload)));
+    assert.ok(Date.parse(firstWorkRow.producer.started_at) >= Date.parse(firstPass.started_at));
+    assert.ok(Date.parse(firstWorkRow.producer.completed_at) <= Date.parse(firstPass.completed_at));
     await assert.rejects(
       recordWaveBTiming([
         '--action=work',
@@ -133,6 +162,95 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
       ]),
       /--before-sha256 is not accepted/u,
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('prepared 900-payload replay fails the timing gate while timed producer work passes', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10-wave-b-replay-'));
+  try {
+    const sessionPath = path.join(directory, 'timing-session.json');
+    const inputPath = path.join(directory, 'seed.jsonl');
+    const outputPath = path.join(directory, 'output.jsonl');
+    const producerPath = path.join(directory, 'producer.mjs');
+    const preparedPayloads = Array.from({ length: 900 }, (_, index) => ({
+      unit_id: `prepared-${String(index + 1).padStart(3, '0')}`,
+      decision: index % 2 === 0 ? 'included' : 'corrected',
+      source: 'prepared-before-session',
+    }));
+    await writeFile(inputPath, '{"kind":"seed"}\n', 'utf8');
+    await writeFile(producerPath, [
+      'export function produce({ unitId, input }) {',
+      '  return { unit_id: unitId, decision: "produced-in-pass", source_unit: input.source_unit };',
+      '}',
+      '',
+    ].join('\n'), 'utf8');
+
+    const originalLog = console.log;
+    console.log = () => {};
+    try {
+      await recordWaveBTiming([
+        '--action=start',
+        '--kind=editorial',
+        '--pass=target-preparation',
+        `--output=${sessionPath}`,
+        `--input-artifact=${inputPath}`,
+        `--output-artifact=${outputPath}`,
+      ]);
+
+      for (const payload of preparedPayloads) {
+        await assert.rejects(
+          recordWaveBTiming([
+            '--action=work',
+            '--pass=target-preparation',
+            `--input=${sessionPath}`,
+            `--unit-id=${payload.unit_id}`,
+            '--unit-kind=selected-target',
+            `--work-json=${JSON.stringify(payload)}`,
+          ]),
+          /--work-json is not accepted/u,
+        );
+      }
+      const replayAttempt = JSON.parse(await readFile(sessionPath, 'utf8'));
+      assert.equal(replayAttempt.passes[0].work_events?.length ?? 0, 0);
+      await assert.rejects(
+        recordWaveBTiming([
+          '--action=stop',
+          '--pass=target-preparation',
+          '--kind=editorial',
+          `--input=${sessionPath}`,
+        ]),
+        /no recorded work transition/u,
+      );
+
+      for (const payload of preparedPayloads) {
+        await recordWaveBTiming([
+          '--action=work',
+          '--pass=target-preparation',
+          `--input=${sessionPath}`,
+          `--unit-id=${payload.unit_id}`,
+          '--unit-kind=selected-target',
+          `--producer=${producerPath}`,
+          `--input-json=${JSON.stringify({ source_unit: payload.unit_id })}`,
+        ]);
+      }
+      await recordWaveBTiming([
+        '--action=stop',
+        '--kind=editorial',
+        '--pass=target-preparation',
+        `--input=${sessionPath}`,
+      ]);
+      const measured = JSON.parse(await readFile(sessionPath, 'utf8'));
+      assert.equal(measured.passes[0].work_evidence.unit_count, 900);
+      assert.equal(measured.passes[0].work_evidence.unit_ids.length, 900);
+      const measuredRows = (await readFile(outputPath, 'utf8')).trimEnd().split('\n').map((line) => JSON.parse(line));
+      const firstMeasuredRow = measuredRows.find(({ kind }) => kind === 'work');
+      assert.equal(firstMeasuredRow.producer.export, 'produce');
+      assert.equal(firstMeasuredRow.payload.decision, 'produced-in-pass');
+    } finally {
+      console.log = originalLog;
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
