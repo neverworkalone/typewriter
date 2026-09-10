@@ -131,6 +131,13 @@
         "search_product_regression"
       ],
       "properties": {
+        "measurement_kind": {
+          "enum": ["editorial-time", "producer-throughput"]
+        },
+        "producer_seconds_per_selected_start_max": {
+          "type": "number",
+          "minimum": 0
+        },
         "correction_rate_of_selected": {
           "type": "number",
           "minimum": 0,
@@ -163,6 +170,21 @@
         "editor_seconds_per_selected_start": {
           "type": ["number", "null"],
           "minimum": 0
+        },
+        "total_producer_seconds": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "measured_producer_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "producer_seconds_per_selected_start": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "editor_time_status": {
+          "enum": ["measured", "unmeasured", "partial"]
         },
         "timing_status": { "enum": ["complete", "incomplete"] },
         "unmeasured_timing_pass_count": { "type": "integer", "minimum": 0 },

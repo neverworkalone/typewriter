@@ -136,7 +136,7 @@
                 "type": "object",
                 "required": ["contract_version"],
                 "properties": {
-                  "contract_version": { "enum": ["m5-10a-v1", "m5-10b-v2"] }
+                  "contract_version": { "enum": ["m5-10a-v1", "m5-10b-v2", "m5-10b-v3"] }
                 }
               }
             }
@@ -379,7 +379,13 @@
               "enum": ["complete", "incomplete"]
             },
             "contract_version": {
-              "enum": ["m5-9a-v1", "m5-10a-v1", "m5-10b-v2"]
+              "enum": ["m5-9a-v1", "m5-10a-v1", "m5-10b-v2", "m5-10b-v3"]
+            },
+            "measurement_kind": {
+              "enum": ["editorial-time", "producer-throughput"]
+            },
+            "producer_seconds_per_selected_start_max": {
+              "const": 1
             },
             "source_artifact": {
               "type": "string",
@@ -486,6 +492,10 @@
           "type": "number",
           "minimum": 0
         },
+        "producer_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
         "session_id": {
           "type": "string",
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
@@ -499,7 +509,7 @@
           "pattern": "^[a-f0-9]{64}$"
         },
         "recording_source": {
-          "enum": ["timing-recorder-v1", "timing-recorder-v2", "timing-recorder-v3", "timing-recorder-v4", "timing-recorder-v5"]
+          "enum": ["timing-recorder-v1", "timing-recorder-v2", "timing-recorder-v3", "timing-recorder-v4", "timing-recorder-v5", "timing-recorder-v6"]
         },
         "work_evidence": {
           "oneOf": [

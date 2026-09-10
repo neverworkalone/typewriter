@@ -65,8 +65,6 @@
     },
     "findings": {
       "type": "array",
-      "minItems": 5,
-      "maxItems": 5,
       "items": { "$ref": "#/$defs/finding" }
     },
     "note": { "type": "string", "pattern": "\\S" }

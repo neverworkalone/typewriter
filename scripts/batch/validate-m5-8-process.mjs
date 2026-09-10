@@ -425,6 +425,18 @@ function stageMetricsFromArtifacts(metricsArtifact, verification) {
     editor_seconds_per_selected_start: totalEditorSeconds === null || processedStartCount === 0
       ? null
       : totalEditorSeconds / processedStartCount,
+    ...(timing.measurement_kind === 'producer-throughput'
+      ? {
+        measurement_kind: timing.measurement_kind,
+        producer_seconds_per_selected_start_max: timing.producer_seconds_per_selected_start_max,
+        total_producer_seconds: timing.total_producer_seconds,
+        measured_producer_seconds: timing.measured_producer_seconds,
+        producer_seconds_per_selected_start: timing.total_producer_seconds === null || processedStartCount === 0
+          ? null
+          : timing.total_producer_seconds / processedStartCount,
+        editor_time_status: timing.editor_time_status,
+      }
+      : {}),
     timing_status: timing.status,
     unmeasured_timing_pass_count: timing.unmeasured_passes.length,
     audit_status: audit.status,
@@ -973,6 +985,13 @@ export function evaluateExpansionGate(metrics, plan) {
     ?? metrics.relation_noise_rate_of_before;
   const editorialReviewComplete = metrics.editorial_review_complete
     ?? metrics.human_editorial_review_complete;
+  const producerThroughput = metrics.measurement_kind === 'producer-throughput';
+  const measuredRate = producerThroughput
+    ? metrics.producer_seconds_per_selected_start
+    : metrics.editor_seconds_per_selected_start;
+  const rateLimit = producerThroughput
+    ? metrics.producer_seconds_per_selected_start_max
+    : plan.gate.editor_seconds_per_selected_start_max;
   const baselineRate = plan.gate.relation_noise_baseline.noise_event_count
     / plan.gate.relation_noise_baseline.before_count;
   const qualityPasses = {
@@ -980,8 +999,16 @@ export function evaluateExpansionGate(metrics, plan) {
     relation_noise_rate: relationNoiseRate <= plan.gate.relation_noise_rate_max,
     relation_noise_below_baseline: !plan.gate.relation_noise_below_m5_3_baseline_required
       || relationNoiseRate < baselineRate,
-    editor_seconds_per_selected_start: Number.isFinite(metrics.editor_seconds_per_selected_start)
-      && metrics.editor_seconds_per_selected_start <= plan.gate.editor_seconds_per_selected_start_max,
+    ...(producerThroughput
+      ? {
+        producer_seconds_per_selected_start: Number.isFinite(measuredRate)
+          && Number.isFinite(rateLimit)
+          && measuredRate <= rateLimit,
+      }
+      : {
+        editor_seconds_per_selected_start: Number.isFinite(measuredRate)
+          && measuredRate <= rateLimit,
+      }),
     timing_complete: metrics.timing_status === 'complete',
     unmeasured_timing_passes: metrics.unmeasured_timing_pass_count <= plan.gate.unmeasured_timing_passes_max,
     audit_complete: metrics.audit_status === 'complete',

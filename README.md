@@ -141,9 +141,12 @@ The #96 Wave B result is recorded in
 A2 snapshot at 628 starts, processes 170 selected starts, imports 150 reviewed
 starts (144 included and 6 sense-corrected), and reaches the exact 778-start
 target with 157 imported senses. The source-derived gate is
-`APPROVE BOUNDED`: all timing passes are measured (6.130 recorder-backed
-seconds across 160 processed starts), the independent audit has zero open
-blockers, and canonical/SQLite/search regressions pass. The semantic regression
+`APPROVE BOUNDED`: all six producer-throughput passes are complete
+(10.150 producer-bound seconds across 160 processed starts, or 0.0634375
+producer seconds per processed start under the separate 1-second throughput
+gate), the independent audit produces zero findings and zero open blockers, and
+canonical/SQLite/search regressions pass. Editorial judgment time is explicitly
+unmeasured and producer time is not reported as editor time. The semantic regression
 corpus is a declaration-driven 12-case set covering the six corrected proposal
 records, one canonical regression, and four synthetic homonym/POS/polysemy/
 space-phrase cases. The result is

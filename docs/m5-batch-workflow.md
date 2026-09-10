@@ -259,18 +259,22 @@ the 150 imported starts; six known homonym/polysemy records are corrected into
 explicit sense sets and the 12-case declaration-driven semantic regression
 corpus is checked during proposal preflight and canonical validation. The relation diff remains empty
 because this wave has no relation quota. A distinct post-freeze audit session
-checks the frozen reviewed-staging digest. Its five concrete findings are
-resolved and it leaves zero open blockers. The tracked verification artifact explicitly distinguishes
+checks the frozen reviewed-staging digest. The tracked verification artifact explicitly distinguishes
 `editorial_review_complete: true` from
 `human_editorial_review_complete: false`.
 
-The five editorial timing passes and the distinct post-freeze audit pass are
-complete and chronological. Their source-derived total is 6.130 seconds across
-1,562 recorder-created work units and 160 processed starts. Each work row binds
-the unit input to a producer execution and output that occurred inside its
-timing pass; precomputed payload replay is rejected. This is the
-recorder-bound measured interval used by the gate, not a claim about human effort
-or a substitute for semantic review. The
+The independent audit now derives its result from the record, relation, and
+timing comparisons: the current source-bound inputs produce zero findings and
+zero open blockers. A producer mismatch becomes an open finding during audit;
+it is not silently converted into a resolved finding. The five editorial timing
+passes and the distinct post-freeze audit pass are complete and chronological.
+Their source-derived producer-throughput total is 10.150 seconds across 1,562
+recorder-created work units and 160 processed starts. Each work row binds the
+unit input to a producer execution and output that occurred inside its timing
+pass; precomputed payload replay is rejected. This producer interval is used by
+the separate operational throughput gate, not as a claim about human editorial
+effort. Editorial judgment time remains explicitly unmeasured and does not get
+substituted by producer time. The
 Wave B stage is `APPROVE BOUNDED`, but `ready_to_create`,
 `next_stage_created`, and `next_stage_authorized` remain false. No later stage
 artifact or task is created implicitly.
@@ -436,8 +440,8 @@ retarget or retype measurable instead of hiding it in a rewritten final JSONL.
 The final artifact may add a controlled failure type to each reviewed event, but it
 never includes the draft prose or external source text.
 
-The baseline timing contract has five required editorial passes in every new
-measurement manifest:
+The baseline editorial-time contract has five required editorial passes in every
+new measurement manifest:
 
 1. `target-preparation`
 2. `initial-review`
@@ -445,9 +449,14 @@ measurement manifest:
 4. `final-audit`
 5. `held-rejected`
 
-Each pass records wall-clock seconds and editor seconds separately. A manifest may
-be marked `incomplete` while an older baseline is being repaired, but a completed
-metrics artifact is rejected if any required pass is missing either measurement.
+Each editorial-time pass records wall-clock seconds and editor seconds separately.
+A manifest may be marked `incomplete` while an older baseline is being repaired,
+but a completed metrics artifact is rejected if any required pass is missing
+either measurement. Wave B's `m5-10b-v3` contract is an explicit
+`producer-throughput` variant: it records `producer_seconds` for recorder-invoked
+producer executions, forbids `editor_seconds`, and marks editorial judgment time
+as unmeasured. Its separate producer throughput gate must not be interpreted as
+the historical 12-second editor-time gate.
 Wave A2 adds one required `post-freeze-audit` pass in a distinct timing artifact
 after editorial completion; that pass is combined with the five editorial passes
 for the A2 source-derived total and gate.

@@ -57,6 +57,10 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
     assert.equal(result.stage.gate_status, 'pass');
     assert.equal(result.gate.quality_passes.timing_complete, true);
     assert.equal(result.gate.quality_passes.unmeasured_timing_passes, true);
+    assert.equal(result.gate.quality_passes.producer_seconds_per_selected_start, true);
+    assert.equal(result.metrics.timing.measurement_kind, 'producer-throughput');
+    assert.equal(result.metrics.timing.total_editor_seconds, null);
+    assert.equal(result.metrics.timing.editor_time_status, 'unmeasured');
 
     const editorial = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
     const audit = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-audit-input.json'));
@@ -152,6 +156,7 @@ test('Wave B fails closed on editorial scope, relation output, and timing regres
     delete timing.passes[2].completed_at;
     delete timing.passes[2].wall_clock_seconds;
     delete timing.passes[2].editor_seconds;
+    delete timing.passes[2].producer_seconds;
     await writeFile(timingPath, `${JSON.stringify(timing)}\n`, 'utf8');
     await assert.rejects(
       validateWaveB({ stagedRecordsPath: stagingPath, timingInputPath: timingPath }),
@@ -178,7 +183,23 @@ test('Wave B fails closed on editorial scope, relation output, and timing regres
 
     const outOfScopeAuditPath = path.join(directory, 'out-of-scope-audit.json');
     const outOfScopeAudit = await readJson(DEFAULT_AUDIT_INPUT_PATH);
-    outOfScopeAudit.findings[0].target_record_ids = ['w999'];
+    outOfScopeAudit.findings = [{
+      id: 'wave-b-synthetic-out-of-scope',
+      category: 'sense',
+      severity: 'warning',
+      status: 'resolved',
+      evidence_refs: ['synthetic-test-evidence'],
+      target_record_ids: ['w999'],
+      defect: 'synthetic out-of-scope audit finding',
+      remediation: 'synthetic out-of-scope audit remediation',
+      diff_evidence: {
+        kind: 'synthetic-test-diff',
+        before: { value: 0 },
+        after: { value: 1 },
+        changed_fields: ['value'],
+      },
+      note: 'synthetic out-of-scope audit finding for validator regression coverage',
+    }];
     await writeFile(outOfScopeAuditPath, `${JSON.stringify(outOfScopeAudit)}\n`, 'utf8');
     await assert.rejects(
       validateWaveB({ stagedRecordsPath: stagingPath, auditInputPath: outOfScopeAuditPath }),

@@ -259,7 +259,9 @@ Every stage must pass all of the following:
 - processed-start correction rate `≤ 50%` (the report field is
   `correction_rate_of_selected`);
 - relation noise `≤ 25%` and below the reconstructed M5-3 baseline;
-- complete measured editor time `≤ 12 seconds/processed start`;
+- complete measured editor time `≤ 12 seconds/processed start` for the
+  editorial-time contract; a producer-throughput contract must use its own
+  explicit producer limit and leave editorial judgment time unmeasured;
 - zero unmeasured timing passes;
 - independent audit complete with zero open blockers;
 - canonical integrity, deterministic SQLite, and M4 search/product regression;

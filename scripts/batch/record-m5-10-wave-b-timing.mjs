@@ -15,8 +15,8 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_TIMING_PATH = path.resolve(REPOSITORY_DIRECTORY, 'data/batches/m5-10-wave-b-timing-session.json');
 const DEFAULT_AUDIT_TIMING_PATH = path.resolve(REPOSITORY_DIRECTORY, 'data/batches/m5-10-wave-b-audit-timing-session.json');
-const RECORDER_VERSION = 'wave-b-timing-recorder-v5';
-const RECORDING_SOURCE = 'timing-recorder-v5';
+const RECORDER_VERSION = 'wave-b-timing-recorder-v6';
+const RECORDING_SOURCE = 'timing-recorder-v6';
 const RECORDING_COMMAND = 'node scripts/batch/record-m5-10-wave-b-timing.mjs';
 const DATE_SUFFIX = '20260910';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -118,13 +118,14 @@ async function sessionFor(kind, args) {
     batch_id: WAVE_B_BATCH_ID,
     recorder_version: RECORDER_VERSION,
     recording_source: RECORDING_SOURCE,
+    measurement_kind: 'producer-throughput',
     recorder_command: RECORDING_COMMAND,
     processed_start_count: 160,
     session_id: randomUUID(),
     status: 'in-progress',
     passes: passIds(kind).map((id) => ({ id, status: 'unmeasured' })),
     events: [],
-    note: 'Wave B timing is complete only when every pass contains recorder-created work rows whose producer executions and unit inputs are inside the pass interval.',
+    note: 'Wave B producer-throughput timing is complete only when every pass contains recorder-created work rows whose producer executions and unit inputs are inside the pass interval; this session does not measure editorial judgment time.',
   };
   if (kind === 'post-freeze-audit') {
     if (!args['audit-session-id'] || !UUID_PATTERN.test(args['audit-session-id'])) throw new Error('post-freeze-audit start requires --audit-session-id=<UUID>');
@@ -436,7 +437,7 @@ async function stopPass(args) {
       output_artifact_created_at: pass.output_artifact_created_at,
       completed_at: completedAt,
     wall_clock_seconds: elapsed,
-    editor_seconds: elapsed,
+    producer_seconds: elapsed,
     work_evidence: workEvidence,
     ...(args.pass === 'post-freeze-audit' ? {
       audit_session_id: pass.audit_session_id,
@@ -452,7 +453,7 @@ async function stopPass(args) {
   });
   if (session.passes.every(({ status }) => status === 'complete')) {
     session.status = 'complete';
-    session.note = 'Wave B timing completed from recorder start/stop events and recorder-created work-log rows bound to timed producer executions.';
+    session.note = 'Wave B producer-throughput timing completed from recorder start/stop events and recorder-created work-log rows bound to timed producer executions. Editorial judgment time is not measured by this session.';
     session.recording_proof_sha256 = createWaveBTimingProof(session);
   }
   await writeJson(outputPath, session);

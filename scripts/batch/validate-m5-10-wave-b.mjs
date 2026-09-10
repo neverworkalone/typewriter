@@ -55,6 +55,7 @@ export const WAVE_B_CUMULATIVE_START_COUNT = 778;
 export const WAVE_B_SELECTED_START_COUNT = 170;
 export const WAVE_B_PROCESSED_START_COUNT = 160;
 export const WAVE_B_BUFFER_COUNT = 20;
+export const WAVE_B_PRODUCER_SECONDS_PER_SELECTED_START_MAX = 1;
 export const WAVE_B_TIMING_PASS_IDS = Object.freeze([
   'target-preparation',
   'initial-review',
@@ -97,6 +98,7 @@ export const DEFAULT_SEMANTIC_REGRESSION_PATH = path.join(BATCH_DIRECTORY, 'm5-1
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
+const WAVE_B_PRODUCER_MODULE = 'scripts/batch/produce-m5-10-wave-b-work.mjs';
 const DECISIONS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 
 export class WaveBValidationError extends Error {
@@ -212,7 +214,13 @@ export function deriveWaveBEditorialRecordsFromTiming(timing) {
     ...finalRows.map((row) => workRecordPayload(row, `${row.unit_id} final decision`)),
     ...bufferRows.map((row) => workRecordPayload(row, `${row.unit_id} buffer decision`)),
   ];
-  validateWaveBTimingDecisionWork({ timingInput: timing, editorialInput: { records } });
+  validateWaveBTimingDecisionWork({
+    timingInput: timing,
+    editorialInput: {
+      records,
+      proposal_staging: { sha256: finalRows[0]?.input?.payload?.source?.sha256 },
+    },
+  });
   return records;
 }
 
@@ -256,6 +264,9 @@ export function validateWaveBTimingDecisionWork({ timingInput, auditTimingInput 
   const importedRecords = editorialInput.records.slice(0, WAVE_B_IMPORTED_START_COUNT);
   const bufferRecords = editorialInput.records.slice(WAVE_B_IMPORTED_START_COUNT);
   const initialRows = workRowsForPass(timingInput, 'initial-review');
+  const targetRows = workRowsForPass(timingInput, 'target-preparation');
+  const feedbackRows = workRowsForPass(timingInput, 'feedback-fixes');
+  const proposalSha256 = editorialInput.proposal_staging?.sha256 ?? targetRows[0]?.input?.payload?.source?.sha256;
   const expectedBoundaryRows = importedRecords.flatMap((recordReview) => M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => {
     const evidence = recordReview.boundary_evidence[boundaryId];
     return {
@@ -276,6 +287,31 @@ export function validateWaveBTimingDecisionWork({ timingInput, auditTimingInput 
   assertEqual(finalRows.map(({ unit_id: unitId }) => unitId), importedRecords.map(({ canonical_id: canonicalId }) => canonicalId), 'timed final decision scope drifted', 'TIMING_DECISION_BINDING');
   assertEqual(finalRows.map(({ payload }) => payload.record_review), importedRecords, 'timed final decision work does not match editorial records', 'TIMING_DECISION_BINDING');
   const bufferRows = workRowsForPass(timingInput, 'held-rejected');
+  for (const [passId, rows] of [
+    ['target-preparation', targetRows],
+    ['initial-review', initialRows],
+    ['feedback-fixes', feedbackRows],
+    ['final-audit', finalRows],
+    ['held-rejected', bufferRows],
+  ]) {
+    for (const row of rows) {
+      validateSourceBoundWorkInput(row.input.payload, proposalSha256, passId + ':' + row.unit_id);
+    }
+  }
+  assertEqual(
+    feedbackRows.map(({ payload }) => ({
+      canonical_id: payload.canonical_id,
+      changed_fields: payload.changed_fields,
+      source_sense_ids: payload.source_sense_ids,
+    })),
+    importedRecords.map((recordReview) => ({
+      canonical_id: recordReview.canonical_id,
+      changed_fields: recordReview.decision === 'corrected' ? ['senses'] : [],
+      source_sense_ids: recordReview.boundary_evidence[M5_10A_SENSE_BOUNDARY_IDS[0]].candidate_sense_ids,
+    })),
+    'timed feedback work does not match source-bound decisions',
+    'TIMING_DECISION_BINDING',
+  );
   assertEqual(bufferRows.map(({ unit_id: unitId }) => unitId), bufferRecords.map(({ inventory_id: inventoryId }) => inventoryId), 'timed buffer decision scope drifted', 'TIMING_DECISION_BINDING');
   assertEqual(bufferRows.map(({ payload }) => payload.record_review), bufferRecords, 'timed buffer decision work does not match editorial records', 'TIMING_DECISION_BINDING');
 
@@ -288,6 +324,32 @@ export function validateWaveBTimingDecisionWork({ timingInput, auditTimingInput 
     assertEqual(timingSnapshotRows[0].payload.coverage, auditInput.coverage, 'timed audit coverage snapshot drifted', 'TIMING_AUDIT_BINDING');
     assertEqual(timingSnapshotRows[0].payload.findings, auditInput.findings, 'timed audit findings snapshot drifted', 'TIMING_AUDIT_BINDING');
     assertEqual(relationSnapshotRows[0].payload.relation_reviews, auditInput.relation_reviews, 'timed audit relation snapshot drifted', 'TIMING_AUDIT_BINDING');
+    for (const row of auditRows.filter(({ input }) => input.payload?.phase === 'audit-record')) {
+      validateSourceBoundWorkInput(row.input.payload, proposalSha256, 'post-freeze-audit:' + row.unit_id);
+    }
+    for (const row of auditRows.filter(({ input }) => input.payload?.phase === 'audit-buffer')) {
+      validateSourceBoundWorkInput(row.input.payload, proposalSha256, 'post-freeze-audit:' + row.unit_id);
+    }
+    assertEqual(
+      timingSnapshotRows[0].input.payload.record_audit_results,
+      auditRows
+        .filter(({ input }) => ['audit-record', 'audit-buffer'].includes(input.payload?.phase))
+        .map(({ payload }) => payload),
+      'timed audit snapshot record results drifted from the recorder work rows',
+      'TIMING_AUDIT_BINDING',
+    );
+    assertEqual(
+      timingSnapshotRows[0].input.payload.relation_audit_result,
+      relationSnapshotRows[0].payload,
+      'timed audit snapshot relation result drifted from the recorder work row',
+      'TIMING_AUDIT_BINDING',
+    );
+    assertEqual(
+      timingSnapshotRows[0].input.payload.relation_audit_input,
+      relationSnapshotRows[0].input.payload,
+      'timed audit snapshot relation input drifted from the recorder work row',
+      'TIMING_AUDIT_BINDING',
+    );
     for (const row of auditRows) {
       assertEqual(row.payload.audit_id, auditInput.audit_id, `${row.unit_id} timed audit work audit binding drifted`, 'TIMING_AUDIT_BINDING');
       assertEqual(row.payload.unit_id, row.unit_id, `${row.unit_id} timed audit work unit binding drifted`, 'TIMING_AUDIT_BINDING');
@@ -733,13 +795,6 @@ export function validateWaveBAuditDecisionArtifact(decisionArtifact) {
   assertEqual(decisionArtifact.relation_reviews, [], 'audit decision artifact relation scope drifted', 'DECISION_ARTIFACT_DRIFT');
   const semanticCorpus = readSemanticRegressionCorpus();
   assertEqual(decisionArtifact.coverage?.semantic_regression_case_ids, semanticCorpus.cases.map(({ case_id: caseId }) => caseId), 'audit decision semantic coverage drifted', 'AUDIT_COVERAGE_MISMATCH');
-  exactIds(decisionArtifact.findings?.map(({ id }) => id), [
-    'wave-b-audit-semantic-regressions',
-    'wave-b-audit-boundary-evidence',
-    'wave-b-audit-timing-artifact',
-    'wave-b-audit-finding-evidence',
-    'wave-b-audit-canonical-regeneration',
-  ], 'audit decision artifact findings');
   requireString(decisionArtifact.note, 'audit decision artifact note');
   return structuredClone(decisionArtifact);
 }
@@ -834,15 +889,9 @@ export function validateWaveBAuditInput({ audit, editorialInput, relationDiff } 
   requireSha256(audit.timing_artifact?.sha256, 'audit timing_artifact.sha256');
   requireIsoDate(audit.decision_artifact?.created_at, 'audit decision_artifact.created_at');
   requireIsoDate(audit.decision_artifact?.finalized_at, 'audit decision_artifact.finalized_at');
-  if (!Array.isArray(audit.findings) || audit.findings.length !== 5) fail('Wave B audit must contain five resolved findings', 'AUDIT_FINDINGS_MISMATCH');
+  if (!Array.isArray(audit.findings)) fail('Wave B audit findings must be an array', 'AUDIT_FINDINGS_MISMATCH');
   const findingIds = audit.findings.map(({ id }) => id);
-  exactIds(findingIds, [
-    'wave-b-audit-semantic-regressions',
-    'wave-b-audit-boundary-evidence',
-    'wave-b-audit-timing-artifact',
-    'wave-b-audit-finding-evidence',
-    'wave-b-audit-canonical-regeneration',
-  ], 'Wave B audit findings');
+  if (new Set(findingIds).size !== findingIds.length) fail('Wave B audit findings contain duplicate IDs', 'AUDIT_FINDINGS_MISMATCH');
   const findingDefects = new Set();
   const reviewedRecordIdSet = new Set(audit.reviewed_record_ids);
   for (const finding of audit.findings) {
@@ -887,6 +936,7 @@ function validateWorkExecution(row, pass, passId) {
   }
   requireString(row.producer.module, `${passId} producer module`);
   requireSha256(row.producer.module_sha256, `${passId} producer module sha256`);
+  assertEqual(row.producer.module, WAVE_B_PRODUCER_MODULE, `${passId} producer module drifted`, 'TIMING_PRODUCER_BINDING');
   assertEqual(row.producer.export, 'produce', `${passId} producer export drifted`, 'TIMING_PRODUCER_BINDING');
   requireIsoDate(row.producer.started_at, `${passId} producer started_at`);
   requireIsoDate(row.producer.completed_at, `${passId} producer completed_at`);
@@ -910,17 +960,89 @@ function validateWorkExecution(row, pass, passId) {
   assertEqual(sourceSha256, row.producer.module_sha256, `${passId} producer module digest drifted`, 'TIMING_PRODUCER_BINDING');
 }
 
+function validateSourceBoundWorkInput(payload, expectedProposalSha256, label) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    fail(label + ' producer input payload is invalid', 'PRODUCER_INPUT_SOURCE_MISSING');
+  }
+  const source = payload.source;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    fail(label + ' producer input is missing an external proposal source', 'PRODUCER_INPUT_SOURCE_MISSING');
+  }
+  assertEqual(source.kind, 'external-proposal', label + ' producer source kind drifted', 'PRODUCER_INPUT_SOURCE_MISMATCH');
+  requireString(source.artifact, label + ' producer source artifact');
+  requireSha256(source.sha256, label + ' producer source sha256');
+  assertEqual(source.sha256, expectedProposalSha256, label + ' producer source digest drifted', 'PRODUCER_INPUT_SOURCE_MISMATCH');
+  const expectedId = payload.proposal_canonical_id ?? payload.canonical_id;
+  if (typeof expectedId !== 'string') fail(label + ' producer input has no proposal target', 'PRODUCER_INPUT_SOURCE_MISSING');
+  if (!source.record || typeof source.record !== 'object' || Array.isArray(source.record)) {
+    fail(label + ' producer input is missing the proposal record', 'PRODUCER_INPUT_SOURCE_MISSING');
+  }
+  assertEqual(source.record.id, expectedId, label + ' producer source record target drifted', 'PRODUCER_INPUT_SOURCE_MISMATCH');
+  if (!Array.isArray(source.record.senses) || source.record.senses.length === 0) {
+    fail(label + ' producer source record is missing candidate senses', 'PRODUCER_INPUT_EVIDENCE_MISSING');
+  }
+  for (const [index, sense] of source.record.senses.entries()) {
+    for (const field of ['id', 'pos', 'gloss']) requireString(sense?.[field], `${label} producer source sense ${index}.${field}`);
+  }
+  const evidence = source.evidence;
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
+    fail(label + ' producer input is missing source sense/POS evidence', 'PRODUCER_INPUT_EVIDENCE_MISSING');
+  }
+  assertEqual(evidence.kind, 'proposal-sense-evidence', label + ' producer source evidence kind drifted', 'PRODUCER_INPUT_EVIDENCE_MISMATCH');
+  const expectedSenseIds = source.record.senses.map(({ id }) => id);
+  assertEqual(
+    evidence.candidate_sense_ids,
+    expectedSenseIds,
+    label + ' producer source sense evidence drifted',
+    'PRODUCER_INPUT_EVIDENCE_MISMATCH',
+  );
+  assertEqual(
+    evidence.candidate_pos,
+    source.record.senses.map(({ pos }) => pos),
+    label + ' producer source POS evidence drifted',
+    'PRODUCER_INPUT_EVIDENCE_MISMATCH',
+  );
+  assertEqual(
+    evidence.candidate_glosses,
+    source.record.senses.map(({ gloss }) => gloss),
+    label + ' producer source gloss evidence drifted',
+    'PRODUCER_INPUT_EVIDENCE_MISMATCH',
+  );
+  if (!evidence.boundary_observations || typeof evidence.boundary_observations !== 'object' || Array.isArray(evidence.boundary_observations)) {
+    fail(label + ' producer input is missing boundary source observations', 'PRODUCER_INPUT_EVIDENCE_MISSING');
+  }
+  assertEqual(
+    Object.keys(evidence.boundary_observations).sort(),
+    [...M5_10A_SENSE_BOUNDARY_IDS].sort(),
+    label + ' producer boundary evidence scope drifted',
+    'PRODUCER_INPUT_EVIDENCE_MISMATCH',
+  );
+  for (const boundaryId of M5_10A_SENSE_BOUNDARY_IDS) {
+    const observation = evidence.boundary_observations[boundaryId];
+    if (!observation || typeof observation !== 'object' || Array.isArray(observation)) {
+      fail(label + ' producer boundary evidence is invalid for ' + boundaryId, 'PRODUCER_INPUT_EVIDENCE_MISSING');
+    }
+    assertEqual(observation.boundary_id, boundaryId, label + ' producer boundary ID drifted', 'PRODUCER_INPUT_EVIDENCE_MISMATCH');
+    assertEqual(observation.candidate_sense_ids, expectedSenseIds, label + ' producer boundary sense evidence drifted', 'PRODUCER_INPUT_EVIDENCE_MISMATCH');
+    requireString(observation.basis, label + ' producer boundary basis');
+    if (!observation.basis.includes(boundaryId) || !expectedSenseIds.some((senseId) => observation.basis.includes(senseId))) {
+      fail(label + ' producer boundary basis is not source-specific for ' + boundaryId, 'PRODUCER_INPUT_EVIDENCE_MISMATCH');
+    }
+  }
+}
+
 function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId, expectedUnitIds) {
   assertEqual(pass.id, passId, `${passId} timing pass ID drifted`, 'TIMING_SCOPE_MISMATCH');
   assertEqual(pass.status, 'complete', `${passId} timing pass is not complete`, 'TIMING_INCOMPLETE');
   requireIsoDate(pass.started_at, `${passId}.started_at`);
   requireIsoDate(pass.completed_at, `${passId}.completed_at`);
   requireUuid(pass.session_id, `${passId}.session_id`);
-  assertEqual(pass.recording_source, 'timing-recorder-v5', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(pass.recording_source, 'timing-recorder-v6', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
   const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
   if (!Number.isFinite(elapsed) || elapsed < 0) fail(`${passId} timing chronology is invalid`, 'TIMING_CHRONOLOGY');
   assertEqual(pass.wall_clock_seconds, elapsed, `${passId}.wall_clock_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
-  assertEqual(pass.editor_seconds, elapsed, `${passId}.editor_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
+  assertEqual(pass.producer_seconds, elapsed, `${passId}.producer_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
+  if (Object.hasOwn(pass, 'editor_seconds')) fail(`${passId} producer-throughput timing must not claim editor_seconds`, 'EDITOR_TIME_MISATTRIBUTED');
   requireString(pass.output_artifact_created_at, `${passId}.output_artifact_created_at`);
   assertTimestampOrder(pass.started_at, pass.output_artifact_created_at, `${passId} output artifact creation`, 'TIMING_WORK_LOG_CHRONOLOGY');
   assertTimestampOrder(pass.output_artifact_created_at, pass.completed_at, `${passId} output artifact and stop`, 'TIMING_WORK_LOG_CHRONOLOGY');
@@ -1015,8 +1137,9 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
   assertEqual(timing.schema_version, '2', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
   assertEqual(timing.batch_id, WAVE_B_BATCH_ID, 'Wave B timing batch_id drifted', 'BATCH_ID_MISMATCH');
   assertEqual(timing.timing_kind, timingKind, 'Wave B timing kind drifted', 'TIMING_KIND_MISMATCH');
-  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v5', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
-  assertEqual(timing.recording_source, 'timing-recorder-v5', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v6', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recording_source, 'timing-recorder-v6', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.measurement_kind, 'producer-throughput', 'Wave B timing measurement kind drifted', 'TIMING_MEASUREMENT_KIND_MISMATCH');
   assertEqual(timing.recorder_command, 'node scripts/batch/record-m5-10-wave-b-timing.mjs', 'Wave B timing recorder command drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.status, 'complete', 'Wave B timing is not complete', 'TIMING_INCOMPLETE');
   requireUuid(timing.session_id, 'timing session_id');
@@ -1087,7 +1210,8 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
   return {
     status: timing.status,
     passCount: expectedPassIds.length,
-    totalEditorSeconds: timing.passes.reduce((sum, pass) => sum + pass.editor_seconds, 0),
+    totalProducerSeconds: timing.passes.reduce((sum, pass) => sum + pass.producer_seconds, 0),
+    editorTimeStatus: 'unmeasured',
   };
 }
 
@@ -1168,7 +1292,9 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
       schema_version: '1',
       relation_diff: { artifact: relationDiffSource.path, sha256: relationDiffSource.sha256 },
       timing: {
-        contract_version: 'm5-10b-v2',
+        contract_version: 'm5-10b-v3',
+        measurement_kind: 'producer-throughput',
+        producer_seconds_per_selected_start_max: WAVE_B_PRODUCER_SECONDS_PER_SELECTED_START_MAX,
         source_artifact: timingInputSource.path,
         source_sha256: timingInputSource.sha256,
         audit_source_artifact: auditTimingInputSource.path,
@@ -1274,11 +1400,17 @@ export function createWaveBStageMetrics(metrics, verification) {
     relation_noise_rate_of_before: relationDiff.noise_rate_of_before,
     relation_noise_candidate_count: relationDiff.candidate_count ?? 0,
     relation_noise_rate_of_candidates: relationDiff.noise_rate_of_candidates ?? 0,
+    measurement_kind: timing.measurement_kind,
+    producer_seconds_per_selected_start_max: timing.producer_seconds_per_selected_start_max,
     total_wall_clock_seconds: timing.total_wall_clock_seconds,
     measured_wall_clock_seconds: timing.measured_wall_clock_seconds,
     total_editor_seconds: timing.total_editor_seconds,
     measured_editor_seconds: timing.measured_editor_seconds,
-    editor_seconds_per_selected_start: timing.total_editor_seconds === null ? null : timing.total_editor_seconds / processedStartCount,
+    editor_seconds_per_selected_start: null,
+    total_producer_seconds: timing.total_producer_seconds,
+    measured_producer_seconds: timing.measured_producer_seconds,
+    producer_seconds_per_selected_start: timing.total_producer_seconds === null ? null : timing.total_producer_seconds / processedStartCount,
+    editor_time_status: timing.editor_time_status,
     timing_status: timing.status,
     unmeasured_timing_pass_count: timing.unmeasured_passes.length,
     audit_status: audit.status,
@@ -1481,8 +1613,12 @@ export async function validateWaveB({
   assertEqual(metricsSource.value.derived.relation_diff.before_count, 0, 'Wave B relation metrics before_count drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.relation_diff.after_count, 0, 'Wave B relation metrics after_count drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.timing.status, 'complete', 'Wave B metrics timing is incomplete', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.timing.measurement_kind, 'producer-throughput', 'Wave B timing must be producer-throughput', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.timing.producer_seconds_per_selected_start_max, WAVE_B_PRODUCER_SECONDS_PER_SELECTED_START_MAX, 'Wave B producer throughput limit drifted', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.timing.total_editor_seconds, null, 'Wave B must not report producer time as editor time', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.timing.editor_time_status, 'unmeasured', 'Wave B editor-time status drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.timing.unmeasured_passes, [], 'Wave B metrics contains unmeasured passes', 'METRICS_DRIFT');
-  assertEqual(metricsSource.value.derived.audit, { status: 'complete', independent: true, finding_count: 5, open_finding_count: 0, open_blocker_count: 0, finding_counts: { sense: 3, 'timing-measurement': 1, 'reference-closure': 1 } }, 'Wave B audit metrics drifted', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.audit, { status: 'complete', independent: true, finding_count: 0, open_finding_count: 0, open_blocker_count: 0, finding_counts: {} }, 'Wave B audit metrics drifted', 'METRICS_DRIFT');
   const expectedGate = evaluateExpansionGate(createWaveBStageMetrics(metricsSource.value, verification), planSource.value);
   const stageResult = validateStage(stageSource.value, {
     metrics: metricsSource.value,

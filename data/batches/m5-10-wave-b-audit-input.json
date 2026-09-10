@@ -7,16 +7,16 @@
     "verification_status": "verified",
     "actor_kind": "codex",
     "actor_id": "codex-wave-b-independent-audit",
-    "session_id": "dc4749a5-a91c-4f0a-934c-b106e644f9f5",
+    "session_id": "7aaa019f-fb77-48e4-ae2b-9566779df9de",
     "artifact": "data/batches/m5-10-wave-b-provenance-audit-20260909.json",
-    "sha256": "6fd22f77ab9917e1731222b38b73a96ba9a6c5994bb9f84b355cf71128a05a55",
+    "sha256": "0f776bd2629a699590f592bb0a826bc4268695dbf9100fa9763103819b2fe9a1",
     "note": "Wave B audit output is derived from recorder-owned post-freeze work rows over the frozen editorial staging."
   },
   "editorial_input_id": "m5-10-wave-b-editorial-input-20260909",
   "auditor_id": "codex-wave-b-independent-audit",
   "independent": true,
-  "created_at": "2026-09-10T03:48:42.635Z",
-  "completed_at": "2026-09-10T03:48:43.394Z",
+  "created_at": "2026-09-10T04:46:33.729Z",
+  "completed_at": "2026-09-10T04:46:35.571Z",
   "reviewed_record_ids": [
     "w629",
     "w630",
@@ -564,203 +564,26 @@
   "relation_reviews": [],
   "editorial_timing_artifact": {
     "path": "data/batches/m5-10-wave-b-timing-input.json",
-    "sha256": "663c7b69daca2d05a739a913ebca340ce9b9787ecc31186a987e12972daa0d1b",
-    "started_at": "2026-09-10T03:48:36.808Z",
-    "completed_at": "2026-09-10T03:48:42.348Z"
+    "sha256": "b4e321c26f58143382790e9040e6b7362dc7c012b9a5c5befd52277d354066da",
+    "started_at": "2026-09-10T04:46:24.299Z",
+    "completed_at": "2026-09-10T04:46:33.041Z"
   },
   "timing_artifact": {
     "path": "data/batches/m5-10-wave-b-audit-timing-input.json",
-    "sha256": "521610a4a9c05a9a3688a658153a2e0cd140b3a7ba14dd482bf8ce0e34074cb4",
-    "started_at": "2026-09-10T03:48:42.639Z",
-    "completed_at": "2026-09-10T03:48:43.287Z",
-    "audit_session_id": "dc4749a5-a91c-4f0a-934c-b106e644f9f5",
+    "sha256": "2112df860b48343b6df84eb51646f8e55f667c2d69984f009d7ca1078f3b128e",
+    "started_at": "2026-09-10T04:46:33.738Z",
+    "completed_at": "2026-09-10T04:46:35.257Z",
+    "audit_session_id": "7aaa019f-fb77-48e4-ae2b-9566779df9de",
     "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206"
   },
   "decision_artifact": {
     "path": "data/batches/m5-10-wave-b-audit-decisions-20260909.json",
-    "sha256": "51baee5c25c5972495177b5addf1b2f25e72acdd78de3b2727cf452afebbf430",
-    "created_at": "2026-09-10T03:48:43.390Z",
-    "finalized_at": "2026-09-10T03:48:43.392Z"
+    "sha256": "44abf46389f107eee73d57ee1185cd2da18717c0682244fd1b4417683a110cc9",
+    "created_at": "2026-09-10T04:46:35.568Z",
+    "finalized_at": "2026-09-10T04:46:35.569Z"
   },
   "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
   "status": "complete",
-  "findings": [
-    {
-      "id": "wave-b-audit-semantic-regressions",
-      "category": "sense",
-      "severity": "warning",
-      "status": "resolved",
-      "evidence_refs": [
-        "data/batches/m5-10-wave-b-semantic-regressions.json",
-        "w719",
-        "w734",
-        "w744",
-        "w746",
-        "w750",
-        "w753"
-      ],
-      "target_record_ids": [
-        "w719",
-        "w734",
-        "w744",
-        "w746",
-        "w750",
-        "w753"
-      ],
-      "defect": "Six selected proposal records collapsed known homonym or polysemy distinctions into one sense.",
-      "remediation": "Split the records into curated sense sets and bind each correction to a named semantic regression case and contrast pair.",
-      "diff_evidence": {
-        "kind": "canonical-jsonl-sense-diff",
-        "before": {
-          "collapsed_record_count": 6
-        },
-        "after": {
-          "split_record_count": 6
-        },
-        "changed_fields": [
-          "senses",
-          "boundary_evidence.contrasts"
-        ]
-      },
-      "note": "Resolved by six corrected decision records bound to the declaration-driven semantic corpus."
-    },
-    {
-      "id": "wave-b-audit-boundary-evidence",
-      "category": "sense",
-      "severity": "warning",
-      "status": "resolved",
-      "evidence_refs": [
-        "data/batches/m5-10-wave-b-editorial-input.json",
-        "physical-figurative",
-        "homonym-pos",
-        "compound-spaced-phrase"
-      ],
-      "target_record_ids": [
-        "w719",
-        "w734",
-        "w744",
-        "w746",
-        "w750",
-        "w753"
-      ],
-      "defect": "Blanket applicable boundaries with empty contrasts made record-level semantic applicability unverifiable.",
-      "remediation": "Record boundary-specific applicability, candidate senses, and concrete contrasts for every multi-sense distinction.",
-      "diff_evidence": {
-        "kind": "editorial-boundary-evidence-contract",
-        "before": {
-          "empty_contrast_record_count": 150
-        },
-        "after": {
-          "concrete_contrast_case_count": 6
-        },
-        "changed_fields": [
-          "boundary_evidence.applicability",
-          "boundary_evidence.contrasts",
-          "boundary_evidence.rationale"
-        ]
-      },
-      "note": "Resolved by the record-level boundary validator and non-blanket evidence producer."
-    },
-    {
-      "id": "wave-b-audit-timing-artifact",
-      "category": "timing-measurement",
-      "severity": "warning",
-      "status": "resolved",
-      "evidence_refs": [
-        "data/batches/m5-10-wave-b-timing-input.json",
-        "data/batches/m5-10-wave-b-timing/04-final-audit.jsonl",
-        "data/batches/m5-10-wave-b-timing/06-post-freeze-audit.jsonl"
-      ],
-      "target_record_ids": [
-        "w719"
-      ],
-      "defect": "The prior timing proof accepted pre-finalized decision artifacts and did not prove that decision work occurred inside the measured pass.",
-      "remediation": "Run a producer with the unit input during the timed interval, record its execution binding, and reconstruct decisions from those rows only after stop.",
-      "diff_evidence": {
-        "kind": "timing-recorder-producer-contract",
-        "before": {
-          "direct_payload_injection": true
-        },
-        "after": {
-          "direct_payload_injection": false,
-          "producer_execution_binding": true
-        },
-        "changed_fields": [
-          "recorder_version",
-          "producer_execution",
-          "decision_artifact_chronology"
-        ]
-      },
-      "note": "Resolved by v5 timing sessions that invoke the producer during each pass and bind its input/output execution."
-    },
-    {
-      "id": "wave-b-audit-finding-evidence",
-      "category": "sense",
-      "severity": "info",
-      "status": "resolved",
-      "evidence_refs": [
-        "data/batches/m5-10-wave-b-audit-decisions-20260909.json",
-        "coverage.semantic_regression_case_ids",
-        "target_record_ids"
-      ],
-      "target_record_ids": [
-        "w750"
-      ],
-      "defect": "The previous audit findings were generic checklist statements without a target record or remediation diff.",
-      "remediation": "Separate coverage declarations from findings and require affected records plus non-empty remediation evidence.",
-      "diff_evidence": {
-        "kind": "audit-finding-evidence-contract",
-        "before": {
-          "resolved_findings_without_target_or_diff": 5
-        },
-        "after": {
-          "resolved_findings_without_target_or_diff": 0
-        },
-        "changed_fields": [
-          "coverage",
-          "findings.target_record_ids",
-          "findings.diff_evidence"
-        ]
-      },
-      "note": "Resolved by the structured audit decision producer and schema."
-    },
-    {
-      "id": "wave-b-audit-canonical-regeneration",
-      "category": "reference-closure",
-      "severity": "info",
-      "status": "resolved",
-      "evidence_refs": [
-        "data/canonical/m5-10-wave-b.jsonl",
-        "data/batches/m5-10-wave-b-preimport-inventory.json",
-        "sense_count"
-      ],
-      "target_record_ids": [
-        "w719",
-        "w734",
-        "w744",
-        "w746",
-        "w750",
-        "w753"
-      ],
-      "defect": "The canonical shard and downstream counts had to be regenerated after semantic review corrections.",
-      "remediation": "Regenerate canonical JSONL, inventory, SQLite, metrics, and gate artifacts from the corrected reviewed staging.",
-      "diff_evidence": {
-        "kind": "canonical-regeneration-count-diff",
-        "before": {
-          "imported_sense_count": 156
-        },
-        "after": {
-          "imported_sense_count": 157
-        },
-        "changed_fields": [
-          "canonical_jsonl",
-          "inventory",
-          "dictionary.sqlite",
-          "metrics.canonical_import"
-        ]
-      },
-      "note": "Resolved by rebuilding all derived outputs after the corrected staging freeze."
-    }
-  ],
-  "note": "Post-freeze audit decision coverage and findings were recorded as work rows before the timing stop; the decision artifact is finalized afterward."
+  "findings": [],
+  "note": "Coverage is derived from the audit inputs and timing evidence; no independent comparison finding was produced."
 }
