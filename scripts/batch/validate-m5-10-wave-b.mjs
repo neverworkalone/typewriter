@@ -95,6 +95,7 @@ export const DEFAULT_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-1
 export const DEFAULT_PLAN_PATH = path.join(BATCH_DIRECTORY, 'm5-8-expansion-plan.json');
 export const DEFAULT_AUTHORIZATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-authorization.json');
 export const DEFAULT_SEMANTIC_REGRESSION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-semantic-regressions.json');
+export const DEFAULT_REPORT_PATH = path.join(REPOSITORY_DIRECTORY, 'docs/m5-10-wave-b-report.md');
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
@@ -1348,6 +1349,48 @@ async function readJsonSource(filePath, label) {
   }
 }
 
+async function readTextSource(filePath, label) {
+  try {
+    const text = await readFile(filePath, 'utf8');
+    if (text.trim().length === 0) fail(`${label} is empty: ${filePath}`, 'INVALID_INPUT');
+    return text;
+  } catch (error) {
+    if (error instanceof WaveBValidationError) throw error;
+    if (error.code === 'ENOENT') fail(`${label} does not exist: ${filePath}`, 'MISSING_INPUT');
+    throw error;
+  }
+}
+
+export function validateWaveBReport(reportText, {
+  gateStatus,
+  decision,
+  editorTimeStatus,
+  totalEditorSeconds,
+} = {}) {
+  if (typeof reportText !== 'string' || reportText.trim().length === 0) {
+    fail('Wave B report must be non-empty text', 'REPORT_RESULT_MISSING');
+  }
+  const resultHeading = /^## Result\s*$/mu.exec(reportText);
+  if (!resultHeading) fail('Wave B report is missing its Result section', 'REPORT_RESULT_MISSING');
+  const resultStart = resultHeading.index + resultHeading[0].length;
+  const nextHeading = /^##\s+/mu.exec(reportText.slice(resultStart));
+  const resultEnd = nextHeading ? resultStart + nextHeading.index : reportText.length;
+  const result = reportText.slice(resultStart, resultEnd);
+  const gateStatements = [...result.matchAll(/The source-derived gate is `([^`]+)`\./gu)].map((match) => match[1]);
+  if (gateStatements.length !== 1 || gateStatements[0] !== decision) {
+    fail(`Wave B report Result gate disagrees with the stage artifact: expected ${decision}`, 'REPORT_GATE_MISMATCH');
+  }
+  if (!result.includes(`\`gate_status: ${gateStatus}\``) || !result.includes(`\`decision: ${decision}\``)) {
+    fail('Wave B report Result does not expose the stage gate status and decision', 'REPORT_GATE_MISMATCH');
+  }
+  const expectedEditorStatus = `\`editor_time_status: ${editorTimeStatus}\``;
+  const expectedEditorSeconds = `\`total_editor_seconds: ${totalEditorSeconds === null ? 'null' : totalEditorSeconds}\``;
+  if (!result.includes(expectedEditorStatus) || !result.includes(expectedEditorSeconds)) {
+    fail('Wave B report Result does not expose the stage editor-time evidence', 'REPORT_TIMING_MISMATCH');
+  }
+  return { gate_status: gateStatus, decision, editor_time_status: editorTimeStatus, total_editor_seconds: totalEditorSeconds };
+}
+
 function mergeReferenceRecords(...recordLists) {
   const byId = new Map();
   for (const list of recordLists) {
@@ -1497,6 +1540,7 @@ export async function validateWaveB({
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
   planPath = DEFAULT_PLAN_PATH,
   authorizationPath = DEFAULT_AUTHORIZATION_PATH,
+  reportPath = DEFAULT_REPORT_PATH,
   stagedRecordsPath,
   proposalPath,
 } = {}) {
@@ -1522,6 +1566,7 @@ export async function validateWaveB({
     readCanonicalRecords(resolvedStagedRecordsPath),
     hashCanonicalDirectory(canonicalDirectory),
   ]);
+  const reportText = await readTextSource(reportPath, 'Wave B report');
   const editorialDecisionPath = path.resolve(REPOSITORY_DIRECTORY, editorialSource.value.decision_artifact.path);
   const auditDecisionPath = path.resolve(REPOSITORY_DIRECTORY, auditSource.value.decision_artifact.path);
   const [editorialDecisionSource, auditDecisionSource] = await Promise.all([
@@ -1636,6 +1681,12 @@ export async function validateWaveB({
     authorizationSha256: authorizationSource.sha256,
     expectedGate,
   });
+  validateWaveBReport(reportText, {
+    gateStatus: stageSource.value.gate_status,
+    decision: stageSource.value.decision,
+    editorTimeStatus: stageSource.value.metrics.editor_time_status,
+    totalEditorSeconds: stageSource.value.metrics.total_editor_seconds,
+  });
   const previousStagePath = path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2.json');
   const previousStage = JSON.parse(await readFile(previousStagePath, 'utf8'));
   const previousStageSha256 = sha256Bytes(await readFile(previousStagePath));
@@ -1691,6 +1742,7 @@ if (isMainModule) {
     baseCanonicalDirectory: args['base-canonical-dir'] ?? DEFAULT_BASE_CANONICAL_DIRECTORY,
     planPath: args.plan ?? DEFAULT_PLAN_PATH,
     authorizationPath: args.authorization ?? DEFAULT_AUTHORIZATION_PATH,
+    reportPath: args.report ?? DEFAULT_REPORT_PATH,
     stagedRecordsPath: args.staged,
     proposalPath: args.proposal,
   })

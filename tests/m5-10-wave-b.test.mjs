@@ -12,6 +12,7 @@ import {
   DEFAULT_AUDIT_INPUT_PATH,
   DEFAULT_METRICS_PATH,
   DEFAULT_OUTPUT_PATH,
+  DEFAULT_REPORT_PATH,
   DEFAULT_RELATION_DIFF_PATH,
   DEFAULT_STAGE_PATH,
   DEFAULT_TIMING_INPUT_PATH,
@@ -21,6 +22,7 @@ import {
   deriveWaveBAuditDecisionFromTiming,
   deriveWaveBEditorialRecordsFromTiming,
   validateWaveBChronology,
+  validateWaveBReport,
   validateWaveBSemanticRegression,
   validateWaveB,
   validateWaveBTimingInput,
@@ -107,6 +109,24 @@ test('producer throughput cannot replace the fixed editor-time expansion gate', 
   assert.equal(gate.quality_passes.editor_seconds_per_selected_start, false);
   assert.equal(gate.gate_status, 'fail');
   assert.equal(gate.decision, 'HOLD PROCESS');
+});
+
+test('Wave B rejects a report Result that contradicts the stage artifact', async () => {
+  const report = await readFile(DEFAULT_REPORT_PATH, 'utf8');
+  const mismatchedReport = report.replace(
+    'The source-derived gate is `HOLD PROCESS`.',
+    'The source-derived gate is `APPROVE BOUNDED`.',
+  );
+  assert.notEqual(mismatchedReport, report);
+  assert.throws(
+    () => validateWaveBReport(mismatchedReport, {
+      gateStatus: 'fail',
+      decision: 'HOLD PROCESS',
+      editorTimeStatus: 'unmeasured',
+      totalEditorSeconds: null,
+    }),
+    (error) => error instanceof WaveBValidationError && error.code === 'REPORT_GATE_MISMATCH',
+  );
 });
 
 test('Wave B validates post-freeze timing against the runtime staging path', async () => {

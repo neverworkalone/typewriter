@@ -8,11 +8,15 @@ authorization as digest-bound inputs, reviews 170 selected starts, and imports
 exactly 150 of them: 144 are included and 6 are sense-corrected. The canonical
 snapshot advances from 628 to 778 starts and from 809 to 966 senses.
 
-The source-derived gate is `APPROVE BOUNDED`. Timing is complete, the separate
-post-freeze audit has zero open blockers, canonical integrity and deterministic
-SQLite checks pass, and the search/product regression passes. The stage does
-not create or authorize a later task: `ready_to_create: false`,
-`next_stage_created: false`, and `next_stage_authorized: false`.
+The source-derived gate is `HOLD PROCESS`. The stage artifact is authoritative:
+`gate_status: fail` and `decision: HOLD PROCESS`. Timing is complete, the
+separate post-freeze audit has zero open blockers, canonical integrity and
+deterministic SQLite checks pass, and the search/product regression passes. The
+fixed editor-time criterion remains unproven because the stage records
+`editor_time_status: unmeasured` and `total_editor_seconds: null`; producer
+throughput is an operational check only. The stage does not create or authorize
+a later task: `ready_to_create: false`, `next_stage_created: false`, and
+`next_stage_authorized: false`.
 
 This is a Codex-authored editorial and audit record. The verification artifact
 keeps `editorial_review_complete: true` and
