@@ -6,16 +6,16 @@
   "inventory_revision": "m5-11",
   "source_kind": "codex-authored",
   "status": "complete",
-  "created_at": "2026-09-10T02:01:09.696Z",
-  "completed_at": "2026-09-10T02:01:12.894Z",
+  "created_at": "2026-09-10T02:57:40.541Z",
+  "completed_at": "2026-09-10T02:57:43.625Z",
   "provenance": {
     "verification_status": "verified",
     "actor_kind": "codex",
     "actor_id": "codex-wave-b-editorial",
-    "session_id": "e79c5188-c89e-42f5-abdb-61e5ccc6d2dc",
+    "session_id": "0210cd3f-c48c-4e25-84eb-a6bb6a91c71f",
     "artifact": "data/batches/m5-10-wave-b-provenance-editorial-20260909.json",
-    "sha256": "08b378b7b8aa0bfdc7e1bd17ed42615478ef3457950a5a94a410caad15efe6fc",
-    "note": "Wave B editorial output is recorded from the separately supplied decision artifact and frozen staging bytes."
+    "sha256": "2b655118d54f3bd1dcecc4481376fd6b6733458faa0028824e71f5772f99444c",
+    "note": "Wave B editorial output is derived from recorder-owned record-level work rows and the frozen staging bytes."
   },
   "sense_review": {
     "status": "complete",
@@ -48,15 +48,15 @@
   },
   "timing_artifact": {
     "path": "data/batches/m5-10-wave-b-timing-input.json",
-    "sha256": "b62f6ef49d9abbda7c282a4e6b2e02ad8c044bccc8fa2b2a92fe69523a69def8",
-    "started_at": "2026-09-10T02:01:09.709Z",
-    "completed_at": "2026-09-10T02:01:12.845Z"
+    "sha256": "79ea7b99cc8be8523c53a576e3fc95e43f0018f42fcda337209ee744665d9d3b",
+    "started_at": "2026-09-10T02:57:40.555Z",
+    "completed_at": "2026-09-10T02:57:43.552Z"
   },
   "decision_artifact": {
     "path": "data/batches/m5-10-wave-b-editorial-decisions-20260909.json",
-    "sha256": "11e4e0e59ae6899e2d5d74f6d2bf1fc07d480f02999e242550ebb9b6bc13dbf6",
-    "created_at": "2026-09-10T02:01:09.703Z",
-    "finalized_at": "2026-09-10T02:01:09.704Z"
+    "sha256": "c4b985ef6b63393317ffaf4df2b36c4d054cf87d6344cb0dd2da540e3050e337",
+    "created_at": "2026-09-10T02:57:43.620Z",
+    "finalized_at": "2026-09-10T02:57:43.621Z"
   },
   "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
   "records": [

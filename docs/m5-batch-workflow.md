@@ -249,9 +249,12 @@ held, and 10 are deferred. The 20-row buffer is therefore not counted as
 completed sense review; the canonical snapshot advances exactly from 628 to
 778 starts and contains 157 imported senses.
 
-The Wave B editorial and audit completion recorders consume separately supplied
-decision artifacts. They do not generate record decisions, relation findings, or
-an audit verdict. The editorial input records all six sense-boundary checks for
+The Wave B editorial and audit completion recorders generate their decision
+artifacts only after the corresponding timing pass stops. The artifacts are
+reconstructed 1:1 from recorder-owned work rows: editorial boundary and record
+decisions from the editorial timing log, and relation/audit coverage and
+findings from the independent post-freeze timing log. A pre-finalized decision
+artifact is rejected. The editorial input records all six sense-boundary checks for
 the 150 imported starts; six known homonym/polysemy records are corrected into
 explicit sense sets and the 12-case declaration-driven semantic regression
 corpus is checked during proposal preflight and canonical validation. The relation diff remains empty
@@ -262,7 +265,7 @@ resolved and it leaves zero open blockers. The tracked verification artifact exp
 `human_editorial_review_complete: false`.
 
 The five editorial timing passes and the distinct post-freeze audit pass are
-complete and chronological. Their source-derived total is 3.415 seconds across
+complete and chronological. Their source-derived total is 3.243 seconds across
 1,562 recorder-created work units and 160 processed starts. This is the
 recorder-bound measured interval used by the gate, not a claim about human effort
 or a substitute for semantic review. The

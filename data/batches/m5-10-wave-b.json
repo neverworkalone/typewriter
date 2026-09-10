@@ -9,13 +9,13 @@
     "prompt_version": "not-used-for-provenance",
     "draft_sha256": "60a430455dc30c93f8497326654676f04489cf5a316693c01ceb661f6b9f3765"
   },
-  "generated_at": "2026-09-10T02:01:09.696Z",
+  "generated_at": "2026-09-10T02:57:40.541Z",
   "review": {
     "status": "complete",
     "reviewer": "codex-wave-b-editorial",
-    "completed_at": "2026-09-10T02:01:12.894Z",
+    "completed_at": "2026-09-10T02:57:43.625Z",
     "input_artifact": "data/batches/m5-10-wave-b-editorial-input.json",
-    "input_sha256": "802ceba60a96f6b3399b1101579b99aea71af85e45e7c0f1fd13cc17212145ad",
+    "input_sha256": "691095c06d7fc28397df39beb3fbde4f3d54aff5a6cb121c58a99607c42cca0b",
     "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206"
   },
   "sense_review": {
@@ -9464,21 +9464,21 @@
     "timing": {
       "contract_version": "m5-10b-v2",
       "source_artifact": "data/batches/m5-10-wave-b-timing-input.json",
-      "source_sha256": "b62f6ef49d9abbda7c282a4e6b2e02ad8c044bccc8fa2b2a92fe69523a69def8",
+      "source_sha256": "79ea7b99cc8be8523c53a576e3fc95e43f0018f42fcda337209ee744665d9d3b",
       "audit_source_artifact": "data/batches/m5-10-wave-b-audit-timing-input.json",
-      "audit_source_sha256": "603484006906de2ba1ab8a87a563cccfedd9874badb0423f6836c1a84b082dd2",
+      "audit_source_sha256": "448ce214a7d46fd948af82ee6e00e39d9789f46f7f233a7977e3a3701687c999",
       "status": "complete",
       "passes": [
         {
           "id": "target-preparation",
           "status": "complete",
-          "started_at": "2026-09-10T02:01:09.709Z",
-          "session_id": "5abe5a1c-2a30-4465-853d-7f37cf1fa5c5",
-          "recording_source": "timing-recorder-v3",
-          "output_artifact_created_at": "2026-09-10T02:01:09.710Z",
-          "completed_at": "2026-09-10T02:01:09.828Z",
-          "wall_clock_seconds": 0.119,
-          "editor_seconds": 0.119,
+          "started_at": "2026-09-10T02:57:40.555Z",
+          "session_id": "b48a9662-5d59-4bb3-9e5f-68b193d7964a",
+          "recording_source": "timing-recorder-v4",
+          "output_artifact_created_at": "2026-09-10T02:57:40.556Z",
+          "completed_at": "2026-09-10T02:57:40.653Z",
+          "wall_clock_seconds": 0.098,
+          "editor_seconds": 0.098,
           "work_evidence": {
             "unit_kind": "selected-target",
             "unit_count": 170,
@@ -9827,18 +9827,18 @@
               "m5-10-wave-b-timing-event-0171"
             ],
             "before_sha256": "7bf5f69776bb2184bc1fb0a87a993f737603ddd5362eabfd6af9c8befbd76e95",
-            "after_sha256": "20e5b01233e5f623ba6dac97d652bd9b3b9ccd022381daf00fda27522ac54376",
+            "after_sha256": "a3663c1fe409d29b8913aa45b24853f03b2b56fd2fea50d2ff32de69ddcfa873",
             "input_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/00-seed.jsonl",
               "sha256": "7bf5f69776bb2184bc1fb0a87a993f737603ddd5362eabfd6af9c8befbd76e95"
             },
             "output_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/01-target-preparation.jsonl",
-              "sha256": "20e5b01233e5f623ba6dac97d652bd9b3b9ccd022381daf00fda27522ac54376"
+              "sha256": "a3663c1fe409d29b8913aa45b24853f03b2b56fd2fea50d2ff32de69ddcfa873"
             },
             "work_log": {
               "path": "data/batches/m5-10-wave-b-timing/01-target-preparation.jsonl",
-              "sha256": "20e5b01233e5f623ba6dac97d652bd9b3b9ccd022381daf00fda27522ac54376"
+              "sha256": "a3663c1fe409d29b8913aa45b24853f03b2b56fd2fea50d2ff32de69ddcfa873"
             },
             "note": "Recorder-created cumulative JSONL work log with 170 selected-target unit(s)."
           }
@@ -9846,13 +9846,13 @@
         {
           "id": "initial-review",
           "status": "complete",
-          "started_at": "2026-09-10T02:01:09.830Z",
-          "session_id": "0d4462e8-940b-4f89-a65b-2a970cb10ba6",
-          "recording_source": "timing-recorder-v3",
-          "output_artifact_created_at": "2026-09-10T02:01:09.830Z",
-          "completed_at": "2026-09-10T02:01:11.753Z",
-          "wall_clock_seconds": 1.923,
-          "editor_seconds": 1.923,
+          "started_at": "2026-09-10T02:57:40.660Z",
+          "session_id": "db9a286f-222e-4795-9568-96eec3dcfe3c",
+          "recording_source": "timing-recorder-v4",
+          "output_artifact_created_at": "2026-09-10T02:57:40.660Z",
+          "completed_at": "2026-09-10T02:57:42.475Z",
+          "wall_clock_seconds": 1.815,
+          "editor_seconds": 1.815,
           "work_evidence": {
             "unit_kind": "boundary-check",
             "unit_count": 900,
@@ -11660,19 +11660,19 @@
               "m5-10-wave-b-timing-event-1072",
               "m5-10-wave-b-timing-event-1073"
             ],
-            "before_sha256": "20e5b01233e5f623ba6dac97d652bd9b3b9ccd022381daf00fda27522ac54376",
-            "after_sha256": "07ccd25951c505456fa0464bc59fd5fb86ceaa419cea4628f7ee223f5d488923",
+            "before_sha256": "a3663c1fe409d29b8913aa45b24853f03b2b56fd2fea50d2ff32de69ddcfa873",
+            "after_sha256": "deb1e6ca280aaf0d9ed9d60d62402986b1f80d5ca9125222f1dcff7cc4081c2f",
             "input_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/01-target-preparation.jsonl",
-              "sha256": "20e5b01233e5f623ba6dac97d652bd9b3b9ccd022381daf00fda27522ac54376"
+              "sha256": "a3663c1fe409d29b8913aa45b24853f03b2b56fd2fea50d2ff32de69ddcfa873"
             },
             "output_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/02-initial-review.jsonl",
-              "sha256": "07ccd25951c505456fa0464bc59fd5fb86ceaa419cea4628f7ee223f5d488923"
+              "sha256": "deb1e6ca280aaf0d9ed9d60d62402986b1f80d5ca9125222f1dcff7cc4081c2f"
             },
             "work_log": {
               "path": "data/batches/m5-10-wave-b-timing/02-initial-review.jsonl",
-              "sha256": "07ccd25951c505456fa0464bc59fd5fb86ceaa419cea4628f7ee223f5d488923"
+              "sha256": "deb1e6ca280aaf0d9ed9d60d62402986b1f80d5ca9125222f1dcff7cc4081c2f"
             },
             "note": "Recorder-created cumulative JSONL work log with 900 boundary-check unit(s)."
           }
@@ -11680,13 +11680,13 @@
         {
           "id": "feedback-fixes",
           "status": "complete",
-          "started_at": "2026-09-10T02:01:11.762Z",
-          "session_id": "15af87c8-4369-4537-979c-bd4e4fc6a156",
-          "recording_source": "timing-recorder-v3",
-          "output_artifact_created_at": "2026-09-10T02:01:11.763Z",
-          "completed_at": "2026-09-10T02:01:12.203Z",
-          "wall_clock_seconds": 0.441,
-          "editor_seconds": 0.441,
+          "started_at": "2026-09-10T02:57:42.488Z",
+          "session_id": "ccafd167-968a-4bed-8934-dbff40247e1a",
+          "recording_source": "timing-recorder-v4",
+          "output_artifact_created_at": "2026-09-10T02:57:42.489Z",
+          "completed_at": "2026-09-10T02:57:42.914Z",
+          "wall_clock_seconds": 0.426,
+          "editor_seconds": 0.426,
           "work_evidence": {
             "unit_kind": "sense-correction",
             "unit_count": 150,
@@ -11994,19 +11994,19 @@
               "m5-10-wave-b-timing-event-1224",
               "m5-10-wave-b-timing-event-1225"
             ],
-            "before_sha256": "07ccd25951c505456fa0464bc59fd5fb86ceaa419cea4628f7ee223f5d488923",
-            "after_sha256": "71c9f56e401c6e8318627f5bb1fb39802a0ddad11b89f109b54612899f2fbd0d",
+            "before_sha256": "deb1e6ca280aaf0d9ed9d60d62402986b1f80d5ca9125222f1dcff7cc4081c2f",
+            "after_sha256": "307d4fe6bfd415cba804b3eb4b7708df895b19684ee4871ec8ac022b0cfbef0f",
             "input_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/02-initial-review.jsonl",
-              "sha256": "07ccd25951c505456fa0464bc59fd5fb86ceaa419cea4628f7ee223f5d488923"
+              "sha256": "deb1e6ca280aaf0d9ed9d60d62402986b1f80d5ca9125222f1dcff7cc4081c2f"
             },
             "output_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/03-feedback-fixes.jsonl",
-              "sha256": "71c9f56e401c6e8318627f5bb1fb39802a0ddad11b89f109b54612899f2fbd0d"
+              "sha256": "307d4fe6bfd415cba804b3eb4b7708df895b19684ee4871ec8ac022b0cfbef0f"
             },
             "work_log": {
               "path": "data/batches/m5-10-wave-b-timing/03-feedback-fixes.jsonl",
-              "sha256": "71c9f56e401c6e8318627f5bb1fb39802a0ddad11b89f109b54612899f2fbd0d"
+              "sha256": "307d4fe6bfd415cba804b3eb4b7708df895b19684ee4871ec8ac022b0cfbef0f"
             },
             "note": "Recorder-created cumulative JSONL work log with 150 sense-correction unit(s)."
           }
@@ -12014,13 +12014,13 @@
         {
           "id": "final-audit",
           "status": "complete",
-          "started_at": "2026-09-10T02:01:12.209Z",
-          "session_id": "f1f3acbe-2afe-4ed0-9e10-08788031c74d",
-          "recording_source": "timing-recorder-v3",
-          "output_artifact_created_at": "2026-09-10T02:01:12.209Z",
-          "completed_at": "2026-09-10T02:01:12.751Z",
-          "wall_clock_seconds": 0.542,
-          "editor_seconds": 0.542,
+          "started_at": "2026-09-10T02:57:42.930Z",
+          "session_id": "ba98547d-4a6d-4b51-8170-9fee59252009",
+          "recording_source": "timing-recorder-v4",
+          "output_artifact_created_at": "2026-09-10T02:57:42.931Z",
+          "completed_at": "2026-09-10T02:57:43.454Z",
+          "wall_clock_seconds": 0.524,
+          "editor_seconds": 0.524,
           "work_evidence": {
             "unit_kind": "final-audit-item",
             "unit_count": 150,
@@ -12328,19 +12328,19 @@
               "m5-10-wave-b-timing-event-1376",
               "m5-10-wave-b-timing-event-1377"
             ],
-            "before_sha256": "71c9f56e401c6e8318627f5bb1fb39802a0ddad11b89f109b54612899f2fbd0d",
-            "after_sha256": "6e605e23bbc496f1f448bb4b52dfe13160fa931d6f68219e6653a253ed6821d1",
+            "before_sha256": "307d4fe6bfd415cba804b3eb4b7708df895b19684ee4871ec8ac022b0cfbef0f",
+            "after_sha256": "ba54f6e18b29cc53d4ee56043171cea3c034b08988158b4e35ce44ed21b89a2d",
             "input_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/03-feedback-fixes.jsonl",
-              "sha256": "71c9f56e401c6e8318627f5bb1fb39802a0ddad11b89f109b54612899f2fbd0d"
+              "sha256": "307d4fe6bfd415cba804b3eb4b7708df895b19684ee4871ec8ac022b0cfbef0f"
             },
             "output_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/04-final-audit.jsonl",
-              "sha256": "6e605e23bbc496f1f448bb4b52dfe13160fa931d6f68219e6653a253ed6821d1"
+              "sha256": "ba54f6e18b29cc53d4ee56043171cea3c034b08988158b4e35ce44ed21b89a2d"
             },
             "work_log": {
               "path": "data/batches/m5-10-wave-b-timing/04-final-audit.jsonl",
-              "sha256": "6e605e23bbc496f1f448bb4b52dfe13160fa931d6f68219e6653a253ed6821d1"
+              "sha256": "ba54f6e18b29cc53d4ee56043171cea3c034b08988158b4e35ce44ed21b89a2d"
             },
             "note": "Recorder-created cumulative JSONL work log with 150 final-audit-item unit(s)."
           }
@@ -12348,13 +12348,13 @@
         {
           "id": "held-rejected",
           "status": "complete",
-          "started_at": "2026-09-10T02:01:12.762Z",
-          "session_id": "3b628e68-195d-48c3-a99c-b1a41a7286ae",
-          "recording_source": "timing-recorder-v3",
-          "output_artifact_created_at": "2026-09-10T02:01:12.763Z",
-          "completed_at": "2026-09-10T02:01:12.845Z",
-          "wall_clock_seconds": 0.083,
-          "editor_seconds": 0.083,
+          "started_at": "2026-09-10T02:57:43.473Z",
+          "session_id": "d0f8aa4c-4820-427a-9721-9b9206050f21",
+          "recording_source": "timing-recorder-v4",
+          "output_artifact_created_at": "2026-09-10T02:57:43.474Z",
+          "completed_at": "2026-09-10T02:57:43.552Z",
+          "wall_clock_seconds": 0.079,
+          "editor_seconds": 0.079,
           "work_evidence": {
             "unit_kind": "buffer-decision",
             "unit_count": 20,
@@ -12402,19 +12402,19 @@
               "m5-10-wave-b-timing-event-1398",
               "m5-10-wave-b-timing-event-1399"
             ],
-            "before_sha256": "6e605e23bbc496f1f448bb4b52dfe13160fa931d6f68219e6653a253ed6821d1",
-            "after_sha256": "ebde2b8794ecf170329cf50b5b3f9fcb7492133467a4cf444ebcfe211f10f36e",
+            "before_sha256": "ba54f6e18b29cc53d4ee56043171cea3c034b08988158b4e35ce44ed21b89a2d",
+            "after_sha256": "0188de657993bce4fa0c985617b54f7903a61da333094712fdfb6481d6fcf3f0",
             "input_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/04-final-audit.jsonl",
-              "sha256": "6e605e23bbc496f1f448bb4b52dfe13160fa931d6f68219e6653a253ed6821d1"
+              "sha256": "ba54f6e18b29cc53d4ee56043171cea3c034b08988158b4e35ce44ed21b89a2d"
             },
             "output_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/05-held-rejected.jsonl",
-              "sha256": "ebde2b8794ecf170329cf50b5b3f9fcb7492133467a4cf444ebcfe211f10f36e"
+              "sha256": "0188de657993bce4fa0c985617b54f7903a61da333094712fdfb6481d6fcf3f0"
             },
             "work_log": {
               "path": "data/batches/m5-10-wave-b-timing/05-held-rejected.jsonl",
-              "sha256": "ebde2b8794ecf170329cf50b5b3f9fcb7492133467a4cf444ebcfe211f10f36e"
+              "sha256": "0188de657993bce4fa0c985617b54f7903a61da333094712fdfb6481d6fcf3f0"
             },
             "note": "Recorder-created cumulative JSONL work log with 20 buffer-decision unit(s)."
           }
@@ -12422,13 +12422,13 @@
         {
           "id": "post-freeze-audit",
           "status": "complete",
-          "started_at": "2026-09-10T02:01:13.020Z",
-          "session_id": "f50ef172-3a27-4d54-b487-4c8bf3b61710",
-          "recording_source": "timing-recorder-v3",
-          "output_artifact_created_at": "2026-09-10T02:01:13.021Z",
-          "completed_at": "2026-09-10T02:01:13.327Z",
-          "wall_clock_seconds": 0.307,
-          "editor_seconds": 0.307,
+          "started_at": "2026-09-10T02:57:43.733Z",
+          "session_id": "8e407a65-6ed3-4e25-b2e7-ea41e479c161",
+          "recording_source": "timing-recorder-v4",
+          "output_artifact_created_at": "2026-09-10T02:57:43.734Z",
+          "completed_at": "2026-09-10T02:57:44.034Z",
+          "wall_clock_seconds": 0.301,
+          "editor_seconds": 0.301,
           "work_evidence": {
             "unit_kind": "post-freeze-audit-item",
             "unit_count": 172,
@@ -12780,30 +12780,30 @@
               "m5-10-wave-b-timing-event-0172",
               "m5-10-wave-b-timing-event-0173"
             ],
-            "before_sha256": "ebde2b8794ecf170329cf50b5b3f9fcb7492133467a4cf444ebcfe211f10f36e",
-            "after_sha256": "c1fb36e1c6d4c6340cea04d3b5fa46d5321fd1ce6366f76d74e4728beba73c7c",
+            "before_sha256": "0188de657993bce4fa0c985617b54f7903a61da333094712fdfb6481d6fcf3f0",
+            "after_sha256": "e97e77d51ab390cbb2b5385efbd122a29fc8f1dad6671f0a486659f1ae658e67",
             "input_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/05-held-rejected.jsonl",
-              "sha256": "ebde2b8794ecf170329cf50b5b3f9fcb7492133467a4cf444ebcfe211f10f36e"
+              "sha256": "0188de657993bce4fa0c985617b54f7903a61da333094712fdfb6481d6fcf3f0"
             },
             "output_artifact": {
               "path": "data/batches/m5-10-wave-b-timing/06-post-freeze-audit.jsonl",
-              "sha256": "c1fb36e1c6d4c6340cea04d3b5fa46d5321fd1ce6366f76d74e4728beba73c7c"
+              "sha256": "e97e77d51ab390cbb2b5385efbd122a29fc8f1dad6671f0a486659f1ae658e67"
             },
             "work_log": {
               "path": "data/batches/m5-10-wave-b-timing/06-post-freeze-audit.jsonl",
-              "sha256": "c1fb36e1c6d4c6340cea04d3b5fa46d5321fd1ce6366f76d74e4728beba73c7c"
+              "sha256": "e97e77d51ab390cbb2b5385efbd122a29fc8f1dad6671f0a486659f1ae658e67"
             },
             "note": "Recorder-created cumulative JSONL work log with 172 post-freeze-audit-item unit(s)."
           },
-          "audit_session_id": "9783c448-1c2f-4143-8c57-ef885c23d573",
+          "audit_session_id": "f0bf1cee-fc2d-4f22-95ea-4349bd8e7991",
           "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206"
         }
       ]
     },
     "audit": {
       "source_artifact": "data/batches/m5-10-wave-b-audit-input.json",
-      "source_sha256": "3b0e7d3d954bdde91b13245b17034e4a15dd6d8bf97219088088d0a0b92bfaf0",
+      "source_sha256": "e6e73b06aa11fd3838a5bdd5ef2faf459977a40fc821452abfde16309350615d",
       "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
       "status": "complete",
       "independent": true,
@@ -13288,32 +13288,29 @@
           "target_record_ids": [
             "w719"
           ],
-          "defect": "The prior timing proof accepted caller-supplied hashes and had no artifact transition or work-event binding, so its durations were not tied to the work being measured.",
-          "remediation": "Compute SHA-256 from explicit input and output artifact bytes in the recorder, require a changed pass-to-pass chain, and emit one work event bound to every stopped pass.",
+          "defect": "The prior timing proof accepted pre-finalized decision artifacts and did not prove that decision work occurred inside the measured pass.",
+          "remediation": "Finalize editorial and audit decision artifacts only after their timing passes stop, reconstruct them from recorder-created record-level work rows, and bind every row to an in-pass event.",
           "diff_evidence": {
-            "kind": "timing-recorder-contract",
+            "kind": "timing-recorder-chronology-contract",
             "before": {
-              "recorder_version": "wave-b-timing-recorder-v1",
-              "events_per_pass": 2,
-              "hash_source": "cli-argument",
-              "work_source": "precomputed-summary"
+              "recorder_version": "wave-b-timing-recorder-v3",
+              "decision_artifact_source": "pre-finalized-summary",
+              "decision_finalized_before_timing": true
             },
             "after": {
-              "recorder_version": "wave-b-timing-recorder-v3",
-              "events_per_pass": "variable-record-level-work-events",
-              "hash_source": "artifact-bytes",
-              "transition_chain": true,
-              "work_source": "recorder-created-cumulative-jsonl"
+              "recorder_version": "wave-b-timing-recorder-v4",
+              "decision_artifact_source": "recorder-derived-after-stop",
+              "decision_finalized_before_timing": false,
+              "record_level_work_events": true
             },
             "changed_fields": [
               "recorder_version",
-              "work_evidence.input_artifact",
-              "work_evidence.output_artifact",
-              "work_evidence.work_log",
-              "events"
+              "decision_artifact_source",
+              "decision_artifact_chronology",
+              "record_level_work_events"
             ]
           },
-          "note": "Resolved by five editorial passes and one post-freeze pass whose variable event counts derive from recorder-created record-level work rows."
+          "note": "Resolved by v4 timing sessions that record work rows during each pass and finalize decision artifacts only after the corresponding timing stop."
         },
         {
           "id": "wave-b-audit-finding-evidence",

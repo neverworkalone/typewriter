@@ -12,6 +12,7 @@ import {
   DEFAULT_TIMING_INPUT_PATH,
   REPOSITORY_DIRECTORY,
   WAVE_B_BATCH_ID,
+  deriveWaveBAuditDecisionFromTiming,
   validateWaveBAuditDecisionArtifact,
   validateWaveBAuditInput,
   validateWaveBEditorialInput,
@@ -189,7 +190,7 @@ async function startSession(args) {
     relation_diff_sha256: sha256Bytes(relationBytes),
     audit_timing_input_path: auditTimingPath,
     audit_decisions_path: decisionPath,
-    note: 'Wave B independent audit session started after editorial completion; completion requires a separately measured post-freeze pass and supplied audit decisions.',
+    note: 'Wave B independent audit session started after editorial completion; completion creates the audit decision artifact from recorder-owned post-freeze work rows after the timing pass stops.',
   };
   await writeJson(sessionPath, session);
   console.log(`Started Wave B independent audit session ${session.session_id}.`);
@@ -223,6 +224,7 @@ async function completeSession(args) {
   validateWaveBTimingInput(auditTiming, {
     timingKind: 'post-freeze-audit',
     reviewedStagingSha256: session.reviewed_staging_sha256,
+    reviewedStagingPath: session.reviewed_staging_path,
     auditSessionId: session.session_id,
   });
   if (Date.parse(auditTiming.passes[0].started_at) <= Date.parse(editorial.completed_at)) throw new Error('post-freeze audit timing must start after editorial completion');
@@ -236,17 +238,32 @@ async function completeSession(args) {
 
   const decisionPath = path.resolve(args.decisions ?? session.audit_decisions_path);
   if (decisionPath !== path.resolve(session.audit_decisions_path)) throw new Error('audit decision artifact path changed during the audit session');
-  const decisionBytes = await readBytes(decisionPath, 'Wave B audit decision artifact');
-  const decisionArtifact = validateWaveBAuditDecisionArtifact(JSON.parse(decisionBytes.toString('utf8')));
-  if (decisionArtifact.session_id !== session.session_id) throw new Error('audit decision artifact must bind the active audit session');
-  if (decisionArtifact.actor_kind !== session.actor_kind || decisionArtifact.actor_id !== session.actor_id) throw new Error('audit decision artifact actor does not match the active audit session');
-  if (decisionArtifact.editorial_input_id !== editorial.input_id) throw new Error('audit decision artifact must bind the completed editorial input');
-  if (decisionArtifact.reviewed_staging_sha256 !== session.reviewed_staging_sha256) throw new Error('audit decision artifact staging digest does not match the frozen staging');
-  if (Date.parse(decisionArtifact.created_at) < Date.parse(session.started_at)
-    || Date.parse(decisionArtifact.finalized_at) > Date.parse(auditTiming.passes[0].started_at)) {
-    throw new Error('audit decisions must be supplied after the audit session starts and finalized before the timed audit pass begins');
-  }
-  const completedAt = await timestampAfter(decisionArtifact.finalized_at);
+  await assertNewFile(decisionPath, 'audit decision artifact');
+  const derivedDecision = deriveWaveBAuditDecisionFromTiming(auditTiming);
+  const decisionCreatedAt = await timestampAfter(auditTiming.passes.at(-1).completed_at);
+  const decisionFinalizedAt = await timestampAfter(decisionCreatedAt);
+  const decisionArtifact = validateWaveBAuditDecisionArtifact({
+    schema_version: '1',
+    artifact_id: 'm5-10-wave-b-audit-decisions-20260909',
+    batch_id: WAVE_B_BATCH_ID,
+    source_kind: 'codex-authored',
+    actor_kind: session.actor_kind,
+    actor_id: session.actor_id,
+    session_id: session.session_id,
+    audit_id: derivedDecision.audit_id,
+    editorial_input_id: editorial.input_id,
+    created_at: decisionCreatedAt,
+    finalized_at: decisionFinalizedAt,
+    reviewed_staging_sha256: session.reviewed_staging_sha256,
+    reviewed_record_ids: derivedDecision.coverage.reviewed_record_ids,
+    reviewed_buffer_inventory_ids: derivedDecision.coverage.reviewed_buffer_inventory_ids,
+    relation_reviews: derivedDecision.relation_reviews,
+    coverage: derivedDecision.coverage,
+    findings: derivedDecision.findings,
+    note: derivedDecision.note,
+  });
+  const decisionBytes = Buffer.from(`${JSON.stringify(decisionArtifact, null, 2)}\n`, 'utf8');
+  const completedAt = await timestampAfter(decisionFinalizedAt);
 
   const auditPath = path.resolve(args.audit ?? DEFAULT_AUDIT_INPUT_PATH);
   const provenancePath = path.resolve(args.provenance ?? DEFAULT_PROVENANCE_PATH);
@@ -262,7 +279,7 @@ async function completeSession(args) {
       session_id: session.session_id,
       artifact: repositoryRelativePath(provenancePath, 'audit provenance artifact'),
       sha256: null,
-      note: 'Wave B audit output is recorded from the separately supplied audit decision artifact over the frozen editorial staging.',
+      note: 'Wave B audit output is derived from recorder-owned post-freeze work rows over the frozen editorial staging.',
     },
     editorial_input_id: editorial.input_id,
     auditor_id: session.actor_id,
@@ -314,6 +331,7 @@ async function completeSession(args) {
   const provenanceBytes = Buffer.from(`${JSON.stringify(provenance, null, 2)}\n`, 'utf8');
   audit.provenance.sha256 = sha256Bytes(provenanceBytes);
   validateWaveBAuditInput({ audit, editorialInput: editorial, relationDiff });
+  await writeFile(decisionPath, decisionBytes, 'utf8');
   await writeFile(provenancePath, provenanceBytes, 'utf8');
   await writeJson(auditPath, audit);
   await validateWaveBProvenanceArtifact({ input: audit, subjectKind: 'audit' });
@@ -329,7 +347,7 @@ async function completeSession(args) {
     decision_artifact_sha256: sha256Bytes(decisionBytes),
     provenance_artifact_path: provenancePath,
     provenance_artifact_sha256: audit.provenance.sha256,
-    note: 'Wave B independent audit completed from findings prepared after session start and bound to recorder-created audit work rows inside the timed post-freeze pass.',
+    note: 'Wave B independent audit completed by finalizing an audit decision artifact after the post-freeze timing pass stopped; coverage and findings are reconstructed from recorder-created work rows.',
   };
   await writeJson(sessionPath, completedSession);
   console.log(JSON.stringify({

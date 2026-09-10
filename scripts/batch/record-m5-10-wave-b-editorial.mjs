@@ -13,6 +13,7 @@ import {
   WAVE_B_INVENTORY_ID,
   WAVE_B_INVENTORY_REVISION,
   WAVE_B_IMPORTED_CANONICAL_IDS,
+  deriveWaveBEditorialRecordsFromTiming,
   validateWaveBEditorialDecisionArtifact,
   validateWaveBEditorialInput,
   validateWaveBProvenanceArtifact,
@@ -119,7 +120,10 @@ async function startSession(args) {
   assertExternalStagingPath(proposalPath);
   const proposalBytes = await readBytes(proposalPath, 'Wave B proposal');
   const sessionPath = path.resolve(args.session ?? DEFAULT_SESSION_PATH);
+  const decisionPath = path.resolve(args.decisions);
+  repositoryRelativePath(decisionPath, 'editorial decision artifact');
   await assertNewFile(sessionPath, 'editorial session');
+  await assertNewFile(decisionPath, 'editorial decision artifact');
   const session = {
     schema_version: '1',
     recorder_version: RECORDER_VERSION,
@@ -130,7 +134,8 @@ async function startSession(args) {
     started_at: new Date().toISOString(),
     proposal_path: proposalPath,
     proposal_sha256: sha256Bytes(proposalBytes),
-    note: 'Wave B editorial session started; completion requires separately supplied decisions, frozen staging, and stopped timing passes.',
+    decision_artifact_path: decisionPath,
+    note: 'Wave B editorial session started before decisions existed; completion creates the decision artifact from recorder-owned timed work rows after all timing passes stop.',
   };
   await writeJson(sessionPath, session);
   console.log(`Started Wave B editorial session ${session.session_id}.`);
@@ -161,16 +166,6 @@ async function completeSession(args) {
     throw new Error('Wave B reviewed staging must contain exactly the 150 imported canonical records in order');
   }
 
-  const decisionPath = path.resolve(args.decisions ?? DEFAULT_DECISION_PATH);
-  const decisionBytes = await readBytes(decisionPath, 'Wave B editorial decision artifact');
-  const decisionArtifact = validateWaveBEditorialDecisionArtifact(JSON.parse(decisionBytes.toString('utf8')));
-  if (decisionArtifact.session_id !== session.session_id) throw new Error('editorial decision artifact must bind the active editorial session');
-  if (decisionArtifact.actor_kind !== session.actor_kind || decisionArtifact.actor_id !== session.actor_id) {
-    throw new Error('editorial decision artifact actor does not match the active editorial session');
-  }
-  if (decisionArtifact.proposal_staging_sha256 !== session.proposal_sha256) throw new Error('editorial decision proposal digest does not match the session');
-  if (decisionArtifact.reviewed_staging_sha256 !== reviewedStagingSha256) throw new Error('editorial decision staging digest does not match the frozen staging');
-
   const timingPath = path.resolve(args.timing ?? DEFAULT_TIMING_INPUT_PATH);
   const timingBytes = await readBytes(timingPath, 'Wave B editorial timing input');
   const timing = JSON.parse(timingBytes.toString('utf8'));
@@ -178,9 +173,32 @@ async function completeSession(args) {
   const timingStartedAt = timing.passes[0].started_at;
   const timingCompletedAt = timing.passes.at(-1).completed_at;
   if (Date.parse(session.started_at) > Date.parse(timingStartedAt)) throw new Error('editorial session must start before the first timing pass');
-  if (Date.parse(decisionArtifact.created_at) < Date.parse(session.started_at)) throw new Error('editorial decision was supplied before the session started');
-  if (Date.parse(decisionArtifact.finalized_at) > Date.parse(timingStartedAt)) throw new Error('editorial decisions must be finalized before the timed work pass begins');
-  const completedAt = await timestampAfter(decisionArtifact.finalized_at);
+  const decisionPath = path.resolve(args.decisions ?? session.decision_artifact_path ?? DEFAULT_DECISION_PATH);
+  if (path.resolve(session.decision_artifact_path ?? decisionPath) !== decisionPath) {
+    throw new Error('editorial decision artifact path changed during the editorial session');
+  }
+  await assertNewFile(decisionPath, 'editorial decision artifact');
+  const decisionRecords = deriveWaveBEditorialRecordsFromTiming(timing);
+  const decisionCreatedAt = await timestampAfter(timingCompletedAt);
+  const decisionFinalizedAt = await timestampAfter(decisionCreatedAt);
+  const decisionArtifact = validateWaveBEditorialDecisionArtifact({
+    schema_version: '1',
+    artifact_id: 'm5-10-wave-b-editorial-decisions-20260909',
+    batch_id: WAVE_B_BATCH_ID,
+    source_kind: 'codex-authored',
+    actor_kind: session.actor_kind,
+    actor_id: session.actor_id,
+    input_id: 'm5-10-wave-b-editorial-input-20260909',
+    session_id: session.session_id,
+    proposal_staging_sha256: session.proposal_sha256,
+    reviewed_staging_sha256: reviewedStagingSha256,
+    created_at: decisionCreatedAt,
+    finalized_at: decisionFinalizedAt,
+    records: decisionRecords,
+    note: 'Generated after the editorial timing passes from recorder-owned record-level work rows; no pre-finalized decision artifact was supplied.',
+  });
+  const decisionBytes = Buffer.from(`${JSON.stringify(decisionArtifact, null, 2)}\n`, 'utf8');
+  const completedAt = await timestampAfter(decisionFinalizedAt);
 
   const editorialPath = path.resolve(args.editorial ?? DEFAULT_EDITORIAL_INPUT_PATH);
   const provenancePath = path.resolve(args.provenance ?? DEFAULT_PROVENANCE_PATH);
@@ -210,7 +228,7 @@ async function completeSession(args) {
       session_id: session.session_id,
       artifact: provenanceArtifactPath,
       sha256: null,
-      note: 'Wave B editorial output is recorded from the separately supplied decision artifact and frozen staging bytes.',
+      note: 'Wave B editorial output is derived from recorder-owned record-level work rows and the frozen staging bytes.',
     },
     sense_review: {
       status: 'complete',
@@ -262,6 +280,7 @@ async function completeSession(args) {
     inventoryEntries: inventory.entries,
     referenceRecords: [...canonical.records, ...staged.records],
   });
+  await writeFile(decisionPath, decisionBytes, 'utf8');
   await writeFile(provenancePath, provenanceBytes, 'utf8');
   await writeJson(editorialPath, editorial);
   await validateWaveBProvenanceArtifact({ input: editorial, subjectKind: 'editorial' });
@@ -280,7 +299,7 @@ async function completeSession(args) {
     editorial_input_sha256: sha256Bytes(editorialBytes),
     provenance_artifact_path: provenancePath,
     provenance_artifact_sha256: editorial.provenance.sha256,
-    note: 'Wave B editorial pass completed from decisions prepared after session start and bound to recorder-created record-level work rows inside the timed passes.',
+    note: 'Wave B editorial pass completed by finalizing a decision artifact after all timing passes stopped; its records are reconstructed from recorder-created record-level work rows.',
   };
   await writeJson(sessionPath, completedSession);
   console.log(JSON.stringify({
@@ -298,7 +317,7 @@ export async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
   if (!args.action || !['start', 'complete'].includes(args.action)) throw new Error('--action=start or --action=complete is required');
   if (args.action === 'start') {
-    for (const option of ['session', 'proposal']) if (!args[option]) throw new Error(`--${option} is required for start`);
+    for (const option of ['session', 'proposal', 'decisions']) if (!args[option]) throw new Error(`--${option} is required for start`);
     return startSession(args);
   }
   for (const option of ['session', 'staging', 'decisions', 'timing', 'editorial', 'canonical', 'inventory']) {

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10-wave-b-audit-decisions.schema.json",
-  "title": "Typewriter M5-10 Wave B supplied audit decisions",
-  "description": "A separately authored audit result consumed by the Wave B audit recorder. It is not a completed audit claim.",
+  "title": "Typewriter M5-10 Wave B recorder-finalized audit decisions",
+  "description": "A recorder-finalized audit result reconstructed from Wave B post-freeze work rows. It is not a completed audit claim until the linked audit input is validated.",
   "type": "object",
   "additionalProperties": false,
   "required": [

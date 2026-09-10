@@ -141,7 +141,7 @@ The #96 Wave B result is recorded in
 A2 snapshot at 628 starts, processes 170 selected starts, imports 150 reviewed
 starts (144 included and 6 sense-corrected), and reaches the exact 778-start
 target with 157 imported senses. The source-derived gate is
-`APPROVE BOUNDED`: all timing passes are measured (3.415 recorder-backed
+`APPROVE BOUNDED`: all timing passes are measured (3.243 recorder-backed
 seconds across 160 processed starts), the independent audit has zero open
 blockers, and canonical/SQLite/search regressions pass. The semantic regression
 corpus is a declaration-driven 12-case set covering the six corrected proposal
@@ -150,7 +150,10 @@ space-phrase cases. The result is
 Codex-authored (`human_editorial_review_complete: false`); the stage still keeps
 `next_stage_created: false` and `next_stage_authorized: false`. Run
 `npm run batch:m5-10:wave-b:check -- --staged=/path/to/reviewed.jsonl --proposal=/path/to/proposal.jsonl`
-to verify the digest-bound Wave B artifacts.
+to verify the digest-bound Wave B artifacts. The timing recorder captures the
+boundary, record-decision, and audit payloads in recorder-owned work logs; the
+editorial and audit decision artifacts are generated and finalized only after
+their corresponding timing passes stop.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

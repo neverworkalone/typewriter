@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/m5-10-wave-b-editorial-decisions.schema.json",
-  "title": "Typewriter M5-10 Wave B supplied editorial decisions",
-  "description": "A separately authored decision artifact consumed by the Wave B editorial recorder. It is not a completed editorial claim.",
+  "title": "Typewriter M5-10 Wave B recorder-finalized editorial decisions",
+  "description": "A recorder-finalized editorial decision artifact reconstructed from Wave B record-level work rows. It is not a completed editorial claim until the linked editorial input is validated.",
   "type": "object",
   "additionalProperties": false,
   "required": [

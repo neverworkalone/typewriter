@@ -18,6 +18,8 @@ import {
   DEFAULT_VERIFICATION_PATH,
   WaveBValidationError,
   createWaveBTimingProof,
+  deriveWaveBAuditDecisionFromTiming,
+  deriveWaveBEditorialRecordsFromTiming,
   validateWaveBChronology,
   validateWaveBSemanticRegression,
   validateWaveB,
@@ -55,6 +57,19 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
     assert.equal(result.stage.gate_status, 'pass');
     assert.equal(result.gate.quality_passes.timing_complete, true);
     assert.equal(result.gate.quality_passes.unmeasured_timing_passes, true);
+
+    const editorial = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
+    const audit = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-audit-input.json'));
+    const timing = await readJson(DEFAULT_TIMING_INPUT_PATH);
+    const auditTiming = await readJson(DEFAULT_AUDIT_TIMING_INPUT_PATH);
+    assert.deepEqual(deriveWaveBEditorialRecordsFromTiming(timing), editorial.records);
+    assert.deepEqual(deriveWaveBAuditDecisionFromTiming(auditTiming), {
+      audit_id: audit.audit_id,
+      coverage: audit.coverage,
+      findings: audit.findings,
+      relation_reviews: audit.relation_reviews,
+      note: audit.note,
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -210,7 +225,8 @@ test('Wave B binds the editorial and post-freeze audit chronology', async () => 
   );
 
   const earlyDecision = structuredClone(editorial);
-  earlyDecision.decision_artifact.finalized_at = timing.passes.at(-1).completed_at;
+  earlyDecision.decision_artifact.created_at = new Date(Date.parse(timing.passes[0].started_at) - 2).toISOString();
+  earlyDecision.decision_artifact.finalized_at = new Date(Date.parse(timing.passes[0].started_at) - 1).toISOString();
   assert.throws(
     () => validateWaveBChronology({
       editorialInput: earlyDecision,
@@ -219,6 +235,19 @@ test('Wave B binds the editorial and post-freeze audit chronology', async () => 
       auditTimingInput: auditTiming,
     }),
     (error) => error instanceof WaveBValidationError && error.code === 'EDITORIAL_DECISION_CHRONOLOGY',
+  );
+
+  const earlyAuditDecision = structuredClone(audit);
+  earlyAuditDecision.decision_artifact.created_at = new Date(Date.parse(auditTiming.passes[0].started_at) - 2).toISOString();
+  earlyAuditDecision.decision_artifact.finalized_at = new Date(Date.parse(auditTiming.passes[0].started_at) - 1).toISOString();
+  assert.throws(
+    () => validateWaveBChronology({
+      editorialInput: editorial,
+      auditInput: earlyAuditDecision,
+      timingInput: timing,
+      auditTimingInput: auditTiming,
+    }),
+    (error) => error instanceof WaveBValidationError && error.code === 'AUDIT_DECISION_CHRONOLOGY',
   );
 });
 
@@ -322,10 +351,23 @@ test('Wave B build and recorders require explicit external review artifacts', as
   await writeFile(proposalPath, 'self-authored external proposal fixture\n', 'utf8');
   try {
     const editorialSessionPath = path.join(directory, 'editorial-session.json');
+    const editorialDecisionPath = path.join(directory, 'editorial-decisions.json');
+    await writeFile(editorialDecisionPath, '{}\n', 'utf8');
+    await assert.rejects(
+      recordWaveBEditorial([
+        '--action=start',
+        `--proposal=${proposalPath}`,
+        `--session=${editorialSessionPath}`,
+        `--decisions=${editorialDecisionPath}`,
+      ]),
+      /existing editorial decision artifact/u,
+    );
+    await rm(editorialDecisionPath, { force: true });
     await recordWaveBEditorial([
       '--action=start',
       `--proposal=${proposalPath}`,
       `--session=${editorialSessionPath}`,
+      `--decisions=${editorialDecisionPath}`,
     ]);
     await assert.rejects(
       recordWaveBEditorial([
@@ -343,6 +385,23 @@ test('Wave B build and recorders require explicit external review artifacts', as
     const auditSessionPath = path.join(directory, 'audit-session.json');
     const auditTimingPath = path.join(directory, 'audit-timing.json');
     const auditDecisionPath = path.join(directory, 'audit-decisions.json');
+    await writeFile(auditDecisionPath, '{}\n', 'utf8');
+    await assert.rejects(
+      recordWaveBAudit([
+        '--action=start',
+        `--session=${auditSessionPath}`,
+        '--editorial=data/batches/m5-10-wave-b-editorial-input.json',
+        `--staging=${stagingPath}`,
+        '--timing=data/batches/m5-10-wave-b-timing-input.json',
+        `--relation=data/batches/m5-10-wave-b-relation-diff.json`,
+        '--canonical=data/canonical',
+        '--inventory=data/batches/m5-10-wave-b-preimport-inventory.json',
+        `--audit-timing=${auditTimingPath}`,
+        `--decisions=${auditDecisionPath}`,
+      ]),
+      /existing audit decision artifact/u,
+    );
+    await rm(auditDecisionPath, { force: true });
     await recordWaveBAudit([
       '--action=start',
       `--session=${auditSessionPath}`,

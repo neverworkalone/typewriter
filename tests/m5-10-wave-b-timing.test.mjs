@@ -107,8 +107,8 @@ test('Wave B timing recorder derives scope from recorder-created work-log rows',
 
     const session = JSON.parse(await readFile(sessionPath, 'utf8'));
     const firstPass = session.passes[0];
-    assert.equal(session.recorder_version, 'wave-b-timing-recorder-v3');
-    assert.equal(session.recording_source, 'timing-recorder-v3');
+    assert.equal(session.recorder_version, 'wave-b-timing-recorder-v4');
+    assert.equal(session.recording_source, 'timing-recorder-v4');
     assert.equal(firstPass.work_evidence.before_sha256, sha256(firstInput));
     assert.equal(firstPass.work_evidence.unit_count, 1);
     assert.deepEqual(firstPass.work_evidence.unit_ids, ['m5-001']);

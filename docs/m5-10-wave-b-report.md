@@ -55,51 +55,57 @@ repository and is bound by:
 575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206
 ```
 
-The editorial completion recorder consumes the supplied editorial decision
-artifact and frozen staging bytes; it does not manufacture record decisions.
-The audit completion recorder consumes a different supplied audit decision
-artifact and the frozen editorial digest; it does not manufacture findings or
-a passing verdict. The audit reports five resolved findings (three sense, one
-timing-measurement, and one reference-closure) and zero open blockers. Each
-finding identifies reviewed records, a concrete defect and remediation, and a
-non-empty before/after diff; coverage declarations are stored separately.
+The editorial completion recorder reconstructs the decision artifact from
+recorder-owned boundary and record-decision work rows, together with the frozen
+staging bytes. The audit completion recorder reconstructs a different decision
+artifact from recorder-owned post-freeze audit rows and the frozen editorial
+digest; neither completion path accepts a pre-finalized decision artifact. The
+audit reports five resolved findings (three sense, one timing-measurement, and
+one reference-closure) and zero open blockers. Each finding identifies reviewed
+records, a concrete defect and remediation, and a non-empty before/after diff;
+coverage declarations are stored separately.
 
-The chronology is source-bound; decision artifacts are finalized before the
-timed pass that records their work:
+The chronology is source-bound; decision artifacts are created and finalized
+after the timed work they summarize:
 
 | Event | UTC |
 | --- | --- |
-| Editorial session started | `2026-09-10T02:01:09.696Z` |
-| Editorial decisions finalized | `2026-09-10T02:01:09.704Z` |
-| First editorial timing pass started | `2026-09-10T02:01:09.709Z` |
-| Last editorial timing pass stopped | `2026-09-10T02:01:12.845Z` |
-| Editorial input completed | `2026-09-10T02:01:12.894Z` |
-| Independent audit session started | `2026-09-10T02:01:12.997Z` |
-| Audit decisions finalized | `2026-09-10T02:01:13.016Z` |
-| Post-freeze audit timing started | `2026-09-10T02:01:13.020Z` |
-| Post-freeze audit timing stopped | `2026-09-10T02:01:13.327Z` |
-| Audit input completed | `2026-09-10T02:01:13.377Z` |
+| Editorial session started | `2026-09-10T02:57:40.541Z` |
+| First editorial timing pass started | `2026-09-10T02:57:40.555Z` |
+| Last editorial timing pass stopped | `2026-09-10T02:57:43.552Z` |
+| Editorial decisions created | `2026-09-10T02:57:43.620Z` |
+| Editorial decisions finalized | `2026-09-10T02:57:43.621Z` |
+| Editorial input completed | `2026-09-10T02:57:43.625Z` |
+| Independent audit session started | `2026-09-10T02:57:43.723Z` |
+| Post-freeze audit timing started | `2026-09-10T02:57:43.733Z` |
+| Post-freeze audit timing stopped | `2026-09-10T02:57:44.034Z` |
+| Audit decisions created | `2026-09-10T02:57:44.086Z` |
+| Audit decisions finalized | `2026-09-10T02:57:44.087Z` |
+| Audit input completed | `2026-09-10T02:57:44.089Z` |
 
-The audit timing starts after editorial completion, and audit decision
-finalization precedes the post-freeze timing stop. The two passes use distinct
-session and provenance artifacts even though both are Codex-authored.
+The audit timing starts after editorial completion. Each decision artifact is
+created and finalized only after its corresponding timing pass stops, and both
+passes use distinct session and provenance artifacts even though both are
+Codex-authored.
 
 ## Timing and gate
 
 | Pass | Recorder work units | Recorder-bound seconds |
 | --- | ---: | ---: |
-| target preparation | 170 | 0.119 |
-| initial review | 900 | 1.923 |
-| feedback fixes | 150 | 0.441 |
-| final audit | 150 | 0.542 |
-| held/rejected decisions | 20 | 0.083 |
-| post-freeze audit | 172 | 0.307 |
-| **total** | **1,562** | **3.415** |
+| target preparation | 170 | 0.098 |
+| initial review | 900 | 1.815 |
+| feedback fixes | 150 | 0.426 |
+| final audit | 150 | 0.524 |
+| held/rejected decisions | 20 | 0.079 |
+| post-freeze audit | 172 | 0.301 |
+| **total** | **1,562** | **3.243** |
 
 All six passes are measured and no pass is unmeasured. Each pass appends
 record-level work rows to a cumulative JSONL artifact; the recorder derives the
-work-unit count and hashes from those rows. The source-derived rate is
-`3.415 / 160 = 0.02134375` recorder-bound seconds per processed start, below
+work-unit count and hashes from those rows. Boundary, decision, and audit
+payloads are recorded inside those timed work rows, and the final decision
+artifacts are reconstructed from them after the timing stops. The source-derived
+rate is `3.243 / 160 = 0.02026875` recorder-bound seconds per processed start, below
 the fixed 12-second gate. This is the interval recorded by the timing contract;
 it is not presented as a realistic human-effort estimate and does not replace
 the semantic review evidence.
@@ -115,9 +121,9 @@ and the external reviewed staging digest.
 - [`data/batches/m5-10-wave-b.json`](../data/batches/m5-10-wave-b.json) — Wave B selection and decision manifest.
 - [`data/batches/m5-10-wave-b-metrics.json`](../data/batches/m5-10-wave-b-metrics.json) — source-derived counts, timing, and audit metrics.
 - [`data/batches/m5-10-wave-b-editorial-input.json`](../data/batches/m5-10-wave-b-editorial-input.json) — completed editorial input.
-- [`data/batches/m5-10-wave-b-editorial-decisions-20260909.json`](../data/batches/m5-10-wave-b-editorial-decisions-20260909.json) — supplied editorial decisions.
+- [`data/batches/m5-10-wave-b-editorial-decisions-20260909.json`](../data/batches/m5-10-wave-b-editorial-decisions-20260909.json) — recorder-finalized editorial decisions reconstructed from timed work rows.
 - [`data/batches/m5-10-wave-b-audit-input.json`](../data/batches/m5-10-wave-b-audit-input.json) — independent post-freeze audit input.
-- [`data/batches/m5-10-wave-b-audit-decisions-20260909.json`](../data/batches/m5-10-wave-b-audit-decisions-20260909.json) — supplied audit decisions and findings.
+- [`data/batches/m5-10-wave-b-audit-decisions-20260909.json`](../data/batches/m5-10-wave-b-audit-decisions-20260909.json) — recorder-finalized audit decisions and findings reconstructed from timed work rows.
 - [`data/batches/m5-10-wave-b-timing-input.json`](../data/batches/m5-10-wave-b-timing-input.json) and [`data/batches/m5-10-wave-b-audit-timing-input.json`](../data/batches/m5-10-wave-b-audit-timing-input.json) — measured timing evidence.
 - [`data/batches/m5-10-wave-b-semantic-regressions.json`](../data/batches/m5-10-wave-b-semantic-regressions.json) — the 12-case declaration-driven semantic regression corpus.
 - [`data/batches/m5-10-wave-b-timing/`](../data/batches/m5-10-wave-b-timing/) — chained timing work artifacts whose bytes are hashed by the recorder.

@@ -499,7 +499,7 @@
           "pattern": "^[a-f0-9]{64}$"
         },
         "recording_source": {
-          "enum": ["timing-recorder-v1", "timing-recorder-v2", "timing-recorder-v3"]
+          "enum": ["timing-recorder-v1", "timing-recorder-v2", "timing-recorder-v3", "timing-recorder-v4"]
         },
         "work_evidence": {
           "oneOf": [

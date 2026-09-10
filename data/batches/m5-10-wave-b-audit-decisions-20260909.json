@@ -5,11 +5,11 @@
   "source_kind": "codex-authored",
   "actor_kind": "codex",
   "actor_id": "codex-wave-b-independent-audit",
-  "session_id": "9783c448-1c2f-4143-8c57-ef885c23d573",
+  "session_id": "f0bf1cee-fc2d-4f22-95ea-4349bd8e7991",
   "audit_id": "m5-10-wave-b-audit-20260909",
   "editorial_input_id": "m5-10-wave-b-editorial-input-20260909",
-  "created_at": "2026-09-10T02:01:12.997Z",
-  "finalized_at": "2026-09-10T02:01:13.016Z",
+  "created_at": "2026-09-10T02:57:44.086Z",
+  "finalized_at": "2026-09-10T02:57:44.087Z",
   "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
   "reviewed_record_ids": [
     "w629",
@@ -667,32 +667,29 @@
       "target_record_ids": [
         "w719"
       ],
-      "defect": "The prior timing proof accepted caller-supplied hashes and had no artifact transition or work-event binding, so its durations were not tied to the work being measured.",
-      "remediation": "Compute SHA-256 from explicit input and output artifact bytes in the recorder, require a changed pass-to-pass chain, and emit one work event bound to every stopped pass.",
+      "defect": "The prior timing proof accepted pre-finalized decision artifacts and did not prove that decision work occurred inside the measured pass.",
+      "remediation": "Finalize editorial and audit decision artifacts only after their timing passes stop, reconstruct them from recorder-created record-level work rows, and bind every row to an in-pass event.",
       "diff_evidence": {
-        "kind": "timing-recorder-contract",
+        "kind": "timing-recorder-chronology-contract",
         "before": {
-          "recorder_version": "wave-b-timing-recorder-v1",
-          "events_per_pass": 2,
-          "hash_source": "cli-argument",
-          "work_source": "precomputed-summary"
+          "recorder_version": "wave-b-timing-recorder-v3",
+          "decision_artifact_source": "pre-finalized-summary",
+          "decision_finalized_before_timing": true
         },
         "after": {
-          "recorder_version": "wave-b-timing-recorder-v3",
-          "events_per_pass": "variable-record-level-work-events",
-          "hash_source": "artifact-bytes",
-          "transition_chain": true,
-          "work_source": "recorder-created-cumulative-jsonl"
+          "recorder_version": "wave-b-timing-recorder-v4",
+          "decision_artifact_source": "recorder-derived-after-stop",
+          "decision_finalized_before_timing": false,
+          "record_level_work_events": true
         },
         "changed_fields": [
           "recorder_version",
-          "work_evidence.input_artifact",
-          "work_evidence.output_artifact",
-          "work_evidence.work_log",
-          "events"
+          "decision_artifact_source",
+          "decision_artifact_chronology",
+          "record_level_work_events"
         ]
       },
-      "note": "Resolved by five editorial passes and one post-freeze pass whose variable event counts derive from recorder-created record-level work rows."
+      "note": "Resolved by v4 timing sessions that record work rows during each pass and finalize decision artifacts only after the corresponding timing stop."
     },
     {
       "id": "wave-b-audit-finding-evidence",
@@ -771,5 +768,5 @@
       "note": "Resolved by rebuilding all derived outputs after the corrected staging freeze."
     }
   ],
-  "note": "Wave B audit decisions separate complete coverage from five concrete resolved findings, each bound to target records, remediation, and before-after evidence."
+  "note": "Post-freeze audit decision coverage and findings were recorded as work rows before the timing stop; the decision artifact is finalized afterward."
 }

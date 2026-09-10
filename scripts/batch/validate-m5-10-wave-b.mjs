@@ -192,6 +192,61 @@ function workRowsForPass(timing, passId) {
     .filter((row) => row.kind === 'work' && row.pass_id === passId && row.session_id === pass.session_id);
 }
 
+function workRecordPayload(row, label) {
+  if (!row.payload?.record_review || typeof row.payload.record_review !== 'object' || Array.isArray(row.payload.record_review)) {
+    fail(`${label} must contain a record_review payload`, 'TIMING_DECISION_BINDING');
+  }
+  return structuredClone(row.payload.record_review);
+}
+
+export function deriveWaveBEditorialRecordsFromTiming(timing) {
+  const finalRows = workRowsForPass(timing, 'final-audit');
+  const bufferRows = workRowsForPass(timing, 'held-rejected');
+  exactIds(finalRows.map(({ unit_id: unitId }) => unitId), WAVE_B_IMPORTED_CANONICAL_IDS, 'timed final decision');
+  exactIds(bufferRows.map(({ unit_id: unitId }) => unitId), WAVE_B_BUFFER_INVENTORY_IDS, 'timed buffer decision');
+  const records = [
+    ...finalRows.map((row) => workRecordPayload(row, `${row.unit_id} final decision`)),
+    ...bufferRows.map((row) => workRecordPayload(row, `${row.unit_id} buffer decision`)),
+  ];
+  validateWaveBTimingDecisionWork({ timingInput: timing, editorialInput: { records } });
+  return records;
+}
+
+export function deriveWaveBAuditDecisionFromTiming(timing) {
+  const auditRows = workRowsForPass(timing, 'post-freeze-audit');
+  const snapshotRows = auditRows.filter(({ unit_id: unitId }) => unitId === 'wave-b-timing-completeness');
+  const relationRows = auditRows.filter(({ unit_id: unitId }) => unitId === 'wave-b-relation-screen');
+  assertEqual(snapshotRows.length, 1, 'timed audit work must include one complete decision snapshot', 'TIMING_AUDIT_BINDING');
+  assertEqual(relationRows.length, 1, 'timed audit work must include one relation decision snapshot', 'TIMING_AUDIT_BINDING');
+  const snapshot = snapshotRows[0].payload;
+  const relationSnapshot = relationRows[0].payload;
+  requireString(snapshot.audit_id, 'timed audit decision audit_id');
+  requireString(snapshot.note, 'timed audit decision note');
+  if (!snapshot.coverage || typeof snapshot.coverage !== 'object' || Array.isArray(snapshot.coverage)) {
+    fail('timed audit decision snapshot is missing coverage', 'TIMING_AUDIT_BINDING');
+  }
+  if (!Array.isArray(snapshot.findings)) fail('timed audit decision snapshot is missing findings', 'TIMING_AUDIT_BINDING');
+  if (!Array.isArray(relationSnapshot.relation_reviews)) fail('timed audit relation snapshot is missing relation_reviews', 'TIMING_AUDIT_BINDING');
+  assertEqual(
+    auditRows.map(({ unit_id: unitId }) => unitId),
+    snapshot.coverage.audit_work_unit_ids,
+    'timed audit work scope drifted from its coverage snapshot',
+    'TIMING_AUDIT_BINDING',
+  );
+  for (const row of auditRows) {
+    assertEqual(row.payload.audit_id, snapshot.audit_id, `${row.unit_id} timed audit work audit binding drifted`, 'TIMING_AUDIT_BINDING');
+    assertEqual(row.payload.unit_id, row.unit_id, `${row.unit_id} timed audit work unit binding drifted`, 'TIMING_AUDIT_BINDING');
+    assertEqual(row.payload.status, 'verified', `${row.unit_id} timed audit work is not verified`, 'TIMING_AUDIT_BINDING');
+  }
+  return {
+    audit_id: snapshot.audit_id,
+    coverage: structuredClone(snapshot.coverage),
+    findings: structuredClone(snapshot.findings),
+    relation_reviews: structuredClone(relationSnapshot.relation_reviews),
+    note: snapshot.note,
+  };
+}
+
 export function validateWaveBTimingDecisionWork({ timingInput, auditTimingInput = timingInput, editorialInput, auditInput } = {}) {
   if (!timingInput || !editorialInput) return { verified: false };
   const importedRecords = editorialInput.records.slice(0, WAVE_B_IMPORTED_START_COUNT);
@@ -223,9 +278,12 @@ export function validateWaveBTimingDecisionWork({ timingInput, auditTimingInput 
   if (auditInput) {
     const auditRows = workRowsForPass(auditTimingInput, 'post-freeze-audit');
     const timingSnapshotRows = auditRows.filter(({ unit_id: unitId }) => unitId === 'wave-b-timing-completeness');
+    const relationSnapshotRows = auditRows.filter(({ unit_id: unitId }) => unitId === 'wave-b-relation-screen');
     assertEqual(timingSnapshotRows.length, 1, 'timed audit work must include one complete decision snapshot', 'TIMING_AUDIT_BINDING');
+    assertEqual(relationSnapshotRows.length, 1, 'timed audit work must include one relation decision snapshot', 'TIMING_AUDIT_BINDING');
     assertEqual(timingSnapshotRows[0].payload.coverage, auditInput.coverage, 'timed audit coverage snapshot drifted', 'TIMING_AUDIT_BINDING');
     assertEqual(timingSnapshotRows[0].payload.findings, auditInput.findings, 'timed audit findings snapshot drifted', 'TIMING_AUDIT_BINDING');
+    assertEqual(relationSnapshotRows[0].payload.relation_reviews, auditInput.relation_reviews, 'timed audit relation snapshot drifted', 'TIMING_AUDIT_BINDING');
     for (const row of auditRows) {
       assertEqual(row.payload.audit_id, auditInput.audit_id, `${row.unit_id} timed audit work audit binding drifted`, 'TIMING_AUDIT_BINDING');
       assertEqual(row.payload.unit_id, row.unit_id, `${row.unit_id} timed audit work unit binding drifted`, 'TIMING_AUDIT_BINDING');
@@ -814,7 +872,7 @@ function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId
   requireIsoDate(pass.started_at, `${passId}.started_at`);
   requireIsoDate(pass.completed_at, `${passId}.completed_at`);
   requireUuid(pass.session_id, `${passId}.session_id`);
-  assertEqual(pass.recording_source, 'timing-recorder-v3', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(pass.recording_source, 'timing-recorder-v4', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
   const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
   if (!Number.isFinite(elapsed) || elapsed < 0) fail(`${passId} timing chronology is invalid`, 'TIMING_CHRONOLOGY');
   assertEqual(pass.wall_clock_seconds, elapsed, `${passId}.wall_clock_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
@@ -885,9 +943,10 @@ export function validateWaveBChronology({ editorialInput, auditInput, timingInpu
 
   assertTimestampOrder(editorialInput.created_at, editorialFirst, 'editorial session and timing', 'EDITORIAL_TIMING_CHRONOLOGY');
   assertTimestampOrder(editorialInput.created_at, editorialInput.decision_artifact.created_at, 'editorial session and decision creation', 'EDITORIAL_DECISION_CHRONOLOGY');
-  assertTimestampOrder(editorialInput.decision_artifact.created_at, editorialInput.decision_artifact.finalized_at, 'editorial decision creation and finalization', 'EDITORIAL_DECISION_CHRONOLOGY');
-  assertTimestampOrder(editorialInput.decision_artifact.finalized_at, editorialFirst, 'editorial decision and timing start', 'EDITORIAL_DECISION_CHRONOLOGY', { strict: true });
   assertTimestampOrder(editorialLast, editorialInput.completed_at, 'editorial timing and completion', 'EDITORIAL_COMPLETION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(editorialLast, editorialInput.decision_artifact.created_at, 'editorial timing and decision creation', 'EDITORIAL_DECISION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(editorialInput.decision_artifact.created_at, editorialInput.decision_artifact.finalized_at, 'editorial decision creation and finalization', 'EDITORIAL_DECISION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(editorialInput.decision_artifact.finalized_at, editorialInput.completed_at, 'editorial decision and completion', 'EDITORIAL_DECISION_CHRONOLOGY', { strict: true });
   assertEqual(editorialInput.timing_artifact.started_at, editorialFirst, 'editorial timing start binding drifted', 'EDITORIAL_TIMING_BINDING');
   assertEqual(editorialInput.timing_artifact.completed_at, editorialLast, 'editorial timing completion binding drifted', 'EDITORIAL_TIMING_BINDING');
 
@@ -895,9 +954,10 @@ export function validateWaveBChronology({ editorialInput, auditInput, timingInpu
   assertTimestampOrder(auditInput.created_at, auditFirst, 'audit session and post-freeze timing', 'AUDIT_TIMING_CHRONOLOGY');
   assertTimestampOrder(editorialInput.completed_at, auditFirst, 'editorial completion and post-freeze audit', 'AUDIT_TIMING_CHRONOLOGY', { strict: true });
   assertTimestampOrder(auditInput.created_at, auditInput.decision_artifact.created_at, 'audit session and decision creation', 'AUDIT_DECISION_CHRONOLOGY');
-  assertTimestampOrder(auditInput.decision_artifact.created_at, auditInput.decision_artifact.finalized_at, 'audit decision creation and finalization', 'AUDIT_DECISION_CHRONOLOGY');
-  assertTimestampOrder(auditInput.decision_artifact.finalized_at, auditFirst, 'audit decision and timing start', 'AUDIT_DECISION_CHRONOLOGY', { strict: true });
   assertTimestampOrder(auditLast, auditInput.completed_at, 'audit timing and completion', 'AUDIT_COMPLETION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(auditLast, auditInput.decision_artifact.created_at, 'audit timing and decision creation', 'AUDIT_DECISION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(auditInput.decision_artifact.created_at, auditInput.decision_artifact.finalized_at, 'audit decision creation and finalization', 'AUDIT_DECISION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(auditInput.decision_artifact.finalized_at, auditInput.completed_at, 'audit decision and completion', 'AUDIT_DECISION_CHRONOLOGY', { strict: true });
   assertEqual(auditInput.editorial_timing_artifact.started_at, editorialFirst, 'audit editorial timing start binding drifted', 'AUDIT_TIMING_BINDING');
   assertEqual(auditInput.editorial_timing_artifact.completed_at, editorialLast, 'audit editorial timing completion binding drifted', 'AUDIT_TIMING_BINDING');
   assertEqual(auditInput.timing_artifact.started_at, auditFirst, 'audit timing start binding drifted', 'AUDIT_TIMING_BINDING');
@@ -910,8 +970,8 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
   assertEqual(timing.schema_version, '2', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
   assertEqual(timing.batch_id, WAVE_B_BATCH_ID, 'Wave B timing batch_id drifted', 'BATCH_ID_MISMATCH');
   assertEqual(timing.timing_kind, timingKind, 'Wave B timing kind drifted', 'TIMING_KIND_MISMATCH');
-  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v3', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
-  assertEqual(timing.recording_source, 'timing-recorder-v3', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v4', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recording_source, 'timing-recorder-v4', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.recorder_command, 'node scripts/batch/record-m5-10-wave-b-timing.mjs', 'Wave B timing recorder command drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.status, 'complete', 'Wave B timing is not complete', 'TIMING_INCOMPLETE');
   requireUuid(timing.session_id, 'timing session_id');
