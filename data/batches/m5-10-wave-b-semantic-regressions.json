@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "fixture_id": "m5-10-wave-b-semantic-regressions-v1",
+  "fixture_id": "m5-10-wave-b-semantic-regressions-v2",
   "batch_id": "m5-10-wave-b-20260909",
   "categories": [
     "homonym",
@@ -17,13 +17,19 @@
       "canonical_id": "w719",
       "lemma": "일으키다",
       "boundary_id": "physical-figurative",
+      "candidate_senses": [
+        { "id": "w719-s1", "pos": "verb", "gloss": "누워 있거나 쓰러진 사람이나 물체를 세우다." },
+        { "id": "w719-s2", "pos": "verb", "gloss": "어떤 사건이나 현상을 생기게 하다." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["w719-s1", "w719-s2"],
+        "note": "wave-b-sem-001은 물리적 세우기와 사건 발생 후보를 별도 writer-facing sense로 제시한다."
+      },
       "expected_sense_count": 2,
       "expected_sense_ids": ["w719-s1", "w719-s2"],
       "expected_pos": ["verb", "verb"],
-      "expected_glosses": [
-        "누워 있거나 쓰러진 사람이나 물체를 세우다.",
-        "어떤 사건이나 현상을 생기게 하다."
-      ],
+      "expected_glosses": ["누워 있거나 쓰러진 사람이나 물체를 세우다.", "어떤 사건이나 현상을 생기게 하다."],
       "required_applicability": "applicable",
       "required_decision": "split",
       "contrast_pairs": [["w719-s1", "w719-s2"]],
@@ -37,13 +43,19 @@
       "canonical_id": "w734",
       "lemma": "지나치다",
       "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "w734-s1", "pos": "verb", "gloss": "어떤 곳이나 대상을 거치지 않고 통과하다." },
+        { "id": "w734-s2", "pos": "verb", "gloss": "정도나 한도를 넘어서 심하다." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["w734-s1", "w734-s2"],
+        "note": "wave-b-sem-002는 통과 동작과 한도 초과 상태 후보를 별도 writer-facing sense로 제시한다."
+      },
       "expected_sense_count": 2,
       "expected_sense_ids": ["w734-s1", "w734-s2"],
       "expected_pos": ["verb", "verb"],
-      "expected_glosses": [
-        "어떤 곳이나 대상을 거치지 않고 통과하다.",
-        "정도나 한도를 넘어서 심하다."
-      ],
+      "expected_glosses": ["어떤 곳이나 대상을 거치지 않고 통과하다.", "정도나 한도를 넘어서 심하다."],
       "required_applicability": "applicable",
       "required_decision": "split",
       "contrast_pairs": [["w734-s1", "w734-s2"]],
@@ -57,13 +69,19 @@
       "canonical_id": "w744",
       "lemma": "문진",
       "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "w744-s1", "pos": "noun", "gloss": "종이나 책장이 날리지 않게 눌러 두는 물건." },
+        { "id": "w744-s2", "pos": "noun", "gloss": "의사가 환자의 병력과 증상을 묻고 확인하는 일." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["w744-s1", "w744-s2"],
+        "note": "wave-b-sem-003은 종이를 누르는 물건과 의료 절차 후보를 별도 writer-facing sense로 제시한다."
+      },
       "expected_sense_count": 2,
       "expected_sense_ids": ["w744-s1", "w744-s2"],
       "expected_pos": ["noun", "noun"],
-      "expected_glosses": [
-        "종이나 책장이 날리지 않게 눌러 두는 물건.",
-        "의사가 환자의 병력과 증상을 묻고 확인하는 일."
-      ],
+      "expected_glosses": ["종이나 책장이 날리지 않게 눌러 두는 물건.", "의사가 환자의 병력과 증상을 묻고 확인하는 일."],
       "required_applicability": "applicable",
       "required_decision": "split",
       "contrast_pairs": [["w744-s1", "w744-s2"]],
@@ -77,13 +95,19 @@
       "canonical_id": "w746",
       "lemma": "책장",
       "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "w746-s1", "pos": "noun", "gloss": "책을 세워 두는 가구나 선반." },
+        { "id": "w746-s2", "pos": "noun", "gloss": "책을 이루는 낱장의 한 면." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["w746-s1", "w746-s2"],
+        "note": "wave-b-sem-004는 책을 꽂는 가구와 책의 한 면 후보를 별도 writer-facing sense로 제시한다."
+      },
       "expected_sense_count": 2,
       "expected_sense_ids": ["w746-s1", "w746-s2"],
       "expected_pos": ["noun", "noun"],
-      "expected_glosses": [
-        "책을 세워 두는 가구나 선반.",
-        "책을 이루는 낱장의 한 면."
-      ],
+      "expected_glosses": ["책을 세워 두는 가구나 선반.", "책을 이루는 낱장의 한 면."],
       "required_applicability": "applicable",
       "required_decision": "split",
       "contrast_pairs": [["w746-s1", "w746-s2"]],
@@ -97,55 +121,93 @@
       "canonical_id": "w750",
       "lemma": "도장",
       "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "w750-s1", "pos": "noun", "gloss": "이름이나 권한을 증명하려고 찍는 인장." },
+        { "id": "w750-s2", "pos": "noun", "gloss": "물체 표면에 페인트나 보호재를 입히는 일." },
+        { "id": "w750-s3", "pos": "noun", "gloss": "무술을 배우고 수련하는 곳." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["w750-s1", "w750-s2", "w750-s3"],
+        "note": "wave-b-sem-005는 인장, 표면 도포, 무술 수련 공간 후보를 각각 제시한다."
+      },
       "expected_sense_count": 3,
       "expected_sense_ids": ["w750-s1", "w750-s2", "w750-s3"],
       "expected_pos": ["noun", "noun", "noun"],
-      "expected_glosses": [
-        "이름이나 권한을 증명하려고 찍는 인장.",
-        "물체 표면에 페인트나 보호재를 입히는 일.",
-        "무술을 배우고 수련하는 곳."
-      ],
+      "expected_glosses": ["이름이나 권한을 증명하려고 찍는 인장.", "물체 표면에 페인트나 보호재를 입히는 일.", "무술을 배우고 수련하는 곳."],
       "required_applicability": "applicable",
       "required_decision": "split",
-      "contrast_pairs": [
-        ["w750-s1", "w750-s2"],
-        ["w750-s1", "w750-s3"],
-        ["w750-s2", "w750-s3"]
-      ],
+      "contrast_pairs": [["w750-s1", "w750-s2"], ["w750-s1", "w750-s3"], ["w750-s2", "w750-s3"]],
       "review_requirement": "인장, 표면에 입히는 칠, 무술 수련 공간이라는 세 장면을 각각 분리해 writer-facing 검색 결과의 장면을 보존한다."
     },
     {
       "case_id": "wave-b-sem-006",
+      "scope": "wave-b-proposal",
+      "inventory_id": "m5-489",
+      "case_type": "homonym",
+      "canonical_id": "w753",
+      "lemma": "바늘",
+      "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "w753-s1", "pos": "noun", "gloss": "실을 꿰어 천을 꿰매는 가느다란 도구." },
+        { "id": "w753-s2", "pos": "noun", "gloss": "시계나 계기의 눈금을 가리키는 뾰족한 막대." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["w753-s1", "w753-s2"],
+        "note": "wave-b-sem-006은 재봉 도구와 시계·계기 지침 후보를 별도 writer-facing sense로 제시한다."
+      },
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["w753-s1", "w753-s2"],
+      "expected_pos": ["noun", "noun"],
+      "expected_glosses": ["실을 꿰어 천을 꿰매는 가느다란 도구.", "시계나 계기의 눈금을 가리키는 뾰족한 막대."],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["w753-s1", "w753-s2"]],
+      "review_requirement": "재봉 바늘과 시계·계기 바늘은 writer-facing 장면과 기능이 달라 하나의 sense로 합치지 않는다."
+    },
+    {
+      "case_id": "wave-b-sem-007",
       "scope": "canonical-regression",
       "case_type": "pos",
       "canonical_id": "w548",
       "lemma": "고소하다",
       "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "w548-s1", "pos": "adjective", "gloss": "볶거나 구운 음식에서 구수하고 기름진 맛이 나다" },
+        { "id": "w548-s2", "pos": "adjective", "gloss": "남의 불행이나 실패를 보며 속이 시원하고 통쾌하다" },
+        { "id": "w548-s3", "pos": "verb", "gloss": "피해 사실을 수사 기관에 알리고 처벌을 요구하다" }
+      ],
+      "source_evidence": {
+        "kind": "canonical-regression",
+        "candidate_sense_ids": ["w548-s1", "w548-s2", "w548-s3"],
+        "note": "wave-b-sem-007은 맛, 정서, 신고 행위와 품사 차이를 보존하는 기존 canonical 회귀다."
+      },
       "expected_sense_count": 3,
       "expected_sense_ids": ["w548-s1", "w548-s2", "w548-s3"],
       "expected_pos": ["adjective", "adjective", "verb"],
-      "expected_glosses": [
-        "볶거나 구운 음식에서 구수하고 기름진 맛이 나다",
-        "남의 불행이나 실패를 보며 속이 시원하고 통쾌하다",
-        "피해 사실을 수사 기관에 알리고 처벌을 요구하다"
-      ],
+      "expected_glosses": ["볶거나 구운 음식에서 구수하고 기름진 맛이 나다", "남의 불행이나 실패를 보며 속이 시원하고 통쾌하다", "피해 사실을 수사 기관에 알리고 처벌을 요구하다"],
       "required_applicability": "applicable",
       "required_decision": "split",
-      "contrast_pairs": [
-        ["w548-s1", "w548-s2"],
-        ["w548-s1", "w548-s3"],
-        ["w548-s2", "w548-s3"]
-      ],
+      "contrast_pairs": [["w548-s1", "w548-s2"], ["w548-s1", "w548-s3"], ["w548-s2", "w548-s3"]],
       "review_requirement": "품사가 다른 adjective와 verb sense가 같은 lemma에 공존할 때 POS 경계를 보존하는 canonical regression이다."
     },
     {
-      "case_id": "wave-b-sem-007",
+      "case_id": "wave-b-sem-008",
       "scope": "wave-b-proposal",
       "inventory_id": "m5-514",
       "case_type": "space-phrase",
       "canonical_id": "w778",
       "lemma": "목을 축이다",
       "boundary_id": "compound-spaced-phrase",
+      "candidate_senses": [
+        { "id": "w778-s1", "pos": "expression", "gloss": "물을 마셔 목의 마른 느낌을 가라앉히다." }
+      ],
+      "source_evidence": {
+        "kind": "phrase-boundary",
+        "candidate_sense_ids": ["w778-s1"],
+        "note": "wave-b-sem-008은 띄어 쓴 표현 전체를 하나의 writer-facing 검색 단위 후보로 제시한다."
+      },
       "expected_sense_count": 1,
       "expected_sense_ids": ["w778-s1"],
       "expected_pos": ["expression"],
@@ -154,6 +216,105 @@
       "required_decision": "keep",
       "contrast_pairs": [],
       "review_requirement": "띄어 쓴 표현 전체를 하나의 검색 단위로 유지하고 낱말 경계로 잘라 별도 sense를 만들지 않는다."
+    },
+    {
+      "case_id": "wave-b-sem-009",
+      "scope": "synthetic-regression",
+      "case_type": "homonym",
+      "canonical_id": "synthetic-homonym-lamp",
+      "lemma": "가상 등불",
+      "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "synthetic-homonym-lamp-s1", "pos": "noun", "gloss": "어두운 곳을 밝히는 작은 등불." },
+        { "id": "synthetic-homonym-lamp-s2", "pos": "noun", "gloss": "식물의 잎에서 솟아난 가상의 불꽃 모양." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["synthetic-homonym-lamp-s1", "synthetic-homonym-lamp-s2"],
+        "note": "wave-b-sem-009 synthetic-homonym-lamp는 실제 canonical ID 없이 homonym 후보 둘을 제공하는 old-fails/new-passes 회귀다."
+      },
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["synthetic-homonym-lamp-s1", "synthetic-homonym-lamp-s2"],
+      "expected_pos": ["noun", "noun"],
+      "expected_glosses": ["어두운 곳을 밝히는 작은 등불.", "식물의 잎에서 솟아난 가상의 불꽃 모양."],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["synthetic-homonym-lamp-s1", "synthetic-homonym-lamp-s2"]],
+      "review_requirement": "synthetic fixture는 동일 표기가 서로 다른 장면을 가리킬 때 빈 contrast 단일 sense 승인을 허용하지 않는지 확인한다."
+    },
+    {
+      "case_id": "wave-b-sem-010",
+      "scope": "synthetic-regression",
+      "case_type": "pos",
+      "canonical_id": "synthetic-pos-turn",
+      "lemma": "가상 돌다",
+      "boundary_id": "homonym-pos",
+      "candidate_senses": [
+        { "id": "synthetic-pos-turn-s1", "pos": "verb", "gloss": "축을 중심으로 방향을 바꾸며 회전하다." },
+        { "id": "synthetic-pos-turn-s2", "pos": "noun", "gloss": "차례나 순서를 뜻하는 가상의 명사." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["synthetic-pos-turn-s1", "synthetic-pos-turn-s2"],
+        "note": "wave-b-sem-010 synthetic-pos-turn은 동일 표기의 품사 후보 둘을 제공하는 old-fails/new-passes 회귀다."
+      },
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["synthetic-pos-turn-s1", "synthetic-pos-turn-s2"],
+      "expected_pos": ["verb", "noun"],
+      "expected_glosses": ["축을 중심으로 방향을 바꾸며 회전하다.", "차례나 순서를 뜻하는 가상의 명사."],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["synthetic-pos-turn-s1", "synthetic-pos-turn-s2"]],
+      "review_requirement": "synthetic fixture는 품사 후보가 다를 때 homonym-pos 경계를 명시하도록 한다."
+    },
+    {
+      "case_id": "wave-b-sem-011",
+      "scope": "synthetic-regression",
+      "case_type": "polysemy",
+      "canonical_id": "synthetic-polysemy-bridge",
+      "lemma": "가상 잇다",
+      "boundary_id": "physical-figurative",
+      "candidate_senses": [
+        { "id": "synthetic-polysemy-bridge-s1", "pos": "verb", "gloss": "끊어진 물건의 양 끝을 맞대어 연결하다." },
+        { "id": "synthetic-polysemy-bridge-s2", "pos": "verb", "gloss": "사람이나 사건 사이의 관계를 이어 주다." }
+      ],
+      "source_evidence": {
+        "kind": "curated-candidate-senses",
+        "candidate_sense_ids": ["synthetic-polysemy-bridge-s1", "synthetic-polysemy-bridge-s2"],
+        "note": "wave-b-sem-011 synthetic-polysemy-bridge는 물리적 연결과 관계 연결 후보를 제공하는 old-fails/new-passes 회귀다."
+      },
+      "expected_sense_count": 2,
+      "expected_sense_ids": ["synthetic-polysemy-bridge-s1", "synthetic-polysemy-bridge-s2"],
+      "expected_pos": ["verb", "verb"],
+      "expected_glosses": ["끊어진 물건의 양 끝을 맞대어 연결하다.", "사람이나 사건 사이의 관계를 이어 주다."],
+      "required_applicability": "applicable",
+      "required_decision": "split",
+      "contrast_pairs": [["synthetic-polysemy-bridge-s1", "synthetic-polysemy-bridge-s2"]],
+      "review_requirement": "synthetic fixture는 물리와 비유의 writer-facing 장면을 하나의 무대조 sense로 축약하지 않는지 확인한다."
+    },
+    {
+      "case_id": "wave-b-sem-012",
+      "scope": "synthetic-regression",
+      "case_type": "space-phrase",
+      "canonical_id": "synthetic-space-breathe",
+      "lemma": "가상 숨을 고르다",
+      "boundary_id": "compound-spaced-phrase",
+      "candidate_senses": [
+        { "id": "synthetic-space-breathe-s1", "pos": "expression", "gloss": "숨을 천천히 쉬며 호흡을 안정시키다." }
+      ],
+      "source_evidence": {
+        "kind": "phrase-boundary",
+        "candidate_sense_ids": ["synthetic-space-breathe-s1"],
+        "note": "wave-b-sem-012 synthetic-space-breathe는 띄어 쓴 구를 낱말 단위로 분해하지 않는 old-fails/new-passes 회귀다."
+      },
+      "expected_sense_count": 1,
+      "expected_sense_ids": ["synthetic-space-breathe-s1"],
+      "expected_pos": ["expression"],
+      "expected_glosses": ["숨을 천천히 쉬며 호흡을 안정시키다."],
+      "required_applicability": "not-applicable",
+      "required_decision": "keep",
+      "contrast_pairs": [],
+      "review_requirement": "synthetic fixture는 띄어 쓴 구의 경계를 별도 sense로 오인하지 않는지 확인한다."
     }
   ]
 }

@@ -244,17 +244,17 @@ in the distinct audit session.
 Issue #96's Wave B is recorded in
 [`m5-10-wave-b-report.md`](m5-10-wave-b-report.md). It consumes the passing A2
 report and a separate digest-bound Wave B authorization, then processes 170
-selected starts: 145 are included, 5 are sense-corrected and imported, 10 are
+selected starts: 144 are included, 6 are sense-corrected and imported, 10 are
 held, and 10 are deferred. The 20-row buffer is therefore not counted as
 completed sense review; the canonical snapshot advances exactly from 628 to
-778 starts and contains 156 imported senses.
+778 starts and contains 157 imported senses.
 
 The Wave B editorial and audit completion recorders consume separately supplied
 decision artifacts. They do not generate record decisions, relation findings, or
 an audit verdict. The editorial input records all six sense-boundary checks for
-the 150 imported starts; five known homonym/polysemy records are corrected into
-explicit sense sets and the semantic regression corpus is checked during
-proposal preflight and canonical validation. The relation diff remains empty
+the 150 imported starts; six known homonym/polysemy records are corrected into
+explicit sense sets and the 12-case declaration-driven semantic regression
+corpus is checked during proposal preflight and canonical validation. The relation diff remains empty
 because this wave has no relation quota. A distinct post-freeze audit session
 checks the frozen reviewed-staging digest. Its five concrete findings are
 resolved and it leaves zero open blockers. The tracked verification artifact explicitly distinguishes
@@ -262,9 +262,10 @@ resolved and it leaves zero open blockers. The tracked verification artifact exp
 `human_editorial_review_complete: false`.
 
 The five editorial timing passes and the distinct post-freeze audit pass are
-complete and chronological. Their source-derived total is 31.859 seconds across
-160 processed starts. This is the recorder-bound measured interval used by the
-gate, not a claim about human effort or a substitute for semantic review. The
+complete and chronological. Their source-derived total is 3.415 seconds across
+1,562 recorder-created work units and 160 processed starts. This is the
+recorder-bound measured interval used by the gate, not a claim about human effort
+or a substitute for semantic review. The
 Wave B stage is `APPROVE BOUNDED`, but `ready_to_create`,
 `next_stage_created`, and `next_stage_authorized` remain false. No later stage
 artifact or task is created implicitly.

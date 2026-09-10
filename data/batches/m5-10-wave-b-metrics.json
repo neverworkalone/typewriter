@@ -12,25 +12,25 @@
       "processed_start_count": 160
     },
     "decisions": {
-      "included": 145,
-      "corrected": 5,
+      "included": 144,
+      "corrected": 6,
       "held": 10,
       "rejected": 0,
       "deferred": 10,
       "importable_start_count": 150,
-      "correction_rate_of_selected": 0.03125,
-      "correction_rate_of_importable": 0.03333333333333333,
+      "correction_rate_of_selected": 0.0375,
+      "correction_rate_of_importable": 0.04,
       "held_rate": 0.0625,
       "rejected_rate": 0,
       "held_or_rejected_rate": 0.0625,
-      "sense_field_correction_count": 5,
+      "sense_field_correction_count": 6,
       "relation_field_correction_count": 0
     },
     "canonical_import": {
       "imported_start_count": 150,
       "imported_reference_only_count": 0,
       "imported_record_count": 150,
-      "imported_sense_count": 156,
+      "imported_sense_count": 157,
       "imported_relation_count": 0,
       "imported_expression_count": 20,
       "relation_type_counts": {}
@@ -53,39 +53,39 @@
       "passes": {
         "target-preparation": {
           "status": "complete",
-          "wall_clock_seconds": 30.462,
-          "editor_seconds": 30.462
+          "wall_clock_seconds": 0.119,
+          "editor_seconds": 0.119
         },
         "initial-review": {
           "status": "complete",
-          "wall_clock_seconds": 0.266,
-          "editor_seconds": 0.266
+          "wall_clock_seconds": 1.923,
+          "editor_seconds": 1.923
         },
         "feedback-fixes": {
           "status": "complete",
-          "wall_clock_seconds": 0.27,
-          "editor_seconds": 0.27
+          "wall_clock_seconds": 0.441,
+          "editor_seconds": 0.441
         },
         "final-audit": {
           "status": "complete",
-          "wall_clock_seconds": 0.353,
-          "editor_seconds": 0.353
+          "wall_clock_seconds": 0.542,
+          "editor_seconds": 0.542
         },
         "held-rejected": {
           "status": "complete",
-          "wall_clock_seconds": 0.273,
-          "editor_seconds": 0.273
+          "wall_clock_seconds": 0.083,
+          "editor_seconds": 0.083
         },
         "post-freeze-audit": {
           "status": "complete",
-          "wall_clock_seconds": 0.235,
-          "editor_seconds": 0.235
+          "wall_clock_seconds": 0.307,
+          "editor_seconds": 0.307
         }
       },
-      "total_wall_clock_seconds": 31.859,
-      "total_editor_seconds": 31.859,
-      "measured_wall_clock_seconds": 31.859,
-      "measured_editor_seconds": 31.859,
+      "total_wall_clock_seconds": 3.4149999999999996,
+      "total_editor_seconds": 3.4149999999999996,
+      "measured_wall_clock_seconds": 3.4149999999999996,
+      "measured_editor_seconds": 3.4149999999999996,
       "unmeasured_passes": []
     },
     "audit": {
@@ -103,14 +103,15 @@
     "sense_review": {
       "status": "complete",
       "reviewed_start_count": 150,
-      "scoped_single_sense_count": 145,
-      "split_record_count": 5,
+      "scoped_single_sense_count": 144,
+      "split_record_count": 6,
       "split_canonical_ids": [
         "w719",
         "w734",
         "w744",
         "w746",
-        "w750"
+        "w750",
+        "w753"
       ]
     }
   }

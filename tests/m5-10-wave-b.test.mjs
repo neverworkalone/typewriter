@@ -47,8 +47,8 @@ test('M5-10 Wave B validates the independent +150 gate without a browser', async
     assert.equal(result.batch.processed_start_count, 160);
     assert.equal(result.batch.imported_start_count, 150);
     assert.equal(result.canonical.start_count, 778);
-    assert.equal(result.metrics.canonical_import.imported_sense_count, 156);
-    assert.deepEqual(result.metrics.sense_review.split_canonical_ids, ['w719', 'w734', 'w744', 'w746', 'w750']);
+    assert.equal(result.metrics.canonical_import.imported_sense_count, 157);
+    assert.deepEqual(result.metrics.sense_review.split_canonical_ids, ['w719', 'w734', 'w744', 'w746', 'w750', 'w753']);
     assert.equal(result.metrics.canonical_import.imported_relation_count, 0);
     assert.equal(result.stage.gate_status, 'pass');
     assert.equal(result.gate.quality_passes.timing_complete, true);
@@ -224,6 +224,54 @@ test('Wave B semantic regression cases stay connected to proposal preflight', as
   await assert.rejects(
     async () => validateWaveBSemanticRegression({ corpus: canonical, referenceRecords: canonicalRecords, editorialRecords: broken.records }),
     (error) => error instanceof WaveBValidationError && error.code === 'SEMANTIC_PREFLIGHT_DISCONNECTED',
+  );
+});
+
+test('Wave B semantic regression corpus accepts new declared synthetic cases and rejects drift', async () => {
+  const editorial = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json'));
+  const corpus = await readJson(path.join(BATCH_DIRECTORY, 'm5-10-wave-b-semantic-regressions.json'));
+  const canonicalRecords = (await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY)).records;
+  const syntheticCase = {
+    case_id: 'wave-b-sem-013',
+    scope: 'synthetic-regression',
+    case_type: 'homonym',
+    canonical_id: 'synthetic-new-homonym-case',
+    lemma: '가상 결',
+    boundary_id: 'homonym-pos',
+    candidate_senses: [
+      { id: 'synthetic-new-homonym-case-s1', pos: 'noun', gloss: '나무 표면의 무늬를 가리키는 가상 명사.' },
+      { id: 'synthetic-new-homonym-case-s2', pos: 'noun', gloss: '사람의 성격이나 분위기를 가리키는 가상 명사.' },
+    ],
+    source_evidence: {
+      kind: 'curated-candidate-senses',
+      candidate_sense_ids: ['synthetic-new-homonym-case-s1', 'synthetic-new-homonym-case-s2'],
+      note: 'wave-b-sem-013은 새 synthetic homonym 후보를 검증하는 선언형 회귀다.',
+    },
+    expected_sense_count: 2,
+    expected_sense_ids: ['synthetic-new-homonym-case-s1', 'synthetic-new-homonym-case-s2'],
+    expected_pos: ['noun', 'noun'],
+    expected_glosses: ['나무 표면의 무늬를 가리키는 가상 명사.', '사람의 성격이나 분위기를 가리키는 가상 명사.'],
+    required_applicability: 'applicable',
+    required_decision: 'split',
+    contrast_pairs: [['synthetic-new-homonym-case-s1', 'synthetic-new-homonym-case-s2']],
+    review_requirement: '새 synthetic 후보도 서로 다른 장면을 빈 contrast 단일 sense로 축약하지 않는다.',
+  };
+  const extendedCorpus = { ...corpus, cases: [...corpus.cases, syntheticCase] };
+  assert.doesNotThrow(() => validateWaveBSemanticRegression({
+    corpus: extendedCorpus,
+    referenceRecords: canonicalRecords,
+    editorialRecords: editorial.records,
+  }));
+
+  const driftedCorpus = structuredClone(extendedCorpus);
+  driftedCorpus.cases.at(-1).expected_sense_ids = ['synthetic-new-homonym-case-s1'];
+  assert.throws(
+    () => validateWaveBSemanticRegression({
+      corpus: driftedCorpus,
+      referenceRecords: canonicalRecords,
+      editorialRecords: editorial.records,
+    }),
+    (error) => error instanceof WaveBValidationError && error.code === 'SEMANTIC_CASE_CONTRACT',
   );
 });
 

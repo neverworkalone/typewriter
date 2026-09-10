@@ -6,11 +6,11 @@
   "actor_kind": "codex",
   "actor_id": "codex-wave-b-editorial",
   "input_id": "m5-10-wave-b-editorial-input-20260909",
-  "session_id": "e4be28a4-b179-4f82-bf20-8b0dee745b7e",
-  "proposal_staging_sha256": "604be4bdfe09345d85706adbaedf81983edebd4ad1f7f4a00aeb3c024749fd95",
-  "reviewed_staging_sha256": "3c56392d76fec1c4d1be24c8add69ef5a03057d5bfd76806c26894f30f61b0e2",
-  "created_at": "2026-09-09T16:27:51.420Z",
-  "finalized_at": "2026-09-09T16:27:51.424Z",
+  "session_id": "e79c5188-c89e-42f5-abdb-61e5ccc6d2dc",
+  "proposal_staging_sha256": "60a430455dc30c93f8497326654676f04489cf5a316693c01ceb661f6b9f3765",
+  "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
+  "created_at": "2026-09-10T02:01:09.703Z",
+  "finalized_at": "2026-09-10T02:01:09.704Z",
   "records": [
     {
       "inventory_id": "m5-365",
@@ -9213,75 +9213,99 @@
     {
       "inventory_id": "m5-489",
       "proposal_canonical_id": "w753",
-      "decision": "included",
-      "decision_note": "m5-489 w753 바늘: writer-facing sense 범위를 확인해 included로 반영한다.",
-      "observed_sense_count": 1,
+      "decision": "corrected",
+      "decision_note": "m5-489 w753 바늘: 재봉 도구와 시계·계기 지침이라는 두 장면을 분리해 writer-facing 검색 결과의 기능 경계를 보존한다. 의미를 분리해 corrected로 반영한다.",
+      "observed_sense_count": 2,
       "observed_pos": [
+        "noun",
         "noun"
       ],
       "boundary_evidence": {
         "physical-figurative": {
           "review_status": "reviewed",
-          "applicability": "applicable",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
-            "w753-s1"
+            "w753-s1",
+            "w753-s2"
           ],
           "decision": "keep",
           "contrasts": [],
-          "rationale": "m5-489 w753 w753-s1 물리적 장면과 추상적 변화의 치환 가능성을 따로 확인했다 결과를 기록했다."
+          "rationale": "m5-489 w753 w753-s1 w753-s2 재봉 도구와 계기 지침은 물리적 장면의 대상이 달라 물리·비유 경계를 따로 확인했다."
         },
         "homonym-pos": {
           "review_status": "reviewed",
-          "applicability": "not-applicable",
+          "applicability": "applicable",
           "candidate_sense_ids": [
-            "w753-s1"
+            "w753-s1",
+            "w753-s2"
           ],
-          "decision": "keep",
-          "contrasts": [],
-          "rationale": "m5-489 w753 w753-s1 표기와 품사에 따른 문맥 및 치환 가능성을 따로 확인했다 결과를 기록했다."
+          "decision": "split",
+          "contrasts": [
+            {
+              "left_sense_id": "w753-s1",
+              "right_sense_id": "w753-s2",
+              "dimension": "homonym",
+              "facets": [
+                "기능",
+                "장면",
+                "writer-facing 치환 범위"
+              ],
+              "left_observation": "a slender tool that pierces fabric while carrying thread",
+              "right_observation": "a pointed indicator that marks a scale on a clock or instrument",
+              "difference": "the first sense performs sewing while the second points to a measured position"
+            }
+          ],
+          "rationale": "m5-489 w753 w753-s1 w753-s2 wave-b-sem-006 재봉 바늘과 시계·계기 바늘은 기능과 장면이 달라 별도 sense로 검토했다."
         },
         "sensory-emotion-state-action": {
           "review_status": "reviewed",
-          "applicability": "applicable",
+          "applicability": "not-applicable",
           "candidate_sense_ids": [
-            "w753-s1"
+            "w753-s1",
+            "w753-s2"
           ],
           "decision": "keep",
           "contrasts": [],
-          "rationale": "m5-489 w753 w753-s1 감각·정서·상태·행동의 writer-facing 장면을 따로 확인했다 결과를 기록했다."
+          "rationale": "m5-489 w753 w753-s1 w753-s2 바늘 끝의 촉감과 계기판의 움직임은 감각·상태 장면이 달라 따로 확인했다."
         },
         "directional-symmetry": {
           "review_status": "reviewed",
           "applicability": "not-applicable",
           "candidate_sense_ids": [
-            "w753-s1"
+            "w753-s1",
+            "w753-s2"
           ],
           "decision": "keep",
           "contrasts": [],
-          "rationale": "m5-489 w753 w753-s1 방향과 대칭성, 논항의 움직임을 따로 확인했다 결과를 기록했다."
+          "rationale": "m5-489 w753 w753-s1 w753-s2 천을 통과하는 바늘과 눈금을 가리키는 바늘은 방향과 논항이 달라 구분했다."
         },
         "compound-spaced-phrase": {
           "review_status": "reviewed",
           "applicability": "not-applicable",
           "candidate_sense_ids": [
-            "w753-s1"
+            "w753-s1",
+            "w753-s2"
           ],
           "decision": "keep",
           "contrasts": [],
-          "rationale": "m5-489 w753 w753-s1 복합어와 띄어쓰기 단위가 검색 장면에 미치는 영향을 따로 확인했다 결과를 기록했다."
+          "rationale": "m5-489 w753 w753-s1 w753-s2 바늘은 단일 표기의 도구명이며 띄어 쓴 표현 경계와 섞이지 않는지 확인했다."
         },
         "word-idiom": {
           "review_status": "reviewed",
           "applicability": "not-applicable",
           "candidate_sense_ids": [
-            "w753-s1"
+            "w753-s1",
+            "w753-s2"
           ],
           "decision": "keep",
           "contrasts": [],
-          "rationale": "m5-489 w753 w753-s1 낱말과 관용 표현의 사용 단위를 따로 확인했다 결과를 기록했다."
+          "rationale": "m5-489 w753 w753-s1 w753-s2 재봉과 계기 장면 모두 독립 명사로 쓰이며 관용 표현 단위와 다름을 확인했다."
         }
       },
-      "canonical_id": "w753"
+      "canonical_id": "w753",
+      "corrected_fields": [
+        "senses"
+      ]
     },
     {
       "inventory_id": "m5-490",
@@ -11093,7 +11117,7 @@
           ],
           "decision": "keep",
           "contrasts": [],
-          "rationale": "m5-514 w778 w778-s1 wave-b-sem-007 복합어와 띄어쓰기 단위가 검색 장면에 미치는 영향을 따로 확인했다로 검토했다."
+          "rationale": "m5-514 w778 w778-s1 wave-b-sem-007 복합어와 띄어쓰기 단위가 검색 장면에 미치는 영향을 따로 확인했다로 검토했다. wave-b-sem-008"
         },
         "word-idiom": {
           "review_status": "reviewed",
@@ -12269,5 +12293,5 @@
       }
     }
   ],
-  "note": "Wave B decisions cover 150 importable starts, with five concrete sense corrections bound to the semantic regression corpus; ten held and ten deferred buffer rows remain outside the import set."
+  "note": "Wave B decisions cover 150 importable starts, with six concrete sense corrections bound to the declaration-driven semantic regression corpus; ten held and ten deferred buffer rows remain outside the import set."
 }

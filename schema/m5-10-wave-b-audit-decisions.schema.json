@@ -75,7 +75,7 @@
     "coverage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "reviewed_record_ids", "reviewed_buffer_inventory_ids", "semantic_regression_case_ids", "relation_scope"],
+      "required": ["status", "reviewed_record_ids", "reviewed_buffer_inventory_ids", "semantic_regression_case_ids", "audit_work_unit_ids", "relation_scope"],
       "properties": {
         "status": { "const": "complete" },
         "reviewed_record_ids": {
@@ -94,10 +94,15 @@
         },
         "semantic_regression_case_ids": {
           "type": "array",
-          "minItems": 7,
-          "maxItems": 7,
+          "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^wave-b-sem-[0-9]{3}$" }
+          "items": { "type": "string", "pattern": "^wave-b-sem-[0-9]{3,}$" }
+        },
+        "audit_work_unit_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(?:w[0-9]{3,}|m5-[0-9]+|wave-b-[a-z-]+)$" }
         },
         "relation_scope": {
           "type": "object",

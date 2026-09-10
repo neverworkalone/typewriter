@@ -80,16 +80,6 @@ export const WAVE_B_PROPOSAL_CANONICAL_IDS = Object.freeze(
   Array.from({ length: WAVE_B_SELECTED_START_COUNT }, (_, index) => `w${String(index + 629).padStart(3, '0')}`),
 );
 
-export const WAVE_B_SEMANTIC_REGRESSION_CASES = Object.freeze([
-  { case_id: 'wave-b-sem-001', inventory_id: 'm5-455', canonical_id: 'w719' },
-  { case_id: 'wave-b-sem-002', inventory_id: 'm5-470', canonical_id: 'w734' },
-  { case_id: 'wave-b-sem-003', inventory_id: 'm5-480', canonical_id: 'w744' },
-  { case_id: 'wave-b-sem-004', inventory_id: 'm5-482', canonical_id: 'w746' },
-  { case_id: 'wave-b-sem-005', inventory_id: 'm5-486', canonical_id: 'w750' },
-  { case_id: 'wave-b-sem-006', canonical_id: 'w548' },
-  { case_id: 'wave-b-sem-007', inventory_id: 'm5-514', canonical_id: 'w778' },
-]);
-
 export const DEFAULT_OUTPUT_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b.json');
 export const DEFAULT_EDITORIAL_INPUT_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-editorial-input.json');
 export const DEFAULT_AUDIT_INPUT_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-audit-input.json');
@@ -104,40 +94,6 @@ export const DEFAULT_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-1
 export const DEFAULT_PLAN_PATH = path.join(BATCH_DIRECTORY, 'm5-8-expansion-plan.json');
 export const DEFAULT_AUTHORIZATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-authorization.json');
 export const DEFAULT_SEMANTIC_REGRESSION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-semantic-regressions.json');
-
-export const WAVE_B_TIMING_WORK_UNIT_CONTRACT = Object.freeze({
-  'target-preparation': {
-    unit_kind: 'selected-target',
-    unit_ids: WAVE_B_SELECTED_INVENTORY_IDS,
-  },
-  'initial-review': {
-    unit_kind: 'boundary-check',
-    unit_ids: WAVE_B_SELECTED_INVENTORY_IDS.slice(0, WAVE_B_IMPORTED_START_COUNT).flatMap((inventoryId) => (
-      M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => `${inventoryId}:${boundaryId}`)
-    )),
-  },
-  'feedback-fixes': {
-    unit_kind: 'sense-correction',
-    unit_ids: WAVE_B_IMPORTED_CANONICAL_IDS,
-  },
-  'final-audit': {
-    unit_kind: 'final-audit-item',
-    unit_ids: WAVE_B_IMPORTED_CANONICAL_IDS,
-  },
-  'held-rejected': {
-    unit_kind: 'buffer-decision',
-    unit_ids: WAVE_B_BUFFER_INVENTORY_IDS,
-  },
-  'post-freeze-audit': {
-    unit_kind: 'post-freeze-audit-item',
-    unit_ids: [
-      ...WAVE_B_IMPORTED_CANONICAL_IDS,
-      ...WAVE_B_BUFFER_INVENTORY_IDS,
-      'wave-b-relation-screen',
-      'wave-b-timing-completeness',
-    ],
-  },
-});
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
@@ -209,6 +165,90 @@ export function createWaveBTimingProof(timing) {
   const copy = structuredClone(timing);
   delete copy.recording_proof_sha256;
   return sha256Bytes(Buffer.from(JSON.stringify(copy), 'utf8'));
+}
+
+function readTimingWorkLog(artifact, label) {
+  const validated = validateTimingArtifact(artifact, label);
+  const bytes = readFileSync(resolveArtifactPath(artifact.path));
+  if (bytes.length > 0 && bytes.at(-1) !== 10) fail(`${label} must be newline-terminated JSONL`, 'TIMING_WORK_LOG_INVALID');
+  const rows = bytes.length === 0
+    ? []
+    : bytes.toString('utf8').trimEnd().split('\n').filter(Boolean).map((line, index) => {
+      try {
+        return JSON.parse(line);
+      } catch (error) {
+        fail(`${label} line ${index + 1} is not valid JSON: ${error.message}`, 'TIMING_WORK_LOG_INVALID');
+      }
+    });
+  return { artifact: validated, bytes, rows };
+}
+
+function workRowsForPass(timing, passId) {
+  const pass = timing.passes.find(({ id }) => id === passId);
+  if (!pass) fail(`${passId} is missing from the timing input`, 'TIMING_SCOPE_MISMATCH');
+  return readTimingWorkLog(pass.work_evidence.output_artifact, `${passId} output work log`).rows
+    .filter((row) => row.kind === 'work' && row.pass_id === passId && row.session_id === pass.session_id);
+}
+
+export function validateWaveBTimingDecisionWork({ timingInput, auditTimingInput = timingInput, editorialInput, auditInput } = {}) {
+  if (!timingInput || !editorialInput) return { verified: false };
+  const importedRecords = editorialInput.records.slice(0, WAVE_B_IMPORTED_START_COUNT);
+  const bufferRecords = editorialInput.records.slice(WAVE_B_IMPORTED_START_COUNT);
+  const initialRows = workRowsForPass(timingInput, 'initial-review');
+  const expectedBoundaryRows = importedRecords.flatMap((recordReview) => M5_10A_SENSE_BOUNDARY_IDS.map((boundaryId) => {
+    const evidence = recordReview.boundary_evidence[boundaryId];
+    return {
+      inventory_id: recordReview.inventory_id,
+      proposal_canonical_id: recordReview.proposal_canonical_id,
+      boundary_id: boundaryId,
+      applicability: evidence.applicability,
+      decision: evidence.decision,
+      candidate_sense_ids: evidence.candidate_sense_ids,
+      contrasts: evidence.contrasts,
+      rationale: evidence.rationale,
+    };
+  }));
+  assertEqual(initialRows.map(({ unit_id: unitId }) => unitId), expectedBoundaryRows.map(({ inventory_id: inventoryId, boundary_id: boundaryId }) => `${inventoryId}:${boundaryId}`), 'timed boundary work scope drifted', 'TIMING_DECISION_BINDING');
+  assertEqual(initialRows.map(({ payload }) => payload), expectedBoundaryRows, 'timed boundary work does not match editorial evidence', 'TIMING_DECISION_BINDING');
+
+  const finalRows = workRowsForPass(timingInput, 'final-audit');
+  assertEqual(finalRows.map(({ unit_id: unitId }) => unitId), importedRecords.map(({ canonical_id: canonicalId }) => canonicalId), 'timed final decision scope drifted', 'TIMING_DECISION_BINDING');
+  assertEqual(finalRows.map(({ payload }) => payload.record_review), importedRecords, 'timed final decision work does not match editorial records', 'TIMING_DECISION_BINDING');
+  const bufferRows = workRowsForPass(timingInput, 'held-rejected');
+  assertEqual(bufferRows.map(({ unit_id: unitId }) => unitId), bufferRecords.map(({ inventory_id: inventoryId }) => inventoryId), 'timed buffer decision scope drifted', 'TIMING_DECISION_BINDING');
+  assertEqual(bufferRows.map(({ payload }) => payload.record_review), bufferRecords, 'timed buffer decision work does not match editorial records', 'TIMING_DECISION_BINDING');
+
+  if (auditInput) {
+    const auditRows = workRowsForPass(auditTimingInput, 'post-freeze-audit');
+    const timingSnapshotRows = auditRows.filter(({ unit_id: unitId }) => unitId === 'wave-b-timing-completeness');
+    assertEqual(timingSnapshotRows.length, 1, 'timed audit work must include one complete decision snapshot', 'TIMING_AUDIT_BINDING');
+    assertEqual(timingSnapshotRows[0].payload.coverage, auditInput.coverage, 'timed audit coverage snapshot drifted', 'TIMING_AUDIT_BINDING');
+    assertEqual(timingSnapshotRows[0].payload.findings, auditInput.findings, 'timed audit findings snapshot drifted', 'TIMING_AUDIT_BINDING');
+    for (const row of auditRows) {
+      assertEqual(row.payload.audit_id, auditInput.audit_id, `${row.unit_id} timed audit work audit binding drifted`, 'TIMING_AUDIT_BINDING');
+      assertEqual(row.payload.unit_id, row.unit_id, `${row.unit_id} timed audit work unit binding drifted`, 'TIMING_AUDIT_BINDING');
+      assertEqual(row.payload.status, 'verified', `${row.unit_id} timed audit work is not verified`, 'TIMING_AUDIT_BINDING');
+    }
+  }
+  return { verified: true, boundaryCount: initialRows.length, finalDecisionCount: finalRows.length, bufferDecisionCount: bufferRows.length };
+}
+
+export function deriveWaveBTimingUnitSets({ editorialInput, auditInput } = {}) {
+  if (!editorialInput || !auditInput) return undefined;
+  const selectedRecords = editorialInput.records ?? [];
+  const importedRecords = selectedRecords.slice(0, WAVE_B_IMPORTED_START_COUNT);
+  const bufferRecords = selectedRecords.slice(WAVE_B_IMPORTED_START_COUNT);
+  const boundaryIds = editorialInput.sense_review?.boundary_ids ?? M5_10A_SENSE_BOUNDARY_IDS;
+  const auditWorkUnitIds = auditInput.coverage?.audit_work_unit_ids;
+  if (!Array.isArray(auditWorkUnitIds)) return undefined;
+  return {
+    'target-preparation': selectedRecords.map(({ inventory_id: inventoryId }) => inventoryId),
+    'initial-review': importedRecords.flatMap(({ inventory_id: inventoryId }) => boundaryIds.map((boundaryId) => `${inventoryId}:${boundaryId}`)),
+    'feedback-fixes': importedRecords.map(({ canonical_id: canonicalId }) => canonicalId),
+    'final-audit': importedRecords.map(({ canonical_id: canonicalId }) => canonicalId),
+    'held-rejected': bufferRecords.map(({ inventory_id: inventoryId }) => inventoryId),
+    'post-freeze-audit': [...auditWorkUnitIds],
+  };
 }
 
 function exactIds(actual, expected, label) {
@@ -324,20 +364,19 @@ function validateRecordReview(recordReview, index, inventoryEntries, referenceBy
   const imported = index < WAVE_B_IMPORTED_START_COUNT;
   const expectedProposalId = WAVE_B_PROPOSAL_CANONICAL_IDS[index];
   const semanticCase = semanticCasesByCanonicalId.get(expectedProposalId);
-  const expectedDecision = imported
-    ? semanticCase?.scope === 'wave-b-proposal' && semanticCase.required_decision === 'split'
-      ? 'corrected'
-      : 'included'
-    : index < 160 ? 'held' : 'deferred';
   const reviewed = index < WAVE_B_IMPORTED_START_COUNT;
+  const reference = referenceById.get(expectedProposalId);
+  if (reviewed && !reference) fail(`${expectedProposalId} is missing from Wave B reference records`, 'MISSING_REFERENCE_RECORD');
+  const expectedDecision = imported
+    ? ((semanticCase?.scope === 'wave-b-proposal' && semanticCase.required_decision === 'split')
+      || reference?.senses.length > 1 ? 'corrected' : 'included')
+    : index < 160 ? 'held' : 'deferred';
   assertEqual(recordReview.proposal_canonical_id, expectedProposalId, `${expectedInventoryId} proposal canonical ID drifted`, 'PROPOSAL_SCOPE_MISMATCH');
   assertEqual(recordReview.decision, expectedDecision, `${expectedInventoryId} decision drifted`, 'EDITORIAL_DECISION_MISMATCH');
   if (imported) assertEqual(recordReview.canonical_id, expectedProposalId, `${expectedInventoryId} canonical ID drifted`, 'CANONICAL_SCOPE_MISMATCH');
   else if (Object.hasOwn(recordReview, 'canonical_id')) fail(`${expectedInventoryId} buffer decision must not carry canonical_id`, 'BUFFER_CANONICAL_LEAK');
   const inventoryEntry = inventoryEntries.get(expectedInventoryId);
   if (!inventoryEntry) fail(`${expectedInventoryId} is missing from target inventory`, 'MISSING_INVENTORY_TARGET');
-  const reference = referenceById.get(expectedProposalId);
-  if (reviewed && !reference) fail(`${expectedProposalId} is missing from Wave B reference records`, 'MISSING_REFERENCE_RECORD');
   const expectedLemma = reference?.lemma ?? inventoryEntry.lemma;
   const expectedPos = reviewed
     ? reference?.senses?.map(({ pos }) => pos) ?? inventoryEntry.pos
@@ -395,6 +434,18 @@ function validateRecordReview(recordReview, index, inventoryEntries, referenceBy
   if (reviewed && reference.senses.length > 1 && applicableBoundaryCount === 0) {
     fail(`${expectedInventoryId} multi-sense review must identify an applicable boundary`, 'BOUNDARY_APPLICABILITY_MISSING');
   }
+  if (reviewed && reference.senses.length > 1) {
+    if (recordReview.decision === 'included') {
+      fail(`${expectedInventoryId} has multiple candidate senses and cannot be accepted as one included sense`, 'SEMANTIC_SINGLE_SENSE_ACCEPTED');
+    }
+    const expectedPairs = new Set(allContrastPairs(expectedSenseIds));
+    const actualPairs = new Set(
+      Object.values(recordReview.boundary_evidence)
+        .flatMap(({ contrasts }) => contrasts)
+        .map(({ left_sense_id: left, right_sense_id: right }) => contrastPairKey(left, right)),
+    );
+    assertEqual(actualPairs, expectedPairs, `${expectedInventoryId} multi-sense evidence must cover every candidate distinction`, 'BOUNDARY_CONTRAST_COVERAGE');
+  }
 }
 
 function readSemanticRegressionCorpus() {
@@ -416,29 +467,60 @@ function contrastPairKey(left, right) {
   return [left, right].sort().join('|');
 }
 
+function allContrastPairs(senseIds) {
+  const pairs = [];
+  for (let leftIndex = 0; leftIndex < senseIds.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < senseIds.length; rightIndex += 1) {
+      pairs.push(contrastPairKey(senseIds[leftIndex], senseIds[rightIndex]));
+    }
+  }
+  return pairs;
+}
+
+function validateSemanticCaseShape(semanticCase) {
+  const label = `semantic regression ${semanticCase.case_id}`;
+  const candidateIds = semanticCase.candidate_senses.map(({ id }) => id);
+  assertEqual(candidateIds, semanticCase.expected_sense_ids, `${label} candidate sense IDs drifted`, 'SEMANTIC_CASE_CONTRACT');
+  assertEqual(candidateIds.length, semanticCase.expected_sense_count, `${label} candidate sense count drifted`, 'SEMANTIC_CASE_CONTRACT');
+  assertEqual(semanticCase.candidate_senses.map(({ pos }) => pos), semanticCase.expected_pos, `${label} candidate POS drifted`, 'SEMANTIC_CASE_CONTRACT');
+  assertEqual(semanticCase.candidate_senses.map(({ gloss }) => gloss), semanticCase.expected_glosses, `${label} candidate glosses drifted`, 'SEMANTIC_CASE_CONTRACT');
+  assertEqual(semanticCase.source_evidence.candidate_sense_ids, candidateIds, `${label} source evidence candidate IDs drifted`, 'SEMANTIC_CASE_CONTRACT');
+  if (!semanticCase.source_evidence.note.includes(semanticCase.case_id)) fail(`${label} source evidence must identify its case`, 'SEMANTIC_CASE_CONTRACT');
+  const expectedPairs = new Set(allContrastPairs(candidateIds));
+  const declaredPairs = new Set(semanticCase.contrast_pairs.map(([left, right]) => contrastPairKey(left, right)));
+  if (candidateIds.length > 1) {
+    assertEqual(semanticCase.required_applicability, 'applicable', `${label} multi-candidate evidence must be applicable`, 'SEMANTIC_CASE_CONTRACT');
+    assertEqual(semanticCase.required_decision, 'split', `${label} multi-candidate evidence must split`, 'SEMANTIC_CASE_CONTRACT');
+    assertEqual(declaredPairs, expectedPairs, `${label} contrast pairs do not cover every candidate distinction`, 'SEMANTIC_CASE_CONTRACT');
+  } else if (semanticCase.required_decision === 'split') {
+    fail(`${label} cannot split a single candidate sense`, 'SEMANTIC_CASE_CONTRACT');
+  }
+}
+
 export function validateWaveBSemanticRegression({ corpus = readSemanticRegressionCorpus(), referenceRecords = [], editorialRecords = [] } = {}) {
   validateDecisionSchema(corpus, semanticRegressionSchemaValidator, 'Wave B semantic regression corpus');
   for (const category of ['homonym', 'pos', 'polysemy', 'space-phrase']) {
     if (!corpus.categories.includes(category)) fail(`semantic regression corpus is missing the ${category} category`, 'SEMANTIC_CORPUS_COVERAGE');
   }
-  assertEqual(
-    corpus.cases.map(({ case_id: caseId }) => caseId),
-    WAVE_B_SEMANTIC_REGRESSION_CASES.map(({ case_id: caseId }) => caseId),
-    'Wave B semantic regression case order drifted',
-    'SEMANTIC_CORPUS_COVERAGE',
-  );
+  const caseIds = corpus.cases.map(({ case_id: caseId }) => caseId);
+  if (new Set(caseIds).size !== caseIds.length) fail('semantic regression corpus contains duplicate case IDs', 'SEMANTIC_CORPUS_COVERAGE');
+  const canonicalIds = corpus.cases.map(({ canonical_id: canonicalId }) => canonicalId);
+  if (new Set(canonicalIds).size !== canonicalIds.length) fail('semantic regression corpus contains duplicate target IDs', 'SEMANTIC_CORPUS_COVERAGE');
+  for (const category of ['homonym', 'pos', 'polysemy', 'space-phrase']) {
+    if (!corpus.cases.some((semanticCase) => semanticCase.scope === 'synthetic-regression' && semanticCase.case_type === category)) {
+      fail(`semantic regression corpus is missing a synthetic ${category} case`, 'SEMANTIC_CORPUS_COVERAGE');
+    }
+  }
   const referenceById = recordsById(referenceRecords);
   const reviewByInventoryId = new Map(editorialRecords.map((recordReview) => [recordReview.inventory_id, recordReview]));
   for (const semanticCase of corpus.cases) {
     const label = `semantic regression ${semanticCase.case_id}`;
-    const expectedCase = WAVE_B_SEMANTIC_REGRESSION_CASES.find(({ case_id: caseId }) => caseId === semanticCase.case_id);
-    if (!expectedCase) fail(`${label} is not an authorized Wave B regression case`, 'SEMANTIC_CORPUS_COVERAGE');
-    assertEqual(
-      { inventory_id: semanticCase.inventory_id, canonical_id: semanticCase.canonical_id },
-      { inventory_id: expectedCase.inventory_id, canonical_id: expectedCase.canonical_id },
-      `${label} target binding drifted`,
-      'SEMANTIC_CORPUS_COVERAGE',
-    );
+    validateSemanticCaseShape(semanticCase);
+    if (semanticCase.scope === 'synthetic-regression') {
+      if (!semanticCase.canonical_id.startsWith('synthetic-')) fail(`${label} synthetic target must use a synthetic ID`, 'SEMANTIC_CORPUS_COVERAGE');
+      continue;
+    }
+    if (semanticCase.canonical_id.startsWith('synthetic-')) fail(`${label} production regression target cannot use a synthetic ID`, 'SEMANTIC_CORPUS_COVERAGE');
     const record = referenceById.get(semanticCase.canonical_id);
     if (!record) fail(`${label} references missing canonical record ${semanticCase.canonical_id}`, 'MISSING_REFERENCE_RECORD');
     assertEqual(record.lemma, semanticCase.lemma, `${label} lemma drifted`, 'SEMANTIC_CORPUS_MISMATCH');
@@ -462,6 +544,9 @@ export function validateWaveBSemanticRegression({ corpus = readSemanticRegressio
     const actualPairs = new Set((evidence.contrasts ?? []).map(({ left_sense_id: left, right_sense_id: right }) => contrastPairKey(left, right)));
     const expectedPairs = new Set(semanticCase.contrast_pairs.map(([left, right]) => contrastPairKey(left, right)));
     assertEqual(actualPairs, expectedPairs, `${label} preflight contrast coverage drifted`, 'SEMANTIC_PREFLIGHT_CONTRAST_MISMATCH');
+    if (semanticCase.candidate_senses.length > 1 && recordReview.decision === 'included') {
+      fail(`${label} source evidence with multiple candidates cannot be accepted as a single included sense`, 'SEMANTIC_SINGLE_SENSE_ACCEPTED');
+    }
   }
   return { verified: true, caseCount: corpus.cases.length };
 }
@@ -512,7 +597,13 @@ export function validateWaveBEditorialInput({ input, inventoryEntries = [], refe
   assertEqual(input.sense_review.split_record_count, splitCanonicalIds.length, 'Wave B split record count drifted', 'SENSE_SCOPE_MISMATCH');
   assertEqual(input.sense_review.split_canonical_ids, splitCanonicalIds, 'Wave B split canonical scope drifted', 'SENSE_SCOPE_MISMATCH');
   const counts = Object.fromEntries(DECISIONS.map((decision) => [decision, input.records.filter((record) => record.decision === decision).length]));
-  assertEqual(counts, { included: 145, corrected: 5, held: 10, rejected: 0, deferred: 10 }, 'Wave B editorial decision counts drifted', 'EDITORIAL_DECISION_COUNTS');
+  assertEqual(counts, {
+    included: WAVE_B_IMPORTED_START_COUNT - splitCanonicalIds.length,
+    corrected: splitCanonicalIds.length,
+    held: input.records.slice(WAVE_B_IMPORTED_START_COUNT, WAVE_B_PROCESSED_START_COUNT).length,
+    rejected: 0,
+    deferred: input.records.slice(WAVE_B_PROCESSED_START_COUNT).length,
+  }, 'Wave B editorial decision counts drifted', 'EDITORIAL_DECISION_COUNTS');
   return {
     verified: true,
     selectedStartCount: WAVE_B_SELECTED_START_COUNT,
@@ -658,6 +749,14 @@ export function validateWaveBAuditInput({ audit, editorialInput, relationDiff } 
   exactIds(audit.coverage?.reviewed_record_ids, WAVE_B_IMPORTED_CANONICAL_IDS, 'Wave B audit coverage canonical scope');
   exactIds(audit.coverage?.reviewed_buffer_inventory_ids, WAVE_B_BUFFER_INVENTORY_IDS, 'Wave B audit coverage buffer scope');
   assertEqual(audit.coverage?.semantic_regression_case_ids, semanticCorpus.cases.map(({ case_id: caseId }) => caseId), 'Wave B audit semantic coverage drifted', 'AUDIT_COVERAGE_MISMATCH');
+  const requiredAuditWorkUnitIds = [...audit.reviewed_record_ids, ...audit.reviewed_buffer_inventory_ids];
+  if (!Array.isArray(audit.coverage?.audit_work_unit_ids)) fail('Wave B audit work-unit coverage is missing', 'AUDIT_COVERAGE_MISMATCH');
+  assertEqual(
+    audit.coverage.audit_work_unit_ids,
+    [...requiredAuditWorkUnitIds, 'wave-b-relation-screen', 'wave-b-timing-completeness'],
+    'Wave B audit work-unit coverage drifted',
+    'AUDIT_COVERAGE_MISMATCH',
+  );
   assertEqual(audit.coverage?.relation_scope, { before_count: 0, after_count: 0, candidate_count: 0 }, 'Wave B audit relation coverage drifted', 'AUDIT_COVERAGE_MISMATCH');
   requireString(audit.audit_id, 'audit_id');
   requireString(audit.auditor_id, 'auditor_id');
@@ -707,32 +806,56 @@ export function validateWaveBAuditInput({ audit, editorialInput, relationDiff } 
   return { verified: true, findingCount: audit.findings.length, openBlockerCount: 0 };
 }
 
-function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId) {
+function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId, expectedUnitIds) {
   assertEqual(pass.id, passId, `${passId} timing pass ID drifted`, 'TIMING_SCOPE_MISMATCH');
   assertEqual(pass.status, 'complete', `${passId} timing pass is not complete`, 'TIMING_INCOMPLETE');
   requireIsoDate(pass.started_at, `${passId}.started_at`);
   requireIsoDate(pass.completed_at, `${passId}.completed_at`);
   requireUuid(pass.session_id, `${passId}.session_id`);
-  assertEqual(pass.recording_source, 'timing-recorder-v2', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(pass.recording_source, 'timing-recorder-v3', `${passId}.recording_source drifted`, 'TIMING_PROVENANCE_MISMATCH');
   const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
   if (!Number.isFinite(elapsed) || elapsed < 0) fail(`${passId} timing chronology is invalid`, 'TIMING_CHRONOLOGY');
   assertEqual(pass.wall_clock_seconds, elapsed, `${passId}.wall_clock_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
   assertEqual(pass.editor_seconds, elapsed, `${passId}.editor_seconds drifted from timestamps`, 'TIMING_DURATION_DRIFT');
-  const contract = WAVE_B_TIMING_WORK_UNIT_CONTRACT[passId];
-  assertEqual(pass.work_evidence?.unit_kind, contract.unit_kind, `${passId} work evidence kind drifted`, 'TIMING_WORK_EVIDENCE_MISMATCH');
-  assertEqual(pass.work_evidence?.unit_count, contract.unit_ids.length, `${passId} work evidence count drifted`, 'TIMING_WORK_EVIDENCE_MISMATCH');
-  exactIds(pass.work_evidence?.unit_ids, contract.unit_ids, `${passId} work evidence`);
+  requireString(pass.output_artifact_created_at, `${passId}.output_artifact_created_at`);
+  assertTimestampOrder(pass.started_at, pass.output_artifact_created_at, `${passId} output artifact creation`, 'TIMING_WORK_LOG_CHRONOLOGY');
+  assertTimestampOrder(pass.output_artifact_created_at, pass.completed_at, `${passId} output artifact and stop`, 'TIMING_WORK_LOG_CHRONOLOGY');
   requireSha256(pass.work_evidence?.before_sha256, `${passId}.work_evidence.before_sha256`);
   requireSha256(pass.work_evidence?.after_sha256, `${passId}.work_evidence.after_sha256`);
   requireString(pass.work_evidence?.note, `${passId}.work_evidence.note`);
   const inputArtifact = validateTimingArtifact(pass.work_evidence?.input_artifact, `${passId}.work_evidence.input_artifact`);
   const outputArtifact = validateTimingArtifact(pass.work_evidence?.output_artifact, `${passId}.work_evidence.output_artifact`);
+  const workLog = validateTimingArtifact(pass.work_evidence?.work_log, `${passId}.work_evidence.work_log`);
   assertEqual(pass.work_evidence.before_sha256, inputArtifact.sha256, `${passId}.before_sha256 is not the input artifact digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
   assertEqual(pass.work_evidence.after_sha256, outputArtifact.sha256, `${passId}.after_sha256 is not the output artifact digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
-  if (inputArtifact.path === outputArtifact.path || inputArtifact.sha256 === outputArtifact.sha256) {
-    fail(`${passId} timing pass must record a real content transition`, 'TIMING_ARTIFACT_TRANSITION_MISSING');
+  assertEqual(workLog, outputArtifact, `${passId} work log and output artifact drifted`, 'TIMING_WORK_LOG_BINDING');
+  if (inputArtifact.path === outputArtifact.path || inputArtifact.sha256 === outputArtifact.sha256) fail(`${passId} timing pass must record a real content transition`, 'TIMING_ARTIFACT_TRANSITION_MISSING');
+  const inputBytes = readFileSync(resolveArtifactPath(inputArtifact.path));
+  const { bytes: outputBytes, rows } = readTimingWorkLog(outputArtifact, `${passId} output work log`);
+  if (!outputBytes.subarray(0, inputBytes.length).equals(inputBytes)) fail(`${passId} output work log must preserve the cumulative input prefix`, 'TIMING_WORK_LOG_CHAIN_MISMATCH');
+  const workRows = rows.filter((row) => row.kind === 'work' && row.pass_id === passId && row.session_id === pass.session_id);
+  if (workRows.length === 0) fail(`${passId} output work log contains no recorder-bound work rows`, 'TIMING_WORK_LOG_EMPTY');
+  const unitIds = workRows.map(({ unit_id: unitId }) => unitId);
+  exactIds(unitIds, pass.work_evidence.unit_ids, `${passId} derived work evidence`);
+  assertEqual(pass.work_evidence.unit_count, unitIds.length, `${passId} work evidence count drifted from output work log`, 'TIMING_WORK_EVIDENCE_MISMATCH');
+  if (expectedUnitIds) exactIds(unitIds, expectedUnitIds, `${passId} work scope`);
+  const unitKinds = new Set(workRows.map(({ unit_kind: unitKind }) => unitKind));
+  if (unitKinds.size !== 1) fail(`${passId} output work log must use one unit kind`, 'TIMING_WORK_EVIDENCE_MISMATCH');
+  assertEqual(pass.work_evidence.unit_kind, [...unitKinds][0], `${passId} work evidence kind drifted from output work log`, 'TIMING_WORK_EVIDENCE_MISMATCH');
+  if (!Array.isArray(pass.work_evidence.work_event_ids) || pass.work_evidence.work_event_ids.length !== unitIds.length) fail(`${passId} work event scope is incomplete`, 'TIMING_EVENT_BINDING');
+  if (new Set(pass.work_evidence.work_event_ids).size !== pass.work_evidence.work_event_ids.length) fail(`${passId} work event IDs contain duplicates`, 'TIMING_EVENT_BINDING');
+  for (const row of workRows) {
+    assertEqual(row.schema_version, '1', `${passId} work row schema version drifted`, 'TIMING_WORK_LOG_INVALID');
+    assertEqual(row.kind, 'work', `${passId} work row kind drifted`, 'TIMING_WORK_LOG_INVALID');
+    assertEqual(row.pass_id, passId, `${passId} work row pass binding drifted`, 'TIMING_WORK_LOG_INVALID');
+    assertEqual(row.session_id, pass.session_id, `${passId} work row session binding drifted`, 'TIMING_WORK_LOG_INVALID');
+    requireString(row.unit_id, `${passId} work row unit_id`);
+    requireString(row.unit_kind, `${passId} work row unit_kind`);
+    if (!row.payload || typeof row.payload !== 'object' || Array.isArray(row.payload)) fail(`${passId} output work log contains an invalid payload`, 'TIMING_WORK_LOG_INVALID');
+    requireIsoDate(row.recorded_at, `${passId} work row recorded_at`);
+    assertTimestampOrder(pass.started_at, row.recorded_at, `${passId} work row start`, 'TIMING_WORK_LOG_CHRONOLOGY');
+    assertTimestampOrder(row.recorded_at, pass.completed_at, `${passId} work row stop`, 'TIMING_WORK_LOG_CHRONOLOGY');
   }
-  requireString(pass.work_evidence.work_event_id, `${passId}.work_evidence.work_event_id`);
   if (passId === 'post-freeze-audit') {
     requireUuid(pass.audit_session_id, `${passId}.audit_session_id`);
     assertEqual(pass.audit_session_id, expectedAuditSessionId, `${passId}.audit_session_id drifted`, 'AUDIT_TIMING_BINDING');
@@ -740,6 +863,7 @@ function validateTimingPass(pass, passId, expectedSha256, expectedAuditSessionId
   } else if (Object.hasOwn(pass, 'audit_session_id') || Object.hasOwn(pass, 'reviewed_staging_sha256')) {
     fail(`${passId} editorial pass must not carry audit-only binding fields`, 'TIMING_BINDING_MISMATCH');
   }
+  return { rows, workRows, unitIds };
 }
 
 function assertTimestampOrder(earlier, later, label, code, { strict = false } = {}) {
@@ -758,16 +882,20 @@ export function validateWaveBChronology({ editorialInput, auditInput, timingInpu
   const auditLast = auditTimingInput.passes.at(-1).completed_at;
 
   assertTimestampOrder(editorialInput.created_at, editorialFirst, 'editorial session and timing', 'EDITORIAL_TIMING_CHRONOLOGY');
-  assertTimestampOrder(editorialLast, editorialInput.decision_artifact.finalized_at, 'editorial timing and decision finalization', 'EDITORIAL_DECISION_CHRONOLOGY', { strict: true });
-  assertTimestampOrder(editorialInput.decision_artifact.finalized_at, editorialInput.completed_at, 'editorial decision and completion', 'EDITORIAL_COMPLETION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(editorialInput.created_at, editorialInput.decision_artifact.created_at, 'editorial session and decision creation', 'EDITORIAL_DECISION_CHRONOLOGY');
+  assertTimestampOrder(editorialInput.decision_artifact.created_at, editorialInput.decision_artifact.finalized_at, 'editorial decision creation and finalization', 'EDITORIAL_DECISION_CHRONOLOGY');
+  assertTimestampOrder(editorialInput.decision_artifact.finalized_at, editorialFirst, 'editorial decision and timing start', 'EDITORIAL_DECISION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(editorialLast, editorialInput.completed_at, 'editorial timing and completion', 'EDITORIAL_COMPLETION_CHRONOLOGY', { strict: true });
   assertEqual(editorialInput.timing_artifact.started_at, editorialFirst, 'editorial timing start binding drifted', 'EDITORIAL_TIMING_BINDING');
   assertEqual(editorialInput.timing_artifact.completed_at, editorialLast, 'editorial timing completion binding drifted', 'EDITORIAL_TIMING_BINDING');
 
   assertTimestampOrder(editorialInput.completed_at, auditInput.created_at, 'editorial completion and audit session', 'AUDIT_SESSION_CHRONOLOGY', { strict: true });
   assertTimestampOrder(auditInput.created_at, auditFirst, 'audit session and post-freeze timing', 'AUDIT_TIMING_CHRONOLOGY');
   assertTimestampOrder(editorialInput.completed_at, auditFirst, 'editorial completion and post-freeze audit', 'AUDIT_TIMING_CHRONOLOGY', { strict: true });
-  assertTimestampOrder(auditLast, auditInput.decision_artifact.finalized_at, 'audit timing and decision finalization', 'AUDIT_DECISION_CHRONOLOGY', { strict: true });
-  assertTimestampOrder(auditInput.decision_artifact.finalized_at, auditInput.completed_at, 'audit decision and completion', 'AUDIT_COMPLETION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(auditInput.created_at, auditInput.decision_artifact.created_at, 'audit session and decision creation', 'AUDIT_DECISION_CHRONOLOGY');
+  assertTimestampOrder(auditInput.decision_artifact.created_at, auditInput.decision_artifact.finalized_at, 'audit decision creation and finalization', 'AUDIT_DECISION_CHRONOLOGY');
+  assertTimestampOrder(auditInput.decision_artifact.finalized_at, auditFirst, 'audit decision and timing start', 'AUDIT_DECISION_CHRONOLOGY', { strict: true });
+  assertTimestampOrder(auditLast, auditInput.completed_at, 'audit timing and completion', 'AUDIT_COMPLETION_CHRONOLOGY', { strict: true });
   assertEqual(auditInput.editorial_timing_artifact.started_at, editorialFirst, 'audit editorial timing start binding drifted', 'AUDIT_TIMING_BINDING');
   assertEqual(auditInput.editorial_timing_artifact.completed_at, editorialLast, 'audit editorial timing completion binding drifted', 'AUDIT_TIMING_BINDING');
   assertEqual(auditInput.timing_artifact.started_at, auditFirst, 'audit timing start binding drifted', 'AUDIT_TIMING_BINDING');
@@ -775,13 +903,13 @@ export function validateWaveBChronology({ editorialInput, auditInput, timingInpu
   return { editorialFirst, editorialLast, auditFirst, auditLast };
 }
 
-export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSha256, auditSessionId } = {}) {
+export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSha256, auditSessionId, expectedUnitIdsByPass } = {}) {
   if (!timing || typeof timing !== 'object' || Array.isArray(timing)) fail('Wave B timing input must be an object', 'INVALID_TIMING_INPUT');
-  assertEqual(timing.schema_version, '1', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
+  assertEqual(timing.schema_version, '2', 'Wave B timing schema version drifted', 'SCHEMA_VERSION');
   assertEqual(timing.batch_id, WAVE_B_BATCH_ID, 'Wave B timing batch_id drifted', 'BATCH_ID_MISMATCH');
   assertEqual(timing.timing_kind, timingKind, 'Wave B timing kind drifted', 'TIMING_KIND_MISMATCH');
-  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v2', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
-  assertEqual(timing.recording_source, 'timing-recorder-v2', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recorder_version, 'wave-b-timing-recorder-v3', 'Wave B timing recorder version drifted', 'TIMING_PROVENANCE_MISMATCH');
+  assertEqual(timing.recording_source, 'timing-recorder-v3', 'Wave B timing recording source drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.recorder_command, 'node scripts/batch/record-m5-10-wave-b-timing.mjs', 'Wave B timing recorder command drifted', 'TIMING_PROVENANCE_MISMATCH');
   assertEqual(timing.status, 'complete', 'Wave B timing is not complete', 'TIMING_INCOMPLETE');
   requireUuid(timing.session_id, 'timing session_id');
@@ -796,7 +924,10 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
     fail('editorial timing must not carry post-freeze staging binding fields', 'TIMING_BINDING_MISMATCH');
   }
   exactIds(timing.passes?.map(({ id }) => id), expectedPassIds, `${timingKind} timing passes`);
-  for (const pass of timing.passes) validateTimingPass(pass, pass.id, reviewedStagingSha256, auditSessionId);
+  const passWork = new Map();
+  for (const pass of timing.passes) {
+    passWork.set(pass.id, validateTimingPass(pass, pass.id, reviewedStagingSha256, auditSessionId, expectedUnitIdsByPass?.[pass.id]));
+  }
   for (let index = 1; index < timing.passes.length; index += 1) {
     assertEqual(
       timing.passes[index - 1].work_evidence.output_artifact.sha256,
@@ -811,28 +942,36 @@ export function validateWaveBTimingInput(timing, { timingKind, reviewedStagingSh
       'TIMING_CHRONOLOGY',
     );
   }
-  if (!Array.isArray(timing.events) || timing.events.length !== expectedPassIds.length * 3) fail(`${timingKind} timing event count drifted`, 'TIMING_EVENT_COVERAGE');
-  const expectedEvents = timing.passes.flatMap((pass, index) => ([
-    { event_id: `m5-10-wave-b-timing-event-${String(index * 3 + 1).padStart(4, '0')}`, pass_id: pass.id, kind: 'start', session_id: pass.session_id, at: pass.started_at },
-    {
-      event_id: `m5-10-wave-b-timing-event-${String(index * 3 + 2).padStart(4, '0')}`,
-      pass_id: pass.id,
-      kind: 'work',
-      session_id: pass.session_id,
-      at: pass.completed_at,
-      unit_kind: pass.work_evidence.unit_kind,
-      unit_count: pass.work_evidence.unit_count,
-      unit_ids: pass.work_evidence.unit_ids,
-      input_artifact: pass.work_evidence.input_artifact,
-      output_artifact: pass.work_evidence.output_artifact,
-      note: pass.work_evidence.note,
-    },
-    { event_id: `m5-10-wave-b-timing-event-${String(index * 3 + 3).padStart(4, '0')}`, pass_id: pass.id, kind: 'stop', session_id: pass.session_id, at: pass.completed_at },
-  ]));
-  assertEqual(timing.events, expectedEvents, `${timingKind} timing events drifted from pass timestamps`, 'TIMING_EVENT_BINDING');
-  for (let index = 0; index < timing.passes.length; index += 1) {
-    assertEqual(timing.passes[index].work_evidence.work_event_id, timing.events[index * 3 + 1].event_id, `${timingKind} work event binding drifted`, 'TIMING_EVENT_BINDING');
+  const expectedEventCount = timing.passes.reduce((sum, pass) => sum + pass.work_evidence.unit_count + 2, 0);
+  if (!Array.isArray(timing.events) || timing.events.length !== expectedEventCount) fail(`${timingKind} timing event count drifted`, 'TIMING_EVENT_COVERAGE');
+  const eventIds = timing.events.map(({ event_id: eventId }) => eventId);
+  if (eventIds.some((eventId) => typeof eventId !== 'string' || !/^m5-10-wave-b-timing-event-[0-9]{4}$/u.test(eventId))) {
+    fail(`${timingKind} timing contains an invalid event ID`, 'TIMING_EVENT_BINDING');
   }
+  if (new Set(eventIds).size !== eventIds.length) fail(`${timingKind} timing event IDs contain duplicates`, 'TIMING_EVENT_BINDING');
+  let eventIndex = 0;
+  for (const pass of timing.passes) {
+    const startEvent = timing.events[eventIndex++];
+    assertEqual(startEvent, { event_id: startEvent.event_id, pass_id: pass.id, kind: 'start', session_id: pass.session_id, at: pass.started_at }, `${timingKind} start event binding drifted`, 'TIMING_EVENT_BINDING');
+    const workRows = passWork.get(pass.id).workRows;
+    const workEventIds = pass.work_evidence.work_event_ids;
+    assertEqual(workEventIds.length, workRows.length, `${pass.id} work event count drifted`, 'TIMING_EVENT_BINDING');
+    for (const [rowIndex, row] of workRows.entries()) {
+      const workEvent = timing.events[eventIndex++];
+      assertEqual(workEvent.event_id, workEventIds[rowIndex], `${pass.id} work event ID drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.pass_id, pass.id, `${pass.id} work event pass binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.kind, 'work', `${pass.id} work event kind drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.session_id, pass.session_id, `${pass.id} work event session binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.at, row.recorded_at, `${pass.id} work event timestamp drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.unit_id, row.unit_id, `${pass.id} work event unit binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.unit_kind, row.unit_kind, `${pass.id} work event kind binding drifted`, 'TIMING_EVENT_BINDING');
+      assertEqual(workEvent.payload_sha256, sha256Bytes(Buffer.from(JSON.stringify(row.payload), 'utf8')), `${pass.id} work event payload binding drifted`, 'TIMING_EVENT_BINDING');
+    }
+    const stopEvent = timing.events[eventIndex++];
+    assertEqual(stopEvent, { event_id: stopEvent.event_id, pass_id: pass.id, kind: 'stop', session_id: pass.session_id, at: pass.completed_at }, `${timingKind} stop event binding drifted`, 'TIMING_EVENT_BINDING');
+    assertEqual(workEventIds, timing.events.slice(eventIndex - workRows.length - 1, eventIndex - 1).map(({ event_id: eventId }) => eventId), `${pass.id} work event scope drifted`, 'TIMING_EVENT_BINDING');
+  }
+  assertEqual(eventIndex, timing.events.length, `${timingKind} timing event coverage drifted`, 'TIMING_EVENT_COVERAGE');
   assertEqual(timing.recording_proof_sha256, createWaveBTimingProof(timing), `${timingKind} timing recording proof drifted`, 'TIMING_RECORDING_PROOF_MISMATCH');
   return {
     status: timing.status,
@@ -876,8 +1015,10 @@ function preflightCheckpoint(recordReview, processed) {
 
 export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource } = {}) {
   validateWaveBAuditInput({ audit: auditInput, editorialInput, relationDiff: relationDiffSource.value });
-  validateWaveBTimingInput(timingInput, { timingKind: 'editorial', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id });
-  validateWaveBTimingInput(auditTimingInput, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id });
+  const expectedUnitIdsByPass = deriveWaveBTimingUnitSets({ editorialInput, auditInput });
+  validateWaveBTimingInput(timingInput, { timingKind: 'editorial', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
+  validateWaveBTimingInput(auditTimingInput, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
+  validateWaveBTimingDecisionWork({ timingInput, auditTimingInput, editorialInput, auditInput });
   validateWaveBChronology({ editorialInput, auditInput, timingInput, auditTimingInput });
   const manifest = {
     schema_version: '1',
@@ -916,7 +1057,7 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
       schema_version: '1',
       relation_diff: { artifact: relationDiffSource.path, sha256: relationDiffSource.sha256 },
       timing: {
-        contract_version: 'm5-10a-v1',
+        contract_version: 'm5-10b-v2',
         source_artifact: timingInputSource.path,
         source_sha256: timingInputSource.sha256,
         audit_source_artifact: auditTimingInputSource.path,
@@ -990,6 +1131,9 @@ function validateProposalStaging(proposalRecords, editorialInput) {
     const record = recordOf(recordInfo);
     const semanticCase = semanticCasesByCanonicalId.get(record.id);
     const expectedSenseCount = semanticCase?.scope === 'wave-b-proposal' ? semanticCase.expected_sense_count : 1;
+    if (record.senses.length > 1 && semanticCase?.scope !== 'wave-b-proposal') {
+      fail(`proposal ${record.id} contains multiple candidate senses without a declared semantic regression case`, 'SEMANTIC_CORPUS_COVERAGE');
+    }
     if (record.role !== 'start' || record.senses.length !== expectedSenseCount) fail(`proposal ${record.id} is outside the declared Wave B sense scope`, 'PROPOSAL_RECORD_MISMATCH');
   }
   const importedById = new Map(proposalRecords.slice(0, WAVE_B_IMPORTED_START_COUNT).map(recordOf).map((record) => [record.id, record]));
@@ -1061,7 +1205,14 @@ function validateStage(stage, { metrics, verification, manifestSource, metricsSo
   assertEqual(stage.input.inventory_revision, WAVE_B_INVENTORY_REVISION, 'Wave B stage inventory revision drifted', 'STAGE_INPUT_MISMATCH');
   assertEqual(stage.input.canonical_snapshot.start_count, WAVE_B_BASE_START_COUNT, 'Wave B stage base start count drifted', 'STAGE_INPUT_MISMATCH');
   assertEqual(stage.target, { net_start_increase: 150, cumulative_start_target: 778, candidate_buffer: 20, selected_start_count: 170 }, 'Wave B stage target drifted', 'STAGE_TARGET_MISMATCH');
-  assertEqual(stage.decisions, { included_start_count: 145, corrected_start_count: 5, held_start_count: 10, rejected_start_count: 0, deferred_start_count: 10 }, 'Wave B stage decisions drifted', 'STAGE_DECISION_MISMATCH');
+  const decisionMetrics = metrics.derived.decisions;
+  assertEqual(stage.decisions, {
+    included_start_count: decisionMetrics.included,
+    corrected_start_count: decisionMetrics.corrected,
+    held_start_count: decisionMetrics.held,
+    rejected_start_count: decisionMetrics.rejected,
+    deferred_start_count: decisionMetrics.deferred,
+  }, 'Wave B stage decisions drifted', 'STAGE_DECISION_MISMATCH');
   assertEqual(stage.buffer, { available_count: 20, used_count: 10, unused_count: 10 }, 'Wave B stage buffer drifted', 'STAGE_BUFFER_MISMATCH');
   assertEqual(stage.actual.canonical_snapshot, canonicalSnapshot, 'Wave B stage canonical snapshot drifted', 'STAGE_CANONICAL_MISMATCH');
   assertEqual(stage.actual.imported_start_count, 150, 'Wave B stage imported count drifted', 'STAGE_IMPORT_MISMATCH');
@@ -1135,7 +1286,7 @@ export async function validateWaveB({
   ]);
   const inventorySummary = await validateTargetInventory();
   assertEqual(inventorySummary.revision, WAVE_B_INVENTORY_REVISION, 'current inventory revision drifted', 'INVENTORY_REVISION_MISMATCH');
-  assertEqual(inventorySummary.canonicalRecordCount, 820, 'current canonical record count drifted', 'CANONICAL_COUNT_MISMATCH');
+  assertEqual(inventorySummary.canonicalRecordCount, canonical.records.length, 'current canonical record count drifted', 'CANONICAL_COUNT_MISMATCH');
   assertEqual(inventorySummary.currentStartCount, WAVE_B_CUMULATIVE_START_COUNT, 'current canonical start count drifted', 'CANONICAL_COUNT_MISMATCH');
   assertEqual(inventorySummary.candidateStartCount, 19, 'current candidate buffer count drifted', 'INVENTORY_COUNT_MISMATCH');
   assertEqual(inventorySummary.heldCount, 40, 'current held count drifted', 'INVENTORY_COUNT_MISMATCH');
@@ -1158,8 +1309,10 @@ export async function validateWaveB({
     validateWaveBProvenanceArtifact({ input: editorialSource.value, subjectKind: 'editorial' }),
     validateWaveBProvenanceArtifact({ input: auditSource.value, subjectKind: 'audit' }),
   ]);
-  validateWaveBTimingInput(timingSource.value, { timingKind: 'editorial', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, auditSessionId: auditSource.value.provenance.session_id });
-  validateWaveBTimingInput(auditTimingSource.value, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, auditSessionId: auditSource.value.provenance.session_id });
+  const expectedUnitIdsByPass = deriveWaveBTimingUnitSets({ editorialInput: editorialSource.value, auditInput: auditSource.value });
+  validateWaveBTimingInput(timingSource.value, { timingKind: 'editorial', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, auditSessionId: auditSource.value.provenance.session_id, expectedUnitIdsByPass });
+  validateWaveBTimingInput(auditTimingSource.value, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialSource.value.reviewed_staging_sha256, auditSessionId: auditSource.value.provenance.session_id, expectedUnitIdsByPass });
+  validateWaveBTimingDecisionWork({ timingInput: timingSource.value, auditTimingInput: auditTimingSource.value, editorialInput: editorialSource.value, auditInput: auditSource.value });
   validateWaveBChronology({
     editorialInput: editorialSource.value,
     auditInput: auditSource.value,
@@ -1210,12 +1363,8 @@ export async function validateWaveB({
   });
   assertMetricsMatch(metricsSource.value, regeneratedMetrics);
   assertEqual(metricsSource.value.derived.selection, { selected_start_count: 170, processed_start_count: 160 }, 'Wave B metrics selection drifted', 'METRICS_DRIFT');
-  assertEqual(metricsSource.value.derived.decisions, {
-    included: 145, corrected: 5, held: 10, rejected: 0, deferred: 10, importable_start_count: 150,
-    correction_rate_of_selected: 5 / 160, correction_rate_of_importable: 5 / 150, held_rate: 10 / 160, rejected_rate: 0, held_or_rejected_rate: 10 / 160,
-    sense_field_correction_count: 5, relation_field_correction_count: 0,
-  }, 'Wave B metrics decisions drifted', 'METRICS_DRIFT');
-  assertEqual(metricsSource.value.derived.canonical_import, { imported_start_count: 150, imported_reference_only_count: 0, imported_record_count: 150, imported_sense_count: 156, imported_relation_count: 0, imported_expression_count: 20, relation_type_counts: {} }, 'Wave B canonical import metrics drifted', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.decisions, regeneratedMetrics.derived.decisions, 'Wave B metrics decisions drifted', 'METRICS_DRIFT');
+  assertEqual(metricsSource.value.derived.canonical_import, regeneratedMetrics.derived.canonical_import, 'Wave B canonical import metrics drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.relation_diff.before_count, 0, 'Wave B relation metrics before_count drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.relation_diff.after_count, 0, 'Wave B relation metrics after_count drifted', 'METRICS_DRIFT');
   assertEqual(metricsSource.value.derived.timing.status, 'complete', 'Wave B metrics timing is incomplete', 'METRICS_DRIFT');
@@ -1243,7 +1392,16 @@ export async function validateWaveB({
   const previousStageSha256 = sha256Bytes(await readFile(previousStagePath));
   validateAuthorization(authorizationSource.value, previousStage, previousStageSha256, editorialSource.value.proposal_staging.sha256);
   assertEqual(canonicalSummary(baseCanonical.records), { record_count: 670, start_count: 628, reference_only_count: 42, sense_count: 809, relation_count: 473, expression_count: 43 }, 'Wave B base canonical snapshot drifted', 'BASE_CANONICAL_MISMATCH');
-  assertEqual(canonicalSummary(canonical.records), { record_count: 820, start_count: 778, reference_only_count: 42, sense_count: 965, relation_count: 473, expression_count: 63 }, 'Wave B final canonical snapshot drifted', 'CANONICAL_MISMATCH');
+  const baseSummary = canonicalSummary(baseCanonical.records);
+  const importSummary = metricsSource.value.derived.canonical_import;
+  assertEqual(canonicalSummary(canonical.records), {
+    record_count: baseSummary.record_count + importSummary.imported_record_count,
+    start_count: baseSummary.start_count + importSummary.imported_start_count,
+    reference_only_count: baseSummary.reference_only_count + importSummary.imported_reference_only_count,
+    sense_count: baseSummary.sense_count + importSummary.imported_sense_count,
+    relation_count: baseSummary.relation_count + importSummary.imported_relation_count,
+    expression_count: baseSummary.expression_count + importSummary.imported_expression_count,
+  }, 'Wave B final canonical snapshot drifted', 'CANONICAL_MISMATCH');
   return {
     batch: { batch_id: WAVE_B_BATCH_ID, validation_status: 'validated', selected_start_count: editorial.selectedStartCount, processed_start_count: editorial.processedStartCount, imported_start_count: batchResult.stagedRecordCount, staged_record_count: staged.records.length },
     metrics: metricsSource.value.derived,

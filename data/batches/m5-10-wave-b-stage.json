@@ -17,7 +17,7 @@
     },
     "authorization": {
       "path": "data/batches/m5-10-wave-b-authorization.json",
-      "sha256": "0fad8238e519cf4d6cc34994437f167e329d9d7297500e22c1908a64a70ebf54"
+      "sha256": "6167f685c2b38d14429abc5153b5da2d75fe4f1208b4243f2991e6e3bc349ee8"
     }
   },
   "target": {
@@ -27,8 +27,8 @@
     "selected_start_count": 170
   },
   "decisions": {
-    "included_start_count": 145,
-    "corrected_start_count": 5,
+    "included_start_count": 144,
+    "corrected_start_count": 6,
     "held_start_count": 10,
     "rejected_start_count": 0,
     "deferred_start_count": 10
@@ -43,22 +43,22 @@
       "record_count": 820,
       "start_count": 778,
       "reference_only_count": 42,
-      "sense_count": 965,
+      "sense_count": 966,
       "relation_count": 473,
       "expression_count": 63
     },
     "imported_start_count": 150
   },
   "metrics": {
-    "correction_rate_of_selected": 0.03125,
+    "correction_rate_of_selected": 0.0375,
     "relation_noise_rate_of_before": 0,
     "relation_noise_candidate_count": 0,
     "relation_noise_rate_of_candidates": 0,
-    "total_wall_clock_seconds": 31.859,
-    "measured_wall_clock_seconds": 31.859,
-    "total_editor_seconds": 31.859,
-    "measured_editor_seconds": 31.859,
-    "editor_seconds_per_selected_start": 0.19911875,
+    "total_wall_clock_seconds": 3.4149999999999996,
+    "measured_wall_clock_seconds": 3.4149999999999996,
+    "total_editor_seconds": 3.4149999999999996,
+    "measured_editor_seconds": 3.4149999999999996,
+    "editor_seconds_per_selected_start": 0.021343749999999998,
     "timing_status": "complete",
     "unmeasured_timing_pass_count": 0,
     "audit_status": "complete",
@@ -72,13 +72,13 @@
   },
   "source": {
     "manifest": "data/batches/m5-10-wave-b.json",
-    "manifest_sha256": "0fcdd028cc86b8ee37ccec855e9d715ee8cdae85c779e81262ceebebedf23a98",
+    "manifest_sha256": "4dfdfab4149bac60668c5b701fa2f88622bfea4ae1b7ccdb545bc1c5f4d965b4",
     "metrics": "data/batches/m5-10-wave-b-metrics.json",
-    "metrics_sha256": "a0e8f70aad666aaa9a1911ee87b0ff1ebef09da8badc2f941433bed5db7b9e96",
+    "metrics_sha256": "6e6d161835859407dbb3ee479c23be34f1d69c44c537ba574ea7251769ed2120",
     "relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
     "relation_diff_sha256": "b83e025e76dc581d11ece5e94353b64ea46f9df6979cbedc08f01dfe002b7b23",
     "canonical_directory": "data/canonical",
-    "canonical_sha256": "499049d227c9cc790656fc76e596dc78e211f1bb0f12cbd3aeabef5be312b504",
+    "canonical_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
     "verification": "data/batches/m5-10-wave-b-verification.json",
     "verification_sha256": "15aa78135a81d3d43887fde55d27ec7b0d2863e1f53e05167b7d01525852044c",
     "previous_stage_report": {
@@ -87,7 +87,7 @@
     },
     "authorization": {
       "path": "data/batches/m5-10-wave-b-authorization.json",
-      "sha256": "0fad8238e519cf4d6cc34994437f167e329d9d7297500e22c1908a64a70ebf54"
+      "sha256": "6167f685c2b38d14429abc5153b5da2d75fe4f1208b4243f2991e6e3bc349ee8"
     }
   },
   "gate_status": "pass",
