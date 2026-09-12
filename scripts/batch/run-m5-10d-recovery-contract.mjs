@@ -23,6 +23,7 @@ import {
   M5_10D_CANONICAL_SNAPSHOT,
   M5_10D_CASE_COUNT,
   M5_10D_EDITORIAL_PASS_IDS,
+  M5_10D_FOLLOW_UP_SOURCE_KIND,
   M5_10D_PASS_IDS,
   M5_10D_PROCESS_REVISION,
   createM5DConcreteTimingProof,
@@ -115,16 +116,17 @@ export function createM5DContractProposal() {
   };
 }
 
-function createWorkload(proposalSha256) {
+function createWorkload(proposalSha256, followUpSource) {
+  const source = followUpSource.value ?? followUpSource;
   const all = Array.from({ length: M5_10D_CASE_COUNT }, (_, index) => `m5-10d-cal-${String(index + 1).padStart(3, '0')}`);
-  const corrections = ['m5-10d-cal-002', 'm5-10d-cal-004', 'm5-10d-cal-008', 'm5-10d-cal-011'];
-  const heldRejected = ['m5-10d-cal-006', 'm5-10d-cal-013', 'm5-10d-cal-016', 'm5-10d-cal-020'];
+  const corrections = source.findings.filter(({ finding_kind: findingKind }) => findingKind === 'correction').map(({ case_id: caseId }) => caseId);
+  const heldRejected = source.findings.filter(({ finding_kind: findingKind }) => findingKind === 'held' || findingKind === 'rejected').map(({ case_id: caseId }) => caseId);
   const passRows = [
     ['target-preparation', 'target-preparation', 'calibration-start', 'pre-review-sample', all],
     ['initial-review', 'semantic-review', 'calibration-start', 'pre-review-sample', all],
-    ['feedback-fixes', 'feedback-fix', 'feedback-fix', 'predeclared-feedback-queue', corrections],
-    ['final-verification', 'final-verification', 'final-verification', 'predeclared-verification-queue', corrections],
-    ['held-rejected', 'held-rejected', 'held-rejected', 'predeclared-hold-rejection-queue', heldRejected],
+    ['feedback-fixes', 'feedback-fix', 'feedback-fix', 'source-derived-initial-findings', corrections],
+    ['final-verification', 'final-verification', 'final-verification', 'source-derived-correction-findings', corrections],
+    ['held-rejected', 'held-rejected', 'held-rejected', 'source-derived-initial-findings', heldRejected],
     ['post-freeze-audit', 'post-freeze-audit', 'audit-review', 'frozen-editorial-sample', all],
   ];
   return {
@@ -136,11 +138,17 @@ function createWorkload(proposalSha256) {
     process_revision: M5_10D_PROCESS_REVISION,
     declaration_kind: 'source-declared-before-each-pass',
     declaration_status: 'frozen',
-    frozen_at: isoAt(1000),
+    frozen_at: isoAt(11000),
     source: {
       proposal_artifact: 'external:m5-10d-calibration-proposal',
       proposal_sha256: proposalSha256,
       decision_independent: true,
+      follow_up_artifact: 'external:m5-10d-follow-up-source',
+      follow_up_sha256: followUpSource.sha256,
+      follow_up_source_kind: M5_10D_FOLLOW_UP_SOURCE_KIND,
+      follow_up_timing_session_id: source.timing_session_id,
+      follow_up_pass_id: source.source_pass_id,
+      follow_up_freeze_event_id: source.freeze_event_id,
     },
     case_count: M5_10D_CASE_COUNT,
     processed_start_count: M5_10D_CASE_COUNT,
@@ -156,7 +164,7 @@ function createWorkload(proposalSha256) {
       empty_work: expectedUnitIds.length === 0,
       note: `${id} workload was frozen before the pass from the source-declared calibration task queue ${index}.`,
     })),
-    note: 'Deterministic self-authored M5-10D workload fixture; queue membership is declared independently before each pass and is never inferred from final decisions.',
+    note: 'Deterministic self-authored M5-10D workload fixture; follow-up queues are derived from a recorder-owned initial-review source artifact.',
   };
 }
 
@@ -190,10 +198,12 @@ function createWorkRows(proposal, pass, sessionId, workloadPass) {
   });
 }
 
-async function createTiming({ kind, proposal, workload, proposalSha256, workloadSha256, root, editorialSessionId, auditSessionId, editorialDecisionsSha256, editorialFinalizedAt, firstPassStartMs }) {
+async function createTiming({ kind, proposal, workload, proposalSha256, workloadSha256, root, editorialSessionId, auditSessionId, editorialDecisionsSha256, editorialFinalizedAt, judgmentArtifactPath, judgmentArtifactSha256, judgmentRecords, firstPassStartMs }) {
   const passIds = kind === 'editorial' ? M5_10D_EDITORIAL_PASS_IDS : M5_10D_AUDIT_PASS_IDS;
   const sessionId = deterministicUuid(`${kind}-timing-session`);
   const passes = [];
+  const events = [];
+  const artifactRecordsByCase = new Map((judgmentRecords ?? []).map((row) => [row.case_id, row]));
   for (const [index, id] of passIds.entries()) {
     const workloadPass = workload.passes.find(({ id: workloadId }) => workloadId === id);
     const startMs = firstPassStartMs + index * 5000;
@@ -204,14 +214,65 @@ async function createTiming({ kind, proposal, workload, proposalSha256, workload
     const workSource = await writeJsonl(workPath, rows);
     const producerSeconds = rows.reduce((total, row) => total + (Date.parse(row.producer.completed_at) - Date.parse(row.producer.started_at)) / 1000, 0);
     const expectedUnitIds = workloadPass.expected_unit_ids;
+    const judgmentRows = expectedUnitIds.map((unitId, unitIndex) => {
+      const caseItem = proposal.cases.find(({ case_id: caseId }) => caseId === unitId);
+      const compact = proposalInputFromCase(caseItem);
+      const decisionRow = artifactRecordsByCase.get(unitId);
+      const judgmentStartedAt = isoAt(startMs + 1000 + unitIndex * 20);
+      const judgmentCompletedAt = isoAt(startMs + 1050 + unitIndex * 20);
+      const evidence = id === 'target-preparation' ? {
+        path: path.relative(REPOSITORY_DIRECTORY, path.join(root, 'proposal.json')),
+        decision_artifact_sha256: proposalSha256,
+        decision_row_sha256: sha256Json(compact),
+        decision_artifact_kind: 'proposal',
+      } : {
+        path: path.relative(REPOSITORY_DIRECTORY, judgmentArtifactPath),
+        decision_artifact_sha256: judgmentArtifactSha256,
+        decision_row_sha256: sha256Json(decisionRow),
+        decision_artifact_kind: kind === 'editorial' ? 'editorial-draft' : 'audit-draft',
+        authored_at: kind === 'editorial' ? isoAt(7500) : isoAt(31500),
+      };
+      const judgmentId = deterministicUuid(`${kind}-judgment-${id}-${unitId}`);
+      const eventId = `m5-10d-judgment-${id}-${unitId}`;
+      events.push({
+        event_id: eventId,
+        kind: 'judgment-completed',
+        pass_id: id,
+        session_id: sessionId,
+        pass_session_id: passSessionId,
+        unit_id: unitId,
+        judgment_id: judgmentId,
+        recorded_at: judgmentCompletedAt,
+        completed_at: judgmentCompletedAt,
+        decision_artifact_sha256: evidence.decision_artifact_sha256,
+        decision_row_sha256: evidence.decision_row_sha256,
+      });
+      return {
+        kind: 'judgment',
+        pass_id: id,
+        session_id: sessionId,
+        pass_session_id: passSessionId,
+        unit_id: unitId,
+        judgment_id: judgmentId,
+        started_at: judgmentStartedAt,
+        completed_at: judgmentCompletedAt,
+        recorded_at: judgmentCompletedAt,
+        evidence,
+      };
+    });
+    const judgmentPath = path.join(root, `${kind}-${id}-judgment.jsonl`);
+    const judgmentSource = await writeJsonl(judgmentPath, judgmentRows);
+    const judgmentSeconds = judgmentRows.reduce((total, row) => total + (Date.parse(row.completed_at) - Date.parse(row.started_at)) / 1000, 0);
     passes.push({
       id,
       status: 'complete',
       started_at: isoAt(startMs),
       completed_at: isoAt(startMs + elapsedMs),
       session_id: passSessionId,
+      workload_sha256: workloadSha256,
       work_status: expectedUnitIds.length === 0 ? 'zero-work' : 'work',
-      editor_seconds: expectedUnitIds.length === 0 ? 0 : elapsedMs / 1000,
+      judgment_seconds: judgmentSeconds,
+      editor_seconds: judgmentSeconds,
       wall_clock_seconds: elapsedMs / 1000,
       producer_seconds: producerSeconds,
       work_evidence: {
@@ -221,6 +282,15 @@ async function createTiming({ kind, proposal, workload, proposalSha256, workload
         actual_unit_ids: [...expectedUnitIds],
         unit_count: expectedUnitIds.length,
         expected_unit_set_sha256: workloadPass.expected_unit_set_sha256,
+      },
+      judgment_evidence: {
+        path: path.relative(REPOSITORY_DIRECTORY, judgmentPath),
+        sha256: judgmentSource.sha256,
+        expected_unit_ids: [...expectedUnitIds],
+        actual_unit_ids: [...expectedUnitIds],
+        unit_count: expectedUnitIds.length,
+        expected_unit_set_sha256: workloadPass.expected_unit_set_sha256,
+        event_ids: judgmentRows.map(({ unit_id: unitId }) => `m5-10d-judgment-${id}-${unitId}`),
       },
     });
   }
@@ -241,6 +311,7 @@ async function createTiming({ kind, proposal, workload, proposalSha256, workload
     status: 'complete',
     workload_artifact: path.relative(REPOSITORY_DIRECTORY, path.join(root, 'workload.json')),
     workload_sha256: workloadSha256,
+    workload_history: [{ sha256: workloadSha256, recorded_at: isoAt(firstPassStartMs - 1000) }],
     proposal_sha256: proposalSha256,
     ...(kind === 'editorial' ? {
       editorial_session_id: editorialSessionId,
@@ -254,7 +325,8 @@ async function createTiming({ kind, proposal, workload, proposalSha256, workload
     canonical_directory_sha256: await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY),
     inventory_sha256: sha256Bytes(await readFile(DEFAULT_INVENTORY_PATH)),
     passes,
-    events: [],
+    events,
+    active_judgments: [],
     note: `Deterministic M5-10D ${kind} timing fixture with workload-derived pass scope.`,
   };
   timing.recording_proof_sha256 = createM5DConcreteTimingProof(timing);
@@ -262,7 +334,7 @@ async function createTiming({ kind, proposal, workload, proposalSha256, workload
   return { timing, source: await writeJson(path.join(root, `${timingName}.json`), timing) };
 }
 
-export function createM5DContractEditorial(proposal, proposalSha256, editorialTiming, editorialSessionId) {
+export function createM5DContractEditorial(proposal, proposalSha256, editorialTiming, editorialSessionId, draftSha256) {
   const finalStopMs = Math.max(...editorialTiming.passes.map(({ completed_at: completedAt }) => Date.parse(completedAt) - BASE_TIME_MS));
   return {
     schema_version: '1',
@@ -273,6 +345,7 @@ export function createM5DContractEditorial(proposal, proposalSha256, editorialTi
     proposal_sha256: proposalSha256,
     editorial_session_id: editorialSessionId,
     timing_session_id: editorialTiming.session_id,
+    draft_sha256: draftSha256,
     draft_created_at: isoAt(7500),
     created_at: isoAt(finalStopMs + 1000),
     finalized_at: isoAt(finalStopMs + 1001),
@@ -332,7 +405,36 @@ export function createM5DContractEditorial(proposal, proposalSha256, editorialTi
   };
 }
 
-export function createM5DContractAudit(proposal, proposalSha256, editorial, editorialSha256, editorialTiming, auditTiming, editorialSessionId, auditSessionId) {
+function createM5DContractFollowUpSource(proposal, proposalSha256, editorialDraft, timingSessionId, initialPassSessionId) {
+  const freezeEventId = 'm5-10d-workload-freeze-0001';
+  return {
+    schema_version: '1',
+    artifact_id: 'm5-10d-follow-up-source-20260912',
+    batch_id: 'm5-10d-editor-time-recalibration-20260912',
+    source_kind: M5_10D_FOLLOW_UP_SOURCE_KIND,
+    proposal_sha256: proposalSha256,
+    timing_session_id: timingSessionId,
+    source_pass_id: 'initial-review',
+    source_pass_session_id: initialPassSessionId,
+    source_judgment_artifact_sha256: editorialDraft.sha256,
+    freeze_event_id: freezeEventId,
+    created_at: isoAt(10500),
+    findings: editorialDraft.value.records
+      .filter(({ decision }) => ['corrected', 'held', 'rejected'].includes(decision))
+      .map((decisionRow) => ({
+        case_id: decisionRow.case_id,
+        record_id: decisionRow.record_id,
+        source_record_sha256: decisionRow.source_record_sha256,
+        finding_kind: decisionRow.decision === 'corrected' ? 'correction' : decisionRow.decision,
+        source_judgment_id: deterministicUuid(`editorial-judgment-initial-review-${decisionRow.case_id}`),
+        source_judgment_row_sha256: sha256Json(decisionRow),
+        note: `${decisionRow.case_id} was bound to its completed initial-review judgment before follow-up work.`,
+      })),
+    note: 'Deterministic source-derived follow-up fixture bound to initial-review judgment rows.',
+  };
+}
+
+export function createM5DContractAudit(proposal, proposalSha256, editorial, editorialSha256, editorialTiming, auditTiming, editorialSessionId, auditSessionId, draftSha256) {
   const auditStopMs = Math.max(...auditTiming.passes.map(({ completed_at: completedAt }) => Date.parse(completedAt) - BASE_TIME_MS));
   return {
     schema_version: '1',
@@ -346,6 +448,7 @@ export function createM5DContractAudit(proposal, proposalSha256, editorial, edit
     editorial_session_id: editorialSessionId,
     audit_session_id: auditSessionId,
     timing_session_id: auditTiming.session_id,
+    draft_sha256: draftSha256,
     draft_created_at: isoAt(31500),
     created_at: isoAt(auditStopMs + 1000),
     finalized_at: isoAt(auditStopMs + 1001),
@@ -402,6 +505,7 @@ function fixedRecoverySourcePaths(recovery) {
     failed_recovery: 'data/batches/m5-10c-recovery.json',
     repair_revision: 'data/batches/m5-10a-process-correction.json',
     workload: 'data/batches/m5-10d-workload-20260912.json',
+    follow_up_source: 'external:m5-10d-follow-up-source',
     editorial_decisions: 'data/batches/m5-10d-editorial-decisions-20260912.json',
     editorial_timing: 'data/batches/m5-10d-editorial-timing-20260912.json',
     audit_decisions: 'data/batches/m5-10d-audit-decisions-20260912.json',
@@ -430,19 +534,44 @@ async function runM5DRecoveryContract() {
   try {
     const proposalPath = path.join(fixtureRoot, 'proposal.json');
     const workloadPath = path.join(fixtureRoot, 'workload.json');
+    const followUpSourcePath = path.join(fixtureRoot, 'follow-up-source.json');
     const editorialTimingPath = path.join(fixtureRoot, 'editorial-timing.json');
     const editorialPath = path.join(fixtureRoot, 'editorial.json');
+    const editorialDraftPath = path.join(fixtureRoot, 'editorial-draft.json');
     const auditTimingPath = path.join(fixtureRoot, 'audit-timing.json');
     const auditPath = path.join(fixtureRoot, 'audit.json');
+    const auditDraftPath = path.join(fixtureRoot, 'audit-draft.json');
     const verificationPath = path.join(fixtureRoot, 'verification.json');
     const recoveryPath = path.join(fixtureRoot, 'recovery.json');
     const authorizationPath = path.join(fixtureRoot, 'authorization.json');
     const proposal = createM5DContractProposal();
     const proposalSource = await writeJson(proposalPath, proposal);
-    const workload = createWorkload(proposalSource.sha256);
-    const workloadSource = await writeJson(workloadPath, workload);
     const editorialSessionId = deterministicUuid('m5-10d-editorial-session');
     const auditSessionId = deterministicUuid('m5-10d-audit-session');
+    const initialPassSessionId = deterministicUuid('editorial-pass-initial-review');
+    const editorialDraftTemplate = createM5DContractEditorial(proposal, proposalSource.sha256, {
+      session_id: deterministicUuid('editorial-timing-session'),
+      passes: [{ completed_at: isoAt(25000) }],
+    }, editorialSessionId);
+    const editorialDraft = await writeJson(editorialDraftPath, {
+      draft_source: 'record-by-record-editorial-judgment',
+      batch_id: 'm5-10d-editor-time-recalibration-20260912',
+      proposal_sha256: proposalSource.sha256,
+      draft_created_at: isoAt(7500),
+      records: editorialDraftTemplate.records,
+      note: 'Deterministic separately-authored editorial draft fixture.',
+    });
+    const followUpSource = createM5DContractFollowUpSource(
+      proposal,
+      proposalSource.sha256,
+      { value: JSON.parse((await readFile(editorialDraftPath)).toString('utf8')), sha256: editorialDraft.sha256 },
+      deterministicUuid('editorial-timing-session'),
+      initialPassSessionId,
+    );
+    const followUpSourceWritten = await writeJson(followUpSourcePath, followUpSource);
+    const followUpSourceWrapper = { value: followUpSource, sha256: followUpSourceWritten.sha256 };
+    const workload = createWorkload(proposalSource.sha256, followUpSourceWrapper);
+    const workloadSource = await writeJson(workloadPath, workload);
     const editorialTimingResult = await createTiming({
       kind: 'editorial',
       proposal,
@@ -451,10 +580,33 @@ async function runM5DRecoveryContract() {
       workloadSha256: workloadSource.sha256,
       root: fixtureRoot,
       editorialSessionId,
+      judgmentArtifactPath: editorialDraftPath,
+      judgmentArtifactSha256: editorialDraft.sha256,
+      judgmentRecords: editorialDraftTemplate.records,
       firstPassStartMs: 2000,
     });
-    const editorial = createM5DContractEditorial(proposal, proposalSource.sha256, editorialTimingResult.timing, editorialSessionId);
+    const editorial = createM5DContractEditorial(proposal, proposalSource.sha256, editorialTimingResult.timing, editorialSessionId, editorialDraft.sha256);
     const editorialSource = await writeJson(editorialPath, editorial);
+    const auditDraftTemplate = createM5DContractAudit(
+      proposal,
+      proposalSource.sha256,
+      editorial,
+      editorialSource.sha256,
+      editorialTimingResult.timing,
+      { session_id: deterministicUuid('audit-timing-session'), passes: [{ completed_at: isoAt(33000) }] },
+      editorialSessionId,
+      auditSessionId,
+    );
+    const auditDraft = await writeJson(auditDraftPath, {
+      draft_source: 'independent-post-freeze-comparison',
+      batch_id: 'm5-10d-editor-time-recalibration-20260912',
+      proposal_sha256: proposalSource.sha256,
+      editorial_decisions_sha256: editorialSource.sha256,
+      draft_created_at: isoAt(31500),
+      case_reviews: auditDraftTemplate.case_reviews,
+      findings: [],
+      note: 'Deterministic separately-authored independent audit draft fixture.',
+    });
     const auditTimingResult = await createTiming({
       kind: 'post-freeze-audit',
       proposal,
@@ -466,9 +618,12 @@ async function runM5DRecoveryContract() {
       auditSessionId,
       editorialDecisionsSha256: editorialSource.sha256,
       editorialFinalizedAt: editorial.finalized_at,
+      judgmentArtifactPath: auditDraftPath,
+      judgmentArtifactSha256: auditDraft.sha256,
+      judgmentRecords: auditDraftTemplate.case_reviews,
       firstPassStartMs: 30000,
     });
-    const audit = createM5DContractAudit(proposal, proposalSource.sha256, editorial, editorialSource.sha256, editorialTimingResult.timing, auditTimingResult.timing, editorialSessionId, auditSessionId);
+    const audit = createM5DContractAudit(proposal, proposalSource.sha256, editorial, editorialSource.sha256, editorialTimingResult.timing, auditTimingResult.timing, editorialSessionId, auditSessionId, auditDraft.sha256);
     const auditSource = await writeJson(auditPath, audit);
     const canonicalDirectorySha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
     const inventorySha256 = sha256Bytes(await readFile(DEFAULT_INVENTORY_PATH));
@@ -476,6 +631,7 @@ async function runM5DRecoveryContract() {
     await buildM5DRecovery({
       proposalPath,
       workloadPath,
+      followUpSourcePath,
       editorialPath,
       editorialTimingPath: path.join(fixtureRoot, 'editorial-timing.json'),
       auditPath,
@@ -489,6 +645,7 @@ async function runM5DRecoveryContract() {
       artifactPath: recoveryPath,
       proposalPath,
       workloadPath,
+      followUpSourcePath,
       editorialPath,
       editorialTimingPath,
       auditPath,
@@ -498,9 +655,11 @@ async function runM5DRecoveryContract() {
     const authorization = await buildM5DAuthorization({
       recoveryPath,
       workloadPath,
+      followUpSourcePath,
       outputPath: authorizationPath,
       recoveryOptions: {
         proposalPath,
+        followUpSourcePath,
         editorialPath,
         editorialTimingPath,
         auditPath,
@@ -514,6 +673,7 @@ async function runM5DRecoveryContract() {
       recoveryPath,
       proposalPath,
       workloadPath,
+      followUpSourcePath,
       editorialPath,
       editorialTimingPath,
       auditPath,

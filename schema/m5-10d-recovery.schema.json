@@ -66,7 +66,7 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["failed_stage", "failed_stage_sha256", "failed_manifest", "failed_manifest_sha256", "failed_metrics", "failed_metrics_sha256", "failed_verification", "failed_verification_sha256", "failed_relation_diff", "failed_relation_diff_sha256", "failed_recovery", "failed_recovery_sha256", "repair_revision", "repair_revision_sha256", "workload", "workload_sha256", "proposal_artifact", "proposal_sha256", "editorial_decisions", "editorial_decisions_sha256", "editorial_timing", "editorial_timing_sha256", "audit_decisions", "audit_decisions_sha256", "audit_timing", "audit_timing_sha256", "verification", "verification_sha256", "canonical_directory", "canonical_directory_sha256", "inventory", "inventory_sha256"],
+      "required": ["failed_stage", "failed_stage_sha256", "failed_manifest", "failed_manifest_sha256", "failed_metrics", "failed_metrics_sha256", "failed_verification", "failed_verification_sha256", "failed_relation_diff", "failed_relation_diff_sha256", "failed_recovery", "failed_recovery_sha256", "repair_revision", "repair_revision_sha256", "workload", "workload_sha256", "follow_up_source", "follow_up_source_sha256", "proposal_artifact", "proposal_sha256", "editorial_decisions", "editorial_decisions_sha256", "editorial_timing", "editorial_timing_sha256", "audit_decisions", "audit_decisions_sha256", "audit_timing", "audit_timing_sha256", "verification", "verification_sha256", "canonical_directory", "canonical_directory_sha256", "inventory", "inventory_sha256"],
       "properties": {
         "failed_stage": { "const": "data/batches/m5-10-wave-b-stage.json" },
         "failed_stage_sha256": { "$ref": "#/$defs/sha256" },
@@ -84,6 +84,8 @@
         "repair_revision_sha256": { "$ref": "#/$defs/sha256" },
         "workload": { "const": "data/batches/m5-10d-workload-20260912.json" },
         "workload_sha256": { "$ref": "#/$defs/sha256" },
+        "follow_up_source": { "const": "external:m5-10d-follow-up-source" },
+        "follow_up_source_sha256": { "$ref": "#/$defs/sha256" },
         "proposal_artifact": { "const": "external:m5-10d-calibration-proposal" },
         "proposal_sha256": { "$ref": "#/$defs/sha256" },
         "editorial_decisions": { "const": "data/batches/m5-10d-editorial-decisions-20260912.json" },

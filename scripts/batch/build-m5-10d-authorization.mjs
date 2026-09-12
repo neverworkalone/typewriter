@@ -7,6 +7,7 @@ import {
   DEFAULT_AUTHORIZATION_PATH,
   DEFAULT_CANONICAL_DIRECTORY,
   DEFAULT_FAILED_STAGE_PATH,
+  DEFAULT_FOLLOW_UP_SOURCE_PATH,
   DEFAULT_INVENTORY_PATH,
   DEFAULT_REPAIR_REVISION_PATH,
   DEFAULT_RECOVERY_PATH,
@@ -58,6 +59,7 @@ function parseArguments(argv) {
 export async function buildM5DAuthorization({
   recoveryPath = DEFAULT_RECOVERY_PATH,
   workloadPath = DEFAULT_WORKLOAD_PATH,
+  followUpSourcePath = DEFAULT_FOLLOW_UP_SOURCE_PATH,
   failedStagePath = DEFAULT_FAILED_STAGE_PATH,
   repairRevisionPath = DEFAULT_REPAIR_REVISION_PATH,
   inventoryPath = DEFAULT_INVENTORY_PATH,
@@ -65,7 +67,7 @@ export async function buildM5DAuthorization({
   outputPath = DEFAULT_AUTHORIZATION_PATH,
   recoveryOptions = {},
 } = {}) {
-  const recoveryResult = await validateM5DRecovery({ artifactPath: recoveryPath, workloadPath, failedStagePath, repairRevisionPath, inventoryPath, canonicalDirectory, ...recoveryOptions });
+  const recoveryResult = await validateM5DRecovery({ artifactPath: recoveryPath, workloadPath, followUpSourcePath, failedStagePath, repairRevisionPath, inventoryPath, canonicalDirectory, ...recoveryOptions });
   assertM5DRecoveryAuthorizable(recoveryResult);
   const [recoverySource, workloadSource, failedStageSource, repairSource, inventorySource] = await Promise.all([
     readSource(recoveryPath),
@@ -126,6 +128,7 @@ if (isMainModule) {
   buildM5DAuthorization({
     ...(args.recovery ? { recoveryPath: path.resolve(args.recovery) } : {}),
     ...(args.workload ? { workloadPath: path.resolve(args.workload) } : {}),
+    ...(args['follow-up-source'] ? { followUpSourcePath: path.resolve(args['follow-up-source']) } : {}),
     ...(args['failed-stage'] ? { failedStagePath: path.resolve(args['failed-stage']) } : {}),
     ...(args['repair-revision'] ? { repairRevisionPath: path.resolve(args['repair-revision']) } : {}),
     ...(args.inventory ? { inventoryPath: path.resolve(args.inventory) } : {}),

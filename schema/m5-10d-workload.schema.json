@@ -14,7 +14,7 @@
     "batch_id": { "const": "m5-10d-editor-time-recalibration-20260912" },
     "process_revision": { "const": "m5-10d-editor-workload-v1" },
     "declaration_kind": { "const": "source-declared-before-each-pass" },
-    "declaration_status": { "const": "frozen" },
+    "declaration_status": { "enum": ["pre-review", "frozen"] },
     "frozen_at": { "type": "string", "format": "date-time" },
     "source": {
       "type": "object",
@@ -23,7 +23,13 @@
       "properties": {
         "proposal_artifact": { "const": "external:m5-10d-calibration-proposal" },
         "proposal_sha256": { "$ref": "#/$defs/sha256" },
-        "decision_independent": { "const": true }
+        "decision_independent": { "const": true },
+        "follow_up_artifact": { "const": "external:m5-10d-follow-up-source" },
+        "follow_up_sha256": { "$ref": "#/$defs/sha256" },
+        "follow_up_source_kind": { "const": "recorder-owned-initial-review-findings" },
+        "follow_up_timing_session_id": { "$ref": "#/$defs/uuid" },
+        "follow_up_pass_id": { "const": "initial-review" },
+        "follow_up_freeze_event_id": { "type": "string", "pattern": "\\S" }
       }
     },
     "case_count": { "const": 20 },
@@ -38,6 +44,7 @@
   },
   "$defs": {
     "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
     "pass": {
       "type": "object",
       "additionalProperties": false,
@@ -46,7 +53,7 @@
         "id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-verification", "held-rejected", "post-freeze-audit"] },
         "role": { "enum": ["target-preparation", "semantic-review", "feedback-fix", "final-verification", "held-rejected", "post-freeze-audit"] },
         "unit_kind": { "enum": ["calibration-start", "feedback-fix", "final-verification", "held-rejected", "audit-review"] },
-        "declaration_source": { "enum": ["pre-review-sample", "predeclared-feedback-queue", "predeclared-verification-queue", "predeclared-hold-rejection-queue", "frozen-editorial-sample"] },
+        "declaration_source": { "enum": ["pre-review-sample", "source-derived-initial-findings", "source-derived-correction-findings", "frozen-editorial-sample"] },
         "declared_at": { "type": "string", "format": "date-time" },
         "expected_unit_ids": {
           "type": "array",

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-follow-up-source.schema.json",
+  "title": "Typewriter M5-10D initial-review follow-up source",
+  "description": "Recorder-owned initial-review findings from which follow-up workloads are derived.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "proposal_sha256", "timing_session_id", "source_pass_id", "source_pass_session_id", "source_judgment_artifact_sha256", "freeze_event_id", "created_at", "findings", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-follow-up-source-20260912" },
+    "batch_id": { "const": "m5-10d-editor-time-recalibration-20260912" },
+    "source_kind": { "const": "recorder-owned-initial-review-findings" },
+    "proposal_sha256": { "$ref": "#/$defs/sha256" },
+    "timing_session_id": { "$ref": "#/$defs/uuid" },
+    "source_pass_id": { "const": "initial-review" },
+    "source_pass_session_id": { "$ref": "#/$defs/uuid" },
+    "source_judgment_artifact_sha256": { "$ref": "#/$defs/sha256" },
+    "freeze_event_id": { "type": "string", "pattern": "\\S" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "findings": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "record_id", "source_record_sha256", "finding_kind", "source_judgment_id", "source_judgment_row_sha256", "note"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10d-cal-[0-9]{3}$" },
+        "record_id": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}$" },
+        "source_record_sha256": { "$ref": "#/$defs/sha256" },
+        "finding_kind": { "enum": ["correction", "held", "rejected"] },
+        "source_judgment_id": { "$ref": "#/$defs/uuid" },
+        "source_judgment_row_sha256": { "$ref": "#/$defs/sha256" },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

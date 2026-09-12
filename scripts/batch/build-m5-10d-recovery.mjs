@@ -17,6 +17,7 @@ import {
   DEFAULT_FAILED_RELATION_DIFF_PATH,
   DEFAULT_FAILED_VERIFICATION_PATH,
   DEFAULT_INVENTORY_PATH,
+  DEFAULT_FOLLOW_UP_SOURCE_PATH,
   DEFAULT_PROPOSAL_PATH,
   DEFAULT_REPAIR_REVISION_PATH,
   DEFAULT_RECOVERY_PATH,
@@ -29,6 +30,7 @@ import {
   validateM5DAuditDecisions,
   validateM5DPreviousRecovery,
   validateM5DProposal,
+  validateM5DFollowUpSource,
   validateM5DEditorialDecisions,
   validateM5DTiming,
   validateM5DVerification,
@@ -90,6 +92,7 @@ function parseArguments(argv) {
 export async function buildM5DRecovery({
   proposalPath = DEFAULT_PROPOSAL_PATH,
   workloadPath = path.join(BATCH_DIRECTORY, 'm5-10d-workload-20260912.json'),
+  followUpSourcePath = DEFAULT_FOLLOW_UP_SOURCE_PATH,
   editorialPath = DEFAULT_EDITORIAL_DECISIONS_PATH,
   editorialTimingPath = DEFAULT_EDITORIAL_TIMING_PATH,
   auditPath = DEFAULT_AUDIT_DECISIONS_PATH,
@@ -124,11 +127,17 @@ export async function buildM5DRecovery({
     readJsonSource(inventoryPath, 'M5 target inventory'),
     readCanonicalRecords(canonicalDirectory),
   ]);
+  const followUpSource = workloadSource.value.source.follow_up_sha256
+    ? await readJsonSource(followUpSourcePath, 'M5-10D follow-up source')
+    : undefined;
   const proposalInfo = validateM5DProposal(proposalSource.value, { canonicalRecords: canonical.records });
   proposalInfo.proposal_sha256 = proposalSource.sha256;
   const workloadInfo = validateM5DWorkload(workloadSource.value, {
     proposalCaseIds: proposalInfo.case_ids,
     proposalSha256: proposalSource.sha256,
+    proposalCasesById: proposalInfo.by_case,
+    followUpSource,
+    timingSessionId: editorialTimingSource.value.session_id,
   });
   workloadInfo.sha256 = workloadSource.sha256;
   const editorialTiming = validateM5DTiming(editorialTimingSource.value, {
@@ -137,6 +146,19 @@ export async function buildM5DRecovery({
     expectedProposalSha256: proposalSource.sha256,
     expectedProposalCases: proposalInfo.compact_cases,
   });
+  if (followUpSource) {
+    const initialPass = editorialTimingSource.value.passes.find(({ id }) => id === 'initial-review');
+    validateM5DFollowUpSource(followUpSource, {
+      proposalCaseIds: proposalInfo.case_ids,
+      proposalSha256: proposalSource.sha256,
+      proposalCasesById: proposalInfo.by_case,
+      timingSessionId: editorialTimingSource.value.session_id,
+      initialPassSessionId: initialPass.session_id,
+      initialJudgmentRows: editorialTiming.judgment_rows_by_pass?.['initial-review'],
+      initialPass,
+      freezeEventId: workloadSource.value.source.follow_up_freeze_event_id,
+    });
+  }
   const editorialInfo = validateM5DEditorialDecisions(editorialSource.value, proposalInfo, editorialTiming);
   editorialInfo.sha256 = editorialSource.sha256;
   const workloadCoverage = validateM5DWorkloadDecisionAlignment(workloadInfo, editorialInfo);
@@ -193,6 +215,8 @@ export async function buildM5DRecovery({
     repair_revision_sha256: repairSource.sha256,
     workload: sourcePath(workloadPath),
     workload_sha256: workloadSource.sha256,
+    follow_up_source: 'external:m5-10d-follow-up-source',
+    follow_up_source_sha256: followUpSource?.sha256,
     proposal_artifact: 'external:m5-10d-calibration-proposal',
     proposal_sha256: proposalSource.sha256,
     editorial_decisions: sourcePath(editorialPath),
@@ -256,6 +280,7 @@ if (isMainModule) {
   buildM5DRecovery({
     ...(args.proposal ? { proposalPath: path.resolve(args.proposal) } : {}),
     ...(args.workload ? { workloadPath: path.resolve(args.workload) } : {}),
+    ...(args['follow-up-source'] ? { followUpSourcePath: path.resolve(args['follow-up-source']) } : {}),
     ...(args.editorial ? { editorialPath: path.resolve(args.editorial) } : {}),
     ...(args['editorial-timing'] ? { editorialTimingPath: path.resolve(args['editorial-timing']) } : {}),
     ...(args.audit ? { auditPath: path.resolve(args.audit) } : {}),

@@ -14,8 +14,8 @@ import {
   validateM5DTiming,
   evaluateM5DRecoveryGate,
   validateM5DProposal,
+  validateM5DFollowUpSource,
   validateM5DWorkload,
-  validateM5DWorkloadDecisionAlignment,
   workloadUnitSetSha256,
 } from '../scripts/batch/validate-m5-10d-recovery.mjs';
 
@@ -55,9 +55,9 @@ function makeWorkload(proposalSha256 = 'a'.repeat(64)) {
   const passRows = [
     ['target-preparation', 'target-preparation', 'calibration-start', 'pre-review-sample', all],
     ['initial-review', 'semantic-review', 'calibration-start', 'pre-review-sample', all],
-    ['feedback-fixes', 'feedback-fix', 'feedback-fix', 'predeclared-feedback-queue', []],
-    ['final-verification', 'final-verification', 'final-verification', 'predeclared-verification-queue', []],
-    ['held-rejected', 'held-rejected', 'held-rejected', 'predeclared-hold-rejection-queue', []],
+    ['feedback-fixes', 'feedback-fix', 'feedback-fix', 'source-derived-initial-findings', []],
+    ['final-verification', 'final-verification', 'final-verification', 'source-derived-correction-findings', []],
+    ['held-rejected', 'held-rejected', 'held-rejected', 'source-derived-initial-findings', []],
     ['post-freeze-audit', 'post-freeze-audit', 'audit-review', 'frozen-editorial-sample', all],
   ];
   const declaredAt = new Date(Date.now() - 10_000).toISOString();
@@ -140,6 +140,7 @@ test('M5-10D recorder measures an empty declared pass as zero editor work', asyn
     const workloadPath = path.join(directory, 'workload.json');
     await writeFile(workloadPath, workloadBytes);
     const timingPath = path.join(directory, 'editorial-timing.json');
+    const draftPath = path.join(directory, 'editorial-draft.json');
     const args = { proposal: proposalPath, workload: workloadPath, output: timingPath, kind: 'editorial' };
 
     for (const pass of ['target-preparation', 'initial-review', 'feedback-fixes', 'final-verification', 'held-rejected']) {
@@ -175,6 +176,33 @@ test('M5-10D recorder measures an empty declared pass as zero editor work', asyn
           );
         }
       }
+      if (pass === 'initial-review') {
+        await writeFile(draftPath, `${JSON.stringify({
+          draft_source: 'record-by-record-editorial-judgment',
+          batch_id: M5_10D_BATCH_ID,
+          proposal_sha256: proposalSha256,
+          draft_created_at: new Date().toISOString(),
+          records: Array.from({ length: 20 }, (_, index) => ({
+            case_id: `m5-10d-cal-${String(index + 1).padStart(3, '0')}`,
+            decision: 'included',
+          })),
+        })}\n`, 'utf8');
+        }
+        if (pass === 'target-preparation') {
+          await assert.rejects(
+            () => runM5DRecorder({ ...args, action: 'stop-pass', pass }),
+            (error) => error instanceof M5DRecorderError && error.code === 'TIMING_EDITOR_WORK_MISSING',
+          );
+        }
+        for (const unitId of workload.passes.find(({ id }) => id === pass).expected_unit_ids) {
+        await runM5DRecorder({
+          ...args,
+          action: 'record-judgment',
+          pass,
+          unit: unitId,
+          ...(pass === 'target-preparation' ? {} : { 'decision-artifact': draftPath }),
+        });
+      }
       await runM5DRecorder({ ...args, action: 'stop-pass', pass });
     }
     await runM5DRecorder({ ...args, action: 'finish' });
@@ -203,7 +231,7 @@ test('M5-10D recorder measures an empty declared pass as zero editor work', asyn
   }
 });
 
-test('M5-10D workload rejects mechanically repeated full-sample follow-up work', () => {
+test('M5-10D workload rejects follow-up work without a recorder-owned source', () => {
   const proposalInfo = validateM5DProposal(makeProposal());
   const workload = makeWorkload();
   workload.passes[2].expected_unit_ids = [...proposalInfo.case_ids];
@@ -216,11 +244,11 @@ test('M5-10D workload rejects mechanically repeated full-sample follow-up work',
   workload.passes[3].empty_work = false;
   assert.throws(
     () => validateM5DWorkload(workload, { proposalCaseIds: proposalInfo.case_ids }),
-    (error) => error instanceof M5DRecoveryValidationError && error.code === 'WORKLOAD_REPETITION',
+    (error) => error instanceof M5DRecoveryValidationError && error.code === 'WORKLOAD_SOURCE_REQUIRED',
   );
 });
 
-test('M5-10D workload decision alignment fails instead of rebuilding queues from verdicts', () => {
+test('M5-10D workload requires causal source before decision alignment', () => {
   const proposalInfo = validateM5DProposal(makeProposal());
   const workload = makeWorkload();
   for (const passIndex of [2, 3]) {
@@ -229,11 +257,90 @@ test('M5-10D workload decision alignment fails instead of rebuilding queues from
     workload.passes[passIndex].expected_unit_set_sha256 = workloadUnitSetSha256(['m5-10d-cal-001']);
     workload.passes[passIndex].empty_work = false;
   }
-  const workloadInfo = validateM5DWorkload(workload, { proposalCaseIds: proposalInfo.case_ids });
-  const decisions = Array.from({ length: 20 }, () => 'included');
   assert.throws(
-    () => validateM5DWorkloadDecisionAlignment(workloadInfo, makeEditorial(decisions)),
-    (error) => error instanceof M5DRecoveryValidationError && error.code === 'WORKLOAD_DECISION_MISMATCH',
+    () => validateM5DWorkload(workload, { proposalCaseIds: proposalInfo.case_ids }),
+    (error) => error instanceof M5DRecoveryValidationError && error.code === 'WORKLOAD_SOURCE_REQUIRED',
+  );
+});
+
+test('M5-10D workload rejects a queue that is not derived from its causal source', () => {
+  const proposal = makeProposal();
+  const proposalInfo = validateM5DProposal(proposal);
+  const proposalSha256 = 'a'.repeat(64);
+  const timingSessionId = '22222222-2222-4222-8222-222222222222';
+  const passSessionId = '33333333-3333-4333-8333-333333333333';
+  const source = {
+    schema_version: '1',
+    artifact_id: 'm5-10d-follow-up-source-20260912',
+    batch_id: M5_10D_BATCH_ID,
+    source_kind: 'recorder-owned-initial-review-findings',
+    proposal_sha256: proposalSha256,
+    timing_session_id: timingSessionId,
+    source_pass_id: 'initial-review',
+    source_pass_session_id: passSessionId,
+    source_judgment_artifact_sha256: 'b'.repeat(64),
+    freeze_event_id: 'm5-10d-workload-freeze-test',
+    created_at: new Date().toISOString(),
+    findings: [{
+      case_id: 'm5-10d-cal-001',
+      record_id: 'cal-m5-10d-001',
+      source_record_sha256: sha256Bytes(Buffer.from(JSON.stringify(proposal.cases[0].record))),
+      finding_kind: 'correction',
+      source_judgment_id: '11111111-1111-4111-8111-111111111111',
+      source_judgment_row_sha256: 'c'.repeat(64),
+      note: 'm5-10d-cal-001 was frozen from its initial-review judgment.',
+    }],
+    note: 'Test source is recorder-owned and intentionally disagrees with the caller queue.',
+  };
+  validateM5DFollowUpSource(source, {
+    proposalCaseIds: proposalInfo.case_ids,
+    proposalSha256,
+    proposalCasesById: proposalInfo.by_case,
+  });
+  assert.throws(
+    () => validateM5DFollowUpSource(source, {
+      proposalCaseIds: proposalInfo.case_ids,
+      proposalSha256,
+      proposalCasesById: proposalInfo.by_case,
+      timingSessionId,
+      initialPassSessionId: passSessionId,
+      initialPass: { completed_at: new Date(Date.now() - 1_000).toISOString() },
+      initialJudgmentRows: [{
+        judgment_id: '44444444-4444-4444-8444-444444444444',
+        pass_id: 'initial-review',
+        unit_id: 'm5-10d-cal-001',
+        pass_session_id: passSessionId,
+        evidence: {
+          decision_artifact_sha256: source.source_judgment_artifact_sha256,
+          decision_row_sha256: source.findings[0].source_judgment_row_sha256,
+        },
+      }],
+    }),
+    (error) => error instanceof M5DRecoveryValidationError && error.code === 'WORKLOAD_SOURCE_BINDING',
+  );
+  const sourceBytes = Buffer.from(`${JSON.stringify(source)}\n`, 'utf8');
+  const workload = makeWorkload(proposalSha256);
+  workload.source.follow_up_artifact = 'external:m5-10d-follow-up-source';
+  workload.source.follow_up_sha256 = sha256Bytes(sourceBytes);
+  workload.source.follow_up_source_kind = source.source_kind;
+  workload.source.follow_up_timing_session_id = timingSessionId;
+  workload.source.follow_up_pass_id = source.source_pass_id;
+  workload.source.follow_up_freeze_event_id = source.freeze_event_id;
+  for (const passIndex of [2, 3]) {
+    workload.passes[passIndex].expected_unit_ids = ['m5-10d-cal-002'];
+    workload.passes[passIndex].expected_unit_count = 1;
+    workload.passes[passIndex].expected_unit_set_sha256 = workloadUnitSetSha256(['m5-10d-cal-002']);
+    workload.passes[passIndex].empty_work = false;
+  }
+  assert.throws(
+    () => validateM5DWorkload(workload, {
+      proposalCaseIds: proposalInfo.case_ids,
+      proposalSha256,
+      proposalCasesById: proposalInfo.by_case,
+      followUpSource: { value: source, sha256: sha256Bytes(sourceBytes) },
+      timingSessionId,
+    }),
+    (error) => error instanceof M5DRecoveryValidationError && error.code === 'WORKLOAD_SOURCE_BINDING',
   );
 });
 

@@ -8,15 +8,18 @@ source-bound recovery chain.
 ## Frozen workload contract
 
 [`data/batches/m5-10d-workload-20260912.json`](../data/batches/m5-10d-workload-20260912.json)
-is declared before timing begins. It contains only the external proposal
-digest and pass task IDs, never raw proposal records or editorial verdicts.
+starts as a provisional declaration before timing begins. It contains only the
+external proposal digest and the fixed target/initial task IDs, never raw
+proposal records or editorial verdicts. After `initial-review` is complete,
+the recorder freezes a separate follow-up source artifact from the completed
+judgment rows and updates this workload before any follow-up pass starts.
 The six pass roles are:
 
 1. `target-preparation` — all 20 calibration cases;
 2. `initial-review` — all 20 cases, reviewed record by record;
-3. `feedback-fixes` — only the predeclared correction queue;
-4. `final-verification` — only the predeclared correction queue;
-5. `held-rejected` — only the predeclared held/rejected queue; and
+3. `feedback-fixes` — only the recorder-frozen correction queue;
+4. `final-verification` — only the recorder-frozen correction queue;
+5. `held-rejected` — only the recorder-frozen held/rejected queue; and
 6. `post-freeze-audit` — all 20 cases in a separate audit session.
 
 The recorder compares the declared and actual IDs for every pass. Duplicate
@@ -25,9 +28,11 @@ follow-up fail with explicit error codes. A queue with no work is declared as
 `empty_work: true`; its completed timing has `work_status: "zero-work"` and
 `editor_seconds: 0`, so an empty pass cannot masquerade as editorial work.
 
-The workload is checked against the editorial result only as a consistency
-check after the result is authored. The workload is never reconstructed from
-the decision artifact or final canonical data.
+The follow-up workload is derived from recorder-owned initial-review findings
+and bound to their timing session, judgment event, decision artifact, and row
+digest. The finalized editorial result is still checked against that source as
+a downstream consistency check. The workload is never reconstructed from a
+final decision artifact or final canonical data.
 
 ## Timing and editorial boundary
 
@@ -36,6 +41,7 @@ repository:
 
 ```sh
 npm run batch:m5-10d:workload:build -- \
+  --provisional=true \
   --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json \
   --output=data/batches/m5-10d-workload-20260912.json
 ```
@@ -61,11 +67,47 @@ npm run batch:m5-10d:timing -- \
   --output=data/batches/m5-10d-editorial-timing-20260912.json
 ```
 
-Repeat the three commands for the remaining editorial passes. `record-proposal`
-records only that pass's frozen queue; it never loops over all 20 by default.
-The producer stores compact proposal facts and producer timestamps separately
-from `editor_seconds` and `wall_clock_seconds`. Editorial decisions are
-separately authored and frozen after the editorial timing session stops.
+After `record-proposal` records a pass's producer work, record one judgment
+completion for every declared unit. For `initial-review`, author the editorial
+draft after the pass starts, then bind each judgment to its draft row:
+
+```sh
+npm run batch:m5-10d:timing -- \
+  --action=start-judgment --kind=editorial --pass=initial-review \
+  --unit=m5-10d-cal-001 --decision-artifact=/tmp/editorial-draft.json \
+  --output=data/batches/m5-10d-editorial-timing-20260912.json
+npm run batch:m5-10d:timing -- \
+  --action=complete-judgment --kind=editorial --pass=initial-review \
+  --unit=m5-10d-cal-001 --decision-artifact=/tmp/editorial-draft.json \
+  --output=data/batches/m5-10d-editorial-timing-20260912.json
+```
+
+Repeat the judgment pair for every unit, then stop the pass. The recorder
+derives `editor_seconds` from the current-clock interval of those judgment
+events; producer execution is recorded separately as `producer_seconds` and
+cannot substitute for editor work. Each non-empty pass with producer rows but
+no complete judgment rows fails with `TIMING_EDITOR_WORK_MISSING`.
+
+After `initial-review` stops, freeze the actual follow-up source before starting
+any follow-up pass:
+
+```sh
+npm run batch:m5-10d:timing -- \
+  --action=freeze-follow-up --kind=editorial \
+  --decision-artifact=/tmp/editorial-draft.json \
+  --follow-up-source=/tmp/m5-10d-follow-up-source.json \
+  --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json \
+  --workload=data/batches/m5-10d-workload-20260912.json \
+  --output=data/batches/m5-10d-editorial-timing-20260912.json
+```
+
+Only then repeat the pass and judgment commands for `feedback-fixes`,
+`final-verification`, and `held-rejected`. Caller-supplied queue IDs and
+constant fallback queues are rejected.
+
+Editorial decisions are separately authored and frozen after the editorial
+timing session stops. The independent audit likewise records one judgment event
+per case and binds those events to its separately authored comparison draft.
 
 After editorial freeze, start `post-freeze-audit` with the frozen decision
 digest. The audit timing and decision artifact must use distinct session IDs,
@@ -82,9 +124,11 @@ never replace it.
 
 ```sh
 npm run batch:m5-10d:recovery:build -- \
-  --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json
+  --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json \
+  --follow-up-source=/tmp/m5-10d-follow-up-source.json
 npm run batch:m5-10d:recovery:check -- \
-  --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json
+  --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json \
+  --follow-up-source=/tmp/m5-10d-follow-up-source.json
 ```
 
 The recovery artifact must preserve the failed Wave B stage, the failed M5-10C
@@ -107,7 +151,7 @@ npm run batch:m5-10d:contract:check
 npm run batch:m5-10d:recovery:contract:check
 ```
 
-It exercises producer-verdict rejection, full-sample repetition, missing or
-expanded coverage, zero-work timing, decision/workload mismatch, audit
-independence, canonical immutability, preserved failure history, and
-pass-only authorization.
+It exercises producer-verdict rejection, producer-only timing rejection,
+source-derived queue binding, full-sample repetition, missing or expanded
+coverage, zero-work timing, decision/workload mismatch, audit independence,
+canonical immutability, preserved failure history, and pass-only authorization.

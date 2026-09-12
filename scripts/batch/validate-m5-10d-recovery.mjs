@@ -18,6 +18,7 @@ export const BATCH_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches');
 
 export const M5_10D_BATCH_ID = 'm5-10d-editor-time-recalibration-20260912';
 export const M5_10D_PROCESS_REVISION = 'm5-10d-editor-workload-v1';
+export const M5_10D_FOLLOW_UP_SOURCE_KIND = 'recorder-owned-initial-review-findings';
 export const M5_10D_CASE_COUNT = 20;
 export const M5_10D_PROCESSED_START_COUNT = 20;
 export const M5_10D_BOUNDARY_IDS = Object.freeze([
@@ -52,6 +53,7 @@ export const M5_10D_CORRECTION_RATE_MAX = 0.5;
 
 export const DEFAULT_PROPOSAL_PATH = '/private/tmp/typewriter-m5-10d-calibration-proposal.json';
 export const DEFAULT_WORKLOAD_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-workload-20260912.json');
+export const DEFAULT_FOLLOW_UP_SOURCE_PATH = '/private/tmp/typewriter-m5-10d-follow-up-source.json';
 export const DEFAULT_EDITORIAL_TIMING_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-editorial-timing-20260912.json');
 export const DEFAULT_EDITORIAL_DECISIONS_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-editorial-decisions-20260912.json');
 export const DEFAULT_AUDIT_TIMING_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-audit-timing-20260912.json');
@@ -103,6 +105,7 @@ const compileSchema = (name) => new Ajv2020(schemaOptions).compile(
 );
 const proposalValidator = compileSchema('m5-10d-calibration-proposal');
 const workloadValidator = compileSchema('m5-10d-workload');
+const followUpSourceValidator = compileSchema('m5-10d-follow-up-source');
 const timingValidator = compileSchema('m5-10d-timing');
 const editorialValidator = compileSchema('m5-10d-editorial-decisions');
 const auditValidator = compileSchema('m5-10d-audit-decisions');
@@ -352,6 +355,132 @@ export function validateM5DProposal(proposal, { canonicalRecords = [], excludedR
   };
 }
 
+function followUpSourceValue(sourceInput) {
+  return sourceInput?.value ?? sourceInput;
+}
+
+function followUpSourceDigest(sourceInput) {
+  return sourceInput?.sha256;
+}
+
+export function deriveM5DFollowUpQueues(source) {
+  const value = followUpSourceValue(source);
+  return {
+    feedback: value.findings.filter(({ finding_kind: findingKind }) => findingKind === 'correction').map(({ case_id: caseId }) => caseId),
+    heldRejected: value.findings
+      .filter(({ finding_kind: findingKind }) => findingKind === 'held' || findingKind === 'rejected')
+      .map(({ case_id: caseId }) => caseId),
+  };
+}
+
+export function validateM5DFollowUpSource(sourceInput, {
+  proposalCaseIds = allCaseIds(),
+  proposalSha256,
+  proposalCasesById,
+  timingSessionId,
+  initialPassSessionId,
+  initialJudgmentRows,
+  initialPass,
+  freezeEventId,
+} = {}) {
+  const source = followUpSourceValue(sourceInput);
+  validateSchema(source, followUpSourceValidator, 'follow-up source', 'M5-10D follow-up source', 'FOLLOW_UP_SOURCE_SCHEMA_ERROR');
+  assertEqual(source.batch_id, M5_10D_BATCH_ID, 'follow-up source batch ID drifted', 'WORKLOAD_SOURCE_BINDING');
+  assertEqual(source.source_kind, M5_10D_FOLLOW_UP_SOURCE_KIND, 'follow-up source kind drifted', 'WORKLOAD_SOURCE_BINDING');
+  if (proposalSha256 !== undefined) assertEqual(source.proposal_sha256, proposalSha256, 'follow-up source proposal digest drifted', 'WORKLOAD_SOURCE_BINDING');
+  if (timingSessionId !== undefined) assertEqual(source.timing_session_id, timingSessionId, 'follow-up source timing session drifted', 'WORKLOAD_SOURCE_BINDING');
+  if (initialPassSessionId !== undefined) assertEqual(source.source_pass_session_id, initialPassSessionId, 'follow-up source pass session drifted', 'WORKLOAD_SOURCE_BINDING');
+  if (freezeEventId !== undefined) assertEqual(source.freeze_event_id, freezeEventId, 'follow-up source freeze event drifted', 'WORKLOAD_SOURCE_BINDING');
+  const proposalOrder = new Map(proposalCaseIds.map((caseId, index) => [caseId, index]));
+  const findingIds = new Set();
+  let previousOrder = -1;
+  for (const finding of source.findings) {
+    if (!proposalOrder.has(finding.case_id)) fail(`${finding.case_id} follow-up finding is outside the proposal`, 'WORKLOAD_SOURCE_SCOPE');
+    if (findingIds.has(finding.case_id)) fail(`${finding.case_id} is duplicated in follow-up findings`, 'WORKLOAD_SOURCE_SCOPE');
+    findingIds.add(finding.case_id);
+    const order = proposalOrder.get(finding.case_id);
+    if (order <= previousOrder) fail('follow-up findings are not in proposal order', 'WORKLOAD_SOURCE_SCOPE');
+    previousOrder = order;
+    assertEqual(finding.record_id, `cal-m5-10d-${finding.case_id.slice(-3)}`, `${finding.case_id} follow-up record ID`, 'WORKLOAD_SOURCE_BINDING');
+    if (proposalCasesById) {
+      const proposal = proposalCasesById.get(finding.case_id) ?? proposalCasesById[finding.case_id];
+      if (!proposal) fail(`${finding.case_id} follow-up finding has no proposal record`, 'WORKLOAD_SOURCE_SCOPE');
+      assertEqual(finding.source_record_sha256, sha256Json(proposal.record), `${finding.case_id} follow-up source record digest`, 'WORKLOAD_SOURCE_BINDING');
+    }
+  }
+  if (initialJudgmentRows) {
+    const rowsById = new Map(initialJudgmentRows.map((row) => [row.judgment_id, row]));
+    for (const finding of source.findings) {
+      const judgment = rowsById.get(finding.source_judgment_id);
+      if (!judgment) fail(`${finding.case_id} follow-up finding is not bound to an initial judgment event`, 'WORKLOAD_SOURCE_BINDING');
+      assertEqual(judgment.pass_id, 'initial-review', `${finding.case_id} follow-up source pass`, 'WORKLOAD_SOURCE_BINDING');
+      assertEqual(judgment.unit_id, finding.case_id, `${finding.case_id} follow-up judgment unit`, 'WORKLOAD_SOURCE_BINDING');
+      assertEqual(judgment.pass_session_id, source.source_pass_session_id, `${finding.case_id} follow-up pass session`, 'WORKLOAD_SOURCE_BINDING');
+      assertEqual(judgment.evidence.decision_row_sha256, finding.source_judgment_row_sha256, `${finding.case_id} follow-up judgment digest`, 'WORKLOAD_SOURCE_BINDING');
+      assertEqual(judgment.evidence.decision_artifact_sha256, source.source_judgment_artifact_sha256, `${finding.case_id} follow-up artifact digest`, 'WORKLOAD_SOURCE_BINDING');
+    }
+  }
+  if (initialPass && Date.parse(source.created_at) < Date.parse(initialPass.completed_at)) {
+    fail('follow-up source was created before initial-review completed', 'WORKLOAD_SOURCE_CHRONOLOGY');
+  }
+  const queues = deriveM5DFollowUpQueues(source);
+  return {
+    source,
+    correction_ids: queues.feedback,
+    held_rejected_ids: queues.heldRejected,
+    finding_ids: [...findingIds],
+    sha256: followUpSourceDigest(sourceInput),
+  };
+}
+
+export function freezeM5DWorkload(workload, followUpSource, {
+  proposalCaseIds = allCaseIds(),
+  proposalSha256,
+  proposalCasesById,
+  followUpSha256,
+  timingSessionId,
+  freezeEventId,
+  frozenAt = new Date().toISOString(),
+} = {}) {
+  validateM5DWorkload(workload, { proposalCaseIds, proposalSha256, proposalCasesById });
+  if (workload.declaration_status !== 'pre-review') fail('only a pre-review workload can receive the initial-review queue', 'WORKLOAD_FREEZE_STATE');
+  const sourceValue = followUpSourceValue(followUpSource);
+  const sourceInfo = validateM5DFollowUpSource(followUpSource, {
+    proposalCaseIds,
+    proposalSha256,
+    proposalCasesById,
+    timingSessionId,
+  });
+  if (followUpSha256 !== undefined) assertEqual(sourceInfo.sha256, followUpSha256, 'follow-up source digest drifted', 'WORKLOAD_SOURCE_BINDING');
+  const next = structuredClone(workload);
+  next.declaration_status = 'frozen';
+  next.frozen_at = frozenAt;
+  next.source = {
+    ...next.source,
+    follow_up_artifact: 'external:m5-10d-follow-up-source',
+    follow_up_sha256: sourceInfo.sha256,
+    follow_up_source_kind: M5_10D_FOLLOW_UP_SOURCE_KIND,
+    follow_up_timing_session_id: sourceValue.timing_session_id,
+    follow_up_pass_id: sourceValue.source_pass_id,
+    follow_up_freeze_event_id: freezeEventId ?? sourceValue.freeze_event_id,
+  };
+  const queues = {
+    'feedback-fixes': sourceInfo.correction_ids,
+    'final-verification': sourceInfo.correction_ids,
+    'held-rejected': sourceInfo.held_rejected_ids,
+  };
+  for (const pass of next.passes) {
+    if (!queues[pass.id]) continue;
+    const expectedUnitIds = queues[pass.id];
+    pass.declared_at = frozenAt;
+    pass.expected_unit_ids = [...expectedUnitIds];
+    pass.expected_unit_count = expectedUnitIds.length;
+    pass.expected_unit_set_sha256 = workloadUnitSetSha256(expectedUnitIds);
+    pass.empty_work = expectedUnitIds.length === 0;
+  }
+  return next;
+}
+
 export function workloadUnitSetSha256(unitIds) {
   return sha256Json(unitIds);
 }
@@ -359,13 +488,19 @@ export function workloadUnitSetSha256(unitIds) {
 const PASS_CONTRACT = Object.freeze({
   'target-preparation': { role: 'target-preparation', unit_kind: 'calibration-start', declaration_source: 'pre-review-sample' },
   'initial-review': { role: 'semantic-review', unit_kind: 'calibration-start', declaration_source: 'pre-review-sample' },
-  'feedback-fixes': { role: 'feedback-fix', unit_kind: 'feedback-fix', declaration_source: 'predeclared-feedback-queue' },
-  'final-verification': { role: 'final-verification', unit_kind: 'final-verification', declaration_source: 'predeclared-verification-queue' },
-  'held-rejected': { role: 'held-rejected', unit_kind: 'held-rejected', declaration_source: 'predeclared-hold-rejection-queue' },
+  'feedback-fixes': { role: 'feedback-fix', unit_kind: 'feedback-fix', declaration_source: 'source-derived-initial-findings' },
+  'final-verification': { role: 'final-verification', unit_kind: 'final-verification', declaration_source: 'source-derived-correction-findings' },
+  'held-rejected': { role: 'held-rejected', unit_kind: 'held-rejected', declaration_source: 'source-derived-initial-findings' },
   'post-freeze-audit': { role: 'post-freeze-audit', unit_kind: 'audit-review', declaration_source: 'frozen-editorial-sample' },
 });
 
-export function validateM5DWorkload(workload, { proposalCaseIds = allCaseIds(), proposalSha256 } = {}) {
+export function validateM5DWorkload(workload, {
+  proposalCaseIds = allCaseIds(),
+  proposalSha256,
+  proposalCasesById,
+  followUpSource,
+  timingSessionId,
+} = {}) {
   validateSchema(workload, workloadValidator, 'workload', 'M5-10D workload', 'WORKLOAD_SCHEMA_ERROR');
   assertEqual(workload.process_revision, M5_10D_PROCESS_REVISION, 'workload process revision drifted', 'WORKLOAD_SCOPE_MISMATCH');
   assertEqual(workload.case_count, M5_10D_CASE_COUNT, 'workload case count drifted', 'WORKLOAD_SCOPE_MISMATCH');
@@ -405,6 +540,40 @@ export function validateM5DWorkload(workload, { proposalCaseIds = allCaseIds(), 
   const feedback = new Set(passMap.get('feedback-fixes').expected_unit_ids);
   const verification = new Set(passMap.get('final-verification').expected_unit_ids);
   const held = new Set(passMap.get('held-rejected').expected_unit_ids);
+  const hasFollowUpWork = feedback.size > 0 || verification.size > 0 || held.size > 0;
+  const hasFollowUpSource = Boolean(
+    workload.source.follow_up_artifact
+      || workload.source.follow_up_sha256
+      || workload.source.follow_up_source_kind
+      || workload.source.follow_up_timing_session_id
+      || workload.source.follow_up_pass_id
+      || workload.source.follow_up_freeze_event_id,
+  );
+  if (workload.declaration_status === 'pre-review' && hasFollowUpWork) {
+    fail('pre-review workload cannot contain follow-up units before initial findings are frozen', 'WORKLOAD_SOURCE_REQUIRED');
+  }
+  if (hasFollowUpWork || hasFollowUpSource) {
+    if (!workload.source.follow_up_sha256 || !workload.source.follow_up_source_kind || !workload.source.follow_up_timing_session_id) {
+      fail('follow-up workload requires a recorder-owned source artifact digest', 'WORKLOAD_SOURCE_REQUIRED');
+    }
+    if (!followUpSource) fail('follow-up workload source artifact is missing', 'WORKLOAD_SOURCE_REQUIRED');
+    const followUpInfo = validateM5DFollowUpSource(followUpSource, {
+      proposalCaseIds,
+      proposalSha256,
+      proposalCasesById,
+      timingSessionId,
+    });
+    const sourceDigest = followUpSourceDigest(followUpSource);
+    if (!sourceDigest) fail('follow-up source artifact digest is missing', 'WORKLOAD_SOURCE_REQUIRED');
+    assertEqual(workload.source.follow_up_sha256, sourceDigest, 'workload follow-up source digest drifted', 'WORKLOAD_SOURCE_BINDING');
+    assertEqual(workload.source.follow_up_source_kind, M5_10D_FOLLOW_UP_SOURCE_KIND, 'workload follow-up source kind drifted', 'WORKLOAD_SOURCE_BINDING');
+    assertEqual(workload.source.follow_up_timing_session_id, followUpSourceValue(followUpSource).timing_session_id, 'workload follow-up timing session drifted', 'WORKLOAD_SOURCE_BINDING');
+    assertEqual(workload.source.follow_up_pass_id, 'initial-review', 'workload follow-up source pass drifted', 'WORKLOAD_SOURCE_BINDING');
+    assertEqual(workload.source.follow_up_freeze_event_id, followUpSourceValue(followUpSource).freeze_event_id, 'workload follow-up freeze event drifted', 'WORKLOAD_SOURCE_BINDING');
+    assertExactIds([...feedback], followUpInfo.correction_ids, 'feedback-fixes source alignment', 'WORKLOAD_SOURCE_BINDING');
+    assertExactIds([...verification], followUpInfo.correction_ids, 'final-verification source alignment', 'WORKLOAD_SOURCE_BINDING');
+    assertExactIds([...held], followUpInfo.held_rejected_ids, 'held-rejected source alignment', 'WORKLOAD_SOURCE_BINDING');
+  }
   for (const unitId of [...feedback, ...verification, ...held]) {
     if (!initial.has(unitId)) fail(`${unitId} follow-up workload is outside initial review`, 'WORKLOAD_SCOPE_MISMATCH');
   }
@@ -457,6 +626,23 @@ function parseWorkLog(pass) {
   return { rows, bytes };
 }
 
+function parseJudgmentLog(pass) {
+  const evidence = pass.judgment_evidence;
+  if (!evidence || typeof evidence !== 'object') fail(`${pass.id} is missing recorder judgment evidence`, 'TIMING_EDITOR_WORK_MISSING');
+  const logPath = resolveAnyPath(evidence.path);
+  const bytes = readSyncBytes(logPath, `${pass.id} timing judgment log`);
+  if (bytes.length > 0 && bytes.at(-1) !== 10) fail(`${pass.id} judgment log is not newline-terminated`, 'TIMING_JUDGMENT_LOG_INVALID');
+  const rows = bytes.length === 0 ? [] : bytes.toString('utf8').trimEnd().split('\n').filter(Boolean).map((line, index) => {
+    try {
+      return JSON.parse(line);
+    } catch (error) {
+      fail(`${pass.id} judgment log line ${index + 1} is invalid JSON: ${error.message}`, 'TIMING_JUDGMENT_LOG_INVALID');
+    }
+  });
+  assertEqual(sha256Bytes(bytes), evidence.sha256, `${pass.id} judgment log digest drifted`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+  return { rows, bytes };
+}
+
 function validateProposalOnlyWorkRow(row, passId, expectedCase) {
   if (!row || typeof row !== 'object' || row.kind !== 'work') fail(`${passId} contains a non-work row`, 'TIMING_WORK_LOG_INVALID');
   if (!row.input || typeof row.input !== 'object' || typeof row.input.payload !== 'object') fail(`${passId} row is missing bound input`, 'PRODUCER_INPUT_MISSING');
@@ -482,6 +668,58 @@ function validateProposalOnlyWorkRow(row, passId, expectedCase) {
   return row;
 }
 
+function validateJudgmentArtifact(row, pass, timing, expectedCasesById, expectedProposalSha256) {
+  const evidence = row.evidence;
+  requireString(evidence.path, `${pass.id}:${row.unit_id} judgment artifact path`, 'TIMING_EDITOR_WORK_MISSING');
+  requireSha256(evidence.decision_artifact_sha256, `${pass.id}:${row.unit_id} decision artifact digest`);
+  requireSha256(evidence.decision_row_sha256, `${pass.id}:${row.unit_id} decision row digest`);
+  const artifactBytes = readSyncBytes(resolveAnyPath(evidence.path), `${pass.id}:${row.unit_id} judgment artifact`);
+  assertEqual(sha256Bytes(artifactBytes), evidence.decision_artifact_sha256, `${pass.id}:${row.unit_id} decision artifact digest drifted`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+  let artifact;
+  try {
+    artifact = JSON.parse(artifactBytes.toString('utf8'));
+  } catch (error) {
+    fail(`${pass.id}:${row.unit_id} judgment artifact is invalid JSON: ${error.message}`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
+  }
+  const expectedCase = expectedCasesById?.get(row.unit_id);
+  if (!expectedCase) fail(`${pass.id}:${row.unit_id} judgment is outside proposal`, 'EDITORIAL_SCOPE_MISMATCH');
+  if (evidence.decision_artifact_kind === 'proposal') {
+    if (pass.id !== 'target-preparation' || timing.timing_kind !== 'editorial') fail(`${pass.id}:${row.unit_id} used a proposal as judgment evidence`, 'TIMING_EDITORIAL_PROVENANCE');
+    assertEqual(evidence.decision_artifact_sha256, expectedProposalSha256, `${pass.id}:${row.unit_id} proposal artifact digest`, 'TIMING_SOURCE_BINDING');
+    assertEqual(evidence.decision_row_sha256, sha256Json(expectedCase), `${pass.id}:${row.unit_id} proposal judgment row digest`, 'TIMING_SOURCE_BINDING');
+    if (!Array.isArray(artifact.cases) || !artifact.cases.some(({ case_id: caseId }) => caseId === row.unit_id)) fail(`${pass.id}:${row.unit_id} proposal judgment artifact has no case`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
+    return;
+  }
+  const expectedSource = timing.timing_kind === 'editorial'
+    ? 'record-by-record-editorial-judgment'
+    : 'independent-post-freeze-comparison';
+  const expectedKind = timing.timing_kind === 'editorial' ? 'editorial-draft' : 'audit-draft';
+  assertEqual(evidence.decision_artifact_kind, expectedKind, `${pass.id}:${row.unit_id} judgment artifact kind`, 'TIMING_EDITORIAL_PROVENANCE');
+  assertEqual(artifact.draft_source, expectedSource, `${pass.id}:${row.unit_id} judgment artifact source`, 'TIMING_EDITORIAL_PROVENANCE');
+  const records = timing.timing_kind === 'editorial' ? artifact.records : artifact.case_reviews;
+  if (!Array.isArray(records)) fail(`${pass.id}:${row.unit_id} judgment artifact records are missing`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
+  const decisionRow = records.find(({ case_id: caseId }) => caseId === row.unit_id);
+  if (!decisionRow) fail(`${pass.id}:${row.unit_id} judgment artifact has no case`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
+  assertEqual(evidence.decision_row_sha256, sha256Json(decisionRow), `${pass.id}:${row.unit_id} decision row digest`, 'TIMING_SOURCE_BINDING');
+}
+
+function validateJudgmentRow(row, pass, timing, expectedCasesById, expectedProposalSha256) {
+  if (!row || typeof row !== 'object' || row.kind !== 'judgment') fail(`${pass.id} contains a non-judgment row`, 'TIMING_JUDGMENT_LOG_INVALID');
+  requireString(row.pass_id, `${pass.id} judgment pass_id`, 'TIMING_JUDGMENT_LOG_INVALID');
+  requireString(row.session_id, `${pass.id} judgment session_id`, 'TIMING_JUDGMENT_LOG_INVALID');
+  requireUuid(row.pass_session_id, `${pass.id} judgment pass_session_id`);
+  requireUuid(row.judgment_id, `${pass.id} judgment_id`);
+  requireString(row.unit_id, `${pass.id} judgment unit_id`, 'TIMING_JUDGMENT_LOG_INVALID');
+  requireTimestamp(row.started_at, `${pass.id}:${row.unit_id} judgment started_at`);
+  requireTimestamp(row.completed_at, `${pass.id}:${row.unit_id} judgment completed_at`);
+  requireTimestamp(row.recorded_at, `${pass.id}:${row.unit_id} judgment recorded_at`);
+  if (Date.parse(row.completed_at) < Date.parse(row.started_at)) fail(`${pass.id}:${row.unit_id} judgment chronology is invalid`, 'TIMING_CHRONOLOGY');
+  assertEqual(row.recorded_at, row.completed_at, `${pass.id}:${row.unit_id} judgment recorded_at`, 'TIMING_JUDGMENT_LOG_INVALID');
+  if (!row.evidence || typeof row.evidence !== 'object') fail(`${pass.id}:${row.unit_id} judgment evidence is missing`, 'TIMING_EDITOR_WORK_MISSING');
+  validateJudgmentArtifact(row, pass, timing, expectedCasesById, expectedProposalSha256);
+  return row;
+}
+
 export function createM5DConcreteTimingProof(timing) {
   const copy = structuredClone(timing);
   delete copy.recording_proof_sha256;
@@ -503,6 +741,12 @@ export function validateM5DTiming(timing, {
   requireUuid(timing.session_id, 'timing session_id');
   requireTimestamp(timing.started_at, 'timing started_at');
   requireSha256(timing.workload_sha256, 'timing workload_sha256');
+  if (!Array.isArray(timing.workload_history) || timing.workload_history.length === 0) fail('timing workload history is missing', 'TIMING_SOURCE_BINDING');
+  for (const [index, revision] of timing.workload_history.entries()) {
+    requireSha256(revision.sha256, `timing workload_history[${index}].sha256`);
+    requireTimestamp(revision.recorded_at, `timing workload_history[${index}].recorded_at`);
+  }
+  if (!timing.workload_history.some(({ sha256: digest }) => digest === timing.workload_sha256)) fail('timing current workload is absent from workload history', 'TIMING_SOURCE_BINDING');
   if (workloadInfo) assertEqual(timing.workload_sha256, workloadInfo.sha256, 'timing workload digest drifted', 'TIMING_SOURCE_BINDING');
   if (expectedProposalSha256 !== undefined) assertEqual(timing.proposal_sha256, expectedProposalSha256, 'timing proposal digest drifted', 'TIMING_SOURCE_BINDING');
   if (timingKind === 'editorial') requireUuid(timing.editorial_session_id, 'timing editorial_session_id');
@@ -525,6 +769,8 @@ export function validateM5DTiming(timing, {
   let totalWallClockSeconds = 0;
   let totalProducerSeconds = 0;
   const producerPayloads = [];
+  const judgmentRows = [];
+  const judgmentRowsByPass = {};
   const passSummaries = {};
   for (const pass of timing.passes) {
     if (pass.status !== 'complete') fail(`${pass.id} timing pass is not complete`, 'TIMING_INCOMPLETE');
@@ -539,6 +785,8 @@ export function validateM5DTiming(timing, {
       assertEqual(pass.work_evidence.expected_unit_set_sha256, declaration.expected_unit_set_sha256, `${pass.id} workload set digest`, 'TIMING_SOURCE_BINDING');
       assertEqual(pass.work_status, declaration.empty_work ? 'zero-work' : 'work', `${pass.id} work status`, 'TIMING_EMPTY_PASS_MISMATCH');
     }
+    requireSha256(pass.workload_sha256, `${pass.id}.workload_sha256`);
+    if (!timing.workload_history.some(({ sha256: digest }) => digest === pass.workload_sha256)) fail(`${pass.id} workload revision is absent from timing history`, 'TIMING_SOURCE_BINDING');
     const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
     if (elapsed < 0) fail(`${pass.id} completed before it started`, 'TIMING_CHRONOLOGY');
     const { rows } = parseWorkLog(pass);
@@ -547,13 +795,39 @@ export function validateM5DTiming(timing, {
     assertExactIds(rowsIds, expectedIds, `${pass.id} actual recorder scope`, 'TIMING_SCOPE_MISMATCH');
     assertEqual(pass.work_evidence.actual_unit_ids, rowsIds, `${pass.id} actual workload evidence`, 'TIMING_SCOPE_MISMATCH');
     assertEqual(pass.work_evidence.unit_count, rows.length, `${pass.id} recorder work count`, 'TIMING_SCOPE_MISMATCH');
+    const { rows: judgmentLogRows } = parseJudgmentLog(pass);
+    const judgmentIds = judgmentLogRows.map(({ unit_id: unitId }) => unitId);
+    const expectedJudgmentEventIds = expectedIds.map((unitId) => `m5-10d-judgment-${pass.id}-${unitId}`);
+    assertExactIds(judgmentIds, expectedIds, `${pass.id} actual judgment scope`, 'TIMING_EDITOR_WORK_MISSING');
+    assertEqual(pass.judgment_evidence.actual_unit_ids, judgmentIds, `${pass.id} actual judgment evidence`, 'TIMING_EDITOR_WORK_MISSING');
+    assertEqual(pass.judgment_evidence.unit_count, judgmentLogRows.length, `${pass.id} judgment count`, 'TIMING_EDITOR_WORK_MISSING');
+    assertEqual(pass.judgment_evidence.expected_unit_ids, expectedIds, `${pass.id} expected judgment workload`, 'TIMING_SCOPE_MISMATCH');
+    assertEqual(pass.judgment_evidence.expected_unit_set_sha256, pass.work_evidence.expected_unit_set_sha256, `${pass.id} judgment workload digest`, 'TIMING_SOURCE_BINDING');
+    assertEqual(pass.judgment_evidence.event_ids, expectedJudgmentEventIds, `${pass.id} judgment event coverage`, 'TIMING_EDITOR_WORK_MISSING');
+    assertEqual(sha256Bytes(readSyncBytes(resolveAnyPath(pass.judgment_evidence.path), `${pass.id} timing judgment log`)), pass.judgment_evidence.sha256, `${pass.id} judgment log digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+    let judgmentSeconds = 0;
+    for (const row of judgmentLogRows) {
+      validateJudgmentRow(row, pass, timing, expectedCasesById, expectedProposalSha256);
+      assertEqual(row.pass_id, pass.id, `${pass.id}:${row.unit_id} judgment pass`, 'TIMING_JUDGMENT_LOG_INVALID');
+      assertEqual(row.session_id, timing.session_id, `${pass.id}:${row.unit_id} judgment session`, 'TIMING_SOURCE_BINDING');
+      assertEqual(row.pass_session_id, pass.session_id, `${pass.id}:${row.unit_id} judgment pass session`, 'TIMING_SOURCE_BINDING');
+      if (Date.parse(row.started_at) < Date.parse(pass.started_at) || Date.parse(row.completed_at) > Date.parse(pass.completed_at)) fail(`${pass.id}:${row.unit_id} judgment is outside its pass`, 'TIMING_CHRONOLOGY');
+      const event = timing.events.find(({ event_id: eventId }) => eventId === `m5-10d-judgment-${pass.id}-${row.unit_id}`);
+      if (!event) fail(`${pass.id}:${row.unit_id} judgment completion event is missing`, 'TIMING_EDITOR_WORK_MISSING');
+      assertEqual(event.pass_session_id, pass.session_id, `${pass.id}:${row.unit_id} judgment event pass session`, 'TIMING_SOURCE_BINDING');
+      assertEqual(event.decision_artifact_sha256, row.evidence.decision_artifact_sha256, `${pass.id}:${row.unit_id} judgment event artifact`, 'TIMING_SOURCE_BINDING');
+      assertEqual(event.decision_row_sha256, row.evidence.decision_row_sha256, `${pass.id}:${row.unit_id} judgment event row`, 'TIMING_SOURCE_BINDING');
+      judgmentSeconds += (Date.parse(row.completed_at) - Date.parse(row.started_at)) / 1000;
+    }
+    assertEqual(pass.judgment_seconds, judgmentSeconds, `${pass.id} judgment seconds`, 'TIMING_DERIVATION_MISMATCH');
+    assertEqual(pass.editor_seconds, judgmentSeconds, `${pass.id} editor seconds`, 'TIMING_DERIVATION_MISMATCH');
     if (expectedIds.length === 0) {
       assertEqual(pass.work_status, 'zero-work', `${pass.id} empty pass status`, 'TIMING_EMPTY_PASS_MISMATCH');
       assertEqual(pass.editor_seconds, 0, `${pass.id} empty pass editor time`, 'TIMING_EMPTY_PASS_MISMATCH');
+      assertEqual(pass.judgment_seconds, 0, `${pass.id} empty pass judgment time`, 'TIMING_EMPTY_PASS_MISMATCH');
     } else {
       assertEqual(pass.work_status, 'work', `${pass.id} non-empty pass status`, 'TIMING_EMPTY_PASS_MISMATCH');
-      assertEqual(pass.editor_seconds, elapsed, `${pass.id} editor seconds`, 'TIMING_DERIVATION_MISMATCH');
-      if (pass.editor_seconds > 0 && pass.editor_seconds === pass.producer_seconds) fail(`${pass.id} copied producer execution into editor time`, 'TIMING_PRODUCER_SUBSTITUTION');
+      if (judgmentLogRows.length === 0) fail(`${pass.id} has producer work but no editor judgment events`, 'TIMING_EDITOR_WORK_MISSING');
     }
     assertEqual(pass.wall_clock_seconds, elapsed, `${pass.id} wall-clock seconds`, 'TIMING_DERIVATION_MISMATCH');
     let producerSeconds = 0;
@@ -570,6 +844,13 @@ export function validateM5DTiming(timing, {
       }
     }
     assertEqual(pass.producer_seconds, producerSeconds, `${pass.id} producer seconds`, 'TIMING_DERIVATION_MISMATCH');
+    const judgmentLogSource = parseJudgmentLog(pass);
+    assertEqual(pass.judgment_evidence.sha256, sha256Bytes(judgmentLogSource.bytes), `${pass.id} judgment evidence digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
+    for (const eventId of expectedJudgmentEventIds) {
+      if (!timing.events.some(({ event_id: candidate }) => candidate === eventId)) fail(`${pass.id} missing judgment event ${eventId}`, 'TIMING_EDITOR_WORK_MISSING');
+    }
+    judgmentRows.push(...judgmentLogRows);
+    judgmentRowsByPass[pass.id] = judgmentLogRows;
     totalEditorSeconds += pass.editor_seconds;
     totalWallClockSeconds += pass.wall_clock_seconds;
     totalProducerSeconds += pass.producer_seconds;
@@ -578,11 +859,13 @@ export function validateM5DTiming(timing, {
       editor_seconds: pass.editor_seconds,
       wall_clock_seconds: pass.wall_clock_seconds,
       producer_seconds: pass.producer_seconds,
+      judgment_seconds: pass.judgment_seconds,
       unit_count: pass.work_evidence.unit_count,
       expected_unit_ids: [...expectedIds],
       actual_unit_ids: [...rowsIds],
     };
   }
+  if (timing.status === 'complete' && Array.isArray(timing.active_judgments) && timing.active_judgments.length > 0) fail('timing completed with active judgment events', 'TIMING_EDITOR_WORK_MISSING');
   if (timing.completed_at !== undefined) {
     requireTimestamp(timing.completed_at, 'timing completed_at');
     if (Date.parse(timing.completed_at) < Date.parse(timing.started_at)) fail('timing completed before it started', 'TIMING_CHRONOLOGY');
@@ -604,6 +887,8 @@ export function validateM5DTiming(timing, {
     zero_work_pass_ids: timing.passes.filter(({ work_status: workStatus }) => workStatus === 'zero-work').map(({ id }) => id),
     passes: passSummaries,
     producer_payloads: producerPayloads,
+    judgment_rows: judgmentRows,
+    judgment_rows_by_pass: judgmentRowsByPass,
   };
 }
 
@@ -695,6 +980,18 @@ export function validateM5DEditorialDecisionChronology(editorial, timingSummary)
   return { final_stop_at: new Date(lastStop).toISOString() };
 }
 
+function validateEditorialJudgmentBindings(editorial, timingSummary) {
+  const rowsByPass = timingSummary.judgment_rows_by_pass ?? {};
+  for (const passId of ['initial-review', 'feedback-fixes', 'final-verification', 'held-rejected']) {
+    for (const judgment of rowsByPass[passId] ?? []) {
+      assertEqual(judgment.evidence.decision_artifact_sha256, editorial.draft_sha256, `${judgment.unit_id} editorial draft digest`, 'EDITORIAL_SOURCE_BINDING');
+      const decision = editorial.records.find(({ case_id: caseId }) => caseId === judgment.unit_id);
+      if (!decision) fail(`${judgment.unit_id} editorial judgment has no finalized decision row`, 'EDITORIAL_SCOPE_MISMATCH');
+      assertEqual(judgment.evidence.decision_row_sha256, sha256Json(decision), `${judgment.unit_id} editorial decision digest`, 'EDITORIAL_SOURCE_BINDING');
+    }
+  }
+}
+
 export function validateM5DEditorialDecisions(editorial, proposalInfo, timingSummary) {
   validateSchema(editorial, editorialValidator, 'editorial', 'M5-10D editorial decisions', 'EDITORIAL_SCHEMA_ERROR');
   assertEqual(editorial.batch_id, M5_10D_BATCH_ID, 'editorial batch ID drifted', 'EDITORIAL_SOURCE_BINDING');
@@ -702,6 +999,7 @@ export function validateM5DEditorialDecisions(editorial, proposalInfo, timingSum
   assertEqual(editorial.timing_session_id, timingSummary.session_id, 'editorial timing session drifted', 'EDITORIAL_SOURCE_BINDING');
   assertEqual(editorial.editorial_session_id, timingSummary.timing.editorial_session_id, 'editorial session drifted', 'EDITORIAL_SOURCE_BINDING');
   validateEditorialRows(editorial.records, proposalInfo, timingSummary.producer_payloads ?? []);
+  validateEditorialJudgmentBindings(editorial, timingSummary);
   const chronology = validateM5DEditorialDecisionChronology(editorial, timingSummary);
   return {
     editorial,
@@ -749,6 +1047,15 @@ function validateAuditRows(audit, editorialInfo, proposalInfo) {
   assertEqual(audit.open_blocker_count, findings.open_blocker_count, 'audit open blocker count is not source-derived', 'AUDIT_BLOCKER_COUNT');
 }
 
+function validateAuditJudgmentBindings(audit, auditTimingSummary) {
+  for (const judgment of auditTimingSummary.judgment_rows_by_pass?.['post-freeze-audit'] ?? []) {
+    assertEqual(judgment.evidence.decision_artifact_sha256, audit.draft_sha256, `${judgment.unit_id} audit draft digest`, 'AUDIT_SOURCE_BINDING');
+    const review = audit.case_reviews.find(({ case_id: caseId }) => caseId === judgment.unit_id);
+    if (!review) fail(`${judgment.unit_id} audit judgment has no finalized comparison row`, 'AUDIT_SCOPE_MISMATCH');
+    assertEqual(judgment.evidence.decision_row_sha256, sha256Json(review), `${judgment.unit_id} audit comparison digest`, 'AUDIT_SOURCE_BINDING');
+  }
+}
+
 export function validateM5DAuditIndependence(audit, editorialInfo, auditTimingSummary) {
   const timing = auditTimingSummary.timing ?? auditTimingSummary;
   assertEqual(audit.audit_session_id, timing.audit_session_id, 'audit session ID drifted', 'AUDIT_SOURCE_BINDING');
@@ -774,6 +1081,7 @@ export function validateM5DAuditDecisions(audit, editorialInfo, proposalInfo, au
   if (Date.parse(audit.created_at) <= auditStoppedAt) fail('audit artifact was created before timing stopped', 'AUDIT_DECISION_CHRONOLOGY');
   if (Date.parse(audit.finalized_at) <= Date.parse(audit.created_at)) fail('audit finalization chronology is invalid', 'AUDIT_DECISION_CHRONOLOGY');
   validateAuditRows(audit, editorialInfo, proposalInfo);
+  validateAuditJudgmentBindings(audit, auditTimingSummary);
   return {
     audit,
     sha256: undefined,
@@ -919,6 +1227,7 @@ export async function validateM5DRecovery({
   artifactPath = DEFAULT_RECOVERY_PATH,
   proposalPath = DEFAULT_PROPOSAL_PATH,
   workloadPath = DEFAULT_WORKLOAD_PATH,
+  followUpSourcePath = DEFAULT_FOLLOW_UP_SOURCE_PATH,
   editorialPath = DEFAULT_EDITORIAL_DECISIONS_PATH,
   editorialTimingPath = DEFAULT_EDITORIAL_TIMING_PATH,
   auditPath = DEFAULT_AUDIT_DECISIONS_PATH,
@@ -953,9 +1262,18 @@ export async function validateM5DRecovery({
     readSource(inventoryPath, 'M5 target inventory'),
     readCanonicalRecords(canonicalDirectory),
   ]);
+  const followUpSource = workloadSource.value.source.follow_up_sha256
+    ? await readSource(followUpSourcePath, 'M5-10D follow-up source')
+    : undefined;
   const proposalInfo = validateM5DProposal(proposalSource.value, { canonicalRecords: canonical.records });
   proposalInfo.proposal_sha256 = proposalSource.sha256;
-  const workloadInfo = validateM5DWorkload(workloadSource.value, { proposalCaseIds: proposalInfo.case_ids, proposalSha256: proposalSource.sha256 });
+  const workloadInfo = validateM5DWorkload(workloadSource.value, {
+    proposalCaseIds: proposalInfo.case_ids,
+    proposalSha256: proposalSource.sha256,
+    proposalCasesById: proposalInfo.by_case,
+    followUpSource,
+    timingSessionId: editorialTimingSource.value.session_id,
+  });
   workloadInfo.sha256 = workloadSource.sha256;
   const editorialTiming = validateM5DTiming(editorialTimingSource.value, {
     timingKind: 'editorial',
@@ -963,6 +1281,19 @@ export async function validateM5DRecovery({
     expectedProposalSha256: proposalSource.sha256,
     expectedProposalCases: proposalInfo.compact_cases,
   });
+  if (followUpSource) {
+    const initialPass = editorialTimingSource.value.passes.find(({ id }) => id === 'initial-review');
+    validateM5DFollowUpSource(followUpSource, {
+      proposalCaseIds: proposalInfo.case_ids,
+      proposalSha256: proposalSource.sha256,
+      proposalCasesById: proposalInfo.by_case,
+      timingSessionId: editorialTimingSource.value.session_id,
+      initialPassSessionId: initialPass.session_id,
+      initialJudgmentRows: editorialTiming.judgment_rows_by_pass?.['initial-review'],
+      initialPass,
+      freezeEventId: workloadSource.value.source.follow_up_freeze_event_id,
+    });
+  }
   const editorialInfo = validateM5DEditorialDecisions(editorialSource.value, proposalInfo, editorialTiming);
   editorialInfo.sha256 = editorialSource.sha256;
   const workloadCoverage = validateM5DWorkloadDecisionAlignment(workloadInfo, editorialInfo);
@@ -1006,6 +1337,7 @@ export async function validateM5DRecovery({
   assertEqual(artifact.source.failed_recovery_sha256, failedRecoverySource.sha256, 'recovery M5-10C digest drifted', 'RECOVERY_SOURCE_MISMATCH');
   assertEqual(artifact.source.repair_revision_sha256, repairSource.sha256, 'recovery repair revision digest drifted', 'RECOVERY_SOURCE_MISMATCH');
   assertEqual(artifact.source.workload_sha256, workloadSource.sha256, 'recovery workload digest drifted', 'RECOVERY_SOURCE_MISMATCH');
+  assertEqual(artifact.source.follow_up_source_sha256, followUpSource?.sha256, 'recovery follow-up source digest drifted', 'RECOVERY_SOURCE_MISMATCH');
   assertEqual(artifact.source.proposal_sha256, proposalSource.sha256, 'recovery proposal digest drifted', 'RECOVERY_SOURCE_MISMATCH');
   assertEqual(artifact.source.editorial_decisions_sha256, editorialSource.sha256, 'recovery editorial digest drifted', 'RECOVERY_SOURCE_MISMATCH');
   assertEqual(artifact.source.editorial_timing_sha256, editorialTimingSource.sha256, 'recovery editorial timing digest drifted', 'RECOVERY_SOURCE_MISMATCH');
@@ -1102,6 +1434,7 @@ if (isMainModule) {
     ...(args.recovery ? { recoveryPath: path.resolve(args.recovery) } : {}),
     ...(args.proposal ? { proposalPath: path.resolve(args.proposal) } : {}),
     ...(args.workload ? { workloadPath: path.resolve(args.workload) } : {}),
+    ...(args['follow-up-source'] ? { followUpSourcePath: path.resolve(args['follow-up-source']) } : {}),
     ...(args.editorial ? { editorialPath: path.resolve(args.editorial) } : {}),
     ...(args['editorial-timing'] ? { editorialTimingPath: path.resolve(args['editorial-timing']) } : {}),
     ...(args.audit ? { auditPath: path.resolve(args.audit) } : {}),

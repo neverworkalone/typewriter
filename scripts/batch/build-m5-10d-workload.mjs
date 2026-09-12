@@ -4,23 +4,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  DEFAULT_FOLLOW_UP_SOURCE_PATH,
   DEFAULT_PROPOSAL_PATH,
   DEFAULT_WORKLOAD_PATH,
   M5_10D_BATCH_ID,
   M5_10D_CASE_COUNT,
   M5_10D_PROCESS_REVISION,
   M5DRecoveryValidationError,
+  deriveM5DFollowUpQueues,
   REPOSITORY_DIRECTORY,
   validateM5DProposal,
+  validateM5DFollowUpSource,
   validateM5DWorkload,
   workloadUnitSetSha256,
 } from './validate-m5-10d-recovery.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_FEEDBACK_IDS = Object.freeze(['m5-10d-cal-002', 'm5-10d-cal-004', 'm5-10d-cal-008', 'm5-10d-cal-011']);
-const DEFAULT_HELD_REJECTED_IDS = Object.freeze(['m5-10d-cal-006', 'm5-10d-cal-013', 'm5-10d-cal-016', 'm5-10d-cal-020']);
-
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
@@ -32,12 +32,6 @@ function allCaseIds() {
 function sourcePath(filePath) {
   const relative = path.relative(REPOSITORY_DIRECTORY, path.resolve(filePath));
   return relative.startsWith('..') || path.isAbsolute(relative) ? path.resolve(filePath) : relative;
-}
-
-function parseIds(value, label) {
-  const ids = value === undefined || value === '' ? [] : value.split(',').map((id) => id.trim()).filter(Boolean);
-  if (new Set(ids).size !== ids.length) throw new Error(`${label} contains duplicate IDs`);
-  return ids;
 }
 
 async function readJson(filePath, label) {
@@ -78,14 +72,34 @@ function pass(id, role, unitKind, declarationSource, expectedUnitIds, declaredAt
 export async function buildM5DWorkload({
   proposalPath = DEFAULT_PROPOSAL_PATH,
   outputPath = DEFAULT_WORKLOAD_PATH,
-  feedbackIds = DEFAULT_FEEDBACK_IDS,
-  heldRejectedIds = DEFAULT_HELD_REJECTED_IDS,
+  followUpSourcePath = DEFAULT_FOLLOW_UP_SOURCE_PATH,
+  provisional = false,
+  feedbackIds,
+  heldRejectedIds,
   frozenAt = new Date().toISOString(),
 } = {}) {
+  if (feedbackIds !== undefined || heldRejectedIds !== undefined) {
+    throw new M5DRecoveryValidationError('follow-up queues must be derived from the recorder-owned source artifact', 'WORKLOAD_SOURCE_REQUIRED');
+  }
   const proposalSource = await readJson(proposalPath, 'M5-10D calibration proposal');
   const canonical = await readCanonicalRecords(path.resolve(SCRIPT_DIRECTORY, '../../data/canonical'));
   const proposalInfo = validateM5DProposal(proposalSource.value, { canonicalRecords: canonical.records });
   const all = proposalInfo.case_ids;
+  let followUpSource;
+  let feedbackIdsFromSource = [];
+  let heldRejectedIdsFromSource = [];
+  if (!provisional) {
+    followUpSource = await readJson(followUpSourcePath, 'M5-10D follow-up source');
+    validateM5DFollowUpSource(followUpSource.value, {
+      proposalCaseIds: all,
+      proposalSha256: proposalSource.sha256,
+      proposalCasesById: proposalInfo.by_case,
+    });
+    ({ feedback: feedbackIdsFromSource, heldRejected: heldRejectedIdsFromSource } = deriveM5DFollowUpQueues(followUpSource.value));
+    if (Date.parse(frozenAt) < Date.parse(followUpSource.value.created_at)) {
+      throw new M5DRecoveryValidationError('workload freeze must occur after the follow-up source was recorded', 'WORKLOAD_SOURCE_CHRONOLOGY');
+    }
+  }
   const workload = {
     schema_version: '1',
     artifact_id: 'm5-10d-workload-20260912',
@@ -94,26 +108,41 @@ export async function buildM5DWorkload({
     batch_id: M5_10D_BATCH_ID,
     process_revision: M5_10D_PROCESS_REVISION,
     declaration_kind: 'source-declared-before-each-pass',
-    declaration_status: 'frozen',
+    declaration_status: provisional ? 'pre-review' : 'frozen',
     frozen_at: frozenAt,
     source: {
       proposal_artifact: 'external:m5-10d-calibration-proposal',
       proposal_sha256: proposalSource.sha256,
       decision_independent: true,
+      ...(!provisional ? {
+        follow_up_artifact: 'external:m5-10d-follow-up-source',
+        follow_up_sha256: followUpSource.sha256,
+        follow_up_source_kind: followUpSource.value.source_kind,
+        follow_up_timing_session_id: followUpSource.value.timing_session_id,
+        follow_up_pass_id: followUpSource.value.source_pass_id,
+        follow_up_freeze_event_id: followUpSource.value.freeze_event_id,
+      } : {}),
     },
     case_count: M5_10D_CASE_COUNT,
     processed_start_count: M5_10D_CASE_COUNT,
     passes: [
       pass('target-preparation', 'target-preparation', 'calibration-start', 'pre-review-sample', all, frozenAt),
       pass('initial-review', 'semantic-review', 'calibration-start', 'pre-review-sample', all, frozenAt),
-      pass('feedback-fixes', 'feedback-fix', 'feedback-fix', 'predeclared-feedback-queue', [...feedbackIds], frozenAt),
-      pass('final-verification', 'final-verification', 'final-verification', 'predeclared-verification-queue', [...feedbackIds], frozenAt),
-      pass('held-rejected', 'held-rejected', 'held-rejected', 'predeclared-hold-rejection-queue', [...heldRejectedIds], frozenAt),
+      pass('feedback-fixes', 'feedback-fix', 'feedback-fix', 'source-derived-initial-findings', [...feedbackIdsFromSource], frozenAt),
+      pass('final-verification', 'final-verification', 'final-verification', 'source-derived-correction-findings', [...feedbackIdsFromSource], frozenAt),
+      pass('held-rejected', 'held-rejected', 'held-rejected', 'source-derived-initial-findings', [...heldRejectedIdsFromSource], frozenAt),
       pass('post-freeze-audit', 'post-freeze-audit', 'audit-review', 'frozen-editorial-sample', all, frozenAt),
     ],
-    note: 'M5-10D workload is frozen before each timing pass. Follow-up queues are task declarations, not verdicts reverse-engineered from canonical or final editorial output.',
+    note: provisional
+      ? 'M5-10D pre-review workload declares only the fixed target and initial sample. Follow-up queues are intentionally empty until recorder-owned initial findings are frozen.'
+      : 'M5-10D workload is frozen from the recorder-owned initial-review source artifact before any follow-up pass. Queue membership is never supplied by a caller or reverse-engineered from final output.',
   };
-  const info = validateM5DWorkload(workload, { proposalCaseIds: all, proposalSha256: proposalSource.sha256 });
+  const info = validateM5DWorkload(workload, {
+    proposalCaseIds: all,
+    proposalSha256: proposalSource.sha256,
+    proposalCasesById: proposalInfo.by_case,
+    followUpSource,
+  });
   info.sha256 = undefined;
   await requireMissing(outputPath);
   const bytes = Buffer.from(`${JSON.stringify(workload, null, 2)}\n`, 'utf8');
@@ -138,8 +167,10 @@ if (isMainModule) {
   buildM5DWorkload({
     ...(args.proposal ? { proposalPath: path.resolve(args.proposal) } : {}),
     ...(args.output ? { outputPath: path.resolve(args.output) } : {}),
-    ...(args.feedback !== undefined ? { feedbackIds: parseIds(args.feedback, 'feedback') } : {}),
-    ...(args['held-rejected'] !== undefined ? { heldRejectedIds: parseIds(args['held-rejected'], 'held-rejected') } : {}),
+    ...(args['follow-up-source'] ? { followUpSourcePath: path.resolve(args['follow-up-source']) } : {}),
+    ...(args.provisional !== undefined ? { provisional: !['false', '0', 'no'].includes(args.provisional.toLowerCase()) } : {}),
+    ...(args.feedback !== undefined ? { feedbackIds: args.feedback } : {}),
+    ...(args['held-rejected'] !== undefined ? { heldRejectedIds: args['held-rejected'] } : {}),
   }).catch((error) => {
     console.error(error.code ? `${error.code}: ${error.message}` : error.message);
     process.exitCode = 1;

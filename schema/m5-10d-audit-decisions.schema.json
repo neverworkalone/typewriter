@@ -5,7 +5,7 @@
   "description": "Independent comparison rows and preserved findings after the editorial artifact is frozen.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "independent", "proposal_sha256", "editorial_decisions_sha256", "editorial_session_id", "audit_session_id", "timing_session_id", "draft_created_at", "created_at", "finalized_at", "status", "case_reviews", "findings", "open_blocker_count", "note"],
+  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "independent", "proposal_sha256", "editorial_decisions_sha256", "editorial_session_id", "audit_session_id", "timing_session_id", "draft_sha256", "draft_created_at", "created_at", "finalized_at", "status", "case_reviews", "findings", "open_blocker_count", "note"],
   "properties": {
     "schema_version": { "const": "1" },
     "artifact_id": { "const": "m5-10d-audit-decisions-20260912" },
@@ -18,6 +18,7 @@
     "editorial_session_id": { "$ref": "#/$defs/uuid" },
     "audit_session_id": { "$ref": "#/$defs/uuid" },
     "timing_session_id": { "$ref": "#/$defs/uuid" },
+    "draft_sha256": { "$ref": "#/$defs/sha256" },
     "draft_created_at": { "type": "string", "format": "date-time" },
     "created_at": { "type": "string", "format": "date-time" },
     "finalized_at": { "type": "string", "format": "date-time" },

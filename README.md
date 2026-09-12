@@ -162,11 +162,13 @@ their corresponding timing passes stop.
 
 Issue #115's M5-10D workload correction is documented in
 [`docs/m5-10d-editor-workload-recovery.md`](docs/m5-10d-editor-workload-recovery.md).
-It freezes each pass's expected unit set before timing, measures only declared
-follow-up work, records empty passes as zero-work, and keeps the independent
-post-freeze audit over all 20 calibration cases. Its source-derived recovery can
-create the separate #97 +500 authorization only when the existing fixed gates
-pass; the contract and recovery checks are
+It freezes the target and initial workload before timing, derives follow-up
+queues from recorder-owned initial-review judgment findings before those passes
+start, measures editor time only from per-unit judgment intervals, records empty
+passes as zero-work, and keeps the independent post-freeze audit over all 20
+calibration cases. Its source-derived recovery can create the separate #97 +500
+authorization only when the existing fixed gates pass; the contract and recovery
+checks are
 `npm run batch:m5-10d:contract:check` and
 `npm run batch:m5-10d:recovery:contract:check`.
 

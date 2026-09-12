@@ -5,7 +5,7 @@
   "description": "Separately authored record-by-record semantic decisions for the calibration sample.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "proposal_sha256", "editorial_session_id", "timing_session_id", "draft_created_at", "created_at", "finalized_at", "records", "note"],
+  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "proposal_sha256", "editorial_session_id", "timing_session_id", "draft_sha256", "draft_created_at", "created_at", "finalized_at", "records", "note"],
   "properties": {
     "schema_version": { "const": "1" },
     "artifact_id": { "const": "m5-10d-editorial-decisions-20260912" },
@@ -15,6 +15,7 @@
     "proposal_sha256": { "$ref": "#/$defs/sha256" },
     "editorial_session_id": { "$ref": "#/$defs/uuid" },
     "timing_session_id": { "$ref": "#/$defs/uuid" },
+    "draft_sha256": { "$ref": "#/$defs/sha256" },
     "draft_created_at": { "type": "string", "format": "date-time" },
     "created_at": { "type": "string", "format": "date-time" },
     "finalized_at": { "type": "string", "format": "date-time" },
