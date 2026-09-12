@@ -59,6 +59,9 @@ const FORBIDDEN_VERDICT_KEYS = Object.freeze([
   'held',
   'status',
 ]);
+const AUDIT_FINDING_ID_PATTERN = /^m5-10c-audit-[a-z0-9-]+$/u;
+const AUDIT_FINDING_CATEGORIES = Object.freeze(['source', 'sense', 'relation', 'timing', 'provenance']);
+const AUDIT_FINDING_FIELDS = new Set(['id', 'severity', 'status', 'category', 'case_id', 'note']);
 
 export const M5_10C_RECORDER_VERSION = RECORDER_VERSION;
 export const M5_10C_RECORDING_SOURCE = RECORDING_SOURCE;
@@ -498,6 +501,39 @@ function requireDraftRecords(draft, timing, kind) {
   return draft;
 }
 
+export function validateM5CAuditDraftFindings(findings, expectedCaseIds = Array.from(
+  { length: M5_10C_CASE_COUNT },
+  (_, index) => `m5-10c-cal-${String(index + 1).padStart(3, '0')}`,
+)) {
+  if (!Array.isArray(findings)) fail('audit decision draft must carry a findings array', 'AUDIT_DRAFT_FINDINGS_INVALID');
+  const expectedCases = new Set(expectedCaseIds);
+  const findingIds = new Set();
+  for (const finding of findings) {
+    if (!finding || typeof finding !== 'object' || Array.isArray(finding)) {
+      fail('audit finding must be an object', 'AUDIT_DRAFT_FINDINGS_INVALID');
+    }
+    if (Object.keys(finding).some((field) => !AUDIT_FINDING_FIELDS.has(field))) {
+      fail('audit finding contains an unsupported field', 'AUDIT_DRAFT_FINDINGS_INVALID');
+    }
+    for (const field of ['id', 'severity', 'status', 'category', 'case_id', 'note']) {
+      if (typeof finding[field] !== 'string' || finding[field].trim().length === 0) {
+        fail(`audit finding is missing ${field}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+      }
+    }
+    if (!AUDIT_FINDING_ID_PATTERN.test(finding.id)) fail(`audit finding ID is invalid: ${finding.id}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+    if (findingIds.has(finding.id)) fail(`audit finding ID is duplicated: ${finding.id}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+    findingIds.add(finding.id);
+    if (!['warning', 'blocker'].includes(finding.severity)) fail(`audit finding severity is invalid: ${finding.severity}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+    if (!['open', 'closed'].includes(finding.status)) fail(`audit finding status is invalid: ${finding.status}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+    if (!AUDIT_FINDING_CATEGORIES.includes(finding.category)) fail(`audit finding category is invalid: ${finding.category}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+    if (!expectedCases.has(finding.case_id)) fail(`audit finding case is outside the calibration sample: ${finding.case_id}`, 'AUDIT_DRAFT_FINDINGS_INVALID');
+  }
+  return {
+    findings,
+    open_blocker_count: findings.filter(({ severity, status }) => severity === 'blocker' && status === 'open').length,
+  };
+}
+
 async function finalizeEditorial(args) {
   const timingPath = resolvePath(args.timing, DEFAULT_EDITORIAL_TIMING_PATH);
   const timingSource = await readJson(timingPath, 'editorial timing');
@@ -540,6 +576,7 @@ async function finalizeAudit(args) {
   const draft = requireDraftRecords(draftSource.value, timing, 'post-freeze-audit');
   if (draft.proposal_sha256 !== timing.proposal_sha256) fail('audit draft proposal digest drifted', 'AUDIT_SOURCE_BINDING');
   if (draft.editorial_decisions_sha256 !== timing.editorial_decisions_sha256) fail('audit draft editorial freeze digest drifted', 'AUDIT_SOURCE_BINDING');
+  const findingSummary = validateM5CAuditDraftFindings(draft.findings);
   const outputPath = resolvePath(args.output, DEFAULT_AUDIT_DECISIONS_PATH);
   await requireMissing(outputPath, 'audit decisions artifact');
   const createdAt = now();
@@ -560,8 +597,8 @@ async function finalizeAudit(args) {
     finalized_at: laterThan(createdAt),
     status: 'complete',
     case_reviews: draft.records,
-    findings: [],
-    open_blocker_count: 0,
+    findings: findingSummary.findings,
+    open_blocker_count: findingSummary.open_blocker_count,
     note: 'Independent post-freeze comparison was authored after editorial decisions were frozen and after a separate audit timing session started.',
   };
   await writeJson(outputPath, audit);

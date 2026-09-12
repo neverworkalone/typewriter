@@ -74,6 +74,9 @@ jobs:
       - name: Validate M5-10A repair authorization
         run: npm run batch:m5-10a:repair:check
 
+      - name: Run M5-10C recovery contract tests
+        run: npm run batch:m5-10c:contract:check
+
       - name: Materialize the committed Wave A2 review shard
         shell: bash
         run: cp data/canonical/m5-10a-wave-a2.jsonl "$RUNNER_TEMP/typewriter-m5-10a-wave-a2-reviewed.jsonl"

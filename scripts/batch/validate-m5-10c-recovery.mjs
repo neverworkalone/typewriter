@@ -533,13 +533,7 @@ function validateEditorialRows(records, proposalInfo) {
   }
 }
 
-export function validateM5CEditorialDecisions(editorial, proposalInfo, timingSummary) {
-  validateSchema(editorial, editorialValidator, 'editorial', 'M5-10C editorial decisions', 'EDITORIAL_SCHEMA_ERROR');
-  assertEqual(editorial.batch_id, M5_10C_BATCH_ID, 'editorial batch ID drifted', 'EDITORIAL_SOURCE_BINDING');
-  assertEqual(editorial.proposal_sha256, proposalInfo.proposal_sha256, 'editorial proposal digest drifted', 'EDITORIAL_SOURCE_BINDING');
-  assertEqual(editorial.timing_session_id, timingSummary.session_id, 'editorial timing session drifted', 'EDITORIAL_SOURCE_BINDING');
-  requireUuid(editorial.editorial_session_id, 'editorial editorial_session_id');
-  validateEditorialRows(editorial.records, proposalInfo);
+export function validateM5CEditorialDecisionChronology(editorial, timingSummary) {
   const timingObject = timingSummary.timing;
   const lastStop = Math.max(...timingObject.passes.map(({ completed_at: completedAt }) => Date.parse(completedAt)));
   requireTimestamp(editorial.draft_created_at, 'editorial draft_created_at');
@@ -549,12 +543,24 @@ export function validateM5CEditorialDecisions(editorial, proposalInfo, timingSum
   }
   if (Date.parse(editorial.created_at) <= lastStop) fail('editorial decision artifact was created before the editorial timing stopped', 'EDITORIAL_DECISION_CHRONOLOGY');
   if (Date.parse(editorial.finalized_at) <= Date.parse(editorial.created_at)) fail('editorial decision artifact finalization chronology is invalid', 'EDITORIAL_DECISION_CHRONOLOGY');
+  return { final_stop_at: new Date(lastStop).toISOString() };
+}
+
+export function validateM5CEditorialDecisions(editorial, proposalInfo, timingSummary) {
+  validateSchema(editorial, editorialValidator, 'editorial', 'M5-10C editorial decisions', 'EDITORIAL_SCHEMA_ERROR');
+  assertEqual(editorial.batch_id, M5_10C_BATCH_ID, 'editorial batch ID drifted', 'EDITORIAL_SOURCE_BINDING');
+  assertEqual(editorial.proposal_sha256, proposalInfo.proposal_sha256, 'editorial proposal digest drifted', 'EDITORIAL_SOURCE_BINDING');
+  assertEqual(editorial.timing_session_id, timingSummary.session_id, 'editorial timing session drifted', 'EDITORIAL_SOURCE_BINDING');
+  requireUuid(editorial.editorial_session_id, 'editorial editorial_session_id');
+  validateEditorialRows(editorial.records, proposalInfo);
+  const chronology = validateM5CEditorialDecisionChronology(editorial, timingSummary);
+  const timingObject = timingSummary.timing;
   if (editorial.editorial_session_id !== timingObject.editorial_session_id) fail('editorial decision artifact session is not the recorder session', 'EDITORIAL_SOURCE_BINDING');
   return {
     editorial,
     record_by_case: new Map(editorial.records.map((row) => [row.case_id, row])),
     sha256: sha256Json(editorial),
-    final_stop_at: new Date(lastStop).toISOString(),
+    final_stop_at: chronology.final_stop_at,
   };
 }
 
@@ -567,8 +573,17 @@ function validateAuditRows(audit, editorialInfo, proposalInfo) {
     assertEqual(review.editorial_record_sha256, sha256Json(editorial), `${review.case_id} audit editorial digest`, 'AUDIT_COMPARISON_MISMATCH');
     requireRecordSpecificEvidence(review.note, review.case_id, 'audit', [source.record.senses[0].id], `${review.case_id}.audit.note`);
   }
+  const derivedOpenBlockerCount = audit.findings.filter(({ severity, status }) => severity === 'blocker' && status === 'open').length;
+  assertEqual(audit.open_blocker_count, derivedOpenBlockerCount, 'audit open blocker count is not source-derived', 'AUDIT_BLOCKER_COUNT');
   if (audit.findings.length !== 0) fail('M5-10C audit contains findings and cannot pass the calibration gate', 'AUDIT_FINDING_PRESENT');
-  assertEqual(audit.open_blocker_count, 0, 'audit open blocker count drifted', 'AUDIT_BLOCKER_COUNT');
+}
+
+export function validateM5CAuditIndependence(audit, editorialInfo, auditTimingSummary) {
+  assertEqual(audit.audit_session_id, auditTimingSummary.audit_session_id, 'audit session ID drifted', 'AUDIT_SOURCE_BINDING');
+  assertEqual(audit.timing_session_id, auditTimingSummary.session_id, 'audit timing session ID drifted', 'AUDIT_SOURCE_BINDING');
+  assertEqual(audit.editorial_session_id, editorialInfo.editorial.editorial_session_id, 'audit editorial session ID drifted', 'AUDIT_SOURCE_BINDING');
+  if (audit.audit_session_id === audit.editorial_session_id) fail('audit session must be independent from editorial session', 'AUDIT_INDEPENDENCE');
+  if (audit.timing_session_id === editorialInfo.editorial.timing_session_id) fail('audit timing session must be independent from editorial timing', 'AUDIT_INDEPENDENCE');
 }
 
 export function validateM5CAuditDecisions(audit, editorialInfo, proposalInfo, auditTimingSummary) {
@@ -576,11 +591,7 @@ export function validateM5CAuditDecisions(audit, editorialInfo, proposalInfo, au
   assertEqual(audit.batch_id, M5_10C_BATCH_ID, 'audit batch ID drifted', 'AUDIT_SOURCE_BINDING');
   assertEqual(audit.proposal_sha256, proposalInfo.proposal_sha256, 'audit proposal digest drifted', 'AUDIT_SOURCE_BINDING');
   assertEqual(audit.editorial_decisions_sha256, editorialInfo.sha256, 'audit editorial freeze digest drifted', 'AUDIT_SOURCE_BINDING');
-  assertEqual(audit.audit_session_id, auditTimingSummary.audit_session_id, 'audit session ID drifted', 'AUDIT_SOURCE_BINDING');
-  assertEqual(audit.timing_session_id, auditTimingSummary.session_id, 'audit timing session ID drifted', 'AUDIT_SOURCE_BINDING');
-  assertEqual(audit.editorial_session_id, editorialInfo.editorial.editorial_session_id, 'audit editorial session ID drifted', 'AUDIT_SOURCE_BINDING');
-  if (audit.audit_session_id === audit.editorial_session_id) fail('audit session must be independent from editorial session', 'AUDIT_INDEPENDENCE');
-  if (audit.timing_session_id === editorialInfo.editorial.timing_session_id) fail('audit timing session must be independent from editorial timing', 'AUDIT_INDEPENDENCE');
+  validateM5CAuditIndependence(audit, editorialInfo, auditTimingSummary);
   const editorialFinalizedAt = Date.parse(editorialInfo.editorial.finalized_at);
   const auditTimingObject = auditTimingSummary.timing;
   const auditStartedAt = Date.parse(auditTimingObject.passes[0].started_at);
@@ -613,7 +624,7 @@ function canonicalSnapshot(recordInfos) {
   };
 }
 
-function validateFailedWaveBSource(stage, sourceFiles) {
+export function validateM5CFailedStageContract(stage) {
   assertEqual(stage.stage_id, 'm5-10-wave-b-plus-150', 'failed Wave B stage ID drifted', 'FAILED_STAGE_MISMATCH');
   assertEqual(stage.gate_status, 'fail', 'failed Wave B gate was changed', 'FAILED_STAGE_GATE_CHANGED');
   assertEqual(stage.decision, 'HOLD PROCESS', 'failed Wave B decision was changed', 'FAILED_STAGE_DECISION_CHANGED');
@@ -622,6 +633,10 @@ function validateFailedWaveBSource(stage, sourceFiles) {
   assertEqual(stage.metrics.editor_time_status, 'unmeasured', 'failed Wave B editor-time history changed', 'FAILED_STAGE_HISTORY_CHANGED');
   assertEqual(stage.metrics.total_editor_seconds, null, 'failed Wave B editor-time history changed', 'FAILED_STAGE_HISTORY_CHANGED');
   assertEqual(stage.actual.canonical_snapshot, M5_10C_CANONICAL_SNAPSHOT, 'failed Wave B canonical snapshot drifted', 'FAILED_STAGE_SNAPSHOT_MISMATCH');
+}
+
+function validateFailedWaveBSource(stage, sourceFiles) {
+  validateM5CFailedStageContract(stage);
   for (const [key, source] of Object.entries(sourceFiles)) {
     const ref = stage.source[key];
     if (!ref) fail(`failed Wave B stage is missing source ${key}`, 'FAILED_STAGE_SOURCE_MISSING');
@@ -673,6 +688,13 @@ export function evaluateM5CRecoveryGate({ correctionRate, relationNoiseRate, tim
     quality_passes: qualityPasses,
     failures,
   };
+}
+
+export function assertM5CRecoveryAuthorizable(recoveryResult) {
+  assertEqual(recoveryResult?.gate?.gate_status, 'pass', 'authorization requires a source-validated passing recovery gate', 'AUTHORIZATION_SCOPE_MISMATCH');
+  assertEqual(recoveryResult?.gate?.decision, 'APPROVE BOUNDED', 'authorization requires a source-validated approved recovery decision', 'AUTHORIZATION_SCOPE_MISMATCH');
+  assertEqual(recoveryResult?.artifact?.ready_to_create, true, 'authorization requires a source-validated recovery ready_to_create flag', 'AUTHORIZATION_SCOPE_MISMATCH');
+  return recoveryResult;
 }
 
 function sourcePathFor(filePath) {
@@ -863,11 +885,35 @@ export async function validateM5CRecovery({
 export async function validateM5CAuthorization({
   authorizationPath = DEFAULT_AUTHORIZATION_PATH,
   recoveryPath = DEFAULT_RECOVERY_PATH,
+  proposalPath = DEFAULT_PROPOSAL_PATH,
+  editorialPath = DEFAULT_EDITORIAL_DECISIONS_PATH,
+  editorialTimingPath = DEFAULT_EDITORIAL_TIMING_PATH,
+  auditPath = DEFAULT_AUDIT_DECISIONS_PATH,
+  auditTimingPath = DEFAULT_AUDIT_TIMING_PATH,
+  verificationPath = DEFAULT_VERIFICATION_PATH,
   failedStagePath = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-stage.json'),
   repairRevisionPath = path.join(BATCH_DIRECTORY, 'm5-10a-process-correction.json'),
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   inventoryPath = DEFAULT_INVENTORY_PATH,
 } = {}) {
+  const recoveryResult = await validateM5CRecovery({
+    artifactPath: recoveryPath,
+    proposalPath,
+    editorialPath,
+    editorialTimingPath,
+    auditPath,
+    auditTimingPath,
+    verificationPath,
+    failedStagePath,
+    failedManifestPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-b.json'),
+    failedMetricsPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-b-metrics.json'),
+    failedVerificationPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-b-verification.json'),
+    failedRelationDiffPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-b-relation-diff.json'),
+    repairRevisionPath,
+    canonicalDirectory,
+    inventoryPath,
+  });
+  assertM5CRecoveryAuthorizable(recoveryResult);
   const [authorizationSource, recoverySource, failedStageSource, repairSource, inventorySource] = await Promise.all([
     readSource(authorizationPath, 'M5-10C authorization'),
     readSource(recoveryPath, 'M5-10C recovery artifact'),
@@ -877,9 +923,6 @@ export async function validateM5CAuthorization({
   ]);
   validateSchema(authorizationSource.value, authorizationValidator, 'authorization', 'M5-10C authorization', 'AUTHORIZATION_SCHEMA_ERROR');
   const authorization = authorizationSource.value;
-  assertEqual(recoverySource.value.gate_status, 'pass', 'authorization requires a passing M5-10C recovery gate', 'AUTHORIZATION_SCOPE_MISMATCH');
-  assertEqual(recoverySource.value.decision, 'APPROVE BOUNDED', 'authorization requires an approved M5-10C recovery decision', 'AUTHORIZATION_SCOPE_MISMATCH');
-  assertEqual(recoverySource.value.ready_to_create, true, 'authorization requires recovery ready_to_create', 'AUTHORIZATION_SCOPE_MISMATCH');
   assertEqual(authorization.source.recovery_artifact_sha256, recoverySource.sha256, 'authorization recovery digest drifted', 'AUTHORIZATION_SOURCE_MISMATCH');
   assertEqual(authorization.failed_stage.sha256, failedStageSource.sha256, 'authorization failed stage digest drifted', 'AUTHORIZATION_SOURCE_MISMATCH');
   assertEqual(authorization.source.repair_revision === 'data/batches/m5-10a-process-correction.json', true, 'authorization repair source drifted', 'AUTHORIZATION_SOURCE_MISMATCH');
@@ -918,6 +961,7 @@ if (isMainModule) {
     ...(args['editorial-timing'] ? { editorialTimingPath: path.resolve(args['editorial-timing']) } : {}),
     ...(args.audit ? { auditPath: path.resolve(args.audit) } : {}),
     ...(args['audit-timing'] ? { auditTimingPath: path.resolve(args['audit-timing']) } : {}),
+    ...(args.verification ? { verificationPath: path.resolve(args.verification) } : {}),
   }).then((result) => console.log(JSON.stringify(result.gate ?? result.authorization, null, 2)))
     .catch((error) => {
       console.error(error.message);

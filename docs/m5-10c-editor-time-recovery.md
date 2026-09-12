@@ -86,5 +86,9 @@ SQLite/search verification remains separate:
 npm run validate
 npm run build:dictionary
 npm run validate:search
+npm run batch:m5-10c:contract:check
 npm test
 ```
+
+The contract command is also run as an explicit CI step; `npm test` includes
+the same fixture suite through the repository-wide test glob.

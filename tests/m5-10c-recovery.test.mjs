@@ -3,9 +3,14 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { produce } from '../scripts/batch/produce-m5-10c-work.mjs';
+import { validateM5CAuditDraftFindings } from '../scripts/batch/record-m5-10c-timing.mjs';
 import {
+  assertM5CRecoveryAuthorizable,
   evaluateM5CRecoveryGate,
   M5CRecoveryValidationError,
+  validateM5CAuditIndependence,
+  validateM5CEditorialDecisionChronology,
+  validateM5CFailedStageContract,
   validateM5CTiming,
   validateM5CProposal,
 } from '../scripts/batch/validate-m5-10c-recovery.mjs';
@@ -106,6 +111,50 @@ test('M5-10C recovery gate passes exactly at the fixed editor-time limit', () =>
   assert.deepEqual(result.failures, []);
 });
 
+test('M5-10C audit draft preserves findings and derives open blockers', () => {
+  const result = validateM5CAuditDraftFindings([{
+    id: 'm5-10c-audit-timing-001',
+    severity: 'blocker',
+    status: 'open',
+    category: 'timing',
+    case_id: 'm5-10c-cal-001',
+    note: 'm5-10c-cal-001 audit found a timing discrepancy requiring a hold.',
+  }]);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.open_blocker_count, 1);
+});
+
+test('M5-10C audit draft rejects invalid finding target, severity, and status', () => {
+  const baseFinding = {
+    id: 'm5-10c-audit-timing-001',
+    severity: 'blocker',
+    status: 'open',
+    category: 'timing',
+    case_id: 'm5-10c-cal-001',
+    note: 'm5-10c-cal-001 audit found a timing discrepancy requiring a hold.',
+  };
+  for (const [field, value] of [
+    ['case_id', 'm5-10c-cal-999'],
+    ['severity', 'info'],
+    ['status', 'pending'],
+  ]) {
+    assert.throws(
+      () => validateM5CAuditDraftFindings([{ ...baseFinding, [field]: value }]),
+      (error) => error.code === 'AUDIT_DRAFT_FINDINGS_INVALID',
+    );
+  }
+});
+
+test('M5-10C recovery gate holds on canonical or inventory mutation', () => {
+  const result = evaluateM5CRecoveryGate({
+    ...passGateInputs(),
+    canonicalMutation: true,
+    inventoryMutation: true,
+  });
+  assert.equal(result.gate_status, 'fail');
+  assert.deepEqual(result.failures, ['calibration_canonical_mutation', 'inventory_mutation']);
+});
+
 test('M5-10C timing rejects producer execution copied into editor time', async () => {
   const timing = JSON.parse(await readFile('data/batches/m5-10c-editorial-timing-20260910.json', 'utf8'));
   timing.passes[0].editor_seconds = timing.passes[0].producer_seconds;
@@ -122,5 +171,73 @@ test('M5-10C timing rejects an unmeasured completed-session claim', async () => 
   assert.throws(
     () => validateM5CTiming(timing, { timingKind: 'editorial' }),
     (error) => error instanceof M5CRecoveryValidationError && error.code === 'TIMING_INCOMPLETE',
+  );
+});
+
+test('M5-10C timing rejects a completed session with a missing required pass', async () => {
+  const timing = JSON.parse(await readFile('data/batches/m5-10c-editorial-timing-20260910.json', 'utf8'));
+  timing.passes.at(-1).status = 'unmeasured';
+  assert.throws(
+    () => validateM5CTiming(timing, { timingKind: 'editorial' }),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'TIMING_INCOMPLETE',
+  );
+});
+
+test('M5-10C editorial chronology rejects a decision authored before the timed pass', async () => {
+  const timing = JSON.parse(await readFile('data/batches/m5-10c-editorial-timing-20260910.json', 'utf8'));
+  const editorial = {
+    draft_created_at: new Date(Date.parse(timing.started_at) - 1000).toISOString(),
+    created_at: timing.passes.at(-1).completed_at,
+    finalized_at: new Date(Date.parse(timing.passes.at(-1).completed_at) + 1000).toISOString(),
+  };
+  assert.throws(
+    () => validateM5CEditorialDecisionChronology(editorial, { timing }),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'EDITORIAL_DECISION_CHRONOLOGY',
+  );
+});
+
+test('M5-10C audit rejects editorial and audit session reuse', () => {
+  const sharedSessionId = '11111111-1111-4111-8111-111111111111';
+  const auditTimingSessionId = '22222222-2222-4222-8222-222222222222';
+  assert.throws(
+    () => validateM5CAuditIndependence(
+      {
+        audit_session_id: sharedSessionId,
+        timing_session_id: auditTimingSessionId,
+        editorial_session_id: sharedSessionId,
+      },
+      {
+        editorial: {
+          editorial_session_id: sharedSessionId,
+          timing_session_id: '33333333-3333-4333-8333-333333333333',
+        },
+      },
+      {
+        audit_session_id: sharedSessionId,
+        session_id: auditTimingSessionId,
+      },
+    ),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'AUDIT_INDEPENDENCE',
+  );
+});
+
+test('M5-10C failed-stage contract preserves the prior unmeasured history', async () => {
+  const stage = JSON.parse(await readFile('data/batches/m5-10-wave-b-stage.json', 'utf8'));
+  stage.metrics.total_editor_seconds = 1;
+  assert.throws(
+    () => validateM5CFailedStageContract(stage),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'FAILED_STAGE_HISTORY_CHANGED',
+  );
+});
+
+test('M5-10C authorization rejects a fabricated recovery pass', () => {
+  const gate = evaluateM5CRecoveryGate(passGateInputs(passGateTiming(240.001)));
+  assert.equal(gate.gate_status, 'fail');
+  assert.throws(
+    () => assertM5CRecoveryAuthorizable({
+      gate,
+      artifact: { ready_to_create: true },
+    }),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'AUTHORIZATION_SCOPE_MISMATCH',
   );
 });
