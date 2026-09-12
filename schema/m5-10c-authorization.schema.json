@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10c-authorization.schema.json",
+  "title": "Typewriter M5-10C M5-11 authorization",
+  "description": "Digest-bound authorization for the separate #97 +500 stage. It never contains or creates the next stage's candidate data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "authorization_id", "issue", "parent_issue", "target_issue", "process_revision", "decision", "canonical_mutation", "failed_stage", "target", "source", "created_at", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "authorization_id": { "const": "m5-10c-m5-11-authorization-20260910" },
+    "issue": { "const": 113 },
+    "parent_issue": { "const": 7 },
+    "target_issue": { "const": 97 },
+    "process_revision": { "const": "m5-10c-editor-time-recovery-v1" },
+    "decision": { "const": "AUTHORIZE M5-11 +500 VALIDATION" },
+    "canonical_mutation": { "const": false },
+    "failed_stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "gate_status", "decision", "next_stage_authorized", "start_count"],
+      "properties": {
+        "path": { "const": "data/batches/m5-10-wave-b-stage.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "gate_status": { "const": "fail" },
+        "decision": { "const": "HOLD PROCESS" },
+        "next_stage_authorized": { "const": false },
+        "start_count": { "const": 778 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_start_count", "net_start_increase", "cumulative_start_target", "candidate_data_created"],
+      "properties": {
+        "base_start_count": { "const": 778 },
+        "net_start_increase": { "const": 500 },
+        "cumulative_start_target": { "const": 1278 },
+        "candidate_data_created": { "const": false }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["failed_stage", "repair_revision", "recovery_artifact", "recovery_artifact_sha256", "canonical_directory", "canonical_directory_sha256", "inventory", "inventory_sha256"],
+      "properties": {
+        "failed_stage": { "const": "data/batches/m5-10-wave-b-stage.json" },
+        "repair_revision": { "const": "data/batches/m5-10a-process-correction.json" },
+        "recovery_artifact": { "const": "data/batches/m5-10c-recovery.json" },
+        "recovery_artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_directory": { "const": "data/canonical" },
+        "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
+        "inventory": { "const": "data/inventory/m5-target-inventory.json" },
+        "inventory_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

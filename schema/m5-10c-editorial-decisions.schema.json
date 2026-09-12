@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10c-editorial-decisions.schema.json",
+  "title": "Typewriter M5-10C recorder-finalized editorial decisions",
+  "description": "Record-by-record editorial judgments supplied separately from the proposal-only producer and finalized only after the timed editorial passes stop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "proposal_sha256", "editorial_session_id", "timing_session_id", "draft_created_at", "created_at", "finalized_at", "records", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10c-editorial-decisions-20260910" },
+    "batch_id": { "const": "m5-10c-editor-time-recovery-20260910" },
+    "source_kind": { "const": "codex-authored" },
+    "decision_source": { "const": "separately-authored-record-by-record-editorial-draft" },
+    "proposal_sha256": { "$ref": "#/$defs/sha256" },
+    "editorial_session_id": { "$ref": "#/$defs/uuid" },
+    "timing_session_id": { "$ref": "#/$defs/uuid" },
+    "draft_created_at": { "type": "string", "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
+    "records": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/record" }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "record_id", "source_record_sha256", "decision", "lemma_pos", "sense_review", "boundary_reviews", "relation_review", "decision_note"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10c-cal-[0-9]{3}$" },
+        "record_id": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}$" },
+        "source_record_sha256": { "$ref": "#/$defs/sha256" },
+        "decision": { "enum": ["included", "corrected", "held", "rejected"] },
+        "corrected_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "lemma_pos": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "observed_pos", "note"],
+          "properties": {
+            "status": { "const": "checked" },
+            "observed_pos": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "enum": ["noun", "verb", "adjective", "adverb", "expression"] }
+            },
+            "note": { "type": "string", "pattern": "\\S" }
+          }
+        },
+        "sense_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "observed_sense_count", "observed_sense_ids", "observed_pos", "note"],
+          "properties": {
+            "status": { "const": "complete" },
+            "observed_sense_count": { "type": "integer", "minimum": 1 },
+            "observed_sense_ids": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" }
+            },
+            "observed_pos": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "enum": ["noun", "verb", "adjective", "adverb", "expression"] }
+            },
+            "note": { "type": "string", "pattern": "\\S" }
+          }
+        },
+        "boundary_reviews": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["physical-figurative", "homonym-pos", "sensory-emotion-state-action", "directional-symmetry", "compound-spaced-phrase", "word-idiom"],
+          "properties": {
+            "physical-figurative": { "$ref": "#/$defs/boundary" },
+            "homonym-pos": { "$ref": "#/$defs/boundary" },
+            "sensory-emotion-state-action": { "$ref": "#/$defs/boundary" },
+            "directional-symmetry": { "$ref": "#/$defs/boundary" },
+            "compound-spaced-phrase": { "$ref": "#/$defs/boundary" },
+            "word-idiom": { "$ref": "#/$defs/boundary" }
+          }
+        },
+        "relation_review": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidateReview" },
+            { "$ref": "#/$defs/noCandidateReview" }
+          ]
+        },
+        "decision_note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "applicability", "decision", "evidence"],
+      "properties": {
+        "status": { "const": "reviewed" },
+        "applicability": { "enum": ["applicable", "not-applicable", "uncertain"] },
+        "decision": { "enum": ["keep", "split", "hold"] },
+        "evidence": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "candidateReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "source_sense", "target_record", "target_sense", "type", "direction", "decision", "noise_assessment", "correction", "note"],
+      "properties": {
+        "outcome": { "const": "raw-proposal" },
+        "source_sense": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+        "target_record": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}$" },
+        "target_sense": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+        "type": { "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"] },
+        "direction": { "$ref": "#/$defs/direction" },
+        "decision": { "enum": ["admit", "reject", "correct"] },
+        "noise_assessment": { "enum": ["clean", "noise"] },
+        "correction": { "enum": ["none", "corrected"] },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "noCandidateReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "decision", "noise_assessment", "correction", "note"],
+      "properties": {
+        "outcome": { "const": "no-valid-candidate" },
+        "decision": { "const": "not-applicable" },
+        "noise_assessment": { "const": "not-applicable" },
+        "correction": { "const": "none" },
+        "note": { "type": "string", "pattern": "\\S" }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["source_sense"] },
+          { "required": ["target_record"] },
+          { "required": ["target_sense"] },
+          { "required": ["type"] },
+          { "required": ["direction"] }
+        ]
+      }
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+        "to": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" }
+      }
+    }
+  }
+}

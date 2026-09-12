@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10c-calibration-proposal.schema.json",
+  "title": "Typewriter M5-10C external calibration proposal",
+  "description": "A temporary, source-bound proposal input for the M5-10C editor-time calibration. It must not be committed to the repository.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "process_revision", "case_count", "cases"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10c-calibration-proposal" },
+    "process_revision": { "const": "m5-10c-editor-time-recovery-v1" },
+    "case_count": { "const": 20 },
+    "cases": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "record"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10c-cal-[0-9]{3}$" },
+        "record": { "$ref": "#/$defs/record" },
+        "relation_candidate": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/relationCandidate" }
+          ]
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "record_type", "lemma", "search_forms", "senses"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}$" },
+        "record_type": { "enum": ["entry", "expression"] },
+        "lemma": { "type": "string", "pattern": "\\S" },
+        "search_forms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "senses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/sense" }
+        }
+      }
+    },
+    "sense": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pos", "gloss"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+        "pos": { "enum": ["noun", "verb", "adjective", "adverb", "expression"] },
+        "gloss": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "relationCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_sense", "target_record", "target_sense", "type", "direction"],
+      "properties": {
+        "source_sense": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+        "target_record": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}$" },
+        "target_sense": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+        "type": { "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"] },
+        "direction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" },
+            "to": { "type": "string", "pattern": "^cal-m5-10c-[0-9]{3}-s[0-9]+$" }
+          }
+        }
+      }
+    }
+  }
+}
