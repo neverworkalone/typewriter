@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-verification.schema.json",
+  "title": "Typewriter M5-10D verification artifact",
+  "description": "Machine verification of the unchanged canonical product boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "issue", "status", "verified_at", "editorial_review_complete", "human_editorial_review_complete", "canonical_integrity", "deterministic_sqlite", "search_product_regression", "calibration_canonical_mutation", "canonical_snapshot", "canonical_directory_sha256", "inventory_sha256", "checks", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-verification-20260912" },
+    "issue": { "const": 115 },
+    "status": { "const": "passed" },
+    "verified_at": { "type": "string", "format": "date-time" },
+    "editorial_review_complete": { "const": true },
+    "human_editorial_review_complete": { "const": false },
+    "canonical_integrity": { "const": true },
+    "deterministic_sqlite": { "const": true },
+    "search_product_regression": { "const": true },
+    "calibration_canonical_mutation": { "const": false },
+    "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
+    "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
+    "inventory_sha256": { "$ref": "#/$defs/sha256" },
+    "checks": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "\\S" },
+          "status": { "const": "pass" }
+        }
+      }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
+      "properties": {
+        "record_count": { "const": 820 },
+        "start_count": { "const": 778 },
+        "reference_only_count": { "const": 42 },
+        "sense_count": { "const": 966 },
+        "relation_count": { "const": 473 },
+        "expression_count": { "const": 63 }
+      }
+    }
+  }
+}

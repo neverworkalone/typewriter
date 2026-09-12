@@ -160,6 +160,16 @@ execution timestamps, source digest, and output in recorder-owned work logs; the
 editorial and audit decision artifacts are generated and finalized only after
 their corresponding timing passes stop.
 
+Issue #115's M5-10D workload correction is documented in
+[`docs/m5-10d-editor-workload-recovery.md`](docs/m5-10d-editor-workload-recovery.md).
+It freezes each pass's expected unit set before timing, measures only declared
+follow-up work, records empty passes as zero-work, and keeps the independent
+post-freeze audit over all 20 calibration cases. Its source-derived recovery can
+create the separate #97 +500 authorization only when the existing fixed gates
+pass; the contract and recovery checks are
+`npm run batch:m5-10d:contract:check` and
+`npm run batch:m5-10d:recovery:contract:check`.
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

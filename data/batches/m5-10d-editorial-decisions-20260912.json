@@ -1,0 +1,1496 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-editorial-decisions-20260912",
+  "batch_id": "m5-10d-editor-time-recalibration-20260912",
+  "source_kind": "codex-authored",
+  "decision_source": "separately-authored-record-by-record-editorial-draft",
+  "proposal_sha256": "0185afddd0690fca51ce45b4673ae80d476f036f60f1af36afa2bd815e5517e3",
+  "editorial_session_id": "3bf85eb1-9ca9-4e3d-8954-979cefe8bafb",
+  "timing_session_id": "841303ce-07f5-46b3-a3d0-d8c3dffeef8e",
+  "draft_created_at": "2026-09-12T11:39:19.749Z",
+  "created_at": "2026-09-12T11:40:56.519Z",
+  "finalized_at": "2026-09-12T11:40:56.520Z",
+  "records": [
+    {
+      "case_id": "m5-10d-cal-001",
+      "record_id": "cal-m5-10d-001",
+      "source_record_sha256": "e18eb0e954002ffc3277b7c0d7a95a90e9cf97975b7c5f3725e2649ad493cf85",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-001 lemma-pos checked against cal-m5-10d-001-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-001-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-001 sense-review retained cal-m5-10d-001-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 physical-figurative checked against cal-m5-10d-001-s1 with evidence token 0-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 homonym-pos checked against cal-m5-10d-001-s1 with evidence token 0-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 sensory-emotion-state-action checked against cal-m5-10d-001-s1 with evidence token 0-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 directional-symmetry checked against cal-m5-10d-001-s1 with evidence token 0-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 compound-spaced-phrase checked against cal-m5-10d-001-s1 with evidence token 0-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 word-idiom checked against cal-m5-10d-001-s1 with evidence token 0-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-001-s1",
+        "target_record": "cal-m5-10d-002",
+        "target_sense": "cal-m5-10d-002-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-001-s1",
+          "to": "cal-m5-10d-002-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-001 relation-review checked cal-m5-10d-001-s1 toward cal-m5-10d-002-s1 as a near candidate."
+      },
+      "decision_note": "m5-10d-cal-001 cal-m5-10d-001 received included after checking cal-m5-10d-001-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-002",
+      "record_id": "cal-m5-10d-002",
+      "source_record_sha256": "272d7734d94f3230721bd6013a7c1d36b5816c2ef1bed14cec1048023473f3f9",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "boundary_reviews"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-002 lemma-pos checked against cal-m5-10d-002-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-002-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-002 sense-review retained cal-m5-10d-002-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 physical-figurative checked against cal-m5-10d-002-s1 with evidence token 1-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 homonym-pos checked against cal-m5-10d-002-s1 with evidence token 1-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 sensory-emotion-state-action checked against cal-m5-10d-002-s1 with evidence token 1-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 directional-symmetry checked against cal-m5-10d-002-s1 with evidence token 1-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 compound-spaced-phrase checked against cal-m5-10d-002-s1 with evidence token 1-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 word-idiom checked against cal-m5-10d-002-s1 with evidence token 1-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-002-s1",
+        "target_record": "cal-m5-10d-003",
+        "target_sense": "cal-m5-10d-003-s1",
+        "type": "scene",
+        "direction": {
+          "from": "cal-m5-10d-002-s1",
+          "to": "cal-m5-10d-003-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-002 relation-review checked cal-m5-10d-002-s1 toward cal-m5-10d-003-s1 as a scene candidate."
+      },
+      "decision_note": "m5-10d-cal-002 cal-m5-10d-002 received corrected after checking cal-m5-10d-002-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-003",
+      "record_id": "cal-m5-10d-003",
+      "source_record_sha256": "1f28dc4dbe5e3a1d027a3ff1dd90c18cda73179655b659ad039c958abc7d93e7",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-003 lemma-pos checked against cal-m5-10d-003-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-003-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-003 sense-review retained cal-m5-10d-003-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 physical-figurative checked against cal-m5-10d-003-s1 with evidence token 2-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 homonym-pos checked against cal-m5-10d-003-s1 with evidence token 2-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 sensory-emotion-state-action checked against cal-m5-10d-003-s1 with evidence token 2-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 directional-symmetry checked against cal-m5-10d-003-s1 with evidence token 2-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 compound-spaced-phrase checked against cal-m5-10d-003-s1 with evidence token 2-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 word-idiom checked against cal-m5-10d-003-s1 with evidence token 2-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-003-s1",
+        "target_record": "cal-m5-10d-004",
+        "target_sense": "cal-m5-10d-004-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-003-s1",
+          "to": "cal-m5-10d-004-s1"
+        },
+        "decision": "reject",
+        "noise_assessment": "noise",
+        "correction": "none",
+        "note": "m5-10d-cal-003 relation-review checked cal-m5-10d-003-s1 toward cal-m5-10d-004-s1 as a near candidate."
+      },
+      "decision_note": "m5-10d-cal-003 cal-m5-10d-003 received included after checking cal-m5-10d-003-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-004",
+      "record_id": "cal-m5-10d-004",
+      "source_record_sha256": "b4e913d9df4386f4001f844946bac776dd692fa6348bdb252e5b0741951a1435",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "boundary_reviews"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-004 lemma-pos checked against cal-m5-10d-004-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-004-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-004 sense-review retained cal-m5-10d-004-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 physical-figurative checked against cal-m5-10d-004-s1 with evidence token 3-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 homonym-pos checked against cal-m5-10d-004-s1 with evidence token 3-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 sensory-emotion-state-action checked against cal-m5-10d-004-s1 with evidence token 3-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 directional-symmetry checked against cal-m5-10d-004-s1 with evidence token 3-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 compound-spaced-phrase checked against cal-m5-10d-004-s1 with evidence token 3-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 word-idiom checked against cal-m5-10d-004-s1 with evidence token 3-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-004-s1",
+        "target_record": "cal-m5-10d-005",
+        "target_sense": "cal-m5-10d-005-s1",
+        "type": "scene",
+        "direction": {
+          "from": "cal-m5-10d-004-s1",
+          "to": "cal-m5-10d-005-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-004 relation-review checked cal-m5-10d-004-s1 toward cal-m5-10d-005-s1 as a scene candidate."
+      },
+      "decision_note": "m5-10d-cal-004 cal-m5-10d-004 received corrected after checking cal-m5-10d-004-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-005",
+      "record_id": "cal-m5-10d-005",
+      "source_record_sha256": "db6dc882cdbbef78fa74563931606628ec5d6a41f0e9c116cd96900616dde474",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-005 lemma-pos checked against cal-m5-10d-005-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-005-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-005 sense-review retained cal-m5-10d-005-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 physical-figurative checked against cal-m5-10d-005-s1 with evidence token 4-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 homonym-pos checked against cal-m5-10d-005-s1 with evidence token 4-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 sensory-emotion-state-action checked against cal-m5-10d-005-s1 with evidence token 4-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 directional-symmetry checked against cal-m5-10d-005-s1 with evidence token 4-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 compound-spaced-phrase checked against cal-m5-10d-005-s1 with evidence token 4-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 word-idiom checked against cal-m5-10d-005-s1 with evidence token 4-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-005-s1",
+        "target_record": "cal-m5-10d-006",
+        "target_sense": "cal-m5-10d-006-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-005-s1",
+          "to": "cal-m5-10d-006-s1"
+        },
+        "decision": "correct",
+        "noise_assessment": "clean",
+        "correction": "corrected",
+        "note": "m5-10d-cal-005 relation-review checked cal-m5-10d-005-s1 toward cal-m5-10d-006-s1 as a near candidate."
+      },
+      "decision_note": "m5-10d-cal-005 cal-m5-10d-005 received included after checking cal-m5-10d-005-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-006",
+      "record_id": "cal-m5-10d-006",
+      "source_record_sha256": "9ead2d2a87c644a07af92a14bafcf6f894d34a2359eaa6a8ef5b3a8cbc07195e",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-006 lemma-pos checked against cal-m5-10d-006-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-006-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-006 sense-review retained cal-m5-10d-006-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 physical-figurative checked against cal-m5-10d-006-s1 with evidence token 5-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 homonym-pos checked against cal-m5-10d-006-s1 with evidence token 5-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 sensory-emotion-state-action checked against cal-m5-10d-006-s1 with evidence token 5-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 directional-symmetry checked against cal-m5-10d-006-s1 with evidence token 5-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 compound-spaced-phrase checked against cal-m5-10d-006-s1 with evidence token 5-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 word-idiom checked against cal-m5-10d-006-s1 with evidence token 5-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-006-s1",
+        "target_record": "cal-m5-10d-007",
+        "target_sense": "cal-m5-10d-007-s1",
+        "type": "scene",
+        "direction": {
+          "from": "cal-m5-10d-006-s1",
+          "to": "cal-m5-10d-007-s1"
+        },
+        "decision": "reject",
+        "noise_assessment": "noise",
+        "correction": "none",
+        "note": "m5-10d-cal-006 relation-review checked cal-m5-10d-006-s1 toward cal-m5-10d-007-s1 as a scene candidate."
+      },
+      "decision_note": "m5-10d-cal-006 cal-m5-10d-006 received held after checking cal-m5-10d-006-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-007",
+      "record_id": "cal-m5-10d-007",
+      "source_record_sha256": "2fe2046eea3ff4760ee9c12224573e8de8ace65d768b45b3248c4bb7f64335eb",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-007 lemma-pos checked against cal-m5-10d-007-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-007-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-007 sense-review retained cal-m5-10d-007-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 physical-figurative checked against cal-m5-10d-007-s1 with evidence token 6-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 homonym-pos checked against cal-m5-10d-007-s1 with evidence token 6-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 sensory-emotion-state-action checked against cal-m5-10d-007-s1 with evidence token 6-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 directional-symmetry checked against cal-m5-10d-007-s1 with evidence token 6-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 compound-spaced-phrase checked against cal-m5-10d-007-s1 with evidence token 6-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 word-idiom checked against cal-m5-10d-007-s1 with evidence token 6-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-007-s1",
+        "target_record": "cal-m5-10d-008",
+        "target_sense": "cal-m5-10d-008-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-007-s1",
+          "to": "cal-m5-10d-008-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-007 relation-review checked cal-m5-10d-007-s1 toward cal-m5-10d-008-s1 as a near candidate."
+      },
+      "decision_note": "m5-10d-cal-007 cal-m5-10d-007 received included after checking cal-m5-10d-007-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-008",
+      "record_id": "cal-m5-10d-008",
+      "source_record_sha256": "d0686fc2c6acc7bda04ea71ea8f3d4970fa2eeaf225fd813a51c6c1723773db1",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "boundary_reviews"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-008 lemma-pos checked against cal-m5-10d-008-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-008-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-008 sense-review retained cal-m5-10d-008-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 physical-figurative checked against cal-m5-10d-008-s1 with evidence token 7-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 homonym-pos checked against cal-m5-10d-008-s1 with evidence token 7-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 sensory-emotion-state-action checked against cal-m5-10d-008-s1 with evidence token 7-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 directional-symmetry checked against cal-m5-10d-008-s1 with evidence token 7-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 compound-spaced-phrase checked against cal-m5-10d-008-s1 with evidence token 7-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 word-idiom checked against cal-m5-10d-008-s1 with evidence token 7-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-008-s1",
+        "target_record": "cal-m5-10d-009",
+        "target_sense": "cal-m5-10d-009-s1",
+        "type": "scene",
+        "direction": {
+          "from": "cal-m5-10d-008-s1",
+          "to": "cal-m5-10d-009-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-008 relation-review checked cal-m5-10d-008-s1 toward cal-m5-10d-009-s1 as a scene candidate."
+      },
+      "decision_note": "m5-10d-cal-008 cal-m5-10d-008 received corrected after checking cal-m5-10d-008-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-009",
+      "record_id": "cal-m5-10d-009",
+      "source_record_sha256": "fc093d2e1c93ec1790fa894554a9010f49e95a9ed85adfdf29c094c091ab1b33",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-009 lemma-pos checked against cal-m5-10d-009-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-009-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-009 sense-review retained cal-m5-10d-009-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 physical-figurative checked against cal-m5-10d-009-s1 with evidence token 8-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 homonym-pos checked against cal-m5-10d-009-s1 with evidence token 8-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 sensory-emotion-state-action checked against cal-m5-10d-009-s1 with evidence token 8-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 directional-symmetry checked against cal-m5-10d-009-s1 with evidence token 8-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 compound-spaced-phrase checked against cal-m5-10d-009-s1 with evidence token 8-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 word-idiom checked against cal-m5-10d-009-s1 with evidence token 8-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-009 relation-review has no candidate after checking cal-m5-10d-009-s1."
+      },
+      "decision_note": "m5-10d-cal-009 cal-m5-10d-009 received included after checking cal-m5-10d-009-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-010",
+      "record_id": "cal-m5-10d-010",
+      "source_record_sha256": "254f5e7a1ba64d1726dbfaaacbf2efeca2b48bdda0094ff9fa1036dfab46a5de",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-010 lemma-pos checked against cal-m5-10d-010-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-010-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-010 sense-review retained cal-m5-10d-010-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 physical-figurative checked against cal-m5-10d-010-s1 with evidence token 9-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 homonym-pos checked against cal-m5-10d-010-s1 with evidence token 9-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 sensory-emotion-state-action checked against cal-m5-10d-010-s1 with evidence token 9-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 directional-symmetry checked against cal-m5-10d-010-s1 with evidence token 9-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 compound-spaced-phrase checked against cal-m5-10d-010-s1 with evidence token 9-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 word-idiom checked against cal-m5-10d-010-s1 with evidence token 9-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-010 relation-review has no candidate after checking cal-m5-10d-010-s1."
+      },
+      "decision_note": "m5-10d-cal-010 cal-m5-10d-010 received included after checking cal-m5-10d-010-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-011",
+      "record_id": "cal-m5-10d-011",
+      "source_record_sha256": "9fee3fe5deffbdc73a52a3ec2d29ca38c583e1f21ec35ed8f914eb463d9667bb",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "boundary_reviews"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-011 lemma-pos checked against cal-m5-10d-011-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-011-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-011 sense-review retained cal-m5-10d-011-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 physical-figurative checked against cal-m5-10d-011-s1 with evidence token 10-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 homonym-pos checked against cal-m5-10d-011-s1 with evidence token 10-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 sensory-emotion-state-action checked against cal-m5-10d-011-s1 with evidence token 10-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 directional-symmetry checked against cal-m5-10d-011-s1 with evidence token 10-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 compound-spaced-phrase checked against cal-m5-10d-011-s1 with evidence token 10-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 word-idiom checked against cal-m5-10d-011-s1 with evidence token 10-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-011 relation-review has no candidate after checking cal-m5-10d-011-s1."
+      },
+      "decision_note": "m5-10d-cal-011 cal-m5-10d-011 received corrected after checking cal-m5-10d-011-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-012",
+      "record_id": "cal-m5-10d-012",
+      "source_record_sha256": "b28389bc751fb1a9c01258e09a4388f92540dac3cc8eae76c762899c471176c4",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-012 lemma-pos checked against cal-m5-10d-012-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-012-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-012 sense-review retained cal-m5-10d-012-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 physical-figurative checked against cal-m5-10d-012-s1 with evidence token 11-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 homonym-pos checked against cal-m5-10d-012-s1 with evidence token 11-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 sensory-emotion-state-action checked against cal-m5-10d-012-s1 with evidence token 11-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 directional-symmetry checked against cal-m5-10d-012-s1 with evidence token 11-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 compound-spaced-phrase checked against cal-m5-10d-012-s1 with evidence token 11-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 word-idiom checked against cal-m5-10d-012-s1 with evidence token 11-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-012 relation-review has no candidate after checking cal-m5-10d-012-s1."
+      },
+      "decision_note": "m5-10d-cal-012 cal-m5-10d-012 received included after checking cal-m5-10d-012-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-013",
+      "record_id": "cal-m5-10d-013",
+      "source_record_sha256": "b4b91b5756d3bbeb5aed3963b7d18361966842755534d7b72dc9ea3bacc2f791",
+      "decision": "rejected",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-013 lemma-pos checked against cal-m5-10d-013-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-013-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-013 sense-review retained cal-m5-10d-013-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 physical-figurative checked against cal-m5-10d-013-s1 with evidence token 12-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 homonym-pos checked against cal-m5-10d-013-s1 with evidence token 12-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 sensory-emotion-state-action checked against cal-m5-10d-013-s1 with evidence token 12-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 directional-symmetry checked against cal-m5-10d-013-s1 with evidence token 12-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 compound-spaced-phrase checked against cal-m5-10d-013-s1 with evidence token 12-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 word-idiom checked against cal-m5-10d-013-s1 with evidence token 12-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-013 relation-review has no candidate after checking cal-m5-10d-013-s1."
+      },
+      "decision_note": "m5-10d-cal-013 cal-m5-10d-013 received rejected after checking cal-m5-10d-013-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-014",
+      "record_id": "cal-m5-10d-014",
+      "source_record_sha256": "bb599d5a02db7dd7ec87ba8eb78da7b8dde4793d2dd98becf92c45bd8f43bb22",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-014 lemma-pos checked against cal-m5-10d-014-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-014-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-014 sense-review retained cal-m5-10d-014-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 physical-figurative checked against cal-m5-10d-014-s1 with evidence token 13-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 homonym-pos checked against cal-m5-10d-014-s1 with evidence token 13-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 sensory-emotion-state-action checked against cal-m5-10d-014-s1 with evidence token 13-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 directional-symmetry checked against cal-m5-10d-014-s1 with evidence token 13-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 compound-spaced-phrase checked against cal-m5-10d-014-s1 with evidence token 13-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 word-idiom checked against cal-m5-10d-014-s1 with evidence token 13-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-014 relation-review has no candidate after checking cal-m5-10d-014-s1."
+      },
+      "decision_note": "m5-10d-cal-014 cal-m5-10d-014 received included after checking cal-m5-10d-014-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-015",
+      "record_id": "cal-m5-10d-015",
+      "source_record_sha256": "1ff8cf8a1ab41ebf4ff8eb262930beaaa9c603725c22a4798d1a6c9cda790071",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-015 lemma-pos checked against cal-m5-10d-015-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-015-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-015 sense-review retained cal-m5-10d-015-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 physical-figurative checked against cal-m5-10d-015-s1 with evidence token 14-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 homonym-pos checked against cal-m5-10d-015-s1 with evidence token 14-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 sensory-emotion-state-action checked against cal-m5-10d-015-s1 with evidence token 14-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 directional-symmetry checked against cal-m5-10d-015-s1 with evidence token 14-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 compound-spaced-phrase checked against cal-m5-10d-015-s1 with evidence token 14-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 word-idiom checked against cal-m5-10d-015-s1 with evidence token 14-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-015 relation-review has no candidate after checking cal-m5-10d-015-s1."
+      },
+      "decision_note": "m5-10d-cal-015 cal-m5-10d-015 received included after checking cal-m5-10d-015-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-016",
+      "record_id": "cal-m5-10d-016",
+      "source_record_sha256": "6eb7f529d678c4801bc6d92e007189abcb5c9571039f7b124e9f19bfb8c1d0c7",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-016 lemma-pos checked against cal-m5-10d-016-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-016-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-016 sense-review retained cal-m5-10d-016-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 physical-figurative checked against cal-m5-10d-016-s1 with evidence token 15-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 homonym-pos checked against cal-m5-10d-016-s1 with evidence token 15-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 sensory-emotion-state-action checked against cal-m5-10d-016-s1 with evidence token 15-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 directional-symmetry checked against cal-m5-10d-016-s1 with evidence token 15-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 compound-spaced-phrase checked against cal-m5-10d-016-s1 with evidence token 15-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 word-idiom checked against cal-m5-10d-016-s1 with evidence token 15-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-016 relation-review has no candidate after checking cal-m5-10d-016-s1."
+      },
+      "decision_note": "m5-10d-cal-016 cal-m5-10d-016 received held after checking cal-m5-10d-016-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-017",
+      "record_id": "cal-m5-10d-017",
+      "source_record_sha256": "b535f8900a2ae5fb2b59b6c55b0353c7bf5d780fbed16cd1a933d78d8f89d8ea",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-017 lemma-pos checked against cal-m5-10d-017-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-017-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10d-cal-017 sense-review retained cal-m5-10d-017-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 physical-figurative checked against cal-m5-10d-017-s1 with evidence token 16-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 homonym-pos checked against cal-m5-10d-017-s1 with evidence token 16-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 sensory-emotion-state-action checked against cal-m5-10d-017-s1 with evidence token 16-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 directional-symmetry checked against cal-m5-10d-017-s1 with evidence token 16-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 compound-spaced-phrase checked against cal-m5-10d-017-s1 with evidence token 16-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 word-idiom checked against cal-m5-10d-017-s1 with evidence token 16-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-017 relation-review has no candidate after checking cal-m5-10d-017-s1."
+      },
+      "decision_note": "m5-10d-cal-017 cal-m5-10d-017 received included after checking cal-m5-10d-017-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-018",
+      "record_id": "cal-m5-10d-018",
+      "source_record_sha256": "ce6984dcf62dd4fec57d309cc68374cdd82d3c36fb2e648aa70d59b93b91b395",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-018 lemma-pos checked against cal-m5-10d-018-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-018-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-018 sense-review retained cal-m5-10d-018-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 physical-figurative checked against cal-m5-10d-018-s1 with evidence token 17-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 homonym-pos checked against cal-m5-10d-018-s1 with evidence token 17-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 sensory-emotion-state-action checked against cal-m5-10d-018-s1 with evidence token 17-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 directional-symmetry checked against cal-m5-10d-018-s1 with evidence token 17-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 compound-spaced-phrase checked against cal-m5-10d-018-s1 with evidence token 17-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 word-idiom checked against cal-m5-10d-018-s1 with evidence token 17-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-018 relation-review has no candidate after checking cal-m5-10d-018-s1."
+      },
+      "decision_note": "m5-10d-cal-018 cal-m5-10d-018 received included after checking cal-m5-10d-018-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-019",
+      "record_id": "cal-m5-10d-019",
+      "source_record_sha256": "055c5a42851aa220b74a29948663fbf73c8bf48064a3725c7d8a341b480245fd",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-019 lemma-pos checked against cal-m5-10d-019-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-019-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10d-cal-019 sense-review retained cal-m5-10d-019-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 physical-figurative checked against cal-m5-10d-019-s1 with evidence token 18-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 homonym-pos checked against cal-m5-10d-019-s1 with evidence token 18-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 sensory-emotion-state-action checked against cal-m5-10d-019-s1 with evidence token 18-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 directional-symmetry checked against cal-m5-10d-019-s1 with evidence token 18-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 compound-spaced-phrase checked against cal-m5-10d-019-s1 with evidence token 18-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 word-idiom checked against cal-m5-10d-019-s1 with evidence token 18-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-019 relation-review has no candidate after checking cal-m5-10d-019-s1."
+      },
+      "decision_note": "m5-10d-cal-019 cal-m5-10d-019 received included after checking cal-m5-10d-019-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-020",
+      "record_id": "cal-m5-10d-020",
+      "source_record_sha256": "4212a440f5d179f7a4c95d90d5fd97408ad1efc4b365855044c6ba6d3043a89b",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-020 lemma-pos checked against cal-m5-10d-020-s1."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-020-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-020 sense-review retained cal-m5-10d-020-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 physical-figurative checked against cal-m5-10d-020-s1 with evidence token 19-0."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 homonym-pos checked against cal-m5-10d-020-s1 with evidence token 19-1."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 sensory-emotion-state-action checked against cal-m5-10d-020-s1 with evidence token 19-2."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 directional-symmetry checked against cal-m5-10d-020-s1 with evidence token 19-3."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 compound-spaced-phrase checked against cal-m5-10d-020-s1 with evidence token 19-4."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 word-idiom checked against cal-m5-10d-020-s1 with evidence token 19-5."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-020 relation-review has no candidate after checking cal-m5-10d-020-s1."
+      },
+      "decision_note": "m5-10d-cal-020 cal-m5-10d-020 received held after checking cal-m5-10d-020-s1."
+    }
+  ],
+  "note": "Editorial decisions were separately authored during the timed semantic pass and finalized only after all editorial passes stopped."
+}

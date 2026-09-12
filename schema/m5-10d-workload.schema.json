@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-workload.schema.json",
+  "title": "Typewriter M5-10D frozen editorial workload",
+  "description": "A pass-by-pass workload declared before timing starts. It contains no editorial verdicts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "issue", "parent_issue", "batch_id", "process_revision", "declaration_kind", "declaration_status", "frozen_at", "source", "case_count", "processed_start_count", "passes", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-workload-20260912" },
+    "issue": { "const": 115 },
+    "parent_issue": { "const": 7 },
+    "batch_id": { "const": "m5-10d-editor-time-recalibration-20260912" },
+    "process_revision": { "const": "m5-10d-editor-workload-v1" },
+    "declaration_kind": { "const": "source-declared-before-each-pass" },
+    "declaration_status": { "const": "frozen" },
+    "frozen_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposal_artifact", "proposal_sha256", "decision_independent"],
+      "properties": {
+        "proposal_artifact": { "const": "external:m5-10d-calibration-proposal" },
+        "proposal_sha256": { "$ref": "#/$defs/sha256" },
+        "decision_independent": { "const": true }
+      }
+    },
+    "case_count": { "const": 20 },
+    "processed_start_count": { "const": 20 },
+    "passes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/pass" }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "pass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "role", "unit_kind", "declaration_source", "declared_at", "expected_unit_ids", "expected_unit_count", "expected_unit_set_sha256", "empty_work", "note"],
+      "properties": {
+        "id": { "enum": ["target-preparation", "initial-review", "feedback-fixes", "final-verification", "held-rejected", "post-freeze-audit"] },
+        "role": { "enum": ["target-preparation", "semantic-review", "feedback-fix", "final-verification", "held-rejected", "post-freeze-audit"] },
+        "unit_kind": { "enum": ["calibration-start", "feedback-fix", "final-verification", "held-rejected", "audit-review"] },
+        "declaration_source": { "enum": ["pre-review-sample", "predeclared-feedback-queue", "predeclared-verification-queue", "predeclared-hold-rejection-queue", "frozen-editorial-sample"] },
+        "declared_at": { "type": "string", "format": "date-time" },
+        "expected_unit_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^m5-10d-cal-[0-9]{3}$" }
+        },
+        "expected_unit_count": { "type": "integer", "minimum": 0 },
+        "expected_unit_set_sha256": { "$ref": "#/$defs/sha256" },
+        "empty_work": { "type": "boolean" },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

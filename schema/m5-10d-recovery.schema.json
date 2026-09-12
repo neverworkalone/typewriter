@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-recovery.schema.json",
+  "title": "Typewriter M5-10D editor-time recovery",
+  "description": "Source-derived workload correction and recovery gate. It does not mutate canonical data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "issue", "parent_issue", "process_revision", "status", "canonical_mutation", "canonical_snapshot", "inventory_snapshot", "source", "calibration", "verification", "gate_status", "decision", "ready_to_create", "next_stage_created", "next_stage_authorized", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-editor-time-recovery-20260912" },
+    "issue": { "const": 115 },
+    "parent_issue": { "const": 7 },
+    "process_revision": { "const": "m5-10d-editor-workload-v1" },
+    "status": { "const": "complete" },
+    "canonical_mutation": { "const": false },
+    "canonical_snapshot": { "$ref": "#/$defs/snapshot" },
+    "inventory_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "completed_start_count", "before_sha256", "after_sha256"],
+      "properties": {
+        "revision": { "const": "m5-11" },
+        "completed_start_count": { "const": 778 },
+        "before_sha256": { "$ref": "#/$defs/sha256" },
+        "after_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "source": { "$ref": "#/$defs/source" },
+    "calibration": { "$ref": "#/$defs/calibration" },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["editorial_review_complete", "human_editorial_review_complete", "canonical_integrity", "deterministic_sqlite", "search_product_regression", "calibration_canonical_mutation"],
+      "properties": {
+        "editorial_review_complete": { "const": true },
+        "human_editorial_review_complete": { "const": false },
+        "canonical_integrity": { "const": true },
+        "deterministic_sqlite": { "const": true },
+        "search_product_regression": { "const": true },
+        "calibration_canonical_mutation": { "const": false }
+      }
+    },
+    "gate_status": { "enum": ["pass", "fail"] },
+    "decision": { "enum": ["APPROVE BOUNDED", "HOLD PROCESS"] },
+    "ready_to_create": { "type": "boolean" },
+    "next_stage_created": { "const": false },
+    "next_stage_authorized": { "const": false },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
+      "properties": {
+        "record_count": { "const": 820 },
+        "start_count": { "const": 778 },
+        "reference_only_count": { "const": 42 },
+        "sense_count": { "const": 966 },
+        "relation_count": { "const": 473 },
+        "expression_count": { "const": 63 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["failed_stage", "failed_stage_sha256", "failed_manifest", "failed_manifest_sha256", "failed_metrics", "failed_metrics_sha256", "failed_verification", "failed_verification_sha256", "failed_relation_diff", "failed_relation_diff_sha256", "failed_recovery", "failed_recovery_sha256", "repair_revision", "repair_revision_sha256", "workload", "workload_sha256", "proposal_artifact", "proposal_sha256", "editorial_decisions", "editorial_decisions_sha256", "editorial_timing", "editorial_timing_sha256", "audit_decisions", "audit_decisions_sha256", "audit_timing", "audit_timing_sha256", "verification", "verification_sha256", "canonical_directory", "canonical_directory_sha256", "inventory", "inventory_sha256"],
+      "properties": {
+        "failed_stage": { "const": "data/batches/m5-10-wave-b-stage.json" },
+        "failed_stage_sha256": { "$ref": "#/$defs/sha256" },
+        "failed_manifest": { "const": "data/batches/m5-10-wave-b.json" },
+        "failed_manifest_sha256": { "$ref": "#/$defs/sha256" },
+        "failed_metrics": { "const": "data/batches/m5-10-wave-b-metrics.json" },
+        "failed_metrics_sha256": { "$ref": "#/$defs/sha256" },
+        "failed_verification": { "const": "data/batches/m5-10-wave-b-verification.json" },
+        "failed_verification_sha256": { "$ref": "#/$defs/sha256" },
+        "failed_relation_diff": { "const": "data/batches/m5-10-wave-b-relation-diff.json" },
+        "failed_relation_diff_sha256": { "$ref": "#/$defs/sha256" },
+        "failed_recovery": { "const": "data/batches/m5-10c-recovery.json" },
+        "failed_recovery_sha256": { "$ref": "#/$defs/sha256" },
+        "repair_revision": { "const": "data/batches/m5-10a-process-correction.json" },
+        "repair_revision_sha256": { "$ref": "#/$defs/sha256" },
+        "workload": { "const": "data/batches/m5-10d-workload-20260912.json" },
+        "workload_sha256": { "$ref": "#/$defs/sha256" },
+        "proposal_artifact": { "const": "external:m5-10d-calibration-proposal" },
+        "proposal_sha256": { "$ref": "#/$defs/sha256" },
+        "editorial_decisions": { "const": "data/batches/m5-10d-editorial-decisions-20260912.json" },
+        "editorial_decisions_sha256": { "$ref": "#/$defs/sha256" },
+        "editorial_timing": { "const": "data/batches/m5-10d-editorial-timing-20260912.json" },
+        "editorial_timing_sha256": { "$ref": "#/$defs/sha256" },
+        "audit_decisions": { "const": "data/batches/m5-10d-audit-decisions-20260912.json" },
+        "audit_decisions_sha256": { "$ref": "#/$defs/sha256" },
+        "audit_timing": { "const": "data/batches/m5-10d-audit-timing-20260912.json" },
+        "audit_timing_sha256": { "$ref": "#/$defs/sha256" },
+        "verification": { "const": "data/batches/m5-10d-verification-20260912.json" },
+        "verification_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical_directory": { "const": "data/canonical" },
+        "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
+        "inventory": { "const": "data/inventory/m5-target-inventory.json" },
+        "inventory_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_count", "processed_start_count", "decision_counts", "correction_rate", "relation", "timing", "audit", "canonical_mutation", "workload_coverage"],
+      "properties": {
+        "case_count": { "const": 20 },
+        "processed_start_count": { "const": 20 },
+        "decision_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["included", "corrected", "held", "rejected"],
+          "properties": {
+            "included": { "type": "integer", "minimum": 0 },
+            "corrected": { "type": "integer", "minimum": 0 },
+            "held": { "type": "integer", "minimum": 0 },
+            "rejected": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "correction_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "relation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["raw_proposal_count", "noise_count", "noise_rate", "no_candidate_count"],
+          "properties": {
+            "raw_proposal_count": { "type": "integer", "minimum": 0 },
+            "noise_count": { "type": "integer", "minimum": 0 },
+            "noise_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "no_candidate_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "timing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "measurement_kind", "total_wall_clock_seconds", "total_editor_seconds", "total_producer_seconds", "editor_seconds_per_processed_start", "producer_seconds_per_processed_start", "unmeasured_pass_count", "pass_ids", "zero_work_pass_ids"],
+          "properties": {
+            "status": { "const": "complete" },
+            "measurement_kind": { "const": "editor-judgment" },
+            "total_wall_clock_seconds": { "type": "number", "minimum": 0 },
+            "total_editor_seconds": { "type": "number", "minimum": 0 },
+            "total_producer_seconds": { "type": "number", "minimum": 0 },
+            "editor_seconds_per_processed_start": { "type": "number", "minimum": 0 },
+            "producer_seconds_per_processed_start": { "type": "number", "minimum": 0 },
+            "unmeasured_pass_count": { "const": 0 },
+            "pass_ids": { "type": "array", "minItems": 6, "uniqueItems": true, "items": { "type": "string" } },
+            "zero_work_pass_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "independent", "case_count", "open_blocker_count", "finding_count"],
+          "properties": {
+            "status": { "const": "complete" },
+            "independent": { "const": true },
+            "case_count": { "const": 20 },
+            "open_blocker_count": { "type": "integer", "minimum": 0 },
+            "finding_count": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "canonical_mutation": { "const": false },
+        "workload_coverage": { "const": true }
+      }
+    }
+  }
+}

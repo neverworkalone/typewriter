@@ -1,0 +1,42 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-verification-20260912",
+  "issue": 115,
+  "status": "passed",
+  "verified_at": "2026-09-12T11:41:43.576Z",
+  "editorial_review_complete": true,
+  "human_editorial_review_complete": false,
+  "canonical_integrity": true,
+  "deterministic_sqlite": true,
+  "search_product_regression": true,
+  "calibration_canonical_mutation": false,
+  "canonical_snapshot": {
+    "record_count": 820,
+    "start_count": 778,
+    "reference_only_count": 42,
+    "sense_count": 966,
+    "relation_count": 473,
+    "expression_count": 63
+  },
+  "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+  "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+  "checks": [
+    {
+      "id": "canonical-integrity",
+      "status": "pass"
+    },
+    {
+      "id": "deterministic-sqlite",
+      "status": "pass"
+    },
+    {
+      "id": "search-product-regression",
+      "status": "pass"
+    },
+    {
+      "id": "calibration-canonical-boundary",
+      "status": "pass"
+    }
+  ],
+  "note": "Deterministic self-authored M5-10D machine verification fixture."
+}

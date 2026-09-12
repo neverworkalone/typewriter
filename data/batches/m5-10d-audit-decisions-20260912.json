@@ -1,0 +1,222 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-audit-decisions-20260912",
+  "batch_id": "m5-10d-editor-time-recalibration-20260912",
+  "source_kind": "codex-authored",
+  "decision_source": "separately-authored-post-freeze-comparison",
+  "independent": true,
+  "proposal_sha256": "0185afddd0690fca51ce45b4673ae80d476f036f60f1af36afa2bd815e5517e3",
+  "editorial_decisions_sha256": "89cbdff6e96082669a738bf7b34f50707b416f8f1a23c4c5e9c05fd340b5d284",
+  "editorial_session_id": "3bf85eb1-9ca9-4e3d-8954-979cefe8bafb",
+  "audit_session_id": "56445045-691c-49d7-80da-2fb9cf4e4c32",
+  "timing_session_id": "551296fb-eb14-4c66-8da7-ff74b2b41837",
+  "draft_created_at": "2026-09-12T11:41:04.884Z",
+  "created_at": "2026-09-12T11:41:31.338Z",
+  "finalized_at": "2026-09-12T11:41:31.341Z",
+  "status": "complete",
+  "case_reviews": [
+    {
+      "case_id": "m5-10d-cal-001",
+      "source_record_sha256": "e18eb0e954002ffc3277b7c0d7a95a90e9cf97975b7c5f3725e2649ad493cf85",
+      "editorial_record_sha256": "450addc23d33b4404d058cebdf7124b51038f93e81c2833ac63ec105ae1846e5",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-001 audit independently checked the source and frozen decision row for cal-m5-10d-001-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-002",
+      "source_record_sha256": "272d7734d94f3230721bd6013a7c1d36b5816c2ef1bed14cec1048023473f3f9",
+      "editorial_record_sha256": "f2244d3613f77f21515bb2818ca29a96a63578fe5baa50864c061697783447fc",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-002 audit independently checked the source and frozen decision row for cal-m5-10d-002-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-003",
+      "source_record_sha256": "1f28dc4dbe5e3a1d027a3ff1dd90c18cda73179655b659ad039c958abc7d93e7",
+      "editorial_record_sha256": "ffa1ed80bb108e3aa8e2eea6c639f3a113d5f8c365a3920cacb02d857769ec40",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-003 audit independently checked the source and frozen decision row for cal-m5-10d-003-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-004",
+      "source_record_sha256": "b4e913d9df4386f4001f844946bac776dd692fa6348bdb252e5b0741951a1435",
+      "editorial_record_sha256": "069890c64d699b9c05da699579e9f16aafe505d6a49c19a5bf8059d8fba4bc88",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-004 audit independently checked the source and frozen decision row for cal-m5-10d-004-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-005",
+      "source_record_sha256": "db6dc882cdbbef78fa74563931606628ec5d6a41f0e9c116cd96900616dde474",
+      "editorial_record_sha256": "e5c10c26dae70a5760d9ae6f17850e4bdff15611fd6c8d3d3b53d5ce8a6769ef",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-005 audit independently checked the source and frozen decision row for cal-m5-10d-005-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-006",
+      "source_record_sha256": "9ead2d2a87c644a07af92a14bafcf6f894d34a2359eaa6a8ef5b3a8cbc07195e",
+      "editorial_record_sha256": "29964f3f38f2880713a5589d637a67d6bd49dd6d7f2a4088848e2ddcc3ab7931",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-006 audit independently checked the source and frozen decision row for cal-m5-10d-006-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-007",
+      "source_record_sha256": "2fe2046eea3ff4760ee9c12224573e8de8ace65d768b45b3248c4bb7f64335eb",
+      "editorial_record_sha256": "51038dded377e98f81508d982d41594959486d965ba89f7b79947e9f97650c67",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-007 audit independently checked the source and frozen decision row for cal-m5-10d-007-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-008",
+      "source_record_sha256": "d0686fc2c6acc7bda04ea71ea8f3d4970fa2eeaf225fd813a51c6c1723773db1",
+      "editorial_record_sha256": "1f8f419886e6b1ece29f074dcc6ecfe512cf022d9997b82a0a2da4ae63804159",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-008 audit independently checked the source and frozen decision row for cal-m5-10d-008-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-009",
+      "source_record_sha256": "fc093d2e1c93ec1790fa894554a9010f49e95a9ed85adfdf29c094c091ab1b33",
+      "editorial_record_sha256": "54cc67aab0fda8d79a8dcc60e7f92f408ba7e1b38268ed862dfd43cf38ee3553",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-009 audit independently checked the source and frozen decision row for cal-m5-10d-009-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-010",
+      "source_record_sha256": "254f5e7a1ba64d1726dbfaaacbf2efeca2b48bdda0094ff9fa1036dfab46a5de",
+      "editorial_record_sha256": "e3f91211ed1072d22ae3af2b154a78e9e9295747fd9def18c721db8d3b6728ef",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-010 audit independently checked the source and frozen decision row for cal-m5-10d-010-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-011",
+      "source_record_sha256": "9fee3fe5deffbdc73a52a3ec2d29ca38c583e1f21ec35ed8f914eb463d9667bb",
+      "editorial_record_sha256": "29dd574d28395af0c8bb0fcadbbfedb23ecb4653b1fd929909eeabaad7d573eb",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-011 audit independently checked the source and frozen decision row for cal-m5-10d-011-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-012",
+      "source_record_sha256": "b28389bc751fb1a9c01258e09a4388f92540dac3cc8eae76c762899c471176c4",
+      "editorial_record_sha256": "ba11032afff31324d4fe003c3a4b5020dfcae4720d05ccb49a1c3569fcaecbc8",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-012 audit independently checked the source and frozen decision row for cal-m5-10d-012-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-013",
+      "source_record_sha256": "b4b91b5756d3bbeb5aed3963b7d18361966842755534d7b72dc9ea3bacc2f791",
+      "editorial_record_sha256": "674879a79423b914b31cb94ff6e3f2c181bb3ca81c5dc43e9c0482ff948c39a5",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-013 audit independently checked the source and frozen decision row for cal-m5-10d-013-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-014",
+      "source_record_sha256": "bb599d5a02db7dd7ec87ba8eb78da7b8dde4793d2dd98becf92c45bd8f43bb22",
+      "editorial_record_sha256": "97725d7756699cf57d4ce8d632b69a7f1c7b5976fc612dfbe5843cdff1e39253",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-014 audit independently checked the source and frozen decision row for cal-m5-10d-014-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-015",
+      "source_record_sha256": "1ff8cf8a1ab41ebf4ff8eb262930beaaa9c603725c22a4798d1a6c9cda790071",
+      "editorial_record_sha256": "8fcd48983eb809b95714b15dc3cc0f1c1dc6fa8d404765aee5d3deaed76526bc",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-015 audit independently checked the source and frozen decision row for cal-m5-10d-015-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-016",
+      "source_record_sha256": "6eb7f529d678c4801bc6d92e007189abcb5c9571039f7b124e9f19bfb8c1d0c7",
+      "editorial_record_sha256": "33347b811db8c25cb8b9a3071bb7d5f8961fa7620213a9b2ec8f49b1833dfbb7",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-016 audit independently checked the source and frozen decision row for cal-m5-10d-016-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-017",
+      "source_record_sha256": "b535f8900a2ae5fb2b59b6c55b0353c7bf5d780fbed16cd1a933d78d8f89d8ea",
+      "editorial_record_sha256": "fdbccbdf7678ebc1cc26b9293c1bcfa686eebecf67cc76320bce8fb807f937c4",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-017 audit independently checked the source and frozen decision row for cal-m5-10d-017-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-018",
+      "source_record_sha256": "ce6984dcf62dd4fec57d309cc68374cdd82d3c36fb2e648aa70d59b93b91b395",
+      "editorial_record_sha256": "e9b9b3adbd31b02e822bfaa0d36867861059290ed718d56a88f105baf5d6d440",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-018 audit independently checked the source and frozen decision row for cal-m5-10d-018-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-019",
+      "source_record_sha256": "055c5a42851aa220b74a29948663fbf73c8bf48064a3725c7d8a341b480245fd",
+      "editorial_record_sha256": "55d1729fc92997e669a2c9c7aaeed416c86516a25e711f269c182d1776e6329b",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-019 audit independently checked the source and frozen decision row for cal-m5-10d-019-s1."
+    },
+    {
+      "case_id": "m5-10d-cal-020",
+      "source_record_sha256": "4212a440f5d179f7a4c95d90d5fd97408ad1efc4b365855044c6ba6d3043a89b",
+      "editorial_record_sha256": "22305eaebf3138a9b0fedd5045bd4f1ad8e8757875131d1f694d8f972342303d",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-020 audit independently checked the source and frozen decision row for cal-m5-10d-020-s1."
+    }
+  ],
+  "findings": [],
+  "open_blocker_count": 0,
+  "note": "Independent post-freeze comparisons were authored after the editorial artifact was frozen and during a separate audit timing session."
+}
