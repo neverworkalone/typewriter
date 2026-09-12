@@ -284,6 +284,7 @@ export function validateM5CProposal(proposal, { canonicalRecords = [] } = {}) {
     }
   }
   const compactCases = proposal.cases.map((item) => ({
+    phase: 'proposal',
     case_id: item.case_id,
     record_id: item.record.id,
     source_record_sha256: recordDigest(item.record),
@@ -367,6 +368,7 @@ export function validateM5CTiming(timing, {
   expectedEditorialSessionId,
   expectedAuditSessionId,
   expectedEditorialDecisionsSha256,
+  expectedProposalCases,
   expectedUnitIds,
 } = {}) {
   validateSchema(timing, timingValidator, 'timing', 'M5-10C timing', 'TIMING_SCHEMA_ERROR');
@@ -391,6 +393,11 @@ export function validateM5CTiming(timing, {
   let totalEditorSeconds = 0;
   let totalWallClockSeconds = 0;
   let totalProducerSeconds = 0;
+  const expectedCasesById = expectedProposalCases === undefined
+    ? undefined
+    : new Map(expectedProposalCases instanceof Map
+      ? expectedProposalCases
+      : expectedProposalCases.map((item) => [item.case_id, item]));
   for (const pass of timing.passes) {
     if (pass.status !== 'complete') fail(`${pass.id} timing pass is not complete`, 'TIMING_INCOMPLETE');
     requireUuid(pass.session_id, `${pass.id}.session_id`);
@@ -407,6 +414,12 @@ export function validateM5CTiming(timing, {
     let producerSeconds = 0;
     for (const row of workRows) {
       validateProposalOnlyWorkRow(row, pass.id);
+      assertEqual(row.input.payload.case_id, row.unit_id, `${pass.id}:${row.unit_id} input unit`, 'PRODUCER_INPUT_MISMATCH');
+      if (expectedCasesById !== undefined) {
+        const expectedCase = expectedCasesById.get(row.unit_id);
+        if (!expectedCase) fail(`${pass.id}:${row.unit_id} is outside the proposal case set`, 'PRODUCER_INPUT_MISMATCH');
+        assertEqual(row.input.payload, expectedCase, `${pass.id}:${row.unit_id} proposal input`, 'PRODUCER_INPUT_MISMATCH');
+      }
       const producerElapsed = (Date.parse(row.producer.completed_at) - Date.parse(row.producer.started_at)) / 1000;
       producerSeconds += producerElapsed;
       if (Date.parse(row.producer.started_at) < Date.parse(pass.started_at)
@@ -702,6 +715,7 @@ export async function validateM5CRecovery({
   const editorialTiming = validateM5CTiming(editorialTimingSource.value, {
     timingKind: 'editorial',
     expectedProposalSha256: proposalSource.sha256,
+    expectedProposalCases: proposalInfo.compact_cases,
     expectedUnitIds: proposalInfo.case_ids,
   });
   editorialTiming.timing = editorialTimingSource.value;
@@ -713,14 +727,22 @@ export async function validateM5CRecovery({
     expectedEditorialSessionId: editorialSource.value.editorial_session_id,
     expectedAuditSessionId: auditSource.value.audit_session_id,
     expectedEditorialDecisionsSha256: editorialInfo.sha256,
+    expectedProposalCases: proposalInfo.compact_cases,
     expectedUnitIds: proposalInfo.case_ids,
   });
   auditTiming.timing = auditTimingSource.value;
   const auditInfo = validateM5CAuditDecisions(auditSource.value, editorialInfo, proposalInfo, auditTiming);
   const currentCanonicalSnapshot = canonicalSnapshot(canonical.records);
   const canonicalDirectorySha256 = await hashCanonicalDirectory(canonicalDirectory);
-  const inventoryBeforeSha256 = inventorySource.sha256;
+  const initialCanonicalDirectorySha256 = editorialTimingSource.value.canonical_directory_sha256;
+  const auditInitialCanonicalDirectorySha256 = auditTimingSource.value.canonical_directory_sha256;
+  assertEqual(initialCanonicalDirectorySha256, canonicalDirectorySha256, 'canonical data changed during M5-10C recovery', 'CALIBRATION_CANONICAL_MUTATION');
+  assertEqual(auditInitialCanonicalDirectorySha256, canonicalDirectorySha256, 'canonical data changed before post-freeze audit', 'CALIBRATION_CANONICAL_MUTATION');
+  assertEqual(auditInitialCanonicalDirectorySha256, initialCanonicalDirectorySha256, 'editorial and audit canonical snapshots differ', 'CALIBRATION_CANONICAL_MUTATION');
+  const inventoryBeforeSha256 = editorialTimingSource.value.inventory_sha256;
   const inventoryAfterSha256 = inventorySource.sha256;
+  assertEqual(inventoryBeforeSha256, inventoryAfterSha256, 'target inventory changed during M5-10C recovery', 'CALIBRATION_INVENTORY_MUTATION');
+  assertEqual(auditTimingSource.value.inventory_sha256, inventoryAfterSha256, 'target inventory changed before post-freeze audit', 'CALIBRATION_INVENTORY_MUTATION');
   validateSchema(artifactSource.value, recoveryValidator, 'recovery', 'M5-10C recovery', 'RECOVERY_SCHEMA_ERROR');
   const artifact = artifactSource.value;
   assertEqual(artifact.process_revision, M5_10C_PROCESS_REVISION, 'recovery process revision drifted', 'RECOVERY_SCOPE_MISMATCH');
@@ -751,7 +773,7 @@ export async function validateM5CRecovery({
     relation_diff: failedRelationDiffSource,
   });
   assertEqual(repairSource.value.process_revision, 'm5-10a-process-correction-v1', 'repair revision changed', 'REPAIR_REVISION_MISMATCH');
-  assertEqual(repairSource.value.canonical_snapshot.start_count, 578, 'repair revision canonical base changed', 'REPAIR_REVISION_MISMATCH');
+  assertEqual(repairSource.value.canonical_scope.snapshot.start_count, 578, 'repair revision canonical base changed', 'REPAIR_REVISION_MISMATCH');
   const inventory = inventorySource.value;
   assertEqual(inventory.revision, 'm5-11', 'inventory revision drifted', 'INVENTORY_SOURCE_MISMATCH');
   assertEqual(inventory.canonical_snapshot.start_count, currentCanonicalSnapshot.start_count, 'inventory canonical snapshot drifted', 'INVENTORY_SOURCE_MISMATCH');
@@ -844,6 +866,9 @@ export async function validateM5CAuthorization({
   ]);
   validateSchema(authorizationSource.value, authorizationValidator, 'authorization', 'M5-10C authorization', 'AUTHORIZATION_SCHEMA_ERROR');
   const authorization = authorizationSource.value;
+  assertEqual(recoverySource.value.gate_status, 'pass', 'authorization requires a passing M5-10C recovery gate', 'AUTHORIZATION_SCOPE_MISMATCH');
+  assertEqual(recoverySource.value.decision, 'APPROVE BOUNDED', 'authorization requires an approved M5-10C recovery decision', 'AUTHORIZATION_SCOPE_MISMATCH');
+  assertEqual(recoverySource.value.ready_to_create, true, 'authorization requires recovery ready_to_create', 'AUTHORIZATION_SCOPE_MISMATCH');
   assertEqual(authorization.source.recovery_artifact_sha256, recoverySource.sha256, 'authorization recovery digest drifted', 'AUTHORIZATION_SOURCE_MISMATCH');
   assertEqual(authorization.failed_stage.sha256, failedStageSource.sha256, 'authorization failed stage digest drifted', 'AUTHORIZATION_SOURCE_MISMATCH');
   assertEqual(authorization.source.repair_revision === 'data/batches/m5-10a-process-correction.json', true, 'authorization repair source drifted', 'AUTHORIZATION_SOURCE_MISMATCH');

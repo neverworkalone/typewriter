@@ -15,7 +15,6 @@ import {
   DEFAULT_RECOVERY_PATH,
   DEFAULT_VERIFICATION_PATH,
   M5_10C_AUDIT_PASS_IDS,
-  M5_10C_BATCH_ID,
   M5_10C_CANONICAL_SNAPSHOT,
   M5_10C_CASE_COUNT,
   M5_10C_EDITORIAL_PASS_IDS,
@@ -183,6 +182,7 @@ export async function buildM5CRecovery({
   const editorialTiming = validateM5CTiming(editorialTimingSource.value, {
     timingKind: 'editorial',
     expectedProposalSha256: proposalSource.sha256,
+    expectedProposalCases: proposalInfo.compact_cases,
     expectedUnitIds: proposalInfo.case_ids,
   });
   editorialTiming.timing = editorialTimingSource.value;
@@ -194,6 +194,7 @@ export async function buildM5CRecovery({
     expectedEditorialSessionId: editorialSource.value.editorial_session_id,
     expectedAuditSessionId: auditSource.value.audit_session_id,
     expectedEditorialDecisionsSha256: editorialInfo.sha256,
+    expectedProposalCases: proposalInfo.compact_cases,
     expectedUnitIds: proposalInfo.case_ids,
   });
   auditTiming.timing = auditTimingSource.value;
@@ -201,6 +202,15 @@ export async function buildM5CRecovery({
 
   const snapshot = canonicalSnapshot(canonical.records);
   const canonicalDirectorySha256 = await hashCanonicalDirectory(canonicalDirectory);
+  const inventoryBeforeSha256 = editorialTimingSource.value.inventory_sha256;
+  if (editorialTimingSource.value.canonical_directory_sha256 !== canonicalDirectorySha256
+    || auditTimingSource.value.canonical_directory_sha256 !== canonicalDirectorySha256) {
+    throw new Error('canonical data changed during M5-10C recovery');
+  }
+  if (inventoryBeforeSha256 !== inventorySource.sha256
+    || auditTimingSource.value.inventory_sha256 !== inventorySource.sha256) {
+    throw new Error('target inventory changed during M5-10C recovery');
+  }
   if (JSON.stringify(snapshot) !== JSON.stringify(M5_10C_CANONICAL_SNAPSHOT)) {
     throw new Error(`current canonical snapshot does not match the M5-10C base: ${JSON.stringify(snapshot)}`);
   }
@@ -266,7 +276,7 @@ export async function buildM5CRecovery({
     inventory_snapshot: {
       revision: inventorySource.value.revision,
       completed_start_count: inventorySource.value.canonical_snapshot.start_count,
-      before_sha256: inventorySource.sha256,
+      before_sha256: inventoryBeforeSha256,
       after_sha256: inventorySource.sha256,
     },
     source,

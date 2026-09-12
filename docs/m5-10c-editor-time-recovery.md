@@ -73,7 +73,8 @@ The recovery artifact is derived by:
 
 ```sh
 npm run batch:m5-10c:recovery:build
-npm run batch:m5-10c:recovery:check
+npm run batch:m5-10c:recovery:check -- \
+  --proposal=/path/to/external/m5-10c-calibration-proposal.json
 ```
 
 The check validates the exact canonical snapshot, unchanged failed-stage

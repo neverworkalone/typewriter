@@ -334,7 +334,13 @@ async function recordWork(kind, args) {
   assertNoVerdictKeys(input, `${passId} work input`);
   if (input.phase !== 'proposal') fail('M5-10C timing work accepts proposal facts only', 'PRODUCER_VERDICT_FORBIDDEN');
   const unitId = requireCaseId(args.unit ?? input.case_id, 'unit');
+  if (input.case_id !== unitId) fail(`${passId} input case_id does not match unit`, 'PRODUCER_INPUT_MISMATCH');
   if (pass.work_evidence.unit_ids.includes(unitId)) fail(`${unitId} was already recorded in ${passId}`, 'TIMING_SCOPE_MISMATCH');
+  const proposal = await proposalSource(resolvePath(args.proposal, '/private/tmp/typewriter-m5-10c-calibration-proposal.json'));
+  if (proposal.sha256 !== session.proposal_sha256) fail('proposal digest does not match timing session', 'TIMING_SOURCE_BINDING');
+  const expectedInput = proposal.info.compact_cases.find(({ case_id: caseId }) => caseId === unitId);
+  if (!expectedInput) fail(`${unitId} is outside the proposal case set`, 'PRODUCER_INPUT_MISMATCH');
+  if (JSON.stringify(input) !== JSON.stringify(expectedInput)) fail(`${unitId} input facts do not match the external proposal`, 'PRODUCER_INPUT_MISMATCH');
   const payloadSha256 = sha256Json(input);
   const producerStartedAt = now();
   const payload = produce({

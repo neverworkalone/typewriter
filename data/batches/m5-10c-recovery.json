@@ -1,0 +1,110 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10c-editor-time-recovery-20260910",
+  "issue": 113,
+  "parent_issue": 7,
+  "process_revision": "m5-10c-editor-time-recovery-v1",
+  "canonical_mutation": false,
+  "status": "complete",
+  "canonical_snapshot": {
+    "record_count": 820,
+    "start_count": 778,
+    "reference_only_count": 42,
+    "sense_count": 966,
+    "relation_count": 473,
+    "expression_count": 63
+  },
+  "inventory_snapshot": {
+    "revision": "m5-11",
+    "completed_start_count": 778,
+    "before_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+    "after_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
+  },
+  "source": {
+    "failed_stage": "data/batches/m5-10-wave-b-stage.json",
+    "failed_stage_sha256": "a91b844544b233a0b1f06dedfd7d38f031e4115aa9f4cb414fbc36d3d1c01065",
+    "failed_manifest": "data/batches/m5-10-wave-b.json",
+    "failed_manifest_sha256": "f3ffccf620790553f80a0efe344a15e8a2d5acfab1e0458657f1220b526db242",
+    "failed_metrics": "data/batches/m5-10-wave-b-metrics.json",
+    "failed_metrics_sha256": "4e551a6d27e06a0af81ad79949f9282ed91c479be797092600715714d2a6edb0",
+    "failed_verification": "data/batches/m5-10-wave-b-verification.json",
+    "failed_verification_sha256": "15aa78135a81d3d43887fde55d27ec7b0d2863e1f53e05167b7d01525852044c",
+    "failed_relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
+    "failed_relation_diff_sha256": "b83e025e76dc581d11ece5e94353b64ea46f9df6979cbedc08f01dfe002b7b23",
+    "repair_revision": "data/batches/m5-10a-process-correction.json",
+    "repair_revision_sha256": "2ec628acd9fcc1289331f431094b079511268d810237d435d90a13d10c33d31d",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+    "inventory": "data/inventory/m5-target-inventory.json",
+    "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+    "proposal_artifact": "external:m5-10c-calibration-proposal",
+    "proposal_sha256": "c7a14a928d6ed6b7a66d1bae64a88acadd866e1260b34bfa7a5f0e17b351fc97",
+    "editorial_decisions": "data/batches/m5-10c-editorial-decisions-20260910.json",
+    "editorial_decisions_sha256": "581c40feff8b8a3823eade34c3f343bf1d6a15e6727734e7d7c677298c53ded8",
+    "editorial_timing": "data/batches/m5-10c-editorial-timing-20260910.json",
+    "editorial_timing_sha256": "e36735d71227aa44739ae1806800873b683b45e47cae4c0cb666210c84d71a68",
+    "audit_decisions": "data/batches/m5-10c-audit-decisions-20260910.json",
+    "audit_decisions_sha256": "c39d18b50e10b7e242843c26ee81cadd7b9ab71d6d61da370776171277770056",
+    "audit_timing": "data/batches/m5-10c-audit-timing-20260910.json",
+    "audit_timing_sha256": "1d5e70599b1ca3daa931cf0aa23b8d17e878f00b80acde6ff81dd5f7c583fcd7",
+    "verification": "data/batches/m5-10c-verification.json",
+    "verification_sha256": "fbfbdc9151b3e4d594df037e9d6872d3896b644c57aa451a0cf822d8eccc5e56"
+  },
+  "calibration": {
+    "case_count": 20,
+    "processed_start_count": 20,
+    "decision_counts": {
+      "included": 11,
+      "corrected": 5,
+      "held": 4,
+      "rejected": 0
+    },
+    "correction_rate": 0.25,
+    "relation": {
+      "raw_proposal_count": 8,
+      "noise_count": 1,
+      "noise_rate": 0.125,
+      "no_candidate_count": 12
+    },
+    "timing": {
+      "status": "complete",
+      "measurement_kind": "editor-judgment",
+      "total_wall_clock_seconds": 529.741,
+      "total_editor_seconds": 529.741,
+      "total_producer_seconds": 0.013000000000000001,
+      "editor_seconds_per_processed_start": 26.48705,
+      "producer_seconds_per_processed_start": 0.0006500000000000001,
+      "unmeasured_pass_count": 0,
+      "pass_ids": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected",
+        "post-freeze-audit"
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "case_count": 20,
+      "open_blocker_count": 0,
+      "finding_count": 0
+    },
+    "canonical_mutation": false
+  },
+  "verification": {
+    "editorial_review_complete": true,
+    "human_editorial_review_complete": false,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true,
+    "calibration_canonical_mutation": false
+  },
+  "gate_status": "fail",
+  "decision": "HOLD PROCESS",
+  "ready_to_create": false,
+  "next_stage_created": false,
+  "next_stage_authorized": false,
+  "note": "M5-10C editor-time recovery held the process; failed gates: editor_seconds_per_processed_start. No #97 data or authorization was created."
+}
