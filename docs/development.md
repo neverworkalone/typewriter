@@ -130,13 +130,15 @@ npm run batch:import -- \
 npm run batch:process:check
 npm run batch:repair:check
 npm run batch:m5-10d:contract:check
-# M5-10D keeps the external proposal outside the repository; build the provisional workload first.
+# M5-10D keeps its calibration-only proposal separate from canonical data.
 npm run batch:m5-10d:workload:build -- \
   --provisional=true \
-  --proposal=/private/tmp/typewriter-m5-10d-calibration-proposal.json \
+  --proposal=data/batches/m5-10d-calibration-proposal-20260912.json \
   --output=data/batches/m5-10d-workload-20260912.json
 # After initial-review judgment rows are complete, freeze the recorder-owned follow-up source.
 npm run batch:m5-10d:recovery:contract:check
+npm run batch:m5-10d:recovery:check
+npm run batch:m5-10d:authorization:check
 # Start and stop each calibration pass explicitly; the command persists its session.
 npm run batch:m5-10a:calibration:timing -- \
   --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json

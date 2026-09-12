@@ -9,7 +9,9 @@ import {
   DEFAULT_WORKLOAD_PATH,
   M5_10D_BATCH_ID,
   M5_10D_CASE_COUNT,
+  M5_10D_FOLLOW_UP_ARTIFACT,
   M5_10D_PROCESS_REVISION,
+  M5_10D_PROPOSAL_ARTIFACT,
   M5DRecoveryValidationError,
   deriveM5DFollowUpQueues,
   REPOSITORY_DIRECTORY,
@@ -111,11 +113,15 @@ export async function buildM5DWorkload({
     declaration_status: provisional ? 'pre-review' : 'frozen',
     frozen_at: frozenAt,
     source: {
-      proposal_artifact: 'external:m5-10d-calibration-proposal',
+      proposal_artifact: sourcePath(proposalPath) === M5_10D_PROPOSAL_ARTIFACT
+        ? M5_10D_PROPOSAL_ARTIFACT
+        : sourcePath(proposalPath),
       proposal_sha256: proposalSource.sha256,
       decision_independent: true,
       ...(!provisional ? {
-        follow_up_artifact: 'external:m5-10d-follow-up-source',
+        follow_up_artifact: sourcePath(followUpSourcePath) === M5_10D_FOLLOW_UP_ARTIFACT
+          ? M5_10D_FOLLOW_UP_ARTIFACT
+          : sourcePath(followUpSourcePath),
         follow_up_sha256: followUpSource.sha256,
         follow_up_source_kind: followUpSource.value.source_kind,
         follow_up_timing_session_id: followUpSource.value.timing_session_id,

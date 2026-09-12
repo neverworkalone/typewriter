@@ -86,6 +86,12 @@ jobs:
       - name: Validate M5-10D recovery and authorization contract
         run: npm run batch:m5-10d:recovery:contract:check
 
+      - name: Validate committed M5-10D recovery artifact
+        run: npm run batch:m5-10d:recovery:check
+
+      - name: Validate committed M5-10D authorization artifact
+        run: npm run batch:m5-10d:authorization:check
+
       - name: Materialize the committed Wave A2 review shard
         shell: bash
         run: cp data/canonical/m5-10a-wave-a2.jsonl "$RUNNER_TEMP/typewriter-m5-10a-wave-a2-reviewed.jsonl"

@@ -51,9 +51,11 @@ export const M5_10D_EDITOR_SECONDS_PER_PROCESSED_START_MAX = 12;
 export const M5_10D_RELATION_NOISE_RATE_MAX = 0.25;
 export const M5_10D_CORRECTION_RATE_MAX = 0.5;
 
-export const DEFAULT_PROPOSAL_PATH = '/private/tmp/typewriter-m5-10d-calibration-proposal.json';
 export const DEFAULT_WORKLOAD_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-workload-20260912.json');
-export const DEFAULT_FOLLOW_UP_SOURCE_PATH = '/private/tmp/typewriter-m5-10d-follow-up-source.json';
+export const M5_10D_PROPOSAL_ARTIFACT = 'data/batches/m5-10d-calibration-proposal-20260912.json';
+export const M5_10D_FOLLOW_UP_ARTIFACT = 'data/batches/m5-10d-follow-up-source-20260912.json';
+export const DEFAULT_PROPOSAL_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-calibration-proposal-20260912.json');
+export const DEFAULT_FOLLOW_UP_SOURCE_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-follow-up-source-20260912.json');
 export const DEFAULT_EDITORIAL_TIMING_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-editorial-timing-20260912.json');
 export const DEFAULT_EDITORIAL_DECISIONS_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-editorial-decisions-20260912.json');
 export const DEFAULT_AUDIT_TIMING_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-audit-timing-20260912.json');
@@ -380,6 +382,7 @@ export function validateM5DFollowUpSource(sourceInput, {
   timingSessionId,
   initialPassSessionId,
   initialJudgmentRows,
+  initialJudgmentLogSha256,
   initialPass,
   freezeEventId,
 } = {}) {
@@ -409,6 +412,9 @@ export function validateM5DFollowUpSource(sourceInput, {
     }
   }
   if (initialJudgmentRows) {
+    if (initialJudgmentLogSha256 !== undefined) {
+      assertEqual(source.source_judgment_artifact_sha256, initialJudgmentLogSha256, 'follow-up source judgment log digest drifted', 'WORKLOAD_SOURCE_BINDING');
+    }
     const rowsById = new Map(initialJudgmentRows.map((row) => [row.judgment_id, row]));
     for (const finding of source.findings) {
       const judgment = rowsById.get(finding.source_judgment_id);
@@ -417,7 +423,6 @@ export function validateM5DFollowUpSource(sourceInput, {
       assertEqual(judgment.unit_id, finding.case_id, `${finding.case_id} follow-up judgment unit`, 'WORKLOAD_SOURCE_BINDING');
       assertEqual(judgment.pass_session_id, source.source_pass_session_id, `${finding.case_id} follow-up pass session`, 'WORKLOAD_SOURCE_BINDING');
       assertEqual(judgment.evidence.decision_row_sha256, finding.source_judgment_row_sha256, `${finding.case_id} follow-up judgment digest`, 'WORKLOAD_SOURCE_BINDING');
-      assertEqual(judgment.evidence.decision_artifact_sha256, source.source_judgment_artifact_sha256, `${finding.case_id} follow-up artifact digest`, 'WORKLOAD_SOURCE_BINDING');
     }
   }
   if (initialPass && Date.parse(source.created_at) < Date.parse(initialPass.completed_at)) {
@@ -457,7 +462,9 @@ export function freezeM5DWorkload(workload, followUpSource, {
   next.frozen_at = frozenAt;
   next.source = {
     ...next.source,
-    follow_up_artifact: 'external:m5-10d-follow-up-source',
+    follow_up_artifact: next.source.proposal_artifact === 'contract:m5-10d-calibration-proposal'
+      ? 'contract:m5-10d-follow-up-source'
+      : M5_10D_FOLLOW_UP_ARTIFACT,
     follow_up_sha256: sourceInfo.sha256,
     follow_up_source_kind: M5_10D_FOLLOW_UP_SOURCE_KIND,
     follow_up_timing_session_id: sourceValue.timing_session_id,
@@ -673,34 +680,35 @@ function validateJudgmentArtifact(row, pass, timing, expectedCasesById, expected
   requireString(evidence.path, `${pass.id}:${row.unit_id} judgment artifact path`, 'TIMING_EDITOR_WORK_MISSING');
   requireSha256(evidence.decision_artifact_sha256, `${pass.id}:${row.unit_id} decision artifact digest`);
   requireSha256(evidence.decision_row_sha256, `${pass.id}:${row.unit_id} decision row digest`);
-  const artifactBytes = readSyncBytes(resolveAnyPath(evidence.path), `${pass.id}:${row.unit_id} judgment artifact`);
-  assertEqual(sha256Bytes(artifactBytes), evidence.decision_artifact_sha256, `${pass.id}:${row.unit_id} decision artifact digest drifted`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
-  let artifact;
-  try {
-    artifact = JSON.parse(artifactBytes.toString('utf8'));
-  } catch (error) {
-    fail(`${pass.id}:${row.unit_id} judgment artifact is invalid JSON: ${error.message}`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
-  }
   const expectedCase = expectedCasesById?.get(row.unit_id);
   if (!expectedCase) fail(`${pass.id}:${row.unit_id} judgment is outside proposal`, 'EDITORIAL_SCOPE_MISMATCH');
-  if (evidence.decision_artifact_kind === 'proposal') {
-    if (pass.id !== 'target-preparation' || timing.timing_kind !== 'editorial') fail(`${pass.id}:${row.unit_id} used a proposal as judgment evidence`, 'TIMING_EDITORIAL_PROVENANCE');
-    assertEqual(evidence.decision_artifact_sha256, expectedProposalSha256, `${pass.id}:${row.unit_id} proposal artifact digest`, 'TIMING_SOURCE_BINDING');
-    assertEqual(evidence.decision_row_sha256, sha256Json(expectedCase), `${pass.id}:${row.unit_id} proposal judgment row digest`, 'TIMING_SOURCE_BINDING');
-    if (!Array.isArray(artifact.cases) || !artifact.cases.some(({ case_id: caseId }) => caseId === row.unit_id)) fail(`${pass.id}:${row.unit_id} proposal judgment artifact has no case`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
-    return;
+  assertEqual(evidence.path, pass.judgment_evidence.path, `${pass.id}:${row.unit_id} decision row log path`, 'TIMING_SOURCE_BINDING');
+  assertEqual(evidence.decision_artifact_kind, 'recorder-owned-decision-row', `${pass.id}:${row.unit_id} judgment artifact kind`, 'TIMING_EDITORIAL_PROVENANCE');
+  if (!row.decision_row || typeof row.decision_row !== 'object' || Array.isArray(row.decision_row)) {
+    fail(`${pass.id}:${row.unit_id} recorder-owned decision row is missing`, 'TIMING_EDITOR_WORK_MISSING');
   }
-  const expectedSource = timing.timing_kind === 'editorial'
-    ? 'record-by-record-editorial-judgment'
-    : 'independent-post-freeze-comparison';
-  const expectedKind = timing.timing_kind === 'editorial' ? 'editorial-draft' : 'audit-draft';
-  assertEqual(evidence.decision_artifact_kind, expectedKind, `${pass.id}:${row.unit_id} judgment artifact kind`, 'TIMING_EDITORIAL_PROVENANCE');
-  assertEqual(artifact.draft_source, expectedSource, `${pass.id}:${row.unit_id} judgment artifact source`, 'TIMING_EDITORIAL_PROVENANCE');
-  const records = timing.timing_kind === 'editorial' ? artifact.records : artifact.case_reviews;
-  if (!Array.isArray(records)) fail(`${pass.id}:${row.unit_id} judgment artifact records are missing`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
-  const decisionRow = records.find(({ case_id: caseId }) => caseId === row.unit_id);
-  if (!decisionRow) fail(`${pass.id}:${row.unit_id} judgment artifact has no case`, 'TIMING_JUDGMENT_ARTIFACT_INVALID');
-  assertEqual(evidence.decision_row_sha256, sha256Json(decisionRow), `${pass.id}:${row.unit_id} decision row digest`, 'TIMING_SOURCE_BINDING');
+  assertEqual(row.decision_row.case_id, row.unit_id, `${pass.id}:${row.unit_id} decision row case`, 'TIMING_SOURCE_BINDING');
+  assertEqual(row.decision_row.source_record_sha256, expectedCase.source_record_sha256, `${pass.id}:${row.unit_id} decision row source`, 'TIMING_SOURCE_BINDING');
+  assertEqual(evidence.source_record_sha256, expectedCase.source_record_sha256, `${pass.id}:${row.unit_id} source record`, 'TIMING_SOURCE_BINDING');
+  assertEqual(evidence.decision_row_sha256, sha256Json(row.decision_row), `${pass.id}:${row.unit_id} decision row digest`, 'TIMING_SOURCE_BINDING');
+  assertEqual(evidence.decision_artifact_sha256, evidence.decision_row_sha256, `${pass.id}:${row.unit_id} decision row artifact digest`, 'TIMING_SOURCE_BINDING');
+  const expectedSourceArtifactSha256 = timing.timing_kind === 'post-freeze-audit'
+    ? timing.editorial_decisions_sha256
+    : expectedProposalSha256;
+  const expectedSourceArtifactKind = timing.timing_kind === 'post-freeze-audit'
+    ? 'editorial-decisions'
+    : 'proposal';
+  assertEqual(evidence.source_artifact_kind, expectedSourceArtifactKind, `${pass.id}:${row.unit_id} source artifact kind`, 'TIMING_SOURCE_BINDING');
+  assertEqual(evidence.source_artifact_sha256, expectedSourceArtifactSha256, `${pass.id}:${row.unit_id} source artifact digest`, 'TIMING_SOURCE_BINDING');
+}
+
+export function validateM5DDecisionRowChronology(row, label = 'decision row') {
+  requireTimestamp(row.started_at, `${label} started_at`);
+  requireTimestamp(row.completed_at, `${label} completed_at`);
+  requireTimestamp(row.decision_row_authored_at, `${label} decision_row_authored_at`, 'TIMING_EDITOR_WORK_MISSING');
+  if (Date.parse(row.completed_at) < Date.parse(row.started_at)) fail(`${label} chronology is invalid`, 'TIMING_CHRONOLOGY');
+  if (Date.parse(row.decision_row_authored_at) < Date.parse(row.started_at)) fail(`${label} existed before judgment started`, 'TIMING_EDITOR_WORK_MISSING');
+  assertEqual(row.decision_row_authored_at, row.completed_at, `${label} completion`, 'TIMING_EDITOR_WORK_MISSING');
 }
 
 function validateJudgmentRow(row, pass, timing, expectedCasesById, expectedProposalSha256) {
@@ -710,10 +718,8 @@ function validateJudgmentRow(row, pass, timing, expectedCasesById, expectedPropo
   requireUuid(row.pass_session_id, `${pass.id} judgment pass_session_id`);
   requireUuid(row.judgment_id, `${pass.id} judgment_id`);
   requireString(row.unit_id, `${pass.id} judgment unit_id`, 'TIMING_JUDGMENT_LOG_INVALID');
-  requireTimestamp(row.started_at, `${pass.id}:${row.unit_id} judgment started_at`);
-  requireTimestamp(row.completed_at, `${pass.id}:${row.unit_id} judgment completed_at`);
+  validateM5DDecisionRowChronology(row, `${pass.id}:${row.unit_id} judgment`);
   requireTimestamp(row.recorded_at, `${pass.id}:${row.unit_id} judgment recorded_at`);
-  if (Date.parse(row.completed_at) < Date.parse(row.started_at)) fail(`${pass.id}:${row.unit_id} judgment chronology is invalid`, 'TIMING_CHRONOLOGY');
   assertEqual(row.recorded_at, row.completed_at, `${pass.id}:${row.unit_id} judgment recorded_at`, 'TIMING_JUDGMENT_LOG_INVALID');
   if (!row.evidence || typeof row.evidence !== 'object') fail(`${pass.id}:${row.unit_id} judgment evidence is missing`, 'TIMING_EDITOR_WORK_MISSING');
   validateJudgmentArtifact(row, pass, timing, expectedCasesById, expectedProposalSha256);
@@ -771,6 +777,7 @@ export function validateM5DTiming(timing, {
   const producerPayloads = [];
   const judgmentRows = [];
   const judgmentRowsByPass = {};
+  const judgmentLogSha256ByPass = {};
   const passSummaries = {};
   for (const pass of timing.passes) {
     if (pass.status !== 'complete') fail(`${pass.id} timing pass is not complete`, 'TIMING_INCOMPLETE');
@@ -796,6 +803,8 @@ export function validateM5DTiming(timing, {
     assertEqual(pass.work_evidence.actual_unit_ids, rowsIds, `${pass.id} actual workload evidence`, 'TIMING_SCOPE_MISMATCH');
     assertEqual(pass.work_evidence.unit_count, rows.length, `${pass.id} recorder work count`, 'TIMING_SCOPE_MISMATCH');
     const { rows: judgmentLogRows } = parseJudgmentLog(pass);
+    const judgmentLogBytes = readSyncBytes(resolveAnyPath(pass.judgment_evidence.path), `${pass.id} timing judgment log`);
+    judgmentLogSha256ByPass[pass.id] = sha256Bytes(judgmentLogBytes);
     const judgmentIds = judgmentLogRows.map(({ unit_id: unitId }) => unitId);
     const expectedJudgmentEventIds = expectedIds.map((unitId) => `m5-10d-judgment-${pass.id}-${unitId}`);
     assertExactIds(judgmentIds, expectedIds, `${pass.id} actual judgment scope`, 'TIMING_EDITOR_WORK_MISSING');
@@ -889,6 +898,7 @@ export function validateM5DTiming(timing, {
     producer_payloads: producerPayloads,
     judgment_rows: judgmentRows,
     judgment_rows_by_pass: judgmentRowsByPass,
+    judgment_log_sha256_by_pass: judgmentLogSha256ByPass,
   };
 }
 
@@ -984,9 +994,10 @@ function validateEditorialJudgmentBindings(editorial, timingSummary) {
   const rowsByPass = timingSummary.judgment_rows_by_pass ?? {};
   for (const passId of ['initial-review', 'feedback-fixes', 'final-verification', 'held-rejected']) {
     for (const judgment of rowsByPass[passId] ?? []) {
-      assertEqual(judgment.evidence.decision_artifact_sha256, editorial.draft_sha256, `${judgment.unit_id} editorial draft digest`, 'EDITORIAL_SOURCE_BINDING');
       const decision = editorial.records.find(({ case_id: caseId }) => caseId === judgment.unit_id);
       if (!decision) fail(`${judgment.unit_id} editorial judgment has no finalized decision row`, 'EDITORIAL_SCOPE_MISMATCH');
+      if (!judgment.decision_row) fail(`${judgment.unit_id} editorial judgment has no recorder-owned decision row`, 'EDITORIAL_SOURCE_BINDING');
+      assertEqual(judgment.decision_row, decision, `${judgment.unit_id} editorial decision row`, 'EDITORIAL_SOURCE_BINDING');
       assertEqual(judgment.evidence.decision_row_sha256, sha256Json(decision), `${judgment.unit_id} editorial decision digest`, 'EDITORIAL_SOURCE_BINDING');
     }
   }
@@ -1049,9 +1060,10 @@ function validateAuditRows(audit, editorialInfo, proposalInfo) {
 
 function validateAuditJudgmentBindings(audit, auditTimingSummary) {
   for (const judgment of auditTimingSummary.judgment_rows_by_pass?.['post-freeze-audit'] ?? []) {
-    assertEqual(judgment.evidence.decision_artifact_sha256, audit.draft_sha256, `${judgment.unit_id} audit draft digest`, 'AUDIT_SOURCE_BINDING');
     const review = audit.case_reviews.find(({ case_id: caseId }) => caseId === judgment.unit_id);
     if (!review) fail(`${judgment.unit_id} audit judgment has no finalized comparison row`, 'AUDIT_SCOPE_MISMATCH');
+    if (!judgment.decision_row) fail(`${judgment.unit_id} audit judgment has no recorder-owned comparison row`, 'AUDIT_SOURCE_BINDING');
+    assertEqual(judgment.decision_row, review, `${judgment.unit_id} audit comparison row`, 'AUDIT_SOURCE_BINDING');
     assertEqual(judgment.evidence.decision_row_sha256, sha256Json(review), `${judgment.unit_id} audit comparison digest`, 'AUDIT_SOURCE_BINDING');
   }
 }
@@ -1290,6 +1302,7 @@ export async function validateM5DRecovery({
       timingSessionId: editorialTimingSource.value.session_id,
       initialPassSessionId: initialPass.session_id,
       initialJudgmentRows: editorialTiming.judgment_rows_by_pass?.['initial-review'],
+      initialJudgmentLogSha256: editorialTiming.judgment_log_sha256_by_pass?.['initial-review'],
       initialPass,
       freezeEventId: workloadSource.value.source.follow_up_freeze_event_id,
     });
@@ -1328,6 +1341,18 @@ export async function validateM5DRecovery({
   validateM5DVerification(verificationSource.value, currentSnapshot);
   validateSchema(artifactSource.value, recoveryValidator, 'recovery', 'M5-10D recovery', 'RECOVERY_SCHEMA_ERROR');
   const artifact = artifactSource.value;
+  const proposalReferences = path.resolve(proposalPath) === path.resolve(DEFAULT_PROPOSAL_PATH)
+    ? [M5_10D_PROPOSAL_ARTIFACT]
+    : [sourcePathFor(proposalPath), 'contract:m5-10d-calibration-proposal'];
+  const followUpReferences = path.resolve(followUpSourcePath) === path.resolve(DEFAULT_FOLLOW_UP_SOURCE_PATH)
+    ? [M5_10D_FOLLOW_UP_ARTIFACT]
+    : [sourcePathFor(followUpSourcePath), 'contract:m5-10d-follow-up-source'];
+  if (!proposalReferences.includes(artifact.source.proposal_artifact)) {
+    fail(`recovery proposal artifact reference is not bound to ${sourcePathFor(proposalPath)}`, 'RECOVERY_SOURCE_MISMATCH');
+  }
+  if (!followUpReferences.includes(artifact.source.follow_up_source)) {
+    fail(`recovery follow-up source reference is not bound to ${sourcePathFor(followUpSourcePath)}`, 'RECOVERY_SOURCE_MISMATCH');
+  }
   assertEqual(artifact.canonical_snapshot, currentSnapshot, 'recovery canonical snapshot drifted', 'RECOVERY_CANONICAL_MISMATCH');
   assertEqual(artifact.source.failed_stage_sha256, failedStageSource.sha256, 'recovery failed stage digest drifted', 'RECOVERY_SOURCE_MISMATCH');
   assertEqual(artifact.source.failed_manifest_sha256, failedManifestSource.sha256, 'recovery failed manifest digest drifted', 'RECOVERY_SOURCE_MISMATCH');

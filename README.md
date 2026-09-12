@@ -162,7 +162,11 @@ their corresponding timing passes stop.
 
 Issue #115's M5-10D workload correction is documented in
 [`docs/m5-10d-editor-workload-recovery.md`](docs/m5-10d-editor-workload-recovery.md).
-It freezes the target and initial workload before timing, derives follow-up
+The committed calibration-only proposal is
+[`data/batches/m5-10d-calibration-proposal-20260912.json`](data/batches/m5-10d-calibration-proposal-20260912.json),
+and its source, follow-up source, timing logs, decisions, recovery, and
+authorization are all revalidatable from a clean checkout. The workflow freezes
+the target and initial workload before timing, derives follow-up
 queues from recorder-owned initial-review judgment findings before those passes
 start, measures editor time only from per-unit judgment intervals, records empty
 passes as zero-work, and keeps the independent post-freeze audit over all 20
@@ -170,7 +174,9 @@ calibration cases. Its source-derived recovery can create the separate #97 +500
 authorization only when the existing fixed gates pass; the contract and recovery
 checks are
 `npm run batch:m5-10d:contract:check` and
-`npm run batch:m5-10d:recovery:contract:check`.
+`npm run batch:m5-10d:recovery:contract:check`, followed by the committed
+artifact checks `npm run batch:m5-10d:recovery:check` and
+`npm run batch:m5-10d:authorization:check`.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

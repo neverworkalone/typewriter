@@ -9,9 +9,9 @@
   "canonical_mutation": false,
   "source": {
     "recovery_artifact": "data/batches/m5-10d-recovery.json",
-    "recovery_artifact_sha256": "0c3f0e17b11fb5c1c52c05ed8ea500973793028d24fc8a81c2713d835085bb68",
+    "recovery_artifact_sha256": "1a8657743be70ee29df1817f90ed4477ee6c1020e69c191634b904b20bc4f60b",
     "workload": "data/batches/m5-10d-workload-20260912.json",
-    "workload_sha256": "9d1e4eb13171ecc67f3462b98ad660e8db8633be036a259b65d2f12fed0c37ae",
+    "workload_sha256": "bee45e42b128e31e0a7d64733d7b129b66309c792ee96451175ebe25207bd395",
     "canonical_directory": "data/canonical",
     "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
     "inventory": "data/inventory/m5-target-inventory.json",
@@ -33,6 +33,6 @@
     "cumulative_start_target": 1278,
     "candidate_data_created": false
   },
-  "created_at": "2026-09-12T12:41:02.112Z",
+  "created_at": "2026-09-12T14:09:54.234Z",
   "note": "M5-10D passed its source-derived workload gate. This artifact authorizes only the separate M5-11 #97 +500 validation task; it creates no candidate or canonical data."
 }

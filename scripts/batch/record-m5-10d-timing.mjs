@@ -222,7 +222,8 @@ function parseInputJson(inputJson) {
 async function createTimingSession(kind, args) {
   const proposalPath = resolvePath(args.proposal, DEFAULT_PROPOSAL_PATH);
   const workloadPath = resolvePath(args.workload, DEFAULT_WORKLOAD_PATH);
-  const { proposal, proposalInfo, workload, workloadInfo } = await sourceInfo(proposalPath, workloadPath);
+  const followUpSourcePath = resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH);
+  const { proposal, proposalInfo, workload, workloadInfo } = await sourceInfo(proposalPath, workloadPath, followUpSourcePath);
   const canonicalDirectorySha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
   const inventory = await readJson(DEFAULT_INVENTORY_PATH, 'M5 target inventory');
   const startedAt = now();
@@ -316,64 +317,64 @@ function judgmentEventId(passId, unitId) {
   return `m5-10d-judgment-${passId}-${unitId}`;
 }
 
-function assertSameValue(actual, expected, label, code = 'TIMING_SOURCE_BINDING') {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) fail(`${label} changed during recording`, code);
+function rejectFullDraftInput(args) {
+  if (args['decision-artifact'] || args['judgment-artifact']) {
+    fail('timed judgments accept one decision row after start; full decision drafts are not accepted', 'TIMING_DECISION_INPUT_FORBIDDEN');
+  }
 }
 
-function decisionArtifactArgs(args, activeJudgment) {
-  if (args['decision-artifact'] || args['judgment-artifact']) return args;
-  if (activeJudgment?.evidence?.path) return { ...args, 'decision-artifact': activeJudgment.evidence.path };
-  return args;
+function parseDecisionRow(args) {
+  if (typeof args['decision-json'] !== 'string') {
+    fail('timed judgment completion requires --decision-json=<single-row-object>', 'TIMING_EDITOR_WORK_MISSING');
+  }
+  let row;
+  try {
+    row = JSON.parse(args['decision-json']);
+  } catch (error) {
+    fail(`--decision-json is not valid JSON: ${error.message}`, 'TIMING_DECISION_INPUT_INVALID');
+  }
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    fail('timed judgment decision must be one object row', 'TIMING_DECISION_INPUT_INVALID');
+  }
+  return row;
 }
 
-function validateDecisionDraftShape(draft, kind, expectedCaseIds) {
-  if (!draft || typeof draft !== 'object' || Array.isArray(draft)) fail('decision draft must be an object', 'EDITORIAL_DRAFT_INVALID');
-  if (draft.batch_id !== M5_10D_BATCH_ID) fail('decision draft batch ID drifted', 'EDITORIAL_DRAFT_INVALID');
-  const expectedSource = kind === 'editorial'
-    ? 'record-by-record-editorial-judgment'
-    : 'independent-post-freeze-comparison';
-  if (draft.draft_source !== expectedSource) fail('decision draft source does not match timing kind', 'EDITORIAL_DRAFT_PROVENANCE');
-  const records = kind === 'editorial' ? draft.records : draft.case_reviews;
-  if (!Array.isArray(records)) fail('decision draft records are missing', 'EDITORIAL_DRAFT_SCOPE');
-  const ids = records.map(({ case_id: caseId }) => caseId);
-  if (JSON.stringify(ids) !== JSON.stringify(expectedCaseIds)) fail('decision draft case coverage drifted', 'EDITORIAL_DRAFT_SCOPE');
-  if (new Set(ids).size !== ids.length) fail('decision draft contains duplicate case IDs', 'EDITORIAL_DRAFT_SCOPE');
-  if (typeof draft.draft_created_at !== 'string' || !Number.isFinite(Date.parse(draft.draft_created_at))) fail('decision draft must carry draft_created_at', 'EDITORIAL_DRAFT_CHRONOLOGY');
-  return records;
+function requireDecisionRowFields(row, fields, label) {
+  for (const field of fields) {
+    if (!(field in row)) fail(`${label} is missing ${field}`, 'TIMING_DECISION_INPUT_INVALID');
+  }
 }
 
-async function readJudgmentEvidence(kind, args, session, pass, proposalInfo) {
+function validateDecisionRowInput(row, kind, pass, expectedCase) {
+  const label = `${pass.id}:${expectedCase.case_id}`;
+  if (row.case_id !== expectedCase.case_id) fail(`${label} decision row case ID does not match the active unit`, 'TIMING_DECISION_INPUT_INVALID');
+  if (kind !== 'post-freeze-audit' && row.record_id !== expectedCase.record.id) {
+    fail(`${label} decision row record ID does not match the proposal`, 'TIMING_SOURCE_BINDING');
+  }
+  if (row.source_record_sha256 !== sha256Json(expectedCase.record)) fail(`${label} decision row source digest does not match the proposal`, 'TIMING_SOURCE_BINDING');
+  if (pass.id === 'target-preparation') {
+    requireDecisionRowFields(row, ['preparation_status', 'note'], label);
+    if (row.preparation_status !== 'source-bound') fail(`${label} preparation status is invalid`, 'TIMING_DECISION_INPUT_INVALID');
+    return;
+  }
+  if (kind === 'editorial') {
+    requireDecisionRowFields(row, ['decision', 'lemma_pos', 'sense_review', 'boundary_reviews', 'relation_review', 'decision_note'], label);
+    return;
+  }
+  requireDecisionRowFields(row, ['editorial_record_sha256', 'source_comparison', 'decision_comparison', 'relation_comparison', 'status', 'note'], label);
+}
+
+async function readJudgmentSourceEvidence(kind, args, session, pass, proposalInfo) {
   const unitId = args.unit;
   if (!unitId) fail('judgment recording requires --unit=<case-id>', 'TIMING_SCOPE_MISMATCH');
-  const proposalPath = resolvePath(args.proposal, DEFAULT_PROPOSAL_PATH);
-  if (pass.id === 'target-preparation') {
-    const proposal = await readJson(proposalPath, 'M5-10D calibration proposal');
-    if (proposal.sha256 !== session.proposal_sha256) fail('proposal digest does not match timing session', 'TIMING_SOURCE_BINDING');
-    const expectedCase = proposalInfo.by_case.get(unitId);
-    if (!expectedCase) fail(`${unitId} is outside proposal case set`, 'TIMING_SCOPE_MISMATCH');
-    return {
-      path: storedRepositoryPath(proposalPath),
-      decision_artifact_sha256: proposal.sha256,
-      decision_row_sha256: sha256Json(expectedCase.compact),
-      decision_artifact_kind: 'proposal',
-    };
-  }
-  const artifactArgument = args['decision-artifact'] ?? args['judgment-artifact'];
-  if (!artifactArgument) fail(`${pass.id} judgment requires --decision-artifact=<draft.json>`, 'TIMING_EDITOR_WORK_MISSING');
-  const artifactPath = resolvePath(artifactArgument);
-  const artifactSource = await readJson(artifactPath, `${pass.id} decision draft`);
-  const records = validateDecisionDraftShape(artifactSource.value, kind, proposalInfo.case_ids);
-  if (artifactSource.value.proposal_sha256 !== session.proposal_sha256) fail(`${pass.id} decision draft proposal digest drifted`, 'TIMING_SOURCE_BINDING');
-  if (kind === 'post-freeze-audit' && artifactSource.value.editorial_decisions_sha256 !== session.editorial_decisions_sha256) fail('audit decision draft editorial digest drifted', 'TIMING_SOURCE_BINDING');
-  if (Date.parse(artifactSource.value.draft_created_at) > Date.now()) fail(`${pass.id} decision draft is dated in the future`, 'EDITORIAL_DRAFT_CHRONOLOGY');
-  const decisionRow = records.find(({ case_id: caseId }) => caseId === unitId);
-  if (!decisionRow) fail(`${pass.id}:${unitId} decision draft has no record`, 'TIMING_EDITOR_WORK_MISSING');
+  const expectedCase = proposalInfo.by_case.get(unitId);
+  if (!expectedCase) fail(`${unitId} is outside proposal case set`, 'TIMING_SCOPE_MISMATCH');
   return {
-    path: storedRepositoryPath(artifactPath),
-    decision_artifact_sha256: artifactSource.sha256,
-    decision_row_sha256: sha256Json(decisionRow),
-    decision_artifact_kind: kind === 'editorial' ? 'editorial-draft' : 'audit-draft',
-    authored_at: artifactSource.value.draft_created_at,
+    path: pass.judgment_evidence.path,
+    source_artifact_sha256: kind === 'post-freeze-audit' ? session.editorial_decisions_sha256 : session.proposal_sha256,
+    source_artifact_kind: kind === 'post-freeze-audit' ? 'editorial-decisions' : 'proposal',
+    source_record_sha256: sha256Json(expectedCase.record),
+    source_case_sha256: sha256Json(expectedCase.compact),
   };
 }
 
@@ -544,6 +545,7 @@ async function recordProposal(kind, args) {
 }
 
 async function startJudgment(kind, args) {
+  rejectFullDraftInput(args);
   const outputPath = resolvePath(args.output, kind === 'editorial' ? DEFAULT_EDITORIAL_TIMING_PATH : DEFAULT_AUDIT_TIMING_PATH);
   const session = await loadTiming(outputPath, kind);
   const { proposalInfo, workloadInfo } = await loadBoundSources(session, args);
@@ -551,15 +553,14 @@ async function startJudgment(kind, args) {
   const declaration = workloadInfo.by_pass.get(args.pass);
   const unitId = args.unit;
   if (!declaration.expected_unit_ids.includes(unitId)) fail(`${unitId} is outside the frozen ${args.pass} workload`, 'TIMING_SCOPE_MISMATCH');
+  if (!pass.work_evidence.actual_unit_ids.includes(unitId)) {
+    fail(`${args.pass}:${unitId} cannot be judged before its proposal work is recorded`, 'TIMING_SCOPE_MISMATCH');
+  }
   if (pass.judgment_evidence.actual_unit_ids.includes(unitId)) fail(`${unitId} was already recorded in ${args.pass}`, 'TIMING_SCOPE_MISMATCH');
   if (session.active_judgments.some(({ pass_id: passId, unit_id: activeUnitId }) => passId === args.pass && activeUnitId === unitId)) {
     fail(`${unitId} already has an active judgment in ${args.pass}`, 'TIMING_JUDGMENT_STATE');
   }
-  const evidence = await readJudgmentEvidence(kind, args, session, pass, proposalInfo);
-  if (pass.id !== 'target-preparation' && Date.parse(evidence.authored_at) < Date.parse(pass.started_at)
-    && ['initial-review', 'post-freeze-audit'].includes(pass.id)) {
-    fail(`${pass.id} judgment artifact was authored before the timed judgment pass`, 'EDITORIAL_DRAFT_CHRONOLOGY');
-  }
+  const evidence = await readJudgmentSourceEvidence(kind, args, session, pass, proposalInfo);
   const startedAt = now();
   const judgment = {
     judgment_id: randomUUID(),
@@ -580,8 +581,8 @@ async function startJudgment(kind, args) {
     unit_id: unitId,
     judgment_id: judgment.judgment_id,
     recorded_at: startedAt,
-    decision_artifact_sha256: evidence.decision_artifact_sha256,
-    decision_row_sha256: evidence.decision_row_sha256,
+    source_artifact_sha256: evidence.source_artifact_sha256,
+    source_record_sha256: evidence.source_record_sha256,
   });
   session.passes[index] = pass;
   await writeJson(outputPath, session);
@@ -589,6 +590,7 @@ async function startJudgment(kind, args) {
 }
 
 async function completeJudgment(kind, args) {
+  rejectFullDraftInput(args);
   const outputPath = resolvePath(args.output, kind === 'editorial' ? DEFAULT_EDITORIAL_TIMING_PATH : DEFAULT_AUDIT_TIMING_PATH);
   const session = await loadTiming(outputPath, kind);
   const { proposalInfo, workloadInfo } = await loadBoundSources(session, args);
@@ -599,9 +601,19 @@ async function completeJudgment(kind, args) {
   if (unitId !== pass.judgment_evidence.expected_unit_ids[pass.judgment_evidence.actual_unit_ids.length]) {
     fail(`${args.pass}:${unitId} judgment completed outside declared order`, 'TIMING_SCOPE_MISMATCH');
   }
-  const evidence = await readJudgmentEvidence(kind, decisionArtifactArgs(args, active), session, pass, proposalInfo);
-  assertSameValue(evidence, active.evidence, `${args.pass}:${unitId} judgment evidence`, 'TIMING_SOURCE_BINDING');
-  const completedAt = now();
+  const expectedCase = proposalInfo.by_case.get(unitId);
+  if (!expectedCase) fail(`${args.pass}:${unitId} judgment is outside proposal`, 'TIMING_SCOPE_MISMATCH');
+  const decisionRow = parseDecisionRow(args);
+  validateDecisionRowInput(decisionRow, kind, pass, expectedCase);
+  const decisionRowSha256 = sha256Json(decisionRow);
+  const completedAt = laterThan(active.started_at);
+  const evidence = {
+    ...active.evidence,
+    decision_artifact_sha256: decisionRowSha256,
+    decision_row_sha256: decisionRowSha256,
+    decision_artifact_kind: 'recorder-owned-decision-row',
+    decision_row_authored_at: completedAt,
+  };
   const row = {
     kind: 'judgment',
     pass_id: args.pass,
@@ -611,7 +623,9 @@ async function completeJudgment(kind, args) {
     judgment_id: active.judgment_id,
     started_at: active.started_at,
     completed_at: completedAt,
+    decision_row_authored_at: completedAt,
     recorded_at: completedAt,
+    decision_row: decisionRow,
     evidence,
   };
   const logPath = resolvePath(pass.judgment_evidence.path);
@@ -644,27 +658,17 @@ async function completeJudgment(kind, args) {
   return row;
 }
 
-async function recordJudgment(kind, args) {
-  await startJudgment(kind, args);
-  return completeJudgment(kind, args);
-}
-
 async function validateJudgmentArtifactForRecorder(row, pass, session, expectedCasesById) {
   const evidence = row.evidence;
-  const artifact = await readJson(resolvePath(evidence.path), `${pass.id}:${row.unit_id} judgment artifact`);
-  if (artifact.sha256 !== evidence.decision_artifact_sha256) fail(`${pass.id}:${row.unit_id} judgment artifact changed`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
   const expectedCase = expectedCasesById.get(row.unit_id);
   if (!expectedCase) fail(`${pass.id}:${row.unit_id} judgment is outside proposal`, 'TIMING_SCOPE_MISMATCH');
-  if (evidence.decision_artifact_kind === 'proposal') {
-    if (pass.id !== 'target-preparation') fail(`${pass.id}:${row.unit_id} used a proposal as judgment evidence`, 'TIMING_EDITORIAL_PROVENANCE');
-    if (artifact.sha256 !== session.proposal_sha256 || evidence.decision_row_sha256 !== sha256Json(expectedCase)) fail(`${pass.id}:${row.unit_id} proposal judgment binding drifted`, 'TIMING_SOURCE_BINDING');
-    return;
-  }
-  const records = session.timing_kind === 'editorial' ? artifact.value.records : artifact.value.case_reviews;
-  const expectedSource = session.timing_kind === 'editorial' ? 'record-by-record-editorial-judgment' : 'independent-post-freeze-comparison';
-  if (artifact.value.draft_source !== expectedSource || !Array.isArray(records)) fail(`${pass.id}:${row.unit_id} judgment artifact provenance drifted`, 'TIMING_EDITORIAL_PROVENANCE');
-  const decisionRow = records.find(({ case_id: caseId }) => caseId === row.unit_id);
-  if (!decisionRow || evidence.decision_row_sha256 !== sha256Json(decisionRow)) fail(`${pass.id}:${row.unit_id} judgment row binding drifted`, 'TIMING_SOURCE_BINDING');
+  if (evidence.decision_artifact_kind !== 'recorder-owned-decision-row') fail(`${pass.id}:${row.unit_id} judgment artifact provenance drifted`, 'TIMING_EDITORIAL_PROVENANCE');
+  if (!row.decision_row || evidence.decision_row_sha256 !== sha256Json(row.decision_row)) fail(`${pass.id}:${row.unit_id} judgment row binding drifted`, 'TIMING_SOURCE_BINDING');
+  if (row.decision_row.case_id !== row.unit_id || row.decision_row.source_record_sha256 !== expectedCase.source_record_sha256) fail(`${pass.id}:${row.unit_id} judgment source binding drifted`, 'TIMING_SOURCE_BINDING');
+  const expectedSourceArtifactSha256 = session.timing_kind === 'post-freeze-audit'
+    ? session.editorial_decisions_sha256
+    : session.proposal_sha256;
+  if (evidence.source_artifact_sha256 !== expectedSourceArtifactSha256) fail(`${pass.id}:${row.unit_id} judgment source artifact drifted`, 'TIMING_SOURCE_BINDING');
 }
 
 async function stopPass(kind, args) {
@@ -775,6 +779,7 @@ async function readJsonlRows(filePath, label) {
 
 async function freezeFollowUp(args) {
   const kind = 'editorial';
+  rejectFullDraftInput(args);
   const outputPath = resolvePath(args.output, DEFAULT_EDITORIAL_TIMING_PATH);
   const session = await loadTiming(outputPath, kind);
   const { proposalInfo, workloadInfo } = await loadBoundSources(session, args);
@@ -783,27 +788,22 @@ async function freezeFollowUp(args) {
   if (session.passes.some(({ id, status }) => id !== 'target-preparation' && id !== 'initial-review' && status !== 'unmeasured')) {
     fail('follow-up workload must be frozen before any follow-up pass starts', 'WORKLOAD_FREEZE_STATE');
   }
-  const draftArgument = args['decision-artifact'] ?? args['judgment-artifact'];
-  if (!draftArgument) fail('follow-up freezing requires --decision-artifact=<editorial-draft.json>', 'WORKLOAD_SOURCE_REQUIRED');
-  const draftSource = await readJson(resolvePath(draftArgument), 'initial-review decision draft');
-  const draft = requireDraftRecords(draftSource.value, session, 'editorial', proposalInfo.case_ids);
-  if (draft.proposal_sha256 !== session.proposal_sha256) fail('initial-review decision draft proposal digest drifted', 'WORKLOAD_SOURCE_BINDING');
   const initialRows = await readJsonlRows(resolvePath(initial.judgment_evidence.path), 'initial-review judgment log');
   if (initialRows.length !== proposalInfo.case_ids.length) fail('initial-review must have one judgment event per proposal case', 'TIMING_EDITOR_WORK_MISSING');
   const judgmentByUnit = new Map();
   for (const row of initialRows) {
     if (row.pass_id !== 'initial-review' || row.session_id !== session.session_id || row.pass_session_id !== initial.session_id) fail(`${row.unit_id} initial judgment session binding drifted`, 'WORKLOAD_SOURCE_BINDING');
-    if (row.evidence.decision_artifact_sha256 !== draftSource.sha256) fail(`${row.unit_id} initial judgment artifact differs from follow-up source`, 'WORKLOAD_SOURCE_BINDING');
+    if (!row.decision_row || row.evidence.decision_row_sha256 !== sha256Json(row.decision_row)) fail(`${row.unit_id} initial judgment decision row is missing or drifted`, 'WORKLOAD_SOURCE_BINDING');
     judgmentByUnit.set(row.unit_id, row);
   }
   const freezeEventId = `m5-10d-workload-freeze-${String(session.events.length + 1).padStart(4, '0')}`;
   const createdAt = now();
-  const findings = draft.records
+  const findings = initialRows
+    .map(({ decision_row: decisionRow }) => decisionRow)
     .filter(({ decision }) => ['corrected', 'held', 'rejected'].includes(decision))
     .map((decisionRow) => {
       const judgment = judgmentByUnit.get(decisionRow.case_id);
       if (!judgment) fail(`${decisionRow.case_id} follow-up source has no initial judgment`, 'WORKLOAD_SOURCE_BINDING');
-      if (judgment.evidence.decision_row_sha256 !== sha256Json(decisionRow)) fail(`${decisionRow.case_id} follow-up source decision digest drifted`, 'WORKLOAD_SOURCE_BINDING');
       return {
         case_id: decisionRow.case_id,
         record_id: decisionRow.record_id,
@@ -823,7 +823,7 @@ async function freezeFollowUp(args) {
     timing_session_id: session.session_id,
     source_pass_id: 'initial-review',
     source_pass_session_id: initial.session_id,
-    source_judgment_artifact_sha256: draftSource.sha256,
+    source_judgment_artifact_sha256: sha256Bytes(await readFile(resolvePath(initial.judgment_evidence.path))),
     freeze_event_id: freezeEventId,
     created_at: createdAt,
     findings,
@@ -841,6 +841,7 @@ async function freezeFollowUp(args) {
     timingSessionId: session.session_id,
     initialPassSessionId: initial.session_id,
     initialJudgmentRows: initialRows,
+    initialJudgmentLogSha256: source.source_judgment_artifact_sha256,
     initialPass: initial,
     freezeEventId,
   });
@@ -878,20 +879,46 @@ async function freezeFollowUp(args) {
   return { source, workload: frozenWorkload, session };
 }
 
-function timingLastStop(timing) {
-  const completed = timing.passes.filter(({ status, completed_at: completedAt }) => status === 'complete' && completedAt).map(({ completed_at: completedAt }) => Date.parse(completedAt));
-  return completed.length > 0 ? Math.max(...completed) : Date.parse(timing.started_at);
+async function decisionRowsFromTiming(timing, passIds, expectedCaseIds) {
+  const rowsByCase = new Map();
+  for (const passId of passIds) {
+    const pass = timing.passes.find(({ id }) => id === passId);
+    if (!pass) fail(`${passId} is missing from timing`, 'TIMING_SCOPE_MISMATCH');
+    const rows = await readJsonlRows(resolvePath(pass.judgment_evidence.path), `${passId} judgment log`);
+    for (const row of rows) {
+      if (!row.decision_row || row.evidence?.decision_row_sha256 !== sha256Json(row.decision_row)) {
+        fail(`${passId}:${row.unit_id} does not carry a recorder-owned decision row`, 'TIMING_EDITOR_WORK_MISSING');
+      }
+      rowsByCase.set(row.unit_id, row);
+    }
+  }
+  return expectedCaseIds.map((caseId) => {
+    const row = rowsByCase.get(caseId);
+    if (!row) fail(`${caseId} has no recorder-owned decision row`, 'TIMING_EDITOR_WORK_MISSING');
+    return row;
+  });
 }
 
-function requireDraftRecords(draft, timing, kind, expectedCaseIds) {
-  validateDecisionDraftShape(draft, kind, expectedCaseIds);
-  if (typeof draft.draft_created_at !== 'string' || !Number.isFinite(Date.parse(draft.draft_created_at))) fail('decision draft must carry draft_created_at', 'EDITORIAL_DRAFT_CHRONOLOGY');
-  const firstPass = timing.passes.find(({ id }) => id === (kind === 'editorial' ? 'initial-review' : 'post-freeze-audit'));
-  if (Date.parse(draft.draft_created_at) < Date.parse(firstPass.started_at) || Date.parse(draft.draft_created_at) > timingLastStop(timing)) fail('decision draft must be authored during the active timed session', 'EDITORIAL_DRAFT_CHRONOLOGY');
-  return draft;
+function decisionRowsDigest(kind, proposalSha256, rows, editorialDecisionsSha256) {
+  return sha256Json({
+    kind,
+    proposal_sha256: proposalSha256,
+    ...(editorialDecisionsSha256 ? { editorial_decisions_sha256: editorialDecisionsSha256 } : {}),
+    rows: rows.map(({ decision_row: decisionRow }) => decisionRow),
+  });
+}
+
+function firstDecisionRowAuthoredAt(rows, label) {
+  const timestamps = rows.map(({ decision_row_authored_at: authoredAt }) => {
+    if (typeof authoredAt !== 'string' || !Number.isFinite(Date.parse(authoredAt))) fail(`${label} decision row authored time is missing`, 'TIMING_EDITOR_WORK_MISSING');
+    return Date.parse(authoredAt);
+  });
+  return new Date(Math.min(...timestamps)).toISOString();
 }
 
 async function finalizeEditorial(args) {
+  rejectFullDraftInput(args);
+  if (args.draft) fail('editorial finalization derives rows from the recorder timing log; full drafts are not accepted', 'TIMING_DECISION_INPUT_FORBIDDEN');
   const timingPath = resolvePath(args.timing, DEFAULT_EDITORIAL_TIMING_PATH);
   const timingSource = await readJson(timingPath, 'editorial timing');
   const timing = timingSource.value;
@@ -902,9 +929,12 @@ async function finalizeEditorial(args) {
     resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH),
     timing.session_id,
   );
-  const draftSource = await readJson(resolvePath(args.draft, '/private/tmp/typewriter-m5-10d-editorial-draft.json'), 'editorial decision draft');
-  const draft = requireDraftRecords(draftSource.value, timing, 'editorial', proposalInfo.case_ids);
-  if (draft.proposal_sha256 !== timing.proposal_sha256) fail('editorial draft proposal digest drifted', 'EDITORIAL_SOURCE_BINDING');
+  const decisionRows = await decisionRowsFromTiming(
+    timing,
+    ['initial-review', 'feedback-fixes', 'final-verification', 'held-rejected'],
+    proposalInfo.case_ids,
+  );
+  const records = decisionRows.map(({ decision_row: decisionRow }) => decisionRow);
   const outputPath = resolvePath(args.output, DEFAULT_EDITORIAL_DECISIONS_PATH);
   await requireMissing(outputPath, 'editorial decisions artifact');
   const createdAt = now();
@@ -912,23 +942,25 @@ async function finalizeEditorial(args) {
     schema_version: '1',
     artifact_id: 'm5-10d-editorial-decisions-20260912',
     batch_id: M5_10D_BATCH_ID,
-    source_kind: 'codex-authored',
-    decision_source: 'separately-authored-record-by-record-editorial-draft',
+    source_kind: 'recorder-owned',
+    decision_source: 'recorder-owned-record-by-record-judgments',
     proposal_sha256: timing.proposal_sha256,
     editorial_session_id: timing.editorial_session_id,
     timing_session_id: timing.session_id,
-    draft_sha256: draftSource.sha256,
-    draft_created_at: draft.draft_created_at,
+    draft_sha256: decisionRowsDigest('editorial', timing.proposal_sha256, decisionRows),
+    draft_created_at: firstDecisionRowAuthoredAt(decisionRows, 'editorial'),
     created_at: createdAt,
     finalized_at: laterThan(createdAt),
-    records: draft.records,
-    note: 'Editorial decisions were separately authored during the timed semantic pass and finalized only after all editorial passes stopped.',
+    records,
+    note: 'Editorial decision rows were authored one at a time after each recorder judgment timer started and assembled only after all editorial passes stopped.',
   };
   await writeJson(outputPath, editorial);
   return editorial;
 }
 
 async function finalizeAudit(args) {
+  rejectFullDraftInput(args);
+  if (args.draft) fail('audit finalization derives rows from the recorder timing log; full drafts are not accepted', 'TIMING_DECISION_INPUT_FORBIDDEN');
   const timingPath = resolvePath(args.timing, DEFAULT_AUDIT_TIMING_PATH);
   const timingSource = await readJson(timingPath, 'audit timing');
   const timing = timingSource.value;
@@ -941,33 +973,39 @@ async function finalizeAudit(args) {
     resolvePath(args.workload, DEFAULT_WORKLOAD_PATH),
     resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH),
   );
-  const draftSource = await readJson(resolvePath(args.draft, '/private/tmp/typewriter-m5-10d-audit-draft.json'), 'audit decision draft');
-  const draft = requireDraftRecords(draftSource.value, timing, 'audit', proposalInfo.case_ids);
-  if (draft.proposal_sha256 !== timing.proposal_sha256) fail('audit draft proposal digest drifted', 'AUDIT_SOURCE_BINDING');
-  if (draft.editorial_decisions_sha256 !== timing.editorial_decisions_sha256) fail('audit draft editorial digest drifted', 'AUDIT_SOURCE_BINDING');
+  const decisionRows = await decisionRowsFromTiming(timing, ['post-freeze-audit'], proposalInfo.case_ids);
+  const caseReviews = decisionRows.map(({ decision_row: decisionRow }) => decisionRow);
+  let findings = [];
+  if (args['findings-json'] !== undefined) {
+    try {
+      findings = JSON.parse(args['findings-json']);
+    } catch (error) {
+      fail(`--findings-json is not valid JSON: ${error.message}`, 'AUDIT_FINDINGS_INVALID');
+    }
+    if (!Array.isArray(findings)) fail('audit findings must be an array', 'AUDIT_FINDINGS_INVALID');
+  }
   const outputPath = resolvePath(args.output, DEFAULT_AUDIT_DECISIONS_PATH);
   await requireMissing(outputPath, 'audit decisions artifact');
   const createdAt = now();
-  const findings = Array.isArray(draft.findings) ? draft.findings : [];
   const openBlockerCount = findings.filter(({ severity, status }) => severity === 'blocker' && status === 'open').length;
   const audit = {
     schema_version: '1',
     artifact_id: 'm5-10d-audit-decisions-20260912',
     batch_id: M5_10D_BATCH_ID,
-    source_kind: 'codex-authored',
-    decision_source: 'separately-authored-post-freeze-comparison',
+    source_kind: 'recorder-owned',
+    decision_source: 'recorder-owned-post-freeze-comparison-judgments',
     independent: true,
     proposal_sha256: timing.proposal_sha256,
     editorial_decisions_sha256: timing.editorial_decisions_sha256,
     editorial_session_id: timing.editorial_session_id,
     audit_session_id: timing.audit_session_id,
     timing_session_id: timing.session_id,
-    draft_sha256: draftSource.sha256,
-    draft_created_at: draft.draft_created_at,
+    draft_sha256: decisionRowsDigest('audit', timing.proposal_sha256, decisionRows, timing.editorial_decisions_sha256),
+    draft_created_at: firstDecisionRowAuthoredAt(decisionRows, 'audit'),
     created_at: createdAt,
     finalized_at: laterThan(createdAt),
     status: 'complete',
-    case_reviews: draft.case_reviews,
+    case_reviews: caseReviews,
     findings,
     open_blocker_count: openBlockerCount,
     note: 'Independent post-freeze comparisons were authored after the editorial artifact was frozen and during a separate audit timing session.',
@@ -994,7 +1032,6 @@ export async function runM5DRecorder(args) {
   if (action === 'record-proposal') return recordProposal(kind, args);
   if (action === 'start-judgment') return startJudgment(kind, args);
   if (action === 'complete-judgment') return completeJudgment(kind, args);
-  if (action === 'record-judgment') return recordJudgment(kind, args);
   if (action === 'stop-pass') return stopPass(kind, args);
   if (action === 'finish') return finishSession(kind, args);
   if (action === 'freeze-follow-up') return freezeFollowUp(args);

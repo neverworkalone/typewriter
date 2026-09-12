@@ -21,10 +21,10 @@
       "additionalProperties": false,
       "required": ["proposal_artifact", "proposal_sha256", "decision_independent"],
       "properties": {
-        "proposal_artifact": { "const": "external:m5-10d-calibration-proposal" },
+        "proposal_artifact": { "enum": ["data/batches/m5-10d-calibration-proposal-20260912.json", "contract:m5-10d-calibration-proposal"] },
         "proposal_sha256": { "$ref": "#/$defs/sha256" },
         "decision_independent": { "const": true },
-        "follow_up_artifact": { "const": "external:m5-10d-follow-up-source" },
+        "follow_up_artifact": { "enum": ["data/batches/m5-10d-follow-up-source-20260912.json", "contract:m5-10d-follow-up-source"] },
         "follow_up_sha256": { "$ref": "#/$defs/sha256" },
         "follow_up_source_kind": { "const": "recorder-owned-initial-review-findings" },
         "follow_up_timing_session_id": { "$ref": "#/$defs/uuid" },

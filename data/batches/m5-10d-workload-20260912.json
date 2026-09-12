@@ -7,15 +7,15 @@
   "process_revision": "m5-10d-editor-workload-v1",
   "declaration_kind": "source-declared-before-each-pass",
   "declaration_status": "frozen",
-  "frozen_at": "2026-09-12T12:40:41.683Z",
+  "frozen_at": "2026-09-12T14:09:53.212Z",
   "source": {
-    "proposal_artifact": "external:m5-10d-calibration-proposal",
-    "proposal_sha256": "0185afddd0690fca51ce45b4673ae80d476f036f60f1af36afa2bd815e5517e3",
+    "proposal_artifact": "data/batches/m5-10d-calibration-proposal-20260912.json",
+    "proposal_sha256": "9adcc18ed41ffcd5ccbfaa695be928bf44a24a5de05cb694033538b0210c295e",
     "decision_independent": true,
-    "follow_up_artifact": "external:m5-10d-follow-up-source",
-    "follow_up_sha256": "04438e2f4c27f595aa68ee5bfd2eca26152c9b052f5d46c339224669d3b0246c",
+    "follow_up_artifact": "data/batches/m5-10d-follow-up-source-20260912.json",
+    "follow_up_sha256": "00d8dec4beb6d770c04a98aa67cf66df5b8bfdf04d01daa046a66ed209cb6b70",
     "follow_up_source_kind": "recorder-owned-initial-review-findings",
-    "follow_up_timing_session_id": "34b88b44-bcdc-48dd-9cb2-ab8918f4d9f2",
+    "follow_up_timing_session_id": "b844bd4b-89c6-4a98-8565-1ecc6651a021",
     "follow_up_pass_id": "initial-review",
     "follow_up_freeze_event_id": "m5-10d-workload-freeze-0126"
   },
@@ -27,7 +27,7 @@
       "role": "target-preparation",
       "unit_kind": "calibration-start",
       "declaration_source": "pre-review-sample",
-      "declared_at": "2026-09-12T12:38:24.132Z",
+      "declared_at": "2026-09-12T14:09:51.088Z",
       "expected_unit_ids": [
         "m5-10d-cal-001",
         "m5-10d-cal-002",
@@ -60,7 +60,7 @@
       "role": "semantic-review",
       "unit_kind": "calibration-start",
       "declaration_source": "pre-review-sample",
-      "declared_at": "2026-09-12T12:38:24.132Z",
+      "declared_at": "2026-09-12T14:09:51.088Z",
       "expected_unit_ids": [
         "m5-10d-cal-001",
         "m5-10d-cal-002",
@@ -93,15 +93,15 @@
       "role": "feedback-fix",
       "unit_kind": "feedback-fix",
       "declaration_source": "source-derived-initial-findings",
-      "declared_at": "2026-09-12T12:40:41.683Z",
+      "declared_at": "2026-09-12T14:09:53.212Z",
       "expected_unit_ids": [
         "m5-10d-cal-002",
-        "m5-10d-cal-004",
-        "m5-10d-cal-008",
-        "m5-10d-cal-011"
+        "m5-10d-cal-006",
+        "m5-10d-cal-009",
+        "m5-10d-cal-017"
       ],
       "expected_unit_count": 4,
-      "expected_unit_set_sha256": "11921daebf840294a8a19016948acd88c93e356487f1bb5df44b3377875961d8",
+      "expected_unit_set_sha256": "e6608fa2c1f68ac5243953e6b7b3fb00cd691342ba2c9d02fa05bcc05e25e2a6",
       "empty_work": false,
       "note": "feedback-fixes workload was declared from a pre-pass task queue before timing began."
     },
@@ -110,15 +110,15 @@
       "role": "final-verification",
       "unit_kind": "final-verification",
       "declaration_source": "source-derived-correction-findings",
-      "declared_at": "2026-09-12T12:40:41.683Z",
+      "declared_at": "2026-09-12T14:09:53.212Z",
       "expected_unit_ids": [
         "m5-10d-cal-002",
-        "m5-10d-cal-004",
-        "m5-10d-cal-008",
-        "m5-10d-cal-011"
+        "m5-10d-cal-006",
+        "m5-10d-cal-009",
+        "m5-10d-cal-017"
       ],
       "expected_unit_count": 4,
-      "expected_unit_set_sha256": "11921daebf840294a8a19016948acd88c93e356487f1bb5df44b3377875961d8",
+      "expected_unit_set_sha256": "e6608fa2c1f68ac5243953e6b7b3fb00cd691342ba2c9d02fa05bcc05e25e2a6",
       "empty_work": false,
       "note": "final-verification workload was declared from a pre-pass task queue before timing began."
     },
@@ -127,15 +127,14 @@
       "role": "held-rejected",
       "unit_kind": "held-rejected",
       "declaration_source": "source-derived-initial-findings",
-      "declared_at": "2026-09-12T12:40:41.683Z",
+      "declared_at": "2026-09-12T14:09:53.212Z",
       "expected_unit_ids": [
-        "m5-10d-cal-006",
-        "m5-10d-cal-013",
-        "m5-10d-cal-016",
-        "m5-10d-cal-020"
+        "m5-10d-cal-012",
+        "m5-10d-cal-018",
+        "m5-10d-cal-019"
       ],
-      "expected_unit_count": 4,
-      "expected_unit_set_sha256": "a0e08fbe27cbb10d06f5dcfaafeeaa33b5ebd50ecdfe7c42599c46c5f2441c2d",
+      "expected_unit_count": 3,
+      "expected_unit_set_sha256": "6cb796d682393058d1817e65480bfd62632d7629eb88a6373ddab79021ee11b4",
       "empty_work": false,
       "note": "held-rejected workload was declared from a pre-pass task queue before timing began."
     },
@@ -144,7 +143,7 @@
       "role": "post-freeze-audit",
       "unit_kind": "audit-review",
       "declaration_source": "frozen-editorial-sample",
-      "declared_at": "2026-09-12T12:38:24.132Z",
+      "declared_at": "2026-09-12T14:09:51.088Z",
       "expected_unit_ids": [
         "m5-10d-cal-001",
         "m5-10d-cal-002",
