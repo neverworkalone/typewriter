@@ -413,6 +413,9 @@ export function validateM5CTiming(timing, {
     requireTimestamp(pass.completed_at, `${pass.id}.completed_at`);
     const elapsed = (Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / 1000;
     if (elapsed < 0) fail(`${pass.id} completed before it started`, 'TIMING_CHRONOLOGY');
+    if (pass.editor_seconds > 0 && pass.editor_seconds === pass.producer_seconds) {
+      fail(`${pass.id} copied producer execution into editor time`, 'TIMING_PRODUCER_SUBSTITUTION');
+    }
     assertEqual(pass.editor_seconds, elapsed, `${pass.id} editor seconds`, 'TIMING_DERIVATION_MISMATCH');
     assertEqual(pass.wall_clock_seconds, elapsed, `${pass.id} wall-clock seconds`, 'TIMING_DERIVATION_MISMATCH');
     const { workRows } = workRowsForPass(timing, pass);

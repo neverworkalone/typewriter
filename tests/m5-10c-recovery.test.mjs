@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { produce } from '../scripts/batch/produce-m5-10c-work.mjs';
 import {
   evaluateM5CRecoveryGate,
   M5CRecoveryValidationError,
+  validateM5CTiming,
   validateM5CProposal,
 } from '../scripts/batch/validate-m5-10c-recovery.mjs';
 
@@ -102,4 +104,23 @@ test('M5-10C recovery gate passes exactly at the fixed editor-time limit', () =>
   assert.equal(result.gate_status, 'pass');
   assert.equal(result.decision, 'APPROVE BOUNDED');
   assert.deepEqual(result.failures, []);
+});
+
+test('M5-10C timing rejects producer execution copied into editor time', async () => {
+  const timing = JSON.parse(await readFile('data/batches/m5-10c-editorial-timing-20260910.json', 'utf8'));
+  timing.passes[0].editor_seconds = timing.passes[0].producer_seconds;
+  timing.passes[0].wall_clock_seconds = timing.passes[0].producer_seconds;
+  assert.throws(
+    () => validateM5CTiming(timing, { timingKind: 'editorial' }),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'TIMING_PRODUCER_SUBSTITUTION',
+  );
+});
+
+test('M5-10C timing rejects an unmeasured completed-session claim', async () => {
+  const timing = JSON.parse(await readFile('data/batches/m5-10c-editorial-timing-20260910.json', 'utf8'));
+  timing.status = 'in-progress';
+  assert.throws(
+    () => validateM5CTiming(timing, { timingKind: 'editorial' }),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'TIMING_INCOMPLETE',
+  );
 });
