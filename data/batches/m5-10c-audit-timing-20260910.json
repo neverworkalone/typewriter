@@ -1,0 +1,302 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10c-audit-timing-20260910",
+  "batch_id": "m5-10c-editor-time-recovery-20260910",
+  "timing_kind": "post-freeze-audit",
+  "measurement_kind": "editor-judgment",
+  "recorder_version": "m5-10c-timing-recorder-v1",
+  "recording_source": "timing-recorder-v1",
+  "recorder_command": "node scripts/batch/record-m5-10c-timing.mjs",
+  "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+  "started_at": "2026-09-10T07:46:01.736Z",
+  "status": "complete",
+  "proposal_sha256": "c7a14a928d6ed6b7a66d1bae64a88acadd866e1260b34bfa7a5f0e17b351fc97",
+  "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+  "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+  "passes": [
+    {
+      "id": "post-freeze-audit",
+      "status": "complete",
+      "started_at": "2026-09-10T07:46:01.740Z",
+      "session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "work_evidence": {
+        "path": "data/batches/m5-10c-audit-work-post-freeze-audit-20260910.jsonl",
+        "sha256": "577efbdc34666dcc5577765fcae22bc1325378856c9315345dea777bb64e55cd",
+        "unit_count": 20,
+        "unit_ids": [
+          "m5-10c-cal-001",
+          "m5-10c-cal-002",
+          "m5-10c-cal-003",
+          "m5-10c-cal-004",
+          "m5-10c-cal-005",
+          "m5-10c-cal-006",
+          "m5-10c-cal-007",
+          "m5-10c-cal-008",
+          "m5-10c-cal-009",
+          "m5-10c-cal-010",
+          "m5-10c-cal-011",
+          "m5-10c-cal-012",
+          "m5-10c-cal-013",
+          "m5-10c-cal-014",
+          "m5-10c-cal-015",
+          "m5-10c-cal-016",
+          "m5-10c-cal-017",
+          "m5-10c-cal-018",
+          "m5-10c-cal-019",
+          "m5-10c-cal-020"
+        ]
+      },
+      "completed_at": "2026-09-10T07:46:41.486Z",
+      "editor_seconds": 39.746,
+      "wall_clock_seconds": 39.746,
+      "producer_seconds": 0.006
+    }
+  ],
+  "events": [
+    {
+      "event_id": "m5-10c-timing-event-0001",
+      "kind": "session-start",
+      "timing_kind": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "recorded_at": "2026-09-10T07:46:01.736Z",
+      "proposal_sha256": "c7a14a928d6ed6b7a66d1bae64a88acadd866e1260b34bfa7a5f0e17b351fc97",
+      "editorial_session_id": "c8e27cb7-a731-4295-bcbd-e092739f8551",
+      "audit_session_id": "9ae973f5-8ea3-447f-a2af-250f2d88b042",
+      "editorial_decisions_sha256": "581c40feff8b8a3823eade34c3f343bf1d6a15e6727734e7d7c677298c53ded8"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0002",
+      "kind": "pass-start",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "recorded_at": "2026-09-10T07:46:01.740Z"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0003",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-001",
+      "recorded_at": "2026-09-10T07:46:32.891Z",
+      "producer_output_sha256": "5d380147c9bb5682eefa4307a3ed261e393b89cc31cb08914d48d45d7923ef33"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0004",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-002",
+      "recorded_at": "2026-09-10T07:46:32.891Z",
+      "producer_output_sha256": "9cf8973d27148f442964fc5d50a20f9c820a274bda1abad83fbe1ced2d19616f"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0005",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-003",
+      "recorded_at": "2026-09-10T07:46:32.892Z",
+      "producer_output_sha256": "f0fd310d6448a597889e2965004705e307331f26f4cc4a85c13f7e587853bcf2"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0006",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-004",
+      "recorded_at": "2026-09-10T07:46:32.892Z",
+      "producer_output_sha256": "8068b82dae1d5597523f0d5d6c4b008e68588d084552f41c5d03af44f7dffafe"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0007",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-005",
+      "recorded_at": "2026-09-10T07:46:32.893Z",
+      "producer_output_sha256": "e426c1e788aea1f5710e9e3bc1cd2d8169933414d0f6617dc1d256b68a3fd378"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0008",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-006",
+      "recorded_at": "2026-09-10T07:46:32.893Z",
+      "producer_output_sha256": "4101c43d800289e1e8a9ca5eefab1e5363f031a666bb0a243c972fc527df9d53"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0009",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-007",
+      "recorded_at": "2026-09-10T07:46:32.894Z",
+      "producer_output_sha256": "f879a0e17d368c09f84efcba46c00d3535f6c583223c88fe2dbf2d689fd37e02"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0010",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-008",
+      "recorded_at": "2026-09-10T07:46:32.894Z",
+      "producer_output_sha256": "1f37b8b6911aab0a4e4413c37b562a1017952cd3ad523fabe2a457ef133989fb"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0011",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-009",
+      "recorded_at": "2026-09-10T07:46:32.895Z",
+      "producer_output_sha256": "4a179e2c8aa62d7a9cbb1bec044b4ffa35b016e4e28171dfc7baf6abcdf31fd3"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0012",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-010",
+      "recorded_at": "2026-09-10T07:46:32.895Z",
+      "producer_output_sha256": "b549bb55945c634e559bd2d70ce863f0fb6c1ba92d9747944d3bea37dad1c2c5"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0013",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-011",
+      "recorded_at": "2026-09-10T07:46:32.895Z",
+      "producer_output_sha256": "4c88f9bb46ff201cd2019dcb440254e4eab3d517469bd54abe8e13f72e52b30e"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0014",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-012",
+      "recorded_at": "2026-09-10T07:46:32.896Z",
+      "producer_output_sha256": "f067f18b022292e81b9c4170110ebf00e2aa735b62b7f53d6e2829baea350ff1"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0015",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-013",
+      "recorded_at": "2026-09-10T07:46:32.896Z",
+      "producer_output_sha256": "12c057ec2908b3c2f194181e4be1617ce2dc02e23689b69cb05b779526b12761"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0016",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-014",
+      "recorded_at": "2026-09-10T07:46:32.897Z",
+      "producer_output_sha256": "975d335a41ff628b75b52e2a23cabe1d510843e03fbbdf3952808a67b6bd306f"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0017",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-015",
+      "recorded_at": "2026-09-10T07:46:32.897Z",
+      "producer_output_sha256": "1bd1ca7a21076768207a042aa349478bd150420147b20d01dd215707ea0c03a0"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0018",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-016",
+      "recorded_at": "2026-09-10T07:46:32.898Z",
+      "producer_output_sha256": "3a123d38ab83feb8c4e19f10559c99ef1ce269d2477cd51ed26df9c0206fbf55"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0019",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-017",
+      "recorded_at": "2026-09-10T07:46:32.898Z",
+      "producer_output_sha256": "1bece45d1b29053ab6426d41d249cc37d8b27415d1c4ebc43afac4dddc140964"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0020",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-018",
+      "recorded_at": "2026-09-10T07:46:32.899Z",
+      "producer_output_sha256": "c5ce5b39de401a2b4bc1dd829e94fcd1338ea204bf1c15786bc77bd1bbc2758c"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0021",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-019",
+      "recorded_at": "2026-09-10T07:46:32.899Z",
+      "producer_output_sha256": "25a4abdc247398b33f6c1fe22cc38bcf72652fa811d8166feb864958192476d4"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0022",
+      "kind": "work-recorded",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "unit_id": "m5-10c-cal-020",
+      "recorded_at": "2026-09-10T07:46:32.899Z",
+      "producer_output_sha256": "1b27efb5082eb396274dfb96e384f395b3359603ef8d55272007a838625edc57"
+    },
+    {
+      "event_id": "m5-10c-timing-event-0023",
+      "kind": "pass-stop",
+      "pass_id": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "pass_session_id": "a233d3f8-867a-480a-abfc-e63eeb845184",
+      "recorded_at": "2026-09-10T07:46:41.486Z",
+      "editor_seconds": 39.746,
+      "wall_clock_seconds": 39.746,
+      "producer_seconds": 0.006,
+      "unit_count": 20
+    },
+    {
+      "event_id": "m5-10c-timing-event-0024",
+      "kind": "session-stop",
+      "timing_kind": "post-freeze-audit",
+      "session_id": "0424208e-c431-4b4c-8331-ebc1e4a1e3ad",
+      "recorded_at": "2026-09-10T07:46:50.613Z"
+    }
+  ],
+  "note": "Current-clock measurement begins after editorial freeze for an independent post-freeze audit; this timing cannot reuse editorial decisions as the audit output.",
+  "editorial_session_id": "c8e27cb7-a731-4295-bcbd-e092739f8551",
+  "audit_session_id": "9ae973f5-8ea3-447f-a2af-250f2d88b042",
+  "editorial_decisions_sha256": "581c40feff8b8a3823eade34c3f343bf1d6a15e6727734e7d7c677298c53ded8",
+  "editorial_finalized_at": "2026-09-10T07:45:35.677Z",
+  "completed_at": "2026-09-10T07:46:50.613Z",
+  "recording_proof_sha256": "4982ec0a154eb3f95f0a6b2a430e0ce18a69b111375116558a28b50020280e95"
+}

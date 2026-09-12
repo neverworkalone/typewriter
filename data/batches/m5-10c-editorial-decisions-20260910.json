@@ -1,0 +1,1529 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10c-editorial-decisions-20260910",
+  "batch_id": "m5-10c-editor-time-recovery-20260910",
+  "source_kind": "codex-authored",
+  "decision_source": "separately-authored-record-by-record-editorial-draft",
+  "proposal_sha256": "c7a14a928d6ed6b7a66d1bae64a88acadd866e1260b34bfa7a5f0e17b351fc97",
+  "editorial_session_id": "c8e27cb7-a731-4295-bcbd-e092739f8551",
+  "timing_session_id": "50066a38-0514-4df9-958f-fa99b2fbecdd",
+  "draft_created_at": "2026-09-10T07:30:54.445Z",
+  "created_at": "2026-09-10T07:45:35.673Z",
+  "finalized_at": "2026-09-10T07:45:35.677Z",
+  "records": [
+    {
+      "case_id": "m5-10c-cal-001",
+      "record_id": "cal-m5-10c-001",
+      "source_record_sha256": "abfec9d1e05daf5181ecbfa589bc6dcb940ed928ecee6981e43571e4c0ed393c",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10c-cal-001 lemma-pos checked against cal-m5-10c-001-s1; 착잡함 is a noun in this calibration record."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-001-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10c-cal-001 sense-review retained cal-m5-10c-001-s1 as the mixed-emotion state."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-001 physical-figurative cal-m5-10c-001-s1 is an emotion-state noun, not a physical/figurative split."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-001 homonym-pos cal-m5-10c-001-s1 has one observed noun POS and no homonym branch."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-001 sensory-emotion-state-action cal-m5-10c-001-s1 names a mixed emotional state, so the state reading stays bounded."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-001 directional-symmetry cal-m5-10c-001-s1 is a source mood, while its candidate target is only a near mood relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-001 compound-spaced-phrase cal-m5-10c-001-s1 is a single lexical noun rather than a spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-001 word-idiom cal-m5-10c-001-s1 has no idiomatic expression boundary."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-001-s1",
+        "target_record": "cal-m5-10c-005",
+        "target_sense": "cal-m5-10c-005-s1",
+        "type": "mood",
+        "direction": {
+          "from": "cal-m5-10c-001-s1",
+          "to": "cal-m5-10c-005-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10c-cal-001 relation-review cal-m5-10c-001-s1 to cal-m5-10c-005-s1 is a useful mood association, not a direct replacement."
+      },
+      "decision_note": "m5-10c-cal-001 cal-m5-10c-001 included after cal-m5-10c-001-s1 was checked as a distinct mixed-emotion noun."
+    },
+    {
+      "case_id": "m5-10c-cal-002",
+      "record_id": "cal-m5-10c-002",
+      "source_record_sha256": "343987d6d0c64865d968f76fd636c6c083298aa1aacc554837ed49f196b02987",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "relation_review"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective",
+          "adjective"
+        ],
+        "note": "m5-10c-cal-002 lemma-pos checked for cal-m5-10c-002-s1 and cal-m5-10c-002-s2; both are adjective senses."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-002-s1",
+          "cal-m5-10c-002-s2"
+        ],
+        "observed_pos": [
+          "adjective",
+          "adjective"
+        ],
+        "note": "m5-10c-cal-002 sense-review kept cal-m5-10c-002-s1 for light/color and cal-m5-10c-002-s2 for sound."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-002 physical-figurative cal-m5-10c-002-s1 and cal-m5-10c-002-s2 are sensory uses, not a physical/figurative pair."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-002 homonym-pos cal-m5-10c-002-s1 and cal-m5-10c-002-s2 share adjective POS but differ by light versus sound."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-002 sensory-emotion-state-action separates cal-m5-10c-002-s1 visual intensity from cal-m5-10c-002-s2 auditory intensity."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-002 directional-symmetry uses cal-m5-10c-002-s1 as the source of the sensory candidate; direction is not reciprocal by default."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-002 compound-spaced-phrase cal-m5-10c-002-s1 and cal-m5-10c-002-s2 belong to one lexical entry."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-002 word-idiom cal-m5-10c-002-s1 is an adjective sense, not an idiom."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-002-s1",
+        "target_record": "cal-m5-10c-007",
+        "target_sense": "cal-m5-10c-007-s1",
+        "type": "sensory",
+        "direction": {
+          "from": "cal-m5-10c-002-s1",
+          "to": "cal-m5-10c-007-s1"
+        },
+        "decision": "correct",
+        "noise_assessment": "clean",
+        "correction": "corrected",
+        "note": "m5-10c-cal-002 relation-review cal-m5-10c-002-s1 to cal-m5-10c-007-s1 is retained as sensory imagery after the two adjective senses were separated."
+      },
+      "decision_note": "m5-10c-cal-002 cal-m5-10c-002 corrected because cal-m5-10c-002-s1 and cal-m5-10c-002-s2 require separate sensory sense boundaries."
+    },
+    {
+      "case_id": "m5-10c-cal-003",
+      "record_id": "cal-m5-10c-003",
+      "source_record_sha256": "b730b9e6c4205cb76633cb2a1c792a18ab667779519f7f38d3d2201105c5150f",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "relation_review"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun",
+          "noun"
+        ],
+        "note": "m5-10c-cal-003 lemma-pos checked for cal-m5-10c-003-s1 and cal-m5-10c-003-s2; both are noun senses."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-003-s1",
+          "cal-m5-10c-003-s2"
+        ],
+        "observed_pos": [
+          "noun",
+          "noun"
+        ],
+        "note": "m5-10c-cal-003 sense-review separates cal-m5-10c-003-s1 surface frost from cal-m5-10c-003-s2 gray hair."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-003 physical-figurative cal-m5-10c-003-s1 is physical frost while cal-m5-10c-003-s2 is a figurative age image."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-003 homonym-pos cal-m5-10c-003-s1 and cal-m5-10c-003-s2 retain noun POS without a POS homonym."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-003 sensory-emotion-state-action keeps cal-m5-10c-003-s1 as a surface image and cal-m5-10c-003-s2 as an age-state image."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-003 directional-symmetry treats cal-m5-10c-003-s1 as source-specific; the candidate does not imply a reverse relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-003 compound-spaced-phrase cal-m5-10c-003-s1 and cal-m5-10c-003-s2 are senses of one word."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-003 word-idiom cal-m5-10c-003-s1 is lexical and not an idiomatic phrase."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-003-s1",
+        "target_record": "cal-m5-10c-005",
+        "target_sense": "cal-m5-10c-005-s1",
+        "type": "association",
+        "direction": {
+          "from": "cal-m5-10c-003-s1",
+          "to": "cal-m5-10c-005-s1"
+        },
+        "decision": "correct",
+        "noise_assessment": "noise",
+        "correction": "corrected",
+        "note": "m5-10c-cal-003 relation-review cal-m5-10c-003-s1 to cal-m5-10c-005-s1 is noisy as proposed because surface frost does not support a remorse relation; the correction keeps the candidate out."
+      },
+      "decision_note": "m5-10c-cal-003 cal-m5-10c-003 corrected after cal-m5-10c-003-s1 and cal-m5-10c-003-s2 were separated; its association candidate was marked noisy."
+    },
+    {
+      "case_id": "m5-10c-cal-004",
+      "record_id": "cal-m5-10c-004",
+      "source_record_sha256": "95bb71e34160e8baea7dd0564a19012891abbe0792b74a645cf395a983042120",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-004 lemma-pos checked for cal-m5-10c-004-s1 and cal-m5-10c-004-s2; both are expression units."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-004-s1",
+          "cal-m5-10c-004-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-004 sense-review distinguishes breathing difficulty in cal-m5-10c-004-s1 from pressure in cal-m5-10c-004-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-004 physical-figurative cal-m5-10c-004-s1 is bodily breathing while cal-m5-10c-004-s2 is figurative pressure."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-004 homonym-pos cal-m5-10c-004-s1 and cal-m5-10c-004-s2 share expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-004 sensory-emotion-state-action separates cal-m5-10c-004-s1 physical sensation from cal-m5-10c-004-s2 emotional state."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-004 directional-symmetry keeps cal-m5-10c-004-s1 as the candidate source and does not infer a reverse edge."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-004 compound-spaced-phrase cal-m5-10c-004-s1 and cal-m5-10c-004-s2 belong to the same spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-004 word-idiom cal-m5-10c-004-s1 is an expression whose idiomatic pressure reading is retained as a separate sense."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-004-s1",
+        "target_record": "cal-m5-10c-015",
+        "target_sense": "cal-m5-10c-015-s1",
+        "type": "sensory",
+        "direction": {
+          "from": "cal-m5-10c-004-s1",
+          "to": "cal-m5-10c-015-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10c-cal-004 relation-review cal-m5-10c-004-s1 to cal-m5-10c-015-s1 shares a bodily breath-holding scene and is useful as sensory association."
+      },
+      "decision_note": "m5-10c-cal-004 cal-m5-10c-004 included with cal-m5-10c-004-s1 and cal-m5-10c-004-s2 kept as separate expression senses."
+    },
+    {
+      "case_id": "m5-10c-cal-005",
+      "record_id": "cal-m5-10c-005",
+      "source_record_sha256": "cd7cc272814a3d19d8f27bae1097e2e4a1d25a2aaed8050140a0a5ca5fefc077",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10c-cal-005 lemma-pos checked against cal-m5-10c-005-s1; 회한 is a noun."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-005-s1"
+        ],
+        "observed_pos": [
+          "noun"
+        ],
+        "note": "m5-10c-cal-005 sense-review retained cal-m5-10c-005-s1 as one regret-laden emotional state."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-005 physical-figurative cal-m5-10c-005-s1 is an emotional noun with no physical branch."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-005 homonym-pos cal-m5-10c-005-s1 has one noun POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-005 sensory-emotion-state-action cal-m5-10c-005-s1 is a named emotional state, not an action."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-005 directional-symmetry cal-m5-10c-005-s1 receives a mood comparison from 착잡함 without implying symmetry."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-005 compound-spaced-phrase cal-m5-10c-005-s1 is a single noun."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-005 word-idiom cal-m5-10c-005-s1 is not an idiomatic expression."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-005-s1",
+        "target_record": "cal-m5-10c-001",
+        "target_sense": "cal-m5-10c-001-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10c-005-s1",
+          "to": "cal-m5-10c-001-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10c-cal-005 relation-review cal-m5-10c-005-s1 to cal-m5-10c-001-s1 is a near mood relation; regret and mixed emotion are not direct substitutes."
+      },
+      "decision_note": "m5-10c-cal-005 cal-m5-10c-005 included after cal-m5-10c-005-s1 was checked as a focused regret noun."
+    },
+    {
+      "case_id": "m5-10c-cal-006",
+      "record_id": "cal-m5-10c-006",
+      "source_record_sha256": "90d62c16f7d3447127e93dd20b479cd32afd3b04c80aa3003539eff602049509",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-006 lemma-pos checked against cal-m5-10c-006-s1; 움찔 is treated as an expression unit."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-006-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-006 sense-review found one involuntary-startle reading in cal-m5-10c-006-s1."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-006 physical-figurative cal-m5-10c-006-s1 describes bodily movement without a figurative sense."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-006 homonym-pos cal-m5-10c-006-s1 is expression-like and needs a stable 의태어 POS policy."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-006 sensory-emotion-state-action cal-m5-10c-006-s1 blends a body reaction with a startled state."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-006 directional-symmetry cal-m5-10c-006-s1 has no relation candidate to orient."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-006 compound-spaced-phrase cal-m5-10c-006-s1 is a compact expression token."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-006 word-idiom cal-m5-10c-006-s1 needs the expression versus ideophone boundary before import."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-006 relation-review cal-m5-10c-006-s1 has no candidate that can be admitted before the expression policy is settled."
+      },
+      "decision_note": "m5-10c-cal-006 cal-m5-10c-006 held because cal-m5-10c-006-s1 crosses the expression and ideophone boundary."
+    },
+    {
+      "case_id": "m5-10c-cal-007",
+      "record_id": "cal-m5-10c-007",
+      "source_record_sha256": "24607b8a3ba0867e9cd13d122abd20efef4bc897d9835fa4f4607eb07f36252e",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "noun",
+          "noun"
+        ],
+        "note": "m5-10c-cal-007 lemma-pos checked for cal-m5-10c-007-s1 and cal-m5-10c-007-s2; both are noun senses."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-007-s1",
+          "cal-m5-10c-007-s2"
+        ],
+        "observed_pos": [
+          "noun",
+          "noun"
+        ],
+        "note": "m5-10c-cal-007 sense-review distinguishes distant light in cal-m5-10c-007-s1 from a hope image in cal-m5-10c-007-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-007 physical-figurative cal-m5-10c-007-s1 is visible distant light and cal-m5-10c-007-s2 is figurative hope."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-007 homonym-pos cal-m5-10c-007-s1 and cal-m5-10c-007-s2 remain noun senses."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-007 sensory-emotion-state-action separates cal-m5-10c-007-s1 visual sensation from cal-m5-10c-007-s2 emotional association."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-007 directional-symmetry cal-m5-10c-007-s1 receives the sensory relation from cal-m5-10c-002-s1 without adding a reverse edge."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-007 compound-spaced-phrase cal-m5-10c-007-s1 and cal-m5-10c-007-s2 are senses under one noun."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-007 word-idiom cal-m5-10c-007-s1 is a noun image, not an idiom."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-007 relation-review cal-m5-10c-007-s1 and cal-m5-10c-007-s2 have no additional candidate after the sensory source was checked."
+      },
+      "decision_note": "m5-10c-cal-007 cal-m5-10c-007 included with cal-m5-10c-007-s1 and cal-m5-10c-007-s2 split across light and figurative hope."
+    },
+    {
+      "case_id": "m5-10c-cal-008",
+      "record_id": "cal-m5-10c-008",
+      "source_record_sha256": "315288c69b4fb261acf5f99f3fb58456781453ea8aac228544d3271d7845023c",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-008 lemma-pos checked against cal-m5-10c-008-s1; 마음을 가라앉히다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-008-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-008 sense-review retained cal-m5-10c-008-s1 as one calming action."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-008 physical-figurative cal-m5-10c-008-s1 is a mental-state expression without a physical branch."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-008 homonym-pos cal-m5-10c-008-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-008 sensory-emotion-state-action cal-m5-10c-008-s1 is an action that changes an emotional state."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-008 directional-symmetry cal-m5-10c-008-s1 points toward 마음이 풀리다 without assuming the reverse action."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-008 compound-spaced-phrase cal-m5-10c-008-s1 is preserved as one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-008 word-idiom cal-m5-10c-008-s1 is a writer-useful expression with a stable idiomatic action."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-008-s1",
+        "target_record": "cal-m5-10c-018",
+        "target_sense": "cal-m5-10c-018-s1",
+        "type": "action",
+        "direction": {
+          "from": "cal-m5-10c-008-s1",
+          "to": "cal-m5-10c-018-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10c-cal-008 relation-review cal-m5-10c-008-s1 to cal-m5-10c-018-s1 connects a deliberate calming action to the resulting softened state."
+      },
+      "decision_note": "m5-10c-cal-008 cal-m5-10c-008 included after cal-m5-10c-008-s1 was checked as a stable calming expression."
+    },
+    {
+      "case_id": "m5-10c-cal-009",
+      "record_id": "cal-m5-10c-009",
+      "source_record_sha256": "533f783c938190ab4849422153accf827af4f396b23244537a65bff57be02ee0",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "relation_review"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-009 lemma-pos checked for cal-m5-10c-009-s1 and cal-m5-10c-009-s2; both are expressions."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-009-s1",
+          "cal-m5-10c-009-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-009 sense-review separates breath-holding in cal-m5-10c-009-s1 from concealing presence in cal-m5-10c-009-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-009 physical-figurative cal-m5-10c-009-s1 is literal breath-holding while cal-m5-10c-009-s2 is a figurative concealment scene."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-009 homonym-pos cal-m5-10c-009-s1 and cal-m5-10c-009-s2 share expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-009 sensory-emotion-state-action separates cal-m5-10c-009-s1 bodily action from cal-m5-10c-009-s2 scene behavior."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-009 directional-symmetry keeps cal-m5-10c-009-s1 as source for the action candidate only."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-009 compound-spaced-phrase cal-m5-10c-009-s1 and cal-m5-10c-009-s2 remain senses of one spaced phrase."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-009 word-idiom cal-m5-10c-009-s1 is bodily while cal-m5-10c-009-s2 carries the idiomatic keep-quiet behavior."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-009-s1",
+        "target_record": "cal-m5-10c-014",
+        "target_sense": "cal-m5-10c-014-s1",
+        "type": "action",
+        "direction": {
+          "from": "cal-m5-10c-009-s1",
+          "to": "cal-m5-10c-014-s1"
+        },
+        "decision": "correct",
+        "noise_assessment": "clean",
+        "correction": "corrected",
+        "note": "m5-10c-cal-009 relation-review cal-m5-10c-009-s1 to cal-m5-10c-014-s1 is kept only after the literal breath-holding sense was separated from the concealment sense."
+      },
+      "decision_note": "m5-10c-cal-009 cal-m5-10c-009 corrected because cal-m5-10c-009-s1 and cal-m5-10c-009-s2 cross literal action and idiomatic behavior."
+    },
+    {
+      "case_id": "m5-10c-cal-010",
+      "record_id": "cal-m5-10c-010",
+      "source_record_sha256": "0095ed952908e58f30121836054f8b2d2c1616ad4f617ad38c1035de3ebda744",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-010 lemma-pos checked against cal-m5-10c-010-s1; 말문이 막히다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-010-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-010 sense-review retained cal-m5-10c-010-s1 as one speech-blocking state."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-010 physical-figurative cal-m5-10c-010-s1 describes a speech failure with a stable figurative expression."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-010 homonym-pos cal-m5-10c-010-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-010 sensory-emotion-state-action cal-m5-10c-010-s1 describes a state caused by surprise or confusion."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-010 directional-symmetry cal-m5-10c-010-s1 has no proposed relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-010 compound-spaced-phrase cal-m5-10c-010-s1 is one fixed spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-010 word-idiom cal-m5-10c-010-s1 is a conventional idiomatic expression."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-010 relation-review cal-m5-10c-010-s1 has no candidate requiring a relation verdict."
+      },
+      "decision_note": "m5-10c-cal-010 cal-m5-10c-010 included after cal-m5-10c-010-s1 passed the expression boundary review."
+    },
+    {
+      "case_id": "m5-10c-cal-011",
+      "record_id": "cal-m5-10c-011",
+      "source_record_sha256": "573412a689ffa8b2e2b7846e33c9ee1a28f1d5e9ebcb3c03c6e9c212a7c29c1d",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review",
+        "relation_review"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-011 lemma-pos checked for cal-m5-10c-011-s1 and cal-m5-10c-011-s2; both are expressions."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-011-s1",
+          "cal-m5-10c-011-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-011 sense-review separates releasing a held object in cal-m5-10c-011-s1 from abandoning work in cal-m5-10c-011-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-011 physical-figurative cal-m5-10c-011-s1 is a hand action while cal-m5-10c-011-s2 is figurative abandonment."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-011 homonym-pos cal-m5-10c-011-s1 and cal-m5-10c-011-s2 share expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-011 sensory-emotion-state-action keeps cal-m5-10c-011-s1 physical and cal-m5-10c-011-s2 action-state meanings apart."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-011 directional-symmetry uses cal-m5-10c-011-s2 as the source of a one-way action association."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-011 compound-spaced-phrase cal-m5-10c-011-s1 and cal-m5-10c-011-s2 remain under one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-011 word-idiom cal-m5-10c-011-s2 has the idiomatic give-up reading while cal-m5-10c-011-s1 stays literal."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10c-011-s2",
+        "target_record": "cal-m5-10c-017",
+        "target_sense": "cal-m5-10c-017-s2",
+        "type": "action",
+        "direction": {
+          "from": "cal-m5-10c-011-s2",
+          "to": "cal-m5-10c-017-s2"
+        },
+        "decision": "correct",
+        "noise_assessment": "clean",
+        "correction": "corrected",
+        "note": "m5-10c-cal-011 relation-review cal-m5-10c-011-s2 to cal-m5-10c-017-s2 is an action association only after the abandonment sense was separated."
+      },
+      "decision_note": "m5-10c-cal-011 cal-m5-10c-011 corrected because cal-m5-10c-011-s1 and cal-m5-10c-011-s2 must not share a flat expression sense."
+    },
+    {
+      "case_id": "m5-10c-cal-012",
+      "record_id": "cal-m5-10c-012",
+      "source_record_sha256": "88afc69d1965ba299efd0f571e6840b884b92edd28de8739a870a3a0e286eec3",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-012 lemma-pos checked for cal-m5-10c-012-s1 and cal-m5-10c-012-s2; both are expressions."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-012-s1",
+          "cal-m5-10c-012-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-012 sense-review distinguishes visible movement in cal-m5-10c-012-s1 from memory recurrence in cal-m5-10c-012-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-012 physical-figurative cal-m5-10c-012-s1 is visual while cal-m5-10c-012-s2 is memory imagery; import waits for boundary wording."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-012 homonym-pos cal-m5-10c-012-s1 and cal-m5-10c-012-s2 share expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-012 sensory-emotion-state-action cal-m5-10c-012-s1 is perception while cal-m5-10c-012-s2 is an emotional-memory scene."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-012 directional-symmetry cal-m5-10c-012-s1 and cal-m5-10c-012-s2 have no relation candidate."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-012 compound-spaced-phrase cal-m5-10c-012-s1 and cal-m5-10c-012-s2 are senses of one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-012 word-idiom cal-m5-10c-012-s2 has an idiomatic memory use whose record boundary remains unresolved."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-012 relation-review cal-m5-10c-012-s1 and cal-m5-10c-012-s2 have no candidate while the visual-memory boundary is held."
+      },
+      "decision_note": "m5-10c-cal-012 cal-m5-10c-012 held until cal-m5-10c-012-s1 and cal-m5-10c-012-s2 receive a stable visual versus memory boundary."
+    },
+    {
+      "case_id": "m5-10c-cal-013",
+      "record_id": "cal-m5-10c-013",
+      "source_record_sha256": "81ee1d27c2f43e9f366f61221f13be7800e1b84be6ac8b99be394f9c2343df51",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-013 lemma-pos checked against cal-m5-10c-013-s1; 말을 고르다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-013-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-013 sense-review retained cal-m5-10c-013-s1 as one deliberate speech-selection action."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-013 physical-figurative cal-m5-10c-013-s1 is a speech-planning expression without a physical branch."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-013 homonym-pos cal-m5-10c-013-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-013 sensory-emotion-state-action cal-m5-10c-013-s1 names an intentional communicative action."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-013 directional-symmetry cal-m5-10c-013-s1 has no candidate relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-013 compound-spaced-phrase cal-m5-10c-013-s1 is retained as one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-013 word-idiom cal-m5-10c-013-s1 is a conventional writer-facing expression."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-013 relation-review cal-m5-10c-013-s1 has no candidate requiring an association decision."
+      },
+      "decision_note": "m5-10c-cal-013 cal-m5-10c-013 included after cal-m5-10c-013-s1 passed the speech-action boundary review."
+    },
+    {
+      "case_id": "m5-10c-cal-014",
+      "record_id": "cal-m5-10c-014",
+      "source_record_sha256": "0e5d7611c8b955664378f6fa894b3693984abc8c5bf5220e365f5d91abab539c",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-014 lemma-pos checked for cal-m5-10c-014-s1 and cal-m5-10c-014-s2; both are expressions."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-014-s1",
+          "cal-m5-10c-014-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-014 sense-review separates listening focus in cal-m5-10c-014-s1 from openness to advice in cal-m5-10c-014-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-014 physical-figurative cal-m5-10c-014-s1 is literal listening while cal-m5-10c-014-s2 is figurative openness."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-014 homonym-pos cal-m5-10c-014-s1 and cal-m5-10c-014-s2 remain expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-014 sensory-emotion-state-action cal-m5-10c-014-s1 is sensory attention and cal-m5-10c-014-s2 is an attitude."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-014 directional-symmetry cal-m5-10c-014-s1 and cal-m5-10c-014-s2 have no relation candidate."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-014 compound-spaced-phrase cal-m5-10c-014-s1 and cal-m5-10c-014-s2 are one spaced expression with two readings."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-014 word-idiom cal-m5-10c-014-s2 has a figurative idiomatic reading that needs editorial policy."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-014 relation-review cal-m5-10c-014-s1 and cal-m5-10c-014-s2 have no candidate while the sensory-attitude boundary is held."
+      },
+      "decision_note": "m5-10c-cal-014 cal-m5-10c-014 held until cal-m5-10c-014-s1 and cal-m5-10c-014-s2 receive a consistent literal and figurative treatment."
+    },
+    {
+      "case_id": "m5-10c-cal-015",
+      "record_id": "cal-m5-10c-015",
+      "source_record_sha256": "d5ddb4b2203ea2482af04c0aa32b161bb1adbb00a8ce2c8e294eec541aa52bce",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-015 lemma-pos checked against cal-m5-10c-015-s1; 숨을 삼키다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-015-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-015 sense-review retained cal-m5-10c-015-s1 as one tense breath interruption."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-015 physical-figurative cal-m5-10c-015-s1 is a bodily breath action with a stable expression."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-015 homonym-pos cal-m5-10c-015-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-015 sensory-emotion-state-action cal-m5-10c-015-s1 combines a breath action with a tension state."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-015 directional-symmetry cal-m5-10c-015-s1 has no candidate relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-015 compound-spaced-phrase cal-m5-10c-015-s1 is kept as one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-015 word-idiom cal-m5-10c-015-s1 is a conventional expression for tense silence."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-015 relation-review cal-m5-10c-015-s1 has no additional candidate beyond its breath scene."
+      },
+      "decision_note": "m5-10c-cal-015 cal-m5-10c-015 included after cal-m5-10c-015-s1 passed the breath-action review."
+    },
+    {
+      "case_id": "m5-10c-cal-016",
+      "record_id": "cal-m5-10c-016",
+      "source_record_sha256": "f14a24a1767a211bf6c96b34092cc8fc948ed584c1896e57392381811d7f4492",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-016 lemma-pos checked against cal-m5-10c-016-s1; 가슴을 쓸어내리다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-016-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-016 sense-review retained cal-m5-10c-016-s1 as a single relief response."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-016 physical-figurative cal-m5-10c-016-s1 uses a bodily image for a stable relief expression."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-016 homonym-pos cal-m5-10c-016-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-016 sensory-emotion-state-action cal-m5-10c-016-s1 links a bodily gesture to the emotional state of relief."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-016 directional-symmetry cal-m5-10c-016-s1 has no candidate relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-016 compound-spaced-phrase cal-m5-10c-016-s1 is kept as one expression unit."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-016 word-idiom cal-m5-10c-016-s1 is an established idiomatic relief phrase."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-016 relation-review cal-m5-10c-016-s1 has no candidate requiring an association verdict."
+      },
+      "decision_note": "m5-10c-cal-016 cal-m5-10c-016 included after cal-m5-10c-016-s1 passed the bodily-image and relief-state review."
+    },
+    {
+      "case_id": "m5-10c-cal-017",
+      "record_id": "cal-m5-10c-017",
+      "source_record_sha256": "0911b357eda7a583e5643875d4ca8a3201475cf6611af0736f7f4bbca0d5c49c",
+      "decision": "corrected",
+      "corrected_fields": [
+        "sense_review"
+      ],
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-017 lemma-pos checked for cal-m5-10c-017-s1 and cal-m5-10c-017-s2; both are expressions."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-017-s1",
+          "cal-m5-10c-017-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-017 sense-review separates literal redirection in cal-m5-10c-017-s1 from changing one's mind in cal-m5-10c-017-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-017 physical-figurative cal-m5-10c-017-s1 is physical direction while cal-m5-10c-017-s2 is figurative resolve."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-017 homonym-pos cal-m5-10c-017-s1 and cal-m5-10c-017-s2 share expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-017 sensory-emotion-state-action keeps cal-m5-10c-017-s1 as movement and cal-m5-10c-017-s2 as a decision action."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-017 directional-symmetry cal-m5-10c-017-s1 and cal-m5-10c-017-s2 retain their distinct directional readings."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-017 compound-spaced-phrase cal-m5-10c-017-s1 and cal-m5-10c-017-s2 remain under one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10c-cal-017 word-idiom cal-m5-10c-017-s2 carries the idiomatic change-of-mind reading."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-017 relation-review cal-m5-10c-017-s1 and cal-m5-10c-017-s2 have no candidate after the two action senses were separated."
+      },
+      "decision_note": "m5-10c-cal-017 cal-m5-10c-017 corrected because cal-m5-10c-017-s1 and cal-m5-10c-017-s2 are distinct physical and figurative actions."
+    },
+    {
+      "case_id": "m5-10c-cal-018",
+      "record_id": "cal-m5-10c-018",
+      "source_record_sha256": "8203e57988baba7a3cd59b312a4ab95d54c2eff5c0a896eaf1879fff45b55a97",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-018 lemma-pos checked against cal-m5-10c-018-s1; 마음이 풀리다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-018-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-018 sense-review retained cal-m5-10c-018-s1 as one softened emotional state."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-018 physical-figurative cal-m5-10c-018-s1 is a mental-state expression without a physical branch."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-018 homonym-pos cal-m5-10c-018-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-018 sensory-emotion-state-action cal-m5-10c-018-s1 is an emotional state reached after tension eases."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-018 directional-symmetry cal-m5-10c-018-s1 has no candidate relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-018 compound-spaced-phrase cal-m5-10c-018-s1 is retained as one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-018 word-idiom cal-m5-10c-018-s1 is a writer-facing figurative expression."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-018 relation-review cal-m5-10c-018-s1 has no candidate requiring a relation verdict."
+      },
+      "decision_note": "m5-10c-cal-018 cal-m5-10c-018 included after cal-m5-10c-018-s1 passed the softened-state review."
+    },
+    {
+      "case_id": "m5-10c-cal-019",
+      "record_id": "cal-m5-10c-019",
+      "source_record_sha256": "1d76f325adc38c1b8639dc3c1eb4747c7f7056cb0c5a461e083adde4d4d2c92e",
+      "decision": "held",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-019 lemma-pos checked for cal-m5-10c-019-s1 and cal-m5-10c-019-s2; both are expressions."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10c-019-s1",
+          "cal-m5-10c-019-s2"
+        ],
+        "observed_pos": [
+          "expression",
+          "expression"
+        ],
+        "note": "m5-10c-cal-019 sense-review separates physical graspability in cal-m5-10c-019-s1 from conceptual clarity in cal-m5-10c-019-s2."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-019 physical-figurative cal-m5-10c-019-s1 is tangible while cal-m5-10c-019-s2 is conceptual; the phrase needs a sharper boundary note."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-019 homonym-pos cal-m5-10c-019-s1 and cal-m5-10c-019-s2 share expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-019 sensory-emotion-state-action cal-m5-10c-019-s1 is tactile while cal-m5-10c-019-s2 is a cognition state."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-019 directional-symmetry cal-m5-10c-019-s1 and cal-m5-10c-019-s2 have no candidate relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-019 compound-spaced-phrase cal-m5-10c-019-s1 and cal-m5-10c-019-s2 remain senses of one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "hold",
+          "evidence": "m5-10c-cal-019 word-idiom cal-m5-10c-019-s2 is an idiomatic grasping-of-an-idea use that remains held."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-019 relation-review cal-m5-10c-019-s1 and cal-m5-10c-019-s2 have no candidate while the tactile-conceptual boundary is held."
+      },
+      "decision_note": "m5-10c-cal-019 cal-m5-10c-019 held until cal-m5-10c-019-s1 and cal-m5-10c-019-s2 receive a precise physical versus conceptual note."
+    },
+    {
+      "case_id": "m5-10c-cal-020",
+      "record_id": "cal-m5-10c-020",
+      "source_record_sha256": "4c7f017c0ab7b781a3ce00d0f1984cadb527f3ef358d667790928279fc4d3cca",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-020 lemma-pos checked against cal-m5-10c-020-s1; 기운을 차리다 is an expression."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10c-020-s1"
+        ],
+        "observed_pos": [
+          "expression"
+        ],
+        "note": "m5-10c-cal-020 sense-review retained cal-m5-10c-020-s1 as one recovery action."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-020 physical-figurative cal-m5-10c-020-s1 uses a bodily energy image for a stable expression."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-020 homonym-pos cal-m5-10c-020-s1 has one expression POS."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-020 sensory-emotion-state-action cal-m5-10c-020-s1 names an action of recovering energy."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-020 directional-symmetry cal-m5-10c-020-s1 has no candidate relation."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-020 compound-spaced-phrase cal-m5-10c-020-s1 is kept as one spaced expression."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "keep",
+          "evidence": "m5-10c-cal-020 word-idiom cal-m5-10c-020-s1 is a conventional recovery expression."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10c-cal-020 relation-review cal-m5-10c-020-s1 has no candidate requiring an association verdict."
+      },
+      "decision_note": "m5-10c-cal-020 cal-m5-10c-020 included after cal-m5-10c-020-s1 passed the recovery-action review."
+    }
+  ],
+  "note": "Editorial judgments were authored from compact proposal facts during the timed session, then recorder-finalized after all five editorial passes stopped."
+}
