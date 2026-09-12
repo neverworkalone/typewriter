@@ -253,7 +253,15 @@ function validateProposalRelations(proposal) {
     assertNoProposalVerdicts(item, `${item.case_id} proposal`);
     if (!CASE_ID_PATTERN.test(item.case_id)) fail(`${item.case_id} is not an M5-10C case`, 'PROPOSAL_SCOPE_MISMATCH');
     if (!RECORD_ID_PATTERN.test(item.record.id)) fail(`${item.case_id} proposal record is not calibration-only`, 'PROPOSAL_SCOPE_MISMATCH');
-    if (item.record.senses.some(({ id }) => !SENSE_ID_PATTERN.test(id))) fail(`${item.case_id} contains a non-calibration sense`, 'PROPOSAL_SCOPE_MISMATCH');
+    const caseNumber = item.case_id.slice(-3);
+    assertEqual(item.record.id, `cal-m5-10c-${caseNumber}`, `${item.case_id} record identity`, 'PROPOSAL_SCOPE_MISMATCH');
+    const expectedSensePrefix = `cal-m5-10c-${caseNumber}-`;
+    if (item.record.senses.some(({ id }) => !SENSE_ID_PATTERN.test(id) || !id.startsWith(expectedSensePrefix))) {
+      fail(`${item.case_id} contains a sense outside its calibration record`, 'PROPOSAL_SCOPE_MISMATCH');
+    }
+    if (new Set(item.record.senses.map(({ id }) => id)).size !== item.record.senses.length) {
+      fail(`${item.case_id} contains duplicate sense IDs`, 'PROPOSAL_SCOPE_MISMATCH');
+    }
     if (item.relation_candidate === null || item.relation_candidate === undefined) continue;
     const candidate = item.relation_candidate;
     if (candidate.source_sense && !item.record.senses.some(({ id }) => id === candidate.source_sense)) {
