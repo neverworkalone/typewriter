@@ -535,9 +535,11 @@ function validateEditorialRows(records, proposalInfo) {
 
 export function validateM5CEditorialDecisionChronology(editorial, timingSummary) {
   const timingObject = timingSummary.timing;
+  requireTimestamp(timingObject.passes[0].started_at, 'first required pass started_at');
+  const firstPassStartedAt = Date.parse(timingObject.passes[0].started_at);
   const lastStop = Math.max(...timingObject.passes.map(({ completed_at: completedAt }) => Date.parse(completedAt)));
   requireTimestamp(editorial.draft_created_at, 'editorial draft_created_at');
-  if (Date.parse(editorial.draft_created_at) < Date.parse(timingObject.started_at)
+  if (Date.parse(editorial.draft_created_at) < firstPassStartedAt
     || Date.parse(editorial.draft_created_at) > lastStop) {
     fail('editorial decision draft was not authored during the editorial timing session', 'EDITORIAL_DECISION_CHRONOLOGY');
   }

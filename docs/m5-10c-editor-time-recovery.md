@@ -87,8 +87,11 @@ npm run validate
 npm run build:dictionary
 npm run validate:search
 npm run batch:m5-10c:contract:check
+npm run batch:m5-10c:recovery:contract:check
 npm test
 ```
 
-The contract command is also run as an explicit CI step; `npm test` includes
-the same fixture suite through the repository-wide test glob.
+The recovery contract command generates a temporary self-authored proposal and
+dependent artifacts, then runs the complete recovery and authorization
+validators without touching canonical data. It is also an explicit CI step;
+`npm test` runs it after the repository-wide fixture suite.

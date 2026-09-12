@@ -41,6 +41,7 @@
     "batch:m5-10c:timing": "node scripts/batch/record-m5-10c-timing.mjs",
     "batch:m5-10c:recovery:build": "node scripts/batch/build-m5-10c-recovery.mjs",
     "batch:m5-10c:recovery:check": "node scripts/batch/validate-m5-10c-recovery.mjs",
+    "batch:m5-10c:recovery:contract:check": "node scripts/batch/run-m5-10c-recovery-contract.mjs",
     "batch:m5-10c:contract:check": "node --test tests/m5-10c-recovery.test.mjs",
     "batch:timing:feedback": "node scripts/batch/timing.mjs --action=feedback",
     "batch:timing:start": "node scripts/batch/timing.mjs --action=start",
@@ -54,7 +55,7 @@
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test tests/*.test.mjs && npm run batch:m5-10c:recovery:contract:check",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest"
   },

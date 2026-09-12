@@ -97,6 +97,14 @@ test('M5-10C proposal validator rejects verdict contamination', () => {
   );
 });
 
+test('M5-10C proposal validator rejects a record already present in canonical data', () => {
+  const proposal = makeProposal();
+  assert.throws(
+    () => validateM5CProposal(proposal, { canonicalRecords: [proposal.cases[0].record] }),
+    (error) => error instanceof M5CRecoveryValidationError && error.code === 'CALIBRATION_CANONICAL_MUTATION',
+  );
+});
+
 test('M5-10C recovery gate holds when editor time exceeds the fixed limit', () => {
   const result = evaluateM5CRecoveryGate(passGateInputs(passGateTiming(240.001)));
   assert.equal(result.gate_status, 'fail');
@@ -185,8 +193,11 @@ test('M5-10C timing rejects a completed session with a missing required pass', a
 
 test('M5-10C editorial chronology rejects a decision authored before the timed pass', async () => {
   const timing = JSON.parse(await readFile('data/batches/m5-10c-editorial-timing-20260910.json', 'utf8'));
+  const sessionStartedAt = Date.parse(timing.started_at);
+  const firstPassStartedAt = Date.parse(timing.passes[0].started_at);
+  assert.ok(firstPassStartedAt > sessionStartedAt);
   const editorial = {
-    draft_created_at: new Date(Date.parse(timing.started_at) - 1000).toISOString(),
+    draft_created_at: new Date(Math.floor((sessionStartedAt + firstPassStartedAt) / 2)).toISOString(),
     created_at: timing.passes.at(-1).completed_at,
     finalized_at: new Date(Date.parse(timing.passes.at(-1).completed_at) + 1000).toISOString(),
   };
