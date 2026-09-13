@@ -297,7 +297,9 @@ proposal bodies are not process metadata. The external decision artifact must
 also bind every candidate identity and proposal-body digest to a separately
 frozen proposal artifact supplied to the builder. Admission counts are
 `included + corrected = 500`, with `held`, `rejected`, and the remaining
-reserve rows accounted for explicitly.
+reserve rows accounted for explicitly. Proposal records use candidate-local
+IDs and are rebased to the next canonical ID only at admission; both the
+proposal and decision artifacts must be external to the repository.
 
 The stage is `HOLD PROCESS` until the decision artifact, complete timing, and
 independent audit exist. Run `npm run batch:m5-11:check` to verify that the

@@ -131,8 +131,12 @@ export async function buildM511({
     );
   }
   const resolvedProposalPath = assertExternalInput(proposalPath, 'M5-11 frozen proposal artifact');
+  const resolvedEditorialDecisionPath = assertExternalInput(
+    editorialDecisionPath,
+    'M5-11 editorial decision artifact',
+  );
 
-  const editorialSource = await readJsonSource(path.resolve(editorialDecisionPath), 'M5-11 editorial decisions');
+  const editorialSource = await readJsonSource(resolvedEditorialDecisionPath, 'M5-11 editorial decisions');
   const proposalSource = await readJsonSource(resolvedProposalPath, 'M5-11 frozen proposal artifact');
   const resolvedCanonicalDirectory = path.resolve(canonicalDirectory);
   if (resolvedCanonicalDirectory !== BASE_CANONICAL_DIRECTORY) {

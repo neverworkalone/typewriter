@@ -111,6 +111,7 @@ function validateProposalArtifact(proposal, catalog) {
     }
     const candidateLemma = requireString(row.candidate_lemma, `${label}.candidate_lemma`);
     const candidateRecord = requireObject(row.candidate_record, `${label}.candidate_record`);
+    requireArray(candidateRecord.senses, `${label}.candidate_record.senses`);
     if (candidateRecord.lemma !== candidateLemma) {
       fail(`${label}.candidate_record.lemma must match candidate_lemma`, 'EDITORIAL_PROPOSAL_BINDING');
     }
@@ -125,6 +126,18 @@ function validateProposalArtifact(proposal, catalog) {
 
 function expectedInventoryIdForIndex(index) {
   return `m5-${String(535 + index).padStart(3, '0')}`;
+}
+
+function rebaseProposalRecord(candidateRecord, expectedId) {
+  return {
+    ...candidateRecord,
+    id: expectedId,
+    candidate_id: expectedId,
+    senses: candidateRecord.senses.map((sense, index) => ({
+      ...sense,
+      id: `${expectedId}-s${index + 1}`,
+    })),
+  };
 }
 
 function validateBoundaryChecks(checks, record, inventoryId, label) {
@@ -285,7 +298,8 @@ function validateDecision(decision, catalogEntry, proposalRow, expectedId, impor
       `${label}.canonical_record`,
       correctedLemma,
     );
-    if (decision.decision === 'included' && sha256Json(record) !== sha256Json(proposalRow.candidate_record)) {
+    if (decision.decision === 'included'
+      && sha256Json(record) !== sha256Json(rebaseProposalRecord(proposalRow.candidate_record, expectedId))) {
       fail(`${label}.canonical_record does not match the frozen proposal body`, 'EDITORIAL_PROPOSAL_BINDING');
     }
     validateBoundaryChecks(

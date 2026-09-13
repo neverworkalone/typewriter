@@ -27,6 +27,10 @@ separately frozen external proposal artifact: every decision binds its
 candidate lemma and proposal-body digest to that artifact. The reserve count is
 derived from the actual `held`/`rejected` rows, so later reserve rows may fill
 the 500 admitted slots rather than forcing every unused row to be `deferred`.
+Proposal records use candidate-local IDs; admission rebases those IDs to the
+next deterministic canonical ID, so an earlier held/rejected row cannot alter
+the frozen lexical body. Both the proposal and decision artifacts are external
+inputs to the builder.
 These checks apply to every candidate rather than a fixed lemma allowlist.
 
 ## Gate

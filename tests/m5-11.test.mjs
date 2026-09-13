@@ -62,18 +62,22 @@ function makeProposalSource(catalog, rows = []) {
   const proposals = catalog.map((entry, index) => {
     const row = rows[index] ?? {};
     const candidateLemma = row.candidateLemma ?? `후보-${entry.inventory_id}`;
-    const candidateRecord = row.candidateRecord ?? {
-      id: `proposal-${entry.inventory_id}`,
+    const candidateRecord = structuredClone(row.candidateRecord ?? {
       role: 'start',
-      candidate_id: `proposal-${entry.inventory_id}`,
       lemma: candidateLemma,
       search_forms: [candidateLemma],
       senses: [{
-        id: `proposal-${entry.inventory_id}-s1`,
         pos: 'noun',
         gloss: 'external proposal body',
       }],
-    };
+    });
+    const candidateLocalId = `proposal-${entry.inventory_id}`;
+    candidateRecord.id = candidateLocalId;
+    candidateRecord.candidate_id = candidateLocalId;
+    candidateRecord.senses = candidateRecord.senses.map((sense, senseIndex) => ({
+      ...sense,
+      id: `${candidateLocalId}-s${senseIndex + 1}`,
+    }));
     const proposalRow = {
       inventory_id: entry.inventory_id,
       candidate_lemma: candidateLemma,
@@ -141,6 +145,14 @@ test('M5-11 producer cannot manufacture a canonical import without external edit
       outputPath: '/tmp/m5-11-reviewed-import.jsonl',
     }),
     /requires --proposal=<external frozen proposal artifact>/u,
+  );
+  await assert.rejects(
+    buildM511({
+      editorialDecisionPath: 'data/batches/m5-11-review.json',
+      proposalPath: '/tmp/m5-11-frozen-proposal.json',
+      outputPath: '/tmp/m5-11-review-path-rejection.jsonl',
+    }),
+    /editorial decision artifact must remain outside the repository/u,
   );
 });
 
