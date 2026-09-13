@@ -41,6 +41,7 @@ function makeAdmittedDecision({ inventoryId, canonicalId, candidateLemma, correc
     ...(correctedLemma === undefined ? {} : { corrected_lemma: correctedLemma }),
     canonical_record: {
       id: canonicalId,
+      record_type: 'entry',
       role: 'start',
       candidate_id: canonicalId,
       lemma,
@@ -63,6 +64,7 @@ function makeProposalSource(catalog, rows = []) {
     const row = rows[index] ?? {};
     const candidateLemma = row.candidateLemma ?? `후보-${entry.inventory_id}`;
     const candidateRecord = structuredClone(row.candidateRecord ?? {
+      record_type: 'entry',
       role: 'start',
       lemma: candidateLemma,
       search_forms: [candidateLemma],
@@ -184,6 +186,7 @@ test('mixed-sense candidates require concrete boundary evidence before admission
         candidate_lemma: '다독이다',
         canonical_record: {
           id: 'w779',
+          record_type: 'entry',
           role: 'start',
           candidate_id: 'w779',
           lemma: '다독이다',
@@ -321,6 +324,7 @@ test('mixed-sense candidates require concrete boundary evidence before admission
     candidateLemma: '깜빡이다',
     candidateRecord: {
       id: 'proposal-m5-535',
+      record_type: 'entry',
       role: 'start',
       candidate_id: 'proposal-m5-535',
       lemma: '깜빡이다',

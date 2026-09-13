@@ -23,6 +23,8 @@ const STATUSES = Object.freeze([
   'current',
   'candidate',
   'held',
+  'rejected',
+  'deferred',
   'duplicate',
   'inflected-form',
 ]);
@@ -540,6 +542,8 @@ export async function validateTargetInventory({
     candidateStartCount: candidateEntries.filter((entry) => entry.planned_role === 'start').length,
     plannedStartCount: activeStartEntries.length,
     heldCount: countsByStatus.held,
+    rejectedCount: countsByStatus.rejected,
+    deferredCount: countsByStatus.deferred,
     duplicateCount: countsByStatus.duplicate,
     inflectedFormCount: countsByStatus['inflected-form'],
     statusCounts: countsByStatus,
@@ -559,7 +563,7 @@ export async function main() {
   }
 
   console.log(
-    `Validated target inventory ${summary.revision}: ${summary.currentStartCount} current start + ${summary.candidateStartCount} candidate start = ${summary.plannedStartCount} planned start; ${summary.currentReferenceOnlyCount} reference-only; ${summary.heldCount} held; ${summary.duplicateCount} duplicate; ${summary.inflectedFormCount} inflected-form.`,
+    `Validated target inventory ${summary.revision}: ${summary.currentStartCount} current start + ${summary.candidateStartCount} candidate start = ${summary.plannedStartCount} planned start; ${summary.currentReferenceOnlyCount} reference-only; ${summary.heldCount} held; ${summary.rejectedCount} rejected; ${summary.deferredCount} deferred; ${summary.duplicateCount} duplicate; ${summary.inflectedFormCount} inflected-form.`,
   );
   console.log(`Reason-code distribution: ${JSON.stringify(summary.reasonCodeCounts)}`);
   console.log(`POS distribution: ${JSON.stringify(summary.posCounts)}`);

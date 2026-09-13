@@ -44,3 +44,46 @@ Validation:
 ```sh
 npm run batch:m5-11:check
 ```
+
+## Completed admission path
+
+The completed gate is deliberately separate from the existing HOLD check. All
+proposal, decision, timing, audit, relation-diff, verification, and reviewed
+import files must remain outside the repository until the gate passes:
+
+```sh
+npm run batch:m5-11:admission:check -- \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --audit=/external/m5-11-audit.json \
+  --audit-timing=/external/m5-11-audit-timing.json \
+  --relation-diff=/external/m5-11-relation-diff.json \
+  --verification=/external/m5-11-verification.json \
+  --output=/external/m5-11-reviewed-import.jsonl
+
+npm run batch:m5-11:admission:build -- \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --audit=/external/m5-11-audit.json \
+  --audit-timing=/external/m5-11-audit-timing.json \
+  --relation-diff=/external/m5-11-relation-diff.json \
+  --verification=/external/m5-11-verification.json \
+  --output=/external/m5-11-reviewed-import.jsonl
+
+npm run batch:m5-11:promote -- --manifest=data/batches/m5-11-admission.json
+```
+
+The build command writes a compact, digest-bound admission manifest only after
+the complete gate passes. The promotion command revalidates every external
+source, stages canonical plus seed plus inventory in a temporary directory,
+validates the generated inventory, and only then writes
+`data/canonical/m5-11-expansion.jsonl`, the 550 decision rows in the seed, the
+regenerated inventory, and `data/batches/m5-11-promotion.json`. A failed gate or
+digest mismatch leaves all three source-of-truth files unchanged.
+
+The repository currently has no separately supplied human-complete 550-row
+proposal and decision package, so this completed path is implemented but not
+run against real data. The checked-in state therefore remains the intended
+pre-admission `778 starts / 820 records` HOLD boundary.
