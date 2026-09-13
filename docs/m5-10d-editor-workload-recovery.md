@@ -109,9 +109,11 @@ The recorder rejects `--decision-artifact` and `--judgment-artifact`; a full
 draft cannot exist before a timed judgment. It records the row, its digest,
 invocation boundary, and the input's `decision_row_authored_at` only after
 `start-judgment`; the validator requires separate invocation/process evidence
-and authoring chronology for production timing. `editor_seconds` is the sum of
-these per-row intervals; producer execution is recorded separately as
-`producer_seconds`.
+and authoring chronology for production timing. For each non-empty pass,
+`editor_seconds` is the continuous interval from the first judgment start to
+pass stop, so time between record judgments is included. `judgment_seconds`
+remains the sum of per-row intervals as a lower-bound cross-check; the
+producer-only prefix is recorded separately as `producer_seconds`.
 
 After `initial-review` stops, freeze the recorder-owned follow-up source before
 starting any follow-up pass:

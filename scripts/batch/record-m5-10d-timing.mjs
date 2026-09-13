@@ -31,6 +31,7 @@ import {
   M5_10D_PROCESS_REVISION,
   M5DRecoveryValidationError,
   createM5DConcreteTimingProof,
+  deriveM5DPassTiming,
   freezeM5DWorkload,
   sha256Json,
   validateM5DProposal,
@@ -47,8 +48,8 @@ import {
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
-const RECORDER_VERSION = 'm5-10d-workload-timing-recorder-v2';
-const RECORDING_SOURCE = 'workload-timing-recorder-v2';
+const RECORDER_VERSION = 'm5-10d-workload-timing-recorder-v3';
+const RECORDING_SOURCE = 'workload-timing-recorder-v3';
 const RECORDING_COMMAND = 'node scripts/batch/record-m5-10d-timing.mjs';
 const DATE_SUFFIX = '20260912';
 const MANUAL_JUDGMENT_MODE = 'manual-separate-invocation';
@@ -257,8 +258,8 @@ async function createTimingSession(kind, args) {
     events: [],
     active_judgments: [],
     note: kind === 'editorial'
-      ? 'Current-clock measurement starts before target preparation and semantic editorial judgment; follow-up queues come from the frozen workload artifact.'
-      : 'Current-clock measurement starts after the editorial artifact is frozen for an independent full-sample audit.',
+      ? 'Current-clock measurement starts before target preparation and semantic editorial judgment; each non-empty pass measures one continuous window from its first judgment start to pass stop, and follow-up queues come from the frozen workload artifact.'
+      : 'Current-clock measurement starts after the editorial artifact is frozen for an independent full-sample audit; the non-empty audit pass measures one continuous judgment window from its first judgment start to pass stop.',
   };
   if (kind === 'editorial') {
     session.editorial_session_id = randomUUID();
@@ -671,6 +672,9 @@ async function startJudgment(kind, args) {
   if (session.active_judgments.some(({ pass_id: passId, unit_id: activeUnitId }) => passId === args.pass && activeUnitId === unitId)) {
     fail(`${unitId} already has an active judgment in ${args.pass}`, 'TIMING_JUDGMENT_STATE');
   }
+  if (session.active_judgments.some(({ pass_id: passId }) => passId === args.pass)) {
+    fail(`${args.pass} already has an active judgment`, 'TIMING_JUDGMENT_STATE');
+  }
   const evidence = await readJudgmentSourceEvidence(kind, args, session, pass, proposalInfo);
   const startedAt = now();
   const judgment = {
@@ -701,7 +705,9 @@ async function startJudgment(kind, args) {
     source_artifact_sha256: evidence.source_artifact_sha256,
     source_record_sha256: evidence.source_record_sha256,
   });
-  session.passes[index] = pass;
+  session.passes[index] = pass.judgment_window_started_at
+    ? pass
+    : { ...pass, judgment_window_started_at: startedAt };
   await writeJson(outputPath, session);
   return judgment;
 }
@@ -864,15 +870,19 @@ async function stopPass(kind, args) {
     if (declaration.expected_unit_ids.length > 0 && judgmentRows.length === 0) fail(`${args.pass} has producer work but no editor judgment events`, 'TIMING_EDITOR_WORK_MISSING');
     fail(`${args.pass} actual judgment does not exactly cover its frozen workload`, 'TIMING_EDITOR_WORK_MISSING');
   }
-  const judgmentSeconds = judgmentRows.reduce((total, row) => total + ((Date.parse(row.completed_at) - Date.parse(row.started_at)) / 1000), 0);
   const workStatus = declaration.expected_unit_ids.length === 0 ? 'zero-work' : 'work';
+  const derivedTiming = deriveM5DPassTiming({
+    ...pass,
+    completed_at: completedAt,
+    work_status: workStatus,
+  }, judgmentRows);
   session.passes[index] = {
     ...pass,
     status: 'complete',
     completed_at: completedAt,
     work_status: workStatus,
-    judgment_seconds: judgmentSeconds,
-    editor_seconds: judgmentSeconds,
+    judgment_seconds: derivedTiming.judgmentSeconds,
+    editor_seconds: derivedTiming.editorSeconds,
     wall_clock_seconds: elapsed,
     producer_seconds: producerSeconds,
     work_evidence: {
@@ -896,7 +906,7 @@ async function stopPass(kind, args) {
     recorded_at: completedAt,
     work_status: workStatus,
     editor_seconds: session.passes[index].editor_seconds,
-    judgment_seconds: judgmentSeconds,
+    judgment_seconds: derivedTiming.judgmentSeconds,
     wall_clock_seconds: elapsed,
     producer_seconds: producerSeconds,
     expected_unit_count: declaration.expected_unit_count,

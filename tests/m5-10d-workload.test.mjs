@@ -16,6 +16,7 @@ import {
   M5_10D_BATCH_ID,
   M5_10D_PROCESS_REVISION,
   M5DRecoveryValidationError,
+  deriveM5DPassTiming,
   validateM5DTiming,
   evaluateM5DRecoveryGate,
   validateM5DProposal,
@@ -302,6 +303,21 @@ test('M5-10D timing rejects a decision row authored before judgment start', () =
     }, 'initial-review:m5-10d-cal-001'),
     (error) => error instanceof M5DRecoveryValidationError && error.code === 'TIMING_EDITOR_WORK_MISSING',
   );
+});
+
+test('M5-10D editor time includes gaps inside the continuous judgment window', () => {
+  const result = deriveM5DPassTiming({
+    id: 'initial-review',
+    started_at: '2026-09-12T00:00:00.000Z',
+    judgment_window_started_at: '2026-09-12T00:00:01.000Z',
+    completed_at: '2026-09-12T00:00:10.000Z',
+    work_evidence: { expected_unit_ids: ['m5-10d-cal-001', 'm5-10d-cal-002'] },
+  }, [
+    { started_at: '2026-09-12T00:00:01.000Z', completed_at: '2026-09-12T00:00:02.000Z' },
+    { started_at: '2026-09-12T00:00:05.000Z', completed_at: '2026-09-12T00:00:06.000Z' },
+  ]);
+  assert.equal(result.judgmentSeconds, 2);
+  assert.equal(result.editorSeconds, 9);
 });
 
 test('M5-10D recorder rejects a pre-existing decision input file', () => {

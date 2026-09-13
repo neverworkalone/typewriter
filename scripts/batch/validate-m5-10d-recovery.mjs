@@ -720,6 +720,30 @@ export function validateM5DDecisionRowChronology(row, label = 'decision row') {
   if (Date.parse(row.decision_row_authored_at) > Date.parse(row.completed_at)) fail(`${label} was authored after completion`, 'TIMING_EDITOR_WORK_MISSING');
 }
 
+export function deriveM5DPassTiming(pass, judgmentRows = []) {
+  const judgmentSeconds = judgmentRows.reduce((total, row) => total + ((Date.parse(row.completed_at) - Date.parse(row.started_at)) / 1000), 0);
+  const expectedUnitCount = pass.work_evidence?.expected_unit_ids?.length ?? judgmentRows.length;
+  if (expectedUnitCount === 0) {
+    return { editorSeconds: 0, judgmentSeconds };
+  }
+  requireTimestamp(pass.judgment_window_started_at, `${pass.id} judgment_window_started_at`);
+  const windowStartedAt = Date.parse(pass.judgment_window_started_at);
+  const passStartedAt = Date.parse(pass.started_at);
+  const passCompletedAt = Date.parse(pass.completed_at);
+  if (windowStartedAt < passStartedAt || passCompletedAt < windowStartedAt) {
+    fail(`${pass.id} continuous judgment window chronology is invalid`, 'TIMING_CHRONOLOGY');
+  }
+  const firstJudgment = judgmentRows[0];
+  if (!firstJudgment || Date.parse(firstJudgment.started_at) !== windowStartedAt) {
+    fail(`${pass.id} continuous judgment window is not bound to its first judgment`, 'TIMING_SOURCE_BINDING');
+  }
+  const editorSeconds = (passCompletedAt - windowStartedAt) / 1000;
+  if (editorSeconds < judgmentSeconds) {
+    fail(`${pass.id} continuous judgment window is shorter than its judgment rows`, 'TIMING_DERIVATION_MISMATCH');
+  }
+  return { editorSeconds, judgmentSeconds };
+}
+
 function validateJudgmentRow(row, pass, timing, expectedCasesById, expectedProposalSha256) {
   if (!row || typeof row !== 'object' || row.kind !== 'judgment') fail(`${pass.id} contains a non-judgment row`, 'TIMING_JUDGMENT_LOG_INVALID');
   requireString(row.pass_id, `${pass.id} judgment pass_id`, 'TIMING_JUDGMENT_LOG_INVALID');
@@ -831,7 +855,6 @@ export function validateM5DTiming(timing, {
     assertEqual(pass.judgment_evidence.expected_unit_set_sha256, pass.work_evidence.expected_unit_set_sha256, `${pass.id} judgment workload digest`, 'TIMING_SOURCE_BINDING');
     assertEqual(pass.judgment_evidence.event_ids, expectedJudgmentEventIds, `${pass.id} judgment event coverage`, 'TIMING_EDITOR_WORK_MISSING');
     assertEqual(sha256Bytes(readSyncBytes(resolveAnyPath(pass.judgment_evidence.path), `${pass.id} timing judgment log`)), pass.judgment_evidence.sha256, `${pass.id} judgment log digest`, 'TIMING_ARTIFACT_DIGEST_MISMATCH');
-    let judgmentSeconds = 0;
     for (const row of judgmentLogRows) {
       validateJudgmentRow(row, pass, timing, expectedCasesById, expectedProposalSha256);
       assertEqual(row.pass_id, pass.id, `${pass.id}:${row.unit_id} judgment pass`, 'TIMING_JUDGMENT_LOG_INVALID');
@@ -843,10 +866,10 @@ export function validateM5DTiming(timing, {
       assertEqual(event.pass_session_id, pass.session_id, `${pass.id}:${row.unit_id} judgment event pass session`, 'TIMING_SOURCE_BINDING');
       assertEqual(event.decision_artifact_sha256, row.evidence.decision_artifact_sha256, `${pass.id}:${row.unit_id} judgment event artifact`, 'TIMING_SOURCE_BINDING');
       assertEqual(event.decision_row_sha256, row.evidence.decision_row_sha256, `${pass.id}:${row.unit_id} judgment event row`, 'TIMING_SOURCE_BINDING');
-      judgmentSeconds += (Date.parse(row.completed_at) - Date.parse(row.started_at)) / 1000;
     }
-    assertEqual(pass.judgment_seconds, judgmentSeconds, `${pass.id} judgment seconds`, 'TIMING_DERIVATION_MISMATCH');
-    assertEqual(pass.editor_seconds, judgmentSeconds, `${pass.id} editor seconds`, 'TIMING_DERIVATION_MISMATCH');
+    const derivedTiming = deriveM5DPassTiming(pass, judgmentLogRows);
+    assertEqual(pass.judgment_seconds, derivedTiming.judgmentSeconds, `${pass.id} judgment seconds`, 'TIMING_DERIVATION_MISMATCH');
+    assertEqual(pass.editor_seconds, derivedTiming.editorSeconds, `${pass.id} editor seconds`, 'TIMING_DERIVATION_MISMATCH');
     if (expectedIds.length === 0) {
       assertEqual(pass.work_status, 'zero-work', `${pass.id} empty pass status`, 'TIMING_EMPTY_PASS_MISMATCH');
       assertEqual(pass.editor_seconds, 0, `${pass.id} empty pass editor time`, 'TIMING_EMPTY_PASS_MISMATCH');
