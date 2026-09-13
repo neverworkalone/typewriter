@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,11 +11,15 @@ import {
   M5_11_MACHINE_CHECK_IDS,
   M5_11_PROSPECTIVE_VERIFIER_VERSION,
   M5_11_TIMING_CLOCK_SOURCE,
+  M5_11_TIMING_LIFECYCLE_VERSION,
+  M5_11_TIMING_PROVENANCE_ALGORITHM,
+  M5_11_TIMING_PROVENANCE_VERSION,
   M5_11_TIMING_RECORDING_COMMAND,
   M5_11_TIMING_RECORDER_VERSION,
   createM511TimingProof,
   deriveM511AdmissionGate,
   runM511ProspectiveVerification,
+  validateM511TimingArtifact,
   validateM511Admission,
 } from '../scripts/batch/validate-m5-11-admission.mjs';
 import { buildM511PromotionSeed, promoteM511 } from '../scripts/batch/promote-m5-11.mjs';
@@ -124,6 +128,44 @@ function admittedDecision(inventoryId, candidateLemma, canonicalId, correctedLem
   };
 }
 
+function syncTimingLifecycle(artifact) {
+  const firstPass = artifact.passes[0];
+  const finalPass = artifact.passes.at(-1);
+  const startEvent = artifact.recorder_events.find(({ pass_id: passId, kind }) => (
+    passId === firstPass.id && kind === 'start'
+  ));
+  const stopEvent = artifact.recorder_events.find(({ pass_id: passId, kind }) => (
+    passId === finalPass.id && kind === 'stop'
+  ));
+  const sourceKey = artifact.timing_kind === 'editorial' ? 'editorial_sha256' : 'audit_sha256';
+  Object.assign(artifact.recorder.lifecycle, {
+    session_started_at: firstPass.started_at,
+    session_start_event_id: startEvent.event_id,
+    artifact_bound_at: finalPass.completed_at,
+    artifact_bound_event_id: stopEvent.event_id,
+    artifact_bound_pass_id: finalPass.id,
+    artifact_sha256: artifact.source[sourceKey],
+  });
+}
+
+function signTimingArtifact(artifact) {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  artifact.recorder.provenance = {
+    version: M5_11_TIMING_PROVENANCE_VERSION,
+    algorithm: M5_11_TIMING_PROVENANCE_ALGORITHM,
+    public_key_spki_base64: publicKey.export({ type: 'spki', format: 'der' }).toString('base64'),
+    signed_recording_proof_sha256: null,
+    signature_base64: null,
+  };
+  artifact.recording_proof_sha256 = createM511TimingProof(artifact);
+  artifact.recorder.provenance.signed_recording_proof_sha256 = artifact.recording_proof_sha256;
+  artifact.recorder.provenance.signature_base64 = sign(
+    null,
+    Buffer.from(artifact.recording_proof_sha256, 'utf8'),
+    privateKey,
+  ).toString('base64');
+}
+
 function makeTimingArtifact({ timingKind, sessionId, source, passes, startAt }) {
   let cursor = Date.parse(startAt);
   const artifact = {
@@ -203,8 +245,25 @@ function makeTimingArtifact({ timingKind, sessionId, source, passes, startAt }) 
     event_log_sha256: sha256Json(artifact.events),
     recorder_event_count: artifact.recorder_events.length,
     recorder_event_log_sha256: sha256Json(artifact.recorder_events),
+    provenance: {},
+    lifecycle: {
+      version: M5_11_TIMING_LIFECYCLE_VERSION,
+      artifact_kind: timingKind === 'editorial' ? 'editorial-decisions' : 'independent-audit',
+      binding_mode: 'start-before-artifact-finalization',
+      artifact_path: `/tmp/m5-11-${timingKind}-bound-artifact.json`,
+      artifact_existed_at_session_start: false,
+      artifact_bound_at_stop: true,
+      session_started_at: artifact.passes[0]?.started_at,
+      session_start_event_id: artifact.recorder_events[0]?.event_id,
+      artifact_bound_at: artifact.passes.at(-1)?.completed_at,
+      artifact_bound_event_id: artifact.recorder_events.at(-1)?.event_id,
+      artifact_bound_pass_id: artifact.passes.at(-1)?.id,
+      artifact_sha256: source[timingKind === 'editorial' ? 'editorial_sha256' : 'audit_sha256'],
+      artifact_byte_count: 1,
+      private_key_path: null,
+    },
   };
-  artifact.recording_proof_sha256 = createM511TimingProof(artifact);
+  signTimingArtifact(artifact);
   return artifact;
 }
 
@@ -438,15 +497,22 @@ function setTimingPassDuration(artifact, passId, durationMs, durationField = 'ed
     stopEvent.at = currentPass.completed_at;
     cursor = currentCompletedMs;
   }
+  syncTimingLifecycle(artifact);
   artifact.recorder.event_log_sha256 = sha256Json(artifact.events);
   artifact.recorder.recorder_event_log_sha256 = sha256Json(artifact.recorder_events);
-  artifact.recording_proof_sha256 = createM511TimingProof(artifact);
+  signTimingArtifact(artifact);
 }
 
-function refreshTimingArtifact(artifact, { proof = true } = {}) {
+function refreshTimingArtifact(artifact, {
+  proof = true,
+  resign = true,
+  syncLifecycle = true,
+} = {}) {
+  if (syncLifecycle) syncTimingLifecycle(artifact);
   artifact.recorder.event_log_sha256 = sha256Json(artifact.events);
   artifact.recorder.recorder_event_log_sha256 = sha256Json(artifact.recorder_events);
-  if (proof) artifact.recording_proof_sha256 = createM511TimingProof(artifact);
+  if (proof && resign) signTimingArtifact(artifact);
+  else if (proof) artifact.recording_proof_sha256 = createM511TimingProof(artifact);
 }
 
 function rebindFixtureSources(fixture) {
@@ -458,7 +524,7 @@ function rebindFixtureSources(fixture) {
     proposal_sha256: fixture.proposalSource.sha256,
     editorial_sha256: fixture.editorialSource.sha256,
   };
-  fixture.editorialTiming.recording_proof_sha256 = createM511TimingProof(fixture.editorialTiming);
+  refreshTimingArtifact(fixture.editorialTiming);
   fixture.editorialTimingSource = fileSource(
     fixture.editorialTimingSource.path,
     fixture.editorialTiming,
@@ -474,7 +540,7 @@ function rebindFixtureSources(fixture) {
     audit_sha256: fixture.auditSource.sha256,
     editorial_timing_sha256: fixture.editorialTimingSource.sha256,
   };
-  fixture.auditTiming.recording_proof_sha256 = createM511TimingProof(fixture.auditTiming);
+  refreshTimingArtifact(fixture.auditTiming);
   fixture.auditTimingSource = fileSource(fixture.auditTimingSource.path, fixture.auditTiming);
   fixture.relationDiffSource = fileSource(fixture.relationDiffSource.path, fixture.relationDiff);
   fixture.verification.reviewed_import_sha256 = fixture.reviewedImportSource.sha256;
@@ -669,7 +735,7 @@ test('M5-11 gate rejects an editor-time threshold breach before promotion', () =
     .forEach(({ id }) => setTimingPassDuration(fixture.editorialTiming, id, 20000));
   fixture.editorialTimingSource = fileSource('/tmp/m5-11-editorial-timing-breach.json', fixture.editorialTiming);
   fixture.auditTiming.source.editorial_timing_sha256 = fixture.editorialTimingSource.sha256;
-  fixture.auditTiming.recording_proof_sha256 = createM511TimingProof(fixture.auditTiming);
+  refreshTimingArtifact(fixture.auditTiming);
   fixture.auditTimingSource = fileSource('/tmp/m5-11-audit-timing-breach.json', fixture.auditTiming);
 
   const result = deriveM511AdmissionGate({
@@ -707,7 +773,7 @@ test('M5-11 gate rejects an audit session reused from editorial timing', () => {
   fixture.auditTiming.recorder.recorder_event_log_sha256 = sha256Json(fixture.auditTiming.recorder_events);
   fixture.auditSource = fileSource('/tmp/m5-11-audit-reused.json', fixture.audit);
   fixture.auditTiming.source.audit_sha256 = fixture.auditSource.sha256;
-  fixture.auditTiming.recording_proof_sha256 = createM511TimingProof(fixture.auditTiming);
+  refreshTimingArtifact(fixture.auditTiming);
   fixture.auditTimingSource = fileSource('/tmp/m5-11-audit-timing-reused.json', fixture.auditTiming);
 
   assert.throws(
@@ -808,11 +874,14 @@ test('M5-11 timing rejects fabricated editor seconds without recorder events', (
 
 test('M5-11 timing rejects a fabricated but self-consistent event log', () => {
   const fixture = makeSources(makeCatalog());
-  const event = fixture.editorialTiming.events[0];
-  event.started_at = new Date(Date.parse(event.started_at) + 1).toISOString();
-  event.completed_at = new Date(Date.parse(event.completed_at) + 1).toISOString();
-  event.recorded_at = event.completed_at;
-  refreshTimingArtifact(fixture.editorialTiming, { proof: false });
+  const originalLifecycle = structuredClone(fixture.editorialTiming.recorder.lifecycle);
+  setTimingPassDuration(fixture.editorialTiming, 'target-preparation', 1001);
+  fixture.editorialTiming.recorder.lifecycle = originalLifecycle;
+  refreshTimingArtifact(fixture.editorialTiming, {
+    proof: true,
+    resign: true,
+    syncLifecycle: false,
+  });
   assert.throws(
     () => deriveM511AdmissionGate({
       ...fixture,
@@ -830,7 +899,7 @@ test('M5-11 timing rejects a fabricated but self-consistent event log', () => {
       candidateBuffer: 2,
       checkPilotCompleteness: false,
     }),
-    /recording[_ ]proof/u,
+    /artifact (?:binding|finalization)/u,
   );
 });
 
@@ -1022,6 +1091,152 @@ test('M5-11 timing recorder owns the clock and rejects caller-supplied timestamp
   );
 });
 
+test('M5-11 timing recorder binds an artifact finalized during the session', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-recorder-lifecycle-'));
+  const proposalPath = path.join(temporaryDirectory, 'proposal.json');
+  const artifactPath = path.join(temporaryDirectory, 'editorial.json');
+  const scopePath = path.join(temporaryDirectory, 'scope.json');
+  const timingPath = path.join(temporaryDirectory, 'timing.json');
+  const catalog = makeCatalog();
+  const scopes = {
+    'target-preparation': catalog.map(({ inventory_id: inventoryId }) => inventoryId),
+    'initial-review': catalog.map(({ inventory_id: inventoryId }) => inventoryId),
+    'feedback-fixes': [],
+    'final-verification': ['m5-537', 'm5-538'],
+    'held-rejected': ['m5-535', 'm5-536'],
+  };
+  try {
+    await writeFile(proposalPath, `${JSON.stringify({ frozen: true, catalog_count: catalog.length })}\n`, 'utf8');
+    await writeFile(artifactPath, '{"preexisting":true}\n', 'utf8');
+    await writeFile(scopePath, `${JSON.stringify(scopes['target-preparation'])}\n`, 'utf8');
+    await assert.rejects(
+      recordM511Timing([
+        '--action=start',
+        '--pass=target-preparation',
+        `--output=${timingPath}`,
+        `--proposal=${proposalPath}`,
+        `--artifact=${artifactPath}`,
+        `--unit-ids-file=${scopePath}`,
+      ]),
+      /absent before the recorder session starts/u,
+    );
+    await rm(artifactPath, { force: true });
+
+    await recordM511Timing([
+      '--action=start',
+      '--pass=target-preparation',
+      `--output=${timingPath}`,
+      `--proposal=${proposalPath}`,
+      `--artifact=${artifactPath}`,
+      `--unit-ids-file=${scopePath}`,
+    ]);
+    for (const [index, passId] of M5_11_EDITORIAL_TIMING_PASS_IDS.entries()) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      if (index === M5_11_EDITORIAL_TIMING_PASS_IDS.length - 1) {
+        await writeFile(artifactPath, '{"human_editorial_review_complete":true}\n', 'utf8');
+      }
+      const stopped = await recordM511Timing([
+        '--action=stop',
+        `--pass=${passId}`,
+        `--input=${timingPath}`,
+        `--output=${timingPath}`,
+      ]);
+      if (index < M5_11_EDITORIAL_TIMING_PASS_IDS.length - 1) {
+        const nextPass = M5_11_EDITORIAL_TIMING_PASS_IDS[index + 1];
+        await writeFile(scopePath, `${JSON.stringify(scopes[nextPass])}\n`, 'utf8');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await recordM511Timing([
+          '--action=start',
+          `--pass=${nextPass}`,
+          `--input=${timingPath}`,
+          `--output=${timingPath}`,
+          `--unit-ids-file=${scopePath}`,
+        ]);
+      } else {
+        assert.equal(stopped.status, 'complete');
+        assert.equal(stopped.recorder.lifecycle.artifact_existed_at_session_start, false);
+        assert.equal(stopped.recorder.lifecycle.artifact_bound_at_stop, true);
+        assert.equal(stopped.source.editorial_sha256, createHash('sha256')
+          .update('{"human_editorial_review_complete":true}\n')
+          .digest('hex'));
+        const timingBytes = await readFile(timingPath);
+        const validated = validateM511TimingArtifact(stopped, {
+          source: fileSource(timingPath, stopped, timingBytes),
+          catalog,
+          importedInventoryIds: ['m5-537', 'm5-538'],
+          reserveInventoryIds: ['m5-535', 'm5-536'],
+        });
+        assert.equal(validated.status, 'complete');
+        await assert.rejects(
+          readFile(`${timingPath}.provenance-key`),
+          { code: 'ENOENT' },
+        );
+      }
+    }
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('M5-11 audit recorder binds the audit report at its final stop', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-audit-recorder-'));
+  const proposalPath = path.join(temporaryDirectory, 'proposal.json');
+  const editorialPath = path.join(temporaryDirectory, 'editorial.json');
+  const editorialTimingPath = path.join(temporaryDirectory, 'editorial-timing.json');
+  const auditPath = path.join(temporaryDirectory, 'audit.json');
+  const scopePath = path.join(temporaryDirectory, 'scope.json');
+  const timingPath = path.join(temporaryDirectory, 'audit-timing.json');
+  const catalog = makeCatalog();
+  const proposalBytes = Buffer.from('{"frozen":true}\n', 'utf8');
+  const editorialBytes = Buffer.from('{"human_editorial_review_complete":true}\n', 'utf8');
+  const editorialTimingBytes = Buffer.from('{"status":"complete"}\n', 'utf8');
+  const auditBytes = Buffer.from('{"independent":true,"open_blocker_count":0}\n', 'utf8');
+  const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
+  try {
+    await writeFile(proposalPath, proposalBytes);
+    await writeFile(editorialPath, editorialBytes);
+    await writeFile(editorialTimingPath, editorialTimingBytes);
+    await writeFile(scopePath, `${JSON.stringify(catalog.map(({ inventory_id: inventoryId }) => inventoryId))}\n`);
+    await recordM511Timing([
+      '--action=start',
+      '--pass=post-freeze-audit',
+      `--output=${timingPath}`,
+      `--proposal=${proposalPath}`,
+      `--editorial=${editorialPath}`,
+      `--editorial-timing=${editorialTimingPath}`,
+      `--artifact=${auditPath}`,
+      `--unit-ids-file=${scopePath}`,
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await writeFile(auditPath, auditBytes);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const completed = await recordM511Timing([
+      '--action=stop',
+      '--pass=post-freeze-audit',
+      `--input=${timingPath}`,
+      `--output=${timingPath}`,
+    ]);
+    assert.equal(completed.source.proposal_sha256, digest(proposalBytes));
+    assert.equal(completed.source.editorial_sha256, digest(editorialBytes));
+    assert.equal(completed.source.editorial_timing_sha256, digest(editorialTimingBytes));
+    assert.equal(completed.source.audit_sha256, digest(auditBytes));
+    const timingBytes = await readFile(timingPath);
+    const validated = validateM511TimingArtifact(completed, {
+      source: fileSource(timingPath, completed, timingBytes),
+      catalog,
+      timingKind: 'post-freeze-audit',
+      expectedSessionId: completed.session_id,
+      proposalSourceSha256: digest(proposalBytes),
+      editorialSourceSha256: digest(editorialBytes),
+      auditSourceSha256: digest(auditBytes),
+      editorialTimingSourceSha256: digest(editorialTimingBytes),
+    });
+    assert.equal(validated.status, 'complete');
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('M5-11 post-promotion validation uses portable durable evidence after external inputs disappear', () => {
   const sharedSource = (sourceId, sourcePath) => ({
     source_id: sourceId,
@@ -1084,11 +1299,74 @@ test('M5-11 post-promotion validation uses portable durable evidence after exter
     id,
     unit_count: unitCount,
     event_count: unitCount,
+    start_event_id: `${id}-start`,
+    stop_event_id: `${id}-stop`,
     started_at: new Date(startMs).toISOString(),
     completed_at: new Date(startMs + durationMs).toISOString(),
     wall_clock_seconds: durationMs / 1000,
     measured_seconds: unitCount === 0 ? 0 : durationMs / 1000,
   });
+  const durableTiming = ({ timingKind, sessionId, sourceBinding, passIntervals, field }) => {
+    const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+    const firstPass = passIntervals[0];
+    const finalPass = passIntervals.at(-1);
+    const proof = sha256Json({
+      test: 'm5-11-durable-recorder',
+      timing_kind: timingKind,
+      session_id: sessionId,
+      source_binding: sourceBinding,
+      pass_intervals: passIntervals,
+    });
+    return {
+      status: 'complete',
+      timing_kind: timingKind,
+      session_id: sessionId,
+      editor_seconds: field === 'editor_seconds'
+        ? passIntervals.reduce((sum, pass) => sum + pass.measured_seconds, 0)
+        : 0,
+      audit_seconds: field === 'audit_seconds'
+        ? passIntervals.reduce((sum, pass) => sum + pass.measured_seconds, 0)
+        : 0,
+      unmeasured_pass_count: 0,
+      pass_ids: passIntervals.map(({ id }) => id),
+      recording_proof_sha256: proof,
+      source_binding: sourceBinding,
+      recorder: {
+        version: M5_11_TIMING_RECORDER_VERSION,
+        session_id: sessionId,
+        event_count: passIntervals.reduce((sum, pass) => sum + pass.event_count, 0),
+        event_log_sha256: 'a'.repeat(64),
+        recorder_event_count: passIntervals.length * 2,
+        recorder_event_log_sha256: 'b'.repeat(64),
+        provenance: {
+          version: M5_11_TIMING_PROVENANCE_VERSION,
+          algorithm: M5_11_TIMING_PROVENANCE_ALGORITHM,
+          public_key_spki_base64: publicKey.export({ type: 'spki', format: 'der' }).toString('base64'),
+          signed_recording_proof_sha256: proof,
+          signature_base64: sign(
+            null,
+            Buffer.from(proof, 'utf8'),
+            privateKey,
+          ).toString('base64'),
+        },
+        lifecycle: {
+          version: M5_11_TIMING_LIFECYCLE_VERSION,
+          artifact_kind: timingKind === 'editorial' ? 'editorial-decisions' : 'independent-audit',
+          binding_mode: 'start-before-artifact-finalization',
+          artifact_existed_at_session_start: false,
+          artifact_bound_at_stop: true,
+          session_started_at: firstPass.started_at,
+          session_start_event_id: firstPass.start_event_id,
+          artifact_bound_at: finalPass.completed_at,
+          artifact_bound_event_id: finalPass.stop_event_id,
+          artifact_bound_pass_id: finalPass.id,
+          artifact_sha256: sourceBinding[field === 'editor_seconds' ? 'editorial_sha256' : 'audit_sha256'],
+          artifact_byte_count: 1,
+        },
+      },
+      pass_intervals: passIntervals,
+    };
+  };
   const editorialStartMs = Date.parse('2026-09-13T10:00:00.000Z');
   const editorialDurations = [1000000, 1000000, 0, 1000000, 2300000];
   let editorialCursor = editorialStartMs;
@@ -1104,28 +1382,28 @@ test('M5-11 post-promotion validation uses portable durable evidence after exter
     1,
   )];
   const timing = {
-    editorial: {
-      status: 'complete',
-      timing_kind: 'editorial',
-      session_id: 'editorial-session',
-      editor_seconds: 5300,
-      audit_seconds: 0,
-      unmeasured_pass_count: 0,
-      pass_ids: [...M5_11_EDITORIAL_TIMING_PASS_IDS],
-      recording_proof_sha256: 'c'.repeat(64),
-      pass_intervals: editorialIntervals,
-    },
-    audit: {
-      status: 'complete',
-      timing_kind: 'post-freeze-audit',
-      session_id: 'audit-session',
-      editor_seconds: 0,
-      audit_seconds: 1,
-      unmeasured_pass_count: 0,
-      pass_ids: [...M5_11_AUDIT_TIMING_PASS_IDS],
-      recording_proof_sha256: 'd'.repeat(64),
-      pass_intervals: auditIntervals,
-    },
+    editorial: durableTiming({
+      timingKind: 'editorial',
+      sessionId: 'editorial-session',
+      sourceBinding: {
+        proposal_sha256: sources.proposal.sha256,
+        editorial_sha256: sources.editorial.sha256,
+      },
+      passIntervals: editorialIntervals,
+      field: 'editor_seconds',
+    }),
+    audit: durableTiming({
+      timingKind: 'post-freeze-audit',
+      sessionId: 'audit-session',
+      sourceBinding: {
+        proposal_sha256: sources.proposal.sha256,
+        editorial_sha256: sources.editorial.sha256,
+        audit_sha256: sources.audit.sha256,
+        editorial_timing_sha256: sources.editorial_timing.sha256,
+      },
+      passIntervals: auditIntervals,
+      field: 'audit_seconds',
+    }),
   };
   const audit = { status: 'complete', independent: true, open_blocker_count: 0 };
   audit.session_id = timing.audit.session_id;
@@ -1197,6 +1475,15 @@ test('M5-11 post-promotion validation uses portable durable evidence after exter
     target,
     base,
     actual,
+    decisions: {
+      included: 400,
+      corrected: 100,
+      held: 20,
+      rejected: 10,
+      deferred: 20,
+      processed_start_count: 530,
+      imported_start_count: 500,
+    },
     metrics,
     relation,
     timing,
@@ -1268,5 +1555,25 @@ test('M5-11 post-promotion validation uses portable durable evidence after exter
   assert.throws(
     () => validateM511DurableEvidence({ manifest: tamperedManifest, evidence: tamperedEvidence }),
     /durable gate metrics/u,
+  );
+
+  const splitTamperedManifest = structuredClone(manifest);
+  const splitTamperedEvidence = structuredClone(evidence);
+  splitTamperedManifest.decisions = {
+    ...splitTamperedManifest.decisions,
+    included: 401,
+    corrected: 99,
+  };
+  splitTamperedEvidence.decisions = {
+    ...splitTamperedEvidence.decisions,
+    included: 401,
+    corrected: 99,
+  };
+  assert.throws(
+    () => validateM511DurableEvidence({
+      manifest: splitTamperedManifest,
+      evidence: splitTamperedEvidence,
+    }),
+    /decision evidence/u,
   );
 });

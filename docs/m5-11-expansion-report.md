@@ -41,14 +41,34 @@ npm run batch:m5-11:timing -- \
   --pass=target-preparation \
   --output=/external/m5-11-editorial-timing.json \
   --unit-ids-file=/external/m5-11-catalog-ids.json \
-  --proposal-sha256=<proposal-digest> \
-  --editorial-sha256=<decision-digest>
+  --proposal=/external/m5-11-proposal.json \
+  --artifact=/external/m5-11-editorial.json
+```
+
+For the independent audit, start a separate recorder session with the already
+completed editorial and editorial-timing artifacts, and use the audit report
+as the bound output:
+
+```sh
+npm run batch:m5-11:timing -- \
+  --action=start \
+  --pass=post-freeze-audit \
+  --output=/external/m5-11-audit-timing.json \
+  --unit-ids-file=/external/m5-11-catalog-ids.json \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --artifact=/external/m5-11-audit.json
 ```
 
 Each pass is stopped in a later invocation. The recorder owns start/stop
-timestamps, contiguous work events, chronology, and a proof digest; timestamp or
-duration overrides are rejected. The independent `post-freeze-audit` session is
-bound to a distinct session and must begin after editorial timing completes.
+timestamps, contiguous work events, chronology, and a signed proof digest;
+timestamp, duration, and caller-supplied digest overrides are rejected. The
+session starts only when the bound editorial/audit artifact is absent; the final
+recorder stop reads the artifact produced during the session and binds its
+digest. The independent `post-freeze-audit` session similarly starts from the
+frozen proposal plus completed editorial/timing artifacts, uses a distinct
+session, and must begin after editorial timing completes.
 The prospective verifier also runs the complete committed M4 baseline,
 selection, and relation assertions against the temporary SQLite state. The
 portable manifest and promotion evidence retain the derived timing/check

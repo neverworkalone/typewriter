@@ -1,14 +1,23 @@
 /**
  * Current-clock recorder for M5-11 editorial and independent-audit timing.
  *
- * The command owns all timestamps. Callers provide only the frozen pass scope
- * and source digests; timestamp or duration overrides are rejected. A pass is
- * started and stopped in separate invocations, and the stop invocation emits
- * contiguous recorder work events that cover the observed wall-clock interval.
+ * The command owns all timestamps. A new session starts from the frozen
+ * proposal/scope and an absent output artifact; the final stop invocation
+ * reads the artifact that was produced during the session and binds its
+ * digest. Timestamp, duration, and caller-supplied digest overrides are
+ * rejected. A pass is started and stopped in separate invocations, and the
+ * stop invocation emits contiguous recorder work events that cover the
+ * observed wall-clock interval.
  */
 
-import { access, readFile, writeFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { access, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  createHash,
+  createPrivateKey,
+  generateKeyPairSync,
+  randomUUID,
+  sign,
+} from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +26,9 @@ import {
   M5_11_AUDIT_TIMING_PASS_IDS,
   M5_11_EDITORIAL_TIMING_PASS_IDS,
   M5_11_TIMING_CLOCK_SOURCE,
+  M5_11_TIMING_LIFECYCLE_VERSION,
+  M5_11_TIMING_PROVENANCE_ALGORITHM,
+  M5_11_TIMING_PROVENANCE_VERSION,
   M5_11_TIMING_RECORDING_COMMAND,
   M5_11_TIMING_RECORDER_VERSION,
 } from './validate-m5-11-admission.mjs';
@@ -65,11 +77,6 @@ function passIdsForKind(timingKind) {
     : M5_11_AUDIT_TIMING_PASS_IDS;
 }
 
-function requireDigest(value, label) {
-  if (!/^[a-f0-9]{64}$/u.test(value ?? '')) fail(`${label} must be a SHA-256 digest`, 'SOURCE_DIGEST_REQUIRED');
-  return value;
-}
-
 function storedExternalPath(filePath, label) {
   const resolved = path.resolve(filePath);
   const relative = path.relative(REPOSITORY_DIRECTORY, resolved);
@@ -77,6 +84,17 @@ function storedExternalPath(filePath, label) {
     fail(`${label} must remain outside the repository`, 'EXTERNAL_INPUT_REQUIRED');
   }
   return resolved;
+}
+
+function requiredExternalPath(value, label) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    fail(`${label} is required`, 'MISSING_ARGUMENT');
+  }
+  return storedExternalPath(value, label);
+}
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
 function outputPathFor(args) {
@@ -95,6 +113,16 @@ async function readJson(filePath, label) {
   }
 }
 
+async function readExternalBytes(filePath, label) {
+  const resolved = storedExternalPath(filePath, label);
+  try {
+    return { path: resolved, bytes: await readFile(resolved) };
+  } catch (error) {
+    if (error.code === 'ENOENT') fail(`${label} does not exist: ${resolved}`, 'MISSING_INPUT');
+    throw error;
+  }
+}
+
 async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 }
@@ -107,6 +135,19 @@ async function requireNewOutput(filePath) {
     throw error;
   }
   fail(`refusing to overwrite an existing timing session: ${filePath}`, 'OUTPUT_EXISTS');
+}
+
+async function requireAbsentArtifact(filePath) {
+  try {
+    await access(filePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  fail(
+    `bound artifact must be absent before the recorder session starts: ${filePath}`,
+    'ARTIFACT_EXISTS_AT_START',
+  );
 }
 
 async function unitIdsFromArgs(args) {
@@ -129,23 +170,45 @@ function assertUnitIds(unitIds) {
   }
 }
 
-function sourceBinding(args, timingKind) {
+async function sourceBinding(args, timingKind) {
+  const proposal = await readExternalBytes(
+    requiredExternalPath(args.proposal, '--proposal'),
+    'M5-11 frozen proposal',
+  );
   const source = {
-    proposal_sha256: requireDigest(args['proposal-sha256'], '--proposal-sha256'),
-    editorial_sha256: requireDigest(args['editorial-sha256'], '--editorial-sha256'),
+    proposal_sha256: sha256(proposal.bytes),
   };
   if (timingKind === 'post-freeze-audit') {
-    source.audit_sha256 = requireDigest(args['audit-sha256'], '--audit-sha256');
-    source.editorial_timing_sha256 = requireDigest(
-      args['editorial-timing-sha256'],
-      '--editorial-timing-sha256',
+    const editorial = await readExternalBytes(
+      requiredExternalPath(args.editorial, '--editorial'),
+      'M5-11 editorial decisions',
     );
+    const editorialTiming = await readExternalBytes(
+      requiredExternalPath(args['editorial-timing'], '--editorial-timing'),
+      'M5-11 editorial timing',
+    );
+    source.editorial_sha256 = sha256(editorial.bytes);
+    source.editorial_timing_sha256 = sha256(editorialTiming.bytes);
   }
   return source;
 }
 
-function newSession(timingKind, args) {
+async function newSession(timingKind, args, outputPath) {
   const sessionId = randomUUID();
+  const source = await sourceBinding(args, timingKind);
+  const artifactPath = requiredExternalPath(args.artifact, '--artifact');
+  if (artifactPath === outputPath) {
+    fail('--artifact must be different from the timing session output', 'ARTIFACT_PATH_MISMATCH');
+  }
+  await requireAbsentArtifact(artifactPath);
+  const privateKeyPath = `${outputPath}.provenance-key`;
+  await requireNewOutput(privateKeyPath);
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  await writeFile(
+    privateKeyPath,
+    privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    { encoding: 'utf8', mode: 0o600 },
+  );
   return {
     schema_version: '1',
     issue: 97,
@@ -157,7 +220,7 @@ function newSession(timingKind, args) {
     recording_source: M5_11_TIMING_RECORDER_VERSION,
     recorder_command: M5_11_TIMING_RECORDING_COMMAND,
     clock_source: M5_11_TIMING_CLOCK_SOURCE,
-    source: sourceBinding(args, timingKind),
+    source,
     passes: passIdsForKind(timingKind).map((id) => ({ id, status: 'unmeasured' })),
     events: [],
     recorder_events: [],
@@ -168,6 +231,29 @@ function newSession(timingKind, args) {
       event_log_sha256: '0'.repeat(64),
       recorder_event_count: 0,
       recorder_event_log_sha256: '0'.repeat(64),
+      provenance: {
+        version: M5_11_TIMING_PROVENANCE_VERSION,
+        algorithm: M5_11_TIMING_PROVENANCE_ALGORITHM,
+        public_key_spki_base64: publicKey.export({ type: 'spki', format: 'der' }).toString('base64'),
+        signed_recording_proof_sha256: null,
+        signature_base64: null,
+      },
+      lifecycle: {
+        version: M5_11_TIMING_LIFECYCLE_VERSION,
+        artifact_kind: timingKind === 'editorial' ? 'editorial-decisions' : 'independent-audit',
+        binding_mode: 'start-before-artifact-finalization',
+        artifact_path: artifactPath,
+        artifact_existed_at_session_start: false,
+        artifact_bound_at_stop: false,
+        session_started_at: null,
+        session_start_event_id: null,
+        artifact_bound_at: null,
+        artifact_bound_event_id: null,
+        artifact_bound_pass_id: null,
+        artifact_sha256: null,
+        artifact_byte_count: null,
+        private_key_path: privateKeyPath,
+      },
     },
   };
 }
@@ -186,9 +272,21 @@ function assertSession(session, timingKind, { allowInProgress = false } = {}) {
     || !Array.isArray(session.passes)
     || JSON.stringify(session.passes.map(({ id }) => id)) !== JSON.stringify(passIdsForKind(timingKind))
     || !Array.isArray(session.events)
-    || !Array.isArray(session.recorder_events)) {
+    || !Array.isArray(session.recorder_events)
+    || session.recorder?.version !== M5_11_TIMING_RECORDER_VERSION
+    || session.recorder?.session_id !== session.session_id
+    || session.recorder?.provenance?.version !== M5_11_TIMING_PROVENANCE_VERSION
+    || session.recorder?.provenance?.algorithm !== M5_11_TIMING_PROVENANCE_ALGORITHM
+    || session.recorder?.lifecycle?.version !== M5_11_TIMING_LIFECYCLE_VERSION
+    || session.recorder?.lifecycle?.artifact_bound_at_stop !== (session.status === 'complete')
+    || session.recorder?.lifecycle?.artifact_existed_at_session_start !== false
+    || session.recorder?.lifecycle?.binding_mode !== 'start-before-artifact-finalization'
+    || typeof session.recorder?.lifecycle?.artifact_path !== 'string'
+    || typeof session.recorder?.lifecycle?.private_key_path !== 'string') {
     fail('input is not an in-progress M5-11 timing recorder session', 'INVALID_SESSION');
   }
+  storedExternalPath(session.recorder.lifecycle.artifact_path, 'M5-11 bound artifact');
+  storedExternalPath(session.recorder.lifecycle.private_key_path, 'M5-11 recorder provenance key');
   const inProgressCount = session.passes.filter(({ status }) => status === 'in-progress').length;
   if (!allowInProgress && inProgressCount > 0) {
     fail('an M5-11 timing pass is already in progress', 'PASS_IN_PROGRESS');
@@ -207,6 +305,10 @@ function startPass(session, passId, unitIds) {
   }
   const startedAt = now();
   const eventId = `m5-11-recorder-${session.recorder_events.length + 1}`;
+  if (session.recorder.lifecycle.session_started_at === null) {
+    session.recorder.lifecycle.session_started_at = startedAt;
+    session.recorder.lifecycle.session_start_event_id = eventId;
+  }
   session.passes[index] = {
     id: passId,
     status: 'in-progress',
@@ -288,9 +390,75 @@ function stopPass(session, passId) {
   }
 }
 
+async function finalizeArtifactBinding(session, completedAt, passId) {
+  const lifecycle = session.recorder.lifecycle;
+  if (lifecycle.artifact_bound_at_stop === true) {
+    fail('timing session already finalized its bound artifact', 'ARTIFACT_ALREADY_BOUND');
+  }
+  let artifactBytes;
+  try {
+    artifactBytes = await readFile(lifecycle.artifact_path);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(
+        'the bound artifact must be produced before the final recorder stop',
+        'ARTIFACT_NOT_READY',
+      );
+    }
+    throw error;
+  }
+  if (artifactBytes.length === 0) fail('the bound artifact must not be empty', 'ARTIFACT_NOT_READY');
+  const stopEvent = session.recorder_events.at(-1);
+  session.source[session.timing_kind === 'editorial' ? 'editorial_sha256' : 'audit_sha256'] = sha256(artifactBytes);
+  Object.assign(lifecycle, {
+    artifact_bound_at_stop: true,
+    artifact_bound_at: completedAt,
+    artifact_bound_event_id: stopEvent.event_id,
+    artifact_bound_pass_id: passId,
+    artifact_sha256: sha256(artifactBytes),
+    artifact_byte_count: artifactBytes.length,
+  });
+}
+
+async function finalizeRecorderProvenance(session) {
+  const privateKeyPath = session.recorder.lifecycle.private_key_path;
+  if (privateKeyPath !== null) {
+    let privateKeyBytes;
+    try {
+      privateKeyBytes = await readFile(privateKeyPath, 'utf8');
+    } catch (error) {
+      if (error.code === 'ENOENT') fail('recorder provenance key is missing', 'TIMING_PROVENANCE_ERROR');
+      throw error;
+    }
+    session.recorder.lifecycle.private_key_path = null;
+    const proof = createM511TimingProof(session);
+    session.recording_proof_sha256 = proof;
+    session.recorder.provenance.signed_recording_proof_sha256 = proof;
+    session.recorder.provenance.signature_base64 = sign(
+      null,
+      Buffer.from(proof, 'utf8'),
+      createPrivateKey(privateKeyBytes),
+    ).toString('base64');
+    await rm(privateKeyPath, { force: true });
+  } else {
+    fail('complete timing session is missing its recorder provenance key', 'TIMING_PROVENANCE_ERROR');
+  }
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const args = parseArguments(argv);
-  for (const forbidden of ['started-at', 'completed-at', 'editor-seconds', 'audit-seconds', 'duration-ms', 'now']) {
+  for (const forbidden of [
+    'started-at',
+    'completed-at',
+    'editor-seconds',
+    'audit-seconds',
+    'duration-ms',
+    'now',
+    'proposal-sha256',
+    'editorial-sha256',
+    'audit-sha256',
+    'editorial-timing-sha256',
+  ]) {
     if (Object.hasOwn(args, forbidden)) fail(`--${forbidden} is not accepted; the recorder uses current-clock events`, 'CLOCK_OVERRIDE_FORBIDDEN');
   }
   const action = args.action;
@@ -307,7 +475,7 @@ export async function main(argv = process.argv.slice(2)) {
       assertSession(session, timingKind);
     } else {
       await requireNewOutput(outputPath);
-      session = newSession(timingKind, args);
+      session = await newSession(timingKind, args, outputPath);
     }
     const unitIds = await unitIdsFromArgs(args);
     assertUnitIds(unitIds);
@@ -317,6 +485,9 @@ export async function main(argv = process.argv.slice(2)) {
     session = await readJson(storedExternalPath(args.input, 'M5-11 timing input'), 'M5-11 timing input');
     assertSession(session, timingKind, { allowInProgress: true });
     stopPass(session, passId);
+    if (session.status === 'complete') {
+      await finalizeArtifactBinding(session, session.passes.at(-1).completed_at, passId);
+    }
   }
 
   if (session.status === 'complete') {
@@ -324,7 +495,7 @@ export async function main(argv = process.argv.slice(2)) {
     session.recorder.event_log_sha256 = sha256Json(session.events);
     session.recorder.recorder_event_count = session.recorder_events.length;
     session.recorder.recorder_event_log_sha256 = sha256Json(session.recorder_events);
-    session.recording_proof_sha256 = createM511TimingProof(session);
+    await finalizeRecorderProvenance(session);
   } else {
     session.recorder.event_count = session.events.length;
     session.recorder.event_log_sha256 = sha256Json(session.events);

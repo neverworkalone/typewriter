@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import {
+  createHash,
+  createPublicKey,
+  verify as verifySignature,
+} from 'node:crypto';
 import {
   cp,
   mkdtemp,
@@ -62,9 +66,12 @@ export const M5_11_TIMING_PASS_IDS = Object.freeze([
   ...M5_11_EDITORIAL_TIMING_PASS_IDS,
   ...M5_11_AUDIT_TIMING_PASS_IDS,
 ]);
-export const M5_11_TIMING_RECORDER_VERSION = 'm5-11-timing-recorder-v2';
+export const M5_11_TIMING_RECORDER_VERSION = 'm5-11-timing-recorder-v3';
 export const M5_11_TIMING_RECORDING_COMMAND = 'node scripts/batch/record-m5-11-timing.mjs';
 export const M5_11_TIMING_CLOCK_SOURCE = 'system-clock';
+export const M5_11_TIMING_LIFECYCLE_VERSION = 'm5-11-timing-lifecycle-v1';
+export const M5_11_TIMING_PROVENANCE_VERSION = 'm5-11-timing-provenance-v1';
+export const M5_11_TIMING_PROVENANCE_ALGORITHM = 'ed25519';
 export const M5_11_PROSPECTIVE_VERIFIER_VERSION = 'm5-11-prospective-verifier-v2';
 export const M5_11_MACHINE_CHECK_IDS = Object.freeze([
   'canonical-integrity',
@@ -131,8 +138,58 @@ function sha256(bytes) {
 }
 
 export function createM511TimingProof(artifact) {
-  const { recording_proof_sha256: ignored, ...payload } = artifact;
+  const payload = structuredClone(artifact);
+  delete payload.recording_proof_sha256;
+  if (payload.recorder?.provenance) {
+    delete payload.recorder.provenance.signed_recording_proof_sha256;
+    delete payload.recorder.provenance.signature_base64;
+  }
   return sha256Json(payload);
+}
+
+export function validateM511TimingProvenance(
+  provenance,
+  recordingProofSha256,
+  label = 'M5-11 timing recorder provenance',
+) {
+  requireObject(provenance, `${label} object`);
+  if (provenance.version !== M5_11_TIMING_PROVENANCE_VERSION
+    || provenance.algorithm !== M5_11_TIMING_PROVENANCE_ALGORITHM) {
+    fail(`${label} is not an M5-11 recorder signature`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (!/^[a-zA-Z0-9+/]+={0,2}$/u.test(provenance.public_key_spki_base64 ?? '')) {
+    fail(`${label} public key is invalid`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (!/^[a-zA-Z0-9+/]+={0,2}$/u.test(provenance.signature_base64 ?? '')) {
+    fail(`${label} signature is invalid`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (provenance.signed_recording_proof_sha256 !== recordingProofSha256) {
+    fail(`${label} does not sign the recording proof`, 'TIMING_PROVENANCE_ERROR');
+  }
+  let valid = false;
+  try {
+    const publicKey = createPublicKey({
+      key: Buffer.from(provenance.public_key_spki_base64, 'base64'),
+      format: 'der',
+      type: 'spki',
+    });
+    valid = verifySignature(
+      null,
+      Buffer.from(recordingProofSha256, 'utf8'),
+      publicKey,
+      Buffer.from(provenance.signature_base64, 'base64'),
+    );
+  } catch {
+    valid = false;
+  }
+  if (!valid) fail(`${label} signature does not verify the recording proof`, 'TIMING_PROVENANCE_ERROR');
+  return {
+    version: provenance.version,
+    algorithm: provenance.algorithm,
+    public_key_spki_base64: provenance.public_key_spki_base64,
+    signed_recording_proof_sha256: provenance.signed_recording_proof_sha256,
+    signature_base64: provenance.signature_base64,
+  };
 }
 
 function catalogIds(catalog) {
@@ -298,6 +355,73 @@ function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
   };
 }
 
+export function validateM511TimingLifecycle(
+  artifact,
+  {
+    timingKind,
+    expectedPasses,
+    recorderEventsByKey,
+    source,
+    label,
+  } = {},
+) {
+  const lifecycle = requireObject(artifact.recorder?.lifecycle, `${label}.recorder.lifecycle`);
+  const expectedArtifactKind = timingKind === 'editorial'
+    ? 'editorial-decisions'
+    : 'independent-audit';
+  if (lifecycle.version !== M5_11_TIMING_LIFECYCLE_VERSION
+    || lifecycle.artifact_kind !== expectedArtifactKind
+    || lifecycle.binding_mode !== 'start-before-artifact-finalization') {
+    fail(`${label} does not contain the recorder lifecycle contract`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (lifecycle.artifact_existed_at_session_start !== false
+    || lifecycle.artifact_bound_at_stop !== true
+    || lifecycle.private_key_path !== null) {
+    fail(`${label} does not prove artifact finalization occurred during the recorder session`, 'TIMING_PROVENANCE_ERROR');
+  }
+  requireString(lifecycle.artifact_path, `${label}.recorder.lifecycle.artifact_path`);
+  const artifactPath = path.resolve(lifecycle.artifact_path);
+  const artifactRelativePath = path.relative(REPOSITORY_DIRECTORY, artifactPath);
+  if (!artifactRelativePath.startsWith('..') || path.isAbsolute(artifactRelativePath)) {
+    fail(`${label} bound artifact must remain outside the repository`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (artifactPath === path.resolve(source.path)) {
+    fail(`${label} bound artifact cannot be the timing session itself`, 'TIMING_PROVENANCE_ERROR');
+  }
+  const startEvent = recorderEventsByKey.get(`${expectedPasses[0]}:start`);
+  const finalStopEvent = recorderEventsByKey.get(`${expectedPasses.at(-1)}:stop`);
+  if (!startEvent || !finalStopEvent
+    || isoTimestamp(lifecycle.session_started_at, `${label}.recorder.lifecycle.session_started_at`) !== startEvent.at
+    || lifecycle.session_start_event_id !== startEvent.event_id
+    || isoTimestamp(lifecycle.artifact_bound_at, `${label}.recorder.lifecycle.artifact_bound_at`) !== finalStopEvent.at
+    || lifecycle.artifact_bound_event_id !== finalStopEvent.event_id
+    || lifecycle.artifact_bound_pass_id !== expectedPasses.at(-1)) {
+    fail(`${label} artifact binding is not attached to recorder-owned lifecycle events`, 'TIMING_PROVENANCE_ERROR');
+  }
+  const sourceKey = timingKind === 'editorial' ? 'editorial_sha256' : 'audit_sha256';
+  if (!/^[a-f0-9]{64}$/u.test(lifecycle.artifact_sha256 ?? '')
+    || lifecycle.artifact_sha256 !== artifact.source?.[sourceKey]) {
+    fail(`${label} finalized artifact digest is not source-bound`, 'TIMING_SOURCE_MISMATCH');
+  }
+  if (!Number.isInteger(lifecycle.artifact_byte_count) || lifecycle.artifact_byte_count <= 0) {
+    fail(`${label} finalized artifact byte count is invalid`, 'TIMING_PROVENANCE_ERROR');
+  }
+  return {
+    version: lifecycle.version,
+    artifact_kind: lifecycle.artifact_kind,
+    binding_mode: lifecycle.binding_mode,
+    artifact_existed_at_session_start: lifecycle.artifact_existed_at_session_start,
+    artifact_bound_at_stop: lifecycle.artifact_bound_at_stop,
+    session_started_at: lifecycle.session_started_at,
+    session_start_event_id: lifecycle.session_start_event_id,
+    artifact_bound_at: lifecycle.artifact_bound_at,
+    artifact_bound_event_id: lifecycle.artifact_bound_event_id,
+    artifact_bound_pass_id: lifecycle.artifact_bound_pass_id,
+    artifact_sha256: lifecycle.artifact_sha256,
+    artifact_byte_count: lifecycle.artifact_byte_count,
+  };
+}
+
 export function validateM511TimingArtifact(
   artifact,
   {
@@ -319,6 +443,20 @@ export function validateM511TimingArtifact(
   if (artifact.timing_kind !== timingKind) fail(`${label}.timing_kind is invalid`, 'TIMING_SCOPE_ERROR');
   validateFileSource(source, `${label} source file`);
   const binding = requireObject(artifact.source, `${label}.source`);
+  const expectedBindingKeys = timingKind === 'editorial'
+    ? ['proposal_sha256', 'editorial_sha256']
+    : ['proposal_sha256', 'editorial_sha256', 'audit_sha256', 'editorial_timing_sha256'];
+  assertExactIds(
+    Object.keys(binding).sort(),
+    [...expectedBindingKeys].sort(),
+    `${label}.source`,
+    'TIMING_SOURCE_MISMATCH',
+  );
+  for (const [key, digest] of Object.entries(binding)) {
+    if (!/^[a-f0-9]{64}$/u.test(digest)) {
+      fail(`${label}.source.${key} is not a SHA-256 digest`, 'TIMING_SOURCE_MISMATCH');
+    }
+  }
   if (proposalSourceSha256 !== undefined && binding.proposal_sha256 !== proposalSourceSha256) {
     fail(`${label} proposal source drifted`, 'TIMING_SOURCE_MISMATCH');
   }
@@ -362,6 +500,11 @@ export function validateM511TimingArtifact(
   if (recorder.session_id !== artifact.session_id) {
     fail(`${label}.recorder.session_id is not bound to the timing session`, 'TIMING_PROVENANCE_ERROR');
   }
+  const recorderProvenance = validateM511TimingProvenance(
+    recorder.provenance,
+    artifact.recording_proof_sha256,
+    `${label}.recorder.provenance`,
+  );
   const recorderEvents = requireArray(artifact.recorder_events, `${label}.recorder_events`);
   if (!/^[a-f0-9]{64}$/u.test(recorder.recorder_event_log_sha256)
     || recorder.recorder_event_log_sha256 !== sha256Json(recorderEvents)) {
@@ -450,6 +593,8 @@ export function validateM511TimingArtifact(
       id: validated.id,
       unit_count: validated.unit_count,
       event_count: validated.derived_event_count,
+      start_event_id: recorderStart.event_id,
+      stop_event_id: recorderStop.event_id,
       started_at: validated.started_at,
       completed_at: validated.completed_at,
       wall_clock_seconds: validated.wall_clock_seconds,
@@ -470,6 +615,13 @@ export function validateM511TimingArtifact(
     `${label}.recorder_events scope`,
     'TIMING_PROVENANCE_ERROR',
   );
+  const lifecycle = validateM511TimingLifecycle(artifact, {
+    timingKind,
+    expectedPasses,
+    recorderEventsByKey,
+    source,
+    label,
+  });
 
   if (afterTimingArtifact !== undefined) {
     const previousPass = requireArray(afterTimingArtifact.passes, `${label}.preceding timing passes`).at(-1);
@@ -526,6 +678,17 @@ export function validateM511TimingArtifact(
     unmeasured_pass_count: unmeasuredPassCount,
     pass_ids: [...expectedPasses],
     recording_proof_sha256: artifact.recording_proof_sha256,
+    source_binding: { ...binding },
+    recorder: {
+      version: recorder.version,
+      session_id: recorder.session_id,
+      event_count: recorder.event_count,
+      event_log_sha256: recorder.event_log_sha256,
+      recorder_event_count: recorder.recorder_event_count,
+      recorder_event_log_sha256: recorder.recorder_event_log_sha256,
+      provenance: recorderProvenance,
+      lifecycle,
+    },
     pass_intervals: passIntervals,
   };
 }

@@ -22,6 +22,9 @@ import {
 } from './validate-m5-11.mjs';
 import {
   M5_11_MACHINE_CHECK_IDS,
+  M5_11_TIMING_LIFECYCLE_VERSION,
+  M5_11_TIMING_RECORDER_VERSION,
+  validateM511TimingProvenance,
 } from './validate-m5-11-admission.mjs';
 
 const require = createRequire(import.meta.url);
@@ -153,7 +156,7 @@ function assertSummary(actual, expected, label) {
   }
 }
 
-function validateDurableTiming(timing, expectedPassIds, field, label) {
+function validateDurableTiming(timing, expectedPassIds, field, label, expectedSourceBinding) {
   if (!timing || timing.status !== 'complete' || timing.unmeasured_pass_count !== 0) {
     fail(`${label} is not a complete measured timing summary`, 'TIMING_EVIDENCE_MISMATCH');
   }
@@ -165,6 +168,41 @@ function validateDurableTiming(timing, expectedPassIds, field, label) {
   }
   if (!/^[a-f0-9]{64}$/u.test(timing.recording_proof_sha256)) {
     fail(`${label} is missing the recorder proof`, 'TIMING_EVIDENCE_MISMATCH');
+  }
+  if (!timing.source_binding || typeof timing.source_binding !== 'object') {
+    fail(`${label} is missing its source binding`, 'TIMING_EVIDENCE_MISMATCH');
+  }
+  assertSummary(timing.source_binding, expectedSourceBinding, `${label} source binding`);
+  const expectedTimingKind = field === 'editor_seconds' ? 'editorial' : 'post-freeze-audit';
+  const expectedArtifactKind = field === 'editor_seconds' ? 'editorial-decisions' : 'independent-audit';
+  if (timing.timing_kind !== expectedTimingKind) {
+    fail(`${label} timing kind drifted`, 'TIMING_EVIDENCE_MISMATCH');
+  }
+  const recorder = timing.recorder;
+  if (!recorder
+    || recorder.version !== M5_11_TIMING_RECORDER_VERSION
+    || recorder.session_id !== timing.session_id
+    || recorder.event_count !== timing.pass_intervals.reduce((sum, pass) => sum + pass.event_count, 0)
+    || recorder.recorder_event_count !== expectedPassIds.length * 2
+    || !/^[a-f0-9]{64}$/u.test(recorder.event_log_sha256)
+    || !/^[a-f0-9]{64}$/u.test(recorder.recorder_event_log_sha256)) {
+    fail(`${label} recorder summary is incomplete`, 'TIMING_EVIDENCE_MISMATCH');
+  }
+  const provenance = validateM511TimingProvenance(
+    recorder.provenance,
+    timing.recording_proof_sha256,
+    `${label}.recorder.provenance`,
+  );
+  const lifecycle = recorder.lifecycle;
+  if (!lifecycle
+    || lifecycle.version !== M5_11_TIMING_LIFECYCLE_VERSION
+    || lifecycle.artifact_kind !== expectedArtifactKind
+    || lifecycle.binding_mode !== 'start-before-artifact-finalization'
+    || lifecycle.artifact_existed_at_session_start !== false
+    || lifecycle.artifact_bound_at_stop !== true
+    || lifecycle.private_key_path !== undefined && lifecycle.private_key_path !== null
+    || !/^[a-f0-9]{64}$/u.test(lifecycle.artifact_sha256 ?? '')) {
+    fail(`${label} recorder lifecycle is incomplete`, 'TIMING_EVIDENCE_MISMATCH');
   }
   let previousCompletedAt;
   let measuredSeconds = 0;
@@ -185,11 +223,27 @@ function validateDurableTiming(timing, expectedPassIds, field, label) {
       || Math.abs(pass.measured_seconds - (pass.unit_count === 0 ? 0 : elapsed)) > 1e-9) {
       fail(`${label} pass duration is not recorder-derived`, 'TIMING_EVIDENCE_MISMATCH');
     }
+    if (typeof pass.start_event_id !== 'string' || typeof pass.stop_event_id !== 'string') {
+      fail(`${label} pass is missing recorder lifecycle event IDs`, 'TIMING_EVIDENCE_MISMATCH');
+    }
     measuredSeconds += pass.measured_seconds;
     previousCompletedAt = completedAt;
   }
+  const firstPass = timing.pass_intervals[0];
+  const finalPass = timing.pass_intervals.at(-1);
+  if (lifecycle.session_started_at !== firstPass.started_at
+    || lifecycle.session_start_event_id !== firstPass.start_event_id
+    || lifecycle.artifact_bound_at !== finalPass.completed_at
+    || lifecycle.artifact_bound_event_id !== finalPass.stop_event_id
+    || lifecycle.artifact_bound_pass_id !== finalPass.id
+    || lifecycle.artifact_sha256 !== expectedSourceBinding?.[field === 'editor_seconds' ? 'editorial_sha256' : 'audit_sha256']) {
+    fail(`${label} artifact lifecycle binding drifted`, 'TIMING_EVIDENCE_MISMATCH');
+  }
   if (Math.abs(measuredSeconds - timing[field]) > 1e-9) {
     fail(`${label}.${field} is not derived from pass intervals`, 'TIMING_EVIDENCE_MISMATCH');
+  }
+  if (provenance.signed_recording_proof_sha256 !== timing.recording_proof_sha256) {
+    fail(`${label} recorder proof signature drifted`, 'TIMING_EVIDENCE_MISMATCH');
   }
 }
 
@@ -216,6 +270,16 @@ function validateDurableGateEvidence(manifest, evidence) {
   assertSummary(gateEvidence.audit, manifest.audit, 'durable gate audit');
   assertSummary(gateEvidence.verification, manifest.verification, 'durable gate verification');
   assertSummary(gateEvidence.gate, manifest.gate, 'durable gate decision');
+  assertSummary(
+    manifest.decisions,
+    gateEvidence.decision_counts,
+    'manifest decision evidence',
+  );
+  assertSummary(
+    evidence.decisions,
+    gateEvidence.decision_counts,
+    'promotion decision evidence',
+  );
 
   const decisions = gateEvidence.decision_counts;
   if (!decisions
@@ -235,12 +299,22 @@ function validateDurableGateEvidence(manifest, evidence) {
     ['target-preparation', 'initial-review', 'feedback-fixes', 'final-verification', 'held-rejected'],
     'editor_seconds',
     'durable editorial timing',
+    {
+      proposal_sha256: manifest.sources.proposal.sha256,
+      editorial_sha256: manifest.sources.editorial.sha256,
+    },
   );
   validateDurableTiming(
     gateEvidence.timing.audit,
     ['post-freeze-audit'],
     'audit_seconds',
     'durable audit timing',
+    {
+      proposal_sha256: manifest.sources.proposal.sha256,
+      editorial_sha256: manifest.sources.editorial.sha256,
+      audit_sha256: manifest.sources.audit.sha256,
+      editorial_timing_sha256: manifest.sources.editorial_timing.sha256,
+    },
   );
   const editorialEnd = Date.parse(gateEvidence.timing.editorial.pass_intervals.at(-1).completed_at);
   const auditStart = Date.parse(gateEvidence.timing.audit.pass_intervals[0].started_at);
