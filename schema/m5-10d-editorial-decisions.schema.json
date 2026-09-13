@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-editorial-decisions.schema.json",
+  "title": "Typewriter M5-10D editorial decisions",
+  "description": "Recorder-owned record-by-record semantic decisions for the calibration sample.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "proposal_sha256", "editorial_session_id", "timing_session_id", "draft_sha256", "draft_created_at", "created_at", "finalized_at", "records", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-editorial-decisions-20260912" },
+    "batch_id": { "const": "m5-10d-editor-time-recalibration-20260912" },
+    "source_kind": { "const": "recorder-owned" },
+    "decision_source": { "const": "recorder-owned-record-by-record-judgments" },
+    "proposal_sha256": { "$ref": "#/$defs/sha256" },
+    "editorial_session_id": { "$ref": "#/$defs/uuid" },
+    "timing_session_id": { "$ref": "#/$defs/uuid" },
+    "draft_sha256": { "$ref": "#/$defs/sha256" },
+    "draft_created_at": { "type": "string", "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
+    "records": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/record" }
+    },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "record_id", "source_record_sha256", "decision", "lemma_pos", "sense_review", "boundary_reviews", "relation_review", "decision_note"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10d-cal-[0-9]{3}$" },
+        "record_id": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}$" },
+        "source_record_sha256": { "$ref": "#/$defs/sha256" },
+        "decision": { "enum": ["included", "corrected", "held", "rejected"] },
+        "corrected_fields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "\\S" } },
+        "lemma_pos": { "$ref": "#/$defs/lemmaPos" },
+        "sense_review": { "$ref": "#/$defs/senseReview" },
+        "boundary_reviews": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["physical-figurative", "homonym-pos", "sensory-emotion-state-action", "directional-symmetry", "compound-spaced-phrase", "word-idiom"],
+          "properties": {
+            "physical-figurative": { "$ref": "#/$defs/boundary" },
+            "homonym-pos": { "$ref": "#/$defs/boundary" },
+            "sensory-emotion-state-action": { "$ref": "#/$defs/boundary" },
+            "directional-symmetry": { "$ref": "#/$defs/boundary" },
+            "compound-spaced-phrase": { "$ref": "#/$defs/boundary" },
+            "word-idiom": { "$ref": "#/$defs/boundary" }
+          }
+        },
+        "relation_review": {
+          "anyOf": [
+            { "$ref": "#/$defs/noCandidateRelation" },
+            { "$ref": "#/$defs/candidateRelation" }
+          ]
+        },
+        "decision_note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "lemmaPos": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observed_pos", "note"],
+      "properties": {
+        "status": { "const": "checked" },
+        "observed_pos": { "type": "array", "minItems": 1, "items": { "enum": ["noun", "adjective", "verb", "expression"] } },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "senseReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observed_sense_count", "observed_sense_ids", "observed_pos", "note"],
+      "properties": {
+        "status": { "const": "complete" },
+        "observed_sense_count": { "type": "integer", "minimum": 1 },
+        "observed_sense_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" } },
+        "observed_pos": { "type": "array", "minItems": 1, "items": { "enum": ["noun", "adjective", "verb", "expression"] } },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "applicability", "decision", "evidence"],
+      "properties": {
+        "status": { "const": "reviewed" },
+        "applicability": { "enum": ["applicable", "not-applicable"] },
+        "decision": { "enum": ["keep", "split"] },
+        "evidence": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "noCandidateRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "decision", "noise_assessment", "correction", "note"],
+      "properties": {
+        "outcome": { "const": "no-valid-candidate" },
+        "decision": { "const": "not-applicable" },
+        "noise_assessment": { "const": "not-applicable" },
+        "correction": { "const": "none" },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "candidateRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "source_sense", "target_record", "target_sense", "type", "direction", "decision", "noise_assessment", "correction", "note"],
+      "properties": {
+        "outcome": { "const": "raw-proposal" },
+        "source_sense": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+        "target_record": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}$" },
+        "target_sense": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+        "type": { "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"] },
+        "direction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+            "to": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" }
+          }
+        },
+        "decision": { "enum": ["admit", "reject", "correct"] },
+        "noise_assessment": { "enum": ["clean", "noise"] },
+        "correction": { "enum": ["none", "corrected"] },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

@@ -1,0 +1,223 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-audit-decisions-20260912",
+  "batch_id": "m5-10d-editor-time-recalibration-20260912",
+  "source_kind": "recorder-owned",
+  "decision_source": "recorder-owned-post-freeze-comparison-judgments",
+  "independent": true,
+  "proposal_sha256": "9adcc18ed41ffcd5ccbfaa695be928bf44a24a5de05cb694033538b0210c295e",
+  "editorial_decisions_sha256": "e03a41b5e2c65eafeecca47e0f09ff52a950f5556c0c1fac195b5e0dbb3fbfdc",
+  "editorial_session_id": "8aae3e74-a906-4a81-8109-e56e193a8496",
+  "audit_session_id": "765ef5f6-71e8-4214-a002-49834d3bdd8c",
+  "timing_session_id": "41d45f79-08d2-471a-bf6c-312ccc608f77",
+  "draft_sha256": "68a47db63b45485d298c2c7f420b0def095994108856a7feb9ccffe9b1bb8416",
+  "draft_created_at": "2026-09-13T01:39:00.154Z",
+  "created_at": "2026-09-13T01:40:57.340Z",
+  "finalized_at": "2026-09-13T01:40:57.342Z",
+  "status": "complete",
+  "case_reviews": [
+    {
+      "case_id": "m5-10d-cal-001",
+      "source_record_sha256": "6ed4906fc34c9107a704ef19d2b2ca9493ca406b6fa03cfa1fabd5040e7a1b99",
+      "editorial_record_sha256": "fdfc2684122a27f6e7e782b0b0808a7583693b079467fc80da3a3b50fae28002",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-001 audit cal-m5-10d-001-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-002",
+      "source_record_sha256": "e8694ef6999acfc620549a1c9db754b52e5c35793024fd9aa4c364ee66647a4c",
+      "editorial_record_sha256": "6ea97d572aeb624a10aa278fbf0813331a3f760e6597b9fe98f913b4a6421d70",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-002 audit cal-m5-10d-002-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-003",
+      "source_record_sha256": "07bccc01756e9e448c348716aa46889f6f937ab858aba800d90f5e586a6b00df",
+      "editorial_record_sha256": "6d9545c339b3a80dd0734941aa69028245e8653ab8d1d1d0eecbf1f5fc5e42b4",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-003 audit cal-m5-10d-003-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-004",
+      "source_record_sha256": "330f4a54a08397a75d351c49b6664e94292fb2cf457727316b62f35fdba26adb",
+      "editorial_record_sha256": "176c99713db4ccb3809391969cef20124e80f7c11c155b3a6bc9c9111885c178",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-004 audit cal-m5-10d-004-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-005",
+      "source_record_sha256": "2924545234b5e106847a4a05dd89a545ca07be81c62aebca5deb7f7ab5b64808",
+      "editorial_record_sha256": "3a3cf2079efd6024fb9fbfb8a007667ccf015f5e718f35230dc4582aa262a730",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-005 audit cal-m5-10d-005-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-006",
+      "source_record_sha256": "d3c2e058c73c535adcbbb6a340c2d43d26365a54c94acd7483758da22e4fa6a9",
+      "editorial_record_sha256": "56c6c80b689f9eb2107b0ae93beb44ab2b6bdb6cf281353b69c6ed966a725bfe",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-006 audit cal-m5-10d-006-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-007",
+      "source_record_sha256": "f5f916708bcc794f730e15dac680e863b4e2d2dd1440fa5acc11375a0892b18b",
+      "editorial_record_sha256": "816b916c8c89f135f4e65fff5cbe1f142709ebde3679d3fbdea70bd494f7cf60",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-007 audit cal-m5-10d-007-s1,cal-m5-10d-007-s2: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-008",
+      "source_record_sha256": "6c380637b9b8f37d3fa8fd57882ac98a8db03fdff7c24a9c074123856161f7d0",
+      "editorial_record_sha256": "eedc8232f120dcb7764d03b3b12b977d6a47604bc20efb20da1a33e424f9a81f",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-008 audit cal-m5-10d-008-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-009",
+      "source_record_sha256": "4f1f6f2b2856d08262d2caeaba68f98c56473c5ecdb86d344a7535f05771ef2a",
+      "editorial_record_sha256": "a49b2d6fa7a114da3853848fefa2bbf7806a15b43cb0d49b738da2456fa6ad00",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-009 audit cal-m5-10d-009-s1,cal-m5-10d-009-s2: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-010",
+      "source_record_sha256": "d1210c4952f00b870eb8c21670c7027b0987e2b9d92ce5bb57f3e6e75495457a",
+      "editorial_record_sha256": "e4ab21a74b75ec89641a24e193156d9ce0ca8bb761fbb27791f0f9256fc00bb1",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-010 audit cal-m5-10d-010-s1,cal-m5-10d-010-s2: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-011",
+      "source_record_sha256": "303b0841fcc66aed6d1d2d8b5e6c59891de644c3c2e62d3aeaf295036ea2e722",
+      "editorial_record_sha256": "4c4d0f50835bf6fe4097cb7ee41cd9c15183eb3b8b67203033156e0b33beed0c",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-011 audit cal-m5-10d-011-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-012",
+      "source_record_sha256": "bb116b8ab041734210f0ac5066446577fa83dda7c8e9760fbcdeadf9b38d6bc5",
+      "editorial_record_sha256": "a05e965d8d9e66a4821dd1514b87ca4690e05284191677a7d31bb3c6be650cfb",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-012 audit cal-m5-10d-012-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-013",
+      "source_record_sha256": "5de23e2a8d8d46357006179b5aafacb0ab6aa3b72d70c68853c9fc49891a4d05",
+      "editorial_record_sha256": "3bd30a9cd9a7fd497353b74b49f4223e03e098aa5adb53ce05cc2040e9d659aa",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-013 audit cal-m5-10d-013-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-014",
+      "source_record_sha256": "62fa353d9c1ab73714f6224897d2bf144c9f83c847c896a9793946503612539f",
+      "editorial_record_sha256": "46227e57a2f2b7016caefcee03f648dace43b3b81d34a298b0a1834946b0a5db",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-014 audit cal-m5-10d-014-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-015",
+      "source_record_sha256": "8fde57def4cf1c8ed836eaa21b34281732e1cb05fff4d2cc7dda24f722b032ad",
+      "editorial_record_sha256": "0645e1ea60048a0c7cb7f321c69227179ee09e83e6f5e5815df0df0ae4bee0c3",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-015 audit cal-m5-10d-015-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-016",
+      "source_record_sha256": "1d72eff9e44dc877d8a17a8cb0be587bde264792d8cc1937d9740ff9fb0edab5",
+      "editorial_record_sha256": "51fde45496052c3a538c1f39e4f73a5e664652d3a211c08b80b6bfd354341260",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-016 audit cal-m5-10d-016-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-017",
+      "source_record_sha256": "cdb26f611981906bcef8f5fa72d8a66f99d67217a5715ab2f6b1f211f6956f11",
+      "editorial_record_sha256": "f525c8a31a38b099cfee300590e80e52cbdb24a28a113d50e42bfc0ecd35d53d",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-017 audit cal-m5-10d-017-s1,cal-m5-10d-017-s2: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-018",
+      "source_record_sha256": "1bf52bc2c6c6d6e39e56cba5b410ebcc15b8a5fa0a69d3688ae30d99a0cbbff2",
+      "editorial_record_sha256": "79a37aaace8032581ec0d7508ad79a3612ec93d5868935e13c1afdae83a67b38",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-018 audit cal-m5-10d-018-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-019",
+      "source_record_sha256": "bb898730e75bf412160ee53e64e82ef8de9692d9e694452394542191577b02dc",
+      "editorial_record_sha256": "6ca86edba03721c68b5c3a3aaf3594e61f937b7fad4edcc129f6606ef5277256",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-019 audit cal-m5-10d-019-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    },
+    {
+      "case_id": "m5-10d-cal-020",
+      "source_record_sha256": "7e764a12319e21cf2286f0bfa245768e2762569a4568528bf1beb0b36a1b9c1e",
+      "editorial_record_sha256": "022c39358c739b88ccac978e2ec3ccb5e0d45cacc3c0fea1b526c720f2a8232c",
+      "source_comparison": "match",
+      "decision_comparison": "match",
+      "relation_comparison": "match",
+      "status": "verified",
+      "note": "m5-10d-cal-020 audit cal-m5-10d-020-s1: committed proposal source and frozen editorial row were compared record-by-record; source, decision, and relation all match."
+    }
+  ],
+  "findings": [],
+  "open_blocker_count": 0,
+  "note": "Independent post-freeze comparisons were authored after the editorial artifact was frozen and during a separate audit timing session."
+}

@@ -1,0 +1,294 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-calibration-proposal",
+  "process_revision": "m5-10d-editor-workload-v1",
+  "case_count": 20,
+  "cases": [
+    {
+      "case_id": "m5-10d-cal-001",
+      "record": {
+        "id": "cal-m5-10d-001",
+        "record_type": "entry",
+        "lemma": "나직하다",
+        "search_forms": ["나직하다"],
+        "senses": [{"id": "cal-m5-10d-001-s1", "pos": "adjective", "gloss": "소리가 조용하고 낮다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-001-s1",
+        "target_record": "cal-m5-10d-013",
+        "target_sense": "cal-m5-10d-013-s1",
+        "type": "near",
+        "direction": {"from": "cal-m5-10d-001-s1", "to": "cal-m5-10d-013-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-002",
+      "record": {
+        "id": "cal-m5-10d-002",
+        "record_type": "entry",
+        "lemma": "아늑하다",
+        "search_forms": ["아늑하다"],
+        "senses": [{"id": "cal-m5-10d-002-s1", "pos": "adjective", "gloss": "포근하고 편안하여 아담한 느낌이 있다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-002-s1",
+        "target_record": "cal-m5-10d-005",
+        "target_sense": "cal-m5-10d-005-s1",
+        "type": "mood",
+        "direction": {"from": "cal-m5-10d-002-s1", "to": "cal-m5-10d-005-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-003",
+      "record": {
+        "id": "cal-m5-10d-003",
+        "record_type": "entry",
+        "lemma": "잠잠하다",
+        "search_forms": ["잠잠하다"],
+        "senses": [{"id": "cal-m5-10d-003-s1", "pos": "adjective", "gloss": "소리나 움직임이 없이 조용하다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-003-s1",
+        "target_record": "cal-m5-10d-014",
+        "target_sense": "cal-m5-10d-014-s1",
+        "type": "antonym",
+        "direction": {"from": "cal-m5-10d-003-s1", "to": "cal-m5-10d-014-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-004",
+      "record": {
+        "id": "cal-m5-10d-004",
+        "record_type": "entry",
+        "lemma": "잔잔하다",
+        "search_forms": ["잔잔하다"],
+        "senses": [{"id": "cal-m5-10d-004-s1", "pos": "adjective", "gloss": "바람이나 물결이 세지 않고 조용하다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-004-s1",
+        "target_record": "cal-m5-10d-016",
+        "target_sense": "cal-m5-10d-016-s1",
+        "type": "scene",
+        "direction": {"from": "cal-m5-10d-004-s1", "to": "cal-m5-10d-016-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-005",
+      "record": {
+        "id": "cal-m5-10d-005",
+        "record_type": "entry",
+        "lemma": "스산하다",
+        "search_forms": ["스산하다"],
+        "senses": [{"id": "cal-m5-10d-005-s1", "pos": "adjective", "gloss": "쓸쓸하고 으스스한 기운이 있다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-005-s1",
+        "target_record": "cal-m5-10d-006",
+        "target_sense": "cal-m5-10d-006-s1",
+        "type": "near",
+        "direction": {"from": "cal-m5-10d-005-s1", "to": "cal-m5-10d-006-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-006",
+      "record": {
+        "id": "cal-m5-10d-006",
+        "record_type": "entry",
+        "lemma": "을씨년스럽다",
+        "search_forms": ["을씨년스럽다"],
+        "senses": [{"id": "cal-m5-10d-006-s1", "pos": "adjective", "gloss": "날씨나 분위기가 쓸쓸하고 어수선하다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-006-s1",
+        "target_record": "cal-m5-10d-009",
+        "target_sense": "cal-m5-10d-009-s2",
+        "type": "near",
+        "direction": {"from": "cal-m5-10d-006-s1", "to": "cal-m5-10d-009-s2"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-007",
+      "record": {
+        "id": "cal-m5-10d-007",
+        "record_type": "entry",
+        "lemma": "무르익다",
+        "search_forms": ["무르익다"],
+        "senses": [
+          {"id": "cal-m5-10d-007-s1", "pos": "verb", "gloss": "열매나 곡식이 충분히 익다"},
+          {"id": "cal-m5-10d-007-s2", "pos": "verb", "gloss": "분위기나 일이 충분히 성숙한 단계에 이르다"}
+        ]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-007-s2",
+        "target_record": "cal-m5-10d-009",
+        "target_sense": "cal-m5-10d-009-s2",
+        "type": "near",
+        "direction": {"from": "cal-m5-10d-007-s2", "to": "cal-m5-10d-009-s2"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-008",
+      "record": {
+        "id": "cal-m5-10d-008",
+        "record_type": "entry",
+        "lemma": "배어들다",
+        "search_forms": ["배어들다"],
+        "senses": [{"id": "cal-m5-10d-008-s1", "pos": "verb", "gloss": "빛이나 냄새 또는 기운이 속으로 스며들다"}]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-008-s1",
+        "target_record": "cal-m5-10d-010",
+        "target_sense": "cal-m5-10d-010-s1",
+        "type": "direct",
+        "direction": {"from": "cal-m5-10d-008-s1", "to": "cal-m5-10d-010-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-009",
+      "record": {
+        "id": "cal-m5-10d-009",
+        "record_type": "entry",
+        "lemma": "감돌다",
+        "search_forms": ["감돌다"],
+        "senses": [
+          {"id": "cal-m5-10d-009-s1", "pos": "verb", "gloss": "어떤 둘레를 빙빙 돌다"},
+          {"id": "cal-m5-10d-009-s2", "pos": "verb", "gloss": "기운이나 느낌이 주위에 가득 머물다"}
+        ]
+      },
+      "relation_candidate": {
+        "source_sense": "cal-m5-10d-009-s2",
+        "target_record": "cal-m5-10d-019",
+        "target_sense": "cal-m5-10d-019-s1",
+        "type": "scene",
+        "direction": {"from": "cal-m5-10d-009-s2", "to": "cal-m5-10d-019-s1"}
+      }
+    },
+    {
+      "case_id": "m5-10d-cal-010",
+      "record": {
+        "id": "cal-m5-10d-010",
+        "record_type": "entry",
+        "lemma": "스미다",
+        "search_forms": ["스미다"],
+        "senses": [
+          {"id": "cal-m5-10d-010-s1", "pos": "verb", "gloss": "액체나 빛이 천천히 배어들다"},
+          {"id": "cal-m5-10d-010-s2", "pos": "verb", "gloss": "마음이나 생각에 느낌이 서서히 퍼지다"}
+        ]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-011",
+      "record": {
+        "id": "cal-m5-10d-011",
+        "record_type": "entry",
+        "lemma": "서성이다",
+        "search_forms": ["서성이다"],
+        "senses": [{"id": "cal-m5-10d-011-s1", "pos": "verb", "gloss": "뚜렷한 목적 없이 이리저리 천천히 거닐다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-012",
+      "record": {
+        "id": "cal-m5-10d-012",
+        "record_type": "entry",
+        "lemma": "어렴풋하다",
+        "search_forms": ["어렴풋하다"],
+        "senses": [{"id": "cal-m5-10d-012-s1", "pos": "adjective", "gloss": "분명하지 않고 희미한 느낌이 있다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-013",
+      "record": {
+        "id": "cal-m5-10d-013",
+        "record_type": "entry",
+        "lemma": "소곤거리다",
+        "search_forms": ["소곤거리다"],
+        "senses": [{"id": "cal-m5-10d-013-s1", "pos": "verb", "gloss": "남이 알아듣지 못하도록 작은 목소리로 자꾸 말하다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-014",
+      "record": {
+        "id": "cal-m5-10d-014",
+        "record_type": "entry",
+        "lemma": "웅성거리다",
+        "search_forms": ["웅성거리다"],
+        "senses": [{"id": "cal-m5-10d-014-s1", "pos": "verb", "gloss": "여러 사람이 모여 낮은 목소리로 자꾸 떠들다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-015",
+      "record": {
+        "id": "cal-m5-10d-015",
+        "record_type": "entry",
+        "lemma": "사부작거리다",
+        "search_forms": ["사부작거리다"],
+        "senses": [{"id": "cal-m5-10d-015-s1", "pos": "verb", "gloss": "소리가 거의 나지 않게 가볍게 자꾸 움직이다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-016",
+      "record": {
+        "id": "cal-m5-10d-016",
+        "record_type": "entry",
+        "lemma": "살랑이다",
+        "search_forms": ["살랑이다"],
+        "senses": [{"id": "cal-m5-10d-016-s1", "pos": "verb", "gloss": "바람이 가볍게 부드럽게 불다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-017",
+      "record": {
+        "id": "cal-m5-10d-017",
+        "record_type": "entry",
+        "lemma": "어긋나다",
+        "search_forms": ["어긋나다"],
+        "senses": [
+          {"id": "cal-m5-10d-017-s1", "pos": "verb", "gloss": "한쪽이 비껴나 서로 맞지 않다"},
+          {"id": "cal-m5-10d-017-s2", "pos": "verb", "gloss": "기대나 약속이 서로 맞지 않게 되다"}
+        ]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-018",
+      "record": {
+        "id": "cal-m5-10d-018",
+        "record_type": "entry",
+        "lemma": "주춤거리다",
+        "search_forms": ["주춤거리다"],
+        "senses": [{"id": "cal-m5-10d-018-s1", "pos": "verb", "gloss": "망설이거나 갑자기 멈추는 동작을 자꾸 하다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-019",
+      "record": {
+        "id": "cal-m5-10d-019",
+        "record_type": "entry",
+        "lemma": "아른거리다",
+        "search_forms": ["아른거리다"],
+        "senses": [{"id": "cal-m5-10d-019-s1", "pos": "verb", "gloss": "무엇이 희미하게 보였다가 사라지기를 되풀이하다"}]
+      },
+      "relation_candidate": null
+    },
+    {
+      "case_id": "m5-10d-cal-020",
+      "record": {
+        "id": "cal-m5-10d-020",
+        "record_type": "entry",
+        "lemma": "적막하다",
+        "search_forms": ["적막하다"],
+        "senses": [{"id": "cal-m5-10d-020-s1", "pos": "adjective", "gloss": "아무 소리 없이 매우 고요하고 쓸쓸하다"}]
+      },
+      "relation_candidate": null
+    }
+  ]
+}

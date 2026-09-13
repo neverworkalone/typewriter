@@ -1,0 +1,38 @@
+{
+  "schema_version": "1",
+  "authorization_id": "m5-10d-m5-11-authorization-20260912",
+  "issue": 115,
+  "parent_issue": 7,
+  "target_issue": 97,
+  "process_revision": "m5-10d-editor-workload-v1",
+  "decision": "AUTHORIZE M5-11 +500 VALIDATION",
+  "canonical_mutation": false,
+  "source": {
+    "recovery_artifact": "data/batches/m5-10d-recovery.json",
+    "recovery_artifact_sha256": "55807d24be92128b3ed02616f02e0bd2f7ce86ebe8f87c0d528d980635c1a4b7",
+    "workload": "data/batches/m5-10d-workload-20260912.json",
+    "workload_sha256": "08aa63b094b2c89ce8ff347faf0dae3c6016e20d0223db1289362cb2ad678f5e",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+    "inventory": "data/inventory/m5-target-inventory.json",
+    "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+    "repair_revision": "data/batches/m5-10a-process-correction.json",
+    "repair_revision_sha256": "2ec628acd9fcc1289331f431094b079511268d810237d435d90a13d10c33d31d"
+  },
+  "failed_stage": {
+    "path": "data/batches/m5-10-wave-b-stage.json",
+    "sha256": "a91b844544b233a0b1f06dedfd7d38f031e4115aa9f4cb414fbc36d3d1c01065",
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "next_stage_authorized": false,
+    "start_count": 778
+  },
+  "target": {
+    "base_start_count": 778,
+    "net_start_increase": 500,
+    "cumulative_start_target": 1278,
+    "candidate_data_created": false
+  },
+  "created_at": "2026-09-13T01:41:07.185Z",
+  "note": "M5-10D passed its source-derived workload gate. This artifact authorizes only the separate M5-11 #97 +500 validation task; it creates no candidate or canonical data."
+}

@@ -129,6 +129,13 @@ npm run batch:import -- \
 
 npm run batch:process:check
 npm run batch:repair:check
+npm run batch:m5-10d:contract:check
+# M5-10D keeps its calibration-only proposal separate from canonical data.
+npm run batch:m5-10d:calibration:prepare
+# After initial-review judgment rows are complete, freeze the recorder-owned follow-up source.
+npm run batch:m5-10d:recovery:contract:check
+npm run batch:m5-10d:recovery:check
+npm run batch:m5-10d:authorization:check
 # Start and stop each calibration pass explicitly; the command persists its session.
 npm run batch:m5-10a:calibration:timing -- \
   --action=start --pass=target-preparation --output=/tmp/typewriter-m5-10a-timing-session.json

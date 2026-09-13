@@ -155,10 +155,29 @@ Codex-authored (`human_editorial_review_complete: false`); the stage still keeps
 `next_stage_created: false` and `next_stage_authorized: false`. Run
 `npm run batch:m5-10:wave-b:check -- --staged=/path/to/reviewed.jsonl --proposal=/path/to/proposal.jsonl`
 to verify the digest-bound Wave B artifacts. The timing recorder invokes the
-decision producer for each unit inside the pass interval and binds its input,
-execution timestamps, source digest, and output in recorder-owned work logs; the
-editorial and audit decision artifacts are generated and finalized only after
-their corresponding timing passes stop.
+proposal-only producer for each unit inside the pass interval and binds its
+input, execution timestamps, source digest, and output in recorder-owned work
+logs. Editorial and audit rows are authored one at a time after their judgment
+timers start, then assembled and finalized only after the corresponding timing
+passes stop; no production verdict plan is available to the recorder.
+
+Issue #115's M5-10D workload correction is documented in
+[`docs/m5-10d-editor-workload-recovery.md`](docs/m5-10d-editor-workload-recovery.md).
+The committed calibration-only proposal is
+[`data/batches/m5-10d-calibration-proposal-20260912.json`](data/batches/m5-10d-calibration-proposal-20260912.json),
+and its source, follow-up source, timing logs, decisions, recovery, and
+authorization are all revalidatable from a clean checkout. The workflow freezes
+the target and initial workload before timing, derives follow-up
+queues from recorder-owned initial-review judgment findings before those passes
+start, measures editor time only from per-unit judgment intervals, records empty
+passes as zero-work, and keeps the independent post-freeze audit over all 20
+calibration cases. Its source-derived recovery can create the separate #97 +500
+authorization only when the existing fixed gates pass; the contract and recovery
+checks are
+`npm run batch:m5-10d:contract:check` and
+`npm run batch:m5-10d:recovery:contract:check`, followed by the committed
+artifact checks `npm run batch:m5-10d:recovery:check` and
+`npm run batch:m5-10d:authorization:check`.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

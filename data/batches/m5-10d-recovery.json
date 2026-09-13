@@ -1,0 +1,122 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-editor-time-recovery-20260912",
+  "issue": 115,
+  "parent_issue": 7,
+  "process_revision": "m5-10d-editor-workload-v1",
+  "status": "complete",
+  "canonical_mutation": false,
+  "canonical_snapshot": {
+    "record_count": 820,
+    "start_count": 778,
+    "reference_only_count": 42,
+    "sense_count": 966,
+    "relation_count": 473,
+    "expression_count": 63
+  },
+  "inventory_snapshot": {
+    "revision": "m5-11",
+    "completed_start_count": 778,
+    "before_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+    "after_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
+  },
+  "source": {
+    "failed_stage": "data/batches/m5-10-wave-b-stage.json",
+    "failed_stage_sha256": "a91b844544b233a0b1f06dedfd7d38f031e4115aa9f4cb414fbc36d3d1c01065",
+    "failed_manifest": "data/batches/m5-10-wave-b.json",
+    "failed_manifest_sha256": "f3ffccf620790553f80a0efe344a15e8a2d5acfab1e0458657f1220b526db242",
+    "failed_metrics": "data/batches/m5-10-wave-b-metrics.json",
+    "failed_metrics_sha256": "4e551a6d27e06a0af81ad79949f9282ed91c479be797092600715714d2a6edb0",
+    "failed_verification": "data/batches/m5-10-wave-b-verification.json",
+    "failed_verification_sha256": "15aa78135a81d3d43887fde55d27ec7b0d2863e1f53e05167b7d01525852044c",
+    "failed_relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
+    "failed_relation_diff_sha256": "b83e025e76dc581d11ece5e94353b64ea46f9df6979cbedc08f01dfe002b7b23",
+    "failed_recovery": "data/batches/m5-10c-recovery.json",
+    "failed_recovery_sha256": "e759e1ece1ecc3d3dd086f64814298abe47988c5873537bc3c6590a144d7ad30",
+    "repair_revision": "data/batches/m5-10a-process-correction.json",
+    "repair_revision_sha256": "2ec628acd9fcc1289331f431094b079511268d810237d435d90a13d10c33d31d",
+    "workload": "data/batches/m5-10d-workload-20260912.json",
+    "workload_sha256": "08aa63b094b2c89ce8ff347faf0dae3c6016e20d0223db1289362cb2ad678f5e",
+    "follow_up_source": "data/batches/m5-10d-follow-up-source-20260912.json",
+    "follow_up_source_sha256": "8db3f06d01c0bb00eea6938cd93745318839b472d780f5dd5b65ca73b258241b",
+    "proposal_artifact": "data/batches/m5-10d-calibration-proposal-20260912.json",
+    "proposal_sha256": "9adcc18ed41ffcd5ccbfaa695be928bf44a24a5de05cb694033538b0210c295e",
+    "editorial_decisions": "data/batches/m5-10d-editorial-decisions-20260912.json",
+    "editorial_decisions_sha256": "e03a41b5e2c65eafeecca47e0f09ff52a950f5556c0c1fac195b5e0dbb3fbfdc",
+    "editorial_timing": "data/batches/m5-10d-editorial-timing-20260912.json",
+    "editorial_timing_sha256": "d28dbff8ab777c738a948b567d919e39a502445d47a32b0c1a0752ee2dfcec42",
+    "audit_decisions": "data/batches/m5-10d-audit-decisions-20260912.json",
+    "audit_decisions_sha256": "54114ddf95903943bb8d8b9a3e9b8e3c8b2107b76d22bb9074583901299e97b3",
+    "audit_timing": "data/batches/m5-10d-audit-timing-20260912.json",
+    "audit_timing_sha256": "3719b7d113f4e71240fa685bc70b0356fea234efb1cf10f07a394e491a4f66a7",
+    "verification": "data/batches/m5-10d-verification-20260912.json",
+    "verification_sha256": "310b7cacd0ba05f0e3009e0bcb6bd9cf9a7f09574a2d5cd104d0b4b9dd9874a7",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+    "inventory": "data/inventory/m5-target-inventory.json",
+    "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
+  },
+  "calibration": {
+    "case_count": 20,
+    "processed_start_count": 20,
+    "decision_counts": {
+      "included": 20,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0
+    },
+    "correction_rate": 0,
+    "relation": {
+      "raw_proposal_count": 9,
+      "noise_count": 2,
+      "noise_rate": 0.2222222222222222,
+      "no_candidate_count": 11
+    },
+    "timing": {
+      "status": "complete",
+      "measurement_kind": "editor-judgment",
+      "total_wall_clock_seconds": 246.814,
+      "total_editor_seconds": 187.733,
+      "total_producer_seconds": 0.004,
+      "editor_seconds_per_processed_start": 9.38665,
+      "producer_seconds_per_processed_start": 0.0002,
+      "unmeasured_pass_count": 0,
+      "pass_ids": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-verification",
+        "held-rejected",
+        "post-freeze-audit"
+      ],
+      "zero_work_pass_ids": [
+        "feedback-fixes",
+        "final-verification",
+        "held-rejected"
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "case_count": 20,
+      "open_blocker_count": 0,
+      "finding_count": 0
+    },
+    "canonical_mutation": false,
+    "workload_coverage": true
+  },
+  "verification": {
+    "editorial_review_complete": true,
+    "human_editorial_review_complete": false,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true,
+    "calibration_canonical_mutation": false
+  },
+  "gate_status": "pass",
+  "decision": "APPROVE BOUNDED",
+  "ready_to_create": true,
+  "next_stage_created": false,
+  "next_stage_authorized": false,
+  "note": "M5-10D workload-based editor-time recovery passed; only a separate digest-bound #97 authorization may start M5-11."
+}

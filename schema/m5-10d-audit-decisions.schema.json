@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-audit-decisions.schema.json",
+  "title": "Typewriter M5-10D independent audit decisions",
+  "description": "Recorder-owned independent comparison rows and preserved findings after the editorial artifact is frozen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "batch_id", "source_kind", "decision_source", "independent", "proposal_sha256", "editorial_decisions_sha256", "editorial_session_id", "audit_session_id", "timing_session_id", "draft_sha256", "draft_created_at", "created_at", "finalized_at", "status", "case_reviews", "findings", "open_blocker_count", "note"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-audit-decisions-20260912" },
+    "batch_id": { "const": "m5-10d-editor-time-recalibration-20260912" },
+    "source_kind": { "const": "recorder-owned" },
+    "decision_source": { "const": "recorder-owned-post-freeze-comparison-judgments" },
+    "independent": { "const": true },
+    "proposal_sha256": { "$ref": "#/$defs/sha256" },
+    "editorial_decisions_sha256": { "$ref": "#/$defs/sha256" },
+    "editorial_session_id": { "$ref": "#/$defs/uuid" },
+    "audit_session_id": { "$ref": "#/$defs/uuid" },
+    "timing_session_id": { "$ref": "#/$defs/uuid" },
+    "draft_sha256": { "$ref": "#/$defs/sha256" },
+    "draft_created_at": { "type": "string", "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
+    "status": { "const": "complete" },
+    "case_reviews": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/review" }
+    },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "open_blocker_count": { "type": "integer", "minimum": 0 },
+    "note": { "type": "string", "pattern": "\\S" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "source_record_sha256", "editorial_record_sha256", "source_comparison", "decision_comparison", "relation_comparison", "status", "note"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10d-cal-[0-9]{3}$" },
+        "source_record_sha256": { "$ref": "#/$defs/sha256" },
+        "editorial_record_sha256": { "$ref": "#/$defs/sha256" },
+        "source_comparison": { "const": "match" },
+        "decision_comparison": { "const": "match" },
+        "relation_comparison": { "const": "match" },
+        "status": { "const": "verified" },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "status", "category", "case_id", "note"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^m5-10d-audit-[a-z0-9-]+$" },
+        "severity": { "enum": ["warning", "blocker"] },
+        "status": { "enum": ["open", "closed"] },
+        "category": { "enum": ["source", "sense", "relation", "timing", "provenance"] },
+        "case_id": { "type": "string", "pattern": "^m5-10d-cal-[0-9]{3}$" },
+        "note": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

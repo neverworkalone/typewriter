@@ -1,0 +1,1501 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-10d-editorial-decisions-20260912",
+  "batch_id": "m5-10d-editor-time-recalibration-20260912",
+  "source_kind": "recorder-owned",
+  "decision_source": "recorder-owned-record-by-record-judgments",
+  "proposal_sha256": "9adcc18ed41ffcd5ccbfaa695be928bf44a24a5de05cb694033538b0210c295e",
+  "editorial_session_id": "8aae3e74-a906-4a81-8109-e56e193a8496",
+  "timing_session_id": "40596bb5-596e-496c-b754-be1760eb1faa",
+  "draft_sha256": "544f8d1cfc2e527dd64f47bbce691900d3124cacaaa21b37a9805aafa3591ffd",
+  "draft_created_at": "2026-09-13T01:37:46.378Z",
+  "created_at": "2026-09-13T01:38:34.330Z",
+  "finalized_at": "2026-09-13T01:38:34.331Z",
+  "records": [
+    {
+      "case_id": "m5-10d-cal-001",
+      "record_id": "cal-m5-10d-001",
+      "source_record_sha256": "6ed4906fc34c9107a704ef19d2b2ca9493ca406b6fa03cfa1fabd5040e7a1b99",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-001 lemma-pos cal-m5-10d-001-s1 확인: 나직하다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-001-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-001 sense-review cal-m5-10d-001-s1: '소리가 조용하고 낮다' 한 의미가 명확하여 추가 분리가 필요 없다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 physical-figurative cal-m5-10d-001-s1: '소리가 조용하고 낮다'라는 청각 의미 하나만 있어 물리/비유 경계를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 homonym-pos cal-m5-10d-001-s1: 단일 adjective 표제와 한 감각 의미가 확인되어 동형이의어·품사 경계를 나누지 않고 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 sensory-emotion-state-action cal-m5-10d-001-s1: 낮은 소리의 감각을 나타내며 감정·상태·행동 의미가 섞이지 않아 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 directional-symmetry cal-m5-10d-001-s1: '조용하고 낮다'는 방향 관계가 아니라 성질 묘사이므로 대칭성 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 compound-spaced-phrase cal-m5-10d-001-s1: 한 단어 표제와 단일 풀이로 확인되어 합성어·띄어쓰기 구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-001 word-idiom cal-m5-10d-001-s1: 관용적 사건이 아닌 낮은 목소리의 어휘 의미이므로 단어·관용구 경계를 적용하지 않고 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-001-s1",
+        "target_record": "cal-m5-10d-013",
+        "target_sense": "cal-m5-10d-013-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-001-s1",
+          "to": "cal-m5-10d-013-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-001 relation-review cal-m5-10d-001-s1→cal-m5-10d-013-s1: '소리가 조용하고 낮다'와 작은 목소리로 말하는 대상은 완전 대체어는 아니지만 낮은 발화 장면에서 writer-useful near 관계로 admit."
+      },
+      "decision_note": "m5-10d-cal-001 cal-m5-10d-001-s1 결정: 단일 adjective 의미가 명확하고 소리의 낮음을 보존하므로 record를 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-002",
+      "record_id": "cal-m5-10d-002",
+      "source_record_sha256": "e8694ef6999acfc620549a1c9db754b52e5c35793024fd9aa4c364ee66647a4c",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-002 lemma-pos cal-m5-10d-002-s1 확인: 아늑하다의 품사는 adjective이며 표제와 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-002-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-002 sense-review cal-m5-10d-002-s1: '포근하고 편안하여 아담한 느낌이 있다'라는 한 의미가 단독으로 완결된다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 physical-figurative cal-m5-10d-002-s1: 포근하고 아담한 느낌을 나타내는 한 의미로 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 homonym-pos cal-m5-10d-002-s1: adjective 단일 표제와 단일 의미이므로 동형이의어·품사 경계를 추가하지 않고 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 sensory-emotion-state-action cal-m5-10d-002-s1: 편안함의 분위기 묘사 하나이며 별도 감각·상태·행동 의미가 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 directional-symmetry cal-m5-10d-002-s1: 아담한 공간감은 방향성 관계가 아니므로 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 compound-spaced-phrase cal-m5-10d-002-s1: 단일 어휘 표제와 포근한 풀이가 확인되어 합성·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-002 word-idiom cal-m5-10d-002-s1: 관용구가 아닌 편안한 느낌을 직접 나타내는 단어 의미이므로 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-002-s1",
+        "target_record": "cal-m5-10d-005",
+        "target_sense": "cal-m5-10d-005-s1",
+        "type": "mood",
+        "direction": {
+          "from": "cal-m5-10d-002-s1",
+          "to": "cal-m5-10d-005-s1"
+        },
+        "decision": "reject",
+        "noise_assessment": "noise",
+        "correction": "none",
+        "note": "m5-10d-cal-002 relation-review cal-m5-10d-002-s1→cal-m5-10d-005-s1: 아늑하다의 '포근하고 편안한' 분위기와 스산하다의 '쓸쓸하고 으스스한' 기운은 정서 방향이 반대여서 mood 후보를 noise로 reject."
+      },
+      "decision_note": "m5-10d-cal-002 cal-m5-10d-002-s1 결정: 표제 의미는 선명하고 유효하므로 record는 included로 두되, 반대 정서의 relation 후보만 reject한다."
+    },
+    {
+      "case_id": "m5-10d-cal-003",
+      "record_id": "cal-m5-10d-003",
+      "source_record_sha256": "07bccc01756e9e448c348716aa46889f6f937ab858aba800d90f5e586a6b00df",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-003 lemma-pos cal-m5-10d-003-s1 확인: 잠잠하다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-003-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-003 sense-review cal-m5-10d-003-s1: '소리나 움직임이 없이 조용하다'라는 하나의 고요함 의미가 명확하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 physical-figurative cal-m5-10d-003-s1: 소리와 움직임이 멎은 상태를 직접 나타내는 단일 의미라 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 homonym-pos cal-m5-10d-003-s1: 단일 adjective 의미에 다른 품사나 동형 표제가 관찰되지 않아 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 sensory-emotion-state-action cal-m5-10d-003-s1: 소리·움직임의 부재라는 상태 하나로 정리되며 감정이나 행동 의미는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 directional-symmetry cal-m5-10d-003-s1: '없이 조용하다'는 방향 전환이 아닌 정지 상태 묘사라 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 compound-spaced-phrase cal-m5-10d-003-s1: 한 단어 adjective와 독립된 풀이로 확인되어 합성어·구 경계를 나누지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-003 word-idiom cal-m5-10d-003-s1: 관용 표현이 아니라 고요한 상태를 직접 지시하는 어휘이므로 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-003-s1",
+        "target_record": "cal-m5-10d-014",
+        "target_sense": "cal-m5-10d-014-s1",
+        "type": "antonym",
+        "direction": {
+          "from": "cal-m5-10d-003-s1",
+          "to": "cal-m5-10d-014-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-003 relation-review cal-m5-10d-003-s1→cal-m5-10d-014-s1: 소리나 움직임이 없는 잠잠하다와 여러 사람이 낮게 떠드는 웅성거리다는 조용함과 군중 소음의 대비가 분명해 antonym으로 admit."
+      },
+      "decision_note": "m5-10d-cal-003 cal-m5-10d-003-s1 결정: 조용함의 상태가 분명하고 반대 장면 relation도 유용하므로 record를 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-004",
+      "record_id": "cal-m5-10d-004",
+      "source_record_sha256": "330f4a54a08397a75d351c49b6664e94292fb2cf457727316b62f35fdba26adb",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-004 lemma-pos cal-m5-10d-004-s1 확인: 잔잔하다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-004-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-004 sense-review cal-m5-10d-004-s1: '바람이나 물결이 세지 않고 조용하다'라는 단일 자연 상태 의미가 완결된다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 physical-figurative cal-m5-10d-004-s1: 바람과 물결의 세기가 약한 자연 현상 의미 하나라 물리/비유 경계를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 homonym-pos cal-m5-10d-004-s1: adjective 단일 의미로 확인되어 동형이의어·품사 분리를 추가하지 않고 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 sensory-emotion-state-action cal-m5-10d-004-s1: 잔잔한 자연 상태를 감각적으로 묘사하지만 별도 감정·행동 의미는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 directional-symmetry cal-m5-10d-004-s1: 바람·물결의 세기 묘사는 방향 관계가 아니므로 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 compound-spaced-phrase cal-m5-10d-004-s1: 단일 어휘 표제와 자연 현상 풀이로 확인되어 합성·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-004 word-idiom cal-m5-10d-004-s1: 관용구가 아니라 세지 않은 물결과 바람을 직접 나타내는 단어이므로 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-004-s1",
+        "target_record": "cal-m5-10d-016",
+        "target_sense": "cal-m5-10d-016-s1",
+        "type": "scene",
+        "direction": {
+          "from": "cal-m5-10d-004-s1",
+          "to": "cal-m5-10d-016-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-004 relation-review cal-m5-10d-004-s1→cal-m5-10d-016-s1: 세지 않은 바람과 가볍게 부는 바람이 같은 고요한 자연 장면을 구성하므로 scene 후보를 clean으로 admit."
+      },
+      "decision_note": "m5-10d-cal-004 cal-m5-10d-004-s1 결정: 자연 현상의 조용한 결이 명확하고 scene relation이 작가의 장면 탐색에 유용하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-005",
+      "record_id": "cal-m5-10d-005",
+      "source_record_sha256": "2924545234b5e106847a4a05dd89a545ca07be81c62aebca5deb7f7ab5b64808",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-005 lemma-pos cal-m5-10d-005-s1 확인: 스산하다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-005-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-005 sense-review cal-m5-10d-005-s1: '쓸쓸하고 으스스한 기운이 있다'라는 정서·분위기 의미가 하나로 명료하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 physical-figurative cal-m5-10d-005-s1: 쓸쓸하고 으스스한 기운이라는 분위기 의미가 한 덩어리로 제시되어 물리/비유 분리는 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 homonym-pos cal-m5-10d-005-s1: 단일 adjective 표제에 다른 품사나 동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 sensory-emotion-state-action cal-m5-10d-005-s1: 으스스한 기운의 정서적 분위기를 한 의미로 다루며 행동 의미는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 directional-symmetry cal-m5-10d-005-s1: 쓸쓸한 분위기에는 방향 전환이나 대칭 관계가 없으므로 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 compound-spaced-phrase cal-m5-10d-005-s1: 한 단어의 감정 분위기 풀이로 확인되어 합성·띄어쓰기 구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-005 word-idiom cal-m5-10d-005-s1: 관용구가 아닌 '쓸쓸하고 으스스하다'의 직접적인 형용사 의미라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-005-s1",
+        "target_record": "cal-m5-10d-006",
+        "target_sense": "cal-m5-10d-006-s1",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-005-s1",
+          "to": "cal-m5-10d-006-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-005 relation-review cal-m5-10d-005-s1→cal-m5-10d-006-s1: 스산하다의 쓸쓸하고 으스스한 기운과 을씨년스럽다의 쓸쓸하고 어수선한 분위기는 겹치는 정서 결이 분명해 near로 admit."
+      },
+      "decision_note": "m5-10d-cal-005 cal-m5-10d-005-s1 결정: 쓸쓸하고 으스스한 분위기를 명확히 전달하고 인접 표현 후보도 유효하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-006",
+      "record_id": "cal-m5-10d-006",
+      "source_record_sha256": "d3c2e058c73c535adcbbb6a340c2d43d26365a54c94acd7483758da22e4fa6a9",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-006 lemma-pos cal-m5-10d-006-s1 확인: 을씨년스럽다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-006-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-006 sense-review cal-m5-10d-006-s1: '날씨나 분위기가 쓸쓸하고 어수선하다'라는 단일 분위기 의미가 명확하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 physical-figurative cal-m5-10d-006-s1: 날씨나 분위기의 쓸쓸함을 한 의미로 설명하며 물리/비유가 분리되어 있지 않아 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 homonym-pos cal-m5-10d-006-s1: adjective 단일 풀이에 다른 품사나 동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 sensory-emotion-state-action cal-m5-10d-006-s1: 쓸쓸하고 어수선한 분위기 상태를 한 의미로 묶을 수 있어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 directional-symmetry cal-m5-10d-006-s1: 날씨와 분위기의 상태 묘사에는 방향성 후보가 없어 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 compound-spaced-phrase cal-m5-10d-006-s1: 단어 하나가 쓸쓸한 기운을 나타내므로 합성어·띄어쓰기 구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-006 word-idiom cal-m5-10d-006-s1: 관용적 문구가 아닌 날씨·분위기 형용사 의미라 단어·관용구를 나누지 않고 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-006-s1",
+        "target_record": "cal-m5-10d-009",
+        "target_sense": "cal-m5-10d-009-s2",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-006-s1",
+          "to": "cal-m5-10d-009-s2"
+        },
+        "decision": "reject",
+        "noise_assessment": "noise",
+        "correction": "none",
+        "note": "m5-10d-cal-006 relation-review cal-m5-10d-006-s1→cal-m5-10d-009-s2: 을씨년스럽다의 쓸쓸하고 어수선한 분위기와 감돌다의 기운이 주변에 머무는 동작은 함께 쓰일 수 있지만 near 대체 관계는 아니어서 noise로 reject."
+      },
+      "decision_note": "m5-10d-cal-006 cal-m5-10d-006-s1 결정: 표제의 분위기 의미는 단일하고 선명하므로 record는 included로 확정하고 부정확한 near 후보는 제거한다."
+    },
+    {
+      "case_id": "m5-10d-cal-007",
+      "record_id": "cal-m5-10d-007",
+      "source_record_sha256": "f5f916708bcc794f730e15dac680e863b4e2d2dd1440fa5acc11375a0892b18b",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-007 lemma-pos cal-m5-10d-007-s1·cal-m5-10d-007-s2 확인: 두 의미 모두 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10d-007-s1",
+          "cal-m5-10d-007-s2"
+        ],
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-007 sense-review cal-m5-10d-007-s1의 열매·곡식 의미와 cal-m5-10d-007-s2의 분위기·일 의미가 분리되어 완결된다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10d-cal-007 physical-figurative cal-m5-10d-007-s1 '열매나 곡식이 충분히 익다'와 cal-m5-10d-007-s2 '분위기나 일이 충분히 성숙한 단계'는 literal 성장과 figurative 성숙으로 나뉘므로 split."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 homonym-pos cal-m5-10d-007-s1·cal-m5-10d-007-s2가 모두 verb이고 의미 연관도 있는 다의어라 동형·품사 경계는 추가하지 않고 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 sensory-emotion-state-action cal-m5-10d-007-s1의 익음과 cal-m5-10d-007-s2의 성숙은 각각 상태 변화로 정리되며 감정·행동 혼입은 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 directional-symmetry cal-m5-10d-007-s1·cal-m5-10d-007-s2에는 방향·대칭 관계가 없으므로 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 compound-spaced-phrase cal-m5-10d-007-s1의 농작물 풀이와 cal-m5-10d-007-s2의 추상 풀이 모두 한 단어 표제에 귀속되어 합성·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-007 word-idiom cal-m5-10d-007-s1·cal-m5-10d-007-s2는 관용구가 아닌 다의 동사 의미들이므로 단어·관용구를 나누지 않고 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-007-s2",
+        "target_record": "cal-m5-10d-009",
+        "target_sense": "cal-m5-10d-009-s2",
+        "type": "near",
+        "direction": {
+          "from": "cal-m5-10d-007-s2",
+          "to": "cal-m5-10d-009-s2"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-007 relation-review cal-m5-10d-007-s2→cal-m5-10d-009-s2: 분위기나 일이 충분히 성숙한 상태와 기운이나 느낌이 주위에 머무는 상태는 같은 장면에서 결이 인접하되 대체어는 아니어서 near로 clean admit."
+      },
+      "decision_note": "m5-10d-cal-007 cal-m5-10d-007-s1·cal-m5-10d-007-s2 결정: literal/figurative 두 sense를 분리해 보존하면 성장과 분위기 성숙을 함께 제공할 수 있어 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-008",
+      "record_id": "cal-m5-10d-008",
+      "source_record_sha256": "6c380637b9b8f37d3fa8fd57882ac98a8db03fdff7c24a9c074123856161f7d0",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-008 lemma-pos cal-m5-10d-008-s1 확인: 배어들다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-008-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-008 sense-review cal-m5-10d-008-s1: '빛이나 냄새 또는 기운이 속으로 스며들다'라는 침투·퍼짐 의미가 한 sense로 명료하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 physical-figurative cal-m5-10d-008-s1: 빛·냄새·기운이 안으로 퍼지는 하나의 이동 이미지로 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 homonym-pos cal-m5-10d-008-s1: verb 단일 표제와 단일 풀이에 다른 품사·동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 sensory-emotion-state-action cal-m5-10d-008-s1: 빛·냄새·기운의 스밈을 설명하는 한 동작 이미지로 별도 감정·상태·행동 분리는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 directional-symmetry cal-m5-10d-008-s1: '속으로' 향하는 침투 동작은 대칭 관계 후보가 아니므로 directional 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 compound-spaced-phrase cal-m5-10d-008-s1: 한 단어 동사의 빛·냄새·기운 풀이로 합성·띄어쓰기 구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-008 word-idiom cal-m5-10d-008-s1: 관용적 문장 단위가 아니라 스며드는 동작을 직접 가리키는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-008-s1",
+        "target_record": "cal-m5-10d-010",
+        "target_sense": "cal-m5-10d-010-s1",
+        "type": "direct",
+        "direction": {
+          "from": "cal-m5-10d-008-s1",
+          "to": "cal-m5-10d-010-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-008 relation-review cal-m5-10d-008-s1→cal-m5-10d-010-s1: 빛이나 냄새 또는 기운이 속으로 스며드는 배어들다와 액체나 빛이 천천히 배어드는 스미다는 핵심 동작이 겹쳐 direct 후보를 clean으로 admit."
+      },
+      "decision_note": "m5-10d-cal-008 cal-m5-10d-008-s1 결정: 감각 이미지와 동작이 선명하고 direct relation이 대체어 탐색에 유효하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-009",
+      "record_id": "cal-m5-10d-009",
+      "source_record_sha256": "4f1f6f2b2856d08262d2caeaba68f98c56473c5ecdb86d344a7535f05771ef2a",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-009 lemma-pos cal-m5-10d-009-s1·cal-m5-10d-009-s2 확인: 두 의미 모두 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10d-009-s1",
+          "cal-m5-10d-009-s2"
+        ],
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-009 sense-review cal-m5-10d-009-s1의 둘레를 도는 움직임과 cal-m5-10d-009-s2의 기운·느낌이 머무는 의미가 분리되어 있다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10d-cal-009 physical-figurative cal-m5-10d-009-s1 '어떤 둘레를 빙빙 돌다'와 cal-m5-10d-009-s2 '기운이나 느낌이 주위에 가득 머물다'는 physical 회전과 figurative 분위기로 갈라지므로 split."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 homonym-pos cal-m5-10d-009-s1·cal-m5-10d-009-s2가 모두 verb인 연관된 다의 의미라 동형·품사 경계는 추가하지 않고 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 sensory-emotion-state-action cal-m5-10d-009-s1의 회전 행동과 cal-m5-10d-009-s2의 분위기 상태 차이는 physical-figurative로 이미 보존되어 별도 경계는 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 directional-symmetry cal-m5-10d-009-s1의 빙빙 도는 동작은 방향 후보가 아니고 cal-m5-10d-009-s2에도 대칭성이 없어 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 compound-spaced-phrase cal-m5-10d-009-s1·cal-m5-10d-009-s2는 모두 한 단어 동사의 다의 풀이여서 합성·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-009 word-idiom cal-m5-10d-009-s1의 회전과 cal-m5-10d-009-s2의 분위기 머묾은 관용구가 아닌 두 어휘 sense라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "raw-proposal",
+        "source_sense": "cal-m5-10d-009-s2",
+        "target_record": "cal-m5-10d-019",
+        "target_sense": "cal-m5-10d-019-s1",
+        "type": "scene",
+        "direction": {
+          "from": "cal-m5-10d-009-s2",
+          "to": "cal-m5-10d-019-s1"
+        },
+        "decision": "admit",
+        "noise_assessment": "clean",
+        "correction": "none",
+        "note": "m5-10d-cal-009 relation-review cal-m5-10d-009-s2→cal-m5-10d-019-s1: 주위에 가득 머무는 기운과 희미하게 보였다 사라지는 이미지가 같은 흐릿한 장면의 결을 제공하므로 scene 후보를 clean으로 admit."
+      },
+      "decision_note": "m5-10d-cal-009 cal-m5-10d-009-s1·cal-m5-10d-009-s2 결정: physical 회전과 figurative 분위기를 분리해 보존한 다의어이며 scene relation도 유용하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-010",
+      "record_id": "cal-m5-10d-010",
+      "source_record_sha256": "d1210c4952f00b870eb8c21670c7027b0987e2b9d92ce5bb57f3e6e75495457a",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-010 lemma-pos cal-m5-10d-010-s1·cal-m5-10d-010-s2 확인: 두 의미 모두 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10d-010-s1",
+          "cal-m5-10d-010-s2"
+        ],
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-010 sense-review cal-m5-10d-010-s1의 액체·빛 침투와 cal-m5-10d-010-s2의 마음·생각 확산이 각각 독립된 sense로 확인된다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10d-cal-010 physical-figurative cal-m5-10d-010-s1 '액체나 빛이 천천히 배어들다'와 cal-m5-10d-010-s2 '마음이나 생각에 느낌이 서서히 퍼지다'는 physical 침투와 figurative 감정 확산이라 split."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 homonym-pos cal-m5-10d-010-s1·cal-m5-10d-010-s2가 모두 verb이고 어근 의미가 연결되어 동형·품사 경계는 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10d-cal-010 sensory-emotion-state-action cal-m5-10d-010-s1의 물질·빛 감각과 cal-m5-10d-010-s2의 마음·생각 상태가 다른 사용 영역이라 split."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 directional-symmetry cal-m5-10d-010-s1의 안으로 퍼짐과 cal-m5-10d-010-s2의 마음속 확산은 대칭 관계가 아니라 의미 확장이라 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 compound-spaced-phrase cal-m5-10d-010-s1·cal-m5-10d-010-s2 모두 한 단어 동사의 두 풀이이므로 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-010 word-idiom cal-m5-10d-010-s1의 물리적 스밈과 cal-m5-10d-010-s2의 정서적 스밈은 관용구가 아닌 다의 동사라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-010 relation-review cal-m5-10d-010-s1·cal-m5-10d-010-s2를 함께 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-010 cal-m5-10d-010-s1·cal-m5-10d-010-s2 결정: 물리와 비유 의미를 나누어 보존하는 다의 동사로서 record를 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-011",
+      "record_id": "cal-m5-10d-011",
+      "source_record_sha256": "303b0841fcc66aed6d1d2d8b5e6c59891de644c3c2e62d3aeaf295036ea2e722",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-011 lemma-pos cal-m5-10d-011-s1 확인: 서성이다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-011-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-011 sense-review cal-m5-10d-011-s1: '뚜렷한 목적 없이 이리저리 천천히 거닐다'라는 배회 동작이 한 sense로 명확하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 physical-figurative cal-m5-10d-011-s1: 목적 없이 천천히 거니는 동작을 직접 가리키는 단일 의미라 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 homonym-pos cal-m5-10d-011-s1: 단일 verb 표제에 다른 품사·동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 sensory-emotion-state-action cal-m5-10d-011-s1: 이리저리 거니는 행동 하나로 정리되며 감각·감정·상태 의미가 분리되어 있지 않아 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 directional-symmetry cal-m5-10d-011-s1: 이동은 있지만 특정 방향쌍을 뜻하지 않는 배회라 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 compound-spaced-phrase cal-m5-10d-011-s1: 하나의 동사 표제가 목적 없는 걸음 전체를 담으므로 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-011 word-idiom cal-m5-10d-011-s1: 관용적 문장이 아니라 배회하는 동작을 나타내는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-011 relation-review cal-m5-10d-011-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-011 cal-m5-10d-011-s1 결정: 목적 없이 천천히 걷는 writer-facing 장면이 선명하고 단일 sense가 충분하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-012",
+      "record_id": "cal-m5-10d-012",
+      "source_record_sha256": "bb116b8ab041734210f0ac5066446577fa83dda7c8e9760fbcdeadf9b38d6bc5",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-012 lemma-pos cal-m5-10d-012-s1 확인: 어렴풋하다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-012-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-012 sense-review cal-m5-10d-012-s1: '분명하지 않고 희미한 느낌이 있다'라는 희미함의 한 의미가 writer-facing하게 충분하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 physical-figurative cal-m5-10d-012-s1: 분명하지 않고 희미한 느낌이라는 단일 형용사 의미로 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 homonym-pos cal-m5-10d-012-s1: adjective 하나의 풀이에 다른 품사·동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 sensory-emotion-state-action cal-m5-10d-012-s1: 희미한 인상이라는 하나의 지각·느낌 의미로 감정과 행동을 따로 나눌 필요가 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 directional-symmetry cal-m5-10d-012-s1: 불분명함은 방향쌍이나 대칭 관계가 아니므로 해당 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 compound-spaced-phrase cal-m5-10d-012-s1: 한 단어 형용사의 희미한 인상 풀이여서 합성어·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-012 word-idiom cal-m5-10d-012-s1: 관용구가 아닌 희미한 느낌을 직접 나타내는 어휘이므로 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-012 relation-review cal-m5-10d-012-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-012 cal-m5-10d-012-s1 결정: 불분명하고 희미한 느낌을 짧고 선명하게 제공하는 단일 sense라 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-013",
+      "record_id": "cal-m5-10d-013",
+      "source_record_sha256": "5de23e2a8d8d46357006179b5aafacb0ab6aa3b72d70c68853c9fc49891a4d05",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-013 lemma-pos cal-m5-10d-013-s1 확인: 소곤거리다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-013-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-013 sense-review cal-m5-10d-013-s1: '남이 알아듣지 못하도록 작은 목소리로 자꾸 말하다'라는 속삭임 행동이 하나의 sense로 선명하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 physical-figurative cal-m5-10d-013-s1: 알아듣지 못할 작은 목소리로 말하는 구체 행동 하나라 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 homonym-pos cal-m5-10d-013-s1: 단일 verb 표제에 품사 충돌이나 동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 sensory-emotion-state-action cal-m5-10d-013-s1: 작은 목소리로 말하는 행동 하나이며 감정·상태·다른 감각 의미는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 directional-symmetry cal-m5-10d-013-s1: 말하기의 크기와 방식은 방향 관계가 아니므로 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 compound-spaced-phrase cal-m5-10d-013-s1: 한 단어 동사가 속삭임 반복 행동을 담고 있어 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-013 word-idiom cal-m5-10d-013-s1: 관용구가 아니라 조용히 말하는 행위를 직접 표현하는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-013 relation-review cal-m5-10d-013-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-013 cal-m5-10d-013-s1 결정: 속삭이는 반복 행동의 질감이 구체적이고 단일 sense가 충분하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-014",
+      "record_id": "cal-m5-10d-014",
+      "source_record_sha256": "62fa353d9c1ab73714f6224897d2bf144c9f83c847c896a9793946503612539f",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-014 lemma-pos cal-m5-10d-014-s1 확인: 웅성거리다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-014-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-014 sense-review cal-m5-10d-014-s1: 여러 사람이 낮은 목소리로 떠드는 군중 소리의 한 행동 의미가 명확하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 physical-figurative cal-m5-10d-014-s1: 여러 사람의 낮은 목소리라는 소리 행동을 직접 나타내는 단일 의미라 물리/비유 분리는 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 homonym-pos cal-m5-10d-014-s1: 단일 verb 풀이에 동형이의어나 품사 충돌이 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 sensory-emotion-state-action cal-m5-10d-014-s1: 군중의 낮은 소리와 떠드는 행동이 한 장면 의미로 묶여 별도 분리가 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 directional-symmetry cal-m5-10d-014-s1: 떠드는 소리에는 방향쌍이나 대칭 이동이 없으므로 해당 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 compound-spaced-phrase cal-m5-10d-014-s1: 한 단어 반복 동사의 군중 소리 풀이여서 합성·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-014 word-idiom cal-m5-10d-014-s1: 관용구가 아닌 여러 사람이 낮게 떠드는 행동을 나타내는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-014 relation-review cal-m5-10d-014-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-014 cal-m5-10d-014-s1 결정: 군중의 낮은 소리를 그리는 구체적 단일 sense가 writer-facing하게 유효하므로 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-015",
+      "record_id": "cal-m5-10d-015",
+      "source_record_sha256": "8fde57def4cf1c8ed836eaa21b34281732e1cb05fff4d2cc7dda24f722b032ad",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-015 lemma-pos cal-m5-10d-015-s1 확인: 사부작거리다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-015-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-015 sense-review cal-m5-10d-015-s1: 거의 소리 없이 가볍게 움직이는 반복 행동이 하나의 감각적 sense로 선명하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 physical-figurative cal-m5-10d-015-s1: 소리 없이 가볍게 움직이는 구체 동작 하나라 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 homonym-pos cal-m5-10d-015-s1: 단일 verb 표제에 다른 품사나 동형 sense가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 sensory-emotion-state-action cal-m5-10d-015-s1: 작은 소리와 가벼운 움직임이 결합된 하나의 행동 이미지라 감정·상태 분리는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 directional-symmetry cal-m5-10d-015-s1: 가볍게 움직인다는 방식 묘사에 방향쌍이 없어 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 compound-spaced-phrase cal-m5-10d-015-s1: 의태적 단일 동사 표제가 전체 행동을 담으므로 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-015 word-idiom cal-m5-10d-015-s1: 관용구가 아니라 조용한 움직임을 묘사하는 의태어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-015 relation-review cal-m5-10d-015-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-015 cal-m5-10d-015-s1 결정: 조용하고 가벼운 반복 동작의 질감이 뚜렷한 단일 sense라 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-016",
+      "record_id": "cal-m5-10d-016",
+      "source_record_sha256": "1d72eff9e44dc877d8a17a8cb0be587bde264792d8cc1937d9740ff9fb0edab5",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-016 lemma-pos cal-m5-10d-016-s1 확인: 살랑이다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-016-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-016 sense-review cal-m5-10d-016-s1: 가볍고 부드러운 바람의 움직임을 한 sense로 명확하게 담고 있다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 physical-figurative cal-m5-10d-016-s1: 부드럽게 부는 바람이라는 자연 현상 하나를 나타내므로 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 homonym-pos cal-m5-10d-016-s1: 단일 verb 의미에 품사 충돌이나 동형 풀이가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 sensory-emotion-state-action cal-m5-10d-016-s1: 가볍고 부드러운 바람을 감각적으로 그리는 하나의 움직임이라 감정·상태 분리는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 directional-symmetry cal-m5-10d-016-s1: 바람의 세기와 방식만 나타내며 방향쌍 관계가 없어 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 compound-spaced-phrase cal-m5-10d-016-s1: 의태적 단일 동사가 부드러운 바람의 움직임을 담으므로 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-016 word-idiom cal-m5-10d-016-s1: 관용구가 아니라 산들바람의 움직임을 직접 표현하는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-016 relation-review cal-m5-10d-016-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-016 cal-m5-10d-016-s1 결정: 부드러운 바람의 감각적 장면이 선명한 단일 sense라 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-017",
+      "record_id": "cal-m5-10d-017",
+      "source_record_sha256": "cdb26f611981906bcef8f5fa72d8a66f99d67217a5715ab2f6b1f211f6956f11",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-017 lemma-pos cal-m5-10d-017-s1·cal-m5-10d-017-s2 확인: 두 의미 모두 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 2,
+        "observed_sense_ids": [
+          "cal-m5-10d-017-s1",
+          "cal-m5-10d-017-s2"
+        ],
+        "observed_pos": [
+          "verb",
+          "verb"
+        ],
+        "note": "m5-10d-cal-017 sense-review cal-m5-10d-017-s1의 물리적 어긋남과 cal-m5-10d-017-s2의 기대·약속 불일치가 두 sense로 분명히 나뉜다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "applicable",
+          "decision": "split",
+          "evidence": "m5-10d-cal-017 physical-figurative cal-m5-10d-017-s1 '한쪽이 비껴나 서로 맞지 않다'와 cal-m5-10d-017-s2 '기대나 약속이 서로 맞지 않게 되다'는 physical 정렬과 figurative 관계 불일치라 split."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 homonym-pos cal-m5-10d-017-s1·cal-m5-10d-017-s2가 같은 verb의 연결된 의미이고 품사 충돌이 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 sensory-emotion-state-action cal-m5-10d-017-s1·cal-m5-10d-017-s2: 두 sense의 물리·비유 차이는 physical-figurative로 이미 구분되며 별도 감정·행동 경계는 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 directional-symmetry cal-m5-10d-017-s1의 비껴남은 방향쌍 자체가 아니고 cal-m5-10d-017-s2도 대칭 관계가 없어 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 compound-spaced-phrase cal-m5-10d-017-s1·cal-m5-10d-017-s2 모두 한 단어 동사의 sense라 합성·구 경계를 적용하지 않고 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-017 word-idiom cal-m5-10d-017-s1의 정렬 불일치와 cal-m5-10d-017-s2의 약속 불일치는 관용구가 아닌 다의 동사라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-017 relation-review cal-m5-10d-017-s1·cal-m5-10d-017-s2를 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-017 cal-m5-10d-017-s1·cal-m5-10d-017-s2 결정: 물리적 어긋남과 기대·약속의 어긋남을 나누어 보존하는 유용한 다의어라 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-018",
+      "record_id": "cal-m5-10d-018",
+      "source_record_sha256": "1bf52bc2c6c6d6e39e56cba5b410ebcc15b8a5fa0a69d3688ae30d99a0cbbff2",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-018 lemma-pos cal-m5-10d-018-s1 확인: 주춤거리다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-018-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-018 sense-review cal-m5-10d-018-s1: 망설이거나 갑자기 멈추는 동작을 반복한다는 하나의 장면 sense가 선명하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 physical-figurative cal-m5-10d-018-s1: 망설임과 멈춤이 함께 드러나는 구체 동작 하나라 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 homonym-pos cal-m5-10d-018-s1: 주춤거리다의 반복 동작과 verb 품사가 분명하고 다른 품사·동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 sensory-emotion-state-action cal-m5-10d-018-s1: 망설이는 움직임이라는 하나의 행동 장면에 감정·상태 별도 sense가 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 directional-symmetry cal-m5-10d-018-s1: 갑자기 멈추거나 주춤하는 행동은 특정 방향쌍이 아니므로 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 compound-spaced-phrase cal-m5-10d-018-s1: 의태적 단일 동사가 망설임의 반복을 표현하므로 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-018 word-idiom cal-m5-10d-018-s1: 관용구가 아니라 주춤하는 반복 행동을 직접 나타내는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-018 relation-review cal-m5-10d-018-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-018 cal-m5-10d-018-s1 결정: 망설임이 보이는 반복 동작의 질감이 분명한 단일 sense라 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-019",
+      "record_id": "cal-m5-10d-019",
+      "source_record_sha256": "bb898730e75bf412160ee53e64e82ef8de9692d9e694452394542191577b02dc",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-019 lemma-pos cal-m5-10d-019-s1 확인: 아른거리다의 품사는 verb로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-019-s1"
+        ],
+        "observed_pos": [
+          "verb"
+        ],
+        "note": "m5-10d-cal-019 sense-review cal-m5-10d-019-s1: 희미하게 보였다가 사라지는 시각적 반복 이미지가 한 sense로 뚜렷하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 physical-figurative cal-m5-10d-019-s1: 희미한 시각 이미지의 반복을 직접 나타내는 단일 의미라 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 homonym-pos cal-m5-10d-019-s1: 단일 verb 풀이에 다른 품사나 동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 sensory-emotion-state-action cal-m5-10d-019-s1: 보였다 사라지는 시각 감각의 한 장면이며 감정·상태·행동 의미 분리는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 directional-symmetry cal-m5-10d-019-s1: 시야에 나타났다 사라지는 현상은 방향쌍 관계가 아니므로 대칭 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 compound-spaced-phrase cal-m5-10d-019-s1: 단일 의태 동사가 희미한 시각 반복을 담으므로 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-019 word-idiom cal-m5-10d-019-s1: 관용구가 아니라 희미한 시각 현상을 직접 묘사하는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-019 relation-review cal-m5-10d-019-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-019 cal-m5-10d-019-s1 결정: 사라졌다 나타나는 시각적 질감이 선명한 단일 sense라 included로 확정한다."
+    },
+    {
+      "case_id": "m5-10d-cal-020",
+      "record_id": "cal-m5-10d-020",
+      "source_record_sha256": "7e764a12319e21cf2286f0bfa245768e2762569a4568528bf1beb0b36a1b9c1e",
+      "decision": "included",
+      "lemma_pos": {
+        "status": "checked",
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-020 lemma-pos cal-m5-10d-020-s1 확인: 적막하다의 품사는 adjective로 기록과 일치한다."
+      },
+      "sense_review": {
+        "status": "complete",
+        "observed_sense_count": 1,
+        "observed_sense_ids": [
+          "cal-m5-10d-020-s1"
+        ],
+        "observed_pos": [
+          "adjective"
+        ],
+        "note": "m5-10d-cal-020 sense-review cal-m5-10d-020-s1: 소리 없이 매우 고요하고 쓸쓸한 상태가 하나의 밀도 있는 sense로 명확하다."
+      },
+      "boundary_reviews": {
+        "physical-figurative": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 physical-figurative cal-m5-10d-020-s1: 소리 없는 고요함과 쓸쓸함을 한 분위기 의미로 나타내어 물리/비유 분리를 적용하지 않고 keep."
+        },
+        "homonym-pos": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 homonym-pos cal-m5-10d-020-s1: 단일 adjective 풀이에 품사 충돌이나 동형 의미가 없어 keep."
+        },
+        "sensory-emotion-state-action": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 sensory-emotion-state-action cal-m5-10d-020-s1: 소리의 부재와 쓸쓸한 상태가 한 장면의 분위기로 결합되어 별도 분리는 없어 keep."
+        },
+        "directional-symmetry": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 directional-symmetry cal-m5-10d-020-s1: 적막한 분위기는 방향이나 대칭 이동을 뜻하지 않으므로 해당 경계를 적용하지 않고 keep."
+        },
+        "compound-spaced-phrase": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 compound-spaced-phrase cal-m5-10d-020-s1: 한 단어 형용사가 고요하고 쓸쓸한 장면 전체를 담아 합성·구 경계는 keep."
+        },
+        "word-idiom": {
+          "status": "reviewed",
+          "applicability": "not-applicable",
+          "decision": "keep",
+          "evidence": "m5-10d-cal-020 word-idiom cal-m5-10d-020-s1: 관용구가 아니라 아무 소리 없는 쓸쓸한 상태를 직접 표현하는 단어라 keep."
+        }
+      },
+      "relation_review": {
+        "outcome": "no-valid-candidate",
+        "decision": "not-applicable",
+        "noise_assessment": "not-applicable",
+        "correction": "none",
+        "note": "m5-10d-cal-020 relation-review cal-m5-10d-020-s1을 검토했으나 proposal에 유효한 relation candidate가 없어 not-applicable."
+      },
+      "decision_note": "m5-10d-cal-020 cal-m5-10d-020-s1 결정: 고요하고 쓸쓸한 분위기의 밀도가 분명한 단일 sense라 included로 확정한다."
+    }
+  ],
+  "note": "Editorial decision rows were authored one at a time after each recorder judgment timer started and assembled only after all editorial passes stopped."
+}

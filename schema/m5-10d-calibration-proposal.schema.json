@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewriter.neverworkalone.dev/schema/m5-10d-calibration-proposal.schema.json",
+  "title": "Typewriter M5-10D calibration proposal",
+  "description": "Committed proposal-only calibration input. It is reviewable source material, but never canonical dictionary data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "process_revision", "case_count", "cases"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "artifact_id": { "const": "m5-10d-calibration-proposal" },
+    "process_revision": { "const": "m5-10d-editor-workload-v1" },
+    "case_count": { "const": 20 },
+    "cases": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "record", "relation_candidate"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^m5-10d-cal-[0-9]{3}$" },
+        "record": { "$ref": "#/$defs/record" },
+        "relation_candidate": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/relation_candidate" }
+          ]
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "record_type", "lemma", "search_forms", "senses"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}$" },
+        "record_type": { "enum": ["entry", "expression"] },
+        "lemma": { "type": "string", "pattern": "\\S" },
+        "search_forms": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "\\S" }
+        },
+        "senses": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sense" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": { "record_type": { "const": "entry" } }
+          },
+          "then": {
+            "properties": {
+              "senses": {
+                "type": "array",
+                "items": { "type": "object", "properties": { "pos": { "enum": ["noun", "adjective", "verb"] } } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "properties": { "record_type": { "const": "expression" } }
+          },
+          "then": {
+            "properties": {
+              "senses": {
+                "type": "array",
+                "items": { "type": "object", "properties": { "pos": { "const": "expression" } } }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sense": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pos", "gloss"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+        "pos": { "enum": ["noun", "adjective", "verb", "expression"] },
+        "gloss": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "relation_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_sense", "target_record", "target_sense", "type", "direction"],
+      "properties": {
+        "source_sense": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+        "target_record": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}$" },
+        "target_sense": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+        "type": { "enum": ["direct", "near", "mood", "scene", "sensory", "action", "association", "antonym"] },
+        "direction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
+            "to": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" }
+          }
+        }
+      }
+    }
+  }
+}
