@@ -36,12 +36,16 @@ import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_10C_PRODUCER_VERSION, produce, proposalInputFromCase } from './produce-m5-10c-work.mjs';
 
 const BASE_TIME_MS = Date.parse('2026-01-01T00:00:00.000Z');
+const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
+const HISTORICAL_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json');
 const FIXTURE_SOURCE_PATHS = Object.freeze({
   editorial_decisions: 'data/batches/m5-10c-editorial-decisions-20260910.json',
   editorial_timing: 'data/batches/m5-10c-editorial-timing-20260910.json',
   audit_decisions: 'data/batches/m5-10c-audit-decisions-20260910.json',
   audit_timing: 'data/batches/m5-10c-audit-timing-20260910.json',
   verification: 'data/batches/m5-10c-verification.json',
+  canonical_directory: 'data/canonical',
+  inventory: 'data/inventory/m5-target-inventory.json',
 });
 
 function sha256Bytes(bytes) {
@@ -198,8 +202,8 @@ async function createTiming({
     audit_session_id: auditSessionId,
     editorial_decisions_sha256: editorialDecisionsSha256,
     editorial_finalized_at: editorialFinalizedAt,
-    canonical_directory_sha256: await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY),
-    inventory_sha256: sha256Bytes(await readFile(DEFAULT_INVENTORY_PATH)),
+    canonical_directory_sha256: await hashCanonicalDirectory(HISTORICAL_CANONICAL_DIRECTORY),
+    inventory_sha256: sha256Bytes(await readFile(HISTORICAL_INVENTORY_PATH)),
     passes,
     events: [],
     note: `Deterministic ${kind} contract fixture for the M5-10C full validator.`,
@@ -305,8 +309,8 @@ function createAudit(proposal, proposalSha256, editorial, editorialSha256, edito
 }
 
 async function createVerification() {
-  const canonicalDirectorySha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
-  const inventorySha256 = sha256Bytes(await readFile(DEFAULT_INVENTORY_PATH));
+  const canonicalDirectorySha256 = await hashCanonicalDirectory(HISTORICAL_CANONICAL_DIRECTORY);
+  const inventorySha256 = sha256Bytes(await readFile(HISTORICAL_INVENTORY_PATH));
   return {
     schema_version: '1',
     artifact_id: 'm5-10c-verification-20260910',
@@ -335,7 +339,7 @@ async function createVerification() {
 async function createAuthorization(filePath, recoverySha256) {
   const failedStagePath = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-stage.json');
   const failedStageBytes = await readFile(failedStagePath);
-  const inventoryBytes = await readFile(DEFAULT_INVENTORY_PATH);
+  const inventoryBytes = await readFile(HISTORICAL_INVENTORY_PATH);
   const authorization = {
     schema_version: '1',
     authorization_id: 'm5-10c-m5-11-authorization-20260910',
@@ -365,7 +369,7 @@ async function createAuthorization(filePath, recoverySha256) {
       recovery_artifact: 'data/batches/m5-10c-recovery.json',
       recovery_artifact_sha256: recoverySha256,
       canonical_directory: 'data/canonical',
-      canonical_directory_sha256: await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY),
+      canonical_directory_sha256: await hashCanonicalDirectory(HISTORICAL_CANONICAL_DIRECTORY),
       inventory: 'data/inventory/m5-target-inventory.json',
       inventory_sha256: sha256Bytes(inventoryBytes),
     },
@@ -435,6 +439,8 @@ async function runM5CRecoveryContract() {
       auditPath,
       auditTimingPath,
       verificationPath,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
       outputPath: recoveryPath,
     });
     const recovery = JSON.parse((await readFile(recoveryPath)).toString('utf8'));
@@ -449,6 +455,8 @@ async function runM5CRecoveryContract() {
       auditPath,
       auditTimingPath,
       verificationPath,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
     });
     assertM5CRecoveryAuthorizable(recoveryResult);
     const authorizationSource = await createAuthorization(authorizationPath, recoverySource.sha256);
@@ -461,6 +469,8 @@ async function runM5CRecoveryContract() {
       auditPath,
       auditTimingPath,
       verificationPath,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
     });
     console.log(JSON.stringify({
       recovery_gate: recoveryResult.gate.gate_status,

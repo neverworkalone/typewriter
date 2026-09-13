@@ -1,0 +1,109 @@
+{
+  "schema_version": "1",
+  "stage_id": "m5-11-plus-500",
+  "issue": 97,
+  "parent_issue": 7,
+  "authorization": {
+    "path": "data/batches/m5-10d-m5-11-authorization-20260912.json",
+    "sha256": "71a840ac8efd81f0518dd154e7d50b9706340759751cd9602a2e801373258775",
+    "decision": "AUTHORIZE M5-11 +500 VALIDATION"
+  },
+  "input": {
+    "inventory_revision": "m5-11",
+    "inventory_path": "data/batches/m5-11-preimport-inventory.json",
+    "inventory_sha256": "9d112925fbf9a062e1dff927712ea83928efcf679bff143b19e2345c56e9b8af",
+    "base_inventory_path": "data/batches/m5-11-base-inventory.json",
+    "base_inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+    "canonical_directory": "data/batches/m5-11-base-canonical",
+    "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+    "canonical_snapshot": {
+      "record_count": 820,
+      "start_count": 778,
+      "reference_only_count": 42,
+      "sense_count": 966,
+      "relation_count": 473,
+      "expression_count": 63
+    }
+  },
+  "target": {
+    "net_start_increase": 500,
+    "cumulative_start_target": 1278,
+    "candidate_buffer": 50,
+    "selected_start_count": 550
+  },
+  "decisions": {
+    "included_start_count": 500,
+    "corrected_start_count": 0,
+    "held_start_count": 0,
+    "rejected_start_count": 0,
+    "deferred_start_count": 50,
+    "processed_start_count": 500
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 1320,
+      "start_count": 1278,
+      "reference_only_count": 42,
+      "sense_count": 1466,
+      "relation_count": 473,
+      "expression_count": 63
+    },
+    "imported_start_count": 500
+  },
+  "sense_review": {
+    "status": "complete",
+    "reviewed_start_count": 500,
+    "scoped_single_sense_count": 500,
+    "split_record_count": 0,
+    "boundary_checkpoint_count": 3000
+  },
+  "relation_review": {
+    "status": "complete",
+    "candidate_count": 0,
+    "admitted_count": 0,
+    "noise_count": 0
+  },
+  "metrics": {
+    "correction_rate_of_processed": 0,
+    "relation_noise_rate": 0,
+    "editor_seconds_per_processed_start": null,
+    "timing_status": "incomplete",
+    "unmeasured_timing_pass_count": 5,
+    "audit_status": "complete",
+    "audit_independent": true,
+    "open_audit_blocker_count": 0,
+    "editorial_review_complete": true,
+    "human_editorial_review_complete": false,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true
+  },
+  "source": {
+    "manifest": "data/batches/m5-11-expansion.json",
+    "manifest_sha256": "2a8320beb5dd8a04e6f586ebe45ba40b4d78ad719f2793b37cb4ac8000f63443",
+    "review": "data/batches/m5-11-review.json",
+    "review_sha256": "7b026156293fca9ea04e1df7e07d1748bb098db5aacdca3eb583ae51a63ba371",
+    "relation_diff": "data/batches/m5-11-relation-diff.json",
+    "relation_diff_sha256": "109431d70f5e95788201f6e18ba00e39ca15af76b37e48a4f800dc566454536b",
+    "metrics": "data/batches/m5-11-metrics.json",
+    "metrics_sha256": "732fce3be020343002cd161b8812729fcb3f94694113c84d751885afd073d652",
+    "timing": "data/batches/m5-11-timing.json",
+    "timing_sha256": "25dc5b00f4e78f58984eae45ccd168903c245806e9d73b162cf1066f2040537a",
+    "audit": "data/batches/m5-11-audit.json",
+    "audit_sha256": "4f8ab7c0d81cd6f8329f8217461493ffe2a8ffa0bac9d260c966d68b82a49af9",
+    "verification": "data/batches/m5-11-verification.json",
+    "verification_sha256": "01586718dfd03f60f999b3bd77d9348fd109febf1de72e2ed74c31d5324f9782",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "9737dd9fa349089045df055baa8bdf454a88065d2b0deb388d6ceb62915527d3",
+    "canonical_import": "data/canonical/m5-11-expansion.jsonl",
+    "canonical_import_sha256": "e23eb43655c426e3dc79d771f70dcd216ebf48bf28ddb7633127827fb84578fb",
+    "previous_stage_authorization": "data/batches/m5-10d-m5-11-authorization-20260912.json",
+    "previous_stage_authorization_sha256": "71a840ac8efd81f0518dd154e7d50b9706340759751cd9602a2e801373258775"
+  },
+  "gate_status": "fail",
+  "decision": "HOLD PROCESS",
+  "ready_to_create": false,
+  "next_stage_created": false,
+  "next_stage_authorized": false,
+  "note": "The +500 canonical import is exact and structurally verified, but the fixed gate remains HOLD PROCESS because editor-time is unmeasured and human editorial review is not yet complete."
+}

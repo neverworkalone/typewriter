@@ -89,7 +89,7 @@ from 578 to 628); the completed A2 execution imported only the zero-blocker
 reviewed result, and its corrected chronological timing gate passed, including
 the measured post-freeze audit. The subsequent #96 Wave B execution has its own
 authorization and stage artifacts. It imported exactly +150 reviewed starts, so
-the current canonical data is 778 starts; its Wave B report binds the A2 report,
+the M5-10 Wave B snapshot was 778 starts; its Wave B report binds the A2 report,
 authorization, canonical-directory digest, external proposal digest, reviewed
 staging digest, separate decision artifacts, and independent post-freeze audit.
 The A2 stage is ready to create a next task, but the builder keeps the task
@@ -116,6 +116,19 @@ When a later batch advances `data/canonical/`, a historical canonical directory
 may be retained under `data/batches/` when a source-bound stage report still
 needs to reproduce the earlier gate. Such a snapshot is immutable process
 evidence, not a second editable dictionary source.
+
+Issue #97's M5-11 +500 validation advances the current canonical snapshot from
+778 to 1,278 starts. The tracked `data/batches/m5-11-base-canonical/` and
+`data/batches/m5-11-base-inventory.json` files freeze the pre-import inputs so
+the #115 authorization and earlier M5 contracts remain reproducible after the
+advance. The remaining `m5-11-*` files are source-bound review, relation,
+metrics, timing, audit, verification, and stage metadata; they contain no raw
+draft or external source text. The run records 550 selected candidates, 500
+included starts, and 50 deferred candidates. It is intentionally `HOLD PROCESS`
+because the Codex-authored run has unmeasured editorial passes and does not
+claim human editorial completion. `scripts/batch/m5-11-catalog.mjs` is reviewed
+Typewriter-authored staging input, while `data/canonical/*.jsonl` remains the
+only editable dictionary source.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event

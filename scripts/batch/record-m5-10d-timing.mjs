@@ -115,6 +115,14 @@ function resolvePath(value, fallback) {
   return path.isAbsolute(selected) ? selected : path.resolve(REPOSITORY_DIRECTORY, selected);
 }
 
+function canonicalDirectoryForArgs(args = {}) {
+  return resolvePath(args['canonical-dir'], DEFAULT_CANONICAL_DIRECTORY);
+}
+
+function inventoryPathForArgs(args = {}) {
+  return resolvePath(args.inventory, DEFAULT_INVENTORY_PATH);
+}
+
 async function readJson(filePath, label) {
   let bytes;
   try {
@@ -175,9 +183,9 @@ function judgmentLogPath(kind, passId, outputPath, requestedPath) {
   return path.join(path.dirname(outputPath), `m5-10d-${kindPart}-judgment-${passId}-${DATE_SUFFIX}.jsonl`);
 }
 
-async function sourceInfo(proposalPath, workloadPath, followUpSourcePath = DEFAULT_FOLLOW_UP_SOURCE_PATH, timingSessionId) {
+async function sourceInfo(proposalPath, workloadPath, followUpSourcePath = DEFAULT_FOLLOW_UP_SOURCE_PATH, timingSessionId, canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY) {
   const proposal = await readJson(proposalPath, 'M5-10D calibration proposal');
-  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const canonical = await readCanonicalRecords(canonicalDirectory);
   const proposalInfo = validateM5DProposal(proposal.value, { canonicalRecords: canonical.records });
   proposalInfo.proposal_sha256 = proposal.sha256;
   const workload = await readJson(workloadPath, 'M5-10D workload');
@@ -202,9 +210,9 @@ async function sourceInfo(proposalPath, workloadPath, followUpSourcePath = DEFAU
   return { proposal, proposalInfo, workload, workloadInfo, followUpSource };
 }
 
-async function assertCanonicalAndInventoryUnchanged(session, label) {
-  const canonicalSha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
-  const inventory = await readJson(DEFAULT_INVENTORY_PATH, 'M5 target inventory');
+async function assertCanonicalAndInventoryUnchanged(session, label, canonicalDirectory, inventoryPath) {
+  const canonicalSha256 = await hashCanonicalDirectory(canonicalDirectory);
+  const inventory = await readJson(inventoryPath, 'M5 target inventory');
   if (canonicalSha256 !== session.canonical_directory_sha256) fail(`${label} changed canonical data`, 'CALIBRATION_CANONICAL_MUTATION');
   if (inventory.sha256 !== session.inventory_sha256) fail(`${label} changed target inventory`, 'CALIBRATION_INVENTORY_MUTATION');
 }
@@ -229,9 +237,11 @@ async function createTimingSession(kind, args) {
   const proposalPath = resolvePath(args.proposal, DEFAULT_PROPOSAL_PATH);
   const workloadPath = resolvePath(args.workload, DEFAULT_WORKLOAD_PATH);
   const followUpSourcePath = resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH);
-  const { proposal, proposalInfo, workload, workloadInfo } = await sourceInfo(proposalPath, workloadPath, followUpSourcePath);
-  const canonicalDirectorySha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
-  const inventory = await readJson(DEFAULT_INVENTORY_PATH, 'M5 target inventory');
+  const canonicalDirectory = canonicalDirectoryForArgs(args);
+  const inventoryPath = inventoryPathForArgs(args);
+  const { proposal, proposalInfo, workload, workloadInfo } = await sourceInfo(proposalPath, workloadPath, followUpSourcePath, undefined, canonicalDirectory);
+  const canonicalDirectorySha256 = await hashCanonicalDirectory(canonicalDirectory);
+  const inventory = await readJson(inventoryPath, 'M5 target inventory');
   const startedAt = now();
   const session = {
     schema_version: '1',
@@ -498,6 +508,7 @@ async function loadBoundSources(session, args) {
     workloadPath,
     resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH),
     session.timing_kind === 'editorial' ? session.session_id : undefined,
+    canonicalDirectoryForArgs(args),
   );
   if (proposalInfo.proposal_sha256 !== session.proposal_sha256) fail('proposal digest does not match timing session', 'TIMING_SOURCE_BINDING');
   if (workloadInfo.sha256 !== session.workload_sha256) fail('workload digest does not match timing session', 'TIMING_SOURCE_BINDING');
@@ -846,7 +857,12 @@ async function stopPass(kind, args) {
   if (!declaration) fail(`${args.pass} has no frozen workload declaration`, 'WORKLOAD_SCOPE_MISMATCH');
   if (JSON.stringify(pass.work_evidence.actual_unit_ids) !== JSON.stringify(declaration.expected_unit_ids)) fail(`${args.pass} actual work does not exactly cover its frozen workload`, 'TIMING_SCOPE_MISMATCH');
   if ((session.active_judgments ?? []).some(({ pass_id: passId }) => passId === args.pass)) fail(`${args.pass} has an active judgment that was not completed`, 'TIMING_EDITOR_WORK_MISSING');
-  await assertCanonicalAndInventoryUnchanged(session, `${args.pass} pass`);
+  await assertCanonicalAndInventoryUnchanged(
+    session,
+    `${args.pass} pass`,
+    canonicalDirectoryForArgs(args),
+    inventoryPathForArgs(args),
+  );
   const completedAt = now();
   const elapsed = (Date.parse(completedAt) - Date.parse(pass.started_at)) / 1000;
   const logBytes = await readFile(resolvePath(pass.work_evidence.path));
@@ -922,7 +938,12 @@ async function finishSession(kind, args) {
   const session = await loadTiming(outputPath, kind);
   if (session.passes.some(({ status }) => status !== 'complete')) fail('all timing passes must be complete before finishing', 'TIMING_INCOMPLETE');
   if ((session.active_judgments ?? []).length > 0) fail('timing session has active judgment events', 'TIMING_EDITOR_WORK_MISSING');
-  await assertCanonicalAndInventoryUnchanged(session, 'timing session');
+  await assertCanonicalAndInventoryUnchanged(
+    session,
+    'timing session',
+    canonicalDirectoryForArgs(args),
+    inventoryPathForArgs(args),
+  );
   const completedAt = now();
   session.status = 'complete';
   session.completed_at = completedAt;
@@ -1101,6 +1122,7 @@ async function finalizeEditorial(args) {
     resolvePath(args.workload, DEFAULT_WORKLOAD_PATH),
     resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH),
     timing.session_id,
+    canonicalDirectoryForArgs(args),
   );
   const decisionRows = await decisionRowsFromTiming(
     timing,
@@ -1145,6 +1167,8 @@ async function finalizeAudit(args) {
     resolvePath(args.proposal, DEFAULT_PROPOSAL_PATH),
     resolvePath(args.workload, DEFAULT_WORKLOAD_PATH),
     resolvePath(args['follow-up-source'], DEFAULT_FOLLOW_UP_SOURCE_PATH),
+    undefined,
+    canonicalDirectoryForArgs(args),
   );
   const decisionRows = await decisionRowsFromTiming(timing, ['post-freeze-audit'], proposalInfo.case_ids);
   const caseReviews = decisionRows.map(({ decision_row: decisionRow }) => decisionRow);

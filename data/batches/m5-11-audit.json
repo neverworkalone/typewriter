@@ -1,0 +1,39 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-11-independent-audit-20260913",
+  "batch_id": "m5-11-expansion-20260913",
+  "status": "complete",
+  "independent": true,
+  "reviewed_start_count": 500,
+  "reviewed_canonical_ids": {
+    "first": "w779",
+    "last": "w1278",
+    "count": 500
+  },
+  "relation_scope": {
+    "before_count": 0,
+    "after_count": 0,
+    "candidate_count": 0,
+    "admitted_count": 0,
+    "noise_count": 0
+  },
+  "open_blocker_count": 0,
+  "finding_count": 0,
+  "source": {
+    "review": "data/batches/m5-11-review.json",
+    "review_sha256": "7b026156293fca9ea04e1df7e07d1748bb098db5aacdca3eb583ae51a63ba371",
+    "reviewed_staging": "data/canonical/m5-11-expansion.jsonl",
+    "reviewed_staging_sha256": "e23eb43655c426e3dc79d771f70dcd216ebf48bf28ddb7633127827fb84578fb",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "9737dd9fa349089045df055baa8bdf454a88065d2b0deb388d6ceb62915527d3"
+  },
+  "canonical_snapshot": {
+    "record_count": 1320,
+    "start_count": 1278,
+    "reference_only_count": 42,
+    "sense_count": 1466,
+    "relation_count": 473,
+    "expression_count": 63
+  },
+  "note": "Independent machine audit compared the frozen reviewed staging, relation scope, canonical snapshot, and source digests. It found no open blocker; this does not satisfy human editorial review."
+}

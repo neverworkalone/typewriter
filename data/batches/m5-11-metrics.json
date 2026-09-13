@@ -1,0 +1,108 @@
+{
+  "schema_version": "2",
+  "batch_id": "m5-11-expansion-20260913",
+  "source": {
+    "manifest": "data/batches/m5-11-expansion.json",
+    "relation_diff": "data/batches/m5-11-relation-diff.json",
+    "canonical_directory": "data/canonical"
+  },
+  "derived": {
+    "selection": {
+      "selected_start_count": 550,
+      "processed_start_count": 500
+    },
+    "decisions": {
+      "included": 500,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 50,
+      "importable_start_count": 500,
+      "correction_rate_of_selected": 0,
+      "correction_rate_of_importable": 0,
+      "held_rate": 0,
+      "rejected_rate": 0,
+      "held_or_rejected_rate": 0,
+      "sense_field_correction_count": 0,
+      "relation_field_correction_count": 0
+    },
+    "canonical_import": {
+      "imported_start_count": 500,
+      "imported_reference_only_count": 0,
+      "imported_record_count": 500,
+      "imported_sense_count": 500,
+      "imported_relation_count": 0,
+      "imported_expression_count": 0,
+      "relation_type_counts": {}
+    },
+    "relation_diff": {
+      "before_count": 0,
+      "after_count": 0,
+      "added_count": 0,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": 0,
+      "noise_event_count": 0,
+      "noise_rate_of_before": 0,
+      "classification_counts": {}
+    },
+    "timing": {
+      "status": "incomplete",
+      "passes": {
+        "target-preparation": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "initial-review": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "feedback-fixes": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "final-audit": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        },
+        "held-rejected": {
+          "status": "unmeasured",
+          "wall_clock_seconds": null,
+          "editor_seconds": null
+        }
+      },
+      "total_wall_clock_seconds": null,
+      "total_editor_seconds": null,
+      "measured_wall_clock_seconds": 0,
+      "measured_editor_seconds": 0,
+      "unmeasured_passes": [
+        "target-preparation",
+        "initial-review",
+        "feedback-fixes",
+        "final-audit",
+        "held-rejected"
+      ]
+    },
+    "audit": {
+      "status": "complete",
+      "independent": true,
+      "finding_count": 0,
+      "open_finding_count": 0,
+      "open_blocker_count": 0,
+      "finding_counts": {}
+    },
+    "sense_review": {
+      "status": "complete",
+      "reviewed_start_count": 500,
+      "scoped_single_sense_count": 500,
+      "split_record_count": 0,
+      "split_canonical_ids": []
+    }
+  }
+}

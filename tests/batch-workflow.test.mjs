@@ -156,7 +156,9 @@ async function createIdBoundaryFixture() {
   const inventoryPath = path.join(directory, 'inventory.json');
   await mkdir(canonicalDirectory, { recursive: true });
 
-  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const canonical = await readCanonicalRecords(
+    path.resolve('data/batches/m5-11-base-canonical'),
+  );
   const existingRecord = {
     id: 'w999',
     record_type: 'entry',
@@ -178,7 +180,9 @@ async function createIdBoundaryFixture() {
     'utf8',
   );
 
-  const { inventory } = await readTargetInventory(DEFAULT_INVENTORY_PATH);
+  const { inventory } = await readTargetInventory(
+    path.resolve('data/batches/m5-11-base-inventory.json'),
+  );
   const inventoryFixture = structuredClone(inventory);
   const candidate = inventoryFixture.entries.find(
     (entry) => entry.source === 'editorial' && ['candidate', 'held'].includes(entry.status),
