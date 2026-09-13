@@ -11,7 +11,7 @@ import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 import { sha256Json } from './m5-11-editorial.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
-const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const BATCH_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches');
 const INVENTORY_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/inventory');
 const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
@@ -24,7 +24,7 @@ const STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-11-stage.json');
 const AUTHORIZATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-m5-11-authorization-20260912.json');
 const CATALOG_PATH = path.join(SCRIPT_DIRECTORY, 'm5-11-catalog.mjs');
 
-const BASE_SUMMARY = Object.freeze({
+export const M5_11_BASE_SUMMARY = Object.freeze({
   record_count: 820,
   start_count: 778,
   reference_only_count: 42,
@@ -32,9 +32,9 @@ const BASE_SUMMARY = Object.freeze({
   relation_count: 473,
   expression_count: 63,
 });
-const BASE_INVENTORY_SHA256 = '2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947';
-const BASE_SEED_SHA256 = 'bda4bec9be8e90fca1c16e6aa4979bbf242342534856b8bacc9b91dd276da0e9';
-const BASE_CANONICAL_SHA256 = '14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473';
+export const M5_11_BASE_INVENTORY_SHA256 = '2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947';
+export const M5_11_BASE_SEED_SHA256 = 'bda4bec9be8e90fca1c16e6aa4979bbf242342534856b8bacc9b91dd276da0e9';
+export const M5_11_BASE_CANONICAL_SHA256 = '14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473';
 const BATCH_ID = 'm5-11-expansion-20260913';
 
 export class M511ValidationError extends Error {
@@ -145,13 +145,13 @@ export async function validateM511({
   assertEqual(stage.stage_id, 'm5-11-plus-500', 'stage ID');
   assertEqual(stage.issue, 97, 'stage issue');
   assertEqual(stage.input.canonical_directory, repositoryRelativePath(baseCanonicalDirectory), 'stage base canonical path', 'SOURCE_PATH_MISMATCH');
-  assertEqual(stage.input.canonical_directory_sha256, BASE_CANONICAL_SHA256, 'stage base canonical digest', 'DIGEST_MISMATCH');
+  assertEqual(stage.input.canonical_directory_sha256, M5_11_BASE_CANONICAL_SHA256, 'stage base canonical digest', 'DIGEST_MISMATCH');
   assertEqual(stage.input.base_inventory_path, repositoryRelativePath(baseInventoryPath), 'stage base inventory path', 'SOURCE_PATH_MISMATCH');
-  assertEqual(stage.input.base_inventory_sha256, BASE_INVENTORY_SHA256, 'stage base inventory digest', 'DIGEST_MISMATCH');
-  assertEqual(await hashCanonicalDirectory(baseCanonicalDirectory), BASE_CANONICAL_SHA256, 'retained base canonical digest', 'DIGEST_MISMATCH');
-  assertEqual(await hashCanonicalDirectory(currentCanonicalDirectory), BASE_CANONICAL_SHA256, 'current canonical must remain at the pre-import snapshot', 'UNAUTHORIZED_PROMOTION');
-  assertEqual(canonicalSummary(baseCanonical.records), BASE_SUMMARY, 'retained base canonical summary');
-  assertEqual(canonicalSummary(currentCanonical.records), BASE_SUMMARY, 'current canonical summary');
+  assertEqual(stage.input.base_inventory_sha256, M5_11_BASE_INVENTORY_SHA256, 'stage base inventory digest', 'DIGEST_MISMATCH');
+  assertEqual(await hashCanonicalDirectory(baseCanonicalDirectory), M5_11_BASE_CANONICAL_SHA256, 'retained base canonical digest', 'DIGEST_MISMATCH');
+  assertEqual(await hashCanonicalDirectory(currentCanonicalDirectory), M5_11_BASE_CANONICAL_SHA256, 'current canonical must remain at the pre-import snapshot', 'UNAUTHORIZED_PROMOTION');
+  assertEqual(canonicalSummary(baseCanonical.records), M5_11_BASE_SUMMARY, 'retained base canonical summary');
+  assertEqual(canonicalSummary(currentCanonical.records), M5_11_BASE_SUMMARY, 'current canonical summary');
   await assertMissing(path.join(currentCanonicalDirectory, 'm5-11-expansion.jsonl'), 'M5-11 canonical import');
 
   const baseInventory = await readBoundFile({
@@ -160,10 +160,10 @@ export async function validateM511({
   }, 'stage.input.base_inventory');
   assertEqual(baseInventory.value.revision, 'm5-11', 'base inventory revision');
   assertEqual(stage.input.inventory_revision, currentInventory.revision, 'stage inventory revision');
-  assertEqual(sha256(await readFile(currentInventoryPath)), BASE_INVENTORY_SHA256, 'current inventory must remain unchanged', 'UNAUTHORIZED_PROMOTION');
+  assertEqual(sha256(await readFile(currentInventoryPath)), M5_11_BASE_INVENTORY_SHA256, 'current inventory must remain unchanged', 'UNAUTHORIZED_PROMOTION');
   assertEqual(stage.source.seed, repositoryRelativePath(currentSeedPath), 'seed path binding', 'SOURCE_PATH_MISMATCH');
-  assertEqual(stage.source.seed_sha256, BASE_SEED_SHA256, 'seed digest binding', 'DIGEST_MISMATCH');
-  assertEqual(sha256(await readFile(currentSeedPath)), BASE_SEED_SHA256, 'current seed must remain unchanged', 'UNAUTHORIZED_PROMOTION');
+  assertEqual(stage.source.seed_sha256, M5_11_BASE_SEED_SHA256, 'seed digest binding', 'DIGEST_MISMATCH');
+  assertEqual(sha256(await readFile(currentSeedPath)), M5_11_BASE_SEED_SHA256, 'current seed must remain unchanged', 'UNAUTHORIZED_PROMOTION');
   assertEqual(currentInventory.revision, 'm5-11', 'current inventory revision');
   assertEqual(currentSeed.revision, 'm5-11', 'current seed revision');
 
@@ -175,15 +175,15 @@ export async function validateM511({
     inventoryPath: baseInventoryPath,
   });
   assertEqual(authorizationResult.authorization_sha256, stage.authorization.sha256, 'revalidated authorization digest', 'AUTHORIZATION_CHAIN_MISMATCH');
-  assertEqual(authorizationResult.authorization.source.inventory_sha256, BASE_INVENTORY_SHA256, 'authorization inventory binding', 'AUTHORIZATION_CHAIN_MISMATCH');
-  assertEqual(authorizationResult.authorization.source.canonical_directory_sha256, BASE_CANONICAL_SHA256, 'authorization canonical binding', 'AUTHORIZATION_CHAIN_MISMATCH');
+  assertEqual(authorizationResult.authorization.source.inventory_sha256, M5_11_BASE_INVENTORY_SHA256, 'authorization inventory binding', 'AUTHORIZATION_CHAIN_MISMATCH');
+  assertEqual(authorizationResult.authorization.source.canonical_directory_sha256, M5_11_BASE_CANONICAL_SHA256, 'authorization canonical binding', 'AUTHORIZATION_CHAIN_MISMATCH');
 
   assertEqual(stage.source.review, repositoryRelativePath(reviewPath), 'review path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.catalog, repositoryRelativePath(CATALOG_PATH), 'catalog path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.catalog_count, M5_11_CATALOG.length, 'catalog count binding', 'SOURCE_BINDING_MISMATCH');
   assertEqual(stage.source.catalog_sha256, sha256Json(M5_11_CATALOG), 'catalog digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.canonical_directory, repositoryRelativePath(baseCanonicalDirectory), 'source canonical path binding', 'SOURCE_PATH_MISMATCH');
-  assertEqual(stage.source.canonical_directory_sha256, BASE_CANONICAL_SHA256, 'source canonical digest binding', 'DIGEST_MISMATCH');
+  assertEqual(stage.source.canonical_directory_sha256, M5_11_BASE_CANONICAL_SHA256, 'source canonical digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.previous_stage_authorization, repositoryRelativePath(authorizationPath), 'previous authorization path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.previous_stage_authorization_sha256, stage.authorization.sha256, 'previous authorization digest binding', 'AUTHORIZATION_CHAIN_MISMATCH');
   const reviewBytes = await readFile(reviewPath);
@@ -201,7 +201,7 @@ export async function validateM511({
   assertEqual(review.decisions.unreviewed, 550, 'unreviewed candidate count');
   assertEqual(review.decision_artifact, null, 'decision artifact must be absent until separately supplied');
 
-  assertEqual(stage.actual.canonical_snapshot, BASE_SUMMARY, 'stage actual canonical snapshot');
+  assertEqual(stage.actual.canonical_snapshot, M5_11_BASE_SUMMARY, 'stage actual canonical snapshot');
   assertEqual(stage.actual.imported_start_count, 0, 'stage imported count');
   assertEqual(stage.gate.gate_status, 'fail', 'stage gate status');
   assertEqual(stage.gate.decision, 'HOLD PROCESS', 'stage gate decision');
@@ -215,7 +215,7 @@ export async function validateM511({
 
   return {
     batch_id: BATCH_ID,
-    canonical: BASE_SUMMARY,
+    canonical: M5_11_BASE_SUMMARY,
     decisions: review.decisions,
     gate_status: 'fail',
     gate_failures: [...stage.gate.failures],

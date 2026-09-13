@@ -111,10 +111,7 @@ function validateProposalArtifact(proposal, catalog) {
     }
     const candidateLemma = requireString(row.candidate_lemma, `${label}.candidate_lemma`);
     const candidateRecord = requireObject(row.candidate_record, `${label}.candidate_record`);
-    requireArray(candidateRecord.senses, `${label}.candidate_record.senses`);
-    if (candidateRecord.lemma !== candidateLemma) {
-      fail(`${label}.candidate_record.lemma must match candidate_lemma`, 'EDITORIAL_PROPOSAL_BINDING');
-    }
+    validateCandidateRecord(candidateRecord, candidateLemma, `${label}.candidate_record`);
     const proposalSha256 = requireString(row.proposal_sha256, `${label}.proposal_sha256`);
     if (proposalSha256 !== sha256ProposalRow(row)) {
       fail(`${label}.proposal_sha256 does not bind the proposal body`, 'EDITORIAL_PROPOSAL_BINDING');
@@ -126,6 +123,50 @@ function validateProposalArtifact(proposal, catalog) {
 
 function expectedInventoryIdForIndex(index) {
   return `m5-${String(535 + index).padStart(3, '0')}`;
+}
+
+function validateCandidateRecord(record, expectedLemma, label) {
+  requireObject(record, label);
+  if (!['entry', 'expression'].includes(record.record_type)) {
+    fail(`${label}.record_type must be entry or expression`, 'EDITORIAL_PROPOSAL_BINDING');
+  }
+  if (record.role !== 'start') {
+    fail(`${label}.role must be start`, 'EDITORIAL_PROPOSAL_BINDING');
+  }
+  requireString(record.id, `${label}.id`);
+  if (record.candidate_id !== record.id) {
+    fail(`${label}.candidate_id must bind the candidate-local record id`, 'EDITORIAL_PROPOSAL_BINDING');
+  }
+  requireString(record.lemma, `${label}.lemma`);
+  if (record.lemma !== expectedLemma) {
+    fail(`${label}.lemma must match candidate_lemma`, 'EDITORIAL_PROPOSAL_BINDING');
+  }
+  const searchForms = requireArray(record.search_forms, `${label}.search_forms`);
+  if (searchForms.length === 0 || searchForms.some((form) => typeof form !== 'string' || form.trim().length === 0)) {
+    fail(`${label}.search_forms must contain non-empty strings`, 'EDITORIAL_PROPOSAL_BINDING');
+  }
+  const senses = requireArray(record.senses, `${label}.senses`);
+  if (senses.length === 0) fail(`${label}.senses must not be empty`, 'EDITORIAL_PROPOSAL_BINDING');
+  for (const [senseIndex, sense] of senses.entries()) {
+    const senseLabel = `${label}.senses[${senseIndex}]`;
+    requireObject(sense, senseLabel);
+    requireString(sense.id, `${senseLabel}.id`);
+    if (!sense.id.startsWith(`${record.id}-`)) {
+      fail(`${senseLabel}.id must remain candidate-local`, 'EDITORIAL_PROPOSAL_BINDING');
+    }
+    requireString(sense.pos, `${senseLabel}.pos`);
+    requireString(sense.gloss, `${senseLabel}.gloss`);
+    if (record.record_type === 'expression' && sense.pos !== 'expression') {
+      fail(`${senseLabel}.pos must be expression for an expression proposal`, 'EDITORIAL_PROPOSAL_BINDING');
+    }
+    if (record.record_type === 'entry' && sense.pos === 'expression') {
+      fail(`${senseLabel}.pos cannot be expression for an entry proposal`, 'EDITORIAL_PROPOSAL_BINDING');
+    }
+    if (sense.relations !== undefined && !Array.isArray(sense.relations)) {
+      fail(`${senseLabel}.relations must be an array when present`, 'EDITORIAL_PROPOSAL_BINDING');
+    }
+  }
+  return record;
 }
 
 function rebaseProposalRecord(candidateRecord, expectedId) {
@@ -197,6 +238,9 @@ function validateBoundaryChecks(checks, record, inventoryId, label) {
 function validateCanonicalRecord(record, expectedId, label, expectedLemma) {
   requireObject(record, label);
   if (record.id !== expectedId) fail(`${label}.id must be ${expectedId}`, 'EDITORIAL_CANONICAL_BINDING');
+  if (!['entry', 'expression'].includes(record.record_type)) {
+    fail(`${label}.record_type must be entry or expression`, 'EDITORIAL_CANONICAL_BINDING');
+  }
   if (record.role !== 'start') fail(`${label}.role must be start`, 'EDITORIAL_CANONICAL_BINDING');
   if (record.candidate_id !== expectedId) fail(`${label}.candidate_id must bind ${expectedId}`, 'EDITORIAL_CANONICAL_BINDING');
   if (Object.hasOwn(record, 'corrected_lemma')) {
@@ -222,6 +266,12 @@ function validateCanonicalRecord(record, expectedId, label, expectedLemma) {
     senseIds.add(sense.id);
     requireString(sense.pos, `${senseLabel}.pos`);
     requireString(sense.gloss, `${senseLabel}.gloss`);
+    if (record.record_type === 'expression' && sense.pos !== 'expression') {
+      fail(`${senseLabel}.pos must be expression for an expression record`, 'EDITORIAL_CANONICAL_BINDING');
+    }
+    if (record.record_type === 'entry' && sense.pos === 'expression') {
+      fail(`${senseLabel}.pos cannot be expression for an entry record`, 'EDITORIAL_CANONICAL_BINDING');
+    }
     if (sense.relations !== undefined && !Array.isArray(sense.relations)) {
       fail(`${senseLabel}.relations must be an array when present`, 'EDITORIAL_RELATION_BINDING');
     }
@@ -394,6 +444,7 @@ export function validateM511EditorialDecisions(
   return {
     artifact,
     decisions: normalized,
+    proposalRows,
     importedRecords: normalized.filter(({ record }) => record).map(({ record }) => record),
     decisionCounts,
   };

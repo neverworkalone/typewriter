@@ -188,6 +188,11 @@ senses, boundary verdicts, audit findings, or canonical/seed/inventory
 promotions. The decision artifact must be bound to a separately frozen
 external proposal artifact before any candidate body can be admitted. Run
 `npm run batch:m5-11:check` to verify the HOLD boundary.
+When the external human-complete package exists, use the digest-bound
+`batch:m5-11:admission:check`, `batch:m5-11:admission:build`, and
+`batch:m5-11:promote` sequence documented in
+[`docs/m5-11-expansion-report.md`](docs/m5-11-expansion-report.md); only the
+last command may mutate canonical, seed, and inventory.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

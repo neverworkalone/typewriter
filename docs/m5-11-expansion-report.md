@@ -33,6 +33,48 @@ the frozen lexical body. Both the proposal and decision artifacts are external
 inputs to the builder.
 These checks apply to every candidate rather than a fixed lemma allowlist.
 
+Timing is recorded only through the current-clock recorder:
+
+```sh
+npm run batch:m5-11:timing -- \
+  --action=start \
+  --pass=target-preparation \
+  --output=/external/m5-11-editorial-timing.json \
+  --unit-ids-file=/external/m5-11-catalog-ids.json \
+  --proposal=/external/m5-11-proposal.json \
+  --artifact=/external/m5-11-editorial.json
+```
+
+For the independent audit, start a separate recorder session with the already
+completed editorial and editorial-timing artifacts, and use the audit report
+as the bound output:
+
+```sh
+npm run batch:m5-11:timing -- \
+  --action=start \
+  --pass=post-freeze-audit \
+  --output=/external/m5-11-audit-timing.json \
+  --unit-ids-file=/external/m5-11-catalog-ids.json \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --artifact=/external/m5-11-audit.json
+```
+
+Each pass is stopped in a later invocation. The recorder owns start/stop
+timestamps, contiguous work events, chronology, and a signed proof digest;
+timestamp, duration, and caller-supplied digest overrides are rejected. The
+session starts only when the bound editorial/audit artifact is absent; the final
+recorder stop reads the artifact produced during the session and binds its
+digest. The independent `post-freeze-audit` session similarly starts from the
+frozen proposal plus completed editorial/timing artifacts, uses a distinct
+session, and must begin after editorial timing completes.
+The prospective verifier also runs the complete committed M4 baseline,
+selection, and relation assertions against the temporary SQLite state. The
+portable manifest and promotion evidence retain the derived timing/check
+summaries and their digest so clean-checkout validation recomputes the gate
+instead of trusting paired summaries.
+
 ## Gate
 
 `HOLD PROCESS` — editorial decision artifact, human editorial review, timing,
@@ -44,3 +86,59 @@ Validation:
 ```sh
 npm run batch:m5-11:check
 ```
+
+## Completed admission path
+
+The completed gate is deliberately separate from the existing HOLD check. All
+proposal, decision, timing, audit, relation-diff, verification, and reviewed
+import files must remain outside the repository until the gate passes:
+
+```sh
+npm run batch:m5-11:admission:check -- \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --audit=/external/m5-11-audit.json \
+  --audit-timing=/external/m5-11-audit-timing.json \
+  --relation-diff=/external/m5-11-relation-diff.json \
+  --verification=/external/m5-11-verification.json \
+  --output=/external/m5-11-reviewed-import.jsonl
+
+npm run batch:m5-11:admission:build -- \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --audit=/external/m5-11-audit.json \
+  --audit-timing=/external/m5-11-audit-timing.json \
+  --relation-diff=/external/m5-11-relation-diff.json \
+  --verification=/external/m5-11-verification.json \
+  --output=/external/m5-11-reviewed-import.jsonl
+
+npm run batch:m5-11:promote -- \
+  --manifest=data/batches/m5-11-admission.json \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --audit=/external/m5-11-audit.json \
+  --audit-timing=/external/m5-11-audit-timing.json \
+  --relation-diff=/external/m5-11-relation-diff.json \
+  --verification=/external/m5-11-verification.json \
+  --output=/external/m5-11-reviewed-import.jsonl
+```
+
+The build command writes a compact, digest-bound admission manifest only after
+the complete gate passes. The promotion command revalidates every external
+source, stages canonical plus seed plus inventory in a temporary directory,
+validates the generated inventory, and only then writes
+`data/canonical/m5-11-expansion.jsonl`, the 550 decision rows in the seed, the
+regenerated inventory, and `data/batches/m5-11-promotion.json`. The committed
+manifest stores only portable `external:<source>` labels and SHA-256 digests;
+the explicit paths above are required only for local promotion. Post-promotion
+CI validates committed durable evidence and promoted outputs without reading
+those external files. A failed gate or digest mismatch leaves all three
+source-of-truth files unchanged.
+
+The repository currently has no separately supplied human-complete 550-row
+proposal and decision package, so this completed path is implemented but not
+run against real data. The checked-in state therefore remains the intended
+pre-admission `778 starts / 820 records` HOLD boundary.

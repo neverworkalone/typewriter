@@ -205,6 +205,8 @@ export async function generateTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
   generatedFromSeedPath = seedPath,
+  generatedFromCanonicalDirectory = canonicalDirectory,
+  canonicalScopeDirectory = canonicalDirectory,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
@@ -284,12 +286,12 @@ export async function generateTargetInventory({
     revision: seed.revision,
     count_unit: 'search-start',
     canonical_scope: {
-      directory: path.relative(process.cwd(), canonicalDirectory),
+      directory: path.relative(process.cwd(), canonicalScopeDirectory),
       roles: ['start', 'reference-only'],
       source: 'canonical JSONL; copied into this reviewable inventory snapshot',
     },
     generated_from: [
-      path.relative(process.cwd(), canonicalDirectory),
+      path.relative(process.cwd(), generatedFromCanonicalDirectory),
       path.relative(process.cwd(), generatedFromSeedPath),
     ],
     canonical_snapshot: {
