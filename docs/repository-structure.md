@@ -120,8 +120,9 @@ evidence, not a second editable dictionary source.
 Issue #97's M5-11 work is held before canonical admission. The tracked
 `data/batches/m5-11-base-canonical/` and `data/batches/m5-11-base-inventory.json`
 files freeze the 778-start input used by the #115 authorization and earlier M5
-contracts. The candidate catalog records 550 proposed starts, but no canonical
-import, seed promotion, or inventory promotion is tracked. The builder requires
+contracts. The candidate catalog records 550 selection IDs, but no unreviewed
+lemma, POS, gloss, or canonical record body is tracked with that metadata. The
+builder requires
 a separately supplied human-complete editorial decision artifact and writes a
 reviewed import only outside the repository; `data/canonical/*.jsonl` remains
 the only editable dictionary source. The stage is `HOLD PROCESS` until that

@@ -291,7 +291,9 @@ requires a separately supplied human-complete editorial decision artifact and
 an import output outside the repository. It validates every record/sense and
 boundary binding supplied by that artifact, but it never manufactures those
 decisions and never mutates `data/canonical/`, the M5 seed, or the target
-inventory.
+inventory. The tracked catalog contains only selection metadata and is bound
+to the external artifact by both catalog digest and candidate count; unreviewed
+proposal bodies are not process metadata.
 
 The stage is `HOLD PROCESS` until the decision artifact, complete timing, and
 independent audit exist. Run `npm run batch:m5-11:check` to verify that the

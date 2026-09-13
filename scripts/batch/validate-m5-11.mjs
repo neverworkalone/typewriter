@@ -180,6 +180,7 @@ export async function validateM511({
 
   assertEqual(stage.source.review, repositoryRelativePath(reviewPath), 'review path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.catalog, repositoryRelativePath(CATALOG_PATH), 'catalog path binding', 'SOURCE_PATH_MISMATCH');
+  assertEqual(stage.source.catalog_count, M5_11_CATALOG.length, 'catalog count binding', 'SOURCE_BINDING_MISMATCH');
   assertEqual(stage.source.catalog_sha256, sha256Json(M5_11_CATALOG), 'catalog digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.canonical_directory, repositoryRelativePath(baseCanonicalDirectory), 'source canonical path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.canonical_directory_sha256, BASE_CANONICAL_SHA256, 'source canonical digest binding', 'DIGEST_MISMATCH');
@@ -195,6 +196,7 @@ export async function validateM511({
   assertEqual(review.candidate_pool.declared_count, 550, 'candidate catalog count');
   assertEqual(review.candidate_pool.import_target, 500, 'candidate import target');
   assertEqual(review.candidate_pool.reserve_count, 50, 'candidate reserve count');
+  assertEqual(review.candidate_pool.catalog_count, M5_11_CATALOG.length, 'candidate catalog count');
   assertEqual(review.candidate_pool.catalog_sha256, sha256Json(M5_11_CATALOG), 'candidate catalog digest', 'DIGEST_MISMATCH');
   assertEqual(review.decisions.unreviewed, 550, 'unreviewed candidate count');
   assertEqual(review.decision_artifact, null, 'decision artifact must be absent until separately supplied');

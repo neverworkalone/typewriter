@@ -51,6 +51,14 @@ function requireArray(value, label) {
   return value;
 }
 
+function assertJsonEqual(actual, expected, label, code) {
+  try {
+    assert.deepEqual(actual, expected);
+  } catch {
+    fail(`${label} does not match the canonical record`, code);
+  }
+}
+
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
@@ -67,19 +75,26 @@ export function expectedCanonicalId(importIndex) {
   return `w${String(779 + importIndex).padStart(3, '0')}`;
 }
 
-function validateBoundaryChecks(checks, record, label) {
+function validateBoundaryChecks(checks, record, inventoryId, label) {
   requireObject(checks, `${label}.boundary_checks`);
   assert.deepEqual(
     Object.keys(checks).sort(),
     [...M5_11_BOUNDARY_IDS].sort(),
     `${label}.boundary_checks keys`,
   );
+  let checkedBoundaryCount = 0;
   for (const boundaryId of M5_11_BOUNDARY_IDS) {
     const check = requireObject(checks[boundaryId], `${label}.${boundaryId}`);
     if (!['checked', 'not-applicable'].includes(check.status)) {
       fail(`${label}.${boundaryId}.status must be checked or not-applicable`, 'EDITORIAL_BOUNDARY_INCOMPLETE');
     }
     requireString(check.rationale, `${label}.${boundaryId}.rationale`);
+    if (!check.rationale.includes(inventoryId)) {
+      fail(
+        `${label}.${boundaryId}.rationale must identify ${inventoryId}`,
+        'EDITORIAL_BOUNDARY_EVIDENCE_MISMATCH',
+      );
+    }
     requireString(check.contrast, `${label}.${boundaryId}.contrast`);
     requireArray(check.sense_ids, `${label}.${boundaryId}.sense_ids`);
     for (const senseId of check.sense_ids) {
@@ -88,10 +103,33 @@ function validateBoundaryChecks(checks, record, label) {
         fail(`${label}.${boundaryId} references unknown sense ${senseId}`, 'EDITORIAL_BOUNDARY_BINDING');
       }
     }
+    if (check.status === 'checked') {
+      checkedBoundaryCount += 1;
+      if (check.sense_ids.length === 0) {
+        fail(
+          `${label}.${boundaryId} checked evidence must cite at least one sense`,
+          'EDITORIAL_BOUNDARY_EVIDENCE_MISMATCH',
+        );
+      }
+      if (check.sense_ids.some((senseId) => !check.rationale.includes(senseId))) {
+        fail(
+          `${label}.${boundaryId}.rationale must cite every checked sense`,
+          'EDITORIAL_BOUNDARY_EVIDENCE_MISMATCH',
+        );
+      }
+    } else if (check.sense_ids.length > 0) {
+      fail(
+        `${label}.${boundaryId} not-applicable evidence must not cite senses`,
+        'EDITORIAL_BOUNDARY_EVIDENCE_MISMATCH',
+      );
+    }
+  }
+  if (checkedBoundaryCount === 0) {
+    fail(`${label} must contain at least one checked sense boundary`, 'EDITORIAL_BOUNDARY_INCOMPLETE');
   }
 }
 
-function validateCanonicalRecord(record, catalogEntry, expectedId, label, expectedLemma = catalogEntry.lemma) {
+function validateCanonicalRecord(record, expectedId, label, expectedLemma) {
   requireObject(record, label);
   if (record.id !== expectedId) fail(`${label}.id must be ${expectedId}`, 'EDITORIAL_CANONICAL_BINDING');
   if (record.role !== 'start') fail(`${label}.role must be start`, 'EDITORIAL_CANONICAL_BINDING');
@@ -109,9 +147,6 @@ function validateCanonicalRecord(record, catalogEntry, expectedId, label, expect
   }
   const senses = requireArray(record.senses, `${label}.senses`);
   if (senses.length === 0) fail(`${label}.senses must not be empty`, 'EDITORIAL_SENSE_INCOMPLETE');
-  if (catalogEntry.flags?.includes('mixed-sense-review') && senses.length < 2) {
-    fail(`${label}.senses must preserve the mixed-sense candidate boundary`, 'EDITORIAL_MIXED_SENSE_COLLAPSE');
-  }
   const senseIds = new Set();
   for (const [senseIndex, sense] of senses.entries()) {
     const senseLabel = `${label}.senses[${senseIndex}]`;
@@ -129,9 +164,45 @@ function validateCanonicalRecord(record, catalogEntry, expectedId, label, expect
   return record;
 }
 
+function validateSenseReview(review, record, label) {
+  if (review.status !== 'complete') {
+    fail(`${label}.status must be complete before admission`, 'EDITORIAL_SENSE_INCOMPLETE');
+  }
+  if (!Number.isInteger(review.observed_sense_count) || review.observed_sense_count < 1) {
+    fail(`${label}.observed_sense_count must be a positive integer`, 'EDITORIAL_SENSE_INCOMPLETE');
+  }
+  assertJsonEqual(
+    review.observed_sense_count,
+    record.senses.length,
+    `${label}.observed_sense_count`,
+    'EDITORIAL_SENSE_MISMATCH',
+  );
+  const observedSenseIds = requireArray(review.observed_sense_ids, `${label}.observed_sense_ids`);
+  assertJsonEqual(
+    observedSenseIds,
+    record.senses.map(({ id }) => id),
+    `${label}.observed_sense_ids`,
+    'EDITORIAL_SENSE_MISMATCH',
+  );
+  const observedPos = requireArray(review.observed_pos, `${label}.observed_pos`);
+  assertJsonEqual(
+    observedPos,
+    record.senses.map(({ pos }) => pos),
+    `${label}.observed_pos`,
+    'EDITORIAL_SENSE_MISMATCH',
+  );
+  const note = requireString(review.note, `${label}.note`);
+  if (observedSenseIds.some((senseId) => !note.includes(senseId))) {
+    fail(`${label}.note must cite every observed sense`, 'EDITORIAL_SENSE_EVIDENCE_MISMATCH');
+  }
+}
+
 function validateDecision(decision, catalogEntry, expectedId, importIndex) {
   const label = `decisions[${importIndex}]`;
   requireObject(decision, label);
+  if (catalogEntry.inventory_id !== expectedInventoryId(importIndex)) {
+    fail(`${label} catalog inventory binding is out of order`, 'EDITORIAL_SCOPE_MISMATCH');
+  }
   if (decision.inventory_id !== expectedInventoryId(importIndex)) {
     fail(`${label}.inventory_id is out of catalog order`, 'EDITORIAL_SCOPE_MISMATCH');
   }
@@ -143,20 +214,26 @@ function validateDecision(decision, catalogEntry, expectedId, importIndex) {
     if (decision.sense_review?.status !== 'complete') {
       fail(`${label} requires a complete sense_review before admission`, 'EDITORIAL_SENSE_INCOMPLETE');
     }
+    const candidateLemma = requireString(decision.candidate_lemma, `${label}.candidate_lemma`);
     if (decision.decision !== 'corrected' && decision.corrected_lemma !== undefined) {
       fail(`${label}.corrected_lemma is only valid for corrected decisions`, 'EDITORIAL_CANONICAL_BINDING');
     }
     const correctedLemma = decision.corrected_lemma === undefined
-      ? catalogEntry.lemma
+      ? candidateLemma
       : requireString(decision.corrected_lemma, `${label}.corrected_lemma`);
     const record = validateCanonicalRecord(
       decision.canonical_record,
-      catalogEntry,
       expectedId,
       `${label}.canonical_record`,
       correctedLemma,
     );
-    validateBoundaryChecks(decision.sense_review.boundary_checks, record, `${label}.sense_review`);
+    validateBoundaryChecks(
+      decision.sense_review.boundary_checks,
+      record,
+      decision.inventory_id,
+      `${label}.sense_review`,
+    );
+    validateSenseReview(decision.sense_review, record, `${label}.sense_review`);
     return { decision, record };
   }
 
@@ -185,6 +262,9 @@ export function validateM511EditorialDecisions(
   }
   if (artifact.catalog_sha256 !== sha256Json(catalog)) {
     fail('editorial decision artifact catalog digest drifted', 'EDITORIAL_SOURCE_MISMATCH');
+  }
+  if (artifact.catalog_count !== catalog.length) {
+    fail('editorial decision artifact catalog count drifted', 'EDITORIAL_SOURCE_MISMATCH');
   }
   if (requireHumanCompletion && artifact.human_editorial_review_complete !== true) {
     fail('human editorial review is required before M5-11 admission', 'EDITORIAL_HUMAN_REVIEW_REQUIRED');

@@ -16,10 +16,13 @@ to manufacture sense, POS, boundary, relation, audit, or admission verdicts. A
 separately supplied human-complete decision artifact and complete gate evidence
 are required before an external reviewed import can be produced.
 
-The known mixed-sense candidates `싱겁다`, `다독이다`, `일구다`, and `삼키다`
-are explicitly marked for multi-sense review. Admission validation rejects a
-single-sense collapse and requires concrete boundary evidence for each admitted
-record.
+The tracked catalog contains only the 550 selection IDs, editorial axes, and
+flags. It does not commit unreviewed lemma, POS, gloss, or proposed canonical
+record bodies; those belong in the separately supplied external decision
+artifact, which must match the catalog digest and count. Admission validation
+also requires a complete observed-sense scope, at least one checked boundary,
+non-vacuous sense-bound evidence, and no sense citations on `not-applicable`
+boundaries. This applies to every candidate rather than a fixed lemma allowlist.
 
 ## Gate
 
