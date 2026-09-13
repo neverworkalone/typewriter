@@ -22,7 +22,12 @@ record bodies; those belong in the separately supplied external decision
 artifact, which must match the catalog digest and count. Admission validation
 also requires a complete observed-sense scope, at least one checked boundary,
 non-vacuous sense-bound evidence, and no sense citations on `not-applicable`
-boundaries. This applies to every candidate rather than a fixed lemma allowlist.
+boundaries. Before decisions are supplied, the editor must also provide a
+separately frozen external proposal artifact: every decision binds its
+candidate lemma and proposal-body digest to that artifact. The reserve count is
+derived from the actual `held`/`rejected` rows, so later reserve rows may fill
+the 500 admitted slots rather than forcing every unused row to be `deferred`.
+These checks apply to every candidate rather than a fixed lemma allowlist.
 
 ## Gate
 

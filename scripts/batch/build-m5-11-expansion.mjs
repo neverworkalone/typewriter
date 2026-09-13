@@ -49,6 +49,15 @@ function assertExternalOutput(filePath) {
   return resolved;
 }
 
+function assertExternalInput(filePath, label) {
+  const resolved = path.resolve(filePath);
+  const relative = path.relative(REPOSITORY_DIRECTORY, resolved);
+  if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+    throw new Error(`${label} must remain outside the repository until editorial review is complete: ${resolved}`);
+  }
+  return resolved;
+}
+
 async function readJsonSource(filePath, label) {
   const bytes = await readFile(filePath);
   try {
@@ -100,6 +109,7 @@ function createImportBytes(records) {
 
 export async function buildM511({
   editorialDecisionPath,
+  proposalPath,
   outputPath,
   canonicalDirectory = BASE_CANONICAL_DIRECTORY,
 } = {}) {
@@ -115,8 +125,15 @@ export async function buildM511({
   }
   const resolvedOutputPath = assertExternalOutput(outputPath);
   await assertMissing(resolvedOutputPath);
+  if (!proposalPath) {
+    throw new Error(
+      'M5-11 build requires --proposal=<external frozen proposal artifact>; candidate bodies must be frozen before editorial decisions',
+    );
+  }
+  const resolvedProposalPath = assertExternalInput(proposalPath, 'M5-11 frozen proposal artifact');
 
   const editorialSource = await readJsonSource(path.resolve(editorialDecisionPath), 'M5-11 editorial decisions');
+  const proposalSource = await readJsonSource(resolvedProposalPath, 'M5-11 frozen proposal artifact');
   const resolvedCanonicalDirectory = path.resolve(canonicalDirectory);
   if (resolvedCanonicalDirectory !== BASE_CANONICAL_DIRECTORY) {
     throw new Error(
@@ -131,6 +148,7 @@ export async function buildM511({
   const baseSummary = assertBaseCanonical(canonical.records);
   const editorial = validateM511EditorialDecisions(editorialSource.value, {
     catalog: M5_11_CATALOG,
+    proposal: proposalSource.value,
     requireHumanCompletion: true,
   });
   const importedRecords = editorial.importedRecords;
@@ -149,6 +167,8 @@ export async function buildM511({
   return {
     batch_id: M5_11_BATCH_ID,
     catalog_sha256: sha256Json(M5_11_CATALOG),
+    proposal_sha256: sha256Json(proposalSource.value),
+    proposal_count: M5_11_CATALOG.length,
     editorial_sha256: editorialSource.sha256,
     reviewed_import: {
       path: resolvedOutputPath,
@@ -197,6 +217,7 @@ if (isMainModule) {
   const args = parseArguments(process.argv.slice(2));
   buildM511({
     editorialDecisionPath: args.editorial,
+    proposalPath: args.proposal,
     outputPath: args.output,
     canonicalDirectory: args['canonical-dir'] ?? BASE_CANONICAL_DIRECTORY,
   })

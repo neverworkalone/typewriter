@@ -185,7 +185,9 @@ canonical snapshot remains at 778 starts because no separately supplied,
 human-complete editorial decision artifact exists. The builder requires that
 artifact and an import output outside the repository; it cannot manufacture
 senses, boundary verdicts, audit findings, or canonical/seed/inventory
-promotions. Run `npm run batch:m5-11:check` to verify the HOLD boundary.
+promotions. The decision artifact must be bound to a separately frozen
+external proposal artifact before any candidate body can be admitted. Run
+`npm run batch:m5-11:check` to verify the HOLD boundary.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

@@ -293,7 +293,11 @@ boundary binding supplied by that artifact, but it never manufactures those
 decisions and never mutates `data/canonical/`, the M5 seed, or the target
 inventory. The tracked catalog contains only selection metadata and is bound
 to the external artifact by both catalog digest and candidate count; unreviewed
-proposal bodies are not process metadata.
+proposal bodies are not process metadata. The external decision artifact must
+also bind every candidate identity and proposal-body digest to a separately
+frozen proposal artifact supplied to the builder. Admission counts are
+`included + corrected = 500`, with `held`, `rejected`, and the remaining
+reserve rows accounted for explicitly.
 
 The stage is `HOLD PROCESS` until the decision artifact, complete timing, and
 independent audit exist. Run `npm run batch:m5-11:check` to verify that the
