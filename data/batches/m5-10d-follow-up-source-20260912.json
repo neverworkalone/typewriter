@@ -4,76 +4,12 @@
   "batch_id": "m5-10d-editor-time-recalibration-20260912",
   "source_kind": "recorder-owned-initial-review-findings",
   "proposal_sha256": "9adcc18ed41ffcd5ccbfaa695be928bf44a24a5de05cb694033538b0210c295e",
-  "timing_session_id": "b844bd4b-89c6-4a98-8565-1ecc6651a021",
+  "timing_session_id": "e4eb4c2f-3485-4797-9a55-753a4cfb0228",
   "source_pass_id": "initial-review",
-  "source_pass_session_id": "c2df01b6-1779-485f-88d9-663e87068086",
-  "source_judgment_artifact_sha256": "f86e781230c4ebad8ac1f0c3bc877ee93c468eb78aa47963804c2dea4d9b409b",
+  "source_pass_session_id": "49d249d9-ab5b-4fdd-91be-a8bfbf084943",
+  "source_judgment_artifact_sha256": "9c97aa2464a2738531001a30d5aa493adb24b25f1e22a8bb56c12d395bd53d22",
   "freeze_event_id": "m5-10d-workload-freeze-0126",
-  "created_at": "2026-09-12T14:09:53.210Z",
-  "findings": [
-    {
-      "case_id": "m5-10d-cal-002",
-      "record_id": "cal-m5-10d-002",
-      "source_record_sha256": "e8694ef6999acfc620549a1c9db754b52e5c35793024fd9aa4c364ee66647a4c",
-      "finding_kind": "correction",
-      "source_judgment_id": "b9fb5638-581a-410c-9aa6-ba95fc530bfa",
-      "source_judgment_row_sha256": "112a7af5edd1403a4853ce8b1183b162e86bb3bb9cdaceaa7c27647824f0e8d2",
-      "note": "m5-10d-cal-002 follow-up queue was frozen from its completed initial-review judgment b9fb5638-581a-410c-9aa6-ba95fc530bfa."
-    },
-    {
-      "case_id": "m5-10d-cal-006",
-      "record_id": "cal-m5-10d-006",
-      "source_record_sha256": "d3c2e058c73c535adcbbb6a340c2d43d26365a54c94acd7483758da22e4fa6a9",
-      "finding_kind": "correction",
-      "source_judgment_id": "511f72e5-8400-4a33-a788-4a46ac6d2ea3",
-      "source_judgment_row_sha256": "e5e70a579bb464d05d260acbbdfd095a381fcfe49f41a7dd97686ef1a01d8043",
-      "note": "m5-10d-cal-006 follow-up queue was frozen from its completed initial-review judgment 511f72e5-8400-4a33-a788-4a46ac6d2ea3."
-    },
-    {
-      "case_id": "m5-10d-cal-009",
-      "record_id": "cal-m5-10d-009",
-      "source_record_sha256": "4f1f6f2b2856d08262d2caeaba68f98c56473c5ecdb86d344a7535f05771ef2a",
-      "finding_kind": "correction",
-      "source_judgment_id": "98ec44cb-c65a-4fd6-8451-62b638fcef93",
-      "source_judgment_row_sha256": "33c7466f07c87f2367807202b6865c329656712a172568d0259eca50a96e5f09",
-      "note": "m5-10d-cal-009 follow-up queue was frozen from its completed initial-review judgment 98ec44cb-c65a-4fd6-8451-62b638fcef93."
-    },
-    {
-      "case_id": "m5-10d-cal-012",
-      "record_id": "cal-m5-10d-012",
-      "source_record_sha256": "bb116b8ab041734210f0ac5066446577fa83dda7c8e9760fbcdeadf9b38d6bc5",
-      "finding_kind": "held",
-      "source_judgment_id": "95c80855-f0cb-4606-bfdd-1e2e37d10a3f",
-      "source_judgment_row_sha256": "12fe70161000701bf7bf607ef5d9ff22826d4a6da7ab850cbc9cd3f659a19912",
-      "note": "m5-10d-cal-012 follow-up queue was frozen from its completed initial-review judgment 95c80855-f0cb-4606-bfdd-1e2e37d10a3f."
-    },
-    {
-      "case_id": "m5-10d-cal-017",
-      "record_id": "cal-m5-10d-017",
-      "source_record_sha256": "cdb26f611981906bcef8f5fa72d8a66f99d67217a5715ab2f6b1f211f6956f11",
-      "finding_kind": "correction",
-      "source_judgment_id": "ab978bfe-e35d-4aba-95e3-1933cde4624d",
-      "source_judgment_row_sha256": "710df1b84502ca94359983bcb8b19111b1e8965655cf085f81a0f32098048104",
-      "note": "m5-10d-cal-017 follow-up queue was frozen from its completed initial-review judgment ab978bfe-e35d-4aba-95e3-1933cde4624d."
-    },
-    {
-      "case_id": "m5-10d-cal-018",
-      "record_id": "cal-m5-10d-018",
-      "source_record_sha256": "1bf52bc2c6c6d6e39e56cba5b410ebcc15b8a5fa0a69d3688ae30d99a0cbbff2",
-      "finding_kind": "held",
-      "source_judgment_id": "af83bd79-098d-47d6-9f7f-10d1046aebb2",
-      "source_judgment_row_sha256": "d7e0158635fd4ab2424870022c2447e443aadfb4e512cd445abe10c7459ce888",
-      "note": "m5-10d-cal-018 follow-up queue was frozen from its completed initial-review judgment af83bd79-098d-47d6-9f7f-10d1046aebb2."
-    },
-    {
-      "case_id": "m5-10d-cal-019",
-      "record_id": "cal-m5-10d-019",
-      "source_record_sha256": "bb898730e75bf412160ee53e64e82ef8de9692d9e694452394542191577b02dc",
-      "finding_kind": "rejected",
-      "source_judgment_id": "7a3eb9ff-ae38-4ded-91af-6dbd1f3bebac",
-      "source_judgment_row_sha256": "09ce1647d2a593d3c34cd431166509dbe7ecf07f7aaa7bf8c19780994239c9e4",
-      "note": "m5-10d-cal-019 follow-up queue was frozen from its completed initial-review judgment 7a3eb9ff-ae38-4ded-91af-6dbd1f3bebac."
-    }
-  ],
+  "created_at": "2026-09-13T01:11:21.017Z",
+  "findings": [],
   "note": "Follow-up queues were frozen from recorder-owned initial-review judgment events before any follow-up pass started."
 }

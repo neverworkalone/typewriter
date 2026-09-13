@@ -3,7 +3,7 @@
   "artifact_id": "m5-10d-verification-20260912",
   "issue": 115,
   "status": "passed",
-  "verified_at": "2026-09-12T14:09:54.162Z",
+  "verified_at": "2026-09-13T00:33:20.000Z",
   "editorial_review_complete": true,
   "human_editorial_review_complete": false,
   "canonical_integrity": true,
@@ -21,22 +21,10 @@
   "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
   "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
   "checks": [
-    {
-      "id": "canonical-integrity",
-      "status": "pass"
-    },
-    {
-      "id": "deterministic-sqlite",
-      "status": "pass"
-    },
-    {
-      "id": "search-product-regression",
-      "status": "pass"
-    },
-    {
-      "id": "calibration-canonical-boundary",
-      "status": "pass"
-    }
+    { "id": "canonical-integrity", "status": "pass" },
+    { "id": "deterministic-sqlite", "status": "pass" },
+    { "id": "search-product-regression", "status": "pass" },
+    { "id": "calibration-canonical-boundary", "status": "pass" }
   ],
   "note": "M5-10D machine verification recorded for the committed calibration-only sample; no canonical data was changed."
 }

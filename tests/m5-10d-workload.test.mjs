@@ -6,7 +6,11 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { produce } from '../scripts/batch/produce-m5-10d-work.mjs';
-import { M5DRecorderError, runM5DRecorder } from '../scripts/batch/record-m5-10d-timing.mjs';
+import {
+  M5DRecorderError,
+  runM5DRecorder,
+  validateM5DDecisionInputChronology,
+} from '../scripts/batch/record-m5-10d-timing.mjs';
 import { createM5DContractProposal } from '../scripts/batch/run-m5-10d-recovery-contract.mjs';
 import {
   M5_10D_BATCH_ID,
@@ -52,7 +56,7 @@ function makeProposal() {
   };
 }
 
-function makeWorkload(proposalSha256 = 'a'.repeat(64)) {
+function makeWorkload(proposalSha256 = 'a'.repeat(64), proposalArtifact = 'contract:m5-10d-calibration-proposal') {
   const all = Array.from({ length: 20 }, (_, index) => `m5-10d-cal-${String(index + 1).padStart(3, '0')}`);
   const passRows = [
     ['target-preparation', 'target-preparation', 'calibration-start', 'pre-review-sample', all],
@@ -74,7 +78,7 @@ function makeWorkload(proposalSha256 = 'a'.repeat(64)) {
     declaration_status: 'frozen',
     frozen_at: declaredAt,
     source: {
-      proposal_artifact: 'contract:m5-10d-calibration-proposal',
+      proposal_artifact: proposalArtifact,
       proposal_sha256: proposalSha256,
       decision_independent: true,
     },
@@ -120,7 +124,13 @@ function makeRecorderDecisionRow(proposal, unitId, kind) {
     lemma_pos: {},
     sense_review: {},
     boundary_reviews: {},
-    relation_review: {},
+    relation_review: {
+      outcome: 'no-valid-candidate',
+      decision: 'not-applicable',
+      noise_assessment: 'not-applicable',
+      correction: 'none',
+      note: `${unitId} relation-review has no candidate in the fixture proposal.`,
+    },
     decision_note: `${unitId} decision was authored after the judgment timer started.`,
   };
 }
@@ -223,6 +233,16 @@ test('M5-10D recorder measures an empty declared pass as zero editor work', asyn
           }),
           (error) => error instanceof M5DRecorderError && error.code === 'TIMING_DECISION_INPUT_FORBIDDEN',
         );
+        await assert.rejects(
+          () => runM5DRecorder({
+            ...args,
+            action: 'start-judgment',
+            pass,
+            unit: 'm5-10d-cal-001',
+            'decision-json': JSON.stringify({ case_id: 'm5-10d-cal-001' }),
+          }),
+          (error) => error instanceof M5DRecorderError && error.code === 'TIMING_DECISION_INPUT_FORBIDDEN',
+        );
       }
       if (pass === 'target-preparation') {
         await assert.rejects(
@@ -282,6 +302,52 @@ test('M5-10D timing rejects a decision row authored before judgment start', () =
     }, 'initial-review:m5-10d-cal-001'),
     (error) => error instanceof M5DRecoveryValidationError && error.code === 'TIMING_EDITOR_WORK_MISSING',
   );
+});
+
+test('M5-10D recorder rejects a pre-existing decision input file', () => {
+  assert.throws(
+    () => validateM5DDecisionInputChronology({
+      startedAt: '2026-09-12T00:00:01.000Z',
+      authoredAt: '2026-09-12T00:00:00.900Z',
+      inputMtimeMs: Date.parse('2026-09-12T00:00:00.950Z'),
+      label: 'initial-review:m5-10d-cal-001 decision input',
+    }),
+    (error) => error instanceof M5DRecorderError && error.code === 'TIMING_DECISION_INPUT_FORBIDDEN',
+  );
+});
+
+test('M5-10D production recorder rejects same-process judgment completion', async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10d-invocation-boundary-'));
+  try {
+    const proposal = makeProposal();
+    const proposalPath = path.join(directory, 'proposal.json');
+    const proposalBytes = Buffer.from(`${JSON.stringify(proposal)}\n`, 'utf8');
+    await writeFile(proposalPath, proposalBytes);
+    const workload = makeWorkload(sha256Bytes(proposalBytes), 'data/batches/m5-10d-calibration-proposal-20260912.json');
+    const workloadPath = path.join(directory, 'workload.json');
+    await writeFile(workloadPath, `${JSON.stringify(workload)}\n`, 'utf8');
+    const args = {
+      proposal: proposalPath,
+      workload: workloadPath,
+      output: path.join(directory, 'timing.json'),
+    };
+    await runM5DRecorder({ ...args, action: 'start-pass', kind: 'editorial', pass: 'target-preparation' });
+    await runM5DRecorder({ ...args, action: 'record-proposal', kind: 'editorial', pass: 'target-preparation' });
+    await runM5DRecorder({ ...args, action: 'start-judgment', kind: 'editorial', pass: 'target-preparation', unit: 'm5-10d-cal-001' });
+    await assert.rejects(
+      () => runM5DRecorder({
+        ...args,
+        action: 'complete-judgment',
+        kind: 'editorial',
+        pass: 'target-preparation',
+        unit: 'm5-10d-cal-001',
+        'decision-json': JSON.stringify(makeRecorderDecisionRow(proposal, 'm5-10d-cal-001', 'target-preparation')),
+      }),
+      (error) => error instanceof M5DRecorderError && error.code === 'TIMING_JUDGMENT_INVOCATION_REUSED',
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('M5-10D workload rejects follow-up work without a recorder-owned source', () => {

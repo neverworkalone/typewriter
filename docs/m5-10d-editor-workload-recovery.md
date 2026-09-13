@@ -39,24 +39,24 @@ final decision artifact or final canonical data.
 
 ## Timing and editorial boundary
 
-The committed sample can be run end to end with:
+There is no production end-to-end materializer. The preparation command only
+creates the pre-review workload:
 
 ```sh
-npm run batch:m5-10d:calibration:run
+npm run batch:m5-10d:calibration:prepare
 ```
 
-The materializer refuses to overwrite an existing recorded artifact; preserve
-or move an earlier run before re-materializing. Normal CI verification does not
-re-run the materializer and instead validates the committed source chain.
+It does not create editorial decisions, follow-up queues, timing results,
+recovery, or authorization. The synthetic contract runner is reserved for
+validator tests and must never produce the committed calibration result.
+Normal CI validates the committed source chain; it never runs a deterministic
+production verdict generator.
 
-For manual operation, build the provisional workload from the committed source
-and start each pass before doing its work:
+For manual operation, prepare the provisional workload from the committed
+source and start each pass before doing its work:
 
 ```sh
-npm run batch:m5-10d:workload:build -- \
-  --provisional=true \
-  --proposal=data/batches/m5-10d-calibration-proposal-20260912.json \
-  --output=data/batches/m5-10d-workload-20260912.json
+npm run batch:m5-10d:calibration:prepare
 npm run batch:m5-10d:timing -- \
   --action=start-pass --kind=editorial --pass=initial-review \
   --proposal=data/batches/m5-10d-calibration-proposal-20260912.json \
@@ -64,8 +64,10 @@ npm run batch:m5-10d:timing -- \
   --output=data/batches/m5-10d-editorial-timing-20260912.json
 ```
 
-After `record-proposal`, a judgment is a single row supplied only to the
-completion command:
+After `record-proposal`, open the source context and perform the semantic
+judgment. Then, in a separate recorder process invocation, submit exactly one
+row to the completion command. Production timing rejects same-process
+start/complete calls and rejects non-interactive inline decision input.
 
 ```sh
 npm run batch:m5-10d:timing -- \
@@ -83,11 +85,33 @@ npm run batch:m5-10d:timing -- \
   --output=data/batches/m5-10d-editorial-timing-20260912.json
 ```
 
+For a non-interactive shell, create the one newly authored row in a temporary
+`--decision-file` after `start-judgment` returns and pass that file to
+`complete-judgment`. A production decision file must be an envelope containing
+the authoring timestamp and only the active unit's row:
+
+```json
+{
+  "authored_at": "2026-09-13T01:00:00.000Z",
+  "decision_row": { "case_id": "m5-10d-cal-001" }
+}
+```
+
+The example row is abbreviated; the actual `decision_row` must be the complete
+schema-valid row for the active case and may not contain a full `records` or
+`cases` draft.
+
+The file's modification time and `authored_at` must both be at or after the
+judgment start. This makes a pre-authored full draft fail at the recorder
+boundary instead of merely being relabeled as a timed result.
+
 The recorder rejects `--decision-artifact` and `--judgment-artifact`; a full
-draft cannot exist before a timed judgment. It records the row, its digest, and
-`decision_row_authored_at` only after `start-judgment` and requires that time to
-be at or after `started_at`. `editor_seconds` is the sum of these per-row
-intervals; producer execution is recorded separately as `producer_seconds`.
+draft cannot exist before a timed judgment. It records the row, its digest,
+invocation boundary, and the input's `decision_row_authored_at` only after
+`start-judgment`; the validator requires separate invocation/process evidence
+and authoring chronology for production timing. `editor_seconds` is the sum of
+these per-row intervals; producer execution is recorded separately as
+`producer_seconds`.
 
 After `initial-review` stops, freeze the recorder-owned follow-up source before
 starting any follow-up pass:
@@ -101,20 +125,23 @@ npm run batch:m5-10d:timing -- \
   --output=data/batches/m5-10d-editorial-timing-20260912.json
 ```
 
-Only then run `feedback-fixes`, `final-verification`, and `held-rejected`.
+Only then run `feedback-fixes`, `final-verification`, and `held-rejected`,
+again authoring each non-empty row after its own judgment timer starts.
 Final editorial and audit artifacts are assembled from their recorder-owned
 rows after the timing sessions stop; no pre-authored full draft is used.
 
-The committed 20-case run uses distinct Korean lexical records rather than the
-contract fixture. Its machine gate result is correction `4/20` (`20%`), relation
-noise `2/9` (`22.22%`), total recorder-measured editor judgment `0.597s`, and
-`0.02985s` per processed start. The committed source chain is
+The committed proposal uses distinct Korean lexical records rather than the
+contract fixture. The previous generated PASS and authorization were
+invalidated because their production runner contained a pre-authored verdict
+plan. A new committed recovery is not valid until the manual record-by-record
+editorial and independent audit sessions are completed through the recorder.
+The committed source chain will be
 [`m5-10d-calibration-proposal-20260912.json`](../data/batches/m5-10d-calibration-proposal-20260912.json),
 [`m5-10d-follow-up-source-20260912.json`](../data/batches/m5-10d-follow-up-source-20260912.json),
 the editorial and audit timing/judgment JSONL artifacts, and the resulting
 recovery and authorization artifacts in `data/batches/`. The verification
-artifact keeps `human_editorial_review_complete: false`; the authorization is
-therefore a machine-gated process artifact, not a claim of human approval.
+artifact must keep `human_editorial_review_complete: false` for a Codex-authored
+run; it is a machine-gated process artifact, not a claim of human approval.
 
 ## Recovery gate and authorization
 

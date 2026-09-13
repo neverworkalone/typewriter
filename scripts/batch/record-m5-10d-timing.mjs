@@ -4,7 +4,9 @@
  * Every pass is bound to a frozen workload declaration before it starts. The
  * recorder accepts only proposal facts, records producer execution separately,
  * and refuses missing, duplicate, or expanded work scopes. A zero-work pass is
- * explicit and contributes zero editor seconds.
+ * explicit and contributes zero editor seconds. Production judgment rows must
+ * be completed by a separate recorder invocation after the source context has
+ * been opened; the synthetic contract is the only same-process exception.
  */
 
 import { appendFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -24,6 +26,7 @@ import {
   DEFAULT_WORKLOAD_PATH,
   M5_10D_AUDIT_PASS_IDS,
   M5_10D_BATCH_ID,
+  M5_10D_BOUNDARY_IDS,
   M5_10D_EDITORIAL_PASS_IDS,
   M5_10D_PROCESS_REVISION,
   M5DRecoveryValidationError,
@@ -44,10 +47,12 @@ import {
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
-const RECORDER_VERSION = 'm5-10d-workload-timing-recorder-v1';
-const RECORDING_SOURCE = 'workload-timing-recorder-v1';
+const RECORDER_VERSION = 'm5-10d-workload-timing-recorder-v2';
+const RECORDING_SOURCE = 'workload-timing-recorder-v2';
 const RECORDING_COMMAND = 'node scripts/batch/record-m5-10d-timing.mjs';
 const DATE_SUFFIX = '20260912';
+const MANUAL_JUDGMENT_MODE = 'manual-separate-invocation';
+const CONTRACT_JUDGMENT_MODE = 'contract-synthetic';
 
 const M5D_FORBIDDEN_VERDICT_KEYS = new Set([
   'decision',
@@ -236,6 +241,9 @@ async function createTimingSession(kind, args) {
     recorder_version: RECORDER_VERSION,
     recording_source: RECORDING_SOURCE,
     recorder_command: RECORDING_COMMAND,
+    judgment_mode: String(workload.value.source.proposal_artifact).startsWith('contract:')
+      ? CONTRACT_JUDGMENT_MODE
+      : MANUAL_JUDGMENT_MODE,
     session_id: randomUUID(),
     started_at: startedAt,
     status: 'in-progress',
@@ -318,25 +326,94 @@ function judgmentEventId(passId, unitId) {
 }
 
 function rejectFullDraftInput(args) {
-  if (args['decision-artifact'] || args['judgment-artifact']) {
+  if (args['decision-artifact'] !== undefined || args['judgment-artifact'] !== undefined) {
     fail('timed judgments accept one decision row after start; full decision drafts are not accepted', 'TIMING_DECISION_INPUT_FORBIDDEN');
   }
 }
 
-function parseDecisionRow(args) {
-  if (typeof args['decision-json'] !== 'string') {
-    fail('timed judgment completion requires --decision-json=<single-row-object>', 'TIMING_EDITOR_WORK_MISSING');
+function rejectJudgmentInputAtStart(args) {
+  rejectFullDraftInput(args);
+  if (args['decision-json'] !== undefined || args['decision-file'] !== undefined) {
+    fail('judgment input is accepted only by a later complete-judgment invocation', 'TIMING_DECISION_INPUT_FORBIDDEN');
+  }
+}
+
+export function validateM5DDecisionInputChronology({
+  startedAt,
+  authoredAt,
+  inputMtimeMs,
+  label = 'decision input',
+} = {}) {
+  const startedAtMs = Date.parse(startedAt);
+  if (!Number.isFinite(startedAtMs)) fail(`${label} judgment start time is invalid`, 'TIMING_CHRONOLOGY');
+  if (inputMtimeMs !== undefined && inputMtimeMs < startedAtMs) {
+    fail(`${label} was created before judgment started`, 'TIMING_DECISION_INPUT_FORBIDDEN');
+  }
+  const authoredAtMs = Date.parse(authoredAt);
+  if (!Number.isFinite(authoredAtMs)) fail(`${label} authoring time is invalid`, 'TIMING_DECISION_INPUT_INVALID');
+  if (authoredAtMs < startedAtMs) {
+    fail(`${label} was authored before judgment started`, 'TIMING_DECISION_INPUT_FORBIDDEN');
+  }
+  return { startedAtMs, authoredAtMs };
+}
+
+async function parseDecisionRow(args, judgmentMode, startedAt) {
+  if (args['decision-json'] !== undefined && args['decision-file'] !== undefined) {
+    fail('choose exactly one of --decision-json or --decision-file', 'TIMING_DECISION_INPUT_INVALID');
   }
   let row;
-  try {
-    row = JSON.parse(args['decision-json']);
-  } catch (error) {
-    fail(`--decision-json is not valid JSON: ${error.message}`, 'TIMING_DECISION_INPUT_INVALID');
+  let inputKind;
+  let inputSha256;
+  let authoredAt;
+  let inputMtime;
+  if (args['decision-file'] !== undefined) {
+    const source = await readJson(resolvePath(args['decision-file']), 'timed judgment decision row');
+    const inputPath = resolvePath(args['decision-file']);
+    const inputStats = await stat(inputPath);
+    if (judgmentMode === MANUAL_JUDGMENT_MODE) {
+      if (!source.value || typeof source.value !== 'object' || Array.isArray(source.value)
+        || !source.value.decision_row || typeof source.value.decision_row !== 'object'
+        || Array.isArray(source.value.decision_row)) {
+        fail('production decision files must contain a decision_row envelope', 'TIMING_DECISION_INPUT_INVALID');
+      }
+      if (typeof source.value.authored_at !== 'string' || !Number.isFinite(Date.parse(source.value.authored_at))) {
+        fail('production decision files must contain authored_at', 'TIMING_DECISION_INPUT_INVALID');
+      }
+      authoredAt = source.value.authored_at;
+      row = source.value.decision_row;
+      inputMtime = inputStats.mtimeMs;
+      validateM5DDecisionInputChronology({
+        startedAt,
+        authoredAt,
+        inputMtimeMs: inputMtime,
+        label: 'production decision input',
+      });
+    } else {
+      row = source.value;
+      authoredAt = now();
+      inputMtime = inputStats.mtimeMs;
+    }
+    inputKind = 'decision-file';
+    inputSha256 = source.sha256;
+  } else if (typeof args['decision-json'] === 'string') {
+    try {
+      row = JSON.parse(args['decision-json']);
+    } catch (error) {
+      fail(`--decision-json is not valid JSON: ${error.message}`, 'TIMING_DECISION_INPUT_INVALID');
+    }
+    inputKind = 'decision-json';
+    inputSha256 = sha256Json(row);
+    authoredAt = now();
+  } else {
+    fail('timed judgment completion requires one decision row via --decision-json or --decision-file', 'TIMING_EDITOR_WORK_MISSING');
   }
   if (!row || typeof row !== 'object' || Array.isArray(row)) {
     fail('timed judgment decision must be one object row', 'TIMING_DECISION_INPUT_INVALID');
   }
-  return row;
+  if (judgmentMode === MANUAL_JUDGMENT_MODE && inputKind === 'decision-json' && !process.stdin.isTTY) {
+    fail('production judgment rows require a separate interactive recorder invocation', 'TIMING_DECISION_INPUT_FORBIDDEN');
+  }
+  return { row, inputKind, inputSha256, authoredAt, inputMtime };
 }
 
 function requireDecisionRowFields(row, fields, label) {
@@ -345,7 +422,7 @@ function requireDecisionRowFields(row, fields, label) {
   }
 }
 
-function validateDecisionRowInput(row, kind, pass, expectedCase) {
+function validateDecisionRowInput(row, kind, pass, expectedCase, judgmentMode) {
   const label = `${pass.id}:${expectedCase.case_id}`;
   if (row.case_id !== expectedCase.case_id) fail(`${label} decision row case ID does not match the active unit`, 'TIMING_DECISION_INPUT_INVALID');
   if (kind !== 'post-freeze-audit' && row.record_id !== expectedCase.record.id) {
@@ -359,6 +436,40 @@ function validateDecisionRowInput(row, kind, pass, expectedCase) {
   }
   if (kind === 'editorial') {
     requireDecisionRowFields(row, ['decision', 'lemma_pos', 'sense_review', 'boundary_reviews', 'relation_review', 'decision_note'], label);
+    if (judgmentMode === MANUAL_JUDGMENT_MODE) {
+      if (!row.boundary_reviews || typeof row.boundary_reviews !== 'object' || Array.isArray(row.boundary_reviews)) {
+        fail(`${label} decision row boundary reviews are invalid`, 'TIMING_DECISION_INPUT_INVALID');
+      }
+      const sourceSenseIds = expectedCase.record.senses.map(({ id }) => id);
+      for (const boundaryId of M5_10D_BOUNDARY_IDS) {
+        const boundary = row.boundary_reviews[boundaryId];
+        if (!boundary || typeof boundary !== 'object') fail(`${label} decision row is missing ${boundaryId} boundary review`, 'TIMING_DECISION_INPUT_INVALID');
+        requireDecisionRowFields(boundary, ['status', 'applicability', 'decision', 'evidence'], label);
+        if (typeof boundary.evidence !== 'string') fail(`${label} ${boundaryId} evidence must be text`, 'TIMING_DECISION_INPUT_INVALID');
+        if (!boundary.evidence.includes(expectedCase.case_id) || !boundary.evidence.includes(boundaryId)) {
+          fail(`${label} ${boundaryId} evidence is not record-specific`, 'TIMING_DECISION_INPUT_INVALID');
+        }
+        if (!sourceSenseIds.some((senseId) => boundary.evidence.includes(senseId))) {
+          fail(`${label} ${boundaryId} evidence is missing a source sense`, 'TIMING_DECISION_INPUT_INVALID');
+        }
+      }
+    }
+    const candidate = expectedCase.relation_candidate;
+    const relation = row.relation_review;
+    if (!relation || typeof relation !== 'object' || Array.isArray(relation)) {
+      fail(`${label} decision row relation review is invalid`, 'TIMING_DECISION_INPUT_INVALID');
+    }
+    if (candidate === null || candidate === undefined) {
+      if (relation.outcome !== 'no-valid-candidate') fail(`${label} decision row relation outcome does not match the proposal`, 'TIMING_SOURCE_BINDING');
+    } else {
+      requireDecisionRowFields(relation, ['outcome', 'source_sense', 'target_record', 'target_sense', 'type', 'direction', 'decision', 'noise_assessment', 'correction', 'note'], label);
+      if (relation.outcome !== 'raw-proposal') fail(`${label} decision row relation outcome does not match the proposal`, 'TIMING_SOURCE_BINDING');
+      for (const key of ['source_sense', 'target_record', 'target_sense', 'type', 'direction']) {
+        if (JSON.stringify(relation[key]) !== JSON.stringify(candidate[key])) {
+          fail(`${label} decision row relation ${key} does not match the proposal`, 'TIMING_SOURCE_BINDING');
+        }
+      }
+    }
     return;
   }
   requireDecisionRowFields(row, ['editorial_record_sha256', 'source_comparison', 'decision_comparison', 'relation_comparison', 'status', 'note'], label);
@@ -545,7 +656,7 @@ async function recordProposal(kind, args) {
 }
 
 async function startJudgment(kind, args) {
-  rejectFullDraftInput(args);
+  rejectJudgmentInputAtStart(args);
   const outputPath = resolvePath(args.output, kind === 'editorial' ? DEFAULT_EDITORIAL_TIMING_PATH : DEFAULT_AUDIT_TIMING_PATH);
   const session = await loadTiming(outputPath, kind);
   const { proposalInfo, workloadInfo } = await loadBoundSources(session, args);
@@ -569,6 +680,9 @@ async function startJudgment(kind, args) {
     pass_session_id: pass.session_id,
     unit_id: unitId,
     started_at: startedAt,
+    judgment_mode: session.judgment_mode,
+    start_process_id: process.pid,
+    start_invocation_id: randomUUID(),
     evidence,
   };
   session.active_judgments = [...(session.active_judgments ?? []), judgment];
@@ -581,6 +695,9 @@ async function startJudgment(kind, args) {
     unit_id: unitId,
     judgment_id: judgment.judgment_id,
     recorded_at: startedAt,
+    judgment_mode: session.judgment_mode,
+    start_process_id: process.pid,
+    start_invocation_id: judgment.start_invocation_id,
     source_artifact_sha256: evidence.source_artifact_sha256,
     source_record_sha256: evidence.source_record_sha256,
   });
@@ -603,16 +720,31 @@ async function completeJudgment(kind, args) {
   }
   const expectedCase = proposalInfo.by_case.get(unitId);
   if (!expectedCase) fail(`${args.pass}:${unitId} judgment is outside proposal`, 'TIMING_SCOPE_MISMATCH');
-  const decisionRow = parseDecisionRow(args);
-  validateDecisionRowInput(decisionRow, kind, pass, expectedCase);
+  if (session.judgment_mode === MANUAL_JUDGMENT_MODE && active.start_process_id === process.pid) {
+    fail('production judgment must be completed by a separate recorder invocation', 'TIMING_JUDGMENT_INVOCATION_REUSED');
+  }
+  const decisionInput = await parseDecisionRow(args, session.judgment_mode, active.started_at);
+  const {
+    row: decisionRow,
+    inputKind,
+    inputSha256,
+    authoredAt: decisionRowAuthoredAt,
+    inputMtime,
+  } = decisionInput;
+  validateDecisionRowInput(decisionRow, kind, pass, expectedCase, session.judgment_mode);
   const decisionRowSha256 = sha256Json(decisionRow);
-  const completedAt = laterThan(active.started_at);
+  const completedAt = laterThan(decisionRowAuthoredAt);
+  const completeInvocationId = randomUUID();
   const evidence = {
     ...active.evidence,
     decision_artifact_sha256: decisionRowSha256,
     decision_row_sha256: decisionRowSha256,
     decision_artifact_kind: 'recorder-owned-decision-row',
-    decision_row_authored_at: completedAt,
+    decision_row_authored_at: decisionRowAuthoredAt,
+    decision_input_kind: inputKind,
+    decision_input_sha256: inputSha256,
+    decision_input_authored_at: decisionRowAuthoredAt,
+    ...(inputMtime === undefined ? {} : { decision_input_mtime_ms: inputMtime }),
   };
   const row = {
     kind: 'judgment',
@@ -623,7 +755,12 @@ async function completeJudgment(kind, args) {
     judgment_id: active.judgment_id,
     started_at: active.started_at,
     completed_at: completedAt,
-    decision_row_authored_at: completedAt,
+    judgment_mode: session.judgment_mode,
+    start_process_id: active.start_process_id,
+    complete_process_id: process.pid,
+    start_invocation_id: active.start_invocation_id,
+    complete_invocation_id: completeInvocationId,
+    decision_row_authored_at: decisionRowAuthoredAt,
     recorded_at: completedAt,
     decision_row: decisionRow,
     evidence,
@@ -651,6 +788,11 @@ async function completeJudgment(kind, args) {
     judgment_id: active.judgment_id,
     recorded_at: completedAt,
     completed_at: completedAt,
+    judgment_mode: session.judgment_mode,
+    start_process_id: active.start_process_id,
+    complete_process_id: process.pid,
+    start_invocation_id: active.start_invocation_id,
+    complete_invocation_id: completeInvocationId,
     decision_artifact_sha256: evidence.decision_artifact_sha256,
     decision_row_sha256: evidence.decision_row_sha256,
   });
@@ -669,6 +811,24 @@ async function validateJudgmentArtifactForRecorder(row, pass, session, expectedC
     ? session.editorial_decisions_sha256
     : session.proposal_sha256;
   if (evidence.source_artifact_sha256 !== expectedSourceArtifactSha256) fail(`${pass.id}:${row.unit_id} judgment source artifact drifted`, 'TIMING_SOURCE_BINDING');
+  if (row.judgment_mode !== session.judgment_mode) fail(`${pass.id}:${row.unit_id} judgment mode drifted`, 'TIMING_EDITORIAL_PROVENANCE');
+  if (evidence.decision_input_kind === undefined || evidence.decision_input_sha256 === undefined) {
+    fail(`${pass.id}:${row.unit_id} judgment input provenance is missing`, 'TIMING_EDITOR_WORK_MISSING');
+  }
+  if (evidence.decision_input_authored_at !== row.decision_row_authored_at) {
+    fail(`${pass.id}:${row.unit_id} decision input authoring time drifted`, 'TIMING_SOURCE_BINDING');
+  }
+  validateM5DDecisionInputChronology({
+    startedAt: row.started_at,
+    authoredAt: row.decision_row_authored_at,
+    label: `${pass.id}:${row.unit_id} decision input`,
+  });
+  if (row.start_invocation_id === row.complete_invocation_id) {
+    fail(`${pass.id}:${row.unit_id} judgment start and completion invocation were reused`, 'TIMING_JUDGMENT_INVOCATION_REUSED');
+  }
+  if (session.judgment_mode === MANUAL_JUDGMENT_MODE && row.start_process_id === row.complete_process_id) {
+    fail(`${pass.id}:${row.unit_id} production judgment start and completion ran in one process`, 'TIMING_JUDGMENT_INVOCATION_REUSED');
+  }
 }
 
 async function stopPass(kind, args) {
@@ -691,10 +851,13 @@ async function stopPass(kind, args) {
     ? []
     : judgmentLogBytes.toString('utf8').trimEnd().split('\n').filter(Boolean).map((line) => JSON.parse(line));
   const expectedCasesById = new Map(proposalInfo.compact_cases.map((item) => [item.case_id, item]));
+  const expectedDecisionCasesById = proposalInfo.by_case;
   for (const row of judgmentRows) {
     if (row.pass_id !== args.pass || row.session_id !== session.session_id || row.pass_session_id !== pass.session_id) fail(`${args.pass}:${row.unit_id} judgment session binding drifted`, 'TIMING_SOURCE_BINDING');
     if (Date.parse(row.completed_at) > Date.parse(completedAt)) fail(`${args.pass}:${row.unit_id} judgment completed after pass stop`, 'TIMING_CHRONOLOGY');
     await validateJudgmentArtifactForRecorder(row, pass, session, expectedCasesById);
+    const expectedCase = expectedDecisionCasesById.get(row.unit_id);
+    validateDecisionRowInput(row.decision_row, kind, pass, expectedCase, session.judgment_mode);
   }
   const judgmentIds = judgmentRows.map(({ unit_id: unitId }) => unitId);
   if (JSON.stringify(judgmentIds) !== JSON.stringify(declaration.expected_unit_ids)) {

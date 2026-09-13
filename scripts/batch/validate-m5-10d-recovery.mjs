@@ -700,6 +700,15 @@ function validateJudgmentArtifact(row, pass, timing, expectedCasesById, expected
     : 'proposal';
   assertEqual(evidence.source_artifact_kind, expectedSourceArtifactKind, `${pass.id}:${row.unit_id} source artifact kind`, 'TIMING_SOURCE_BINDING');
   assertEqual(evidence.source_artifact_sha256, expectedSourceArtifactSha256, `${pass.id}:${row.unit_id} source artifact digest`, 'TIMING_SOURCE_BINDING');
+  if (!['decision-json', 'decision-file'].includes(evidence.decision_input_kind)) {
+    fail(`${pass.id}:${row.unit_id} judgment input kind is invalid`, 'TIMING_EDITOR_WORK_MISSING');
+  }
+  requireSha256(evidence.decision_input_sha256, `${pass.id}:${row.unit_id} decision input digest`);
+  requireTimestamp(evidence.decision_input_authored_at, `${pass.id}:${row.unit_id} decision input authored_at`, 'TIMING_EDITOR_WORK_MISSING');
+  assertEqual(evidence.decision_input_authored_at, row.decision_row_authored_at, `${pass.id}:${row.unit_id} decision input authored_at`, 'TIMING_SOURCE_BINDING');
+  if (Date.parse(evidence.decision_input_authored_at) < Date.parse(row.started_at)) {
+    fail(`${pass.id}:${row.unit_id} decision input was authored before judgment started`, 'TIMING_EDITOR_WORK_MISSING');
+  }
 }
 
 export function validateM5DDecisionRowChronology(row, label = 'decision row') {
@@ -708,7 +717,7 @@ export function validateM5DDecisionRowChronology(row, label = 'decision row') {
   requireTimestamp(row.decision_row_authored_at, `${label} decision_row_authored_at`, 'TIMING_EDITOR_WORK_MISSING');
   if (Date.parse(row.completed_at) < Date.parse(row.started_at)) fail(`${label} chronology is invalid`, 'TIMING_CHRONOLOGY');
   if (Date.parse(row.decision_row_authored_at) < Date.parse(row.started_at)) fail(`${label} existed before judgment started`, 'TIMING_EDITOR_WORK_MISSING');
-  assertEqual(row.decision_row_authored_at, row.completed_at, `${label} completion`, 'TIMING_EDITOR_WORK_MISSING');
+  if (Date.parse(row.decision_row_authored_at) > Date.parse(row.completed_at)) fail(`${label} was authored after completion`, 'TIMING_EDITOR_WORK_MISSING');
 }
 
 function validateJudgmentRow(row, pass, timing, expectedCasesById, expectedProposalSha256) {
@@ -723,6 +732,11 @@ function validateJudgmentRow(row, pass, timing, expectedCasesById, expectedPropo
   assertEqual(row.recorded_at, row.completed_at, `${pass.id}:${row.unit_id} judgment recorded_at`, 'TIMING_JUDGMENT_LOG_INVALID');
   if (!row.evidence || typeof row.evidence !== 'object') fail(`${pass.id}:${row.unit_id} judgment evidence is missing`, 'TIMING_EDITOR_WORK_MISSING');
   validateJudgmentArtifact(row, pass, timing, expectedCasesById, expectedProposalSha256);
+  if (row.judgment_mode !== timing.judgment_mode) fail(`${pass.id}:${row.unit_id} judgment mode drifted`, 'TIMING_EDITORIAL_PROVENANCE');
+  if (row.start_invocation_id === row.complete_invocation_id) fail(`${pass.id}:${row.unit_id} judgment start and completion invocation were reused`, 'TIMING_JUDGMENT_INVOCATION_REUSED');
+  if (timing.judgment_mode === 'manual-separate-invocation' && row.start_process_id === row.complete_process_id) {
+    fail(`${pass.id}:${row.unit_id} production judgment start and completion ran in one process`, 'TIMING_JUDGMENT_INVOCATION_REUSED');
+  }
   return row;
 }
 
@@ -744,6 +758,9 @@ export function validateM5DTiming(timing, {
   validateSchema(timing, timingValidator, 'timing', 'M5-10D timing', 'TIMING_SCHEMA_ERROR');
   if (timing.timing_kind !== timingKind) fail(`timing kind must be ${timingKind}`, 'TIMING_KIND_MISMATCH');
   assertEqual(timing.measurement_kind, 'editor-judgment', 'timing measurement kind drifted', 'TIMING_MEASUREMENT_KIND');
+  if (!['manual-separate-invocation', 'contract-synthetic'].includes(timing.judgment_mode)) {
+    fail('timing judgment mode is missing or unsupported', 'TIMING_EDITORIAL_PROVENANCE');
+  }
   requireUuid(timing.session_id, 'timing session_id');
   requireTimestamp(timing.started_at, 'timing started_at');
   requireSha256(timing.workload_sha256, 'timing workload_sha256');

@@ -131,10 +131,7 @@ npm run batch:process:check
 npm run batch:repair:check
 npm run batch:m5-10d:contract:check
 # M5-10D keeps its calibration-only proposal separate from canonical data.
-npm run batch:m5-10d:workload:build -- \
-  --provisional=true \
-  --proposal=data/batches/m5-10d-calibration-proposal-20260912.json \
-  --output=data/batches/m5-10d-workload-20260912.json
+npm run batch:m5-10d:calibration:prepare
 # After initial-review judgment rows are complete, freeze the recorder-owned follow-up source.
 npm run batch:m5-10d:recovery:contract:check
 npm run batch:m5-10d:recovery:check

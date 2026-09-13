@@ -49,7 +49,7 @@
     "batch:m5-10d:recovery:check": "node scripts/batch/validate-m5-10d-recovery.mjs",
     "batch:m5-10d:authorization:build": "node scripts/batch/build-m5-10d-authorization.mjs",
     "batch:m5-10d:authorization:check": "node scripts/batch/validate-m5-10d-recovery.mjs --action=authorization",
-    "batch:m5-10d:calibration:run": "node scripts/batch/run-m5-10d-calibration.mjs",
+    "batch:m5-10d:calibration:prepare": "node scripts/batch/prepare-m5-10d-calibration.mjs",
     "batch:m5-10d:recovery:contract:check": "node scripts/batch/run-m5-10d-recovery-contract.mjs",
     "batch:m5-10d:contract:check": "node --test tests/m5-10d-workload.test.mjs",
     "batch:timing:feedback": "node scripts/batch/timing.mjs --action=feedback",
