@@ -29,7 +29,7 @@ import {
 import {
   M5_11_CATALOG,
 } from './m5-11-catalog.mjs';
-import { M5_11_BATCH_ID } from './m5-11-editorial.mjs';
+import { M5_11_BATCH_ID, sha256Json } from './m5-11-editorial.mjs';
 import {
   M5_11_BASE_CANONICAL_SHA256,
   M5_11_BASE_INVENTORY_SHA256,
@@ -310,6 +310,10 @@ function assertResultMatchesManifest(result, manifest) {
   }, 'admission decision counts drifted');
   assert.deepEqual(result.gate, manifest.gate, 'admission gate drifted');
   assert.deepEqual(result.verification, manifest.verification, 'admission verification drifted');
+  assert.deepEqual(result.gate_evidence, manifest.gate_evidence, 'admission durable gate evidence drifted');
+  if (sha256Json(result.gate_evidence) !== manifest.gate_evidence_sha256) {
+    fail('admission durable gate evidence digest drifted', 'MANIFEST_SOURCE_MISMATCH');
+  }
 }
 
 async function buildProspectiveState({
@@ -519,6 +523,8 @@ export async function promoteM511({
     timing: result.timing,
     audit: result.audit,
     verification: result.verification,
+    gate_evidence: result.gate_evidence,
+    gate_evidence_sha256: sha256Json(result.gate_evidence),
     authorization: result.authorization,
     decisions: {
       ...result.decision_counts,

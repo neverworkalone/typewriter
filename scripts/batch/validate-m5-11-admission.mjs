@@ -19,7 +19,12 @@ import {
   hashCanonicalDirectory,
 } from './validate-m5-8-process.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
-import { findRecordsByExactTerm } from '../build/query.mjs';
+import {
+  findRecordsByExactTerm,
+  findRecordsBySearchTerm,
+  getRecord,
+  getSenseRelations,
+} from '../build/query.mjs';
 import { validateM5DAuthorization } from './validate-m5-10d-recovery.mjs';
 import {
   M5_11_BATCH_ID,
@@ -39,9 +44,11 @@ import {
 import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
 
 const require = createRequire(import.meta.url);
 const DEFAULT_PLAN = require('../../data/batches/m5-8-expansion-plan.json');
+const M4_SEARCH_REGRESSION_CORPUS = require('../../tests/fixtures/search-regressions/m4-baseline.json');
 
 export const M5_11_EDITORIAL_TIMING_PASS_IDS = Object.freeze([
   'target-preparation',
@@ -55,8 +62,10 @@ export const M5_11_TIMING_PASS_IDS = Object.freeze([
   ...M5_11_EDITORIAL_TIMING_PASS_IDS,
   ...M5_11_AUDIT_TIMING_PASS_IDS,
 ]);
-export const M5_11_TIMING_RECORDER_VERSION = 'm5-11-timing-recorder-v1';
-export const M5_11_PROSPECTIVE_VERIFIER_VERSION = 'm5-11-prospective-verifier-v1';
+export const M5_11_TIMING_RECORDER_VERSION = 'm5-11-timing-recorder-v2';
+export const M5_11_TIMING_RECORDING_COMMAND = 'node scripts/batch/record-m5-11-timing.mjs';
+export const M5_11_TIMING_CLOCK_SOURCE = 'system-clock';
+export const M5_11_PROSPECTIVE_VERIFIER_VERSION = 'm5-11-prospective-verifier-v2';
 export const M5_11_MACHINE_CHECK_IDS = Object.freeze([
   'canonical-integrity',
   'deterministic-sqlite',
@@ -119,6 +128,11 @@ function assertExactIds(actual, expected, label, code = 'ARTIFACT_SCOPE_ERROR') 
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+export function createM511TimingProof(artifact) {
+  const { recording_proof_sha256: ignored, ...payload } = artifact;
+  return sha256Json(payload);
 }
 
 function catalogIds(catalog) {
@@ -202,7 +216,11 @@ function validateTimingEvent(event, {
     || completed > isoTimestamp(pass.completed_at, `${label}.pass.completed_at`)) {
     fail(`${label} is outside its timing pass`, 'TIMING_CHRONOLOGY_ERROR');
   }
-  return (completed - started) / 1000;
+  return {
+    seconds: (completed - started) / 1000,
+    started_at: started,
+    completed_at: completed,
+  };
 }
 
 function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
@@ -227,7 +245,9 @@ function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
   const started = isoTimestamp(pass.started_at, `${label}.started_at`);
   const completed = isoTimestamp(pass.completed_at, `${label}.completed_at`);
   if (completed < started) fail(`${label}.completed_at precedes started_at`, 'TIMING_CHRONOLOGY_ERROR');
-  requireString(pass.recording_source, `${label}.recording_source`);
+  if (pass.recording_source !== M5_11_TIMING_RECORDER_VERSION) {
+    fail(`${label}.recording_source must identify the M5-11 recorder`, 'TIMING_PROVENANCE_ERROR');
+  }
   const elapsed = (completed - started) / 1000;
   assertSecondsEqual(pass.wall_clock_seconds, elapsed, `${label}.wall_clock_seconds`);
   const eventResults = eventIds.map((eventId, eventIndex) => {
@@ -235,7 +255,7 @@ function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
     if (!event) fail(`${label}.event_ids[${eventIndex}] is not present in the recorder event log`, 'TIMING_EVENT_BINDING');
     return {
       event,
-      seconds: validateTimingEvent(event, {
+      ...validateTimingEvent(event, {
         artifact,
         pass,
         unitId: unitIds[eventIndex],
@@ -249,6 +269,21 @@ function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
     `${label}.event unit scope`,
     'TIMING_EVENT_BINDING',
   );
+  if (unitIds.length > 0) {
+    let previousCompletedAt = started;
+    for (const [eventIndex, { started_at: eventStartedAt, completed_at: eventCompletedAt }] of eventResults.entries()) {
+      if (eventStartedAt !== previousCompletedAt) {
+        fail(
+          `${label}.events[${eventIndex}] is not contiguous with the preceding recorder event`,
+          'TIMING_CHRONOLOGY_ERROR',
+        );
+      }
+      previousCompletedAt = eventCompletedAt;
+    }
+    if (eventResults[0].started_at !== started || eventResults.at(-1).completed_at !== completed) {
+      fail(`${label}.events do not cover the complete recorder pass`, 'TIMING_CHRONOLOGY_ERROR');
+    }
+  }
   const measuredSeconds = eventResults.reduce((sum, { seconds }) => sum + seconds, 0);
   const durationField = audit ? 'audit_seconds' : 'editor_seconds';
   requireFiniteNumber(pass[durationField], `${label}.${durationField}`);
@@ -257,6 +292,9 @@ function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
     ...pass,
     derived_editor_seconds: audit ? 0 : measuredSeconds,
     derived_audit_seconds: audit ? measuredSeconds : 0,
+    derived_started_at: started,
+    derived_completed_at: completed,
+    derived_event_count: eventResults.length,
   };
 }
 
@@ -273,6 +311,7 @@ export function validateM511TimingArtifact(
     editorialSourceSha256,
     auditSourceSha256,
     editorialTimingSourceSha256,
+    afterTimingArtifact,
   } = {},
 ) {
   const label = `M5-11 ${timingKind} timing artifact`;
@@ -303,13 +342,33 @@ export function validateM511TimingArtifact(
   if (artifact.recorder_version !== M5_11_TIMING_RECORDER_VERSION) {
     fail(`${label}.recorder_version must identify the M5-11 recorder`, 'TIMING_PROVENANCE_ERROR');
   }
-  requireString(artifact.recording_source, `${label}.recording_source`);
+  if (artifact.recording_source !== M5_11_TIMING_RECORDER_VERSION) {
+    fail(`${label}.recording_source must identify the M5-11 recorder`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (artifact.recorder_command !== M5_11_TIMING_RECORDING_COMMAND) {
+    fail(`${label}.recorder_command must identify the M5-11 timing recorder`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (artifact.clock_source !== M5_11_TIMING_CLOCK_SOURCE) {
+    fail(`${label}.clock_source must identify the system clock`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (!/^[a-f0-9]{64}$/u.test(artifact.recording_proof_sha256)
+    || artifact.recording_proof_sha256 !== createM511TimingProof(artifact)) {
+    fail(`${label}.recording_proof_sha256 does not match the recorder-produced session`, 'TIMING_PROVENANCE_ERROR');
+  }
   const recorder = requireObject(artifact.recorder, `${label}.recorder`);
   if (recorder.version !== M5_11_TIMING_RECORDER_VERSION) {
     fail(`${label}.recorder.version must identify the M5-11 recorder`, 'TIMING_PROVENANCE_ERROR');
   }
   if (recorder.session_id !== artifact.session_id) {
     fail(`${label}.recorder.session_id is not bound to the timing session`, 'TIMING_PROVENANCE_ERROR');
+  }
+  const recorderEvents = requireArray(artifact.recorder_events, `${label}.recorder_events`);
+  if (!/^[a-f0-9]{64}$/u.test(recorder.recorder_event_log_sha256)
+    || recorder.recorder_event_log_sha256 !== sha256Json(recorderEvents)) {
+    fail(`${label}.recorder.recorder_event_log_sha256 does not bind start/stop events`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (recorder.recorder_event_count !== recorderEvents.length) {
+    fail(`${label}.recorder.recorder_event_count does not match start/stop events`, 'TIMING_PROVENANCE_ERROR');
   }
   const events = requireArray(artifact.events, `${label}.events`);
   if (!/^[a-f0-9]{64}$/u.test(recorder.event_log_sha256)) {
@@ -328,6 +387,25 @@ export function validateM511TimingArtifact(
     if (eventsById.has(event.event_id)) fail(`${label}.events contains duplicate event_id ${event.event_id}`, 'TIMING_SCOPE_ERROR');
     eventsById.set(event.event_id, event);
   }
+  const recorderEventsByKey = new Map();
+  for (const [index, event] of recorderEvents.entries()) {
+    const eventLabel = `${label}.recorder_events[${index}]`;
+    requireObject(event, eventLabel);
+    requireString(event.event_id, `${eventLabel}.event_id`);
+    if (!['start', 'stop'].includes(event.kind)) {
+      fail(`${eventLabel}.kind must be start or stop`, 'TIMING_PROVENANCE_ERROR');
+    }
+    if (!expectedPasses.includes(event.pass_id)) {
+      fail(`${eventLabel}.pass_id is not a required timing pass`, 'TIMING_SCOPE_ERROR');
+    }
+    if (event.session_id !== artifact.session_id) {
+      fail(`${eventLabel}.session_id is not bound to the timing session`, 'TIMING_PROVENANCE_ERROR');
+    }
+    const at = isoTimestamp(event.at, `${eventLabel}.at`);
+    const key = `${event.pass_id}:${event.kind}`;
+    if (recorderEventsByKey.has(key)) fail(`${eventLabel} duplicates ${key}`, 'TIMING_SCOPE_ERROR');
+    recorderEventsByKey.set(key, { ...event, at });
+  }
   assertExactIds(
     passes.map(({ id }) => id),
     expectedPasses,
@@ -339,7 +417,13 @@ export function validateM511TimingArtifact(
   let editorSeconds = 0;
   let auditSeconds = 0;
   let unmeasuredPassCount = 0;
+  let previousCompletedAt;
+  const passIntervals = [];
   for (const [index, pass] of passes.entries()) {
+    const passStartedAt = isoTimestamp(pass.started_at, `${label}.passes[${index}].started_at`);
+    if (previousCompletedAt !== undefined && passStartedAt < previousCompletedAt) {
+      fail(`${label}.passes[${index}] starts before the preceding pass completed`, 'TIMING_CHRONOLOGY_ERROR');
+    }
     const validated = validateTimingPass(
       pass,
       expectedPasses,
@@ -351,9 +435,28 @@ export function validateM511TimingArtifact(
         audit: timingKind === 'post-freeze-audit',
       },
     );
+    const recorderStart = recorderEventsByKey.get(`${validated.id}:start`);
+    const recorderStop = recorderEventsByKey.get(`${validated.id}:stop`);
+    if (!recorderStart || !recorderStop
+      || recorderStart.at !== validated.derived_started_at
+      || recorderStop.at !== validated.derived_completed_at) {
+      fail(`${label}.${validated.id} is not bound to recorder start/stop events`, 'TIMING_PROVENANCE_ERROR');
+    }
     passById.set(validated.id, validated);
     if (timingKind === 'editorial') editorSeconds += validated.derived_editor_seconds;
     else auditSeconds += validated.derived_audit_seconds;
+    previousCompletedAt = validated.derived_completed_at;
+    passIntervals.push({
+      id: validated.id,
+      unit_count: validated.unit_count,
+      event_count: validated.derived_event_count,
+      started_at: validated.started_at,
+      completed_at: validated.completed_at,
+      wall_clock_seconds: validated.wall_clock_seconds,
+      measured_seconds: timingKind === 'editorial'
+        ? validated.derived_editor_seconds
+        : validated.derived_audit_seconds,
+    });
   }
   assertExactIds(
     [...eventsById.keys()],
@@ -361,6 +464,24 @@ export function validateM511TimingArtifact(
     `${label}.events scope`,
     'TIMING_EVENT_BINDING',
   );
+  assertExactIds(
+    [...recorderEventsByKey.keys()].sort(),
+    expectedPasses.flatMap((passId) => [`${passId}:start`, `${passId}:stop`]).sort(),
+    `${label}.recorder_events scope`,
+    'TIMING_PROVENANCE_ERROR',
+  );
+
+  if (afterTimingArtifact !== undefined) {
+    const previousPass = requireArray(afterTimingArtifact.passes, `${label}.preceding timing passes`).at(-1);
+    const firstPass = passes[0];
+    if (!previousPass || !firstPass) {
+      fail(`${label} cannot establish chronology against the preceding timing session`, 'TIMING_CHRONOLOGY_ERROR');
+    }
+    if (isoTimestamp(firstPass.started_at, `${label}.passes[0].started_at`)
+      < isoTimestamp(previousPass.completed_at, `${label}.preceding completed_at`)) {
+      fail(`${label} starts before the editorial timing session completed`, 'TIMING_CHRONOLOGY_ERROR');
+    }
+  }
 
   if (timingKind === 'editorial') {
     assertExactIds(
@@ -404,6 +525,8 @@ export function validateM511TimingArtifact(
     audit_seconds: timingKind === 'post-freeze-audit' ? auditSeconds : 0,
     unmeasured_pass_count: unmeasuredPassCount,
     pass_ids: [...expectedPasses],
+    recording_proof_sha256: artifact.recording_proof_sha256,
+    pass_intervals: passIntervals,
   };
 }
 
@@ -607,6 +730,12 @@ function validateRelationEvidence(relationDiff, importedRecords, baseRecords, ba
   );
   const expectedRelationTuples = relationSetFromRecords(baseRecords);
   for (const event of relationDiff.events) {
+    if (!importedSourceSenses.has(event.source_sense)) {
+      fail(
+        `relation diff event ${event.event_id} mutates a non-imported source sense`,
+        'RELATION_SOURCE_NOT_IMPORTED',
+      );
+    }
     const beforeTuple = event.before ? relationTupleFromEvent(event, 'before') : undefined;
     const afterTuple = event.after ? relationTupleFromEvent(event, 'after') : undefined;
     if (event.operation === 'remove' || event.operation === 'retype' || event.operation === 'retarget') {
@@ -684,6 +813,124 @@ function createReviewedImportBytes(records) {
   );
 }
 
+function relationSignature(relation) {
+  return JSON.stringify([
+    relation.source_sense_id,
+    relation.target_record_id,
+    relation.target_sense_id,
+    relation.type,
+  ]);
+}
+
+function validateM4SearchRegressionAgainstDatabase(database) {
+  try {
+    assertValidSearchRegressionCorpus(M4_SEARCH_REGRESSION_CORPUS);
+  } catch (error) {
+    fail(`M4 search regression corpus is invalid: ${error.message}`, 'VERIFICATION_SEARCH_FAILED');
+  }
+
+  const observations = [];
+  for (const searchCase of M4_SEARCH_REGRESSION_CORPUS.cases.filter(
+    ({ evaluation }) => evaluation === 'baseline',
+  )) {
+    const response = findRecordsBySearchTerm(database, searchCase.query);
+    if (response.status !== searchCase.actual.status) {
+      fail(`M4 baseline ${searchCase.id} status drifted`, 'VERIFICATION_SEARCH_FAILED');
+    }
+    if (searchCase.actual.reason !== undefined && response.reason !== searchCase.actual.reason) {
+      fail(`M4 baseline ${searchCase.id} reason drifted`, 'VERIFICATION_SEARCH_FAILED');
+    }
+    const rows = response.matches;
+    const resultIds = rows.map(({ id }) => id);
+    assertDeep(
+      resultIds,
+      searchCase.actual.result_ids,
+      `M4 baseline ${searchCase.id} result IDs`,
+      'VERIFICATION_SEARCH_FAILED',
+    );
+
+    for (const assertion of searchCase.assertions) {
+      if (assertion.kind === 'record') {
+        const record = getRecord(database, assertion.record_id);
+        if (!record) fail(
+          `M4 baseline ${searchCase.id} is missing record ${assertion.record_id}`,
+          'VERIFICATION_SEARCH_FAILED',
+        );
+        if (assertion.in_results !== resultIds.includes(assertion.record_id)) {
+          fail(`M4 baseline ${searchCase.id} record membership drifted`, 'VERIFICATION_SEARCH_FAILED');
+        }
+        for (const field of ['record_type', 'role']) {
+          if (assertion[field] !== undefined && record[field] !== assertion[field]) {
+            fail(`M4 baseline ${searchCase.id} ${field} drifted`, 'VERIFICATION_SEARCH_FAILED');
+          }
+        }
+        if (assertion.sense_ids !== undefined) {
+          assertDeep(
+            record.senses.map(({ id }) => id),
+            assertion.sense_ids,
+            `M4 baseline ${searchCase.id} sense order`,
+            'VERIFICATION_SEARCH_FAILED',
+          );
+        }
+        if (assertion.relation_count !== undefined) {
+          const relationCount = record.senses.reduce(
+            (sum, sense) => sum + sense.relations.length,
+            0,
+          );
+          if (relationCount !== assertion.relation_count) {
+            fail(`M4 baseline ${searchCase.id} relation count drifted`, 'VERIFICATION_SEARCH_FAILED');
+          }
+        }
+      } else if (assertion.kind === 'relation') {
+        const actualRelation = getSenseRelations(database, assertion.source_sense_id)
+          .map((relation) => ({
+            source_sense_id: assertion.source_sense_id,
+            target_record_id: relation.target,
+            target_sense_id: relation.target_sense,
+            type: relation.type,
+          }))
+          .find((relation) => relationSignature(relation) === relationSignature(assertion));
+        if (!actualRelation) {
+          fail(`M4 baseline ${searchCase.id} relation ${relationSignature(assertion)} drifted`, 'VERIFICATION_SEARCH_FAILED');
+        }
+      }
+    }
+
+    if (searchCase.selection?.kind === 'relation-target') {
+      const source = getRecord(database, searchCase.selection.source_record_id);
+      const sourceSense = source?.senses.find(({ id }) => id === searchCase.selection.source_sense_id);
+      const targetRelation = sourceSense?.relations.find(({ target, target_sense, type }) => (
+        target === searchCase.selection.record_id
+        && target_sense === searchCase.selection.sense_id
+        && type === searchCase.selection.relation_type
+      ));
+      const selected = getRecord(database, searchCase.selection.record_id);
+      if (!targetRelation || !selected || selected.role !== 'reference-only') {
+        fail(`M4 baseline ${searchCase.id} relation selection drifted`, 'VERIFICATION_SEARCH_FAILED');
+      }
+      if (!selected.senses.some(({ id }) => id === searchCase.selection.sense_id)) {
+        fail(`M4 baseline ${searchCase.id} selected sense drifted`, 'VERIFICATION_SEARCH_FAILED');
+      }
+    }
+
+    observations.push({
+      id: searchCase.id,
+      query: searchCase.query,
+      status: response.status,
+      reason: response.reason,
+      result_ids: resultIds,
+      selected_record_id: searchCase.selection?.record_id ?? null,
+      relation_assertion_count: searchCase.assertions.filter(({ kind }) => kind === 'relation').length,
+    });
+  }
+  return {
+    corpus_id: M4_SEARCH_REGRESSION_CORPUS.corpus_id,
+    evaluation: 'baseline',
+    case_count: observations.length,
+    cases: observations,
+  };
+}
+
 export async function runM511ProspectiveVerification({
   baseCanonicalDirectory,
   importedRecords,
@@ -758,15 +1005,19 @@ export async function runM511ProspectiveVerification({
         counts,
       };
 
-      const searchResults = importedRecords.map((record) => ({
-        record_id: record.id,
-        lemma: record.lemma,
-        result_ids: findRecordsByExactTerm(database, record.lemma).map(({ id }) => id),
-      }));
-      if (searchResults.some(({ record_id: recordId, result_ids: resultIds }) => !resultIds.includes(recordId))) {
+      searchObservation = {
+        m4: validateM4SearchRegressionAgainstDatabase(database),
+        admitted_lemmas: importedRecords.map((record) => ({
+          record_id: record.id,
+          lemma: record.lemma,
+          result_ids: findRecordsByExactTerm(database, record.lemma).map(({ id }) => id),
+        })),
+      };
+      if (searchObservation.admitted_lemmas.some(
+        ({ record_id: recordId, result_ids: resultIds }) => !resultIds.includes(recordId),
+      )) {
         fail('prospective search regression did not find every admitted lemma', 'VERIFICATION_SEARCH_FAILED');
       }
-      searchObservation = searchResults;
     } finally {
       database.close();
     }
@@ -903,6 +1154,7 @@ export function deriveM511AdmissionGate({
     editorialSourceSha256: editorialSource.sha256,
     auditSourceSha256: auditSource.sha256,
     editorialTimingSourceSha256: editorialTimingSource.sha256,
+    afterTimingArtifact: editorialTiming,
   });
   const auditResult = validateM511AuditArtifact(audit, {
     source: auditSource,
@@ -956,6 +1208,30 @@ export function deriveM511AdmissionGate({
   gate.gate_status = Object.values(gate.quality_passes).every(Boolean) ? 'pass' : 'fail';
   gate.decision = gate.gate_status === 'pass' ? 'APPROVE BOUNDED' : plan.gate.failure_decision;
 
+  const gateEvidence = {
+    schema_version: '1',
+    evidence_version: 'm5-11-gate-evidence-v1',
+    batch_id: M5_11_BATCH_ID,
+    base_summary: baseSummary,
+    final_summary: finalSummary,
+    decision_counts: {
+      ...decisions,
+      processed_start_count: processedStartCount,
+      imported_start_count: importedRecords.length,
+    },
+    processed_start_count: processedStartCount,
+    imported_start_count: importedRecords.length,
+    relation: relationSummary,
+    timing: {
+      editorial: editorialTimingResult,
+      audit: auditTimingResult,
+    },
+    audit: auditResult,
+    verification: verificationResult,
+    metrics,
+    gate,
+  };
+
   return {
     batch_id: M5_11_BATCH_ID,
     decision_counts: decisions,
@@ -976,6 +1252,7 @@ export function deriveM511AdmissionGate({
     verification: verificationResult,
     metrics,
     gate,
+    gate_evidence: gateEvidence,
     sources: {
       proposal: proposalSource,
       editorial: editorialSource,

@@ -33,6 +33,28 @@ the frozen lexical body. Both the proposal and decision artifacts are external
 inputs to the builder.
 These checks apply to every candidate rather than a fixed lemma allowlist.
 
+Timing is recorded only through the current-clock recorder:
+
+```sh
+npm run batch:m5-11:timing -- \
+  --action=start \
+  --pass=target-preparation \
+  --output=/external/m5-11-editorial-timing.json \
+  --unit-ids-file=/external/m5-11-catalog-ids.json \
+  --proposal-sha256=<proposal-digest> \
+  --editorial-sha256=<decision-digest>
+```
+
+Each pass is stopped in a later invocation. The recorder owns start/stop
+timestamps, contiguous work events, chronology, and a proof digest; timestamp or
+duration overrides are rejected. The independent `post-freeze-audit` session is
+bound to a distinct session and must begin after editorial timing completes.
+The prospective verifier also runs the complete committed M4 baseline,
+selection, and relation assertions against the temporary SQLite state. The
+portable manifest and promotion evidence retain the derived timing/check
+summaries and their digest so clean-checkout validation recomputes the gate
+instead of trusting paired summaries.
+
 ## Gate
 
 `HOLD PROCESS` — editorial decision artifact, human editorial review, timing,

@@ -6,6 +6,7 @@ import {
   M511AdmissionValidationError,
   validateM511Admission,
 } from './validate-m5-11-admission.mjs';
+import { sha256Json } from './m5-11-editorial.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -118,6 +119,8 @@ export async function buildM511Admission({
     audit: result.audit,
     verification: result.verification,
     gate: result.gate,
+    gate_evidence: result.gate_evidence,
+    gate_evidence_sha256: sha256Json(result.gate_evidence),
     sources: Object.fromEntries(
       Object.entries(result.sources).map(([key, source]) => [key, sourceRef(key, source)]),
     ),
