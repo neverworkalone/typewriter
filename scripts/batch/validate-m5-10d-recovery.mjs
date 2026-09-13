@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -15,6 +15,8 @@ import { M5_10D_PRODUCER_VERSION } from './produce-m5-10d-work.mjs';
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const BATCH_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches');
+const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
+const HISTORICAL_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json');
 
 export const M5_10D_BATCH_ID = 'm5-10d-editor-time-recalibration-20260912';
 export const M5_10D_PROCESS_REVISION = 'm5-10d-editor-workload-v1';
@@ -1493,7 +1495,15 @@ const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === path.r
 if (isMainModule) {
   const args = mainArgumentMap(process.argv.slice(2));
   const run = args.action === 'authorization' ? validateM5DAuthorization : validateM5DRecovery;
+  const historicalDefaults = existsSync(HISTORICAL_CANONICAL_DIRECTORY)
+    && existsSync(HISTORICAL_INVENTORY_PATH)
+    ? {
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
+    }
+    : {};
   run({
+    ...historicalDefaults,
     ...(args.artifact ? { artifactPath: path.resolve(args.artifact) } : {}),
     ...(args.authorization ? { authorizationPath: path.resolve(args.authorization) } : {}),
     ...(args.recovery ? { recoveryPath: path.resolve(args.recovery) } : {}),
@@ -1505,6 +1515,8 @@ if (isMainModule) {
     ...(args.audit ? { auditPath: path.resolve(args.audit) } : {}),
     ...(args['audit-timing'] ? { auditTimingPath: path.resolve(args['audit-timing']) } : {}),
     ...(args.verification ? { verificationPath: path.resolve(args.verification) } : {}),
+    ...(args['canonical-dir'] ? { canonicalDirectory: path.resolve(args['canonical-dir']) } : {}),
+    ...(args.inventory ? { inventoryPath: path.resolve(args.inventory) } : {}),
   }).then((result) => console.log(JSON.stringify(result.gate ?? result.authorization, null, 2)))
     .catch((error) => {
       console.error(error.code ? `${error.code}: ${error.message}` : error.message);

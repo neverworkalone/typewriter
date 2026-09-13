@@ -38,6 +38,8 @@ import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+const HISTORICAL_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
+const HISTORICAL_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json');
 const DECISIONS = Object.freeze([
   'included', 'corrected', 'included', 'corrected', 'included',
   'held', 'included', 'corrected', 'included', 'included',
@@ -293,8 +295,8 @@ function fixedRecoverySourcePaths(recovery) {
     audit_decisions: 'data/batches/m5-10d-audit-decisions-20260912.json',
     audit_timing: 'data/batches/m5-10d-audit-timing-20260912.json',
     verification: 'data/batches/m5-10d-verification-20260912.json',
-    canonical_directory: 'data/canonical',
-    inventory: 'data/inventory/m5-target-inventory.json',
+    canonical_directory: 'data/batches/m5-11-base-canonical',
+    inventory: 'data/batches/m5-11-base-inventory.json',
   });
   return recovery;
 }
@@ -303,8 +305,8 @@ function fixedAuthorizationSourcePaths(authorization) {
   Object.assign(authorization.source, {
     recovery_artifact: 'data/batches/m5-10d-recovery.json',
     workload: 'data/batches/m5-10d-workload-20260912.json',
-    canonical_directory: 'data/canonical',
-    inventory: 'data/inventory/m5-target-inventory.json',
+    canonical_directory: 'data/batches/m5-11-base-canonical',
+    inventory: 'data/batches/m5-11-base-inventory.json',
     repair_revision: 'data/batches/m5-10a-process-correction.json',
   });
   authorization.failed_stage.path = 'data/batches/m5-10-wave-b-stage.json';
@@ -332,6 +334,8 @@ async function runM5DRecoveryContract() {
       proposal: proposalPath,
       workload: workloadPath,
       'follow-up-source': followUpSourcePath,
+      'canonical-dir': HISTORICAL_CANONICAL_DIRECTORY,
+      inventory: HISTORICAL_INVENTORY_PATH,
       output: editorialTimingPath,
     };
 
@@ -393,6 +397,8 @@ async function runM5DRecoveryContract() {
       workload: workloadPath,
       'follow-up-source': followUpSourcePath,
       editorial: editorialPath,
+      'canonical-dir': HISTORICAL_CANONICAL_DIRECTORY,
+      inventory: HISTORICAL_INVENTORY_PATH,
       output: auditTimingPath,
     };
     await runPass({
@@ -411,8 +417,8 @@ async function runM5DRecoveryContract() {
       'findings-json': '[]',
     });
 
-    const canonicalDirectorySha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
-    const inventorySource = await readJson(DEFAULT_INVENTORY_PATH);
+    const canonicalDirectorySha256 = await hashCanonicalDirectory(HISTORICAL_CANONICAL_DIRECTORY);
+    const inventorySource = await readJson(HISTORICAL_INVENTORY_PATH);
     await writeJson(
       verificationPath,
       contractVerification(canonicalDirectorySha256, inventorySource.sha256),
@@ -429,6 +435,8 @@ async function runM5DRecoveryContract() {
       failedStagePath: DEFAULT_FAILED_STAGE_PATH,
       failedRecoveryPath: DEFAULT_FAILED_RECOVERY_PATH,
       repairRevisionPath: DEFAULT_REPAIR_REVISION_PATH,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
       outputPath: recoveryPath,
     });
     const recovery = (await readJson(recoveryPath)).value;
@@ -447,13 +455,15 @@ async function runM5DRecoveryContract() {
       failedStagePath: DEFAULT_FAILED_STAGE_PATH,
       failedRecoveryPath: DEFAULT_FAILED_RECOVERY_PATH,
       repairRevisionPath: DEFAULT_REPAIR_REVISION_PATH,
-      canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
-      inventoryPath: DEFAULT_INVENTORY_PATH,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
     });
     const authorization = await buildM5DAuthorization({
       recoveryPath,
       workloadPath,
       followUpSourcePath,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
       outputPath: authorizationPath,
       recoveryOptions: {
         proposalPath,
@@ -466,8 +476,8 @@ async function runM5DRecoveryContract() {
         failedStagePath: DEFAULT_FAILED_STAGE_PATH,
         failedRecoveryPath: DEFAULT_FAILED_RECOVERY_PATH,
         repairRevisionPath: DEFAULT_REPAIR_REVISION_PATH,
-        canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
-        inventoryPath: DEFAULT_INVENTORY_PATH,
+        canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+        inventoryPath: HISTORICAL_INVENTORY_PATH,
       },
     });
     await writeJson(authorizationPath, fixedAuthorizationSourcePaths(authorization));
@@ -485,8 +495,8 @@ async function runM5DRecoveryContract() {
       failedStagePath: DEFAULT_FAILED_STAGE_PATH,
       failedRecoveryPath: DEFAULT_FAILED_RECOVERY_PATH,
       repairRevisionPath: DEFAULT_REPAIR_REVISION_PATH,
-      canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
-      inventoryPath: DEFAULT_INVENTORY_PATH,
+      canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      inventoryPath: HISTORICAL_INVENTORY_PATH,
     });
     console.log(JSON.stringify({
       recovery_gate: recoveryResult.gate.gate_status,

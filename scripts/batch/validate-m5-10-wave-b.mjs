@@ -92,6 +92,11 @@ export const DEFAULT_STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-stage
 export const DEFAULT_VERIFICATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-verification.json');
 export const DEFAULT_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-preimport-inventory.json');
 export const DEFAULT_BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-base-canonical');
+// Wave B is a historical stage. Keep its current snapshot stable after later
+// canonical expansions mutate the live data directory.
+export const DEFAULT_CURRENT_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
+export const DEFAULT_CURRENT_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json');
+export const DEFAULT_CANONICAL_SOURCE_PATH = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
 export const DEFAULT_PLAN_PATH = path.join(BATCH_DIRECTORY, 'm5-8-expansion-plan.json');
 export const DEFAULT_AUTHORIZATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-authorization.json');
 export const DEFAULT_SEMANTIC_REGRESSION_PATH = path.join(BATCH_DIRECTORY, 'm5-10-wave-b-semantic-regressions.json');
@@ -1485,7 +1490,7 @@ function validateAuthorization(authorization, previousStage, previousStageSha256
   if (expectedSha256 && authorization.proposal_sha256 !== expectedSha256) fail('Wave B authorization proposal digest drifted', 'AUTHORIZATION_MISMATCH');
 }
 
-function validateStage(stage, { metrics, verification, manifestSource, metricsSource, relationDiffSource, verificationSource, canonicalSnapshot, canonicalDirectory, canonicalSha256, previousStage, previousStageSha256, authorization, authorizationSha256, expectedGate }) {
+function validateStage(stage, { metrics, verification, manifestSource, metricsSource, relationDiffSource, verificationSource, canonicalSnapshot, canonicalDirectory, canonicalSourcePath, canonicalSha256, previousStage, previousStageSha256, authorization, authorizationSha256, expectedGate }) {
   assertEqual(stage.schema_version, '1', 'Wave B stage schema version drifted', 'STAGE_SCHEMA');
   assertEqual(stage.stage_id, WAVE_B_STAGE_ID, 'Wave B stage ID drifted', 'STAGE_SCOPE_MISMATCH');
   assertEqual(stage.input.inventory_revision, WAVE_B_INVENTORY_REVISION, 'Wave B stage inventory revision drifted', 'STAGE_INPUT_MISMATCH');
@@ -1513,7 +1518,7 @@ function validateStage(stage, { metrics, verification, manifestSource, metricsSo
   assertEqual(stage.source.metrics_sha256, metricsSource.sha256, 'Wave B stage metrics digest drifted', 'STAGE_SOURCE_MISMATCH');
   assertEqual(stage.source.relation_diff, relativeSourcePath(relationDiffSource.path), 'Wave B stage relation path drifted', 'STAGE_SOURCE_MISMATCH');
   assertEqual(stage.source.relation_diff_sha256, relationDiffSource.sha256, 'Wave B stage relation digest drifted', 'STAGE_SOURCE_MISMATCH');
-  assertEqual(stage.source.canonical_directory, relativeSourcePath(canonicalDirectory), 'Wave B stage canonical path drifted', 'STAGE_SOURCE_MISMATCH');
+  assertEqual(stage.source.canonical_directory, relativeSourcePath(canonicalSourcePath), 'Wave B stage canonical path drifted', 'STAGE_SOURCE_MISMATCH');
   assertEqual(stage.source.canonical_sha256, canonicalSha256, 'Wave B stage canonical digest drifted', 'STAGE_SOURCE_MISMATCH');
   assertEqual(stage.source.verification, relativeSourcePath(verificationSource.path), 'Wave B stage verification path drifted', 'STAGE_SOURCE_MISMATCH');
   assertEqual(stage.source.verification_sha256, verificationSource.sha256, 'Wave B stage verification digest drifted', 'STAGE_SOURCE_MISMATCH');
@@ -1536,7 +1541,9 @@ export async function validateWaveB({
   stagePath = DEFAULT_STAGE_PATH,
   verificationPath = DEFAULT_VERIFICATION_PATH,
   inventoryPath = DEFAULT_INVENTORY_PATH,
-  canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  currentInventoryPath = DEFAULT_CURRENT_INVENTORY_PATH,
+  canonicalDirectory = DEFAULT_CURRENT_CANONICAL_DIRECTORY,
+  canonicalSourcePath = DEFAULT_CANONICAL_SOURCE_PATH,
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
   planPath = DEFAULT_PLAN_PATH,
   authorizationPath = DEFAULT_AUTHORIZATION_PATH,
@@ -1573,7 +1580,10 @@ export async function validateWaveB({
     readJsonSource(editorialDecisionPath, 'Wave B editorial decision artifact'),
     readJsonSource(auditDecisionPath, 'Wave B audit decision artifact'),
   ]);
-  const inventorySummary = await validateTargetInventory();
+  const inventorySummary = await validateTargetInventory({
+    inventoryPath: currentInventoryPath,
+    canonicalDirectory,
+  });
   assertEqual(inventorySummary.revision, WAVE_B_INVENTORY_REVISION, 'current inventory revision drifted', 'INVENTORY_REVISION_MISMATCH');
   assertEqual(inventorySummary.canonicalRecordCount, canonical.records.length, 'current canonical record count drifted', 'CANONICAL_COUNT_MISMATCH');
   assertEqual(inventorySummary.currentStartCount, WAVE_B_CUMULATIVE_START_COUNT, 'current canonical start count drifted', 'CANONICAL_COUNT_MISMATCH');
@@ -1674,6 +1684,7 @@ export async function validateWaveB({
     verificationSource: { path: verificationPath, sha256: verificationSource.sha256 },
     canonicalSnapshot: canonicalSummary(canonical.records),
     canonicalDirectory,
+    canonicalSourcePath,
     canonicalSha256,
     previousStage: JSON.parse(await readFile(path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2.json'), 'utf8')),
     previousStageSha256: sha256Bytes(await readFile(path.join(BATCH_DIRECTORY, 'm5-10a-wave-a2.json'))),
@@ -1738,7 +1749,9 @@ if (isMainModule) {
     stagePath: args.stage ?? DEFAULT_STAGE_PATH,
     verificationPath: args.verification ?? DEFAULT_VERIFICATION_PATH,
     inventoryPath: args.inventory ?? DEFAULT_INVENTORY_PATH,
-    canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
+    currentInventoryPath: args['current-inventory'] ?? DEFAULT_CURRENT_INVENTORY_PATH,
+    canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CURRENT_CANONICAL_DIRECTORY,
+    canonicalSourcePath: args['canonical-source-dir'] ?? DEFAULT_CANONICAL_SOURCE_PATH,
     baseCanonicalDirectory: args['base-canonical-dir'] ?? DEFAULT_BASE_CANONICAL_DIRECTORY,
     planPath: args.plan ?? DEFAULT_PLAN_PATH,
     authorizationPath: args.authorization ?? DEFAULT_AUTHORIZATION_PATH,

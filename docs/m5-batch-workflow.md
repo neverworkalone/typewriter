@@ -282,6 +282,29 @@ artifact or task is created implicitly.
 The proposal and reviewed staging JSONL remain outside the repository; tracked
 metadata stores their SHA-256 digests and never copies raw proposal bodies.
 
+## M5-11 +500 admission boundary
+
+Issue #97 consumes the digest-bound authorization from #115 and records a
+550-row candidate pool, but it does not admit any row yet. The canonical
+snapshot remains at 778 starts. `scripts/batch/build-m5-11-expansion.mjs`
+requires a separately supplied human-complete editorial decision artifact and
+an import output outside the repository. It validates every record/sense and
+boundary binding supplied by that artifact, but it never manufactures those
+decisions and never mutates `data/canonical/`, the M5 seed, or the target
+inventory. The tracked catalog contains only selection metadata and is bound
+to the external artifact by both catalog digest and candidate count; unreviewed
+proposal bodies are not process metadata. The external decision artifact must
+also bind every candidate identity and proposal-body digest to a separately
+frozen proposal artifact supplied to the builder. Admission counts are
+`included + corrected = 500`, with `held`, `rejected`, and the remaining
+reserve rows accounted for explicitly. Proposal records use candidate-local
+IDs and are rebased to the next canonical ID only at admission; both the
+proposal and decision artifacts must be external to the repository.
+
+The stage is `HOLD PROCESS` until the decision artifact, complete timing, and
+independent audit exist. Run `npm run batch:m5-11:check` to verify that the
+candidate pool is source-bound and that no unauthorized promotion occurred.
+
 ## M5-10A process correction and A2 authorization
 
 Issue #107 records the process correction after the Wave A failure. It does not

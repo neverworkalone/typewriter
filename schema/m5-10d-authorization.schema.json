@@ -24,9 +24,9 @@
         "recovery_artifact_sha256": { "$ref": "#/$defs/sha256" },
         "workload": { "const": "data/batches/m5-10d-workload-20260912.json" },
         "workload_sha256": { "$ref": "#/$defs/sha256" },
-        "canonical_directory": { "const": "data/canonical" },
+        "canonical_directory": { "const": "data/batches/m5-11-base-canonical" },
         "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
-        "inventory": { "const": "data/inventory/m5-target-inventory.json" },
+        "inventory": { "const": "data/batches/m5-11-base-inventory.json" },
         "inventory_sha256": { "$ref": "#/$defs/sha256" },
         "repair_revision": { "const": "data/batches/m5-10a-process-correction.json" },
         "repair_revision_sha256": { "$ref": "#/$defs/sha256" }

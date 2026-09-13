@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile as readFileAsync } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -954,7 +954,15 @@ if (isMainModule) {
   const args = mainArgumentMap(process.argv.slice(2));
   const action = args.action ?? 'recovery';
   const run = action === 'authorization' ? validateM5CAuthorization : validateM5CRecovery;
+  const historicalDefaults = existsSync(path.join(BATCH_DIRECTORY, 'm5-11-base-canonical'))
+    && existsSync(path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json'))
+    ? {
+      canonicalDirectory: path.join(BATCH_DIRECTORY, 'm5-11-base-canonical'),
+      inventoryPath: path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json'),
+    }
+    : {};
   run({
+    ...historicalDefaults,
     ...(args.artifact ? { artifactPath: path.resolve(args.artifact) } : {}),
     ...(args.authorization ? { authorizationPath: path.resolve(args.authorization) } : {}),
     ...(args.recovery ? { recoveryPath: path.resolve(args.recovery) } : {}),
@@ -964,6 +972,8 @@ if (isMainModule) {
     ...(args.audit ? { auditPath: path.resolve(args.audit) } : {}),
     ...(args['audit-timing'] ? { auditTimingPath: path.resolve(args['audit-timing']) } : {}),
     ...(args.verification ? { verificationPath: path.resolve(args.verification) } : {}),
+    ...(args['canonical-dir'] ? { canonicalDirectory: path.resolve(args['canonical-dir']) } : {}),
+    ...(args.inventory ? { inventoryPath: path.resolve(args.inventory) } : {}),
   }).then((result) => console.log(JSON.stringify(result.gate ?? result.authorization, null, 2)))
     .catch((error) => {
       console.error(error.message);

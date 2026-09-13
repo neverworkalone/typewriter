@@ -179,6 +179,16 @@ checks are
 artifact checks `npm run batch:m5-10d:recovery:check` and
 `npm run batch:m5-10d:authorization:check`.
 
+Issue #97's M5-11 work is currently blocked before admission. It consumes the
+digest-bound #115 authorization and records a 550-row candidate pool, but the
+canonical snapshot remains at 778 starts because no separately supplied,
+human-complete editorial decision artifact exists. The builder requires that
+artifact and an import output outside the repository; it cannot manufacture
+senses, boundary verdicts, audit findings, or canonical/seed/inventory
+promotions. The decision artifact must be bound to a separately frozen
+external proposal artifact before any candidate body can be admitted. Run
+`npm run batch:m5-11:check` to verify the HOLD boundary.
+
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;
 they never enter the read-only dictionary database.

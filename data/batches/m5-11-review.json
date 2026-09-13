@@ -1,0 +1,29 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-11-review-20260913",
+  "issue": 97,
+  "batch_id": "m5-11-expansion-20260913",
+  "input_inventory_revision": "m5-11",
+  "candidate_pool": {
+    "declared_count": 550,
+    "selected_start_count": 550,
+    "import_target": 500,
+    "reserve_count": 50,
+    "catalog_count": 550,
+    "catalog_sha256": "c8860a2ade5701d62f82e56c65973dab73ccc546960b7318319bcb4f12f51788"
+  },
+  "status": "pending-editorial-decision",
+  "editorial_review_complete": false,
+  "human_editorial_review_complete": false,
+  "decisions": {
+    "included": 0,
+    "corrected": 0,
+    "held": 0,
+    "rejected": 0,
+    "deferred": 0,
+    "unreviewed": 550,
+    "processed_start_count": 0
+  },
+  "decision_artifact": null,
+  "note": "Candidate metadata is not an editorial decision artifact. No semantic verdict, canonical record, seed promotion, or inventory promotion is created until a separately supplied human-complete decision artifact passes the M5-11 admission validator."
+}

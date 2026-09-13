@@ -1,0 +1,84 @@
+{
+  "schema_version": "1",
+  "stage_id": "m5-11-plus-500",
+  "issue": 97,
+  "parent_issue": 7,
+  "authorization": {
+    "path": "data/batches/m5-10d-m5-11-authorization-20260912.json",
+    "sha256": "944d86adad9ad3c340aa57ea88b9ed6cc21a9379e4473edc2cd2213b33ff7d88",
+    "decision": "AUTHORIZE M5-11 +500 VALIDATION"
+  },
+  "input": {
+    "inventory_revision": "m5-11",
+    "base_inventory_path": "data/batches/m5-11-base-inventory.json",
+    "base_inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947",
+    "canonical_directory": "data/batches/m5-11-base-canonical",
+    "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+    "canonical_snapshot": {
+      "record_count": 820,
+      "start_count": 778,
+      "reference_only_count": 42,
+      "sense_count": 966,
+      "relation_count": 473,
+      "expression_count": 63
+    }
+  },
+  "target": {
+    "net_start_increase": 500,
+    "cumulative_start_target": 1278,
+    "candidate_buffer": 50,
+    "selected_start_count": 550
+  },
+  "decisions": {
+    "included_start_count": 0,
+    "corrected_start_count": 0,
+    "held_start_count": 0,
+    "rejected_start_count": 0,
+    "deferred_start_count": 0,
+    "unreviewed_start_count": 550,
+    "processed_start_count": 0
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 820,
+      "start_count": 778,
+      "reference_only_count": 42,
+      "sense_count": 966,
+      "relation_count": 473,
+      "expression_count": 63
+    },
+    "imported_start_count": 0
+  },
+  "gate": {
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "failures": [
+      "editorial_decision_artifact",
+      "human_editorial_review",
+      "timing_complete",
+      "audit",
+      "canonical_promotion"
+    ]
+  },
+  "promotion": {
+    "canonical_mutation": false,
+    "seed_mutation": false,
+    "inventory_mutation": false,
+    "next_stage_created": false,
+    "next_stage_authorized": false
+  },
+  "source": {
+    "review": "data/batches/m5-11-review.json",
+    "review_sha256": "a5aaed85f46c7d82780c5a86c54032e819ed82317b9921b25501c2478d4814ed",
+    "catalog": "scripts/batch/m5-11-catalog.mjs",
+    "catalog_count": 550,
+    "catalog_sha256": "c8860a2ade5701d62f82e56c65973dab73ccc546960b7318319bcb4f12f51788",
+    "canonical_directory": "data/batches/m5-11-base-canonical",
+    "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
+    "seed": "data/inventory/m5-target-seed.json",
+    "seed_sha256": "bda4bec9be8e90fca1c16e6aa4979bbf242342534856b8bacc9b91dd276da0e9",
+    "previous_stage_authorization": "data/batches/m5-10d-m5-11-authorization-20260912.json",
+    "previous_stage_authorization_sha256": "944d86adad9ad3c340aa57ea88b9ed6cc21a9379e4473edc2cd2213b33ff7d88"
+  },
+  "note": "M5-11 is blocked before admission. The candidate catalog remains noncanonical; no automatic canonical, seed, or inventory mutation is permitted without a separately supplied human-complete editorial decision artifact and a passing bounded gate."
+}

@@ -204,6 +204,7 @@ function promotedCanonicalEntry(recordInfo, seedEntry) {
 export async function generateTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
+  generatedFromSeedPath = seedPath,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
@@ -289,7 +290,7 @@ export async function generateTargetInventory({
     },
     generated_from: [
       path.relative(process.cwd(), canonicalDirectory),
-      path.relative(process.cwd(), seedPath),
+      path.relative(process.cwd(), generatedFromSeedPath),
     ],
     canonical_snapshot: {
       record_count: currentEntries.length,
