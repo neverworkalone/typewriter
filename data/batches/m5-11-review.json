@@ -9,29 +9,20 @@
     "selected_start_count": 550,
     "import_target": 500,
     "reserve_count": 50,
-    "catalog_sha256": "e57018718e65ed5a6fc011576962b41351bbfa95c02d69b7e6aabe38997938e0",
-    "inventory_sha256": "9d112925fbf9a062e1dff927712ea83928efcf679bff143b19e2345c56e9b8af"
+    "catalog_sha256": "fc0ed5474de5d0e0ef7cf333a6e8342f5440403b0e1ed7be06abe445a81adf65"
   },
-  "sense_review": {
-    "status": "complete",
-    "reviewed_start_count": 500,
-    "single_sense_count": 500,
-    "boundary_checkpoint_count": 3000,
-    "deferred_count": 50,
-    "relation_review_status": "complete",
-    "relation_candidate_count": 0,
-    "admitted_relation_count": 0
-  },
+  "status": "pending-editorial-decision",
+  "editorial_review_complete": false,
+  "human_editorial_review_complete": false,
   "decisions": {
-    "included": 500,
+    "included": 0,
     "corrected": 0,
     "held": 0,
     "rejected": 0,
-    "deferred": 50,
-    "processed_start_count": 500
+    "deferred": 0,
+    "unreviewed": 550,
+    "processed_start_count": 0
   },
-  "reviewed_staging_sha256": "e23eb43655c426e3dc79d771f70dcd216ebf48bf28ddb7633127827fb84578fb",
-  "editorial_review_complete": true,
-  "human_editorial_review_complete": false,
-  "note": "The catalog and decision artifact are Codex-authored process evidence. Human editorial completion is deliberately false until an independent human review occurs."
+  "decision_artifact": null,
+  "note": "Candidate metadata is not an editorial decision artifact. No semantic verdict, canonical record, seed promotion, or inventory promotion is created until a separately supplied human-complete decision artifact passes the M5-11 admission validator."
 }

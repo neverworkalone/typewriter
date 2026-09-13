@@ -98,9 +98,9 @@
         "audit_timing_sha256": { "$ref": "#/$defs/sha256" },
         "verification": { "const": "data/batches/m5-10d-verification-20260912.json" },
         "verification_sha256": { "$ref": "#/$defs/sha256" },
-        "canonical_directory": { "const": "data/canonical" },
+        "canonical_directory": { "const": "data/batches/m5-11-base-canonical" },
         "canonical_directory_sha256": { "$ref": "#/$defs/sha256" },
-        "inventory": { "const": "data/inventory/m5-target-inventory.json" },
+        "inventory": { "const": "data/batches/m5-11-base-inventory.json" },
         "inventory_sha256": { "$ref": "#/$defs/sha256" }
       }
     },

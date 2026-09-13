@@ -44,8 +44,8 @@ const FIXTURE_SOURCE_PATHS = Object.freeze({
   audit_decisions: 'data/batches/m5-10c-audit-decisions-20260910.json',
   audit_timing: 'data/batches/m5-10c-audit-timing-20260910.json',
   verification: 'data/batches/m5-10c-verification.json',
-  canonical_directory: 'data/canonical',
-  inventory: 'data/inventory/m5-target-inventory.json',
+  canonical_directory: 'data/batches/m5-11-base-canonical',
+  inventory: 'data/batches/m5-11-base-inventory.json',
 });
 
 function sha256Bytes(bytes) {
@@ -368,9 +368,9 @@ async function createAuthorization(filePath, recoverySha256) {
       repair_revision: 'data/batches/m5-10a-process-correction.json',
       recovery_artifact: 'data/batches/m5-10c-recovery.json',
       recovery_artifact_sha256: recoverySha256,
-      canonical_directory: 'data/canonical',
+      canonical_directory: FIXTURE_SOURCE_PATHS.canonical_directory,
       canonical_directory_sha256: await hashCanonicalDirectory(HISTORICAL_CANONICAL_DIRECTORY),
-      inventory: 'data/inventory/m5-target-inventory.json',
+      inventory: FIXTURE_SOURCE_PATHS.inventory,
       inventory_sha256: sha256Bytes(inventoryBytes),
     },
     created_at: isoAt(60000),

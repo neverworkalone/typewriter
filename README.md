@@ -179,17 +179,13 @@ checks are
 artifact checks `npm run batch:m5-10d:recovery:check` and
 `npm run batch:m5-10d:authorization:check`.
 
-Issue #97's M5-11 bounded expansion is recorded in
-[`docs/m5-11-expansion-report.md`](docs/m5-11-expansion-report.md). It consumes
-the digest-bound #115 authorization and advances the canonical start count
-exactly from 778 to 1,278: 550 candidates were selected, 500 were imported,
-and 50 remain deferred. The import adds 500 reviewed senses and no relation or
-reference-only rows; the exact canonical result is 1,320 records, 1,466 senses,
-473 relations, and 63 expressions. The structural checks pass, but this
-Codex-authored validation run does not claim human editorial completion and its
-editorial timing passes are unmeasured, so the fixed stage decision is
-`HOLD PROCESS` and no later stage is authorized. Run
-`npm run batch:m5-11:check` to verify the source-bound artifacts.
+Issue #97's M5-11 work is currently blocked before admission. It consumes the
+digest-bound #115 authorization and records a 550-row candidate pool, but the
+canonical snapshot remains at 778 starts because no separately supplied,
+human-complete editorial decision artifact exists. The builder requires that
+artifact and an import output outside the repository; it cannot manufacture
+senses, boundary verdicts, audit findings, or canonical/seed/inventory
+promotions. Run `npm run batch:m5-11:check` to verify the HOLD boundary.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

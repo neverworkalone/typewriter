@@ -32,7 +32,7 @@
     "failed_relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
     "failed_relation_diff_sha256": "b83e025e76dc581d11ece5e94353b64ea46f9df6979cbedc08f01dfe002b7b23",
     "failed_recovery": "data/batches/m5-10c-recovery.json",
-    "failed_recovery_sha256": "e759e1ece1ecc3d3dd086f64814298abe47988c5873537bc3c6590a144d7ad30",
+    "failed_recovery_sha256": "140b41701d6abcaf37113a33dfbffe6e684b3061e15a6b57130f862e920c785d",
     "repair_revision": "data/batches/m5-10a-process-correction.json",
     "repair_revision_sha256": "2ec628acd9fcc1289331f431094b079511268d810237d435d90a13d10c33d31d",
     "workload": "data/batches/m5-10d-workload-20260912.json",
@@ -51,9 +51,9 @@
     "audit_timing_sha256": "3719b7d113f4e71240fa685bc70b0356fea234efb1cf10f07a394e491a4f66a7",
     "verification": "data/batches/m5-10d-verification-20260912.json",
     "verification_sha256": "310b7cacd0ba05f0e3009e0bcb6bd9cf9a7f09574a2d5cd104d0b4b9dd9874a7",
-    "canonical_directory": "data/canonical",
+    "canonical_directory": "data/batches/m5-11-base-canonical",
     "canonical_directory_sha256": "14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473",
-    "inventory": "data/inventory/m5-target-inventory.json",
+    "inventory": "data/batches/m5-11-base-inventory.json",
     "inventory_sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
   },
   "calibration": {

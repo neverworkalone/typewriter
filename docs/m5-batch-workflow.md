@@ -282,32 +282,20 @@ artifact or task is created implicitly.
 The proposal and reviewed staging JSONL remain outside the repository; tracked
 metadata stores their SHA-256 digests and never copies raw proposal bodies.
 
-## M5-11 +500 validation result
+## M5-11 +500 admission boundary
 
-Issue #97 consumes the digest-bound authorization from #115 and records the
-bounded +500 validation in
-[`docs/m5-11-expansion-report.md`](m5-11-expansion-report.md). The reviewed
-candidate catalog contains 550 selected starts: 500 are included in the
-canonical import and 50 are explicitly deferred. The canonical snapshot
-advances exactly from 778 to 1,278 starts and from 820 to 1,320 records. The
-import adds 500 senses, no relations, no reference-only records, and no
-expressions; the resulting exact totals are 1,466 senses, 473 relations, and
-63 expressions.
+Issue #97 consumes the digest-bound authorization from #115 and records a
+550-row candidate pool, but it does not admit any row yet. The canonical
+snapshot remains at 778 starts. `scripts/batch/build-m5-11-expansion.mjs`
+requires a separately supplied human-complete editorial decision artifact and
+an import output outside the repository. It validates every record/sense and
+boundary binding supplied by that artifact, but it never manufactures those
+decisions and never mutates `data/canonical/`, the M5 seed, or the target
+inventory.
 
-The run keeps the raw draft and external source material outside the repository.
-The tracked `m5-11-*` artifacts bind the #115 authorization, frozen pre-import
-canonical and inventory snapshots, manifest, review checkpoints, relation diff,
-metrics, timing, audit, verification, seed transition, and stage result. The
-catalog is Typewriter-authored staging input, not a replacement canonical
-source. The validator checks the full 550-row selection, the 500-row import,
-the deferred buffer, exact counts, source digests, deterministic SQLite
-rebuilds, and the expected gate failures.
-
-The structural and integrity checks pass, but the fixed editor-time gate is not
-measurable for this Codex-authored run and
-`human_editorial_review_complete` is false. The stage therefore records
-`HOLD PROCESS`; it creates and authorizes no later stage. Run
-`npm run batch:m5-11:check` to reproduce the complete machine gate.
+The stage is `HOLD PROCESS` until the decision artifact, complete timing, and
+independent audit exist. Run `npm run batch:m5-11:check` to verify that the
+candidate pool is source-bound and that no unauthorized promotion occurred.
 
 ## M5-10A process correction and A2 authorization
 

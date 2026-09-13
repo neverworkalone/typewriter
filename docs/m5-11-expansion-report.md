@@ -1,30 +1,34 @@
-# M5-11 +500 expansion report
+# M5-11 +500 admission report
 
-Issue #97 consumes the digest-bound authorization from #115 and records a bounded +500 canonical-start validation.
+Issue #97 is held before canonical admission.
 
-## Result
+## Current state
 
-- Canonical starts: **778 → 1278 (+500)**
-- Canonical records: 820 → 1320
-- Reference-only records: 42 → 42
-- Senses: 966 → 1466
-- Relations: 473 → 473
-- Expressions: 63 → 63
-- Decisions: 500 included / 0 corrected / 0 held / 0 rejected / 50 deferred
-- Relation review: 0 candidates, 0 admitted, 0 noise
-- Sense/POS review: 500 imported starts, 3000 boundary checkpoints
+- Input canonical: **778 starts / 820 records**
+- Candidate pool: **550 selected starts**
+- Intended bounded import: **500 starts**
+- Candidate buffer: **50 starts**
+- Current canonical import: **0 rows**
+- Canonical, seed, and inventory mutation: **none**
+
+The candidate catalog is not an editorial decision artifact. The builder refuses
+to manufacture sense, POS, boundary, relation, audit, or admission verdicts. A
+separately supplied human-complete decision artifact and complete gate evidence
+are required before an external reviewed import can be produced.
+
+The known mixed-sense candidates `싱겁다`, `다독이다`, `일구다`, and `삼키다`
+are explicitly marked for multi-sense review. Admission validation rejects a
+single-sense collapse and requires concrete boundary evidence for each admitted
+record.
 
 ## Gate
 
-The stage is **HOLD PROCESS**. The structural and canonical checks pass, but the fixed editor-time gate cannot pass with unmeasured editorial passes, and human_editorial_review_complete remains false for this Codex-authored run. No later stage is authorized.
+`HOLD PROCESS` — editorial decision artifact, human editorial review, timing,
+independent audit, and canonical promotion are incomplete. No later stage is
+created or authorized.
 
-The raw draft and external source material are not stored in the repository. The reviewed import, manifest, relation diff, metrics, timing, audit, verification, seed transition, and source-bound stage report are tracked.
-
-Validation commands:
+Validation:
 
 ```sh
 npm run batch:m5-11:check
-npm run validate
-npm run build:dictionary
-npm run validate:search
 ```

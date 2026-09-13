@@ -295,8 +295,8 @@ function fixedRecoverySourcePaths(recovery) {
     audit_decisions: 'data/batches/m5-10d-audit-decisions-20260912.json',
     audit_timing: 'data/batches/m5-10d-audit-timing-20260912.json',
     verification: 'data/batches/m5-10d-verification-20260912.json',
-    canonical_directory: 'data/canonical',
-    inventory: 'data/inventory/m5-target-inventory.json',
+    canonical_directory: 'data/batches/m5-11-base-canonical',
+    inventory: 'data/batches/m5-11-base-inventory.json',
   });
   return recovery;
 }
@@ -305,8 +305,8 @@ function fixedAuthorizationSourcePaths(authorization) {
   Object.assign(authorization.source, {
     recovery_artifact: 'data/batches/m5-10d-recovery.json',
     workload: 'data/batches/m5-10d-workload-20260912.json',
-    canonical_directory: 'data/canonical',
-    inventory: 'data/inventory/m5-target-inventory.json',
+    canonical_directory: 'data/batches/m5-11-base-canonical',
+    inventory: 'data/batches/m5-11-base-inventory.json',
     repair_revision: 'data/batches/m5-10a-process-correction.json',
   });
   authorization.failed_stage.path = 'data/batches/m5-10-wave-b-stage.json';

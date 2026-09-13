@@ -591,7 +591,19 @@ const groups = [
 `),
 ];
 
-export const M5_11_CATALOG = Object.freeze(groups.flat());
+export const M5_11_MIXED_SENSE_LEMMAS = Object.freeze([
+  '다독이다',
+  '일구다',
+  '싱겁다',
+  '삼키다',
+]);
+
+const mixedSenseLemmas = new Set(M5_11_MIXED_SENSE_LEMMAS);
+export const M5_11_CATALOG = Object.freeze(
+  groups.flat().map((entry) => mixedSenseLemmas.has(entry.lemma)
+    ? { ...entry, flags: [...entry.flags, 'mixed-sense-review'] }
+    : entry),
+);
 
 const seenLemmas = new Set();
 for (const entry of M5_11_CATALOG) {

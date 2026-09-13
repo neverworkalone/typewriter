@@ -117,18 +117,15 @@ may be retained under `data/batches/` when a source-bound stage report still
 needs to reproduce the earlier gate. Such a snapshot is immutable process
 evidence, not a second editable dictionary source.
 
-Issue #97's M5-11 +500 validation advances the current canonical snapshot from
-778 to 1,278 starts. The tracked `data/batches/m5-11-base-canonical/` and
-`data/batches/m5-11-base-inventory.json` files freeze the pre-import inputs so
-the #115 authorization and earlier M5 contracts remain reproducible after the
-advance. The remaining `m5-11-*` files are source-bound review, relation,
-metrics, timing, audit, verification, and stage metadata; they contain no raw
-draft or external source text. The run records 550 selected candidates, 500
-included starts, and 50 deferred candidates. It is intentionally `HOLD PROCESS`
-because the Codex-authored run has unmeasured editorial passes and does not
-claim human editorial completion. `scripts/batch/m5-11-catalog.mjs` is reviewed
-Typewriter-authored staging input, while `data/canonical/*.jsonl` remains the
-only editable dictionary source.
+Issue #97's M5-11 work is held before canonical admission. The tracked
+`data/batches/m5-11-base-canonical/` and `data/batches/m5-11-base-inventory.json`
+files freeze the 778-start input used by the #115 authorization and earlier M5
+contracts. The candidate catalog records 550 proposed starts, but no canonical
+import, seed promotion, or inventory promotion is tracked. The builder requires
+a separately supplied human-complete editorial decision artifact and writes a
+reviewed import only outside the repository; `data/canonical/*.jsonl` remains
+the only editable dictionary source. The stage is `HOLD PROCESS` until that
+artifact and the remaining timing/audit gates exist.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event
