@@ -11,14 +11,27 @@ import {
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
-import { M5_11_BATCH_ID } from './m5-11-editorial.mjs';
+import { M5_11_BATCH_ID, expectedCanonicalId } from './m5-11-editorial.mjs';
 import {
   M5_11_BASE_CANONICAL_SHA256,
   M5_11_BASE_INVENTORY_SHA256,
   M5_11_BASE_SEED_SHA256,
   REPOSITORY_DIRECTORY,
 } from './validate-m5-11.mjs';
-import { validateM511Admission } from './validate-m5-11-admission.mjs';
+
+const SOURCE_KEYS = Object.freeze([
+  'proposal',
+  'editorial',
+  'editorial_timing',
+  'audit',
+  'audit_timing',
+  'relation_diff',
+  'verification',
+  'reviewed_import',
+  'authorization',
+  'base_inventory',
+]);
+const EXTERNAL_SOURCE_KEYS = new Set(SOURCE_KEYS.slice(0, 8));
 
 const DEFAULT_MANIFEST_PATH = path.join(
   REPOSITORY_DIRECTORY,
@@ -91,17 +104,31 @@ async function readJson(filePath, label) {
 
 function sourceRef(manifest, key) {
   const source = manifest.sources?.[key];
-  if (!source || typeof source.path !== 'string' || typeof source.sha256 !== 'string') {
+  if (!source || source.source_id !== key || typeof source.path !== 'string' || typeof source.sha256 !== 'string') {
     fail(`admission manifest is missing sources.${key}`, 'SOURCE_BINDING_MISMATCH');
+  }
+  if (!/^[a-f0-9]{64}$/u.test(source.sha256)) {
+    fail(`admission manifest source ${key} has an invalid digest`, 'SOURCE_BINDING_MISMATCH');
+  }
+  if (EXTERNAL_SOURCE_KEYS.has(key) && source.path !== `external:${key}`) {
+    fail(`admission manifest source ${key} must use a portable external label`, 'SOURCE_BINDING_MISMATCH');
+  }
+  if (!EXTERNAL_SOURCE_KEYS.has(key) && (path.isAbsolute(source.path) || source.path.startsWith('../'))) {
+    fail(`admission manifest source ${key} must use a repository-relative path`, 'SOURCE_BINDING_MISMATCH');
   }
   return source;
 }
 
-function assertSource(result, manifest, key) {
-  const expected = sourceRef(manifest, key);
-  const actual = result.sources[key];
-  if (!actual || actual.sha256 !== expected.sha256 || path.resolve(actual.path) !== path.resolve(expected.path)) {
-    fail(`source ${key} drifted from the admission manifest`, 'SOURCE_BINDING_MISMATCH');
+function assertDurableSourceSet(manifest, evidence) {
+  for (const key of SOURCE_KEYS) {
+    const manifestSource = sourceRef(manifest, key);
+    const evidenceSource = evidence.sources?.[key];
+    if (!evidenceSource
+      || evidenceSource.source_id !== key
+      || evidenceSource.path !== manifestSource.path
+      || evidenceSource.sha256 !== manifestSource.sha256) {
+      fail(`promotion evidence source ${key} drifted`, 'SOURCE_BINDING_MISMATCH');
+    }
   }
 }
 
@@ -111,6 +138,80 @@ function assertSummary(actual, expected, label) {
   } catch {
     fail(`${label} drifted`, 'CANONICAL_COUNT_MISMATCH');
   }
+}
+
+export function validateM511DurableEvidence({ manifest, evidence } = {}) {
+  if (!manifest || manifest.schema_version !== '1' || manifest.issue !== 97 || manifest.batch_id !== M5_11_BATCH_ID) {
+    fail('admission manifest is not bound to M5-11 issue #97', 'SCOPE_MISMATCH');
+  }
+  if (manifest.gate?.gate_status !== 'pass' || manifest.gate?.decision !== 'APPROVE BOUNDED') {
+    fail('admission manifest does not contain a passing gate', 'GATE_REQUIRED');
+  }
+  if (!evidence || evidence.schema_version !== '1' || evidence.issue !== 97 || evidence.batch_id !== M5_11_BATCH_ID) {
+    fail('promotion evidence is not bound to M5-11 issue #97', 'SCOPE_MISMATCH');
+  }
+  if (evidence.promotion?.canonical_mutation !== true
+    || evidence.promotion?.seed_mutation !== true
+    || evidence.promotion?.inventory_mutation !== true
+    || evidence.promotion?.explicit !== true) {
+    fail('promotion evidence does not record all explicit mutations', 'PROMOTION_STATE_MISMATCH');
+  }
+  assertDurableSourceSet(manifest, evidence);
+  assertSummary(evidence.gate, manifest.gate, 'promotion gate');
+  assertSummary(evidence.actual, manifest.actual, 'promotion final summary');
+  assertSummary(evidence.base?.summary, manifest.base, 'promotion base summary');
+  assertSummary(evidence.metrics, manifest.metrics, 'promotion metrics');
+  assertSummary(evidence.relation, manifest.relation, 'promotion relation evidence');
+  assertSummary(evidence.timing, manifest.timing, 'promotion timing evidence');
+  assertSummary(evidence.audit, manifest.audit, 'promotion audit evidence');
+  assertSummary(evidence.verification, manifest.verification, 'promotion verification evidence');
+  if (evidence.authorization !== manifest.authorization) {
+    fail('promotion authorization drifted', 'SOURCE_BINDING_MISMATCH');
+  }
+  if (evidence.base.canonical_directory_sha256 !== M5_11_BASE_CANONICAL_SHA256
+    || evidence.base.inventory_sha256 !== M5_11_BASE_INVENTORY_SHA256
+    || evidence.base.seed_sha256 !== M5_11_BASE_SEED_SHA256) {
+    fail('promotion evidence base digest chain drifted', 'SOURCE_BINDING_MISMATCH');
+  }
+
+  const decisions = evidence.decisions;
+  if (!decisions || decisions.included + decisions.corrected !== 500
+    || decisions.held + decisions.rejected + decisions.deferred !== 50
+    || decisions.processed_start_count !== decisions.included
+      + decisions.corrected + decisions.held + decisions.rejected
+    || decisions.imported_start_count !== 500
+    || decisions.processed_start_count + decisions.deferred !== 550) {
+    fail('promotion decision arithmetic drifted', 'OUTPUT_COUNT_MISMATCH');
+  }
+  const target = evidence.target ?? manifest.target;
+  assertSummary(target, manifest.target, 'promotion target');
+  if (target?.net_start_increase !== 500
+    || target?.cumulative_start_target !== 1278
+    || target?.candidate_buffer !== 50) {
+    fail('promotion target drifted', 'OUTPUT_COUNT_MISMATCH');
+  }
+  if (evidence.stage?.status !== 'passed'
+    || evidence.stage?.target?.net_start_increase !== 500
+    || evidence.stage?.target?.cumulative_start_target !== 1278) {
+    fail('promotion stage evidence is not the bounded +500 stage', 'PROMOTION_STATE_MISMATCH');
+  }
+  if (evidence.actual.start_count !== 1278
+    || evidence.actual.record_count !== 1320
+    || evidence.actual.reference_only_count !== 42
+    || evidence.actual.start_count - evidence.base.summary.start_count !== 500
+    || evidence.actual.record_count - evidence.base.summary.record_count !== 500) {
+    fail('promotion final summary does not prove the +500 admission target', 'CANONICAL_COUNT_MISMATCH');
+  }
+  if (!evidence.outputs || typeof evidence.outputs !== 'object') {
+    fail('promotion evidence is missing durable output evidence', 'OUTPUT_BINDING_MISMATCH');
+  }
+  return {
+    batch_id: M5_11_BATCH_ID,
+    gate: evidence.gate,
+    summary: evidence.actual,
+    sources: evidence.sources,
+    outputs: evidence.outputs,
+  };
 }
 
 export async function validateM511Promotion({
@@ -128,77 +229,13 @@ export async function validateM511Promotion({
   const manifest = await readJson(resolvedManifestPath, 'M5-11 admission manifest');
   const evidence = await readJson(resolvedEvidencePath, 'M5-11 promotion evidence');
 
-  if (manifest.schema_version !== '1' || manifest.issue !== 97 || manifest.batch_id !== M5_11_BATCH_ID) {
-    fail('admission manifest is not bound to M5-11 issue #97', 'SCOPE_MISMATCH');
-  }
-  if (manifest.gate?.gate_status !== 'pass' || manifest.gate?.decision !== 'APPROVE BOUNDED') {
-    fail('admission manifest does not contain a passing gate', 'GATE_REQUIRED');
-  }
-  if (evidence.schema_version !== '1' || evidence.issue !== 97 || evidence.batch_id !== M5_11_BATCH_ID) {
-    fail('promotion evidence is not bound to M5-11 issue #97', 'SCOPE_MISMATCH');
-  }
-  if (evidence.promotion?.canonical_mutation !== true
-    || evidence.promotion?.seed_mutation !== true
-    || evidence.promotion?.inventory_mutation !== true) {
-    fail('promotion evidence does not record all explicit mutations', 'PROMOTION_STATE_MISMATCH');
-  }
-
-  const inputPaths = {
-    proposalPath: sourceRef(manifest, 'proposal').path,
-    editorialDecisionPath: sourceRef(manifest, 'editorial').path,
-    editorialTimingPath: sourceRef(manifest, 'editorial_timing').path,
-    auditPath: sourceRef(manifest, 'audit').path,
-    auditTimingPath: sourceRef(manifest, 'audit_timing').path,
-    relationDiffPath: sourceRef(manifest, 'relation_diff').path,
-    verificationPath: sourceRef(manifest, 'verification').path,
-    reviewedImportPath: sourceRef(manifest, 'reviewed_import').path,
-    authorizationPath: sourceRef(manifest, 'authorization').path,
-    baseInventoryPath: sourceRef(manifest, 'base_inventory').path,
-    currentCanonicalDirectory: resolvedCanonicalDirectory,
-    currentSeedPath: resolvedSeedPath,
-    currentInventoryPath: resolvedInventoryPath,
-    expectedImportedCount: manifest.target.net_start_increase,
-    expectedCumulativeStartCount: manifest.target.cumulative_start_target,
-    candidateBuffer: manifest.target.candidate_buffer,
-    requirePrePromotionSnapshot: false,
-  };
-  const result = await validateM511Admission(inputPaths);
-  for (const key of [
-    'proposal',
-    'editorial',
-    'editorial_timing',
-    'audit',
-    'audit_timing',
-    'relation_diff',
-    'verification',
-    'reviewed_import',
-    'authorization',
-    'base_inventory',
-  ]) {
-    assertSource(result, manifest, key);
-    const evidenceSource = evidence.sources?.[key];
-    if (!evidenceSource
-      || evidenceSource.sha256 !== result.sources[key].sha256
-      || path.resolve(evidenceSource.path) !== path.resolve(result.sources[key].path)) {
-      fail(`promotion evidence source ${key} drifted`, 'SOURCE_BINDING_MISMATCH');
-    }
-  }
-  assertSummary(result.final_summary, manifest.actual, 'admission final summary');
-  assertSummary(result.final_summary, evidence.actual, 'promotion final summary');
-  assertSummary(result.base_summary, evidence.base.summary, 'promotion base summary');
-  assertSummary(result.gate, manifest.gate, 'admission gate');
-  assertSummary(result.gate, evidence.gate, 'promotion gate');
-  if (evidence.base.canonical_directory_sha256 !== M5_11_BASE_CANONICAL_SHA256
-    || evidence.base.inventory_sha256 !== M5_11_BASE_INVENTORY_SHA256
-    || evidence.base.seed_sha256 !== M5_11_BASE_SEED_SHA256) {
-    fail('promotion evidence base digest chain drifted', 'SOURCE_BINDING_MISMATCH');
-  }
+  const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
   validateDatasetRecords(canonical.records, { checkPilotCompleteness: true });
   const finalRecords = canonical.records.map(({ record }) => record);
   const finalSummary = canonicalSummary(finalRecords);
-  assertSummary(finalSummary, result.final_summary, 'canonical promotion output');
+  assertSummary(finalSummary, durable.summary, 'canonical promotion output');
 
   const importOutput = evidence.outputs?.canonical_import;
   if (!importOutput || typeof importOutput.path !== 'string' || typeof importOutput.sha256 !== 'string') {
@@ -211,14 +248,17 @@ export async function validateM511Promotion({
   }
   const imported = await readCanonicalRecords(resolvedImportPath);
   const importedRecords = imported.records.map(({ record }) => record);
-  if (importedRecords.length !== result.imported_records.length) {
+  if (importedRecords.length !== evidence.decisions.imported_start_count) {
     fail('canonical import output count drifted', 'CANONICAL_COUNT_MISMATCH');
   }
   for (const [index, record] of importedRecords.entries()) {
-    assertSummary(record, result.imported_records[index], `canonical import output row ${index}`);
+    const expectedId = expectedCanonicalId(index);
+    if (record.id !== expectedId || record.role !== 'start' || record.candidate_id !== expectedId) {
+      fail(`canonical import output row ${index} is not deterministically rebased`, 'CANONICAL_ID_MISMATCH');
+    }
   }
   const finalById = new Map(finalRecords.map((record) => [record.id, record]));
-  for (const record of result.imported_records) {
+  for (const record of importedRecords) {
     assertSummary(finalById.get(record.id), record, `promoted canonical ${record.id}`);
   }
 
@@ -248,6 +288,10 @@ export async function validateM511Promotion({
     ]),
   );
   if (seedStatusCounts.promoted !== 500
+    || seedStatusCounts.promoted !== evidence.decisions.included + evidence.decisions.corrected
+    || seedStatusCounts.held !== evidence.decisions.held
+    || seedStatusCounts.rejected !== evidence.decisions.rejected
+    || seedStatusCounts.deferred !== evidence.decisions.deferred
     || seedStatusCounts.held + seedStatusCounts.rejected + seedStatusCounts.deferred !== 50) {
     fail('promoted seed decision arithmetic drifted', 'OUTPUT_COUNT_MISMATCH');
   }
@@ -265,9 +309,9 @@ export async function validateM511Promotion({
     start_count: inventory.currentStartCount,
     reference_only_count: inventory.currentReferenceOnlyCount,
   }, {
-    record_count: 1320,
-    start_count: 1278,
-    reference_only_count: 42,
+    record_count: durable.summary.record_count,
+    start_count: durable.summary.start_count,
+    reference_only_count: durable.summary.reference_only_count,
   }, 'promoted inventory snapshot');
   if (inventory.inventoryEntryCount !== evidence.outputs.inventory?.entry_count
     || inventory.canonicalRecordCount !== evidence.outputs.inventory?.canonical_record_count) {
@@ -276,7 +320,7 @@ export async function validateM511Promotion({
 
   return {
     batch_id: M5_11_BATCH_ID,
-    gate: result.gate,
+    gate: durable.gate,
     summary: finalSummary,
     inventory,
     outputs: evidence.outputs,

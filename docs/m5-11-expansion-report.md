@@ -72,7 +72,16 @@ npm run batch:m5-11:admission:build -- \
   --verification=/external/m5-11-verification.json \
   --output=/external/m5-11-reviewed-import.jsonl
 
-npm run batch:m5-11:promote -- --manifest=data/batches/m5-11-admission.json
+npm run batch:m5-11:promote -- \
+  --manifest=data/batches/m5-11-admission.json \
+  --proposal=/external/m5-11-proposal.json \
+  --editorial=/external/m5-11-editorial.json \
+  --editorial-timing=/external/m5-11-editorial-timing.json \
+  --audit=/external/m5-11-audit.json \
+  --audit-timing=/external/m5-11-audit-timing.json \
+  --relation-diff=/external/m5-11-relation-diff.json \
+  --verification=/external/m5-11-verification.json \
+  --output=/external/m5-11-reviewed-import.jsonl
 ```
 
 The build command writes a compact, digest-bound admission manifest only after
@@ -80,8 +89,12 @@ the complete gate passes. The promotion command revalidates every external
 source, stages canonical plus seed plus inventory in a temporary directory,
 validates the generated inventory, and only then writes
 `data/canonical/m5-11-expansion.jsonl`, the 550 decision rows in the seed, the
-regenerated inventory, and `data/batches/m5-11-promotion.json`. A failed gate or
-digest mismatch leaves all three source-of-truth files unchanged.
+regenerated inventory, and `data/batches/m5-11-promotion.json`. The committed
+manifest stores only portable `external:<source>` labels and SHA-256 digests;
+the explicit paths above are required only for local promotion. Post-promotion
+CI validates committed durable evidence and promoted outputs without reading
+those external files. A failed gate or digest mismatch leaves all three
+source-of-truth files unchanged.
 
 The repository currently has no separately supplied human-complete 550-row
 proposal and decision package, so this completed path is implemented but not

@@ -238,7 +238,7 @@ function repositoryPath(value, label) {
 
 function sourceFromManifest(manifest, key) {
   const source = manifest.sources?.[key];
-  if (!source || typeof source.path !== 'string' || typeof source.sha256 !== 'string') {
+  if (!source || source.source_id !== key || typeof source.path !== 'string' || typeof source.sha256 !== 'string') {
     fail(`admission manifest is missing sources.${key}`, 'MANIFEST_SOURCE_MISSING');
   }
   return source;
@@ -247,9 +247,16 @@ function sourceFromManifest(manifest, key) {
 function assertManifestSource(result, manifest, key) {
   const expected = sourceFromManifest(manifest, key);
   const actual = result.sources[key];
-  if (!actual || actual.sha256 !== expected.sha256 || path.resolve(actual.path) !== path.resolve(expected.path)) {
+  if (!actual || actual.sha256 !== expected.sha256) {
     fail(`admission manifest source ${key} drifted`, 'MANIFEST_SOURCE_MISMATCH');
   }
+}
+
+function requireExternalPath(value, key) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    fail(`promotion requires the external --${key} source path`, 'EXTERNAL_INPUT_REQUIRED');
+  }
+  return value;
 }
 
 function assertNoMutationManifest(manifest) {
@@ -302,6 +309,7 @@ function assertResultMatchesManifest(result, manifest) {
     deferred: manifest.decisions.deferred,
   }, 'admission decision counts drifted');
   assert.deepEqual(result.gate, manifest.gate, 'admission gate drifted');
+  assert.deepEqual(result.verification, manifest.verification, 'admission verification drifted');
 }
 
 async function buildProspectiveState({
@@ -377,6 +385,14 @@ export async function promoteM511({
   currentInventoryPath = DEFAULT_INVENTORY_PATH,
   canonicalImportPath = DEFAULT_CANONICAL_IMPORT_PATH,
   promotionEvidencePath = DEFAULT_PROMOTION_EVIDENCE_PATH,
+  proposalPath,
+  editorialDecisionPath,
+  editorialTimingPath,
+  auditPath,
+  auditTimingPath,
+  relationDiffPath,
+  verificationPath,
+  reviewedImportPath,
 } = {}) {
   const resolvedManifestPath = repositoryPath(manifestPath, 'manifest path');
   const resolvedCurrentCanonicalDirectory = repositoryPath(
@@ -407,16 +423,26 @@ export async function promoteM511({
   const reviewedImportSource = sourceFromManifest(manifest, 'reviewed_import');
   const authorizationSource = sourceFromManifest(manifest, 'authorization');
   const baseInventorySource = sourceFromManifest(manifest, 'base_inventory');
+  const externalPaths = {
+    proposal: requireExternalPath(proposalPath, 'proposal'),
+    editorial: requireExternalPath(editorialDecisionPath, 'editorial'),
+    editorial_timing: requireExternalPath(editorialTimingPath, 'editorial-timing'),
+    audit: requireExternalPath(auditPath, 'audit'),
+    audit_timing: requireExternalPath(auditTimingPath, 'audit-timing'),
+    relation_diff: requireExternalPath(relationDiffPath, 'relation-diff'),
+    verification: requireExternalPath(verificationPath, 'verification'),
+    reviewed_import: requireExternalPath(reviewedImportPath, 'output'),
+  };
 
   const result = await validateM511Admission({
-    proposalPath: proposalSource.path,
-    editorialDecisionPath: editorialSource.path,
-    editorialTimingPath: editorialTimingSource.path,
-    auditPath: auditSource.path,
-    auditTimingPath: auditTimingSource.path,
-    relationDiffPath: relationDiffSource.path,
-    verificationPath: verificationSource.path,
-    reviewedImportPath: reviewedImportSource.path,
+    proposalPath: externalPaths.proposal,
+    editorialDecisionPath: externalPaths.editorial,
+    editorialTimingPath: externalPaths.editorial_timing,
+    auditPath: externalPaths.audit,
+    auditTimingPath: externalPaths.audit_timing,
+    relationDiffPath: externalPaths.relation_diff,
+    verificationPath: externalPaths.verification,
+    reviewedImportPath: externalPaths.reviewed_import,
     authorizationPath: authorizationSource.path,
     baseInventoryPath: baseInventorySource.path,
     currentCanonicalDirectory: resolvedCurrentCanonicalDirectory,
@@ -476,6 +502,11 @@ export async function promoteM511({
     parent_issue: 7,
     batch_id: M5_11_BATCH_ID,
     gate: result.gate,
+    target: {
+      net_start_increase: 500,
+      cumulative_start_target: 1278,
+      candidate_buffer: 50,
+    },
     base: {
       canonical_directory_sha256: currentCanonicalDigest,
       inventory_sha256: sha256(currentInventoryBytes),
@@ -494,12 +525,7 @@ export async function promoteM511({
       processed_start_count: result.processed_start_count,
       imported_start_count: result.imported_records.length,
     },
-    sources: Object.fromEntries(
-      Object.entries(result.sources).map(([key, source]) => [key, {
-        path: source.path,
-        sha256: source.sha256,
-      }]),
-    ),
+    sources: manifest.sources,
     outputs: {
       canonical_import: {
         path: path.relative(REPOSITORY_DIRECTORY, resolvedCanonicalImportPath),
@@ -614,6 +640,14 @@ if (isMainModule) {
     manifestPath: args.manifest ?? DEFAULT_MANIFEST_PATH,
     canonicalImportPath: args['canonical-import'] ?? DEFAULT_CANONICAL_IMPORT_PATH,
     promotionEvidencePath: args.evidence ?? DEFAULT_PROMOTION_EVIDENCE_PATH,
+    proposalPath: args.proposal,
+    editorialDecisionPath: args.editorial,
+    editorialTimingPath: args['editorial-timing'],
+    auditPath: args.audit,
+    auditTimingPath: args['audit-timing'],
+    relationDiffPath: args['relation-diff'],
+    verificationPath: args.verification,
+    reviewedImportPath: args.output,
   })
     .then(({ promotion, promotionEvidencePath }) => {
       console.log(JSON.stringify({

@@ -1,14 +1,25 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import {
+  cp,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
 
 import {
   evaluateExpansionGate,
   hashCanonicalDirectory,
 } from './validate-m5-8-process.mjs';
+import { buildDictionary } from '../build/dictionary.mjs';
+import { findRecordsByExactTerm } from '../build/query.mjs';
 import { validateM5DAuthorization } from './validate-m5-10d-recovery.mjs';
 import {
   M5_11_BATCH_ID,
@@ -43,6 +54,14 @@ export const M5_11_AUDIT_TIMING_PASS_IDS = Object.freeze(['post-freeze-audit']);
 export const M5_11_TIMING_PASS_IDS = Object.freeze([
   ...M5_11_EDITORIAL_TIMING_PASS_IDS,
   ...M5_11_AUDIT_TIMING_PASS_IDS,
+]);
+export const M5_11_TIMING_RECORDER_VERSION = 'm5-11-timing-recorder-v1';
+export const M5_11_PROSPECTIVE_VERIFIER_VERSION = 'm5-11-prospective-verifier-v1';
+export const M5_11_MACHINE_CHECK_IDS = Object.freeze([
+  'canonical-integrity',
+  'deterministic-sqlite',
+  'search-product-regression',
+  'raw-material-exclusion',
 ]);
 
 const AUDIT_SEVERITIES = Object.freeze(['blocker', 'major', 'minor', 'info']);
@@ -155,7 +174,42 @@ function validateFileSource(source, label) {
   return source;
 }
 
-function validateTimingPass(pass, expectedIds, catalogIdSet, label, { audit = false } = {}) {
+function assertSecondsEqual(actual, expected, label, code = 'TIMING_DERIVATION_MISMATCH') {
+  if (!Number.isFinite(actual) || Math.abs(actual - expected) > 1e-9) {
+    fail(`${label} must equal the recorder-derived duration`, code);
+  }
+}
+
+function validateTimingEvent(event, {
+  artifact,
+  pass,
+  unitId,
+  label,
+} = {}) {
+  requireObject(event, label);
+  requireString(event.event_id, `${label}.event_id`);
+  if (event.kind !== 'work') fail(`${label}.kind must be work`, 'TIMING_EVENT_BINDING');
+  if (event.pass_id !== pass.id) fail(`${label}.pass_id is not bound to ${pass.id}`, 'TIMING_EVENT_BINDING');
+  if (event.session_id !== artifact.session_id) fail(`${label}.session_id is not bound to the timing session`, 'TIMING_EVENT_BINDING');
+  if (event.unit_id !== unitId) fail(`${label}.unit_id is not bound to ${unitId}`, 'TIMING_EVENT_BINDING');
+  if (event.recording_source !== pass.recording_source) fail(`${label}.recording_source drifted`, 'TIMING_PROVENANCE_ERROR');
+  const started = isoTimestamp(event.started_at, `${label}.started_at`);
+  const completed = isoTimestamp(event.completed_at, `${label}.completed_at`);
+  const recorded = isoTimestamp(event.recorded_at, `${label}.recorded_at`);
+  if (completed <= started) fail(`${label} must have a positive recorded duration`, 'TIMING_DERIVATION_MISMATCH');
+  if (recorded !== completed) fail(`${label}.recorded_at must equal completed_at`, 'TIMING_EVENT_BINDING');
+  if (started < isoTimestamp(pass.started_at, `${label}.pass.started_at`)
+    || completed > isoTimestamp(pass.completed_at, `${label}.pass.completed_at`)) {
+    fail(`${label} is outside its timing pass`, 'TIMING_CHRONOLOGY_ERROR');
+  }
+  return (completed - started) / 1000;
+}
+
+function validateTimingPass(pass, expectedIds, catalogIdSet, label, {
+  artifact,
+  eventsById,
+  audit = false,
+} = {}) {
   requireObject(pass, label);
   requireString(pass.id, `${label}.id`);
   if (!expectedIds.includes(pass.id)) fail(`${label}.id is not a required timing pass`, 'TIMING_SCOPE_ERROR');
@@ -170,16 +224,40 @@ function validateTimingPass(pass, expectedIds, catalogIdSet, label, { audit = fa
   if (new Set(eventIds).size !== eventIds.length) fail(`${label}.event_ids contains duplicates`, 'TIMING_SCOPE_ERROR');
   if (unitIds.length > 0 && eventIds.length === 0) fail(`${label} has work but no recorder events`, 'TIMING_PROVENANCE_ERROR');
   requireFiniteNumber(pass.wall_clock_seconds, `${label}.wall_clock_seconds`);
-  if (audit) {
-    requireFiniteNumber(pass.audit_seconds, `${label}.audit_seconds`);
-  } else {
-    requireFiniteNumber(pass.editor_seconds, `${label}.editor_seconds`);
-  }
   const started = isoTimestamp(pass.started_at, `${label}.started_at`);
   const completed = isoTimestamp(pass.completed_at, `${label}.completed_at`);
   if (completed < started) fail(`${label}.completed_at precedes started_at`, 'TIMING_CHRONOLOGY_ERROR');
   requireString(pass.recording_source, `${label}.recording_source`);
-  return pass;
+  const elapsed = (completed - started) / 1000;
+  assertSecondsEqual(pass.wall_clock_seconds, elapsed, `${label}.wall_clock_seconds`);
+  const eventResults = eventIds.map((eventId, eventIndex) => {
+    const event = eventsById.get(eventId);
+    if (!event) fail(`${label}.event_ids[${eventIndex}] is not present in the recorder event log`, 'TIMING_EVENT_BINDING');
+    return {
+      event,
+      seconds: validateTimingEvent(event, {
+        artifact,
+        pass,
+        unitId: unitIds[eventIndex],
+        label: `${label}.events[${eventIndex}]`,
+      }),
+    };
+  });
+  assertExactIds(
+    eventResults.map(({ event }) => event.unit_id),
+    unitIds,
+    `${label}.event unit scope`,
+    'TIMING_EVENT_BINDING',
+  );
+  const measuredSeconds = eventResults.reduce((sum, { seconds }) => sum + seconds, 0);
+  const durationField = audit ? 'audit_seconds' : 'editor_seconds';
+  requireFiniteNumber(pass[durationField], `${label}.${durationField}`);
+  assertSecondsEqual(pass[durationField], measuredSeconds, `${label}.${durationField}`);
+  return {
+    ...pass,
+    derived_editor_seconds: audit ? 0 : measuredSeconds,
+    derived_audit_seconds: audit ? measuredSeconds : 0,
+  };
 }
 
 export function validateM511TimingArtifact(
@@ -222,6 +300,34 @@ export function validateM511TimingArtifact(
   const expectedPasses = timingKind === 'editorial'
     ? M5_11_EDITORIAL_TIMING_PASS_IDS
     : M5_11_AUDIT_TIMING_PASS_IDS;
+  if (artifact.recorder_version !== M5_11_TIMING_RECORDER_VERSION) {
+    fail(`${label}.recorder_version must identify the M5-11 recorder`, 'TIMING_PROVENANCE_ERROR');
+  }
+  requireString(artifact.recording_source, `${label}.recording_source`);
+  const recorder = requireObject(artifact.recorder, `${label}.recorder`);
+  if (recorder.version !== M5_11_TIMING_RECORDER_VERSION) {
+    fail(`${label}.recorder.version must identify the M5-11 recorder`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (recorder.session_id !== artifact.session_id) {
+    fail(`${label}.recorder.session_id is not bound to the timing session`, 'TIMING_PROVENANCE_ERROR');
+  }
+  const events = requireArray(artifact.events, `${label}.events`);
+  if (!/^[a-f0-9]{64}$/u.test(recorder.event_log_sha256)) {
+    fail(`${label}.recorder.event_log_sha256 must be a SHA-256 digest`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (recorder.event_log_sha256 !== sha256Json(events)) {
+    fail(`${label}.recorder.event_log_sha256 does not bind the recorder event log`, 'TIMING_PROVENANCE_ERROR');
+  }
+  if (recorder.event_count !== events.length) {
+    fail(`${label}.recorder.event_count does not match the recorder event log`, 'TIMING_PROVENANCE_ERROR');
+  }
+  const eventsById = new Map();
+  for (const [index, event] of events.entries()) {
+    requireObject(event, `${label}.events[${index}]`);
+    requireString(event.event_id, `${label}.events[${index}].event_id`);
+    if (eventsById.has(event.event_id)) fail(`${label}.events contains duplicate event_id ${event.event_id}`, 'TIMING_SCOPE_ERROR');
+    eventsById.set(event.event_id, event);
+  }
   assertExactIds(
     passes.map(({ id }) => id),
     expectedPasses,
@@ -239,12 +345,22 @@ export function validateM511TimingArtifact(
       expectedPasses,
       catalogIdSet,
       `${label}.passes[${index}]`,
-      { audit: timingKind === 'post-freeze-audit' },
+      {
+        artifact,
+        eventsById,
+        audit: timingKind === 'post-freeze-audit',
+      },
     );
     passById.set(validated.id, validated);
-    if (timingKind === 'editorial') editorSeconds += validated.editor_seconds;
-    else auditSeconds += validated.audit_seconds;
+    if (timingKind === 'editorial') editorSeconds += validated.derived_editor_seconds;
+    else auditSeconds += validated.derived_audit_seconds;
   }
+  assertExactIds(
+    [...eventsById.keys()],
+    passes.flatMap(({ event_ids: eventIds }) => eventIds),
+    `${label}.events scope`,
+    'TIMING_EVENT_BINDING',
+  );
 
   if (timingKind === 'editorial') {
     assertExactIds(
@@ -364,6 +480,7 @@ export function validateM511VerificationArtifact(
     editorialSourceSha256,
     proposalSourceSha256,
     relationDiffSha256,
+    machineVerification,
   } = {},
 ) {
   const label = 'M5-11 verification artifact';
@@ -393,8 +510,54 @@ export function validateM511VerificationArtifact(
   }
   assertDeep(verification.final_canonical_summary, finalSummary, `${label}.final_canonical_summary`, 'VERIFICATION_METRICS_MISMATCH');
   const checks = requireArray(verification.checks, `${label}.checks`);
-  if (checks.length === 0 || checks.some(({ status }) => status !== 'pass')) {
-    fail(`${label}.checks must all be explicit passes`, 'VERIFICATION_GATE_ERROR');
+  if (verification.machine_generated !== true) {
+    fail(`${label}.machine_generated must be true`, 'VERIFICATION_PROVENANCE_ERROR');
+  }
+  if (verification.verifier_version !== M5_11_PROSPECTIVE_VERIFIER_VERSION) {
+    fail(`${label}.verifier_version is not the M5-11 prospective verifier`, 'VERIFICATION_PROVENANCE_ERROR');
+  }
+  if (!/^[a-f0-9]{64}$/u.test(verification.prospective_canonical_sha256)) {
+    fail(`${label}.prospective_canonical_sha256 must be a SHA-256 digest`, 'VERIFICATION_SOURCE_MISMATCH');
+  }
+  assertExactIds(
+    checks.map(({ id }) => id),
+    M5_11_MACHINE_CHECK_IDS,
+    `${label}.checks`,
+    'VERIFICATION_GATE_ERROR',
+  );
+  const checksById = new Map();
+  for (const [index, check] of checks.entries()) {
+    const checkLabel = `${label}.checks[${index}]`;
+    requireObject(check, checkLabel);
+    if (check.status !== 'pass') fail(`${checkLabel}.status must be pass`, 'VERIFICATION_GATE_ERROR');
+    if (!/^[a-f0-9]{64}$/u.test(check.result_sha256)) {
+      fail(`${checkLabel}.result_sha256 must be a SHA-256 digest`, 'VERIFICATION_PROVENANCE_ERROR');
+    }
+    checksById.set(check.id, check);
+  }
+  for (const [field, checkId] of [
+    ['canonical_integrity', 'canonical-integrity'],
+    ['deterministic_sqlite', 'deterministic-sqlite'],
+    ['search_product_regression', 'search-product-regression'],
+    ['raw_material_excluded', 'raw-material-exclusion'],
+  ]) {
+    if (verification[field] !== (checksById.get(checkId)?.status === 'pass')) {
+      fail(`${label}.${field} is not derived from its machine check`, 'VERIFICATION_GATE_ERROR');
+    }
+  }
+  if (machineVerification !== undefined) {
+    assertDeep(
+      {
+        machine_generated: verification.machine_generated,
+        verifier_version: verification.verifier_version,
+        prospective_canonical_sha256: verification.prospective_canonical_sha256,
+        final_canonical_summary: verification.final_canonical_summary,
+        checks: verification.checks,
+      },
+      machineVerification,
+      `${label} machine report`,
+      'VERIFICATION_PROVENANCE_ERROR',
+    );
   }
   return {
     editorial_review_complete: verification.editorial_review_complete,
@@ -402,6 +565,11 @@ export function validateM511VerificationArtifact(
     canonical_integrity: verification.canonical_integrity,
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
+    raw_material_excluded: verification.raw_material_excluded,
+    machine_generated: verification.machine_generated,
+    verifier_version: verification.verifier_version,
+    prospective_canonical_sha256: verification.prospective_canonical_sha256,
+    checks: verification.checks,
   };
 }
 
@@ -414,22 +582,58 @@ function relationTupleKey(sourceSense, relation) {
   ]);
 }
 
-function validateRelationEvidence(relationDiff, importedRecords, batchId) {
-  validateRelationDiff(relationDiff);
-  if (relationDiff.batch_id !== batchId) fail('relation diff batch_id drifted', 'RELATION_SOURCE_MISMATCH');
-  const finalRelationTuples = new Set();
-  for (const record of importedRecords) {
+function relationSetFromRecords(records) {
+  const tuples = new Set();
+  for (const record of records) {
     for (const sense of record.senses) {
       for (const relation of sense.relations ?? []) {
-        finalRelationTuples.add(relationTupleKey(sense.id, relation));
+        tuples.add(relationTupleKey(sense.id, relation));
       }
     }
   }
+  return tuples;
+}
+
+function relationTupleFromEvent(event, side) {
+  return relationTupleKey(event.source_sense, event[side]);
+}
+
+function validateRelationEvidence(relationDiff, importedRecords, baseRecords, batchId) {
+  validateRelationDiff(relationDiff);
+  if (relationDiff.batch_id !== batchId) fail('relation diff batch_id drifted', 'RELATION_SOURCE_MISMATCH');
+  const actualRelationTuples = relationSetFromRecords(importedRecords);
+  const importedSourceSenses = new Set(
+    importedRecords.flatMap((record) => record.senses.map(({ id }) => id)),
+  );
+  const expectedRelationTuples = relationSetFromRecords(baseRecords);
   for (const event of relationDiff.events) {
+    const beforeTuple = event.before ? relationTupleFromEvent(event, 'before') : undefined;
+    const afterTuple = event.after ? relationTupleFromEvent(event, 'after') : undefined;
+    if (event.operation === 'remove' || event.operation === 'retype' || event.operation === 'retarget') {
+      if (!expectedRelationTuples.has(beforeTuple)) {
+        fail(`relation diff event ${event.event_id} removes or changes an absent relation`, 'RELATION_BEFORE_NOT_CANONICAL');
+      }
+      expectedRelationTuples.delete(beforeTuple);
+    }
     if (event.operation === 'add' || event.operation === 'retype' || event.operation === 'retarget') {
-      if (!finalRelationTuples.has(relationTupleKey(event.source_sense, event.after))) {
+      expectedRelationTuples.add(afterTuple);
+    }
+    if (event.operation === 'add' || event.operation === 'retype' || event.operation === 'retarget') {
+      if (importedSourceSenses.has(event.source_sense) && !actualRelationTuples.has(afterTuple)) {
         fail(`relation diff event ${event.event_id} is absent from the reviewed canonical records`, 'RELATION_AFTER_NOT_CANONICAL');
       }
+    }
+  }
+  for (const tuple of actualRelationTuples) {
+    const [sourceSense] = JSON.parse(tuple);
+    if (importedSourceSenses.has(sourceSense) && !expectedRelationTuples.has(tuple)) {
+      fail(`reviewed canonical relation ${tuple} is absent from the relation diff`, 'RELATION_DIFF_MISSING_FINAL');
+    }
+  }
+  for (const tuple of expectedRelationTuples) {
+    const [sourceSense] = JSON.parse(tuple);
+    if (importedSourceSenses.has(sourceSense) && !actualRelationTuples.has(tuple)) {
+      fail(`relation diff relation ${tuple} is absent from the reviewed canonical records`, 'RELATION_AFTER_NOT_CANONICAL');
     }
   }
   return summarizeRelationDiff(relationDiff);
@@ -471,6 +675,152 @@ function validateImportedRecords(importedRecords, baseRecords, expectedImportedC
   );
 }
 
+function createReviewedImportBytes(records) {
+  return Buffer.from(
+    records.length === 0
+      ? ''
+      : `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
+    'utf8',
+  );
+}
+
+export async function runM511ProspectiveVerification({
+  baseCanonicalDirectory,
+  importedRecords,
+  expectedFinalSummary,
+  checkPilotCompleteness = true,
+} = {}) {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-verification-'));
+  const temporaryCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  const temporarySqlitePath = path.join(temporaryDirectory, 'dictionary.sqlite');
+  try {
+    await cp(baseCanonicalDirectory, temporaryCanonicalDirectory, { recursive: true });
+    await writeFile(
+      path.join(temporaryCanonicalDirectory, 'm5-11-expansion.jsonl'),
+      createReviewedImportBytes(importedRecords),
+    );
+    const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
+    const records = canonical.records.map(recordOf);
+    validateDatasetRecords(canonical.records, { checkPilotCompleteness });
+    const finalSummary = canonicalSummary(records);
+    assertDeep(finalSummary, expectedFinalSummary, 'prospective canonical summary', 'VERIFICATION_METRICS_MISMATCH');
+    const prospectiveCanonicalSha256 = await hashCanonicalDirectory(temporaryCanonicalDirectory);
+
+    const build = await buildDictionary({
+      inputDirectory: temporaryCanonicalDirectory,
+      outputPath: temporarySqlitePath,
+      metadata: {
+        source_revision: M5_11_BATCH_ID,
+        source_revision_source: 'prospective-m5-11-verifier',
+        source_revision_verified: 'false',
+      },
+      checkPilotCompleteness,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: true,
+    });
+
+    const database = new DatabaseSync(temporarySqlitePath, { readOnly: true });
+    let sqliteObservation;
+    let searchObservation;
+    try {
+      const integrity = database.prepare('PRAGMA integrity_check').get();
+      const foreignKeys = database.prepare('PRAGMA foreign_key_check').all();
+      const counts = {
+        records: database.prepare('SELECT COUNT(*) AS count FROM records').get().count,
+        starts: database.prepare("SELECT COUNT(*) AS count FROM records WHERE role = 'start'").get().count,
+        references: database.prepare("SELECT COUNT(*) AS count FROM records WHERE role = 'reference-only'").get().count,
+        senses: database.prepare('SELECT COUNT(*) AS count FROM senses').get().count,
+        relations: database.prepare('SELECT COUNT(*) AS count FROM relations').get().count,
+      };
+      if (integrity?.integrity_check !== 'ok' || foreignKeys.length > 0) {
+        fail('prospective SQLite integrity checks failed', 'VERIFICATION_SQLITE_FAILED');
+      }
+      assertDeep(
+        counts,
+        {
+          records: expectedFinalSummary.record_count,
+          starts: expectedFinalSummary.start_count,
+          references: expectedFinalSummary.reference_only_count,
+          senses: expectedFinalSummary.sense_count,
+          relations: expectedFinalSummary.relation_count,
+        },
+        'prospective SQLite counts',
+        'VERIFICATION_SQLITE_FAILED',
+      );
+      sqliteObservation = {
+        build: {
+          recordCount: build.recordCount,
+          senseCount: build.senseCount,
+          relationCount: build.relationCount,
+        },
+        integrity: integrity.integrity_check,
+        foreign_key_errors: foreignKeys,
+        counts,
+      };
+
+      const searchResults = importedRecords.map((record) => ({
+        record_id: record.id,
+        lemma: record.lemma,
+        result_ids: findRecordsByExactTerm(database, record.lemma).map(({ id }) => id),
+      }));
+      if (searchResults.some(({ record_id: recordId, result_ids: resultIds }) => !resultIds.includes(recordId))) {
+        fail('prospective search regression did not find every admitted lemma', 'VERIFICATION_SEARCH_FAILED');
+      }
+      searchObservation = searchResults;
+    } finally {
+      database.close();
+    }
+
+    const canonicalFiles = await readdir(temporaryCanonicalDirectory);
+    if (canonicalFiles.some((fileName) => !fileName.endsWith('.jsonl'))) {
+      fail('prospective canonical directory contains non-canonical raw material', 'VERIFICATION_RAW_MATERIAL');
+    }
+    const canonicalText = await Promise.all(
+      canonicalFiles.map((fileName) => readFile(path.join(temporaryCanonicalDirectory, fileName), 'utf8')),
+    );
+    if (canonicalText.join('\n').includes('proposal-')) {
+      fail('prospective canonical directory contains candidate-local proposal IDs', 'VERIFICATION_RAW_MATERIAL');
+    }
+    const rawMaterialObservation = {
+      canonical_files: canonicalFiles,
+      candidate_local_ids_present: false,
+      external_input_paths_present: false,
+    };
+
+    const checks = [
+      {
+        id: 'canonical-integrity',
+        status: 'pass',
+        result_sha256: sha256Json({ finalSummary, prospectiveCanonicalSha256 }),
+      },
+      {
+        id: 'deterministic-sqlite',
+        status: 'pass',
+        result_sha256: sha256Json(sqliteObservation),
+      },
+      {
+        id: 'search-product-regression',
+        status: 'pass',
+        result_sha256: sha256Json(searchObservation),
+      },
+      {
+        id: 'raw-material-exclusion',
+        status: 'pass',
+        result_sha256: sha256Json(rawMaterialObservation),
+      },
+    ];
+    return {
+      machine_generated: true,
+      verifier_version: M5_11_PROSPECTIVE_VERIFIER_VERSION,
+      prospective_canonical_sha256: prospectiveCanonicalSha256,
+      final_canonical_summary: finalSummary,
+      checks,
+    };
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
 export function deriveM511AdmissionGate({
   catalog = M5_11_CATALOG,
   proposal,
@@ -495,6 +845,7 @@ export function deriveM511AdmissionGate({
   candidateBuffer = 50,
   checkPilotCompleteness = true,
   plan = DEFAULT_PLAN,
+  machineVerification,
 } = {}) {
   const editorialResult = validateM511EditorialDecisions(editorial, {
     catalog,
@@ -528,7 +879,12 @@ export function deriveM511AdmissionGate({
   if (finalSummary.record_count !== baseSummary.record_count + expectedImportedCount) {
     fail('final canonical record count drifted from the base plus import', 'CANONICAL_COUNT_MISMATCH');
   }
-  const relationSummary = validateRelationEvidence(relationDiff, importedRecords, M5_11_BATCH_ID);
+  const relationSummary = validateRelationEvidence(
+    relationDiff,
+    importedRecords,
+    baseRecords,
+    M5_11_BATCH_ID,
+  );
   const editorialTimingResult = validateM511TimingArtifact(editorialTiming, {
     source: editorialTimingSource,
     catalog,
@@ -562,6 +918,7 @@ export function deriveM511AdmissionGate({
     editorialSourceSha256: editorialSource.sha256,
     proposalSourceSha256: proposalSource.sha256,
     relationDiffSha256: relationDiffSource.sha256,
+    machineVerification,
   });
   if (auditTiming.session_id !== audit.session_id) {
     fail('audit timing session does not match the independent audit', 'AUDIT_PROVENANCE_ERROR');
@@ -790,6 +1147,28 @@ export async function validateM511Admission({
   if (authorizationResult.authorization.decision !== 'AUTHORIZE M5-11 +500 VALIDATION') {
     fail('M5-11 authorization decision is not the required validation authorization', 'AUTHORIZATION_CHAIN_MISMATCH');
   }
+  const editorialPreview = validateM511EditorialDecisions(editorialSource.value, {
+    catalog,
+    proposal: proposalSource.value,
+    expectedImportedCount,
+  });
+  const previewBaseRecords = baseCanonical.records.map(recordOf);
+  validateImportedRecords(
+    editorialPreview.importedRecords,
+    previewBaseRecords,
+    expectedImportedCount,
+    checkPilotCompleteness,
+  );
+  const previewFinalSummary = canonicalSummary([
+    ...previewBaseRecords,
+    ...editorialPreview.importedRecords,
+  ]);
+  const machineVerification = await runM511ProspectiveVerification({
+    baseCanonicalDirectory,
+    importedRecords: editorialPreview.importedRecords,
+    expectedFinalSummary: previewFinalSummary,
+    checkPilotCompleteness,
+  });
   const result = deriveM511AdmissionGate({
     catalog,
     proposal: proposalSource.value,
@@ -814,6 +1193,7 @@ export async function validateM511Admission({
     candidateBuffer,
     checkPilotCompleteness,
     plan,
+    machineVerification,
   });
   if (reviewedImportSource.value.length !== result.imported_records.length) {
     fail('reviewed import does not match the editorial decision records', 'CANONICAL_SOURCE_MISMATCH');

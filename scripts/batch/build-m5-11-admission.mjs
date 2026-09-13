@@ -53,8 +53,25 @@ async function assertMissing(filePath) {
   );
 }
 
-function sourceRef(source) {
-  return { path: source.path, sha256: source.sha256 };
+const EXTERNAL_SOURCE_KEYS = new Set([
+  'proposal',
+  'editorial',
+  'editorial_timing',
+  'audit',
+  'audit_timing',
+  'relation_diff',
+  'verification',
+  'reviewed_import',
+]);
+
+function sourceRef(key, source) {
+  return {
+    source_id: key,
+    path: EXTERNAL_SOURCE_KEYS.has(key)
+      ? `external:${key}`
+      : path.relative(REPOSITORY_DIRECTORY, source.path),
+    sha256: source.sha256,
+  };
 }
 
 export async function buildM511Admission({
@@ -99,9 +116,10 @@ export async function buildM511Admission({
     relation: result.relation,
     timing: result.timing,
     audit: result.audit,
+    verification: result.verification,
     gate: result.gate,
     sources: Object.fromEntries(
-      Object.entries(result.sources).map(([key, source]) => [key, sourceRef(source)]),
+      Object.entries(result.sources).map(([key, source]) => [key, sourceRef(key, source)]),
     ),
     promotion: {
       canonical_mutation: false,

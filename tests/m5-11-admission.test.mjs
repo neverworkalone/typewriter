@@ -8,10 +8,13 @@ import path from 'node:path';
 import {
   M5_11_AUDIT_TIMING_PASS_IDS,
   M5_11_EDITORIAL_TIMING_PASS_IDS,
+  M5_11_MACHINE_CHECK_IDS,
+  M5_11_TIMING_RECORDER_VERSION,
   deriveM511AdmissionGate,
   validateM511Admission,
 } from '../scripts/batch/validate-m5-11-admission.mjs';
 import { buildM511PromotionSeed, promoteM511 } from '../scripts/batch/promote-m5-11.mjs';
+import { validateM511DurableEvidence } from '../scripts/batch/validate-m5-11-promotion.mjs';
 import { M5_11_BATCH_ID } from '../scripts/batch/m5-11-editorial.mjs';
 import { sha256Json, sha256ProposalRow } from '../scripts/batch/m5-11-editorial.mjs';
 
@@ -172,6 +175,8 @@ function makeSources(catalog) {
       proposal_sha256: proposalSource.sha256,
       editorial_sha256: editorialSource.sha256,
     },
+    recorder_version: M5_11_TIMING_RECORDER_VERSION,
+    recording_source: M5_11_TIMING_RECORDER_VERSION,
     passes: M5_11_EDITORIAL_TIMING_PASS_IDS.map((id) => {
       const unitIds = id === 'final-verification'
         ? ['m5-537', 'm5-538']
@@ -180,19 +185,44 @@ function makeSources(catalog) {
           : id === 'feedback-fixes'
             ? []
             : catalog.map(({ inventory_id: inventoryId }) => inventoryId);
+      const durationMs = unitIds.length === 0 ? 0 : 1000;
+      const startedAt = '2026-09-13T10:00:00.000Z';
+      const completedAt = new Date(Date.parse(startedAt) + durationMs).toISOString();
       return {
         id,
         status: 'complete',
         unit_ids: unitIds,
         unit_count: unitIds.length,
         event_ids: unitIds.map((_, index) => `${id}-event-${index + 1}`),
-        wall_clock_seconds: unitIds.length === 0 ? 0 : 1,
+        wall_clock_seconds: durationMs / 1000,
         editor_seconds: unitIds.length === 0 ? 0 : 1,
-        started_at: '2026-09-13T10:00:00.000Z',
-        completed_at: '2026-09-13T10:00:01.000Z',
-        recording_source: 'm5-11-test-recorder',
+        started_at: startedAt,
+        completed_at: completedAt,
+        recording_source: M5_11_TIMING_RECORDER_VERSION,
       };
     }),
+  };
+  editorialTiming.events = editorialTiming.passes.flatMap((pass) => pass.unit_ids.map((unitId, index) => {
+    const durationMs = pass.unit_ids.length === 0 ? 0 : Math.floor(Date.parse(pass.completed_at) - Date.parse(pass.started_at)) / pass.unit_ids.length;
+    const startedAt = Date.parse(pass.started_at) + index * durationMs;
+    const completedAt = startedAt + durationMs;
+    return {
+      event_id: pass.event_ids[index],
+      kind: 'work',
+      pass_id: pass.id,
+      session_id: editorialTiming.session_id,
+      unit_id: unitId,
+      recording_source: M5_11_TIMING_RECORDER_VERSION,
+      started_at: new Date(startedAt).toISOString(),
+      completed_at: new Date(completedAt).toISOString(),
+      recorded_at: new Date(completedAt).toISOString(),
+    };
+  }));
+  editorialTiming.recorder = {
+    version: M5_11_TIMING_RECORDER_VERSION,
+    session_id: editorialTiming.session_id,
+    event_count: editorialTiming.events.length,
+    event_log_sha256: sha256Json(editorialTiming.events),
   };
   const editorialTimingSource = fileSource('/tmp/m5-11-editorial-timing.json', editorialTiming);
   const audit = {
@@ -225,6 +255,8 @@ function makeSources(catalog) {
       audit_sha256: auditSource.sha256,
       editorial_timing_sha256: editorialTimingSource.sha256,
     },
+    recorder_version: M5_11_TIMING_RECORDER_VERSION,
+    recording_source: M5_11_TIMING_RECORDER_VERSION,
     passes: M5_11_AUDIT_TIMING_PASS_IDS.map((id) => ({
       id,
       status: 'complete',
@@ -235,8 +267,30 @@ function makeSources(catalog) {
       audit_seconds: 1,
       started_at: '2026-09-13T11:00:00.000Z',
       completed_at: '2026-09-13T11:00:01.000Z',
-      recording_source: 'm5-11-test-audit-recorder',
+      recording_source: M5_11_TIMING_RECORDER_VERSION,
     })),
+  };
+  auditTiming.events = auditTiming.passes.flatMap((pass) => pass.unit_ids.map((unitId, index) => {
+    const durationMs = 250;
+    const startedAt = Date.parse(pass.started_at) + index * durationMs;
+    const completedAt = startedAt + durationMs;
+    return {
+      event_id: pass.event_ids[index],
+      kind: 'work',
+      pass_id: pass.id,
+      session_id: auditTiming.session_id,
+      unit_id: unitId,
+      recording_source: M5_11_TIMING_RECORDER_VERSION,
+      started_at: new Date(startedAt).toISOString(),
+      completed_at: new Date(completedAt).toISOString(),
+      recorded_at: new Date(completedAt).toISOString(),
+    };
+  }));
+  auditTiming.recorder = {
+    version: M5_11_TIMING_RECORDER_VERSION,
+    session_id: auditTiming.session_id,
+    event_count: auditTiming.events.length,
+    event_log_sha256: sha256Json(auditTiming.events),
   };
   const auditTimingSource = fileSource('/tmp/m5-11-audit-timing.json', auditTiming);
   const finalSummary = {
@@ -262,7 +316,14 @@ function makeSources(catalog) {
     proposal_sha256: proposalSource.sha256,
     relation_diff_sha256: relationDiffSource.sha256,
     final_canonical_summary: finalSummary,
-    checks: [{ id: 'all-m5-11-checks', status: 'pass' }],
+    machine_generated: true,
+    verifier_version: 'm5-11-prospective-verifier-v1',
+    prospective_canonical_sha256: 'a'.repeat(64),
+    checks: M5_11_MACHINE_CHECK_IDS.map((id) => ({
+      id,
+      status: 'pass',
+      result_sha256: 'b'.repeat(64),
+    })),
   };
   const verificationSource = fileSource('/tmp/m5-11-verification.json', verification);
   return {
@@ -296,6 +357,53 @@ function makeBaseRecords() {
     search_forms: ['기존말'],
     senses: [{ id: 'w001-s1', pos: 'noun', gloss: '기존 의미' }],
   }];
+}
+
+function makeRelationBaseRecords() {
+  return [{
+    id: 'w001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w001',
+    lemma: '기존말',
+    search_forms: ['기존말'],
+    senses: [{
+      id: 'w001-s1',
+      pos: 'noun',
+      gloss: '기존 의미',
+      relations: ['w002', 'w003', 'w004', 'w005'].map((id, index) => ({
+        target: id,
+        target_sense: `${id}-s1`,
+        type: 'near',
+      })),
+    }],
+  }, ...['w002', 'w003', 'w004', 'w005'].map((id) => ({
+    id,
+    record_type: 'entry',
+    role: 'reference-only',
+    lemma: `${id}참조`,
+    search_forms: [`${id}참조`],
+    senses: [{ id: `${id}-s1`, pos: 'noun', gloss: `${id} 참조 의미` }],
+  }))];
+}
+
+function setTimingPassDuration(artifact, passId, durationMs, durationField = 'editor_seconds') {
+  const pass = artifact.passes.find(({ id }) => id === passId);
+  const startedMs = Date.parse(pass.started_at);
+  pass.completed_at = new Date(startedMs + durationMs).toISOString();
+  pass.wall_clock_seconds = durationMs / 1000;
+  pass[durationField] = durationMs / 1000;
+  const eventIds = new Set(pass.event_ids);
+  const passEvents = artifact.events.filter(({ event_id: eventId }) => eventIds.has(eventId));
+  const perEventMs = durationMs / passEvents.length;
+  passEvents.forEach((event, index) => {
+    const eventStartedMs = startedMs + index * perEventMs;
+    const eventCompletedMs = eventStartedMs + perEventMs;
+    event.started_at = new Date(eventStartedMs).toISOString();
+    event.completed_at = new Date(eventCompletedMs).toISOString();
+    event.recorded_at = event.completed_at;
+  });
+  artifact.recorder.event_log_sha256 = sha256Json(artifact.events);
 }
 
 function rebindFixtureSources(fixture) {
@@ -425,8 +533,8 @@ test('M5-11 gate accepts exact correction, relation-noise, and editor-time thres
       operation: 'remove',
       source_sense: 'w001-s1',
       before: {
-        target: 'w002',
-        target_sense: 'w002-s1',
+        target: `w00${index + 2}`,
+        target_sense: `w00${index + 2}-s1`,
         type: 'near',
       },
       ...(index === 0 ? { error_category: 'broad-common-category' } : {}),
@@ -448,17 +556,30 @@ test('M5-11 gate accepts exact correction, relation-noise, and editor-time thres
     fixture.reviewedImport,
     importBytes,
   );
+  setTimingPassDuration(fixture.editorialTiming, 'target-preparation', 47992);
+  setTimingPassDuration(fixture.editorialTiming, 'initial-review', 4);
+  setTimingPassDuration(fixture.editorialTiming, 'final-verification', 2);
+  setTimingPassDuration(fixture.editorialTiming, 'held-rejected', 2);
+  fixture.verification.final_canonical_summary = {
+    record_count: 7,
+    start_count: 3,
+    reference_only_count: 4,
+    sense_count: 7,
+    relation_count: 4,
+    expression_count: 0,
+  };
+  fixture.verificationSource = fileSource(fixture.verificationSource.path, fixture.verification);
   rebindFixtureSources(fixture);
 
   const result = deriveM511AdmissionGate({
     ...fixture,
-    baseRecords: makeBaseRecords(),
+    baseRecords: makeRelationBaseRecords(),
     baseSummary: {
-      record_count: 1,
+      record_count: 5,
       start_count: 1,
-      reference_only_count: 0,
-      sense_count: 1,
-      relation_count: 0,
+      reference_only_count: 4,
+      sense_count: 5,
+      relation_count: 4,
       expression_count: 0,
     },
     expectedImportedCount: 2,
@@ -475,9 +596,9 @@ test('M5-11 gate accepts exact correction, relation-noise, and editor-time thres
 
 test('M5-11 gate rejects an editor-time threshold breach before promotion', () => {
   const fixture = makeSources(makeCatalog());
-  fixture.editorialTiming.passes.forEach((pass) => {
-    pass.editor_seconds = pass.unit_ids.length === 0 ? 0 : 20;
-  });
+  fixture.editorialTiming.passes
+    .filter(({ unit_ids: unitIds }) => unitIds.length > 0)
+    .forEach(({ id }) => setTimingPassDuration(fixture.editorialTiming, id, 20000));
   fixture.editorialTimingSource = fileSource('/tmp/m5-11-editorial-timing-breach.json', fixture.editorialTiming);
   fixture.auditTiming.source.editorial_timing_sha256 = fixture.editorialTimingSource.sha256;
   fixture.auditTimingSource = fileSource('/tmp/m5-11-audit-timing-breach.json', fixture.auditTiming);
@@ -506,6 +627,11 @@ test('M5-11 gate rejects an audit session reused from editorial timing', () => {
   const fixture = makeSources(makeCatalog());
   fixture.audit.session_id = fixture.editorialTiming.session_id;
   fixture.auditTiming.session_id = fixture.audit.session_id;
+  fixture.auditTiming.recorder.session_id = fixture.auditTiming.session_id;
+  fixture.auditTiming.events.forEach((event) => {
+    event.session_id = fixture.auditTiming.session_id;
+  });
+  fixture.auditTiming.recorder.event_log_sha256 = sha256Json(fixture.auditTiming.events);
   fixture.auditSource = fileSource('/tmp/m5-11-audit-reused.json', fixture.audit);
   fixture.auditTiming.source.audit_sha256 = fixture.auditSource.sha256;
   fixture.auditTimingSource = fileSource('/tmp/m5-11-audit-timing-reused.json', fixture.auditTiming);
@@ -579,5 +705,206 @@ test('M5-11 admission rejects repository-local external review inputs', async ()
       reviewedImportPath: input,
     }),
     /must remain outside the repository/u,
+  );
+});
+
+test('M5-11 timing rejects fabricated editor seconds without recorder events', () => {
+  const fixture = makeSources(makeCatalog());
+  fixture.editorialTiming.passes[0].editor_seconds = 999;
+  assert.throws(
+    () => deriveM511AdmissionGate({
+      ...fixture,
+      baseRecords: makeBaseRecords(),
+      baseSummary: {
+        record_count: 1,
+        start_count: 1,
+        reference_only_count: 0,
+        sense_count: 1,
+        relation_count: 0,
+        expression_count: 0,
+      },
+      expectedImportedCount: 2,
+      expectedCumulativeStartCount: 3,
+      candidateBuffer: 2,
+      checkPilotCompleteness: false,
+    }),
+    /recorder-derived duration/u,
+  );
+});
+
+test('M5-11 verification rejects literal pass claims without machine checks', () => {
+  const fixture = makeSources(makeCatalog());
+  fixture.verification.checks = [{ id: 'all-m5-11-checks', status: 'pass' }];
+  assert.throws(
+    () => deriveM511AdmissionGate({
+      ...fixture,
+      baseRecords: makeBaseRecords(),
+      baseSummary: {
+        record_count: 1,
+        start_count: 1,
+        reference_only_count: 0,
+        sense_count: 1,
+        relation_count: 0,
+        expression_count: 0,
+      },
+      expectedImportedCount: 2,
+      expectedCumulativeStartCount: 3,
+      candidateBuffer: 2,
+      checkPilotCompleteness: false,
+    }),
+    /checks/u,
+  );
+});
+
+test('M5-11 relation evidence rejects an imported relation omitted from the diff', () => {
+  const fixture = makeSources(makeCatalog());
+  const admitted = fixture.editorial.decisions[2];
+  admitted.decision = 'corrected';
+  admitted.corrected_lemma = '포함말수정';
+  admitted.canonical_record.lemma = '포함말수정';
+  admitted.canonical_record.search_forms = ['포함말수정'];
+  admitted.canonical_record.senses[0].gloss = '포함말수정의 검수된 의미';
+  admitted.canonical_record.senses[0].relations = [{
+    target: 'w001',
+    target_sense: 'w001-s1',
+    type: 'near',
+  }];
+  fixture.editorialSource = fileSource(fixture.editorialSource.path, fixture.editorial);
+  fixture.reviewedImport = fixture.editorial.decisions
+    .filter(({ canonical_record: record }) => record)
+    .map(({ canonical_record: record }) => record);
+  fixture.reviewedImportSource = fileSource(
+    fixture.reviewedImportSource.path,
+    fixture.reviewedImport,
+    Buffer.from(`${fixture.reviewedImport.map((record) => JSON.stringify(record)).join('\n')}\n`, 'utf8'),
+  );
+  rebindFixtureSources(fixture);
+  assert.throws(
+    () => deriveM511AdmissionGate({
+      ...fixture,
+      baseRecords: makeBaseRecords(),
+      baseSummary: {
+        record_count: 1,
+        start_count: 1,
+        reference_only_count: 0,
+        sense_count: 1,
+        relation_count: 0,
+        expression_count: 0,
+      },
+      expectedImportedCount: 2,
+      expectedCumulativeStartCount: 3,
+      candidateBuffer: 2,
+      checkPilotCompleteness: false,
+    }),
+    /absent from the relation diff/u,
+  );
+});
+
+test('M5-11 post-promotion validation uses portable durable evidence after external inputs disappear', () => {
+  const sharedSource = (sourceId, sourcePath) => ({
+    source_id: sourceId,
+    path: sourcePath,
+    sha256: 'a'.repeat(64),
+  });
+  const sources = Object.fromEntries([
+    ['proposal', sharedSource('proposal', 'external:proposal')],
+    ['editorial', sharedSource('editorial', 'external:editorial')],
+    ['editorial_timing', sharedSource('editorial_timing', 'external:editorial_timing')],
+    ['audit', sharedSource('audit', 'external:audit')],
+    ['audit_timing', sharedSource('audit_timing', 'external:audit_timing')],
+    ['relation_diff', sharedSource('relation_diff', 'external:relation_diff')],
+    ['verification', sharedSource('verification', 'external:verification')],
+    ['reviewed_import', sharedSource('reviewed_import', 'external:reviewed_import')],
+    ['authorization', sharedSource('authorization', 'data/batches/m5-10d-m5-11-authorization-20260912.json')],
+    ['base_inventory', sharedSource('base_inventory', 'data/batches/m5-11-base-inventory.json')],
+  ]);
+  const base = {
+    record_count: 820,
+    start_count: 778,
+    reference_only_count: 42,
+    sense_count: 966,
+    relation_count: 473,
+    expression_count: 63,
+  };
+  const actual = {
+    record_count: 1320,
+    start_count: 1278,
+    reference_only_count: 42,
+    sense_count: 1466,
+    relation_count: 700,
+    expression_count: 100,
+  };
+  const gate = { gate_status: 'pass', decision: 'APPROVE BOUNDED' };
+  const target = {
+    net_start_increase: 500,
+    cumulative_start_target: 1278,
+    candidate_buffer: 50,
+    selected_start_count: 550,
+  };
+  const metrics = { editor_seconds_per_processed_start: 10 };
+  const relation = { noise_rate_of_candidates: 0.1 };
+  const timing = { status: 'complete' };
+  const audit = { status: 'complete', independent: true, open_blocker_count: 0 };
+  const verification = { machine_generated: true };
+  const manifest = {
+    schema_version: '1',
+    issue: 97,
+    batch_id: M5_11_BATCH_ID,
+    gate,
+    target,
+    base,
+    actual,
+    metrics,
+    relation,
+    timing,
+    audit,
+    verification,
+    authorization: 'AUTHORIZE M5-11 +500 VALIDATION',
+    sources,
+  };
+  const evidence = {
+    schema_version: '1',
+    issue: 97,
+    batch_id: M5_11_BATCH_ID,
+    gate,
+    target,
+    base: {
+      summary: base,
+      canonical_directory_sha256: '14ab89dcb9e21626515d982ea172ea77144ea07ec816fc50a1b17e7fd0567473',
+      inventory_sha256: '2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947',
+      seed_sha256: 'bda4bec9be8e90fca1c16e6aa4979bbf242342534856b8bacc9b91dd276da0e9',
+    },
+    actual,
+    metrics,
+    relation,
+    timing,
+    audit,
+    verification,
+    authorization: manifest.authorization,
+    decisions: {
+      included: 400,
+      corrected: 100,
+      held: 20,
+      rejected: 10,
+      deferred: 20,
+      processed_start_count: 530,
+      imported_start_count: 500,
+    },
+    stage: {
+      status: 'passed',
+      target: { net_start_increase: 500, cumulative_start_target: 1278 },
+    },
+    sources,
+    outputs: {},
+    promotion: {
+      canonical_mutation: true,
+      seed_mutation: true,
+      inventory_mutation: true,
+      explicit: true,
+    },
+  };
+  assert.deepEqual(
+    validateM511DurableEvidence({ manifest, evidence }).summary,
+    actual,
   );
 });
