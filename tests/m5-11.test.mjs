@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { buildM511 } from '../scripts/batch/build-m5-11-expansion.mjs';
+import { M5_11_CATALOG } from '../scripts/batch/m5-11-catalog.mjs';
 import {
   sha256Json,
   validateM511EditorialDecisions,
@@ -163,6 +164,14 @@ test('M5-11 source bindings reject path and digest substitution', async () => {
     await assert.rejects(
       validateM511({ stagePath }),
       /catalog digest binding/u,
+    );
+
+    stage.source.catalog_sha256 = sha256Json(M5_11_CATALOG);
+    stage.input.base_inventory_sha256 = '0'.repeat(64);
+    await writeFile(stagePath, `${JSON.stringify(stage)}\n`, 'utf8');
+    await assert.rejects(
+      validateM511({ stagePath }),
+      /stage base inventory digest/u,
     );
   } finally {
     await rm(tempDirectory, { recursive: true, force: true });
