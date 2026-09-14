@@ -30,7 +30,7 @@ candidate-local ID에서 catalog 순서 기준 `w779`~`w1278`로 deterministic r
 - records: 1,320
 - starts: 1,278
 - reference-only: 42
-- senses: 1,607
+- senses: 1,588
 - relations: 487
 - expressions: 73
 
@@ -42,7 +42,7 @@ Gate decision은 `APPROVE AUTOMATED BOUNDED`이다. 기존 count/arithmetic gate
 verification/coverage 기반 selection rank가 있다. verification artifact에도
 550개 후보별 finding이 `74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256`
 digest로 source-bound 되어 있다. broad gloss connector는
-`0`, split record은 `140`, relation candidate는 `14`, expression-unit은
+`0`, split record은 `123`, relation candidate는 `14`, expression-unit은
 `10`건이며 E/Q/S/C/A/O/X 축 coverage와 8건 이상 expression coverage가 모두
 통과했다.
 
@@ -72,9 +72,10 @@ digest-bound manifest/promotion evidence만 둔다.
 | editorial | `e08ff61b5802f252a17ade1085665c1ad54a6197afb43d4dc67f4d620d3c5237` |
 | relation diff | `8cafe8b3ad3b2013c43d43ce42dbd32da1cdd62e29e167c30f8c48178bcd74cf` |
 | verification | `3ce52a79b081116f4e0f1ad4f68ddacdb9d05e2fe746399953db455b01cd8145` |
-| reviewed import | `12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691` |
-| #115 authorization | `4091aff47c01b4451b9239ea3f1b0068110431c29268e713abc9bf1bd3004dbb` |
+| reviewed import | `f0f72653898b88d66a56de7ce77cc145fd067ffe88b896e30356ff06ab6be182` |
+| #115 authorization | `2063af1bb4a28d08f8e56183c5afc65f38dea7ed595e514d8e4f0593105d4bf7` |
 | base inventory | `2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947` |
+| complete semantic audit | `7a7b12db7a009fe78f9ff0680646e1c53f6d54c5a77043454b60e417a716d5ff` |
 
 Committed evidence:
 

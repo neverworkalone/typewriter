@@ -9,7 +9,7 @@
   "canonical_mutation": false,
   "source": {
     "recovery_artifact": "data/batches/m5-10d-recovery.json",
-    "recovery_artifact_sha256": "a0acc8a59e8d5438fb545ea8f84444ada6b343aa3767d4e63c55026f9d01bc67",
+    "recovery_artifact_sha256": "062c9c952a4579db05614833d81435e7fdb98df103fa8b347dd209edb99104c5",
     "workload": "data/batches/m5-10d-workload-20260912.json",
     "workload_sha256": "08aa63b094b2c89ce8ff347faf0dae3c6016e20d0223db1289362cb2ad678f5e",
     "canonical_directory": "data/batches/m5-11-base-canonical",
@@ -21,7 +21,7 @@
   },
   "failed_stage": {
     "path": "data/batches/m5-10-wave-b-stage.json",
-    "sha256": "e5f777d69709ffe0df0c9ad9b74169e47a77562191caa59c2b24abf0af07aa29",
+    "sha256": "913b2f77f9958f93ae562f534d5de85b242d3808b71e4f172f7581c77ec2d856",
     "gate_status": "fail",
     "decision": "HOLD PROCESS",
     "next_stage_authorized": false,

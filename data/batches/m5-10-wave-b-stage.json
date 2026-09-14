@@ -13,11 +13,11 @@
     },
     "previous_stage_report": {
       "path": "data/batches/m5-10a-wave-a2.json",
-      "sha256": "6f652280c49b543504e88f853f1bc83679b897ec75464aa2c08680cf62fa1372"
+      "sha256": "6f81bea7e223f53eaf01f6c00bc894b56074d148c7f5056382c8a557da7c581c"
     },
     "authorization": {
       "path": "data/batches/m5-10-wave-b-authorization.json",
-      "sha256": "03941ca589692b989a25e2061c667a93b0fa6e8d9ac72b7cfe33f56b09de3ba6"
+      "sha256": "f0a7bbbb1b45a22ddcd9ed9206687dfac48157cfae212ef1c89c18c958ed622e"
     }
   },
   "target": {
@@ -78,7 +78,7 @@
   },
   "source": {
     "manifest": "data/batches/m5-10-wave-b.json",
-    "manifest_sha256": "28369d089c07a2dfbc2b753365271fc95c238ee42a1778447ebfe3c337a4b0e5",
+    "manifest_sha256": "c5b9c2c0fb25e24964bb90504a974b30be3d0cbaf9c1a663fc246eb052a0e028",
     "metrics": "data/batches/m5-10-wave-b-metrics.json",
     "metrics_sha256": "4e551a6d27e06a0af81ad79949f9282ed91c479be797092600715714d2a6edb0",
     "relation_diff": "data/batches/m5-10-wave-b-relation-diff.json",
@@ -89,11 +89,11 @@
     "verification_sha256": "15aa78135a81d3d43887fde55d27ec7b0d2863e1f53e05167b7d01525852044c",
     "previous_stage_report": {
       "path": "data/batches/m5-10a-wave-a2.json",
-      "sha256": "6f652280c49b543504e88f853f1bc83679b897ec75464aa2c08680cf62fa1372"
+      "sha256": "6f81bea7e223f53eaf01f6c00bc894b56074d148c7f5056382c8a557da7c581c"
     },
     "authorization": {
       "path": "data/batches/m5-10-wave-b-authorization.json",
-      "sha256": "03941ca589692b989a25e2061c667a93b0fa6e8d9ac72b7cfe33f56b09de3ba6"
+      "sha256": "f0a7bbbb1b45a22ddcd9ed9206687dfac48157cfae212ef1c89c18c958ed622e"
     }
   },
   "gate_status": "fail",

@@ -58,7 +58,7 @@
     "record_count": 1320,
     "start_count": 1278,
     "reference_only_count": 42,
-    "sense_count": 1607,
+    "sense_count": 1588,
     "relation_count": 487,
     "expression_count": 73
   },
@@ -97,8 +97,8 @@
     "semantic_axis_coverage_complete": true,
     "semantic_expression_coverage_complete": true,
     "semantic_relation_coverage_complete": true,
-    "semantic_split_record_count": 140,
-    "semantic_split_sense_count": 281,
+    "semantic_split_record_count": 123,
+    "semantic_split_sense_count": 247,
     "semantic_relation_candidate_count": 14,
     "semantic_no_relation_rationale_count": 677
   },
@@ -174,8 +174,8 @@
       "candidate_count": 550,
       "selected_count": 500,
       "broad_gloss_count": 0,
-      "split_record_count": 140,
-      "split_sense_count": 281,
+      "split_record_count": 123,
+      "split_sense_count": 247,
       "selected_axis_counts": {
         "E": 72,
         "Q": 75,
@@ -207,16 +207,16 @@
       "selected_relation_evidence_by_axis": {
         "E": {
           "record_count": 72,
-          "sense_count": 86,
+          "sense_count": 84,
           "relation_sense_count": 0,
-          "no_relation_sense_count": 86,
+          "no_relation_sense_count": 84,
           "relation_tuple_count": 0
         },
         "Q": {
           "record_count": 75,
-          "sense_count": 96,
+          "sense_count": 94,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 94,
+          "no_relation_sense_count": 92,
           "relation_tuple_count": 2
         },
         "S": {
@@ -228,9 +228,9 @@
         },
         "C": {
           "record_count": 71,
-          "sense_count": 78,
+          "sense_count": 76,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 76,
+          "no_relation_sense_count": 74,
           "relation_tuple_count": 2
         },
         "A": {
@@ -242,16 +242,16 @@
         },
         "O": {
           "record_count": 63,
-          "sense_count": 80,
+          "sense_count": 72,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 78,
+          "no_relation_sense_count": 70,
           "relation_tuple_count": 2
         },
         "X": {
           "record_count": 57,
-          "sense_count": 85,
+          "sense_count": 82,
           "relation_sense_count": 3,
-          "no_relation_sense_count": 82,
+          "no_relation_sense_count": 79,
           "relation_tuple_count": 3
         }
       },
@@ -412,16 +412,16 @@
       "selected_relation_evidence_by_axis": {
         "E": {
           "record_count": 72,
-          "sense_count": 86,
+          "sense_count": 84,
           "relation_sense_count": 0,
-          "no_relation_sense_count": 86,
+          "no_relation_sense_count": 84,
           "relation_tuple_count": 0
         },
         "Q": {
           "record_count": 75,
-          "sense_count": 96,
+          "sense_count": 94,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 94,
+          "no_relation_sense_count": 92,
           "relation_tuple_count": 2
         },
         "S": {
@@ -433,9 +433,9 @@
         },
         "C": {
           "record_count": 71,
-          "sense_count": 78,
+          "sense_count": 76,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 76,
+          "no_relation_sense_count": 74,
           "relation_tuple_count": 2
         },
         "A": {
@@ -447,16 +447,16 @@
         },
         "O": {
           "record_count": 63,
-          "sense_count": 80,
+          "sense_count": 72,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 78,
+          "no_relation_sense_count": 70,
           "relation_tuple_count": 2
         },
         "X": {
           "record_count": 57,
-          "sense_count": 85,
+          "sense_count": 82,
           "relation_sense_count": 3,
-          "no_relation_sense_count": 82,
+          "no_relation_sense_count": 79,
           "relation_tuple_count": 3
         }
       },
@@ -466,17 +466,17 @@
     "semantic_findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256",
     "machine_generated": true,
     "verifier_version": "m5-11-prospective-verifier-v3",
-    "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad",
+    "prospective_canonical_sha256": "8de05a9361cf19fd0dfad7df964cd30d6022e1478c94cb21e3a350a32a03965f",
     "checks": [
       {
         "id": "canonical-integrity",
         "status": "pass",
-        "result_sha256": "641f8b55f007bd08a180e56935b7604c185bd6422b1536845189aa4b33a9ab3c"
+        "result_sha256": "f9b966672c59127bf8090d770517f6ce5c863eb6f5c17d14e799ee6a8a3f027e"
       },
       {
         "id": "deterministic-sqlite",
         "status": "pass",
-        "result_sha256": "39e9cd82d642ab55921d043a3287faedb69c79848a1794d9bd19222a2d515487"
+        "result_sha256": "7ee722e119d6a008a9af6960dd6aa4d1fe661f99ac6336d790fb572127e13288"
       },
       {
         "id": "search-product-regression",
@@ -491,7 +491,7 @@
       {
         "id": "semantic-quality",
         "status": "pass",
-        "result_sha256": "e359e340d797a4029c81450d4c5695d33569bf6f7cf19d373d7f5a9749a4b5f8"
+        "result_sha256": "7e469ba886cdcd6c8dcf850653421bfbf260b65267726fdfceeecb49d2451a3d"
       }
     ],
     "machine_check_evidence": {
@@ -500,16 +500,28 @@
           "record_count": 1320,
           "start_count": 1278,
           "reference_only_count": 42,
-          "sense_count": 1607,
+          "sense_count": 1588,
           "relation_count": 487,
           "expression_count": 73
         },
-        "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+        "prospective_canonical_sha256": "8de05a9361cf19fd0dfad7df964cd30d6022e1478c94cb21e3a350a32a03965f",
+        "semantic_audit": {
+          "contract_version": "lexical-semantic-audit-v3",
+          "scope": "complete-canonical",
+          "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+          "record_count": 1320,
+          "sense_count": 1588,
+          "covered_record_count": 1320,
+          "covered_sense_count": 1588,
+          "coverage_complete": true,
+          "review_complete": true,
+          "corrected_record_count": 0
+        }
       },
       "deterministic-sqlite": {
         "build": {
           "recordCount": 1320,
-          "senseCount": 1607,
+          "senseCount": 1588,
           "relationCount": 487
         },
         "integrity": "ok",
@@ -518,7 +530,7 @@
           "records": 1320,
           "starts": 1278,
           "references": 42,
-          "senses": 1607,
+          "senses": 1588,
           "relations": 487
         }
       },
@@ -4153,304 +4165,46 @@
         "external_input_paths_present": false
       },
       "semantic-quality": {
-        "status": "pass",
-        "summary": {
-          "version": "m5-11a-semantic-review-v2",
-          "complete": true,
-          "candidate_count": 550,
-          "selected_count": 500,
-          "broad_gloss_count": 0,
-          "split_record_count": 140,
-          "split_sense_count": 281,
-          "selected_axis_counts": {
-            "E": 72,
-            "Q": 75,
-            "S": 71,
-            "C": 71,
-            "A": 91,
-            "O": 63,
-            "X": 57
-          },
-          "candidate_axis_counts": {
-            "E": 80,
-            "Q": 80,
-            "S": 80,
-            "C": 80,
-            "A": 100,
-            "O": 70,
-            "X": 60
-          },
-          "selected_expression_unit_count": 10,
-          "selected_relation_axis_counts": {
-            "E": 0,
-            "Q": 2,
-            "S": 2,
-            "C": 2,
-            "A": 3,
-            "O": 2,
-            "X": 3
-          },
-          "selected_relation_evidence_by_axis": {
-            "E": {
-              "record_count": 72,
-              "sense_count": 86,
-              "relation_sense_count": 0,
-              "no_relation_sense_count": 86,
-              "relation_tuple_count": 0
-            },
-            "Q": {
-              "record_count": 75,
-              "sense_count": 96,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 94,
-              "relation_tuple_count": 2
-            },
-            "S": {
-              "record_count": 71,
-              "sense_count": 82,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 80,
-              "relation_tuple_count": 2
-            },
-            "C": {
-              "record_count": 71,
-              "sense_count": 78,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 76,
-              "relation_tuple_count": 2
-            },
-            "A": {
-              "record_count": 91,
-              "sense_count": 134,
-              "relation_sense_count": 3,
-              "no_relation_sense_count": 131,
-              "relation_tuple_count": 3
-            },
-            "O": {
-              "record_count": 63,
-              "sense_count": 80,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 78,
-              "relation_tuple_count": 2
-            },
-            "X": {
-              "record_count": 57,
-              "sense_count": 85,
-              "relation_sense_count": 3,
-              "no_relation_sense_count": 82,
-              "relation_tuple_count": 3
-            }
-          },
-          "relation_candidate_count": 14,
-          "no_relation_rationale_count": 677,
-          "selection_rank_valid": true,
-          "relation_bindings": [
-            {
-              "inventory_id": "m5-615",
-              "source_sense": "w851-s1",
-              "relation_ids": [
-                "m5-11a-rel-0001"
-              ]
-            },
-            {
-              "inventory_id": "m5-618",
-              "source_sense": "w854-s1",
-              "relation_ids": [
-                "m5-11a-rel-0002"
-              ]
-            },
-            {
-              "inventory_id": "m5-696",
-              "source_sense": "w927-s1",
-              "relation_ids": [
-                "m5-11a-rel-0003"
-              ]
-            },
-            {
-              "inventory_id": "m5-774",
-              "source_sense": "w996-s1",
-              "relation_ids": [
-                "m5-11a-rel-0004"
-              ]
-            },
-            {
-              "inventory_id": "m5-790",
-              "source_sense": "w1010-s1",
-              "relation_ids": [
-                "m5-11a-rel-0005"
-              ]
-            },
-            {
-              "inventory_id": "m5-798",
-              "source_sense": "w1018-s1",
-              "relation_ids": [
-                "m5-11a-rel-0006"
-              ]
-            },
-            {
-              "inventory_id": "m5-860",
-              "source_sense": "w1073-s1",
-              "relation_ids": [
-                "m5-11a-rel-0007"
-              ]
-            },
-            {
-              "inventory_id": "m5-877",
-              "source_sense": "w1089-s1",
-              "relation_ids": [
-                "m5-11a-rel-0008"
-              ]
-            },
-            {
-              "inventory_id": "m5-880",
-              "source_sense": "w1092-s1",
-              "relation_ids": [
-                "m5-11a-rel-0009"
-              ]
-            },
-            {
-              "inventory_id": "m5-955",
-              "source_sense": "w1159-s1",
-              "relation_ids": [
-                "m5-11a-rel-0010"
-              ]
-            },
-            {
-              "inventory_id": "m5-966",
-              "source_sense": "w1169-s1",
-              "relation_ids": [
-                "m5-11a-rel-0011"
-              ]
-            },
-            {
-              "inventory_id": "m5-1026",
-              "source_sense": "w1223-s1",
-              "relation_ids": [
-                "m5-11a-rel-0012"
-              ]
-            },
-            {
-              "inventory_id": "m5-1081",
-              "source_sense": "w1275-s1",
-              "relation_ids": [
-                "m5-11a-rel-0013"
-              ]
-            },
-            {
-              "inventory_id": "m5-1083",
-              "source_sense": "w1277-s1",
-              "relation_ids": [
-                "m5-11a-rel-0014"
-              ]
-            }
-          ]
+        "status": "not-required",
+        "semantic_audit": {
+          "contract_version": "lexical-semantic-audit-v3",
+          "scope": "complete-canonical",
+          "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+          "record_count": 1320,
+          "sense_count": 1588,
+          "covered_record_count": 1320,
+          "covered_sense_count": 1588,
+          "coverage_complete": true,
+          "review_complete": true,
+          "corrected_record_count": 0
         },
-        "coverage": {
-          "minimum_axis_counts": {
-            "E": 59,
-            "Q": 59,
-            "S": 59,
-            "C": 59,
-            "A": 73,
-            "O": 51,
-            "X": 44
-          },
-          "selected_axis_counts": {
-            "E": 72,
-            "Q": 75,
-            "S": 71,
-            "C": 71,
-            "A": 91,
-            "O": 63,
-            "X": 57
-          },
-          "axis_coverage": {
-            "E": true,
-            "Q": true,
-            "S": true,
-            "C": true,
-            "A": true,
-            "O": true,
-            "X": true
-          },
-          "axis_coverage_complete": true,
-          "expression_candidate_count": 10,
-          "minimum_expression_count": 8,
-          "selected_expression_unit_count": 10,
-          "expression_coverage_complete": true,
-          "relation_bearing_axes": [
-            "Q",
-            "S",
-            "C",
-            "A",
-            "O",
-            "X"
-          ],
-          "selected_relation_axis_counts": {
-            "E": 0,
-            "Q": 2,
-            "S": 2,
-            "C": 2,
-            "A": 3,
-            "O": 2,
-            "X": 3
-          },
-          "selected_relation_evidence_by_axis": {
-            "E": {
-              "record_count": 72,
-              "sense_count": 86,
-              "relation_sense_count": 0,
-              "no_relation_sense_count": 86,
-              "relation_tuple_count": 0
-            },
-            "Q": {
-              "record_count": 75,
-              "sense_count": 96,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 94,
-              "relation_tuple_count": 2
-            },
-            "S": {
-              "record_count": 71,
-              "sense_count": 82,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 80,
-              "relation_tuple_count": 2
-            },
-            "C": {
-              "record_count": 71,
-              "sense_count": 78,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 76,
-              "relation_tuple_count": 2
-            },
-            "A": {
-              "record_count": 91,
-              "sense_count": 134,
-              "relation_sense_count": 3,
-              "no_relation_sense_count": 131,
-              "relation_tuple_count": 3
-            },
-            "O": {
-              "record_count": 63,
-              "sense_count": 80,
-              "relation_sense_count": 2,
-              "no_relation_sense_count": 78,
-              "relation_tuple_count": 2
-            },
-            "X": {
-              "record_count": 57,
-              "sense_count": 85,
-              "relation_sense_count": 3,
-              "no_relation_sense_count": 82,
-              "relation_tuple_count": 3
-            }
-          },
-          "relation_coverage_complete": true
+        "complete_canonical_review": {
+          "artifact_id": "canonical-semantic-review",
+          "contract_version": "lexical-semantic-review-v2",
+          "review_pass_id": "canonical-semantic-reaudit-20260914",
+          "status": "complete",
+          "reviewer": "codex-agent",
+          "record_count": 1320,
+          "sense_count": 1588,
+          "open_finding_count": 0,
+          "correction_count": 59,
+          "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
+          "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+          "review_sha256": "684e4872651146ed4efeb3d95efb3af9b73b09fea816d6b0261fb7d67b637d6b"
         },
-        "finding_count": 550,
-        "findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256"
+        "summary": null,
+        "coverage": null,
+        "finding_count": 0,
+        "findings_sha256": null
       }
+    },
+    "final_canonical_summary": {
+      "record_count": 1320,
+      "start_count": 1278,
+      "reference_only_count": 42,
+      "sense_count": 1588,
+      "relation_count": 487,
+      "expression_count": 73
     }
   },
   "gate_evidence": {
@@ -4470,7 +4224,7 @@
       "record_count": 1320,
       "start_count": 1278,
       "reference_only_count": 42,
-      "sense_count": 1607,
+      "sense_count": 1588,
       "relation_count": 487,
       "expression_count": 73
     },
@@ -4557,8 +4311,8 @@
         "candidate_count": 550,
         "selected_count": 500,
         "broad_gloss_count": 0,
-        "split_record_count": 140,
-        "split_sense_count": 281,
+        "split_record_count": 123,
+        "split_sense_count": 247,
         "selected_axis_counts": {
           "E": 72,
           "Q": 75,
@@ -4590,16 +4344,16 @@
         "selected_relation_evidence_by_axis": {
           "E": {
             "record_count": 72,
-            "sense_count": 86,
+            "sense_count": 84,
             "relation_sense_count": 0,
-            "no_relation_sense_count": 86,
+            "no_relation_sense_count": 84,
             "relation_tuple_count": 0
           },
           "Q": {
             "record_count": 75,
-            "sense_count": 96,
+            "sense_count": 94,
             "relation_sense_count": 2,
-            "no_relation_sense_count": 94,
+            "no_relation_sense_count": 92,
             "relation_tuple_count": 2
           },
           "S": {
@@ -4611,9 +4365,9 @@
           },
           "C": {
             "record_count": 71,
-            "sense_count": 78,
+            "sense_count": 76,
             "relation_sense_count": 2,
-            "no_relation_sense_count": 76,
+            "no_relation_sense_count": 74,
             "relation_tuple_count": 2
           },
           "A": {
@@ -4625,16 +4379,16 @@
           },
           "O": {
             "record_count": 63,
-            "sense_count": 80,
+            "sense_count": 72,
             "relation_sense_count": 2,
-            "no_relation_sense_count": 78,
+            "no_relation_sense_count": 70,
             "relation_tuple_count": 2
           },
           "X": {
             "record_count": 57,
-            "sense_count": 85,
+            "sense_count": 82,
             "relation_sense_count": 3,
-            "no_relation_sense_count": 82,
+            "no_relation_sense_count": 79,
             "relation_tuple_count": 3
           }
         },
@@ -4795,16 +4549,16 @@
         "selected_relation_evidence_by_axis": {
           "E": {
             "record_count": 72,
-            "sense_count": 86,
+            "sense_count": 84,
             "relation_sense_count": 0,
-            "no_relation_sense_count": 86,
+            "no_relation_sense_count": 84,
             "relation_tuple_count": 0
           },
           "Q": {
             "record_count": 75,
-            "sense_count": 96,
+            "sense_count": 94,
             "relation_sense_count": 2,
-            "no_relation_sense_count": 94,
+            "no_relation_sense_count": 92,
             "relation_tuple_count": 2
           },
           "S": {
@@ -4816,9 +4570,9 @@
           },
           "C": {
             "record_count": 71,
-            "sense_count": 78,
+            "sense_count": 76,
             "relation_sense_count": 2,
-            "no_relation_sense_count": 76,
+            "no_relation_sense_count": 74,
             "relation_tuple_count": 2
           },
           "A": {
@@ -4830,16 +4584,16 @@
           },
           "O": {
             "record_count": 63,
-            "sense_count": 80,
+            "sense_count": 72,
             "relation_sense_count": 2,
-            "no_relation_sense_count": 78,
+            "no_relation_sense_count": 70,
             "relation_tuple_count": 2
           },
           "X": {
             "record_count": 57,
-            "sense_count": 85,
+            "sense_count": 82,
             "relation_sense_count": 3,
-            "no_relation_sense_count": 82,
+            "no_relation_sense_count": 79,
             "relation_tuple_count": 3
           }
         },
@@ -4849,17 +4603,17 @@
       "semantic_findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256",
       "machine_generated": true,
       "verifier_version": "m5-11-prospective-verifier-v3",
-      "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad",
+      "prospective_canonical_sha256": "8de05a9361cf19fd0dfad7df964cd30d6022e1478c94cb21e3a350a32a03965f",
       "checks": [
         {
           "id": "canonical-integrity",
           "status": "pass",
-          "result_sha256": "641f8b55f007bd08a180e56935b7604c185bd6422b1536845189aa4b33a9ab3c"
+          "result_sha256": "f9b966672c59127bf8090d770517f6ce5c863eb6f5c17d14e799ee6a8a3f027e"
         },
         {
           "id": "deterministic-sqlite",
           "status": "pass",
-          "result_sha256": "39e9cd82d642ab55921d043a3287faedb69c79848a1794d9bd19222a2d515487"
+          "result_sha256": "7ee722e119d6a008a9af6960dd6aa4d1fe661f99ac6336d790fb572127e13288"
         },
         {
           "id": "search-product-regression",
@@ -4874,7 +4628,7 @@
         {
           "id": "semantic-quality",
           "status": "pass",
-          "result_sha256": "e359e340d797a4029c81450d4c5695d33569bf6f7cf19d373d7f5a9749a4b5f8"
+          "result_sha256": "7e469ba886cdcd6c8dcf850653421bfbf260b65267726fdfceeecb49d2451a3d"
         }
       ],
       "machine_check_evidence": {
@@ -4883,16 +4637,28 @@
             "record_count": 1320,
             "start_count": 1278,
             "reference_only_count": 42,
-            "sense_count": 1607,
+            "sense_count": 1588,
             "relation_count": 487,
             "expression_count": 73
           },
-          "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+          "prospective_canonical_sha256": "8de05a9361cf19fd0dfad7df964cd30d6022e1478c94cb21e3a350a32a03965f",
+          "semantic_audit": {
+            "contract_version": "lexical-semantic-audit-v3",
+            "scope": "complete-canonical",
+            "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+            "record_count": 1320,
+            "sense_count": 1588,
+            "covered_record_count": 1320,
+            "covered_sense_count": 1588,
+            "coverage_complete": true,
+            "review_complete": true,
+            "corrected_record_count": 0
+          }
         },
         "deterministic-sqlite": {
           "build": {
             "recordCount": 1320,
-            "senseCount": 1607,
+            "senseCount": 1588,
             "relationCount": 487
           },
           "integrity": "ok",
@@ -4901,7 +4667,7 @@
             "records": 1320,
             "starts": 1278,
             "references": 42,
-            "senses": 1607,
+            "senses": 1588,
             "relations": 487
           }
         },
@@ -8536,304 +8302,46 @@
           "external_input_paths_present": false
         },
         "semantic-quality": {
-          "status": "pass",
-          "summary": {
-            "version": "m5-11a-semantic-review-v2",
-            "complete": true,
-            "candidate_count": 550,
-            "selected_count": 500,
-            "broad_gloss_count": 0,
-            "split_record_count": 140,
-            "split_sense_count": 281,
-            "selected_axis_counts": {
-              "E": 72,
-              "Q": 75,
-              "S": 71,
-              "C": 71,
-              "A": 91,
-              "O": 63,
-              "X": 57
-            },
-            "candidate_axis_counts": {
-              "E": 80,
-              "Q": 80,
-              "S": 80,
-              "C": 80,
-              "A": 100,
-              "O": 70,
-              "X": 60
-            },
-            "selected_expression_unit_count": 10,
-            "selected_relation_axis_counts": {
-              "E": 0,
-              "Q": 2,
-              "S": 2,
-              "C": 2,
-              "A": 3,
-              "O": 2,
-              "X": 3
-            },
-            "selected_relation_evidence_by_axis": {
-              "E": {
-                "record_count": 72,
-                "sense_count": 86,
-                "relation_sense_count": 0,
-                "no_relation_sense_count": 86,
-                "relation_tuple_count": 0
-              },
-              "Q": {
-                "record_count": 75,
-                "sense_count": 96,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 94,
-                "relation_tuple_count": 2
-              },
-              "S": {
-                "record_count": 71,
-                "sense_count": 82,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 80,
-                "relation_tuple_count": 2
-              },
-              "C": {
-                "record_count": 71,
-                "sense_count": 78,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 76,
-                "relation_tuple_count": 2
-              },
-              "A": {
-                "record_count": 91,
-                "sense_count": 134,
-                "relation_sense_count": 3,
-                "no_relation_sense_count": 131,
-                "relation_tuple_count": 3
-              },
-              "O": {
-                "record_count": 63,
-                "sense_count": 80,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 78,
-                "relation_tuple_count": 2
-              },
-              "X": {
-                "record_count": 57,
-                "sense_count": 85,
-                "relation_sense_count": 3,
-                "no_relation_sense_count": 82,
-                "relation_tuple_count": 3
-              }
-            },
-            "relation_candidate_count": 14,
-            "no_relation_rationale_count": 677,
-            "selection_rank_valid": true,
-            "relation_bindings": [
-              {
-                "inventory_id": "m5-615",
-                "source_sense": "w851-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0001"
-                ]
-              },
-              {
-                "inventory_id": "m5-618",
-                "source_sense": "w854-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0002"
-                ]
-              },
-              {
-                "inventory_id": "m5-696",
-                "source_sense": "w927-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0003"
-                ]
-              },
-              {
-                "inventory_id": "m5-774",
-                "source_sense": "w996-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0004"
-                ]
-              },
-              {
-                "inventory_id": "m5-790",
-                "source_sense": "w1010-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0005"
-                ]
-              },
-              {
-                "inventory_id": "m5-798",
-                "source_sense": "w1018-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0006"
-                ]
-              },
-              {
-                "inventory_id": "m5-860",
-                "source_sense": "w1073-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0007"
-                ]
-              },
-              {
-                "inventory_id": "m5-877",
-                "source_sense": "w1089-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0008"
-                ]
-              },
-              {
-                "inventory_id": "m5-880",
-                "source_sense": "w1092-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0009"
-                ]
-              },
-              {
-                "inventory_id": "m5-955",
-                "source_sense": "w1159-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0010"
-                ]
-              },
-              {
-                "inventory_id": "m5-966",
-                "source_sense": "w1169-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0011"
-                ]
-              },
-              {
-                "inventory_id": "m5-1026",
-                "source_sense": "w1223-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0012"
-                ]
-              },
-              {
-                "inventory_id": "m5-1081",
-                "source_sense": "w1275-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0013"
-                ]
-              },
-              {
-                "inventory_id": "m5-1083",
-                "source_sense": "w1277-s1",
-                "relation_ids": [
-                  "m5-11a-rel-0014"
-                ]
-              }
-            ]
+          "status": "not-required",
+          "semantic_audit": {
+            "contract_version": "lexical-semantic-audit-v3",
+            "scope": "complete-canonical",
+            "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+            "record_count": 1320,
+            "sense_count": 1588,
+            "covered_record_count": 1320,
+            "covered_sense_count": 1588,
+            "coverage_complete": true,
+            "review_complete": true,
+            "corrected_record_count": 0
           },
-          "coverage": {
-            "minimum_axis_counts": {
-              "E": 59,
-              "Q": 59,
-              "S": 59,
-              "C": 59,
-              "A": 73,
-              "O": 51,
-              "X": 44
-            },
-            "selected_axis_counts": {
-              "E": 72,
-              "Q": 75,
-              "S": 71,
-              "C": 71,
-              "A": 91,
-              "O": 63,
-              "X": 57
-            },
-            "axis_coverage": {
-              "E": true,
-              "Q": true,
-              "S": true,
-              "C": true,
-              "A": true,
-              "O": true,
-              "X": true
-            },
-            "axis_coverage_complete": true,
-            "expression_candidate_count": 10,
-            "minimum_expression_count": 8,
-            "selected_expression_unit_count": 10,
-            "expression_coverage_complete": true,
-            "relation_bearing_axes": [
-              "Q",
-              "S",
-              "C",
-              "A",
-              "O",
-              "X"
-            ],
-            "selected_relation_axis_counts": {
-              "E": 0,
-              "Q": 2,
-              "S": 2,
-              "C": 2,
-              "A": 3,
-              "O": 2,
-              "X": 3
-            },
-            "selected_relation_evidence_by_axis": {
-              "E": {
-                "record_count": 72,
-                "sense_count": 86,
-                "relation_sense_count": 0,
-                "no_relation_sense_count": 86,
-                "relation_tuple_count": 0
-              },
-              "Q": {
-                "record_count": 75,
-                "sense_count": 96,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 94,
-                "relation_tuple_count": 2
-              },
-              "S": {
-                "record_count": 71,
-                "sense_count": 82,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 80,
-                "relation_tuple_count": 2
-              },
-              "C": {
-                "record_count": 71,
-                "sense_count": 78,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 76,
-                "relation_tuple_count": 2
-              },
-              "A": {
-                "record_count": 91,
-                "sense_count": 134,
-                "relation_sense_count": 3,
-                "no_relation_sense_count": 131,
-                "relation_tuple_count": 3
-              },
-              "O": {
-                "record_count": 63,
-                "sense_count": 80,
-                "relation_sense_count": 2,
-                "no_relation_sense_count": 78,
-                "relation_tuple_count": 2
-              },
-              "X": {
-                "record_count": 57,
-                "sense_count": 85,
-                "relation_sense_count": 3,
-                "no_relation_sense_count": 82,
-                "relation_tuple_count": 3
-              }
-            },
-            "relation_coverage_complete": true
+          "complete_canonical_review": {
+            "artifact_id": "canonical-semantic-review",
+            "contract_version": "lexical-semantic-review-v2",
+            "review_pass_id": "canonical-semantic-reaudit-20260914",
+            "status": "complete",
+            "reviewer": "codex-agent",
+            "record_count": 1320,
+            "sense_count": 1588,
+            "open_finding_count": 0,
+            "correction_count": 59,
+            "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+            "review_sha256": "684e4872651146ed4efeb3d95efb3af9b73b09fea816d6b0261fb7d67b637d6b"
           },
-          "finding_count": 550,
-          "findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256"
+          "summary": null,
+          "coverage": null,
+          "finding_count": 0,
+          "findings_sha256": null
         }
+      },
+      "final_canonical_summary": {
+        "record_count": 1320,
+        "start_count": 1278,
+        "reference_only_count": 42,
+        "sense_count": 1588,
+        "relation_count": 487,
+        "expression_count": 73
       }
     },
     "semantic": {
@@ -8842,8 +8350,8 @@
       "candidate_count": 550,
       "selected_count": 500,
       "broad_gloss_count": 0,
-      "split_record_count": 140,
-      "split_sense_count": 281,
+      "split_record_count": 123,
+      "split_sense_count": 247,
       "selected_axis_counts": {
         "E": 72,
         "Q": 75,
@@ -8875,16 +8383,16 @@
       "selected_relation_evidence_by_axis": {
         "E": {
           "record_count": 72,
-          "sense_count": 86,
+          "sense_count": 84,
           "relation_sense_count": 0,
-          "no_relation_sense_count": 86,
+          "no_relation_sense_count": 84,
           "relation_tuple_count": 0
         },
         "Q": {
           "record_count": 75,
-          "sense_count": 96,
+          "sense_count": 94,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 94,
+          "no_relation_sense_count": 92,
           "relation_tuple_count": 2
         },
         "S": {
@@ -8896,9 +8404,9 @@
         },
         "C": {
           "record_count": 71,
-          "sense_count": 78,
+          "sense_count": 76,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 76,
+          "no_relation_sense_count": 74,
           "relation_tuple_count": 2
         },
         "A": {
@@ -8910,16 +8418,16 @@
         },
         "O": {
           "record_count": 63,
-          "sense_count": 80,
+          "sense_count": 72,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 78,
+          "no_relation_sense_count": 70,
           "relation_tuple_count": 2
         },
         "X": {
           "record_count": 57,
-          "sense_count": 85,
+          "sense_count": 82,
           "relation_sense_count": 3,
-          "no_relation_sense_count": 82,
+          "no_relation_sense_count": 79,
           "relation_tuple_count": 3
         }
       },
@@ -9080,16 +8588,16 @@
       "selected_relation_evidence_by_axis": {
         "E": {
           "record_count": 72,
-          "sense_count": 86,
+          "sense_count": 84,
           "relation_sense_count": 0,
-          "no_relation_sense_count": 86,
+          "no_relation_sense_count": 84,
           "relation_tuple_count": 0
         },
         "Q": {
           "record_count": 75,
-          "sense_count": 96,
+          "sense_count": 94,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 94,
+          "no_relation_sense_count": 92,
           "relation_tuple_count": 2
         },
         "S": {
@@ -9101,9 +8609,9 @@
         },
         "C": {
           "record_count": 71,
-          "sense_count": 78,
+          "sense_count": 76,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 76,
+          "no_relation_sense_count": 74,
           "relation_tuple_count": 2
         },
         "A": {
@@ -9115,16 +8623,16 @@
         },
         "O": {
           "record_count": 63,
-          "sense_count": 80,
+          "sense_count": 72,
           "relation_sense_count": 2,
-          "no_relation_sense_count": 78,
+          "no_relation_sense_count": 70,
           "relation_tuple_count": 2
         },
         "X": {
           "record_count": 57,
-          "sense_count": 85,
+          "sense_count": 82,
           "relation_sense_count": 3,
-          "no_relation_sense_count": 82,
+          "no_relation_sense_count": 79,
           "relation_tuple_count": 3
         }
       },
@@ -9165,8 +8673,8 @@
       "semantic_axis_coverage_complete": true,
       "semantic_expression_coverage_complete": true,
       "semantic_relation_coverage_complete": true,
-      "semantic_split_record_count": 140,
-      "semantic_split_sense_count": 281,
+      "semantic_split_record_count": 123,
+      "semantic_split_sense_count": 247,
       "semantic_relation_candidate_count": 14,
       "semantic_no_relation_rationale_count": 677
     },
@@ -9202,7 +8710,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "c2eaba60c30b01c27fa98b14fa334cc777d8dd8ea60fe8e6f7f1759446b6af4e",
+  "gate_evidence_sha256": "ea2c3c958f7a8fffb996b3dfbfc9dc49ed3c2ae78abf2e160c9e5b13457bdb3b",
   "authorization": "AUTHORIZE M5-11 +500 VALIDATION",
   "decisions": {
     "included": 488,
@@ -9237,23 +8745,28 @@
     "reviewed_import": {
       "source_id": "reviewed_import",
       "path": "external:reviewed_import",
-      "sha256": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691"
+      "sha256": "f0f72653898b88d66a56de7ce77cc145fd067ffe88b896e30356ff06ab6be182"
     },
     "authorization": {
       "source_id": "authorization",
       "path": "data/batches/m5-10d-m5-11-authorization-20260912.json",
-      "sha256": "4091aff47c01b4451b9239ea3f1b0068110431c29268e713abc9bf1bd3004dbb"
+      "sha256": "2063af1bb4a28d08f8e56183c5afc65f38dea7ed595e514d8e4f0593105d4bf7"
     },
     "base_inventory": {
       "source_id": "base_inventory",
       "path": "data/batches/m5-11-base-inventory.json",
       "sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
+    },
+    "semantic_audit": {
+      "source_id": "semantic_audit",
+      "path": "external:semantic_audit",
+      "sha256": "7a7b12db7a009fe78f9ff0680646e1c53f6d54c5a77043454b60e417a716d5ff"
     }
   },
   "outputs": {
     "canonical_import": {
       "path": "data/canonical/m5-11-expansion.jsonl",
-      "sha256": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691",
+      "sha256": "f0f72653898b88d66a56de7ce77cc145fd067ffe88b896e30356ff06ab6be182",
       "record_count": 500,
       "first_canonical_id": "w779",
       "last_canonical_id": "w1278"
@@ -9265,13 +8778,13 @@
     },
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
-      "sha256": "36c1ecefeee2ff013f458c1f78a1b66306c686f7972fed47fa6ac48c0a416d09",
+      "sha256": "5065a518b7688e2950ed54908ba27184d3a858525580caec4926c31a47863273",
       "entry_count": 1433,
       "canonical_record_count": 1320,
       "current_start_count": 1278,
       "current_reference_only_count": 42
     },
-    "canonical_directory_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+    "canonical_directory_sha256": "8de05a9361cf19fd0dfad7df964cd30d6022e1478c94cb21e3a350a32a03965f"
   },
   "stage": {
     "stage_id": "m5-11-plus-500",
@@ -9286,7 +8799,7 @@
       "record_count": 1320,
       "start_count": 1278,
       "reference_only_count": 42,
-      "sense_count": 1607,
+      "sense_count": 1588,
       "relation_count": 487,
       "expression_count": 73
     },
@@ -9295,8 +8808,8 @@
       "editorial": "e08ff61b5802f252a17ade1085665c1ad54a6197afb43d4dc67f4d620d3c5237",
       "relation_diff": "8cafe8b3ad3b2013c43d43ce42dbd32da1cdd62e29e167c30f8c48178bcd74cf",
       "verification": "3ce52a79b081116f4e0f1ad4f68ddacdb9d05e2fe746399953db455b01cd8145",
-      "reviewed_import": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691",
-      "authorization": "4091aff47c01b4451b9239ea3f1b0068110431c29268e713abc9bf1bd3004dbb",
+      "reviewed_import": "f0f72653898b88d66a56de7ce77cc145fd067ffe88b896e30356ff06ab6be182",
+      "authorization": "2063af1bb4a28d08f8e56183c5afc65f38dea7ed595e514d8e4f0593105d4bf7",
       "base_inventory": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
     }
   },

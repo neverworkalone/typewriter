@@ -13,7 +13,11 @@ import {
   DEFAULT_SEMANTIC_AUDIT_PATH,
   readSemanticAuditArtifact,
 } from '../validate/semantic-audit.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateHistoricalLexicalAddition } from './lexical-admission.mjs';
+import {
+  produceLexicalProductionState,
+  productionSourceBytes,
+} from './lexical-production-state.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { evaluateExpansionGate } from './validate-m5-8-process.mjs';
@@ -624,22 +628,84 @@ export async function validateM511Promotion({
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
   const semanticAudit = await readSemanticAuditArtifact(resolvedSemanticAuditPath);
+  const semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
+  const finalRecords = canonical.records.map(({ record }) => record);
   const semanticAuditSource = manifest.sources?.semantic_audit;
   if (semanticAuditSource) {
-    const semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
     if (sha256(semanticAuditBytes) !== semanticAuditSource.sha256) {
       fail('promoted semantic audit digest drifted from the admission source', 'OUTPUT_DIGEST_MISMATCH');
     }
+    const completeCanonicalReview = evidence.verification?.machine_check_evidence?.['semantic-quality']
+      ?.complete_canonical_review;
+    const reviewPass = semanticAudit.review?.review_pass;
+    if (!completeCanonicalReview || !reviewPass
+      || completeCanonicalReview.review_sha256 !== sha256Json(semanticAudit.review)
+      || completeCanonicalReview.review_pass_id !== reviewPass.id
+      || completeCanonicalReview.status !== reviewPass.status
+      || completeCanonicalReview.record_count !== reviewPass.record_count
+      || completeCanonicalReview.sense_count !== reviewPass.sense_count
+      || completeCanonicalReview.open_finding_count !== reviewPass.open_finding_count
+      || completeCanonicalReview.correction_count !== reviewPass.correction_count
+      || completeCanonicalReview.boundary_decision_source_version
+        !== reviewPass.boundary_decision_source_version) {
+      fail('complete canonical semantic review evidence drifted from the bound audit', 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+    }
   }
-  validateLexicalAddition({
+  validateHistoricalLexicalAddition({
     batchId: manifest.batch_id,
     baseRecords: canonical.records,
     prospectiveRecords: canonical.records,
     semanticAudit,
+    productionState: produceLexicalProductionState({
+      batchId: manifest.batch_id,
+      stages: {
+        candidate_intake: {
+          status: 'complete',
+          source_path: 'promotion:canonical-source',
+          source_bytes: productionSourceBytes(finalRecords),
+        },
+        semantic_review: {
+          status: 'complete',
+          source_path: 'promotion:semantic-audit',
+          source_bytes: semanticAuditBytes,
+        },
+        selection: {
+          status: 'complete',
+          source_path: 'promotion:gate-evidence',
+          source_bytes: productionSourceBytes(evidence),
+          policy: 'passing-admission-gate',
+        },
+        prospective_canonical: {
+          status: 'complete',
+          source_path: 'promotion:prospective-canonical',
+          source_bytes: productionSourceBytes(finalRecords),
+        },
+        audit: {
+          status: 'complete',
+          source_path: 'promotion:semantic-audit',
+          source_bytes: semanticAuditBytes,
+        },
+        admission: {
+          status: 'complete',
+          source_path: 'promotion:gate-evidence',
+          source_bytes: productionSourceBytes(evidence),
+          decision: 'admit',
+          authorization_ref: 'm5-11-promotion-evidence',
+        },
+      },
+    }).state,
+    productionStateSources: {
+      candidate_intake: productionSourceBytes(finalRecords),
+      semantic_review: semanticAuditBytes,
+      selection: productionSourceBytes(evidence),
+      prospective_canonical: productionSourceBytes(finalRecords),
+      audit: semanticAuditBytes,
+      admission: productionSourceBytes(evidence),
+    },
+    allowReplay: true,
     checkPilotCompleteness: true,
     prospectiveLabel: 'M5-11 promoted canonical records',
   });
-  const finalRecords = canonical.records.map(({ record }) => record);
   const finalSummary = canonicalSummary(finalRecords);
   assertSummary(finalSummary, durable.summary, 'canonical promotion output');
 

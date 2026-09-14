@@ -9,11 +9,11 @@ import {
 import {
   DEFAULT_SEMANTIC_AUDIT_PATH,
   DEFAULT_SEMANTIC_COVERAGE_PATH,
-  DEFAULT_SEMANTIC_REVIEW_PATH,
+  DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   assembleSemanticAuditArtifact,
-  readSemanticReviewArtifact,
+  readSemanticDecisionSourceArtifact,
   validateSemanticAuditCoverage,
-  validateSemanticReviewArtifact,
+  validateSemanticDecisionSource,
 } from './semantic-audit.mjs';
 
 function parseArguments(argv) {
@@ -30,15 +30,15 @@ function parseArguments(argv) {
 
 export async function buildSemanticAudit({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
-  reviewPath = DEFAULT_SEMANTIC_REVIEW_PATH,
+  decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   coveragePath = DEFAULT_SEMANTIC_COVERAGE_PATH,
   outputPath = DEFAULT_SEMANTIC_AUDIT_PATH,
 } = {}) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
-  const semanticReview = await readSemanticReviewArtifact(reviewPath);
-  validateSemanticReviewArtifact(canonical.records, semanticReview, {
+  const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
+  const semanticReview = validateSemanticDecisionSource(canonical.records, decisionSource, {
     baseRecords: canonical.records,
-    label: 'semantic review input',
+    label: 'semantic decision source',
   });
   const artifact = assembleSemanticAuditArtifact(canonical.records, semanticReview);
   validateSemanticAuditCoverage(canonical.records, artifact, {
@@ -49,7 +49,7 @@ export async function buildSemanticAudit({
   await writeFile(coveragePath, `${JSON.stringify(artifact.coverage, null, 2)}\n`, 'utf8');
   await writeFile(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
   return {
-    reviewPath,
+    decisionSourcePath,
     coveragePath,
     outputPath,
     recordCount: artifact.record_count,
@@ -65,7 +65,7 @@ if (isMainModule) {
   const args = parseArguments(process.argv.slice(2));
   buildSemanticAudit({
     canonicalDirectory: args.canonical ?? DEFAULT_CANONICAL_DIRECTORY,
-    reviewPath: args.review ?? DEFAULT_SEMANTIC_REVIEW_PATH,
+    decisionSourcePath: args['decision-source'] ?? DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     coveragePath: args.coverage ?? DEFAULT_SEMANTIC_COVERAGE_PATH,
     outputPath: args.output ?? DEFAULT_SEMANTIC_AUDIT_PATH,
   })

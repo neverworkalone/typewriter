@@ -31,7 +31,10 @@ import {
 } from '../scripts/batch/validate-m5-10-wave-b.mjs';
 import { evaluateExpansionGate } from '../scripts/batch/validate-m5-8-process.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
-import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
+import {
+  makeProductionState,
+  writeSemanticAuditFixture,
+} from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_SHARD_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-b.jsonl');
@@ -56,6 +59,16 @@ async function makeStagingDirectory() {
   const manifestPath = path.join(directory, 'manifest.json');
   const manifest = await readJson(DEFAULT_OUTPUT_PATH);
   manifest.review.semantic_audit_sha256 = semanticAudit.sha256;
+  const production = makeProductionState({
+    batchId: manifest.batch_id,
+    candidateRecords: staged.records,
+    reviewedRecords: staged.records,
+    baseRecords: baseCanonical.records,
+    prospectiveRecords: [...baseCanonical.records, ...staged.records],
+    semanticAudit: semanticAudit.artifact,
+    artifactId: 'm5-10-wave-b-test-production',
+  });
+  manifest.production_state = production.state;
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(manifestPath, manifestBytes);
   const stagePath = path.join(directory, 'stage.json');
@@ -63,7 +76,14 @@ async function makeStagingDirectory() {
   stage.source.manifest = path.relative(path.resolve('.'), manifestPath);
   stage.source.manifest_sha256 = createHash('sha256').update(manifestBytes).digest('hex');
   await writeFile(stagePath, `${JSON.stringify(stage, null, 2)}\n`, 'utf8');
-  const fixture = { directory, stagingPath, semanticAuditPath, manifestPath, stagePath };
+  const fixture = {
+    directory,
+    stagingPath,
+    semanticAuditPath,
+    manifestPath,
+    stagePath,
+    productionStateSources: production.sources,
+  };
   waveBFixtures.set(stagingPath, fixture);
   return fixture;
 }
@@ -77,6 +97,7 @@ async function validateWaveB(options = {}) {
     manifestPath: options.manifestPath ?? fixture?.manifestPath,
     stagePath: options.stagePath ?? fixture?.stagePath,
     semanticAuditPath: options.semanticAuditPath ?? fixture?.semanticAuditPath,
+    productionStateSources: options.productionStateSources ?? fixture?.productionStateSources,
   });
 }
 

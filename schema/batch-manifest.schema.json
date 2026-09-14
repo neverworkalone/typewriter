@@ -81,6 +81,9 @@
     "measurement": {
       "$ref": "#/$defs/measurement"
     },
+    "production_state": {
+      "$ref": "#/$defs/productionState"
+    },
     "records": {
       "type": "array",
       "minItems": 1,
@@ -159,6 +162,123 @@
     }
   ],
   "$defs": {
+    "productionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "pipeline_version", "batch_id", "producer_mode", "stages"],
+      "properties": {
+        "contract_version": { "const": "lexical-production-state-v2" },
+        "pipeline_version": { "const": "lexical-production-v1" },
+        "batch_id": { "type": "string", "pattern": "\\S" },
+        "producer_mode": { "enum": ["live", "replay"] },
+        "stages": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/productionStage" }
+        }
+      }
+    },
+    "productionStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "transition",
+        "source_path",
+        "payload_sha256",
+        "source_sha256",
+        "input_sha256",
+        "output_sha256",
+        "predecessor",
+        "operation",
+        "transition_sha256",
+        "payload_mode",
+        "payload_input_sha256",
+        "payload_output_sha256"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "candidate_intake",
+            "semantic_review",
+            "selection",
+            "prospective_canonical",
+            "audit",
+            "admission"
+          ]
+        },
+        "status": { "const": "complete" },
+        "transition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "\\S" },
+            "to": { "type": "string", "pattern": "\\S" }
+          }
+        },
+        "source_path": { "type": "string", "pattern": "\\S" },
+        "payload_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "payload_mode": { "enum": ["live", "replay"] },
+        "payload_input_sha256": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        },
+        "payload_output_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "input_sha256": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          ]
+        },
+        "output_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "predecessor": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["stage_id", "output_sha256"],
+              "properties": {
+                "stage_id": { "type": "string", "pattern": "\\S" },
+                "output_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+              }
+            }
+          ]
+        },
+        "operation": { "type": "string", "pattern": "\\S" },
+        "transition_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "policy": { "type": "string", "pattern": "\\S" },
+        "decision": { "const": "admit" },
+        "authorization_ref": { "type": "string", "pattern": "\\S" },
+        "authorization_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "admission_status": { "const": "admitted" },
+        "admission_result_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "id": { "const": "selection" } } },
+          "then": { "required": ["policy"] }
+        },
+        {
+          "if": { "properties": { "id": { "const": "admission" } } },
+          "then": {
+            "required": [
+              "decision",
+              "authorization_ref",
+              "authorization_sha256",
+              "admission_status",
+              "admission_result_sha256"
+            ]
+          }
+        }
+      ]
+    },
     "record": {
       "type": "object",
       "additionalProperties": false,

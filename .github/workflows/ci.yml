@@ -56,6 +56,18 @@ jobs:
       - name: Run target inventory tests
         run: node --test tests/target-inventory.test.mjs
 
+      - name: Validate lexical rule inventory
+        run: npm run validate:rules
+
+      - name: Run lexical rule inventory tests
+        run: node --test tests/lexical-rule-inventory.test.mjs
+
+      - name: Validate shared lexical quality and semantic audit
+        run: npm run validate:lexical
+
+      - name: Run shared lexical quality tests
+        run: node --test tests/lexical-quality.test.mjs
+
       - name: Run batch workflow tests
         run: node --test tests/batch-workflow.test.mjs
 

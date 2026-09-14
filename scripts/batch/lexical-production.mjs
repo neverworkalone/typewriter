@@ -1,6 +1,12 @@
-import { createHash } from 'node:crypto';
-
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import {
+  createLexicalProductionPayload,
+  createLexicalProductionRun,
+  productionBytesSha256,
+  productionValueSha256,
+  validateLexicalProductionPreAuditState,
+  validateLexicalProductionState,
+} from './lexical-production-state.mjs';
 import { validateLexicalSemanticReview } from '../validate/lexical-quality.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
@@ -66,31 +72,216 @@ function semanticReviewInput(entry, index) {
   return entry;
 }
 
-function validateStageEvidence(stageEvidence) {
+function valuesOf(recordInfos) {
+  return recordInfos.map(recordOf);
+}
+
+function createPreAuditPayloads({
+  batchId,
+  candidates,
+  reviewRows,
+  selectedRecords,
+  correctionRecords,
+  ranks,
+  selectedRanks,
+  baseRecords,
+  prospectiveRecords,
+} = {}) {
+  const candidateValues = valuesOf(candidates);
+  const reviewedValues = valuesOf([...selectedRecords, ...correctionRecords]);
+  const candidateOutput = candidateValues;
+  const reviewOutput = {
+    review_rows: reviewRows,
+    reviewed_records: reviewedValues,
+  };
+  const selectionOutput = {
+    selected_records: reviewedValues,
+    selection_ranks: selectedRanks,
+  };
+  const prospectiveOutput = valuesOf(prospectiveRecords);
+  const specs = {
+    candidate_intake: {
+      input: null,
+      output: candidateOutput,
+      inputKind: 'none',
+      outputKind: 'candidate-records',
+      details: {
+      candidate_records_sha256: productionValueSha256(candidateOutput),
+      candidate_count: candidateValues.length,
+      },
+    },
+    semantic_review: {
+      input: candidateOutput,
+      output: reviewOutput,
+      inputKind: 'candidate-records',
+      outputKind: 'reviewed-records',
+      details: {
+      candidate_records_sha256: productionValueSha256(candidateOutput),
+      review_rows_sha256: productionValueSha256(reviewRows),
+      reviewed_records_sha256: productionValueSha256(reviewedValues),
+      },
+    },
+    selection: {
+      input: reviewOutput,
+      output: selectionOutput,
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+      reviewed_records_sha256: productionValueSha256(reviewedValues),
+      selected_records_sha256: productionValueSha256(reviewedValues),
+      selection_ranks_sha256: productionValueSha256(selectedRanks),
+      },
+    },
+    prospective_canonical: {
+      input: selectionOutput,
+      output: prospectiveOutput,
+      inputKind: 'selected-records',
+      outputKind: 'prospective-canonical',
+      details: {
+        base_records_sha256: productionValueSha256(valuesOf(baseRecords)),
+        prospective_records_sha256: productionValueSha256(prospectiveOutput),
+      },
+    },
+  };
+  const payloads = Object.fromEntries(
+    Object.entries(specs).map(([stageId, spec]) => [
+      stageId,
+      createLexicalProductionPayload({ stageId, batchId, ...spec }),
+    ]),
+  );
+  return {
+    ...payloads,
+    payload_specs: specs,
+    outputs: { candidateOutput, reviewOutput, selectionOutput, prospectiveOutput },
+  };
+}
+
+function validateStageEvidence(
+  stageEvidence,
+  {
+    productionState,
+    batchId,
+    productionStateSources,
+    expectedPayloads,
+    payloadSpecs,
+    allowReplay = false,
+  } = {},
+) {
+  if (productionState !== undefined) {
+    try {
+      if (productionState.producer_mode === 'replay' && !allowReplay) {
+        fail(
+          'active lexical production requires a live producer run; replay state is reserved for explicit historical verification',
+          'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+        );
+      }
+      const replayState = productionState.producer_mode === 'replay';
+      const state = validateLexicalProductionState(productionState, {
+        batchId,
+        sourceBytesByStage: productionStateSources,
+        expectedPayloads: replayState ? undefined : expectedPayloads,
+        allowReplay,
+      });
+      return {
+        state,
+        run: undefined,
+        authorization: undefined,
+        authorizationEvidence: undefined,
+        auditStage: undefined,
+        admissionStage: undefined,
+        sources: productionStateSources,
+      };
+    } catch (error) {
+      fail(`production_state failed: ${error.message}`, error.code);
+    }
+  }
+  if (stageEvidence === undefined) {
+    fail('production.stage_evidence or production_state is required', 'LEXICAL_PRODUCTION_STAGE_REQUIRED');
+  }
   const stages = requireObject(stageEvidence, 'production.stage_evidence');
-  for (const stageId of ['candidate_intake', 'semantic_review', 'selection']) {
+  const stageIds = [
+    'candidate_intake',
+    'semantic_review',
+    'selection',
+    'prospective_canonical',
+    'audit',
+    'admission',
+  ];
+  for (const stageId of stageIds) {
     const stage = requireObject(stages[stageId], `production.stage_evidence.${stageId}`);
     if (stage.status !== 'complete') {
-      fail(`production.stage_evidence.${stageId}.status must be complete`, 'LEXICAL_PRODUCTION_STAGE_INCOMPLETE');
+      fail(
+        `production.stage_evidence.${stageId}.status must be complete`,
+        'LEXICAL_PRODUCTION_STAGE_REQUIRED',
+      );
     }
     requireString(stage.source_path, `production.stage_evidence.${stageId}.source_path`);
-    requireString(stage.source_sha256, `production.stage_evidence.${stageId}.source_sha256`);
-    if (!/^[a-f0-9]{64}$/u.test(stage.source_sha256)) {
-      fail(`production.stage_evidence.${stageId}.source_sha256 must be a SHA-256 digest`, 'LEXICAL_PRODUCTION_STAGE_BINDING');
-    }
     const sourceBytes = requireSourceBytes(
       stage.source_bytes,
       `production.stage_evidence.${stageId}.source_bytes`,
     );
-    const actualDigest = createHash('sha256').update(sourceBytes).digest('hex');
-    if (actualDigest !== stage.source_sha256) {
+    if (stage.source_sha256 !== undefined && productionBytesSha256(sourceBytes) !== stage.source_sha256) {
       fail(
-        `production.stage_evidence.${stageId}.source_sha256 does not match source_bytes`,
+        `production.stage_evidence.${stageId}.source_sha256 does not match its source bytes`,
         'LEXICAL_PRODUCTION_STAGE_BINDING',
       );
     }
   }
-  requireString(stages.selection.policy, 'production.stage_evidence.selection.policy');
+  try {
+    const run = createLexicalProductionRun({ batchId });
+    const typedPayloadSpecs = payloadSpecs ?? expectedPayloads?.payload_specs;
+    const tokens = {};
+    const methodNames = {
+      candidate_intake: 'completeCandidateIntake',
+      semantic_review: 'completeSemanticReview',
+      selection: 'completeSelection',
+      prospective_canonical: 'completeProspectiveCanonical',
+      audit: 'completeAudit',
+    };
+    for (const stageId of stageIds.slice(0, 4)) {
+      const stage = stages[stageId];
+      const previousStageId = stageIds[stageIds.indexOf(stageId) - 1];
+      tokens[stageId] = run[methodNames[stageId]]({
+        ...(previousStageId ? { predecessor: tokens[previousStageId] } : {}),
+        sourcePath: stage.source_path,
+        payloadSpec: typedPayloadSpecs?.[stageId],
+        ...(stageId === 'selection' ? { policy: stage.policy ?? 'shared-selection-policy' } : {}),
+      });
+    }
+    const auditEvidence = stages.audit;
+    const admissionEvidence = stages.admission;
+    const authorizationBytes = admissionEvidence.authorization_bytes === undefined
+      ? admissionEvidence.source_bytes
+      : admissionEvidence.authorization_bytes;
+    const auditStage = {
+      predecessor: tokens.prospective_canonical,
+      sourcePath: auditEvidence.source_path,
+    };
+    const admissionStage = {
+      sourcePath: admissionEvidence.source_path,
+    };
+    const preAuditState = run.getPreAuditState();
+    const preAuditSources = run.getPreAuditSourceBytesByStage();
+    validateLexicalProductionPreAuditState(preAuditState, {
+      batchId,
+      sourceBytesByStage: preAuditSources,
+      expectedPayloads,
+    });
+    return {
+      state: undefined,
+      run,
+      authorization: undefined,
+      authorizationEvidence: {
+        authorizationRef: admissionEvidence.authorization_ref,
+        authorizationBytes,
+      },
+      auditStage,
+      admissionStage,
+      sources: preAuditSources,
+    };
+  } catch (error) {
+    fail(`production stage evidence failed: ${error.message}`, error.code);
+  }
 }
 
 /**
@@ -109,6 +300,10 @@ export function validateLexicalProduction({
   prospectiveRecords,
   semanticAudit,
   stageEvidence,
+  productionState,
+  productionStateSources,
+  productionPayloads,
+  allowReplay = false,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -116,6 +311,12 @@ export function validateLexicalProduction({
   reviewedLabel = 'production reviewed records',
   prospectiveLabel = 'production prospective canonical records',
 } = {}) {
+  if (allowReplay === true) {
+    fail(
+      'generic lexical production never accepts replay; use an explicit historical validator boundary',
+      'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
   if (typeof batchId !== 'string' || batchId.trim().length === 0) {
     fail('production.batch_id must be a non-empty string', 'LEXICAL_PRODUCTION_SCOPE');
   }
@@ -143,8 +344,6 @@ export function validateLexicalProduction({
   if (semanticAudit === undefined) {
     fail('production.semantic_audit is required; semantic coverage cannot be inferred from a batch delta', 'SEMANTIC_AUDIT_REQUIRED');
   }
-  validateStageEvidence(stageEvidence);
-
   const candidateRecordsById = new Map();
   for (const [index, candidateInfo] of candidates.entries()) {
     const candidate = recordOf(candidateInfo);
@@ -156,6 +355,7 @@ export function validateLexicalProduction({
   }
   const selectedRecords = [];
   const ranks = [];
+  const selectedRanks = [];
   const candidateIds = new Set();
   for (const [index, rawEntry] of reviewRows.entries()) {
     const entry = semanticReviewInput(rawEntry, index);
@@ -198,6 +398,9 @@ export function validateLexicalProduction({
       fail(`production.reviews[${index}] semantic review failed: ${error.message}`, error.code);
     }
     ranks.push(result.selection_rank);
+    if (['included', 'corrected'].includes(entry.decision)) {
+      selectedRanks.push(result.selection_rank);
+    }
   }
 
   const correctionRecords = [];
@@ -246,6 +449,7 @@ export function validateLexicalProduction({
       semantic_review: entry.semantic_review,
     });
     ranks.push(result.selection_rank);
+    selectedRanks.push(result.selection_rank);
   }
 
   if (new Set(ranks).size !== ranks.length) {
@@ -271,6 +475,28 @@ export function validateLexicalProduction({
     }
   }
 
+  const preAuditPayloads = productionState === undefined
+    ? createPreAuditPayloads({
+      batchId,
+      candidates,
+      reviewRows,
+      selectedRecords,
+      correctionRecords,
+      ranks,
+      selectedRanks,
+      baseRecords,
+      prospectiveRecords,
+    })
+    : productionPayloads;
+  const productionContext = validateStageEvidence(stageEvidence, {
+    productionState,
+    batchId,
+    productionStateSources,
+    expectedPayloads: preAuditPayloads,
+    payloadSpecs: preAuditPayloads?.payload_specs,
+    allowReplay,
+  });
+
   let admission;
   try {
     admission = validateLexicalAddition({
@@ -280,6 +506,14 @@ export function validateLexicalProduction({
       baseRecords,
       prospectiveRecords,
       semanticAudit,
+      productionState: productionContext.state,
+      productionStateSources: productionContext.sources,
+      productionRun: productionContext.run,
+      productionAuditStage: productionContext.auditStage,
+      productionAuthorizationEvidence: productionContext.authorizationEvidence,
+      productionAdmissionStage: productionContext.admissionStage,
+      productionPayloads: preAuditPayloads,
+      allowReplay,
       checkPilotCompleteness,
       candidateLabel,
       reviewedLabel,
@@ -296,6 +530,11 @@ export function validateLexicalProduction({
     correction_count: correctionRecords.length,
     review_count: reviewRows.length,
     selection_ranks: ranks,
+    production_state: admission.production_state,
+    production_state_sources: productionContext.run
+      ? productionContext.run.getSourceBytesByStage()
+      : productionContext.sources,
+    production_payloads: admission.production_payloads,
     admission,
   };
 }

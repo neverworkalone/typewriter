@@ -119,7 +119,7 @@ test('M5-11A reports the promoted semantically verified +500 result', async () =
     record_count: 1320,
     start_count: 1278,
     reference_only_count: 42,
-    sense_count: 1607,
+    sense_count: 1588,
     relation_count: 487,
     expression_count: 73,
   });
@@ -153,10 +153,11 @@ test('M5-11A promoted import preserves semantic-quality regression invariants', 
   }
   const expressions = records.filter(({ record_type: recordType }) => recordType === 'expression');
   assert.equal(expressions.length, 10);
-  assert.ok(expressions.every(({ senses }) => senses.length === 2));
+  assert.equal(expressions.filter(({ senses }) => senses.length === 2).length, 9);
+  assert.equal(expressions.find(({ id }) => id === 'w1269')?.senses.length, 1);
   const manifest = JSON.parse(await readFile('data/batches/m5-11-admission.json', 'utf8'));
   assert.equal(manifest.gate_evidence.semantic.broad_gloss_count, 0);
-  assert.equal(manifest.gate_evidence.semantic.split_record_count, 140);
+  assert.equal(manifest.gate_evidence.semantic.split_record_count, 123);
   assert.equal(manifest.gate_evidence.semantic.relation_candidate_count, 14);
   for (const gateId of [
     'semantic_quality',
@@ -347,6 +348,7 @@ test('mixed-sense candidates require concrete boundary evidence before admission
   unlistedMixedSense.decisions[0].decision = 'corrected';
   unlistedMixedSense.decisions[0].corrected_lemma = '깜빡이다';
   unlistedMixedSense.decisions[0].canonical_record.lemma = '깜빡이다';
+  unlistedMixedSense.decisions[0].canonical_record.search_forms = ['깜빡이다'];
   unlistedMixedSense.decisions[0].canonical_record.senses = [
     { id: 'w779-s1', pos: 'verb', gloss: '눈을 잠깐 감았다 뜨다' },
   ];

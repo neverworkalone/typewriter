@@ -10,7 +10,17 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
+import {
+  validateHistoricalLexicalAddition,
+} from './lexical-admission.mjs';
+import { validateLexicalProduction } from './lexical-production.mjs';
+import {
+  readLexicalProductionPayloads,
+  productionBytesSha256,
+  productionSourceBytes,
+  validateLexicalProductionState,
+} from './lexical-production-state.mjs';
 import {
   DEFAULT_INVENTORY_PATH,
   readTargetInventory,
@@ -917,26 +927,19 @@ function validateDeterministicSenseIds(recordInfos) {
 }
 
 function validateNoDuplicateLexicalKeys(recordInfos) {
-  const fields = [
-    ['lemma', (record) => [record.lemma], 'DUPLICATE_LEMMA'],
-    ['search form', (record) => record.search_forms, 'DUPLICATE_SEARCH_FORM'],
-  ];
-
-  for (const [label, valuesForRecord, code] of fields) {
-    const owners = new Map();
-    for (const recordInfo of recordInfos) {
-      for (const value of valuesForRecord(recordInfo.record)) {
-        const normalizedValue = value.normalize('NFC');
-        const recordIds = owners.get(normalizedValue) ?? [];
-        recordIds.push(recordInfo.record.id);
-        owners.set(normalizedValue, recordIds);
-      }
-    }
-    for (const [value, recordIds] of owners) {
-      if (recordIds.length > 1) {
-        fail(`${label} ${value} is duplicated by ${recordIds.join(', ')}`, code);
-      }
-    }
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    scope: 'batch prospective lexical audit',
+    throwOnError: false,
+  });
+  const duplicateFinding = audit.blocking_findings.find(({ code }) => [
+    'LEXICAL_DUPLICATE_LEMMA',
+    'LEXICAL_DUPLICATE_SEARCH_FORM',
+  ].includes(code));
+  if (duplicateFinding) {
+    const code = duplicateFinding.code === 'LEXICAL_DUPLICATE_LEMMA'
+      ? 'DUPLICATE_LEMMA'
+      : 'DUPLICATE_SEARCH_FORM';
+    fail(duplicateFinding.message, code);
   }
 }
 
@@ -1079,13 +1082,167 @@ function validateStagedMapping(manifestRecords, stagedRecordInfos) {
   return stagedById;
 }
 
-export async function validateBatch({
+function assertRecordSetEqual(actualRecords, expectedRecords, label) {
+  const actualById = new Map(actualRecords.map((record) => [record.id, record]));
+  const expectedById = new Map(expectedRecords.map((record) => [record.id, record]));
+  if (actualById.size !== actualRecords.length || expectedById.size !== expectedRecords.length) {
+    fail(`${label} contains duplicate record IDs`, 'LEXICAL_PRODUCTION_BINDING');
+  }
+  assertJsonEqual(
+    [...actualById.keys()].sort(),
+    [...expectedById.keys()].sort(),
+    `${label} IDs are not bound to the batch records`,
+    'LEXICAL_PRODUCTION_BINDING',
+  );
+  for (const [recordId, expected] of expectedById) {
+    assertJsonEqual(
+      actualById.get(recordId),
+      expected,
+      `${label} record ${recordId} is not the exact batch value`,
+      'LEXICAL_PRODUCTION_BINDING',
+    );
+  }
+}
+
+function buildLiveProducerStageEvidence(manifest, productionStateSources) {
+  return Object.fromEntries(manifest.production_state.stages.map((stage) => [stage.id, {
+    status: 'complete',
+    source_path: stage.source_path,
+    source_bytes: productionStateSources[stage.id],
+    source_sha256: productionBytesSha256(productionStateSources[stage.id]),
+    ...(stage.id === 'selection' ? { policy: stage.policy } : {}),
+    ...(stage.id === 'admission'
+      ? {
+        decision: stage.decision,
+        authorization_ref: stage.authorization_ref,
+      }
+      : {}),
+  }]));
+}
+
+function validateLiveBatchProducer({
+  manifest,
+  productionPayloads,
+  productionStateSources,
+  canonicalRecords,
+  stagedRecords,
+  semanticAudit,
+} = {}) {
+  const candidateOutput = productionPayloads.candidate_intake?.output;
+  const reviewOutput = productionPayloads.semantic_review?.output;
+  const selectionOutput = productionPayloads.selection?.output;
+  const prospectiveOutput = productionPayloads.prospective_canonical?.output;
+  if (!Array.isArray(candidateOutput)
+    || !reviewOutput
+    || !Array.isArray(reviewOutput.review_rows)
+    || !Array.isArray(reviewOutput.reviewed_records)
+    || !selectionOutput
+    || !Array.isArray(selectionOutput.selected_records)
+    || !Array.isArray(prospectiveOutput)) {
+    fail(
+      'live generic admission requires typed candidate, review, selection, and prospective outputs from the shared producer',
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+
+  const stagedValues = stagedRecords.map(({ record }) => record);
+  assertRecordSetEqual(selectionOutput.selected_records, stagedValues, 'shared producer selection output');
+  assertRecordSetEqual(reviewOutput.reviewed_records, stagedValues, 'shared producer reviewed output');
+  assertRecordSetEqual(
+    prospectiveOutput,
+    [...canonicalRecords.map(({ record }) => record), ...stagedValues],
+    'shared producer prospective output',
+  );
+
+  const candidateInfos = candidateOutput.map((record, index) => ({
+    record,
+    source: 'shared-producer-candidate-intake',
+    filePath: 'shared-producer-candidate-intake',
+    lineNumber: index + 1,
+  }));
+  const prospectiveInfos = prospectiveOutput.map((record, index) => ({
+    record,
+    source: 'shared-producer-prospective-canonical',
+    filePath: 'shared-producer-prospective-canonical',
+    lineNumber: index + 1,
+  }));
+  let result;
+  try {
+    result = validateLexicalProduction({
+      batchId: manifest.batch_id,
+      candidateRecords: candidateInfos,
+      reviews: reviewOutput.review_rows,
+      baseRecords: canonicalRecords,
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit,
+      stageEvidence: buildLiveProducerStageEvidence(manifest, productionStateSources),
+      catalogCount: candidateOutput.length,
+      expectedSelectedCount: stagedValues.length,
+      candidateLabel: `${manifest.batch_id} live producer candidates`,
+      reviewedLabel: `${manifest.batch_id} live producer reviewed records`,
+      prospectiveLabel: `${manifest.batch_id} live producer prospective records`,
+    });
+  } catch (error) {
+    fail(`shared live producer validation failed: ${error.message}`, error.code);
+  }
+
+  for (const stageId of ['candidate_intake', 'semantic_review', 'selection', 'prospective_canonical', 'audit']) {
+    assertJsonEqual(
+      result.production_payloads?.[stageId]?.input,
+      productionPayloads[stageId]?.input,
+      `shared producer ${stageId} input is not the persisted typed input`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+    assertJsonEqual(
+      result.production_payloads?.[stageId]?.output,
+      productionPayloads[stageId]?.output,
+      `shared producer ${stageId} output is not the persisted typed output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+    assertJsonEqual(
+      result.production_payloads?.[stageId]?.details,
+      productionPayloads[stageId]?.details,
+      `shared producer ${stageId} details are not bound to the persisted operation`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  assertJsonEqual(
+    result.production_payloads?.admission?.input,
+    productionPayloads.admission?.input,
+    'shared producer admission input is not the persisted audit output',
+    'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  assertJsonEqual(
+    result.production_payloads?.admission?.output,
+    productionPayloads.admission?.output,
+    'shared producer admission output is not the persisted admitted output',
+    'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  assertJsonEqual(
+    result.production_payloads?.admission?.details?.gate_sha256,
+    productionPayloads.admission?.details?.gate_sha256,
+    'shared producer admission gate is not bound to the persisted gate',
+    'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  assertJsonEqual(
+    result.production_state?.stages?.slice(0, 5),
+    manifest.production_state.stages.slice(0, 5),
+    'shared live producer state diverged before admission authorization',
+    'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+
+  return result;
+}
+
+async function validateBatchInternal({
   manifestPath,
   stagedRecordsPath,
   semanticAuditPath,
   inventoryPath = DEFAULT_INVENTORY_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   allowRepositoryStaging = false,
+  allowReplay = false,
+  productionStateSources: productionStateSourceOverrides = {},
 } = {}) {
   if (!manifestPath) {
     fail('manifestPath is required', 'MISSING_MANIFEST_PATH');
@@ -1102,6 +1259,12 @@ export async function validateBatch({
   const manifest = await readManifest(manifestPath);
   if (manifest.review.status !== 'complete') {
     fail('batch review must be complete before canonical import', 'REVIEW_NOT_COMPLETE');
+  }
+  if (manifest.production_state === undefined) {
+    fail(
+      'active batch admission requires the complete shared production_state; legacy manifests must be migrated before reuse',
+      'MISSING_PRODUCTION_STATE',
+    );
   }
 
   let semanticAuditBytes;
@@ -1140,9 +1303,7 @@ export async function validateBatch({
   let stagedResult;
   let stagedBytes;
   try {
-    if (Object.hasOwn(manifest.review, 'reviewed_staging_sha256')) {
-      stagedBytes = await readFile(stagedRecordsPath);
-    }
+    stagedBytes = await readFile(stagedRecordsPath);
     stagedResult = await readCanonicalRecords(stagedRecordsPath);
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -1151,7 +1312,7 @@ export async function validateBatch({
     throw error;
   }
 
-  if (stagedBytes) {
+  if (Object.hasOwn(manifest.review, 'reviewed_staging_sha256')) {
     const stagedDigest = createHash('sha256').update(stagedBytes).digest('hex');
     if (stagedDigest !== manifest.review.reviewed_staging_sha256) {
       fail(
@@ -1169,6 +1330,36 @@ export async function validateBatch({
   validateReferenceClosure(manifest.records, stagedResult.records, canonicalResult.records);
 
   const prospectiveRecords = [...canonicalResult.records, ...stagedResult.records];
+  const productionStateSources = {
+    candidate_intake: stagedBytes,
+    semantic_review: semanticAuditBytes,
+    selection: stagedBytes,
+    prospective_canonical: productionSourceBytes(prospectiveRecords.map(({ record }) => record)),
+    audit: semanticAuditBytes,
+    admission: stagedBytes,
+    ...productionStateSourceOverrides,
+  };
+  const replayState = manifest.production_state.producer_mode === 'replay';
+  if (replayState && !allowReplay) {
+    fail(
+      'active batch admission requires a live producer run; historical replay state is not accepted',
+      'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
+  let productionPayloads;
+  try {
+    productionPayloads = replayState && allowReplay
+      ? undefined
+      : readLexicalProductionPayloads(productionStateSources);
+    validateLexicalProductionState(manifest.production_state, {
+      batchId: manifest.batch_id,
+      sourceBytesByStage: productionStateSources,
+      expectedPayloads: productionPayloads,
+      allowReplay,
+    });
+  } catch (error) {
+    fail(`shared production_state validation failed: ${error.message}`, error.code);
+  }
   const manifestRecordByCanonicalId = new Map(
     manifest.records
       .filter(({ canonical_id: canonicalId }) => canonicalId)
@@ -1178,17 +1369,33 @@ export async function validateBatch({
     ...recordInfo,
     decision: manifestRecordByCanonicalId.get(recordInfo.record.id)?.decision,
   }));
-  validateLexicalAddition({
-    batchId: manifest.batch_id,
-    baseRecords: canonicalResult.records,
-    reviewedRecords,
-    prospectiveRecords,
-    semanticAudit,
-    checkPilotCompleteness: false,
-    candidateLabel: `${manifest.batch_id} candidate records`,
-    reviewedLabel: `${manifest.batch_id} reviewed records`,
-    prospectiveLabel: `${manifest.batch_id} prospective canonical records`,
-  });
+  const historicalReplay = replayState && allowReplay;
+  if (historicalReplay) {
+    validateHistoricalLexicalAddition({
+      batchId: manifest.batch_id,
+      baseRecords: canonicalResult.records,
+      reviewedRecords,
+      prospectiveRecords,
+      semanticAudit,
+      productionState: manifest.production_state,
+      productionStateSources,
+      productionPayloads,
+      allowReplay: true,
+      checkPilotCompleteness: false,
+      candidateLabel: `${manifest.batch_id} historical candidate records`,
+      reviewedLabel: `${manifest.batch_id} historical reviewed records`,
+      prospectiveLabel: `${manifest.batch_id} historical prospective canonical records`,
+    });
+  } else {
+    validateLiveBatchProducer({
+      manifest,
+      productionPayloads,
+      productionStateSources,
+      canonicalRecords: canonicalResult.records,
+      stagedRecords: stagedResult.records,
+      semanticAudit,
+    });
+  }
 
   const counts = Object.fromEntries(DECISIONS.map((decision) => [
     decision,
@@ -1213,6 +1420,35 @@ export async function validateBatch({
     counts,
     stagedRecords: stagedResult.records,
   };
+}
+
+/**
+ * Validate an active/future batch.  Replay is intentionally not an option on
+ * this public boundary: only a live lexical-production run may authorize a
+ * new admission.
+ */
+export async function validateBatch(options = {}) {
+  if (options?.allowReplay === true) {
+    fail(
+      'generic batch validation never accepts replay; use validateHistoricalBatch for an explicit historical verification',
+      'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
+  return validateBatchInternal({ ...options, allowReplay: false });
+}
+
+/**
+ * Historical verification boundary.  Callers must opt into this named API so
+ * a replay state cannot accidentally become the normal admission path.
+ */
+export async function validateHistoricalBatch(options = {}) {
+  if (options?.allowReplay !== true) {
+    fail(
+      'historical batch validation requires an explicit allowReplay: true opt-in',
+      'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
+    );
+  }
+  return validateBatchInternal({ ...options, allowReplay: true });
 }
 
 export function assertImportArtifactPath(outputPath, canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY) {

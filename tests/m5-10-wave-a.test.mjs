@@ -17,7 +17,10 @@ import {
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateRelationDiff } from '../scripts/batch/relation-diff.mjs';
-import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
+import {
+  makeProductionState,
+  writeSemanticAuditFixture,
+} from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CANONICAL_IMPORT_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-a.jsonl');
@@ -199,13 +202,31 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     const outputPath = path.join(temporaryDirectory, 'import.jsonl');
     const waveRecords = await readFile(CANONICAL_IMPORT_PATH, 'utf8');
     await writeFile(stagedRecordsPath, waveRecords, 'utf8');
+    const historicalCanonical = await readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY);
+    const staged = await readCanonicalRecords(CANONICAL_IMPORT_PATH);
     const semanticAudit = await writeSemanticAuditFixture(
       semanticAuditPath,
-      canonical.records,
+      [...historicalCanonical.records, ...staged.records],
       { artifactId: 'm5-10-wave-a-test-semantic-audit' },
     );
     const validatedManifest = structuredClone(manifest);
     validatedManifest.review.semantic_audit_sha256 = semanticAudit.sha256;
+    const stagedBytes = Buffer.from(waveRecords, 'utf8');
+    const semanticAuditBytes = await readFile(semanticAuditPath);
+    const prospectiveRecords = [
+      ...historicalCanonical.records,
+      ...staged.records,
+    ].map(({ record }) => record);
+    const production = makeProductionState({
+      batchId: validatedManifest.batch_id,
+      candidateRecords: staged.records,
+      reviewedRecords: staged.records,
+      baseRecords: historicalCanonical.records,
+      prospectiveRecords: [...historicalCanonical.records, ...staged.records],
+      semanticAudit: semanticAudit.artifact,
+      artifactId: 'm5-10-wave-a-test-production',
+    });
+    validatedManifest.production_state = production.state;
     await writeFile(validatedManifestPath, `${JSON.stringify(validatedManifest, null, 2)}\n`, 'utf8');
 
     const summary = await validateBatch({
@@ -214,6 +235,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       semanticAuditPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      productionStateSources: production.sources,
     });
     assert.equal(summary.canonicalRecordCount, 570);
     assert.equal(summary.stagedRecordCount, 50);
@@ -234,6 +256,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       outputPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      productionStateSources: production.sources,
     });
     assert.equal(imported.outputRecordCount, 50);
     assert.equal(await readFile(outputPath, 'utf8'), waveRecords);

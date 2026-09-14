@@ -20,6 +20,10 @@ The shared implementation is:
 - `scripts/validate/lexical-quality.mjs` — lexical invariants, writer-domain
   sense-boundary observations, placeholder detection, and the complete-canonical
   audit report;
+- `scripts/validate/sense-boundary.mjs` — the common mechanical duplicate and
+  nested-gloss pair inspection used by both the complete audit and every live
+  semantic review. Authored `distinct`/`retain` decisions cannot override a
+  mechanical blocker;
 - `scripts/batch/lexical-admission.mjs` — the batch-neutral producer/admission
   boundary that validates candidate bodies, reviewed canonical bodies, and the
   complete prospective dataset;
@@ -31,10 +35,16 @@ The shared implementation is:
   creates pass/boundary/relation decisions;
 - `data/validation/canonical-semantic-review.json` — the separately authored
   complete decision artifact;
+- `data/validation/canonical-semantic-decision-source.json` — the separately
+  authored source consumed by the rebuild step; it binds the review artifact by
+  source ID and digest, so canonical facts alone cannot manufacture a pass;
 - `data/validation/canonical-semantic-coverage.json` — deterministic facts and
   digests derived from canonical values;
 - `data/validation/canonical-semantic-audit.json` — the validated envelope that
   binds both artifacts to one canonical snapshot;
+- `scripts/validate/rebuild-semantic-evidence.mjs` — rebuilds deterministic
+  coverage from that decision source only and fails when the authored source is
+  missing or replaced by a legacy/replay review;
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 
@@ -46,7 +56,15 @@ separately authored review rows are retained as scoped durable evidence; each
 historical manifest binds the exact envelope bytes by `review.semantic_audit_sha256`.
 CI copies these committed sources to its external runner staging directory and
 passes them through the A2/Wave B CLI, preserving the repository-local staging
-boundary while keeping replay deterministic.
+boundary while keeping replay deterministic. Replay is an explicit historical
+verification mode; generic and future admissions must use a live
+`lexical-production` run with typed stage payloads. A live stage envelope
+preserves the exact typed input, output, and operation details. Generic batch
+validation extracts those values, executes a fresh shared producer run through
+all six transitions, and compares the new outputs and transition state with the
+persisted run. A state assembled by `produceLexicalProductionState()` is
+therefore accepted only through the named historical validator; it cannot be
+used as an active/future admission shortcut.
 
 M5-11 adds its 550-row scope, +500 arithmetic, reserve, source digests, timing,
 and authorization rules around this boundary. Every registration must provide

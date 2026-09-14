@@ -7,6 +7,15 @@ import {
   canonicalRecordsSha256,
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
+import {
+  createLexicalProductionPayload,
+  productionBytesSha256,
+  productionValueSha256,
+  productionSourceBytes,
+  isLexicalProductionRun,
+  validateLexicalProductionPreAuditState,
+  validateLexicalProductionState,
+} from './lexical-production-state.mjs';
 
 export const LEXICAL_ADMISSION_PIPELINE_VERSION = 'lexical-admission-v1';
 
@@ -41,13 +50,21 @@ function asRecordInfos(records, source, fallbackPath) {
  * candidate bodies are checked, reviewed canonical bodies are checked, and
  * the complete prospective dictionary is checked for every admission.
  */
-export function validateLexicalAddition({
+function validateLexicalAdditionInternal({
   batchId,
   candidateRecords = [],
   reviewedRecords = [],
   baseRecords,
   prospectiveRecords,
   semanticAudit,
+  productionState,
+  productionStateSources,
+  productionRun,
+  productionAuditStage,
+  productionAuthorizationEvidence,
+  productionAdmissionStage,
+  productionPayloads,
+  allowReplay = false,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
@@ -62,6 +79,38 @@ export function validateLexicalAddition({
   }
   if (semanticAudit === undefined) {
     throw new Error('lexical admission requires source-bound semantic_audit coverage');
+  }
+  let validatedProductionState;
+  let validatedProductionPayloads = productionPayloads;
+  if (productionRun !== undefined) {
+    if (!isLexicalProductionRun(productionRun)) {
+      throw new Error('lexical admission requires a producer-owned live production run');
+    }
+    const preAuditState = productionRun.getPreAuditState();
+    const preAuditSources = productionStateSources ?? productionRun.getPreAuditSourceBytesByStage();
+    validateLexicalProductionPreAuditState(preAuditState, {
+      batchId,
+      sourceBytesByStage: preAuditSources,
+      expectedPayloads: productionPayloads,
+    });
+  } else {
+    if (productionState === undefined) {
+      throw new Error('lexical admission requires the complete production_state');
+    }
+    if (productionState.producer_mode === 'replay' && !allowReplay) {
+      const error = new Error(
+        'active lexical admission requires a live producer run; replay state is reserved for explicit historical verification',
+      );
+      error.code = 'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN';
+      throw error;
+    }
+    const replayState = productionState.producer_mode === 'replay';
+    validatedProductionState = validateLexicalProductionState(productionState, {
+      batchId,
+      sourceBytesByStage: productionStateSources,
+      expectedPayloads: replayState ? undefined : productionPayloads,
+      allowReplay,
+    });
   }
   const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
@@ -114,12 +163,14 @@ export function validateLexicalAddition({
   const semanticAuditCoverage = validateSemanticAuditCoverage(prospectiveInfos, semanticAudit, {
     baseRecords: baseInfos,
     label: `${batchId} semantic audit`,
+    requireDecisionSource: !allowReplay,
   });
   const indexes = validateDatasetRecords(prospectiveInfos, {
     checkPilotCompleteness,
     semanticAudit,
     requireSemanticAudit: true,
     semanticAuditBaseRecords: baseInfos,
+    requireDecisionSource: !allowReplay,
   });
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset
@@ -129,6 +180,95 @@ export function validateLexicalAddition({
     throwOnError: true,
   });
 
+  if (productionRun !== undefined) {
+    if (productionAuditStage === undefined
+      || productionAuthorizationEvidence === undefined
+      || productionAdmissionStage === undefined) {
+      throw new Error('lexical admission requires producer authorization and admission stage evidence');
+    }
+    const auditOutput = {
+      prospective_records_sha256: productionValueSha256(prospectiveInfos.map(recordOf)),
+      semantic_audit_sha256: productionValueSha256(semanticAudit),
+      lexical_audit_sha256: productionValueSha256(audit),
+    };
+    const auditPayloadSpec = {
+      input: productionPayloads?.outputs?.prospectiveOutput
+        ?? prospectiveInfos.map(recordOf),
+      output: auditOutput,
+      inputKind: 'prospective-canonical',
+      outputKind: 'complete-canonical-audit',
+      details: auditOutput,
+    };
+    const auditPayload = createLexicalProductionPayload({
+      stageId: 'audit',
+      batchId,
+      ...auditPayloadSpec,
+    });
+    const auditToken = productionRun.completeAudit({
+      predecessor: productionAuditStage.predecessor,
+      sourcePath: productionAuditStage.sourcePath,
+      payloadSpec: auditPayloadSpec,
+    });
+    const authorization = productionRun.authorizeAdmission({
+      predecessor: auditToken,
+      authorizationRef: productionAuthorizationEvidence.authorizationRef,
+      authorizationBytes: productionAuthorizationEvidence.authorizationBytes,
+    });
+    const gateBytes = productionSourceBytes({
+      batch_id: batchId,
+      pipeline_version: LEXICAL_ADMISSION_PIPELINE_VERSION,
+      candidate_count: candidateInfos.length,
+      reviewed_count: reviewedInfos.length,
+      prospective_record_count: prospectiveInfos.length,
+      semantic_audit: semanticAuditCoverage,
+      lexical_audit: audit,
+    });
+    const admissionOutput = {
+      status: 'admitted',
+      gate_digest: productionBytesSha256(gateBytes),
+    };
+    const admissionPayloadSpec = {
+      input: auditOutput,
+      output: admissionOutput,
+      inputKind: 'complete-canonical-audit',
+      outputKind: 'admitted-canonical',
+      details: {
+        authorization_sha256: authorization.authorization_sha256,
+        gate_sha256: admissionOutput.gate_digest,
+      },
+    };
+    const admissionPayload = createLexicalProductionPayload({
+      stageId: 'admission',
+      batchId,
+      ...admissionPayloadSpec,
+    });
+    const admissionToken = productionRun.completeAdmission({
+      authorization,
+      sourcePath: productionAdmissionStage.sourcePath,
+      payloadSpec: admissionPayloadSpec,
+      decision: 'admit',
+      admissionResult: admissionOutput,
+    });
+    // The token is deliberately consumed only after every shared admission
+    // check above has succeeded.  A producer run that fails earlier cannot
+    // expose a completed admission state.
+    void admissionToken;
+    validatedProductionState = validateLexicalProductionState(productionRun.getState(), {
+      batchId,
+      sourceBytesByStage: productionRun.getSourceBytesByStage(),
+      expectedPayloads: {
+        ...productionPayloads,
+        audit: auditPayload,
+        admission: admissionPayload,
+      },
+    });
+    validatedProductionPayloads = {
+      ...productionPayloads,
+      audit: auditPayload,
+      admission: admissionPayload,
+    };
+  }
+
   return {
     pipeline_version: LEXICAL_ADMISSION_PIPELINE_VERSION,
     batch_id: batchId,
@@ -137,8 +277,40 @@ export function validateLexicalAddition({
     prospective_record_count: prospectiveInfos.length,
     base_record_count: baseInfos.length,
     base_records_sha256: canonicalRecordsSha256(baseInfos),
+    production_state: validatedProductionState,
+    production_payloads: validatedProductionPayloads,
     semantic_audit: semanticAuditCoverage,
     indexes,
     audit,
   };
+}
+
+/**
+ * Validate a new admission.  Replay is not an option on the common API:
+ * active and future registrations must be backed by a live producer run.
+ */
+export function validateLexicalAddition(options = {}) {
+  if (options?.allowReplay === true) {
+    const error = new Error(
+      'generic lexical admission never accepts replay; use validateHistoricalLexicalAddition for explicit historical verification',
+    );
+    error.code = 'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN';
+    throw error;
+  }
+  return validateLexicalAdditionInternal({ ...options, allowReplay: false });
+}
+
+/**
+ * Historical verification boundary for durable/replayed artifacts.  Keeping
+ * this separate makes the replay exception visible at every caller.
+ */
+export function validateHistoricalLexicalAddition(options = {}) {
+  if (options?.allowReplay !== true) {
+    const error = new Error(
+      'historical lexical admission requires an explicit allowReplay: true opt-in',
+    );
+    error.code = 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED';
+    throw error;
+  }
+  return validateLexicalAdditionInternal({ ...options, allowReplay: true });
 }
