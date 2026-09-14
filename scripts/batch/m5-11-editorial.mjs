@@ -2,8 +2,24 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
+import {
+  BROAD_GLOSS_CONNECTOR_PATTERN,
+  hasBroadGlossConnector,
+  validateLexicalRecord,
+  validateLexicalSemanticReview,
+} from '../validate/lexical-quality.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 
 export const M5_11_BATCH_ID = 'm5-11-expansion-20260913';
+export const M5_11_AGENT_REVIEW_MODE = 'agent-generated';
+export const M5_11_AGENT_PROVENANCE_KIND = 'agent_generated';
+export const M5_11_AGENT_GENERATOR = 'codex';
+export const M5_11_AGENT_EDITORIAL_VERSION = 'm5-11a-agent-editorial-v2';
+export const M5_11_AGENT_SEMANTIC_REVIEW_VERSION = 'm5-11a-semantic-review-v2';
+export const M5_11_AGENT_RELATION_BEARING_AXES = Object.freeze(['Q', 'S', 'C', 'A', 'O', 'X']);
+export const M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO = 0.8;
+export const M5_11_BROAD_GLOSS_PATTERN = BROAD_GLOSS_CONNECTOR_PATTERN;
+export const M5_11_AGENT_GATE_DECISION = 'APPROVE AUTOMATED BOUNDED';
 export const M5_11_BOUNDARY_IDS = Object.freeze([
   'physical-figurative',
   'homonym-pos',
@@ -81,6 +97,41 @@ export function expectedInventoryId(index) {
 
 export function expectedCanonicalId(importIndex) {
   return `w${String(779 + importIndex).padStart(3, '0')}`;
+}
+
+export function isM511AgentGeneratedArtifact(artifact) {
+  return artifact?.review_mode === M5_11_AGENT_REVIEW_MODE
+    || artifact?.provenance?.kind === M5_11_AGENT_PROVENANCE_KIND;
+}
+
+export const hasM511BroadGlossConnector = hasBroadGlossConnector;
+
+function validateSharedLexicalRecord(record, options) {
+  try {
+    return validateLexicalRecord(record, options);
+  } catch (error) {
+    fail(error.message, error.code);
+  }
+}
+
+export function validateM511AgentProvenance(artifact, label = 'M5-11 agent artifact') {
+  requireObject(artifact, label);
+  if (artifact.review_mode !== M5_11_AGENT_REVIEW_MODE) {
+    fail(`${label}.review_mode must be ${M5_11_AGENT_REVIEW_MODE}`, 'EDITORIAL_PROVENANCE_ERROR');
+  }
+  const provenance = requireObject(artifact.provenance, `${label}.provenance`);
+  if (provenance.kind !== M5_11_AGENT_PROVENANCE_KIND) {
+    fail(`${label}.provenance.kind must be ${M5_11_AGENT_PROVENANCE_KIND}`, 'EDITORIAL_PROVENANCE_ERROR');
+  }
+  if (provenance.generator !== M5_11_AGENT_GENERATOR) {
+    fail(`${label}.provenance.generator must be ${M5_11_AGENT_GENERATOR}`, 'EDITORIAL_PROVENANCE_ERROR');
+  }
+  requireString(provenance.generator_version, `${label}.provenance.generator_version`);
+  requireString(provenance.pass_id, `${label}.provenance.pass_id`);
+  if (artifact.human_editorial_review_complete !== false) {
+    fail(`${label} must not claim human editorial review`, 'EDITORIAL_HUMAN_ATTRIBUTION');
+  }
+  return provenance;
 }
 
 function validateProposalArtifact(proposal, catalog) {
@@ -276,6 +327,12 @@ function validateCanonicalRecord(record, expectedId, label, expectedLemma) {
       fail(`${senseLabel}.relations must be an array when present`, 'EDITORIAL_RELATION_BINDING');
     }
   }
+  validateSharedLexicalRecord(record, {
+    label,
+    mode: 'canonical',
+    expectedId,
+    expectedLemma,
+  });
   return record;
 }
 
@@ -371,6 +428,230 @@ function validateDecision(decision, catalogEntry, proposalRow, expectedId, impor
   return { decision, record: undefined };
 }
 
+function validateSemanticReview(review, {
+  decision,
+  catalogEntry,
+  proposalRow,
+  record,
+  index,
+  catalogCount = 550,
+} = {}) {
+  const inventoryId = catalogEntry.inventory_id;
+  const label = `decisions[${index}].semantic_review`;
+  const proposalRecord = proposalRow.candidate_record;
+  if (review.axis !== catalogEntry.axis) {
+    fail(`${label}.axis must bind ${inventoryId} catalog axis`, 'EDITORIAL_SEMANTIC_BINDING');
+  }
+  assertJsonEqual(review.flags, catalogEntry.flags, `${label}.flags`, 'EDITORIAL_SEMANTIC_BINDING');
+  const expectedRecordType = catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry';
+  let sharedResult;
+  try {
+    sharedResult = validateLexicalSemanticReview(review, {
+      decision: decision.decision,
+      candidateRecord: proposalRecord,
+      reviewedRecord: ['included', 'corrected'].includes(decision.decision)
+        ? record
+        : undefined,
+      inventoryId,
+      label,
+      version: M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
+      expectedRecordType,
+      catalogCount,
+      // M5-11A's automated semantic pass deliberately requires every broad
+      // connector to be resolved before selection.  The same shared module
+      // also supplies the less restrictive, domain-aware canonical audit.
+      rejectAnyBroadConnector: true,
+      selectionRationaleTokens: ['verification', 'coverage'],
+    });
+  } catch (error) {
+    fail(error.message, error.code);
+  }
+
+  return {
+    inventory_id: inventoryId,
+    decision: decision.decision,
+    axis: catalogEntry.axis,
+    ...sharedResult,
+    record_type: record.record_type,
+  };
+}
+
+export function evaluateM511SemanticCoverage({
+  semantic,
+  catalog = M5_11_CATALOG,
+  expectedImportedCount = 500,
+} = {}) {
+  requireObject(semantic, 'M5-11 semantic review summary');
+  const candidateAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      catalog.filter((entry) => entry.axis === axis).length,
+    ]),
+  );
+  const selectedAxisCounts = semantic.selected_axis_counts ?? {};
+  const minimumAxisCounts = Object.fromEntries(
+    Object.entries(candidateAxisCounts).map(([axis, count]) => [
+      axis,
+      Math.ceil(count * expectedImportedCount / catalog.length * M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO),
+    ]),
+  );
+  const axisCoverage = Object.fromEntries(
+    Object.entries(minimumAxisCounts).map(([axis, minimum]) => [
+      axis,
+      (selectedAxisCounts[axis] ?? 0) >= minimum,
+    ]),
+  );
+  const expressionCandidateCount = catalog.filter(({ flags }) => flags.includes('expression-unit')).length;
+  const minimumExpressionCount = Math.ceil(
+    expressionCandidateCount * expectedImportedCount / catalog.length * M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO,
+  );
+  const expressionCoverage = semantic.selected_expression_unit_count >= minimumExpressionCount;
+  const relationBearingAxes = M5_11_AGENT_RELATION_BEARING_AXES.filter(
+    (axis) => (selectedAxisCounts[axis] ?? 0) > 0,
+  );
+  const selectedRelationEvidenceByAxis = semantic.selected_relation_evidence_by_axis ?? {};
+  const relationCoverage = relationBearingAxes.every((axis) => {
+    const evidence = selectedRelationEvidenceByAxis[axis];
+    if (!evidence) return false;
+    return evidence.record_count === selectedAxisCounts[axis]
+      && Number.isInteger(evidence.sense_count)
+      && Number.isInteger(evidence.relation_sense_count)
+      && Number.isInteger(evidence.no_relation_sense_count)
+      && Number.isInteger(evidence.relation_tuple_count)
+      && evidence.sense_count > 0
+      && evidence.relation_sense_count >= 0
+      && evidence.no_relation_sense_count >= 0
+      && evidence.relation_tuple_count >= 0
+      && evidence.relation_sense_count + evidence.no_relation_sense_count === evidence.sense_count
+      && evidence.relation_tuple_count >= evidence.relation_sense_count;
+  });
+  return {
+    minimum_axis_counts: minimumAxisCounts,
+    selected_axis_counts: selectedAxisCounts,
+    axis_coverage: axisCoverage,
+    axis_coverage_complete: Object.values(axisCoverage).every(Boolean),
+    expression_candidate_count: expressionCandidateCount,
+    minimum_expression_count: minimumExpressionCount,
+    selected_expression_unit_count: semantic.selected_expression_unit_count,
+    expression_coverage_complete: expressionCoverage,
+    relation_bearing_axes: relationBearingAxes,
+    selected_relation_axis_counts: semantic.selected_relation_axis_counts ?? {},
+    selected_relation_evidence_by_axis: selectedRelationEvidenceByAxis,
+    relation_coverage_complete: relationCoverage,
+  };
+}
+
+function validateM511AgentSemanticReviews({
+  artifact,
+  catalog,
+  proposalRows,
+  normalized,
+  expectedImportedCount,
+} = {}) {
+  const reviews = [];
+  const ranks = [];
+  let importedCount = 0;
+  for (const [index, catalogEntry] of catalog.entries()) {
+    const decisionResult = normalized[index];
+    const record = decisionResult.record ?? proposalRows[index].candidate_record;
+    const reviewResult = validateSemanticReview(artifact.decisions[index].semantic_review, {
+      decision: decisionResult.decision,
+      catalogEntry,
+      proposalRow: proposalRows[index],
+      record,
+      index,
+      catalogCount: catalog.length,
+    });
+    reviews.push(reviewResult);
+    ranks.push(reviewResult.selection_rank);
+    if (decisionResult.record) importedCount += 1;
+  }
+  const expectedRanks = Array.from({ length: catalog.length }, (_, index) => index + 1);
+  assertJsonEqual(
+    [...ranks].sort((left, right) => left - right),
+    expectedRanks,
+    'M5-11 semantic selection ranks',
+    'EDITORIAL_SELECTION_BINDING',
+  );
+  const selectedRanks = reviews
+    .filter(({ decision }) => ['included', 'corrected'].includes(decision))
+    .map(({ selection_rank: rank }) => rank)
+    .sort((left, right) => left - right);
+  assertJsonEqual(
+    selectedRanks,
+    Array.from({ length: expectedImportedCount }, (_, index) => index + 1),
+    'M5-11 semantic selected ranks',
+    'EDITORIAL_SELECTION_BINDING',
+  );
+  const selected = reviews.filter(({ decision }) => ['included', 'corrected'].includes(decision));
+  const selectedAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      selected.filter(({ axis: selectedAxis }) => selectedAxis === axis).length,
+    ]),
+  );
+  const candidateAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      catalog.filter(({ axis: candidateAxis }) => candidateAxis === axis).length,
+    ]),
+  );
+  const selectedRelationAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      selected.filter(({ axis: selectedAxis, relation_count: relationCount }) => (
+        selectedAxis === axis && relationCount > 0
+      )).length,
+    ]),
+  );
+  const selectedRelationEvidenceByAxis = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => {
+      const axisReviews = selected.filter(({ axis: selectedAxis }) => selectedAxis === axis);
+      return [axis, {
+        record_count: axisReviews.length,
+        sense_count: axisReviews.reduce((sum, review) => sum + review.sense_count, 0),
+        relation_sense_count: axisReviews.reduce((sum, review) => sum + review.relation_sense_count, 0),
+        no_relation_sense_count: axisReviews.reduce((sum, review) => sum + review.no_relation_sense_count, 0),
+        relation_tuple_count: axisReviews.reduce((sum, review) => sum + review.relation_count, 0),
+      }];
+    }),
+  );
+  const relationBindings = selected.flatMap(({ relation_bindings: bindings }) => bindings);
+  const semantic = {
+    version: M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
+    complete: true,
+    candidate_count: catalog.length,
+    selected_count: importedCount,
+    broad_gloss_count: reviews.reduce((sum, review) => sum + review.broad_gloss_count, 0),
+    split_record_count: reviews.filter(({ sense_count: senseCount }) => senseCount > 1).length,
+    split_sense_count: reviews.reduce(
+      (sum, review) => sum + (review.sense_count > 1 ? review.sense_count : 0),
+      0,
+    ),
+    selected_axis_counts: selectedAxisCounts,
+    candidate_axis_counts: candidateAxisCounts,
+    selected_expression_unit_count: selected.filter(({ record_type: recordType }) => recordType === 'expression').length,
+    selected_relation_axis_counts: selectedRelationAxisCounts,
+    selected_relation_evidence_by_axis: selectedRelationEvidenceByAxis,
+    relation_candidate_count: selected.reduce((sum, review) => sum + review.relation_count, 0),
+    no_relation_rationale_count: reviews.reduce(
+      (sum, review) => sum + review.no_relation_rationale_count,
+      0,
+    ),
+    selection_rank_valid: true,
+    relation_bindings: relationBindings,
+  };
+  return {
+    semantic,
+    findings: artifact.decisions.map((decision, index) => ({
+      inventory_id: decision.inventory_id,
+      candidate_lemma: proposalRows[index].candidate_lemma,
+      decision: normalized[index].decision.decision,
+      semantic_review: structuredClone(decision.semantic_review),
+    })),
+  };
+}
+
 export function validateM511EditorialDecisions(
   artifact,
   {
@@ -392,17 +673,43 @@ export function validateM511EditorialDecisions(
     fail('editorial decision artifact catalog count drifted', 'EDITORIAL_SOURCE_MISMATCH');
   }
   const proposalRows = validateProposalArtifact(proposal, catalog);
+  try {
+    // Candidate intake is part of the same batch-neutral producer contract as
+    // reviewed admission.  The M5-11 checks below add only catalog bindings,
+    // decisions, and selection arithmetic around this shared validation.
+    validateLexicalAddition({
+      batchId: artifact.batch_id,
+      candidateRecords: proposalRows.map(({ candidate_record: candidateRecord }) => candidateRecord),
+      candidateLabel: 'M5-11 candidate records',
+    });
+  } catch (error) {
+    fail(error.message, error.code);
+  }
   if (artifact.proposal_sha256 !== sha256Json(proposal)) {
     fail('editorial decision artifact proposal digest drifted', 'EDITORIAL_PROPOSAL_SOURCE_MISMATCH');
   }
   if (artifact.proposal_count !== proposalRows.length) {
     fail('editorial decision artifact proposal count drifted', 'EDITORIAL_PROPOSAL_SOURCE_MISMATCH');
   }
-  if (requireHumanCompletion && artifact.human_editorial_review_complete !== true) {
-    fail('human editorial review is required before M5-11 admission', 'EDITORIAL_HUMAN_REVIEW_REQUIRED');
-  }
-  if (artifact.gate_decision !== 'APPROVE BOUNDED') {
-    fail('M5-11 admission requires an explicit APPROVE BOUNDED decision', 'EDITORIAL_GATE_REQUIRED');
+  const agentGenerated = isM511AgentGeneratedArtifact(artifact);
+  if (agentGenerated) {
+    validateM511AgentProvenance(artifact, 'M5-11 editorial decision artifact');
+    if (artifact.editorial_review_complete !== true) {
+      fail('automated editorial review must be complete before M5-11 admission', 'EDITORIAL_REVIEW_INCOMPLETE');
+    }
+    if (![M5_11_AGENT_GATE_DECISION, 'APPROVE BOUNDED'].includes(artifact.gate_decision)) {
+      fail(
+        `M5-11 automated admission requires an explicit ${M5_11_AGENT_GATE_DECISION} decision`,
+        'EDITORIAL_GATE_REQUIRED',
+      );
+    }
+  } else {
+    if (requireHumanCompletion && artifact.human_editorial_review_complete !== true) {
+      fail('human editorial review is required before M5-11 admission', 'EDITORIAL_HUMAN_REVIEW_REQUIRED');
+    }
+    if (artifact.gate_decision !== 'APPROVE BOUNDED') {
+      fail('M5-11 admission requires an explicit APPROVE BOUNDED decision', 'EDITORIAL_GATE_REQUIRED');
+    }
   }
   const decisions = requireArray(artifact.decisions, 'editorial decision artifact.decisions');
   if (decisions.length !== catalog.length) fail('editorial decision scope must cover the complete catalog', 'EDITORIAL_SCOPE_MISMATCH');
@@ -441,11 +748,22 @@ export function validateM511EditorialDecisions(
       'EDITORIAL_COUNT_MISMATCH',
     );
   }
+  const semanticResult = agentGenerated
+    ? validateM511AgentSemanticReviews({
+      artifact,
+      catalog,
+      proposalRows,
+      normalized,
+      expectedImportedCount,
+    })
+    : undefined;
+  const semantic = semanticResult?.semantic;
   return {
     artifact,
     decisions: normalized,
     proposalRows,
     importedRecords: normalized.filter(({ record }) => record).map(({ record }) => record),
     decisionCounts,
+    ...(semantic ? { semantic, semantic_findings: semanticResult.findings } : {}),
   };
 }

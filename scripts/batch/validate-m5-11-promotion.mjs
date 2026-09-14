@@ -9,11 +9,15 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { evaluateExpansionGate } from './validate-m5-8-process.mjs';
-import { M5_11_BATCH_ID, expectedCanonicalId } from './m5-11-editorial.mjs';
+import {
+  M5_11_AGENT_GATE_DECISION,
+  M5_11_BATCH_ID,
+  expectedCanonicalId,
+} from './m5-11-editorial.mjs';
 import {
   M5_11_BASE_CANONICAL_SHA256,
   M5_11_BASE_INVENTORY_SHA256,
@@ -21,9 +25,11 @@ import {
   REPOSITORY_DIRECTORY,
 } from './validate-m5-11.mjs';
 import {
+  M5_11_AGENT_GATE_EVIDENCE_VERSION,
   M5_11_MACHINE_CHECK_IDS,
   M5_11_TIMING_LIFECYCLE_VERSION,
   M5_11_TIMING_RECORDER_VERSION,
+  evaluateM511AgentGate,
   validateM511TimingProvenance,
 } from './validate-m5-11-admission.mjs';
 
@@ -31,7 +37,18 @@ const require = createRequire(import.meta.url);
 const DEFAULT_PLAN = require('../../data/batches/m5-8-expansion-plan.json');
 const DURABLE_GATE_EVIDENCE_VERSION = 'm5-11-gate-evidence-v1';
 
-const SOURCE_KEYS = Object.freeze([
+const REQUIRED_SOURCE_KEYS = Object.freeze([
+  'proposal',
+  'editorial',
+  'relation_diff',
+  'verification',
+  'reviewed_import',
+  'authorization',
+  'base_inventory',
+]);
+const OPTIONAL_SOURCE_KEYS = Object.freeze(['editorial_timing', 'audit', 'audit_timing']);
+const SOURCE_KEYS = Object.freeze([...REQUIRED_SOURCE_KEYS, ...OPTIONAL_SOURCE_KEYS]);
+const EXTERNAL_SOURCE_KEYS = new Set([
   'proposal',
   'editorial',
   'editorial_timing',
@@ -40,10 +57,7 @@ const SOURCE_KEYS = Object.freeze([
   'relation_diff',
   'verification',
   'reviewed_import',
-  'authorization',
-  'base_inventory',
 ]);
-const EXTERNAL_SOURCE_KEYS = new Set(SOURCE_KEYS.slice(0, 8));
 
 const DEFAULT_MANIFEST_PATH = path.join(
   REPOSITORY_DIRECTORY,
@@ -136,13 +150,27 @@ function sourceRef(manifest, key) {
 }
 
 function assertDurableSourceSet(manifest, evidence) {
-  for (const key of SOURCE_KEYS) {
+  for (const key of REQUIRED_SOURCE_KEYS) {
     const manifestSource = sourceRef(manifest, key);
     const evidenceSource = evidence.sources?.[key];
     if (!evidenceSource
       || evidenceSource.source_id !== key
       || evidenceSource.path !== manifestSource.path
       || evidenceSource.sha256 !== manifestSource.sha256) {
+      fail(`promotion evidence source ${key} drifted`, 'SOURCE_BINDING_MISMATCH');
+    }
+  }
+  for (const key of OPTIONAL_SOURCE_KEYS) {
+    const manifestSource = manifest.sources?.[key];
+    const evidenceSource = evidence.sources?.[key];
+    if (manifestSource === undefined && evidenceSource === undefined) continue;
+    if (manifestSource === undefined || evidenceSource === undefined) {
+      fail(`promotion evidence optional source ${key} drifted`, 'SOURCE_BINDING_MISMATCH');
+    }
+    const validatedManifestSource = sourceRef(manifest, key);
+    if (evidenceSource.source_id !== key
+      || evidenceSource.path !== validatedManifestSource.path
+      || evidenceSource.sha256 !== validatedManifestSource.sha256) {
       fail(`promotion evidence source ${key} drifted`, 'SOURCE_BINDING_MISMATCH');
     }
   }
@@ -247,7 +275,123 @@ function validateDurableTiming(timing, expectedPassIds, field, label, expectedSo
   }
 }
 
+function validateAgentTimingSummary(timing, label) {
+  if (!timing
+    || timing.status !== 'not-required'
+    || timing.policy !== 'agent-generated'
+    || timing.measurement_kind !== 'agent-processing'
+    || !Array.isArray(timing.pass_ids)
+    || timing.pass_ids.length !== 0
+    || timing.unmeasured_pass_count !== 0) {
+    fail(`${label} must record that human timing is not required`, 'TIMING_EVIDENCE_MISMATCH');
+  }
+}
+
+function validateAgentDurableGateEvidence(manifest, evidence) {
+  const manifestGateEvidence = manifest.gate_evidence;
+  const evidenceGateEvidence = evidence.gate_evidence;
+  if (!manifestGateEvidence
+    || !evidenceGateEvidence
+    || manifestGateEvidence.evidence_version !== M5_11_AGENT_GATE_EVIDENCE_VERSION
+    || evidenceGateEvidence.evidence_version !== M5_11_AGENT_GATE_EVIDENCE_VERSION) {
+    fail('promotion evidence is missing the automated M5-11A gate evidence contract', 'GATE_EVIDENCE_MISSING');
+  }
+  if (manifest.gate_evidence_sha256 !== sha256Json(manifestGateEvidence)
+    || evidence.gate_evidence_sha256 !== sha256Json(evidenceGateEvidence)
+    || manifest.gate_evidence_sha256 !== evidence.gate_evidence_sha256) {
+    fail('automated gate evidence digest drifted', 'GATE_EVIDENCE_DIGEST_MISMATCH');
+  }
+  assertSummary(evidenceGateEvidence, manifestGateEvidence, 'automated gate evidence');
+  const gateEvidence = evidenceGateEvidence;
+  if (gateEvidence.policy !== 'agent-generated') {
+    fail('automated gate evidence policy drifted', 'GATE_EVIDENCE_METRICS_MISMATCH');
+  }
+  assertSummary(gateEvidence.base_summary, manifest.base, 'automated gate base summary');
+  assertSummary(gateEvidence.final_summary, manifest.actual, 'automated gate final summary');
+  assertSummary(gateEvidence.metrics, manifest.metrics, 'automated gate metrics');
+  assertSummary(gateEvidence.relation, manifest.relation, 'automated gate relation');
+  assertSummary(gateEvidence.timing, manifest.timing, 'automated gate timing');
+  assertSummary(gateEvidence.audit, manifest.audit, 'automated gate audit');
+  assertSummary(gateEvidence.verification, manifest.verification, 'automated gate verification');
+  assertSummary(gateEvidence.gate, manifest.gate, 'automated gate decision');
+  assertSummary(manifest.decisions, gateEvidence.decision_counts, 'automated decision evidence');
+  assertSummary(evidence.decisions, gateEvidence.decision_counts, 'promotion decision evidence');
+
+  const decisions = gateEvidence.decision_counts;
+  if (!decisions
+    || decisions.included + decisions.corrected !== gateEvidence.imported_start_count
+    || decisions.processed_start_count !== decisions.included
+      + decisions.corrected + decisions.held + decisions.rejected
+    || decisions.processed_start_count + decisions.deferred !== 550
+    || decisions.held + decisions.rejected + decisions.deferred !== 50
+    || gateEvidence.imported_start_count !== 500) {
+    fail('automated gate decision arithmetic drifted', 'GATE_EVIDENCE_METRICS_MISMATCH');
+  }
+
+  validateAgentTimingSummary(gateEvidence.timing.editorial, 'automated editorial timing');
+  validateAgentTimingSummary(gateEvidence.timing.audit, 'automated audit timing');
+  if (gateEvidence.audit.status !== 'not-required'
+    || gateEvidence.audit.policy !== 'agent-generated'
+    || gateEvidence.audit.open_blocker_count !== 0) {
+    fail('automated gate must not claim an external human audit', 'AUDIT_EVIDENCE_MISMATCH');
+  }
+
+  const verification = gateEvidence.verification;
+  if (verification.machine_generated !== true
+    || verification.review_mode !== 'agent-generated'
+    || verification.agent_generated_provenance !== true
+    || verification.human_editorial_review_complete !== false
+    || verification.editorial_review_complete !== true
+    || verification.automated_editorial_review_complete !== true
+    || verification.generation_verification_separated !== true
+    || typeof verification.generation_pass_id !== 'string'
+    || typeof verification.verification_pass_id !== 'string'
+    || verification.generation_pass_id === verification.verification_pass_id
+    || !Array.isArray(verification.checks)
+    || JSON.stringify(verification.checks.map(({ id }) => id)) !== JSON.stringify(M5_11_MACHINE_CHECK_IDS)
+    || verification.checks.some(({ status, result_sha256 }) => (
+      status !== 'pass' || !/^[a-f0-9]{64}$/u.test(result_sha256)
+    ))) {
+    fail('durable automated verification evidence is incomplete', 'VERIFICATION_EVIDENCE_MISMATCH');
+  }
+  const machineCheckEvidence = verification.machine_check_evidence;
+  if (!machineCheckEvidence || typeof machineCheckEvidence !== 'object') {
+    fail('durable automated verification is missing machine check evidence', 'VERIFICATION_EVIDENCE_MISMATCH');
+  }
+  for (const check of verification.checks) {
+    const checkEvidence = machineCheckEvidence[check.id];
+    const expectedDigest = check.id === 'canonical-integrity'
+      ? sha256Json({
+        finalSummary: checkEvidence?.final_summary,
+        prospectiveCanonicalSha256: checkEvidence?.prospective_canonical_sha256,
+      })
+      : checkEvidence
+        ? sha256Json(checkEvidence)
+        : null;
+    if (!checkEvidence || expectedDigest !== check.result_sha256) {
+      fail(`durable automated verification check ${check.id} is boolean-only or drifted`, 'VERIFICATION_EVIDENCE_MISMATCH');
+    }
+  }
+
+  const recomputedGate = evaluateM511AgentGate({
+    metrics: gateEvidence.metrics,
+    plan: DEFAULT_PLAN,
+    exactNetStartIncrease: gateEvidence.final_summary.start_count
+      - gateEvidence.base_summary.start_count === gateEvidence.imported_start_count,
+    expectedImportedCount: manifest.target.net_start_increase,
+    expectedCumulativeStartCount: manifest.target.cumulative_start_target,
+    expectedCandidatePoolCount: manifest.target.selected_start_count,
+    expectedReserveCount: manifest.target.candidate_buffer,
+  });
+  assertSummary(recomputedGate, gateEvidence.gate, 'automated gate recomputation');
+}
+
 function validateDurableGateEvidence(manifest, evidence) {
+  if (manifest.gate?.policy === 'agent-generated'
+    || manifest.gate?.decision === M5_11_AGENT_GATE_DECISION) {
+    validateAgentDurableGateEvidence(manifest, evidence);
+    return;
+  }
   const manifestGateEvidence = manifest.gate_evidence;
   const evidenceGateEvidence = evidence.gate_evidence;
   if (!manifestGateEvidence || !evidenceGateEvidence
@@ -381,7 +525,8 @@ export function validateM511DurableEvidence({ manifest, evidence } = {}) {
   if (!manifest || manifest.schema_version !== '1' || manifest.issue !== 97 || manifest.batch_id !== M5_11_BATCH_ID) {
     fail('admission manifest is not bound to M5-11 issue #97', 'SCOPE_MISMATCH');
   }
-  if (manifest.gate?.gate_status !== 'pass' || manifest.gate?.decision !== 'APPROVE BOUNDED') {
+  if (manifest.gate?.gate_status !== 'pass'
+    || !['APPROVE BOUNDED', M5_11_AGENT_GATE_DECISION].includes(manifest.gate?.decision)) {
     fail('admission manifest does not contain a passing gate', 'GATE_REQUIRED');
   }
   if (!evidence || evidence.schema_version !== '1' || evidence.issue !== 97 || evidence.batch_id !== M5_11_BATCH_ID) {
@@ -425,7 +570,8 @@ export function validateM511DurableEvidence({ manifest, evidence } = {}) {
   assertSummary(target, manifest.target, 'promotion target');
   if (target?.net_start_increase !== 500
     || target?.cumulative_start_target !== 1278
-    || target?.candidate_buffer !== 50) {
+    || target?.candidate_buffer !== 50
+    || target?.selected_start_count !== 550) {
     fail('promotion target drifted', 'OUTPUT_COUNT_MISMATCH');
   }
   if (evidence.stage?.status !== 'passed'
@@ -470,7 +616,12 @@ export async function validateM511Promotion({
   const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
-  validateDatasetRecords(canonical.records, { checkPilotCompleteness: true });
+  validateLexicalAddition({
+    batchId: manifest.batch_id,
+    prospectiveRecords: canonical.records,
+    checkPilotCompleteness: true,
+    prospectiveLabel: 'M5-11 promoted canonical records',
+  });
   const finalRecords = canonical.records.map(({ record }) => record);
   const finalSummary = canonicalSummary(finalRecords);
   assertSummary(finalSummary, durable.summary, 'canonical promotion output');

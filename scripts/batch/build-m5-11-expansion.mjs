@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 import {
@@ -43,7 +43,7 @@ function assertExternalOutput(filePath) {
   const relative = path.relative(REPOSITORY_DIRECTORY, resolved);
   if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
     throw new Error(
-      `M5-11 reviewed import must remain outside the repository until a human-complete gate: ${resolved}`,
+      `M5-11 reviewed import must remain outside the repository until the automated gate passes: ${resolved}`,
     );
   }
   return resolved;
@@ -53,7 +53,7 @@ function assertExternalInput(filePath, label) {
   const resolved = path.resolve(filePath);
   const relative = path.relative(REPOSITORY_DIRECTORY, resolved);
   if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
-    throw new Error(`${label} must remain outside the repository until editorial review is complete: ${resolved}`);
+    throw new Error(`${label} must remain outside the repository until the automated editorial pass is complete: ${resolved}`);
   }
   return resolved;
 }
@@ -115,12 +115,12 @@ export async function buildM511({
 } = {}) {
   if (!editorialDecisionPath) {
     throw new Error(
-      'M5-11 build requires --editorial=<external decision artifact>; the producer cannot manufacture editorial verdicts',
+      'M5-11 build requires --editorial=<external decision artifact>; the producer cannot manufacture an admission verdict without the automated pass',
     );
   }
   if (!outputPath) {
     throw new Error(
-      'M5-11 build requires --output=<external reviewed import>; canonical promotion is a separate human-gated action',
+      'M5-11 build requires --output=<external reviewed import>; canonical promotion remains a separate explicit gate action',
     );
   }
   const resolvedOutputPath = assertExternalOutput(outputPath);
@@ -153,7 +153,6 @@ export async function buildM511({
   const editorial = validateM511EditorialDecisions(editorialSource.value, {
     catalog: M5_11_CATALOG,
     proposal: proposalSource.value,
-    requireHumanCompletion: true,
   });
   const importedRecords = editorial.importedRecords;
   if (importedRecords.length !== IMPORTED_RECORD_COUNT) {
@@ -164,7 +163,18 @@ export async function buildM511({
     ...canonical.records,
     ...importedRecords.map((record) => ({ record, source: 'external-reviewed-import' })),
   ];
-  validateDatasetRecords(combinedRecords, { checkPilotCompleteness: true });
+  validateLexicalAddition({
+    batchId: M5_11_BATCH_ID,
+    reviewedRecords: importedRecords.map((record, index) => ({
+      record,
+      filePath: 'external-reviewed-import',
+      lineNumber: index + 1,
+    })),
+    prospectiveRecords: combinedRecords,
+    checkPilotCompleteness: true,
+    reviewedLabel: 'M5-11 reviewed records',
+    prospectiveLabel: 'M5-11 prospective canonical records',
+  });
   const importBytes = createImportBytes(importedRecords);
   await writeFile(resolvedOutputPath, importBytes);
 
@@ -197,7 +207,7 @@ export async function buildM511({
       canonical_mutation: false,
       seed_mutation: false,
       inventory_mutation: false,
-      note: 'The editor must deliberately promote this externally reviewed import only after the complete M5-11 gate passes.',
+      note: 'The explicit promotion command must consume this externally generated import only after the complete M5-11 gate passes.',
     },
   };
 }

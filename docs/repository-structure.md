@@ -117,16 +117,18 @@ may be retained under `data/batches/` when a source-bound stage report still
 needs to reproduce the earlier gate. Such a snapshot is immutable process
 evidence, not a second editable dictionary source.
 
-Issue #97's M5-11 work is held before canonical admission. The tracked
-`data/batches/m5-11-base-canonical/` and `data/batches/m5-11-base-inventory.json`
-files freeze the 778-start input used by the #115 authorization and earlier M5
-contracts. The candidate catalog records 550 selection IDs, but no unreviewed
-lemma, POS, gloss, or canonical record body is tracked with that metadata. The
-builder requires
-a separately supplied human-complete editorial decision artifact and writes a
-reviewed import only outside the repository; `data/canonical/*.jsonl` remains
-the only editable dictionary source. The stage is `HOLD PROCESS` until that
-artifact and the remaining timing/audit gates exist.
+Issue #97's M5-11A work is promoted through the owner-authorized automated
+editorial path. The tracked `data/batches/m5-11-base-canonical/` and
+`data/batches/m5-11-base-inventory.json` files freeze the 778-start input used
+by the #115 authorization and earlier M5 contracts. The candidate catalog
+records 550 selection IDs, while candidate bodies and raw external review
+inputs remain outside the repository. The compact review summary plus
+`m5-11-admission.json` and `m5-11-promotion.json` bind those external inputs by
+digest and record the automated generation/verification pass separation. The
+promotion adds exactly 500 starts, reaches 1,278 starts, and records 50
+deferred rows in the seed; `data/canonical/*.jsonl` remains the only editable
+dictionary source. The historical stage snapshot may remain as process
+evidence for the pre-admission 778-start boundary.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event

@@ -16,7 +16,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
   generateTargetInventory,
 } from '../inventory/generate-target-inventory.mjs';
@@ -29,7 +29,11 @@ import {
 import {
   M5_11_CATALOG,
 } from './m5-11-catalog.mjs';
-import { M5_11_BATCH_ID, sha256Json } from './m5-11-editorial.mjs';
+import {
+  M5_11_AGENT_GATE_DECISION,
+  M5_11_BATCH_ID,
+  sha256Json,
+} from './m5-11-editorial.mjs';
 import {
   M5_11_BASE_CANONICAL_SHA256,
   M5_11_BASE_INVENTORY_SHA256,
@@ -236,8 +240,9 @@ function repositoryPath(value, label) {
   return resolved;
 }
 
-function sourceFromManifest(manifest, key) {
+function sourceFromManifest(manifest, key, { optional = false } = {}) {
   const source = manifest.sources?.[key];
+  if (!source && optional) return undefined;
   if (!source || source.source_id !== key || typeof source.path !== 'string' || typeof source.sha256 !== 'string') {
     fail(`admission manifest is missing sources.${key}`, 'MANIFEST_SOURCE_MISSING');
   }
@@ -263,8 +268,12 @@ function assertNoMutationManifest(manifest) {
   if (manifest.schema_version !== '1' || manifest.issue !== 97 || manifest.batch_id !== M5_11_BATCH_ID) {
     fail('admission manifest is not bound to M5-11 issue #97', 'MANIFEST_SCOPE_MISMATCH');
   }
-  if (manifest.gate?.gate_status !== 'pass' || manifest.gate?.decision !== 'APPROVE BOUNDED') {
-    fail('only a passing APPROVE BOUNDED admission manifest may be promoted', 'PROMOTION_GATE_REQUIRED');
+  if (manifest.gate?.gate_status !== 'pass'
+    || !['APPROVE BOUNDED', M5_11_AGENT_GATE_DECISION].includes(manifest.gate?.decision)) {
+    fail(
+      'only a passing APPROVE BOUNDED admission manifest (or APPROVE AUTOMATED BOUNDED for M5-11A) may be promoted',
+      'PROMOTION_GATE_REQUIRED',
+    );
   }
   if (manifest.promotion?.canonical_mutation !== false
     || manifest.promotion?.seed_mutation !== false
@@ -357,7 +366,14 @@ async function buildProspectiveState({
     });
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const canonicalRecords = canonical.records.map(({ record }) => record);
-    validateDatasetRecords(canonical.records, { checkPilotCompleteness: true });
+    validateLexicalAddition({
+      batchId: M5_11_BATCH_ID,
+      reviewedRecords: result.imported_records,
+      prospectiveRecords: canonical.records,
+      checkPilotCompleteness: true,
+      reviewedLabel: 'M5-11 promotion reviewed records',
+      prospectiveLabel: 'M5-11 promotion prospective canonical records',
+    });
     const canonicalDigest = await hashCanonicalDirectory(temporaryCanonicalDirectory);
     const inventoryBytes = await readFile(temporaryInventoryPath);
 
@@ -419,9 +435,9 @@ export async function promoteM511({
 
   const proposalSource = sourceFromManifest(manifest, 'proposal');
   const editorialSource = sourceFromManifest(manifest, 'editorial');
-  const editorialTimingSource = sourceFromManifest(manifest, 'editorial_timing');
-  const auditSource = sourceFromManifest(manifest, 'audit');
-  const auditTimingSource = sourceFromManifest(manifest, 'audit_timing');
+  const editorialTimingSource = sourceFromManifest(manifest, 'editorial_timing', { optional: true });
+  const auditSource = sourceFromManifest(manifest, 'audit', { optional: true });
+  const auditTimingSource = sourceFromManifest(manifest, 'audit_timing', { optional: true });
   const relationDiffSource = sourceFromManifest(manifest, 'relation_diff');
   const verificationSource = sourceFromManifest(manifest, 'verification');
   const reviewedImportSource = sourceFromManifest(manifest, 'reviewed_import');
@@ -430,9 +446,13 @@ export async function promoteM511({
   const externalPaths = {
     proposal: requireExternalPath(proposalPath, 'proposal'),
     editorial: requireExternalPath(editorialDecisionPath, 'editorial'),
-    editorial_timing: requireExternalPath(editorialTimingPath, 'editorial-timing'),
-    audit: requireExternalPath(auditPath, 'audit'),
-    audit_timing: requireExternalPath(auditTimingPath, 'audit-timing'),
+    ...(editorialTimingSource ? {
+      editorial_timing: requireExternalPath(editorialTimingPath, 'editorial-timing'),
+    } : {}),
+    ...(auditSource ? { audit: requireExternalPath(auditPath, 'audit') } : {}),
+    ...(auditTimingSource ? {
+      audit_timing: requireExternalPath(auditTimingPath, 'audit-timing'),
+    } : {}),
     relation_diff: requireExternalPath(relationDiffPath, 'relation-diff'),
     verification: requireExternalPath(verificationPath, 'verification'),
     reviewed_import: requireExternalPath(reviewedImportPath, 'output'),
@@ -460,9 +480,6 @@ export async function promoteM511({
   for (const key of [
     'proposal',
     'editorial',
-    'editorial_timing',
-    'audit',
-    'audit_timing',
     'relation_diff',
     'verification',
     'reviewed_import',
@@ -470,6 +487,9 @@ export async function promoteM511({
     'base_inventory',
   ]) {
     assertManifestSource(result, manifest, key);
+  }
+  for (const key of ['editorial_timing', 'audit', 'audit_timing']) {
+    if (manifest.sources?.[key]) assertManifestSource(result, manifest, key);
   }
   assertResultMatchesManifest(result, manifest);
 
@@ -501,7 +521,7 @@ export async function promoteM511({
 
   const promotion = {
     schema_version: '1',
-    artifact_id: 'm5-11-promotion-20260913',
+    artifact_id: 'm5-11-promotion-20260914',
     issue: 97,
     parent_issue: 7,
     batch_id: M5_11_BATCH_ID,
@@ -510,6 +530,7 @@ export async function promoteM511({
       net_start_increase: 500,
       cumulative_start_target: 1278,
       candidate_buffer: 50,
+      selected_start_count: 550,
     },
     base: {
       canonical_directory_sha256: currentCanonicalDigest,
@@ -561,6 +582,7 @@ export async function promoteM511({
         net_start_increase: 500,
         cumulative_start_target: 1278,
         candidate_buffer: 50,
+        selected_start_count: 550,
       },
       actual: result.final_summary,
       source_digests: Object.fromEntries(

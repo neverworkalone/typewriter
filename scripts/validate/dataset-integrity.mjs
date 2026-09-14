@@ -5,6 +5,7 @@ import {
   ValidationError,
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
 
 const EXPECTED_PILOT_CANDIDATE_IDS = Object.freeze(
   Array.from({ length: 300 }, (_, index) => `w${String(index + 1).padStart(3, '0')}`),
@@ -267,6 +268,25 @@ export function validateDatasetRecords(
   const indexes = indexRecords(recordInfos);
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
+
+  // The canonical directory is the product boundary.  Every record already
+  // in the dictionary, every changed record, and every prospective import must
+  // pass the same lexical-quality audit; batch-specific validators may add
+  // arithmetic or authorization rules but cannot bypass this call.
+  const lexicalQuality = auditCanonicalLexicalQuality(recordInfos, {
+    scope: 'complete-canonical',
+    throwOnError: false,
+  });
+  if (lexicalQuality.blocking_finding_count > 0) {
+    const finding = lexicalQuality.blocking_findings[0];
+    const recordInfo = recordInfos.find(
+      (candidate) => (candidate.record ?? candidate)?.id === finding.record_id,
+    );
+    if (recordInfo) {
+      failAt(recordInfo, finding.message, finding.code);
+    }
+    fail(finding.message, finding.code);
+  }
 
   if (checkPilotCompleteness) {
     validatePilotCompleteness(recordInfos);

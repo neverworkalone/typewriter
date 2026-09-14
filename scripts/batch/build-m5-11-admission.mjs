@@ -91,7 +91,7 @@ export async function buildM511Admission({
 
   const manifest = {
     schema_version: '1',
-    artifact_id: 'm5-11-admission-20260913',
+    artifact_id: 'm5-11-admission-20260914',
     issue: 97,
     batch_id: result.batch_id,
     authorization: result.authorization,
@@ -143,9 +143,9 @@ if (isMainModule) {
   buildM511Admission({
     proposalPath: requireArgument(args, 'proposal'),
     editorialDecisionPath: requireArgument(args, 'editorial'),
-    editorialTimingPath: requireArgument(args, 'editorial-timing'),
-    auditPath: requireArgument(args, 'audit'),
-    auditTimingPath: requireArgument(args, 'audit-timing'),
+    editorialTimingPath: args['editorial-timing'],
+    auditPath: args.audit,
+    auditTimingPath: args['audit-timing'],
     relationDiffPath: requireArgument(args, 'relation-diff'),
     verificationPath: requireArgument(args, 'verification'),
     reviewedImportPath: requireArgument(args, 'output'),

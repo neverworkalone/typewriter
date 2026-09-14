@@ -282,28 +282,33 @@ artifact or task is created implicitly.
 The proposal and reviewed staging JSONL remain outside the repository; tracked
 metadata stores their SHA-256 digests and never copies raw proposal bodies.
 
-## M5-11 +500 admission boundary
+## M5-11A +500 admission
 
-Issue #97 consumes the digest-bound authorization from #115 and records a
-550-row candidate pool, but it does not admit any row yet. The canonical
-snapshot remains at 778 starts. `scripts/batch/build-m5-11-expansion.mjs`
-requires a separately supplied human-complete editorial decision artifact and
-an import output outside the repository. It validates every record/sense and
-boundary binding supplied by that artifact, but it never manufactures those
-decisions and never mutates `data/canonical/`, the M5 seed, or the target
-inventory. The tracked catalog contains only selection metadata and is bound
-to the external artifact by both catalog digest and candidate count; unreviewed
-proposal bodies are not process metadata. The external decision artifact must
-also bind every candidate identity and proposal-body digest to a separately
-frozen proposal artifact supplied to the builder. Admission counts are
-`included + corrected = 500`, with `held`, `rejected`, and the remaining
-reserve rows accounted for explicitly. Proposal records use candidate-local
-IDs and are rebased to the next canonical ID only at admission; both the
-proposal and decision artifacts must be external to the repository.
+Issue #97 consumes the digest-bound authorization from #115 and promotes the
+owner-authorized automated M5-11A result. The frozen candidate pool contains
+550 rows: 500 are imported (`included + corrected`), and 50 are `deferred`.
+`processed_start_count` is exactly `included + corrected + held + rejected`, so
+deferred rows are not part of either the processed denominator or canonical.
+The canonical snapshot advances from 778 to 1,278 starts and from 820 to 1,320
+records.
 
-The stage is `HOLD PROCESS` until the decision artifact, complete timing, and
-independent audit exist. Run `npm run batch:m5-11:check` to verify that the
-candidate pool is source-bound and that no unauthorized promotion occurred.
+`scripts/batch/build-m5-11-expansion.mjs` still requires a separately supplied
+proposal and editorial artifact outside the repository. In the M5-11A mode the
+editorial artifact is explicitly `agent-generated`, carries truthful Codex
+provenance, and must declare `human_editorial_review_complete: false`. The
+validator checks every candidate record/sense, all six boundary keys, source
+digests, lexical collisions, placeholder glosses, relation targets, the M4
+search regression, and deterministic SQLite evidence. Generation and
+verification pass IDs must be distinct. Relation quota is not imposed, so an
+empty relation diff is valid.
+
+Human timing and an external human audit are not required by the current #119
+owner policy; durable evidence records both as `not-required` and makes no
+human-completion claim. Raw proposal/decision/verification/import bodies remain
+external. The explicit `scripts/batch/promote-m5-11.mjs` command is the only
+step that mutates canonical, seed, and inventory after the passing manifest is
+revalidated. `npm run batch:m5-11:check` validates the committed promotion
+evidence and outputs without the external inputs.
 
 ## M5-10A process correction and A2 authorization
 

@@ -1,144 +1,101 @@
-# M5-11 +500 admission report
+# M5-11A +500 admission report
 
-Issue #97 is held before canonical admission.
+Issue #97의 M5-11A 실행 결과는 자동 editorial/verification gate를 통과했고,
+canonical에 정확히 500개 start를 promotion했다. 이 결과는 최신 owner policy가
+허용한 `agent-generated` 경로이며, 사람의 editorial review·timing·independent
+audit 완료를 주장하지 않는다.
 
-## Current state
+## Result
 
-- Input canonical: **778 starts / 820 records**
-- Candidate pool: **550 selected starts**
-- Intended bounded import: **500 starts**
-- Candidate buffer: **50 starts**
-- Current canonical import: **0 rows**
-- Canonical, seed, and inventory mutation: **none**
+| 항목 | 결과 |
+| --- | ---: |
+| base canonical | 778 starts / 820 records |
+| candidate pool | 550 |
+| included | 488 |
+| corrected | 12 |
+| held / rejected | 8 / 7 |
+| deferred reserve | 35 |
+| processed starts | 515 |
+| imported starts | 500 |
+| final canonical | 1,278 starts / 1,320 records |
 
-The candidate catalog is not an editorial decision artifact. The builder refuses
-to manufacture sense, POS, boundary, relation, audit, or admission verdicts. A
-separately supplied human-complete decision artifact and complete gate evidence
-are required before an external reviewed import can be produced.
+`processed_start_count = included + corrected + held + rejected`이고,
+`processed_start_count + deferred = 550`이다. reserve 50개 중 held/rejected 15개는
+processed 분모에 들어가고, deferred 35개는 canonical과
+processed 분모에 포함되지 않는다. Promotion 시 imported record ID는
+candidate-local ID에서 catalog 순서 기준 `w779`~`w1278`로 deterministic rebasing됐다.
 
-The tracked catalog contains only the 550 selection IDs, editorial axes, and
-flags. It does not commit unreviewed lemma, POS, gloss, or proposed canonical
-record bodies; those belong in the separately supplied external decision
-artifact, which must match the catalog digest and count. Admission validation
-also requires a complete observed-sense scope, at least one checked boundary,
-non-vacuous sense-bound evidence, and no sense citations on `not-applicable`
-boundaries. Before decisions are supplied, the editor must also provide a
-separately frozen external proposal artifact: every decision binds its
-candidate lemma and proposal-body digest to that artifact. The reserve count is
-derived from the actual `held`/`rejected` rows, so later reserve rows may fill
-the 500 admitted slots rather than forcing every unused row to be `deferred`.
-Proposal records use candidate-local IDs; admission rebases those IDs to the
-next deterministic canonical ID, so an earlier held/rejected row cannot alter
-the frozen lexical body. Both the proposal and decision artifacts are external
-inputs to the builder.
-These checks apply to every candidate rather than a fixed lemma allowlist.
+최종 canonical 요약은 다음과 같다.
 
-Timing is recorded only through the current-clock recorder:
+- records: 1,320
+- starts: 1,278
+- reference-only: 42
+- senses: 1,607
+- relations: 487
+- expressions: 73
 
-```sh
-npm run batch:m5-11:timing -- \
-  --action=start \
-  --pass=target-preparation \
-  --output=/external/m5-11-editorial-timing.json \
-  --unit-ids-file=/external/m5-11-catalog-ids.json \
-  --proposal=/external/m5-11-proposal.json \
-  --artifact=/external/m5-11-editorial.json
-```
+## Automated gate
 
-For the independent audit, start a separate recorder session with the already
-completed editorial and editorial-timing artifacts, and use the audit report
-as the bound output:
+Gate decision은 `APPROVE AUTOMATED BOUNDED`이다. 기존 count/arithmetic gate에
+더해 후보 550건 전체의 semantic review를 source-bound로 검증했다. 모든
+검수 행에는 sense boundary·POS·expression 분류·per-sense relation 결정과
+verification/coverage 기반 selection rank가 있다. verification artifact에도
+550개 후보별 finding이 `74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256`
+digest로 source-bound 되어 있다. broad gloss connector는
+`0`, split record은 `140`, relation candidate는 `14`, expression-unit은
+`10`건이며 E/Q/S/C/A/O/X 축 coverage와 8건 이상 expression coverage가 모두
+통과했다.
 
-```sh
-npm run batch:m5-11:timing -- \
-  --action=start \
-  --pass=post-freeze-audit \
-  --output=/external/m5-11-audit-timing.json \
-  --unit-ids-file=/external/m5-11-catalog-ids.json \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --artifact=/external/m5-11-audit.json
-```
+relation quota는 적용하지 않으며, 선택된 6개 relation-bearing 축에는 실제
+검증된 relation tuple이 있다. correction rate는 `0.0233009709`, relation
+noise rate는 `0`, schema/integrity 및 relation-target blocker도 `0`이다.
+Human timing과 external audit는 이 정책에서 필수 항목이 아니므로 durable
+evidence에 `not-required`로 기록했다.
 
-Each pass is stopped in a later invocation. The recorder owns start/stop
-timestamps, contiguous work events, chronology, and a signed proof digest;
-timestamp, duration, and caller-supplied digest overrides are rejected. The
-session starts only when the bound editorial/audit artifact is absent; the final
-recorder stop reads the artifact produced during the session and binds its
-digest. The independent `post-freeze-audit` session similarly starts from the
-frozen proposal plus completed editorial/timing artifacts, uses a distinct
-session, and must begin after editorial timing completes.
-The prospective verifier also runs the complete committed M4 baseline,
-selection, and relation assertions against the temporary SQLite state. The
-portable manifest and promotion evidence retain the derived timing/check
-summaries and their digest so clean-checkout validation recomputes the gate
-instead of trusting paired summaries.
+검증 pass는 생성 pass와 분리되어 있다.
 
-## Gate
+- generation pass: `m5-11a-generation-20260914`
+- verification pass: `m5-11a-verification-20260914`
+- generator: `codex`
+- generator version: `m5-11a-agent-editorial-v2`
+- `human_editorial_review_complete`: `false`
 
-`HOLD PROCESS` — editorial decision artifact, human editorial review, timing,
-independent audit, and canonical promotion are incomplete. No later stage is
-created or authorized.
+## Source and output binding
 
-Validation:
+Raw proposal, editorial decision, verification, relation diff, and reviewed
+import inputs remain outside the repository. Git에는 compact summary와
+digest-bound manifest/promotion evidence만 둔다.
+
+| source | SHA-256 |
+| --- | --- |
+| proposal | `5131dfc9ac17ea0519b8d19a6d3ebfe8c91240931e665265356e4a15459ef0ad` |
+| editorial | `e08ff61b5802f252a17ade1085665c1ad54a6197afb43d4dc67f4d620d3c5237` |
+| relation diff | `8cafe8b3ad3b2013c43d43ce42dbd32da1cdd62e29e167c30f8c48178bcd74cf` |
+| verification | `3ce52a79b081116f4e0f1ad4f68ddacdb9d05e2fe746399953db455b01cd8145` |
+| reviewed import | `12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691` |
+| #115 authorization | `944d86adad9ad3c340aa57ea88b9ed6cc21a9379e4473edc2cd2213b33ff7d88` |
+| base inventory | `2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947` |
+
+Committed evidence:
+
+- [`data/batches/m5-11-admission.json`](../data/batches/m5-11-admission.json)
+- [`data/batches/m5-11-promotion.json`](../data/batches/m5-11-promotion.json)
+- [`data/batches/m5-11-review.json`](../data/batches/m5-11-review.json)
+- [`data/canonical/m5-11-expansion.jsonl`](../data/canonical/m5-11-expansion.jsonl)
+
+`data/batches/m5-11-promotion.json` records the final canonical directory,
+seed, and inventory digests. `npm run batch:m5-11:check` validates these outputs
+from a clean checkout without access to the external raw inputs.
+
+## Validation
+
+The issue-specific check is:
 
 ```sh
 npm run batch:m5-11:check
 ```
 
-## Completed admission path
-
-The completed gate is deliberately separate from the existing HOLD check. All
-proposal, decision, timing, audit, relation-diff, verification, and reviewed
-import files must remain outside the repository until the gate passes:
-
-```sh
-npm run batch:m5-11:admission:check -- \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --audit=/external/m5-11-audit.json \
-  --audit-timing=/external/m5-11-audit-timing.json \
-  --relation-diff=/external/m5-11-relation-diff.json \
-  --verification=/external/m5-11-verification.json \
-  --output=/external/m5-11-reviewed-import.jsonl
-
-npm run batch:m5-11:admission:build -- \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --audit=/external/m5-11-audit.json \
-  --audit-timing=/external/m5-11-audit-timing.json \
-  --relation-diff=/external/m5-11-relation-diff.json \
-  --verification=/external/m5-11-verification.json \
-  --output=/external/m5-11-reviewed-import.jsonl
-
-npm run batch:m5-11:promote -- \
-  --manifest=data/batches/m5-11-admission.json \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --audit=/external/m5-11-audit.json \
-  --audit-timing=/external/m5-11-audit-timing.json \
-  --relation-diff=/external/m5-11-relation-diff.json \
-  --verification=/external/m5-11-verification.json \
-  --output=/external/m5-11-reviewed-import.jsonl
-```
-
-The build command writes a compact, digest-bound admission manifest only after
-the complete gate passes. The promotion command revalidates every external
-source, stages canonical plus seed plus inventory in a temporary directory,
-validates the generated inventory, and only then writes
-`data/canonical/m5-11-expansion.jsonl`, the 550 decision rows in the seed, the
-regenerated inventory, and `data/batches/m5-11-promotion.json`. The committed
-manifest stores only portable `external:<source>` labels and SHA-256 digests;
-the explicit paths above are required only for local promotion. Post-promotion
-CI validates committed durable evidence and promoted outputs without reading
-those external files. A failed gate or digest mismatch leaves all three
-source-of-truth files unchanged.
-
-The repository currently has no separately supplied human-complete 550-row
-proposal and decision package, so this completed path is implemented but not
-run against real data. The checked-in state therefore remains the intended
-pre-admission `778 starts / 820 records` HOLD boundary.
+The final PR additionally runs the repository test, canonical/inventory/search
+validation, dictionary build, extension build, both packages, and package
+validation. Chrome for Testing is not needed for this data/validator-only
+change because no browser-only boundary changed.

@@ -23,6 +23,7 @@ const REVIEW_PATH = path.join(BATCH_DIRECTORY, 'm5-11-review.json');
 const STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-11-stage.json');
 const AUTHORIZATION_PATH = path.join(BATCH_DIRECTORY, 'm5-10d-m5-11-authorization-20260912.json');
 const CATALOG_PATH = path.join(SCRIPT_DIRECTORY, 'm5-11-catalog.mjs');
+const PROMOTION_EVIDENCE_PATH = path.join(BATCH_DIRECTORY, 'm5-11-promotion.json');
 
 export const M5_11_BASE_SUMMARY = Object.freeze({
   record_count: 820,
@@ -135,6 +136,28 @@ export async function validateM511({
   baseCanonicalDirectory = BASE_CANONICAL_DIRECTORY,
   baseInventoryPath = BASE_INVENTORY_PATH,
 } = {}) {
+  try {
+    await stat(PROMOTION_EVIDENCE_PATH);
+    const { validateM511Promotion } = await import('./validate-m5-11-promotion.mjs');
+    const promoted = await validateM511Promotion({ promotionEvidencePath: PROMOTION_EVIDENCE_PATH });
+    const promotionEvidence = await readJson(PROMOTION_EVIDENCE_PATH, 'M5-11 promotion evidence');
+    return {
+      batch_id: BATCH_ID,
+      canonical: promoted.summary,
+      decisions: promotionEvidence.decisions,
+      gate_status: promoted.gate.gate_status,
+      gate_failures: [],
+      promotion: {
+        canonical_mutation: true,
+        seed_mutation: true,
+        inventory_mutation: true,
+      },
+      authorization: 'AUTHORIZE M5-11 +500 VALIDATION',
+      promoted: true,
+    };
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
   const stage = await readJson(stagePath, 'M5-11 stage');
   const review = await readJson(reviewPath, 'M5-11 review');
   const currentInventory = await readJson(currentInventoryPath, 'current M5 inventory');
