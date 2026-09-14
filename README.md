@@ -181,9 +181,13 @@ artifact checks `npm run batch:m5-10d:recovery:check` and
 
 Issue #97's M5-11A work is promoted through the owner-authorized automated
 editorial path. The digest-bound #115 authorization and 550-row candidate pool
-produce exactly 500 imported starts plus a 50-row deferred reserve. Canonical
+produce exactly 488 included + 12 corrected imported starts. The reserve contains
+8 held, 7 rejected, and 35 deferred candidates. Canonical
 advances from 778 to 1,278 starts (820 to 1,320 records); imported IDs are
-deterministically rebased to `w779`~`w1278`. The compact review summary and
+deterministically rebased to `w779`~`w1278` in catalog order. The semantic
+verification contract splits 140 multi-sense records, admits 14 relation tuples,
+emits 550 source-bound per-candidate findings, and checks all candidate rows for sense/POS/expression/relation decisions and
+verification-based selection ranks. The compact review summary and
 admission/promotion evidence record the source digests, automated verification
 pass separation, and the explicit fact that no human editorial review, human
 timing, or external human audit is claimed. Run `npm run batch:m5-11:check` to

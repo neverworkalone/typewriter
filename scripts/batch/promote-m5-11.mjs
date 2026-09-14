@@ -514,7 +514,7 @@ export async function promoteM511({
 
   const promotion = {
     schema_version: '1',
-    artifact_id: 'm5-11-promotion-20260913',
+    artifact_id: 'm5-11-promotion-20260914',
     issue: 97,
     parent_issue: 7,
     batch_id: M5_11_BATCH_ID,

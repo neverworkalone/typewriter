@@ -36,6 +36,7 @@ import {
   M5_11_AGENT_GENERATOR,
   M5_11_AGENT_PROVENANCE_KIND,
   M5_11_AGENT_REVIEW_MODE,
+  evaluateM511SemanticCoverage,
   expectedCanonicalId,
   isM511AgentGeneratedArtifact,
   sha256Json,
@@ -78,14 +79,15 @@ export const M5_11_TIMING_CLOCK_SOURCE = 'system-clock';
 export const M5_11_TIMING_LIFECYCLE_VERSION = 'm5-11-timing-lifecycle-v1';
 export const M5_11_TIMING_PROVENANCE_VERSION = 'm5-11-timing-provenance-v1';
 export const M5_11_TIMING_PROVENANCE_ALGORITHM = 'ed25519';
-export const M5_11_PROSPECTIVE_VERIFIER_VERSION = 'm5-11-prospective-verifier-v2';
+export const M5_11_PROSPECTIVE_VERIFIER_VERSION = 'm5-11-prospective-verifier-v3';
 export const M5_11_MACHINE_CHECK_IDS = Object.freeze([
   'canonical-integrity',
   'deterministic-sqlite',
   'search-product-regression',
   'raw-material-exclusion',
+  'semantic-quality',
 ]);
-export const M5_11_AGENT_GATE_EVIDENCE_VERSION = 'm5-11a-gate-evidence-v1';
+export const M5_11_AGENT_GATE_EVIDENCE_VERSION = 'm5-11a-gate-evidence-v2';
 
 const AUDIT_SEVERITIES = Object.freeze(['blocker', 'major', 'minor', 'info']);
 const AUDIT_STATUSES = Object.freeze(['open', 'closed', 'accepted', 'not-applicable']);
@@ -778,6 +780,9 @@ export function validateM511VerificationArtifact(
     relationDiffSha256,
     machineVerification,
     generationPassId,
+    semanticSummary,
+    semanticCoverage,
+    semanticFindings,
   } = {},
 ) {
   const label = 'M5-11 verification artifact';
@@ -806,6 +811,52 @@ export function validateM511VerificationArtifact(
     }
     if (verification.generation_editorial_sha256 !== editorialSourceSha256) {
       fail(`${label}.generation_editorial_sha256 drifted`, 'VERIFICATION_SOURCE_MISMATCH');
+    }
+    if (verification.semantic_quality_complete !== true
+      || !verification.semantic_summary
+      || !verification.semantic_coverage) {
+      fail(`${label} must include complete semantic-quality evidence`, 'VERIFICATION_SEMANTIC_QUALITY');
+    }
+    if (semanticSummary !== undefined) {
+      assertDeep(
+        verification.semantic_summary,
+        semanticSummary,
+        `${label}.semantic_summary`,
+        'VERIFICATION_SEMANTIC_QUALITY',
+      );
+    }
+    if (semanticCoverage !== undefined) {
+      assertDeep(
+        verification.semantic_coverage,
+        semanticCoverage,
+        `${label}.semantic_coverage`,
+        'VERIFICATION_SEMANTIC_QUALITY',
+      );
+    }
+    const findings = requireArray(verification.semantic_findings, `${label}.semantic_findings`);
+    if (!Number.isInteger(verification.semantic_finding_count)
+      || verification.semantic_finding_count !== findings.length
+      || findings.length === 0) {
+      fail(`${label}.semantic_finding_count does not cover per-candidate findings`, 'VERIFICATION_SEMANTIC_QUALITY');
+    }
+    for (const [index, finding] of findings.entries()) {
+      const findingLabel = `${label}.semantic_findings[${index}]`;
+      requireObject(finding, findingLabel);
+      requireString(finding.inventory_id, `${findingLabel}.inventory_id`);
+      requireString(finding.candidate_lemma, `${findingLabel}.candidate_lemma`);
+      requireString(finding.decision, `${findingLabel}.decision`);
+      requireObject(finding.semantic_review, `${findingLabel}.semantic_review`);
+    }
+    if (verification.semantic_findings_sha256 !== sha256Json(findings)) {
+      fail(`${label}.semantic_findings_sha256 drifted`, 'VERIFICATION_SEMANTIC_QUALITY');
+    }
+    if (semanticFindings !== undefined) {
+      assertDeep(
+        findings,
+        semanticFindings,
+        `${label}.semantic_findings`,
+        'VERIFICATION_SEMANTIC_QUALITY',
+      );
     }
   } else {
     for (const key of [
@@ -876,6 +927,10 @@ export function validateM511VerificationArtifact(
       fail(`${label}.${field} is not derived from its machine check`, 'VERIFICATION_GATE_ERROR');
     }
   }
+  if (agentGenerated
+    && verification.semantic_quality_complete !== (checksById.get('semantic-quality')?.status === 'pass')) {
+    fail(`${label}.semantic_quality_complete is not derived from its machine check`, 'VERIFICATION_GATE_ERROR');
+  }
   if (machineVerification !== undefined) {
     const machineReport = {
       machine_generated: verification.machine_generated,
@@ -884,6 +939,18 @@ export function validateM511VerificationArtifact(
       final_canonical_summary: verification.final_canonical_summary,
       checks: verification.checks,
       machine_check_evidence: verification.machine_check_evidence,
+      ...(verification.semantic_summary !== undefined
+        ? { semantic_summary: verification.semantic_summary }
+        : {}),
+      ...(verification.semantic_coverage !== undefined
+        ? { semantic_coverage: verification.semantic_coverage }
+        : {}),
+      ...(verification.semantic_finding_count !== undefined
+        ? { semantic_finding_count: verification.semantic_finding_count }
+        : {}),
+      ...(verification.semantic_findings_sha256 !== undefined
+        ? { semantic_findings_sha256: verification.semantic_findings_sha256 }
+        : {}),
     };
     assertDeep(
       machineReport,
@@ -913,6 +980,19 @@ export function validateM511VerificationArtifact(
     deterministic_sqlite: verification.deterministic_sqlite,
     search_product_regression: verification.search_product_regression,
     raw_material_excluded: verification.raw_material_excluded,
+    semantic_quality_complete: verification.semantic_quality_complete ?? false,
+    ...(verification.semantic_summary !== undefined
+      ? { semantic_summary: verification.semantic_summary }
+      : {}),
+    ...(verification.semantic_coverage !== undefined
+      ? { semantic_coverage: verification.semantic_coverage }
+      : {}),
+    ...(agentGenerated
+      ? {
+        semantic_finding_count: verification.semantic_finding_count,
+        semantic_findings_sha256: verification.semantic_findings_sha256,
+      }
+      : {}),
     machine_generated: verification.machine_generated,
     verifier_version: verification.verifier_version,
     prospective_canonical_sha256: verification.prospective_canonical_sha256,
@@ -991,6 +1071,40 @@ function validateRelationEvidence(relationDiff, importedRecords, baseRecords, ba
     }
   }
   return summarizeRelationDiff(relationDiff);
+}
+
+function validateM511SemanticRelationBindings(semantic, relationDiff) {
+  const bindings = requireArray(semantic.relation_bindings, 'M5-11 semantic relation_bindings');
+  const semanticRelationIds = bindings.flatMap(({ relation_ids: relationIds }) => relationIds);
+  const semanticRelationIdSet = new Set(semanticRelationIds);
+  if (semanticRelationIdSet.size !== semanticRelationIds.length) {
+    fail('M5-11 semantic relation IDs must be unique', 'EDITORIAL_RELATION_BINDING');
+  }
+  const admittedEvents = relationDiff.events.filter(({ operation }) => (
+    operation === 'add' || operation === 'retype' || operation === 'retarget'
+  ));
+  const eventRelationIds = admittedEvents.map(({ relation_id: relationId }) => relationId);
+  assertExactIds(
+    [...semanticRelationIds].sort(),
+    [...eventRelationIds].sort(),
+    'M5-11 semantic relation decisions',
+    'EDITORIAL_RELATION_BINDING',
+  );
+  for (const event of admittedEvents) {
+    const binding = bindings.find(({ source_sense: sourceSense, relation_ids: relationIds }) => (
+      sourceSense === event.source_sense && relationIds.includes(event.relation_id)
+    ));
+    if (!binding) {
+      fail(
+        `relation diff event ${event.event_id} is not bound to a per-sense semantic decision`,
+        'EDITORIAL_RELATION_BINDING',
+      );
+    }
+  }
+  return {
+    relation_decision_count: semanticRelationIds.length,
+    relation_event_count: admittedEvents.length,
+  };
 }
 
 function validateImportedRecords(importedRecords, baseRecords, expectedImportedCount, checkPilotCompleteness) {
@@ -1169,6 +1283,12 @@ export function evaluateM511AgentGate({
     canonical_integrity: metrics.canonical_integrity === true,
     deterministic_sqlite: metrics.deterministic_sqlite === true,
     search_product_regression: metrics.search_product_regression === true,
+    semantic_quality: metrics.semantic_review_complete === true
+      && metrics.semantic_quality_blocker_count === 0,
+    semantic_selection: metrics.semantic_selection_rank_valid === true,
+    semantic_axis_coverage: metrics.semantic_axis_coverage_complete === true,
+    semantic_expression_coverage: metrics.semantic_expression_coverage_complete === true,
+    semantic_relation_coverage: metrics.semantic_relation_coverage_complete === true,
     exact_net_start_increase: exactNetStartIncrease === true,
     cumulative_start_target: metrics.final_start_count === expectedCumulativeStartCount,
   };
@@ -1313,6 +1433,9 @@ export async function runM511ProspectiveVerification({
   importedRecords,
   expectedFinalSummary,
   checkPilotCompleteness = true,
+  semanticSummary = null,
+  semanticCoverage = null,
+  semanticFindings = null,
 } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-verification-'));
   const temporaryCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
@@ -1414,6 +1537,23 @@ export async function runM511ProspectiveVerification({
       candidate_local_ids_present: false,
       external_input_paths_present: false,
     };
+    const semanticObservation = {
+      status: semanticSummary && semanticCoverage ? 'pass' : 'not-required',
+      summary: semanticSummary,
+      coverage: semanticCoverage,
+      finding_count: semanticFindings?.length ?? 0,
+      findings_sha256: semanticFindings ? sha256Json(semanticFindings) : null,
+    };
+    if (semanticSummary && semanticCoverage
+      && (semanticSummary.complete !== true
+        || semanticSummary.broad_gloss_count !== 0
+        || semanticCoverage.axis_coverage_complete !== true
+        || semanticCoverage.expression_coverage_complete !== true
+        || semanticCoverage.relation_coverage_complete !== true
+        || !Array.isArray(semanticFindings)
+        || semanticFindings.length === 0)) {
+      fail('prospective semantic-quality verification did not pass', 'VERIFICATION_SEMANTIC_QUALITY');
+    }
 
     const checks = [
       {
@@ -1436,6 +1576,11 @@ export async function runM511ProspectiveVerification({
         status: 'pass',
         result_sha256: sha256Json(rawMaterialObservation),
       },
+      {
+        id: 'semantic-quality',
+        status: 'pass',
+        result_sha256: sha256Json(semanticObservation),
+      },
     ];
     const machineCheckEvidence = {
       'canonical-integrity': {
@@ -1445,6 +1590,7 @@ export async function runM511ProspectiveVerification({
       'deterministic-sqlite': sqliteObservation,
       'search-product-regression': searchObservation,
       'raw-material-exclusion': rawMaterialObservation,
+      'semantic-quality': semanticObservation,
     };
     return {
       machine_generated: true,
@@ -1453,6 +1599,10 @@ export async function runM511ProspectiveVerification({
       final_canonical_summary: finalSummary,
       checks,
       machine_check_evidence: machineCheckEvidence,
+      semantic_summary: semanticSummary,
+      semantic_coverage: semanticCoverage,
+      semantic_finding_count: semanticFindings?.length ?? 0,
+      semantic_findings_sha256: semanticFindings ? sha256Json(semanticFindings) : null,
     };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -1492,6 +1642,14 @@ export function deriveM511AdmissionGate({
     expectedImportedCount,
   });
   const agentGenerated = isM511AgentGeneratedArtifact(editorial);
+  const semantic = agentGenerated ? editorialResult.semantic : undefined;
+  const semanticCoverage = agentGenerated
+    ? evaluateM511SemanticCoverage({
+      semantic,
+      catalog,
+      expectedImportedCount,
+    })
+    : undefined;
   const importedRecords = editorialResult.importedRecords;
   const decisions = editorialResult.decisionCounts;
   const importedInventoryIds = editorialResult.decisions
@@ -1535,6 +1693,9 @@ export function deriveM511AdmissionGate({
     baseRecords,
     M5_11_BATCH_ID,
   );
+  if (agentGenerated) {
+    validateM511SemanticRelationBindings(semantic, relationDiff);
+  }
   if (!agentGenerated && (!editorialTiming || !audit || !auditTiming)) {
     fail('legacy M5-11 admission requires editorial and audit timing artifacts', 'MISSING_INPUT');
   }
@@ -1583,6 +1744,9 @@ export function deriveM511AdmissionGate({
     relationDiffSha256: relationDiffSource.sha256,
     machineVerification,
     generationPassId: editorial?.provenance?.pass_id,
+    semanticSummary: semantic,
+    semanticCoverage,
+    semanticFindings: editorialResult.semantic_findings,
   });
   if (auditTiming && audit && auditTiming.session_id !== audit.session_id) {
     fail('audit timing session does not match the independent audit', 'AUDIT_PROVENANCE_ERROR');
@@ -1631,6 +1795,20 @@ export function deriveM511AdmissionGate({
     canonical_integrity: verificationResult.canonical_integrity,
     deterministic_sqlite: verificationResult.deterministic_sqlite,
     search_product_regression: verificationResult.search_product_regression,
+    semantic_review_complete: agentGenerated ? semantic.complete : null,
+    semantic_quality_blocker_count: agentGenerated ? semantic.broad_gloss_count : 0,
+    semantic_selection_rank_valid: agentGenerated ? semantic.selection_rank_valid : null,
+    semantic_axis_coverage_complete: agentGenerated ? semanticCoverage.axis_coverage_complete : null,
+    semantic_expression_coverage_complete: agentGenerated
+      ? semanticCoverage.expression_coverage_complete
+      : null,
+    semantic_relation_coverage_complete: agentGenerated
+      ? semanticCoverage.relation_coverage_complete
+      : null,
+    semantic_split_record_count: agentGenerated ? semantic.split_record_count : null,
+    semantic_split_sense_count: agentGenerated ? semantic.split_sense_count : null,
+    semantic_relation_candidate_count: agentGenerated ? semantic.relation_candidate_count : null,
+    semantic_no_relation_rationale_count: agentGenerated ? semantic.no_relation_rationale_count : null,
   };
   const exactNetStartIncrease = finalSummary.start_count - baseSummary.start_count === expectedImportedCount;
   const gate = agentGenerated
@@ -1673,6 +1851,7 @@ export function deriveM511AdmissionGate({
     },
     audit: auditResult,
     verification: verificationResult,
+    ...(semantic ? { semantic, semantic_coverage: semanticCoverage } : {}),
     metrics,
     gate,
   };
@@ -1900,6 +2079,15 @@ export async function validateM511Admission({
     importedRecords: editorialPreview.importedRecords,
     expectedFinalSummary: previewFinalSummary,
     checkPilotCompleteness,
+    semanticSummary: editorialPreview.semantic,
+    semanticCoverage: editorialPreview.semantic
+      ? evaluateM511SemanticCoverage({
+        semantic: editorialPreview.semantic,
+        catalog,
+        expectedImportedCount,
+      })
+      : null,
+    semanticFindings: editorialPreview.semantic_findings,
   });
   const result = deriveM511AdmissionGate({
     catalog,

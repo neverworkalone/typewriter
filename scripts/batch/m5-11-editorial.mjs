@@ -7,7 +7,11 @@ export const M5_11_BATCH_ID = 'm5-11-expansion-20260913';
 export const M5_11_AGENT_REVIEW_MODE = 'agent-generated';
 export const M5_11_AGENT_PROVENANCE_KIND = 'agent_generated';
 export const M5_11_AGENT_GENERATOR = 'codex';
-export const M5_11_AGENT_EDITORIAL_VERSION = 'm5-11a-agent-editorial-v1';
+export const M5_11_AGENT_EDITORIAL_VERSION = 'm5-11a-agent-editorial-v2';
+export const M5_11_AGENT_SEMANTIC_REVIEW_VERSION = 'm5-11a-semantic-review-v2';
+export const M5_11_AGENT_RELATION_BEARING_AXES = Object.freeze(['Q', 'S', 'C', 'A', 'O', 'X']);
+export const M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO = 0.8;
+export const M5_11_BROAD_GLOSS_PATTERN = /(?:이나|또는|거나)/u;
 export const M5_11_AGENT_GATE_DECISION = 'APPROVE AUTOMATED BOUNDED';
 export const M5_11_BOUNDARY_IDS = Object.freeze([
   'physical-figurative',
@@ -91,6 +95,10 @@ export function expectedCanonicalId(importIndex) {
 export function isM511AgentGeneratedArtifact(artifact) {
   return artifact?.review_mode === M5_11_AGENT_REVIEW_MODE
     || artifact?.provenance?.kind === M5_11_AGENT_PROVENANCE_KIND;
+}
+
+export function hasM511BroadGlossConnector(gloss) {
+  return typeof gloss === 'string' && M5_11_BROAD_GLOSS_PATTERN.test(gloss);
 }
 
 export function validateM511AgentProvenance(artifact, label = 'M5-11 agent artifact') {
@@ -401,6 +409,361 @@ function validateDecision(decision, catalogEntry, proposalRow, expectedId, impor
   return { decision, record: undefined };
 }
 
+function semanticStatusForDecision(decision) {
+  return ['included', 'corrected'].includes(decision) ? 'selected' : decision;
+}
+
+function validateSemanticReview(review, {
+  decision,
+  catalogEntry,
+  proposalRow,
+  record,
+  index,
+  catalogCount = 550,
+} = {}) {
+  const inventoryId = catalogEntry.inventory_id;
+  const label = `decisions[${index}].semantic_review`;
+  requireObject(review, label);
+  if (review.version !== M5_11_AGENT_SEMANTIC_REVIEW_VERSION) {
+    fail(`${label}.version must be ${M5_11_AGENT_SEMANTIC_REVIEW_VERSION}`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  if (review.status !== 'complete') {
+    fail(`${label}.status must be complete`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  if (review.axis !== catalogEntry.axis) {
+    fail(`${label}.axis must bind ${inventoryId} catalog axis`, 'EDITORIAL_SEMANTIC_BINDING');
+  }
+  assertJsonEqual(review.flags, catalogEntry.flags, `${label}.flags`, 'EDITORIAL_SEMANTIC_BINDING');
+
+  const proposalRecord = proposalRow.candidate_record;
+  for (const [source, sourceRecord] of [['candidate', proposalRecord], ['reviewed', record]]) {
+    for (const sense of sourceRecord.senses) {
+      if (hasM511BroadGlossConnector(sense.gloss)) {
+        fail(
+          `${label} ${source} sense ${sense.id} contains a broad gloss connector`,
+          'EDITORIAL_SEMANTIC_QUALITY_BLOCKER',
+        );
+      }
+    }
+  }
+
+  const boundary = requireObject(review.sense_boundary, `${label}.sense_boundary`);
+  if (boundary.status !== 'pass') {
+    fail(`${label}.sense_boundary.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  const findings = requireArray(boundary.findings, `${label}.sense_boundary.findings`);
+  assertJsonEqual(
+    findings.map(({ sense_id: senseId }) => senseId),
+    record.senses.map(({ id }) => id),
+    `${label}.sense_boundary.findings sense IDs`,
+    'EDITORIAL_SEMANTIC_BINDING',
+  );
+  for (const [senseIndex, finding] of findings.entries()) {
+    const findingLabel = `${label}.sense_boundary.findings[${senseIndex}]`;
+    requireObject(finding, findingLabel);
+    const sense = record.senses[senseIndex];
+    const expectedAction = record.senses.length > 1 ? 'split' : 'retain';
+    const expectedClassification = record.senses.length > 1 ? 'separated' : 'atomic';
+    if (finding.sense_id !== sense.id
+      || finding.action !== expectedAction
+      || finding.classification !== expectedClassification) {
+      fail(`${findingLabel} does not prove an atomic sense boundary`, 'EDITORIAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+    requireString(finding.rationale, `${findingLabel}.rationale`);
+    if (!finding.rationale.includes(inventoryId) || !finding.rationale.includes(sense.id)) {
+      fail(`${findingLabel}.rationale must bind ${inventoryId} and ${sense.id}`, 'EDITORIAL_SEMANTIC_BINDING');
+    }
+  }
+
+  const pos = requireObject(review.pos, `${label}.pos`);
+  if (pos.status !== 'pass') fail(`${label}.pos.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
+  assertJsonEqual(
+    pos.observed_pos,
+    record.senses.map(({ pos: sensePos }) => sensePos),
+    `${label}.pos.observed_pos`,
+    'EDITORIAL_SEMANTIC_BINDING',
+  );
+  requireString(pos.rationale, `${label}.pos.rationale`);
+  if (!pos.rationale.includes(inventoryId)) {
+    fail(`${label}.pos.rationale must bind ${inventoryId}`, 'EDITORIAL_SEMANTIC_BINDING');
+  }
+
+  const expression = requireObject(review.expression, `${label}.expression`);
+  if (expression.status !== 'pass') {
+    fail(`${label}.expression.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  const expectedRecordType = catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry';
+  if (expression.expected_record_type !== expectedRecordType
+    || expression.observed_record_type !== record.record_type
+    || record.record_type !== expectedRecordType) {
+    fail(`${label}.expression does not bind the expression-unit classification`, 'EDITORIAL_SEMANTIC_BOUNDARY_BLOCKER');
+  }
+  requireString(expression.rationale, `${label}.expression.rationale`);
+  if (!expression.rationale.includes(inventoryId)) {
+    fail(`${label}.expression.rationale must bind ${inventoryId}`, 'EDITORIAL_SEMANTIC_BINDING');
+  }
+
+  const relation = requireObject(review.relation, `${label}.relation`);
+  if (relation.status !== 'pass') {
+    fail(`${label}.relation.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  const perSense = requireArray(relation.per_sense, `${label}.relation.per_sense`);
+  assertJsonEqual(
+    perSense.map(({ sense_id: senseId }) => senseId),
+    record.senses.map(({ id }) => id),
+    `${label}.relation.per_sense sense IDs`,
+    'EDITORIAL_SEMANTIC_BINDING',
+  );
+  const relationBindings = [];
+  let relationCandidateCount = 0;
+  let noRelationRationaleCount = 0;
+  let relationSenseCount = 0;
+  let noRelationSenseCount = 0;
+  for (const [senseIndex, senseDecision] of perSense.entries()) {
+    const senseLabel = `${label}.relation.per_sense[${senseIndex}]`;
+    requireObject(senseDecision, senseLabel);
+    const sense = record.senses[senseIndex];
+    const relationCount = sense.relations?.length ?? 0;
+    if (senseDecision.sense_id !== sense.id || senseDecision.relation_count !== relationCount) {
+      fail(`${senseLabel} does not bind the reviewed relation count`, 'EDITORIAL_RELATION_BINDING');
+    }
+    const relationIds = requireArray(senseDecision.relation_ids, `${senseLabel}.relation_ids`);
+    if (relationIds.some((relationId) => typeof relationId !== 'string' || relationId.trim().length === 0)) {
+      fail(`${senseLabel}.relation_ids must contain non-empty IDs`, 'EDITORIAL_RELATION_BINDING');
+    }
+    if (relationCount === 0) {
+      if (relationIds.length !== 0) fail(`${senseLabel}.relation_ids must be empty`, 'EDITORIAL_RELATION_BINDING');
+      requireString(senseDecision.no_relation_rationale, `${senseLabel}.no_relation_rationale`);
+      if (!senseDecision.no_relation_rationale.includes(inventoryId)
+        || !senseDecision.no_relation_rationale.includes(sense.id)) {
+        fail(`${senseLabel}.no_relation_rationale must bind ${inventoryId} and ${sense.id}`, 'EDITORIAL_SEMANTIC_BINDING');
+      }
+      noRelationRationaleCount += 1;
+      noRelationSenseCount += 1;
+    } else {
+      if (relationIds.length !== relationCount || senseDecision.no_relation_rationale !== undefined) {
+        fail(`${senseLabel} must bind every relation tuple without a no-relation rationale`, 'EDITORIAL_RELATION_BINDING');
+      }
+      relationCandidateCount += relationCount;
+      relationSenseCount += 1;
+      relationBindings.push({
+        inventory_id: inventoryId,
+        source_sense: sense.id,
+        relation_ids: [...relationIds],
+      });
+    }
+  }
+
+  const selection = requireObject(review.selection, `${label}.selection`);
+  const expectedSelectionStatus = semanticStatusForDecision(decision.decision);
+  if (selection.status !== expectedSelectionStatus) {
+    fail(`${label}.selection.status must be ${expectedSelectionStatus}`, 'EDITORIAL_SELECTION_BINDING');
+  }
+  if (!Number.isInteger(selection.rank) || selection.rank < 1 || selection.rank > catalogCount) {
+    fail(`${label}.selection.rank must be within the candidate pool`, 'EDITORIAL_SELECTION_BINDING');
+  }
+  if (!Number.isFinite(selection.score)) {
+    fail(`${label}.selection.score must be finite`, 'EDITORIAL_SELECTION_BINDING');
+  }
+  requireString(selection.rationale, `${label}.selection.rationale`);
+  if (!selection.rationale.includes(inventoryId)
+    || (!selection.rationale.includes('verification') && !selection.rationale.includes('coverage'))) {
+    fail(`${label}.selection.rationale must bind verification/coverage for ${inventoryId}`, 'EDITORIAL_SELECTION_BINDING');
+  }
+
+  return {
+    inventory_id: inventoryId,
+    decision: decision.decision,
+    axis: catalogEntry.axis,
+    selection_rank: selection.rank,
+    selection_score: selection.score,
+    record_type: record.record_type,
+    sense_count: record.senses.length,
+    relation_count: relationCandidateCount,
+    relation_bindings: relationBindings,
+    no_relation_rationale_count: noRelationRationaleCount,
+    relation_sense_count: relationSenseCount,
+    no_relation_sense_count: noRelationSenseCount,
+    broad_gloss_count: record.senses.filter(({ gloss }) => hasM511BroadGlossConnector(gloss)).length,
+  };
+}
+
+export function evaluateM511SemanticCoverage({
+  semantic,
+  catalog = M5_11_CATALOG,
+  expectedImportedCount = 500,
+} = {}) {
+  requireObject(semantic, 'M5-11 semantic review summary');
+  const candidateAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      catalog.filter((entry) => entry.axis === axis).length,
+    ]),
+  );
+  const selectedAxisCounts = semantic.selected_axis_counts ?? {};
+  const minimumAxisCounts = Object.fromEntries(
+    Object.entries(candidateAxisCounts).map(([axis, count]) => [
+      axis,
+      Math.ceil(count * expectedImportedCount / catalog.length * M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO),
+    ]),
+  );
+  const axisCoverage = Object.fromEntries(
+    Object.entries(minimumAxisCounts).map(([axis, minimum]) => [
+      axis,
+      (selectedAxisCounts[axis] ?? 0) >= minimum,
+    ]),
+  );
+  const expressionCandidateCount = catalog.filter(({ flags }) => flags.includes('expression-unit')).length;
+  const minimumExpressionCount = Math.ceil(
+    expressionCandidateCount * expectedImportedCount / catalog.length * M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO,
+  );
+  const expressionCoverage = semantic.selected_expression_unit_count >= minimumExpressionCount;
+  const relationBearingAxes = M5_11_AGENT_RELATION_BEARING_AXES.filter(
+    (axis) => (selectedAxisCounts[axis] ?? 0) > 0,
+  );
+  const selectedRelationEvidenceByAxis = semantic.selected_relation_evidence_by_axis ?? {};
+  const relationCoverage = relationBearingAxes.every((axis) => {
+    const evidence = selectedRelationEvidenceByAxis[axis];
+    if (!evidence) return false;
+    return evidence.record_count === selectedAxisCounts[axis]
+      && Number.isInteger(evidence.sense_count)
+      && Number.isInteger(evidence.relation_sense_count)
+      && Number.isInteger(evidence.no_relation_sense_count)
+      && Number.isInteger(evidence.relation_tuple_count)
+      && evidence.sense_count > 0
+      && evidence.relation_sense_count >= 0
+      && evidence.no_relation_sense_count >= 0
+      && evidence.relation_tuple_count >= 0
+      && evidence.relation_sense_count + evidence.no_relation_sense_count === evidence.sense_count
+      && evidence.relation_tuple_count >= evidence.relation_sense_count;
+  });
+  return {
+    minimum_axis_counts: minimumAxisCounts,
+    selected_axis_counts: selectedAxisCounts,
+    axis_coverage: axisCoverage,
+    axis_coverage_complete: Object.values(axisCoverage).every(Boolean),
+    expression_candidate_count: expressionCandidateCount,
+    minimum_expression_count: minimumExpressionCount,
+    selected_expression_unit_count: semantic.selected_expression_unit_count,
+    expression_coverage_complete: expressionCoverage,
+    relation_bearing_axes: relationBearingAxes,
+    selected_relation_axis_counts: semantic.selected_relation_axis_counts ?? {},
+    selected_relation_evidence_by_axis: selectedRelationEvidenceByAxis,
+    relation_coverage_complete: relationCoverage,
+  };
+}
+
+function validateM511AgentSemanticReviews({
+  artifact,
+  catalog,
+  proposalRows,
+  normalized,
+  expectedImportedCount,
+} = {}) {
+  const reviews = [];
+  const ranks = [];
+  let importedCount = 0;
+  for (const [index, catalogEntry] of catalog.entries()) {
+    const decisionResult = normalized[index];
+    const record = decisionResult.record ?? proposalRows[index].candidate_record;
+    const reviewResult = validateSemanticReview(artifact.decisions[index].semantic_review, {
+      decision: decisionResult.decision,
+      catalogEntry,
+      proposalRow: proposalRows[index],
+      record,
+      index,
+      catalogCount: catalog.length,
+    });
+    reviews.push(reviewResult);
+    ranks.push(reviewResult.selection_rank);
+    if (decisionResult.record) importedCount += 1;
+  }
+  const expectedRanks = Array.from({ length: catalog.length }, (_, index) => index + 1);
+  assertJsonEqual(
+    [...ranks].sort((left, right) => left - right),
+    expectedRanks,
+    'M5-11 semantic selection ranks',
+    'EDITORIAL_SELECTION_BINDING',
+  );
+  const selectedRanks = reviews
+    .filter(({ decision }) => ['included', 'corrected'].includes(decision))
+    .map(({ selection_rank: rank }) => rank)
+    .sort((left, right) => left - right);
+  assertJsonEqual(
+    selectedRanks,
+    Array.from({ length: expectedImportedCount }, (_, index) => index + 1),
+    'M5-11 semantic selected ranks',
+    'EDITORIAL_SELECTION_BINDING',
+  );
+  const selected = reviews.filter(({ decision }) => ['included', 'corrected'].includes(decision));
+  const selectedAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      selected.filter(({ axis: selectedAxis }) => selectedAxis === axis).length,
+    ]),
+  );
+  const candidateAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      catalog.filter(({ axis: candidateAxis }) => candidateAxis === axis).length,
+    ]),
+  );
+  const selectedRelationAxisCounts = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => [
+      axis,
+      selected.filter(({ axis: selectedAxis, relation_count: relationCount }) => (
+        selectedAxis === axis && relationCount > 0
+      )).length,
+    ]),
+  );
+  const selectedRelationEvidenceByAxis = Object.fromEntries(
+    [...new Set(catalog.map(({ axis }) => axis))].map((axis) => {
+      const axisReviews = selected.filter(({ axis: selectedAxis }) => selectedAxis === axis);
+      return [axis, {
+        record_count: axisReviews.length,
+        sense_count: axisReviews.reduce((sum, review) => sum + review.sense_count, 0),
+        relation_sense_count: axisReviews.reduce((sum, review) => sum + review.relation_sense_count, 0),
+        no_relation_sense_count: axisReviews.reduce((sum, review) => sum + review.no_relation_sense_count, 0),
+        relation_tuple_count: axisReviews.reduce((sum, review) => sum + review.relation_count, 0),
+      }];
+    }),
+  );
+  const relationBindings = selected.flatMap(({ relation_bindings: bindings }) => bindings);
+  const semantic = {
+    version: M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
+    complete: true,
+    candidate_count: catalog.length,
+    selected_count: importedCount,
+    broad_gloss_count: reviews.reduce((sum, review) => sum + review.broad_gloss_count, 0),
+    split_record_count: reviews.filter(({ sense_count: senseCount }) => senseCount > 1).length,
+    split_sense_count: reviews.reduce(
+      (sum, review) => sum + (review.sense_count > 1 ? review.sense_count : 0),
+      0,
+    ),
+    selected_axis_counts: selectedAxisCounts,
+    candidate_axis_counts: candidateAxisCounts,
+    selected_expression_unit_count: selected.filter(({ record_type: recordType }) => recordType === 'expression').length,
+    selected_relation_axis_counts: selectedRelationAxisCounts,
+    selected_relation_evidence_by_axis: selectedRelationEvidenceByAxis,
+    relation_candidate_count: selected.reduce((sum, review) => sum + review.relation_count, 0),
+    no_relation_rationale_count: reviews.reduce(
+      (sum, review) => sum + review.no_relation_rationale_count,
+      0,
+    ),
+    selection_rank_valid: true,
+    relation_bindings: relationBindings,
+  };
+  return {
+    semantic,
+    findings: artifact.decisions.map((decision, index) => ({
+      inventory_id: decision.inventory_id,
+      candidate_lemma: proposalRows[index].candidate_lemma,
+      decision: normalized[index].decision.decision,
+      semantic_review: structuredClone(decision.semantic_review),
+    })),
+  };
+}
+
 export function validateM511EditorialDecisions(
   artifact,
   {
@@ -485,11 +848,22 @@ export function validateM511EditorialDecisions(
       'EDITORIAL_COUNT_MISMATCH',
     );
   }
+  const semanticResult = agentGenerated
+    ? validateM511AgentSemanticReviews({
+      artifact,
+      catalog,
+      proposalRows,
+      normalized,
+      expectedImportedCount,
+    })
+    : undefined;
+  const semantic = semanticResult?.semantic;
   return {
     artifact,
     decisions: normalized,
     proposalRows,
     importedRecords: normalized.filter(({ record }) => record).map(({ record }) => record),
     decisionCounts,
+    ...(semantic ? { semantic, semantic_findings: semanticResult.findings } : {}),
   };
 }

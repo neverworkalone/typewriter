@@ -41,10 +41,10 @@ const EXPECTED_METADATA = Object.freeze({
   start_count: '1278',
   reference_only_count: '42',
   candidate_count: '1278',
-  search_form_count: '1396',
-  sense_count: '1466',
-  relation_count: '473',
-  expression_count: '63',
+  search_form_count: '1576',
+  sense_count: '1607',
+  relation_count: '487',
+  expression_count: '73',
 });
 
 const CODE_FILE_PATTERN = /\.(?:css|html|js|json|mjs)$/i;

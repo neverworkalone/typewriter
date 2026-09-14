@@ -28,10 +28,13 @@ import { main as recordM511Timing } from '../scripts/batch/record-m5-11-timing.m
 import { validateM511DurableEvidence } from '../scripts/batch/validate-m5-11-promotion.mjs';
 import {
   M5_11_BATCH_ID,
+  M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
+  evaluateM511SemanticCoverage,
   sha256Json,
   sha256ProposalRow,
   validateM511EditorialDecisions,
 } from '../scripts/batch/m5-11-editorial.mjs';
+import { compareRelationSnapshots } from '../scripts/batch/relation-diff.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
 
@@ -431,7 +434,17 @@ function makeSources(catalog) {
 
 function makeAgentSources(catalog) {
   const fixture = makeSources(catalog);
+  const relationId = 'm5-11-agent-relation-1';
+  const relation = {
+    target: 'w001',
+    target_sense: 'w001-s1',
+    type: 'near',
+  };
+  fixture.proposal.proposals[2].candidate_record.senses[0].relations = [relation];
+  fixture.proposal.proposals[2].proposal_sha256 = sha256ProposalRow(fixture.proposal.proposals[2]);
   fixture.editorial = structuredClone(fixture.editorial);
+  fixture.editorial.decisions[2].candidate_proposal_sha256 = fixture.proposal.proposals[2].proposal_sha256;
+  fixture.editorial.decisions[2].canonical_record.senses[0].relations = [relation];
   Object.assign(fixture.editorial, {
     review_mode: 'agent-generated',
     editorial_review_complete: true,
@@ -441,11 +454,110 @@ function makeAgentSources(catalog) {
     provenance: {
       kind: 'agent_generated',
       generator: 'codex',
-      generator_version: 'm5-11a-agent-editorial-v1',
+      generator_version: 'm5-11a-agent-editorial-v2',
       pass_id: 'agent-generation-pass',
     },
   });
+  fixture.relationDiff = compareRelationSnapshots({
+    batchId: BATCH_ID,
+    before: [],
+    after: [{
+      id: relationId,
+      source_sense: 'w779-s1',
+      ...relation,
+    }],
+    candidateReviews: [{
+      candidate_id: 'm5-537',
+      relation_id: relationId,
+      source_sense: 'w779-s1',
+      relation,
+      decision: 'admit',
+      review_note: 'w779-s1 relation was retained as a writer-useful action link to w001-s1',
+    }],
+  });
+  const ranks = [3, 4, 1, 2];
+  const scores = [80, 70, 100, 99];
+  fixture.editorial.decisions.forEach((decision, index) => {
+    const catalogEntry = catalog[index];
+    const proposalRecord = fixture.proposal.proposals[index].candidate_record;
+    const record = decision.canonical_record ?? proposalRecord;
+    const imported = decision.canonical_record !== undefined;
+    decision.semantic_review = {
+      version: M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
+      status: 'complete',
+      axis: catalogEntry.axis,
+      flags: [...catalogEntry.flags],
+      sense_boundary: {
+        status: 'pass',
+        findings: record.senses.map((sense) => ({
+          sense_id: sense.id,
+          action: 'retain',
+          classification: 'atomic',
+          rationale: `${catalogEntry.inventory_id} ${sense.id} is an atomic sense after verification`,
+        })),
+      },
+      pos: {
+        status: 'pass',
+        observed_pos: record.senses.map(({ pos }) => pos),
+        rationale: `${catalogEntry.inventory_id} POS was verified against every sense`,
+      },
+      expression: {
+        status: 'pass',
+        expected_record_type: 'entry',
+        observed_record_type: record.record_type,
+        rationale: `${catalogEntry.inventory_id} verification classified this candidate as an entry`,
+      },
+      relation: {
+        status: 'pass',
+        per_sense: record.senses.map((sense) => ({
+          sense_id: sense.id,
+          relation_count: sense.relations?.length ?? 0,
+          relation_ids: sense.relations?.length ? [relationId] : [],
+          ...(sense.relations?.length
+            ? {}
+            : { no_relation_rationale: `${catalogEntry.inventory_id} ${sense.id} has no validated relation tuple` }),
+        })),
+      },
+      selection: {
+        status: imported ? 'selected' : decision.decision,
+        rank: ranks[index],
+        score: scores[index],
+        rationale: `${catalogEntry.inventory_id} selected by verification and coverage outcome`,
+      },
+    };
+    if (!record.senses.some(({ relations }) => relations?.length)) {
+      decision.semantic_review.relation.per_sense.forEach((senseDecision) => {
+        delete senseDecision.relation_ids;
+        senseDecision.relation_ids = [];
+      });
+    }
+  });
+  fixture.proposalSource = fileSource(fixture.proposalSource.path, fixture.proposal);
+  fixture.editorial.proposal_sha256 = sha256Json(fixture.proposal);
+  fixture.reviewedImport = fixture.editorial.decisions
+    .filter(({ canonical_record: record }) => record)
+    .map(({ canonical_record: record }) => record);
+  const importBytes = Buffer.from(
+    `${fixture.reviewedImport.map((record) => JSON.stringify(record)).join('\n')}\n`,
+    'utf8',
+  );
+  fixture.reviewedImportSource = fileSource(
+    fixture.reviewedImportSource.path,
+    fixture.reviewedImport,
+    importBytes,
+  );
   fixture.editorialSource = fileSource('/tmp/m5-11-agent-editorial.json', fixture.editorial);
+  fixture.relationDiffSource = fileSource('/tmp/m5-11-agent-relation-diff.json', fixture.relationDiff);
+  const editorialResult = validateM511EditorialDecisions(fixture.editorial, {
+    catalog,
+    proposal: fixture.proposal,
+    expectedImportedCount: 2,
+  });
+  const semanticCoverage = evaluateM511SemanticCoverage({
+    semantic: editorialResult.semantic,
+    catalog,
+    expectedImportedCount: 2,
+  });
   fixture.verification = structuredClone(fixture.verification);
   Object.assign(fixture.verification, {
     review_mode: 'agent-generated',
@@ -458,14 +570,29 @@ function makeAgentSources(catalog) {
     provenance: {
       kind: 'agent_generated',
       generator: 'codex',
-      generator_version: 'm5-11a-agent-editorial-v1',
+      generator_version: 'm5-11a-agent-editorial-v2',
       pass_id: 'agent-verification-pass',
     },
+    semantic_quality_complete: true,
+    semantic_summary: editorialResult.semantic,
+    semantic_coverage: semanticCoverage,
+    semantic_findings: editorialResult.semantic_findings,
+    semantic_finding_count: editorialResult.semantic_findings.length,
+    semantic_findings_sha256: sha256Json(editorialResult.semantic_findings),
     machine_check_evidence: Object.fromEntries(
       M5_11_MACHINE_CHECK_IDS.map((id) => [id, { observed: true }]),
     ),
   });
+  fixture.verification.final_canonical_summary.relation_count = 1;
+  fixture.verification.machine_check_evidence['semantic-quality'] = {
+    status: 'pass',
+    summary: editorialResult.semantic,
+    coverage: semanticCoverage,
+  };
   fixture.verification.editorial_sha256 = fixture.editorialSource.sha256;
+  fixture.verification.proposal_sha256 = fixture.proposalSource.sha256;
+  fixture.verification.relation_diff_sha256 = fixture.relationDiffSource.sha256;
+  fixture.verification.reviewed_import_sha256 = fixture.reviewedImportSource.sha256;
   fixture.verificationSource = fileSource('/tmp/m5-11-agent-verification.json', fixture.verification);
   return fixture;
 }
@@ -662,6 +789,42 @@ test('M5-11A accepts truthful agent provenance without human timing or audit', (
   assert.equal(result.audit.status, 'not-required');
   assert.equal(result.verification.human_editorial_review_complete, false);
   assert.equal(result.verification.generation_verification_separated, true);
+});
+
+test('M5-11A does not silently pass relation-bearing axes with zero admitted relations', () => {
+  const catalog = makeCatalog();
+  const coverage = evaluateM511SemanticCoverage({
+    semantic: {
+      selected_axis_counts: { A: 2 },
+      selected_relation_axis_counts: { A: 0 },
+      selected_expression_unit_count: 0,
+    },
+    catalog,
+    expectedImportedCount: 2,
+  });
+
+  assert.deepEqual(coverage.relation_bearing_axes, ['A']);
+  assert.equal(coverage.relation_coverage_complete, false);
+
+  const explicitlyReviewed = evaluateM511SemanticCoverage({
+    semantic: {
+      selected_axis_counts: { A: 2 },
+      selected_relation_axis_counts: { A: 0 },
+      selected_relation_evidence_by_axis: {
+        A: {
+          record_count: 2,
+          sense_count: 2,
+          relation_sense_count: 0,
+          no_relation_sense_count: 2,
+          relation_tuple_count: 0,
+        },
+      },
+      selected_expression_unit_count: 0,
+    },
+    catalog,
+    expectedImportedCount: 2,
+  });
+  assert.equal(explicitlyReviewed.relation_coverage_complete, true);
 });
 
 test('M5-11A rejects human attribution and reused generation/verification passes', () => {

@@ -112,30 +112,59 @@ function bindArtifactToProposal(artifact, proposal) {
   return artifact;
 }
 
-test('M5-11A reports the promoted automated +500 result', async () => {
+test('M5-11A reports the promoted semantically verified +500 result', async () => {
   const result = await validateM511();
 
   assert.deepEqual(result.canonical, {
     record_count: 1320,
     start_count: 1278,
     reference_only_count: 42,
-    sense_count: 1466,
-    relation_count: 473,
-    expression_count: 63,
+    sense_count: 1607,
+    relation_count: 487,
+    expression_count: 73,
   });
   assert.equal(result.gate_status, 'pass');
   assert.equal(result.promotion.canonical_mutation, true);
   assert.equal(result.promoted, true);
   assert.deepEqual(result.decisions, {
-    included: 500,
-    corrected: 0,
-    held: 0,
-    rejected: 0,
-    deferred: 50,
-    processed_start_count: 500,
+    included: 488,
+    corrected: 12,
+    held: 8,
+    rejected: 7,
+    deferred: 35,
+    processed_start_count: 515,
     imported_start_count: 500,
   });
   assert.deepEqual(result.gate_failures, []);
+});
+
+test('M5-11A promoted import preserves semantic-quality regression invariants', async () => {
+  const records = (await readFile('data/canonical/m5-11-expansion.jsonl', 'utf8'))
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line));
+  const reviewedExamples = ['싱겁다', '깔깔하다', '맑다', '가누다', '나누다', '내리다', '다독이다', '안기다', '일구다'];
+  for (const lemma of reviewedExamples) {
+    const record = records.find((candidate) => candidate.lemma === lemma);
+    assert.ok(record, `${lemma} is present in the corrected import`);
+    assert.equal(record.senses.length, 2, `${lemma} retains separated senses`);
+    assert.ok(record.senses.every(({ gloss }) => !/(?:이나|또는|거나)/u.test(gloss)));
+    assert.ok(record.search_forms.length >= 2, `${lemma} has an alternate search form`);
+  }
+  const expressions = records.filter(({ record_type: recordType }) => recordType === 'expression');
+  assert.equal(expressions.length, 10);
+  assert.ok(expressions.every(({ senses }) => senses.length === 2));
+  const manifest = JSON.parse(await readFile('data/batches/m5-11-admission.json', 'utf8'));
+  assert.equal(manifest.gate_evidence.semantic.broad_gloss_count, 0);
+  assert.equal(manifest.gate_evidence.semantic.split_record_count, 140);
+  assert.equal(manifest.gate_evidence.semantic.relation_candidate_count, 14);
+  for (const gateId of [
+    'semantic_quality',
+    'semantic_selection',
+    'semantic_axis_coverage',
+    'semantic_expression_coverage',
+    'semantic_relation_coverage',
+  ]) assert.equal(manifest.gate.quality_passes[gateId], true, gateId);
 });
 
 test('M5-11 producer cannot manufacture a canonical import without external editorial decisions', async () => {

@@ -91,7 +91,7 @@ export async function buildM511Admission({
 
   const manifest = {
     schema_version: '1',
-    artifact_id: 'm5-11-admission-20260913',
+    artifact_id: 'm5-11-admission-20260914',
     issue: 97,
     batch_id: result.batch_id,
     authorization: result.authorization,
