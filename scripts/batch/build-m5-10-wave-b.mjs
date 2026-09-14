@@ -38,6 +38,7 @@ import {
   validateWaveBProvenanceArtifact,
   validateWaveBTimingInput,
 } from './validate-m5-10-wave-b.mjs';
+import { assertExternalStagingPath } from './validate-batch.mjs';
 import { evaluateExpansionGate, hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { validateRelationDiff } from './relation-diff.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -183,10 +184,14 @@ export async function buildArtifacts({
   outputPath = DEFAULT_OUTPUT_PATH,
   metricsPath = DEFAULT_METRICS_PATH,
   stagePath = DEFAULT_STAGE_PATH,
+  semanticAuditPath,
 } = {}) {
   if (!stagedRecordsPath) throw new Error('Wave B build requires --staged=<external-reviewed-shard.jsonl>');
+  if (!semanticAuditPath) throw new Error('Wave B build requires --semantic-audit=<external-prospective-semantic-audit.json>');
   const resolvedStagingPath = path.resolve(stagedRecordsPath);
-  const [editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, inventorySource, verificationSource, authorizationSource, planSource, canonical, baseCanonical, staged] = await Promise.all([
+  const resolvedSemanticAuditPath = path.resolve(semanticAuditPath);
+  assertExternalStagingPath(resolvedSemanticAuditPath);
+  const [editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, inventorySource, verificationSource, authorizationSource, planSource, semanticAuditSource, canonical, baseCanonical, staged] = await Promise.all([
     readJsonSource(path.resolve(editorialInputPath), 'Wave B editorial input'),
     readJsonSource(path.resolve(auditInputPath), 'Wave B audit input'),
     readJsonSource(path.resolve(timingInputPath), 'Wave B editorial timing input'),
@@ -196,6 +201,7 @@ export async function buildArtifacts({
     readJsonSource(path.resolve(verificationPath), 'Wave B verification'),
     readJsonSource(path.resolve(authorizationPath), 'Wave B authorization'),
     readJsonSource(path.resolve(planPath), 'M5-8 expansion plan'),
+    readJsonSource(resolvedSemanticAuditPath, 'Wave B prospective semantic audit'),
     readCanonicalRecords(path.resolve(canonicalDirectory)),
     readCanonicalRecords(path.resolve(baseCanonicalDirectory)),
     readCanonicalRecords(resolvedStagingPath),
@@ -250,6 +256,7 @@ export async function buildArtifacts({
     auditInputSource: { path: relativeSourcePath(auditInputPath), sha256: auditSource.sha256 },
     timingInputSource: { path: relativeSourcePath(timingInputPath), sha256: timingSource.sha256 },
     auditTimingInputSource: { path: relativeSourcePath(auditTimingInputPath), sha256: auditTimingSource.sha256 },
+    semanticAuditSource: { path: relativeSourcePath(resolvedSemanticAuditPath), sha256: semanticAuditSource.sha256 },
     reviewedStagingPath: resolvedStagingPath,
   });
   await writeJson(outputPath, manifest);
@@ -327,6 +334,7 @@ export async function buildArtifacts({
     authorizationPath,
     stagedRecordsPath: resolvedStagingPath,
     proposalPath,
+    semanticAuditPath: resolvedSemanticAuditPath,
   });
   return { manifest, metrics, stage, validation };
 }
@@ -349,6 +357,7 @@ if (isMainModule) {
     stagedRecordsPath: args.staged,
     canonicalDirectory: args['canonical-dir'] ?? DEFAULT_CANONICAL_DIRECTORY,
     baseCanonicalDirectory: args['base-canonical-dir'] ?? DEFAULT_BASE_CANONICAL_DIRECTORY,
+    semanticAuditPath: args['semantic-audit'],
   })
     .then((result) => console.log(`Built ${result.manifest.batch_id}; gate=${result.stage.gate_status}; imported=${result.stage.actual.imported_start_count}.`))
     .catch((error) => {

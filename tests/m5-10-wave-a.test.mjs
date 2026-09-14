@@ -17,6 +17,7 @@ import {
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateRelationDiff } from '../scripts/batch/relation-diff.mjs';
+import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CANONICAL_IMPORT_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-a.jsonl');
@@ -193,13 +194,24 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10-wave-a-'));
   try {
     const stagedRecordsPath = path.join(temporaryDirectory, 'reviewed.jsonl');
+    const semanticAuditPath = path.join(temporaryDirectory, 'semantic-audit.json');
+    const validatedManifestPath = path.join(temporaryDirectory, 'manifest.json');
     const outputPath = path.join(temporaryDirectory, 'import.jsonl');
     const waveRecords = await readFile(CANONICAL_IMPORT_PATH, 'utf8');
     await writeFile(stagedRecordsPath, waveRecords, 'utf8');
+    const semanticAudit = await writeSemanticAuditFixture(
+      semanticAuditPath,
+      canonical.records,
+      { artifactId: 'm5-10-wave-a-test-semantic-audit' },
+    );
+    const validatedManifest = structuredClone(manifest);
+    validatedManifest.review.semantic_audit_sha256 = semanticAudit.sha256;
+    await writeFile(validatedManifestPath, `${JSON.stringify(validatedManifest, null, 2)}\n`, 'utf8');
 
     const summary = await validateBatch({
-      manifestPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a.json'),
+      manifestPath: validatedManifestPath,
       stagedRecordsPath,
+      semanticAuditPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
     });
@@ -216,8 +228,9 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     });
 
     const imported = await writeReviewedBatchImport({
-      manifestPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a.json'),
+      manifestPath: validatedManifestPath,
       stagedRecordsPath,
+      semanticAuditPath,
       outputPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,

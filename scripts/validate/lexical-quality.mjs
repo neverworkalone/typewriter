@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,13 +30,15 @@ const CONNECTORS = Object.freeze(['이나', '또는', '거나']);
 // separate dictionary sense.
 const WRITER_DOMAIN_TERMS = Object.freeze({
   taste: Object.freeze(['맛', '미각', '입맛']),
-  smell: Object.freeze(['냄새', '향', '향기', '후각']),
+  smell: Object.freeze(['냄새', '향기', '후각']),
   sound: Object.freeze(['소리', '목소리', '음성', '울림', '청각']),
   visual: Object.freeze(['빛', '빛깔', '색', '윤곽', '시각']),
   tactile: Object.freeze(['표면', '감촉', '촉감', '질감']),
   affective: Object.freeze(['분위기', '감정', '기분', '정서', '마음']),
-  body: Object.freeze(['목', '목구멍', '몸', '신체', '피부']),
+  body: Object.freeze(['목구멍', '몸', '신체', '피부']),
 });
+
+export const WRITER_DOMAIN_AXES = Object.freeze(Object.keys(WRITER_DOMAIN_TERMS));
 
 // A single gloss may legitimately state a property over a shared writer
 // domain.  This is a semantic rule, not a grandfathered record allowlist.
@@ -58,6 +61,10 @@ export class LexicalQualityError extends Error {
 
 function fail(message, code = 'LEXICAL_QUALITY_ERROR', finding = undefined) {
   throw new LexicalQualityError(message, code, finding);
+}
+
+function sha256Json(value) {
+  return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
 
 function requireObject(value, label) {
@@ -179,6 +186,47 @@ export function inspectGlossConnectors(gloss) {
 
 export function hasBroadGlossConnector(gloss) {
   return typeof gloss === 'string' && BROAD_GLOSS_CONNECTOR_PATTERN.test(gloss);
+}
+
+/**
+ * Extract semantic domain evidence from the gloss itself.  This intentionally
+ * does not look for conjunction spelling: a review must account for distinct
+ * writer domains even when the gloss uses 과/와 or simply places two domain
+ * terms next to one another.
+ */
+export function inspectWriterDomainEvidence(gloss) {
+  if (typeof gloss !== 'string') return { axes: [], matches: [] };
+  const matches = [];
+  for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
+    for (const term of terms) {
+      let from = 0;
+      while (true) {
+        const index = gloss.indexOf(term, from);
+        if (index < 0) break;
+        matches.push({ axis, term, index, end: index + term.length });
+        from = index + term.length;
+      }
+    }
+  }
+  const longestMatches = matches.filter((candidate) => !matches.some((other) => (
+    other.term.length > candidate.term.length
+      && other.index <= candidate.index
+      && other.end >= candidate.end
+  )));
+  const axes = [...new Set(
+    longestMatches
+      .sort((left, right) => left.index - right.index || right.term.length - left.term.length)
+      .map(({ axis }) => axis),
+  )];
+  return {
+    axes,
+    matches: longestMatches.map(({ axis, term, index }) => ({
+      axis,
+      term,
+      index,
+      excerpt: gloss.slice(Math.max(0, index - 14), index + term.length + 20),
+    })),
+  };
 }
 
 export function isPlaceholderGloss(gloss) {
@@ -415,6 +463,7 @@ export function validateLexicalSemanticReview(review, {
   expectedRecordType,
   catalogCount = 550,
   rejectAnyBroadConnector = false,
+  requireSemanticEvidence = false,
   selectionRationaleTokens = ['verification', 'coverage'],
 } = {}) {
   requireObject(review, label);
@@ -463,6 +512,70 @@ export function validateLexicalSemanticReview(review, {
     if (inventoryId !== undefined
       && (!finding.rationale.includes(inventoryId) || !finding.rationale.includes(sense.id))) {
       fail(`${senseLabel}.rationale must bind ${inventoryId} and ${sense.id}`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+    if (requireSemanticEvidence) {
+      const semanticEvidence = requireObject(
+        finding.semantic_evidence,
+        `${senseLabel}.semantic_evidence`,
+      );
+      if (semanticEvidence.status !== 'pass') {
+        fail(`${senseLabel}.semantic_evidence.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+      }
+      if (semanticEvidence.gloss_sha256 !== sha256Json(sense.gloss)) {
+        fail(`${senseLabel}.semantic_evidence.gloss_sha256 does not bind the reviewed gloss`, 'LEXICAL_SEMANTIC_BINDING');
+      }
+      const observedDomainAxes = requireArray(
+        semanticEvidence.observed_domain_axes,
+        `${senseLabel}.semantic_evidence.observed_domain_axes`,
+      );
+      if (new Set(observedDomainAxes).size !== observedDomainAxes.length
+        || observedDomainAxes.some((axis) => !WRITER_DOMAIN_AXES.includes(axis))) {
+        fail(`${senseLabel}.semantic_evidence.observed_domain_axes contains an unsupported or duplicate domain`, 'LEXICAL_SEMANTIC_BINDING');
+      }
+      const derivedDomainAxes = inspectWriterDomainEvidence(sense.gloss).axes;
+      if (JSON.stringify(observedDomainAxes) !== JSON.stringify(derivedDomainAxes)) {
+        fail(
+          `${senseLabel}.semantic_evidence.observed_domain_axes does not bind the domains observed in the gloss`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      const domainEvidence = requireArray(
+        semanticEvidence.domain_evidence,
+        `${senseLabel}.semantic_evidence.domain_evidence`,
+      );
+      if (JSON.stringify(domainEvidence) !== JSON.stringify(inspectWriterDomainEvidence(sense.gloss).matches)) {
+        fail(
+          `${senseLabel}.semantic_evidence.domain_evidence does not bind the reviewed gloss`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      const connectorObservations = requireArray(
+        semanticEvidence.connector_observations,
+        `${senseLabel}.semantic_evidence.connector_observations`,
+      );
+      if (JSON.stringify(connectorObservations) !== JSON.stringify(inspectGlossConnectors(sense.gloss))) {
+        fail(
+          `${senseLabel}.semantic_evidence.connector_observations does not bind the reviewed gloss`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      requireString(semanticEvidence.rationale, `${senseLabel}.semantic_evidence.rationale`);
+      requireEnum(
+        semanticEvidence.boundary_decision,
+        ['atomic', 'split', 'coordinated'],
+        `${senseLabel}.semantic_evidence.boundary_decision`,
+      );
+      if (record.senses.length === 1 && derivedDomainAxes.length > 1
+        && semanticEvidence.boundary_decision !== 'coordinated') {
+        fail(
+          `${senseLabel} has multiple writer domains in one sense; the semantic review must split or explicitly justify a coordinated domain`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      if (record.senses.length > 1
+        && !['split', 'coordinated'].includes(semanticEvidence.boundary_decision)) {
+        fail(`${senseLabel} belongs to a multi-sense record but is not marked split/coordinated`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+      }
     }
   }
 
@@ -579,6 +692,7 @@ export function validateLexicalSemanticReview(review, {
 
 export const WRITER_DOMAIN_POLICY = Object.freeze({
   ruleset_version: LEXICAL_QUALITY_RULESET_VERSION,
+  domain_axes: WRITER_DOMAIN_AXES,
   domain_terms: WRITER_DOMAIN_TERMS,
   common_domain_pairs: [...COMMON_DOMAIN_PAIRS].sort(),
   disjunctive_connector_behavior: 'block distinct writer domains unless same/common/contextual domain is observable',

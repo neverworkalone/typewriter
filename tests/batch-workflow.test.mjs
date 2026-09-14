@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -22,6 +23,7 @@ import {
   DEFAULT_INVENTORY_PATH,
   readTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
+import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
 
 function createManifest() {
   return {
@@ -40,6 +42,7 @@ function createManifest() {
       status: 'complete',
       reviewer: 'fixture-editor',
       completed_at: '2026-09-07T01:00:00Z',
+      semantic_audit_sha256: '0'.repeat(64),
     },
     records: [
       {
@@ -108,18 +111,19 @@ function createStagedRecords() {
 
 async function createFixture() {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-batch-'));
-  const manifestPath = path.join(directory, 'batch.json');
-  const stagedRecordsPath = path.join(directory, 'reviewed.jsonl');
-  await writeFile(manifestPath, `${JSON.stringify(createManifest(), null, 2)}\n`, 'utf8');
-  await writeFile(
-    stagedRecordsPath,
-    `${createStagedRecords().map((record) => JSON.stringify(record)).join('\n')}\n`,
-    'utf8',
-  );
+  const manifest = createManifest();
+  const records = createStagedRecords();
+  const { manifestPath, stagedRecordsPath, semanticAuditPath } = await writeFixtureFiles({
+    directory,
+    manifest,
+    records,
+    canonicalDirectory: FIXTURE_CANONICAL_DIRECTORY,
+  });
   return {
     directory,
     manifestPath,
     stagedRecordsPath,
+    semanticAuditPath,
     canonicalDirectory: FIXTURE_CANONICAL_DIRECTORY,
     inventoryPath: FIXTURE_INVENTORY_PATH,
   };
@@ -136,9 +140,27 @@ async function readStagedRecords(stagedRecordsPath) {
     .map((line) => JSON.parse(line));
 }
 
-async function writeFixtureFiles({ directory, manifest, records }) {
+async function writeFixtureFiles({
+  directory,
+  manifest,
+  records,
+  canonicalDirectory = FIXTURE_CANONICAL_DIRECTORY,
+}) {
   const manifestPath = path.join(directory, 'batch.json');
   const stagedRecordsPath = path.join(directory, 'reviewed.jsonl');
+  const semanticAuditPath = path.join(directory, 'semantic-audit.json');
+  const canonical = await readCanonicalRecords(canonicalDirectory);
+  const semanticAudit = makeSemanticAudit([
+    ...canonical.records,
+    ...records.map((record, index) => ({
+      record,
+      source: 'fixture-staged',
+      filePath: stagedRecordsPath,
+      lineNumber: index + 1,
+    })),
+  ]);
+  const semanticAuditBytes = Buffer.from(`${JSON.stringify(semanticAudit, null, 2)}\n`, 'utf8');
+  manifest.review.semantic_audit_sha256 = createHash('sha256').update(semanticAuditBytes).digest('hex');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(
     stagedRecordsPath,
@@ -147,7 +169,8 @@ async function writeFixtureFiles({ directory, manifest, records }) {
       : '',
     'utf8',
   );
-  return { manifestPath, stagedRecordsPath };
+  await writeFile(semanticAuditPath, semanticAuditBytes);
+  return { manifestPath, stagedRecordsPath, semanticAuditPath };
 }
 
 async function createIdBoundaryFixture() {
@@ -232,15 +255,18 @@ async function createIdBoundaryFixture() {
       gloss: '네 자리 식별자를 사용하는 신규 record.',
     }],
   };
-  const manifestPath = path.join(directory, 'batch.json');
-  const stagedRecordsPath = path.join(directory, 'reviewed.jsonl');
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-  await writeFile(stagedRecordsPath, `${JSON.stringify(stagedRecord)}\n`, 'utf8');
+  const { manifestPath, stagedRecordsPath, semanticAuditPath } = await writeFixtureFiles({
+    directory,
+    manifest,
+    records: [stagedRecord],
+    canonicalDirectory,
+  });
 
   return {
     directory,
     manifestPath,
     stagedRecordsPath,
+    semanticAuditPath,
     inventoryPath,
     canonicalDirectory,
   };
@@ -404,6 +430,7 @@ test('rejects incomplete review before reading or importing staged rows', async 
     const manifest = await readManifest(fixture.manifestPath);
     manifest.review.status = 'in-review';
     delete manifest.review.completed_at;
+    delete manifest.review.semantic_audit_sha256;
     await writeFile(fixture.manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
 
     await assert.rejects(
@@ -411,6 +438,35 @@ test('rejects incomplete review before reading or importing staged rows', async 
       (error) => {
         assert.ok(error instanceof BatchValidationError);
         assert.equal(error.code, 'UNVERIFIED_IMPORTABLE_DECISION');
+        return true;
+      },
+    );
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('requires a separately authored semantic audit with a manifest-bound digest', async () => {
+  const fixture = await createFixture();
+
+  try {
+    await assert.rejects(
+      validateBatch({ ...fixture, semanticAuditPath: undefined }),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError);
+        assert.equal(error.code, 'MISSING_SEMANTIC_AUDIT_PATH');
+        return true;
+      },
+    );
+
+    const manifest = await readManifest(fixture.manifestPath);
+    manifest.review.semantic_audit_sha256 = '0'.repeat(64);
+    await writeFile(fixture.manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
+    await assert.rejects(
+      validateBatch(fixture),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError);
+        assert.equal(error.code, 'SEMANTIC_AUDIT_DIGEST_MISMATCH');
         return true;
       },
     );

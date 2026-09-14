@@ -201,6 +201,7 @@ export function createWaveA2Manifest({
   timingInputSource,
   auditTimingInput,
   auditTimingInputSource,
+  semanticAuditSource,
   relationDiffSource,
 } = {}) {
   const editorial = validateA2EditorialInput({ input: editorialInput, canonicalRecords });
@@ -258,6 +259,7 @@ export function createWaveA2Manifest({
     input_sha256: editorialInputSource.sha256,
   };
   if (editorial.verified) review.reviewed_staging_sha256 = editorial.reviewed_staging_sha256;
+  if (semanticAuditSource) review.semantic_audit_sha256 = semanticAuditSource.sha256;
   if (promotionReady) review.completed_at = editorial.completed_at;
 
   const manifest = {
@@ -333,6 +335,7 @@ export async function buildWaveA2Manifest({
   timingInputPath = DEFAULT_TIMING_INPUT_PATH,
   auditTimingInputPath = DEFAULT_AUDIT_TIMING_INPUT_PATH,
   stagedRecordsPath,
+  semanticAuditPath,
   outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
   const [editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, relationDiffSource, canonical] = await Promise.all([
@@ -355,6 +358,15 @@ export async function buildWaveA2Manifest({
     missing.code = 'MISSING_A2_STAGED_PATH';
     throw missing;
   }
+  if (editorialInputSource.value.verified && !semanticAuditPath) {
+    const missing = new Error('verified A2 promotion requires an external --semantic-audit prospective semantic audit');
+    missing.code = 'MISSING_A2_SEMANTIC_AUDIT_PATH';
+    throw missing;
+  }
+  if (semanticAuditPath) assertExternalStagingPath(semanticAuditPath);
+  const semanticAuditSource = semanticAuditPath
+    ? await readJsonSource(semanticAuditPath, 'Wave A2 prospective semantic audit')
+    : null;
   const staged = stagedRecordsPath
     ? await readCanonicalRecords(stagedRecordsPath)
     : { records: [] };
@@ -394,6 +406,12 @@ export async function buildWaveA2Manifest({
       path: path.relative(repositoryDirectory, auditTimingInputPath),
       sha256: auditTimingInputSource.sha256,
     },
+    semanticAuditSource: semanticAuditSource
+      ? {
+        path: path.relative(repositoryDirectory, semanticAuditPath),
+        sha256: semanticAuditSource.sha256,
+      }
+      : undefined,
     relationDiffSource: {
       path: path.relative(repositoryDirectory, relationDiffPath),
       sha256: relationDiffSource.sha256,
@@ -429,6 +447,7 @@ if (isMainModule) {
     auditInputPath: args.audit ?? DEFAULT_AUDIT_INPUT_PATH,
     timingInputPath: args.timing ?? DEFAULT_TIMING_INPUT_PATH,
     auditTimingInputPath: args['audit-timing'] ?? DEFAULT_AUDIT_TIMING_INPUT_PATH,
+    semanticAuditPath: args['semantic-audit'],
     outputPath: args.output ?? DEFAULT_OUTPUT_PATH,
   })
     .then((manifest) => {

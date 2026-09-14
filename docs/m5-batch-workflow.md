@@ -40,6 +40,8 @@ A manifest records:
 - generator `model_id`, `tool_version`, `prompt_version`, and an optional SHA-256
   digest of an external draft artifact;
 - `generated_at`, review status, reviewer, and completion time;
+- the SHA-256 digest of the separately authored complete semantic-audit
+  envelope;
 - one decision per reviewed inventory target or reference-closure record; and
 - the final `canonical_id` for every `included` or `corrected` record.
 
@@ -71,7 +73,8 @@ outside the repository:
 ```sh
 npm run batch:validate -- \
   --manifest=/tmp/typewriter-m5-2/batch.json \
-  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl
+  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
+  --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json
 ```
 
 The gate checks, before any canonical import:
@@ -86,7 +89,9 @@ The gate checks, before any canonical import:
 6. duplicate record IDs, lemmas, search forms, and canonical collisions;
 7. record roles, relation targets, target senses, action target parts of speech,
    and reference closure; and
-8. the existing canonical dataset plus staged rows as one dataset, without
+8. the separately authored semantic-audit envelope is present, digest-bound to
+   the manifest, and covers the existing canonical dataset plus staged rows;
+9. the existing canonical dataset plus staged rows as one dataset, without
    modifying the existing canonical directory.
 
 After the gate passes, an editor may create an external import artifact:
@@ -95,6 +100,7 @@ After the gate passes, an editor may create an external import artifact:
 npm run batch:import -- \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
+  --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json \
   --output=/tmp/typewriter-m5-2/canonical-import.jsonl
 ```
 

@@ -73,7 +73,7 @@ digest-bound manifest/promotion evidence만 둔다.
 | relation diff | `8cafe8b3ad3b2013c43d43ce42dbd32da1cdd62e29e167c30f8c48178bcd74cf` |
 | verification | `3ce52a79b081116f4e0f1ad4f68ddacdb9d05e2fe746399953db455b01cd8145` |
 | reviewed import | `12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691` |
-| #115 authorization | `944d86adad9ad3c340aa57ea88b9ed6cc21a9379e4473edc2cd2213b33ff7d88` |
+| #115 authorization | `4091aff47c01b4451b9239ea3f1b0068110431c29268e713abc9bf1bd3004dbb` |
 | base inventory | `2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947` |
 
 Committed evidence:

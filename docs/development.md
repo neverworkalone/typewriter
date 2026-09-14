@@ -121,10 +121,12 @@ before a deliberate canonical import:
 ```sh
 npm run batch:validate -- \
   --manifest=/tmp/typewriter-m5-2/batch.json \
-  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl
+  --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
+  --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json
 npm run batch:import -- \
   --manifest=/tmp/typewriter-m5-2/batch.json \
   --staged-records=/tmp/typewriter-m5-2/reviewed.jsonl \
+  --semantic-audit=/tmp/typewriter-m5-2/semantic-audit.json \
   --output=/tmp/typewriter-m5-2/canonical-import.jsonl
 
 npm run batch:process:check

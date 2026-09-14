@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,6 +11,7 @@ import { main as recordWaveBEditorial } from '../scripts/batch/record-m5-10-wave
 import {
   DEFAULT_AUDIT_TIMING_INPUT_PATH,
   DEFAULT_AUDIT_INPUT_PATH,
+  DEFAULT_BASE_CANONICAL_DIRECTORY,
   DEFAULT_METRICS_PATH,
   DEFAULT_OUTPUT_PATH,
   DEFAULT_REPORT_PATH,
@@ -24,11 +26,12 @@ import {
   validateWaveBChronology,
   validateWaveBReport,
   validateWaveBSemanticRegression,
-  validateWaveB,
+  validateWaveB as validateWaveBContract,
   validateWaveBTimingInput,
 } from '../scripts/batch/validate-m5-10-wave-b.mjs';
 import { evaluateExpansionGate } from '../scripts/batch/validate-m5-8-process.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
+import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_SHARD_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-b.jsonl');
@@ -42,7 +45,39 @@ async function makeStagingDirectory() {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-m5-10-wave-b-'));
   const stagingPath = path.join(directory, 'reviewed.jsonl');
   await writeFile(stagingPath, await readFile(CURRENT_SHARD_PATH), 'utf8');
-  return { directory, stagingPath };
+  const baseCanonical = await readCanonicalRecords(DEFAULT_BASE_CANONICAL_DIRECTORY);
+  const staged = await readCanonicalRecords(stagingPath);
+  const semanticAuditPath = path.join(directory, 'semantic-audit.json');
+  const semanticAudit = await writeSemanticAuditFixture(
+    semanticAuditPath,
+    [...baseCanonical.records, ...staged.records],
+    { artifactId: 'm5-10-wave-b-test-semantic-audit' },
+  );
+  const manifestPath = path.join(directory, 'manifest.json');
+  const manifest = await readJson(DEFAULT_OUTPUT_PATH);
+  manifest.review.semantic_audit_sha256 = semanticAudit.sha256;
+  const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  await writeFile(manifestPath, manifestBytes);
+  const stagePath = path.join(directory, 'stage.json');
+  const stage = await readJson(DEFAULT_STAGE_PATH);
+  stage.source.manifest = path.relative(path.resolve('.'), manifestPath);
+  stage.source.manifest_sha256 = createHash('sha256').update(manifestBytes).digest('hex');
+  await writeFile(stagePath, `${JSON.stringify(stage, null, 2)}\n`, 'utf8');
+  const fixture = { directory, stagingPath, semanticAuditPath, manifestPath, stagePath };
+  waveBFixtures.set(stagingPath, fixture);
+  return fixture;
+}
+
+const waveBFixtures = new Map();
+
+async function validateWaveB(options = {}) {
+  const fixture = waveBFixtures.get(options.stagedRecordsPath);
+  return validateWaveBContract({
+    ...options,
+    manifestPath: options.manifestPath ?? fixture?.manifestPath,
+    stagePath: options.stagePath ?? fixture?.stagePath,
+    semanticAuditPath: options.semanticAuditPath ?? fixture?.semanticAuditPath,
+  });
 }
 
 test('M5-10 Wave B validates the independent +150 result and holds the fixed cost gate', async () => {
