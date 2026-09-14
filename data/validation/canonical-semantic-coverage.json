@@ -6,10 +6,10 @@
   "lexical_quality_ruleset_version": "lexical-quality-v1",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4"
+    "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f"
   },
   "record_count": 1320,
-  "sense_count": 1588,
+  "sense_count": 1579,
   "records": [
     {
       "record_id": "r001",
@@ -43960,19 +43960,30 @@
     },
     {
       "record_id": "w1159",
-      "record_sha256": "4397a4d78beb0ebd9ab38e407f63d2989e1f934b52225125a96b70c7f0fabf58",
+      "record_sha256": "6c102b0785316fe0397d23f96fc027d325cb3ac97898a71ed5d460df448aaf2d",
       "lemma": "가위",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1159-s1",
-          "sense_sha256": "d4f256a09397d47990257919be37ab9b52086b3d4c59964b93910fc434f6fb1d",
+          "sense_sha256": "02ae4fe1fde9a2c51fa5a75bc7e8c970d2053b285bc4344eb327b2c12d27c103",
           "content": {
-            "gloss_sha256": "43215d0e674e8e7a6fc6df2222a1b3943b7d3510c764483f6336c6c9c376acc2",
+            "gloss_sha256": "e28b47a6b247f06dee3aabf072f1b74f89a8c66eae394182c548fce80124247a",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 1,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "종이나 천 따위를 자르는 도구"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 1,
@@ -43980,21 +43991,6 @@
             "relation_fingerprints": [
               "4bffc4f3939020c2d2b82a465fe85d7b600e2f3b00696bea4003b08356136ab2"
             ]
-          }
-        },
-        {
-          "sense_id": "w1159-s2",
-          "sense_sha256": "cd4dd6bbc4733e4196537a5d838c014cbf3d79715281d243c8e70903b903d712",
-          "content": {
-            "gloss_sha256": "abc56627dddf00d4e9345da2e094db3abd885ea4cbbb8b5f203533f53845d5c7",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "cf91b77ff7d933e8bfe9050ce3e3bc835868a2c796f63bb6d30296fc380609b7",
-            "relation_fingerprints": []
           }
         }
       ]
@@ -44130,38 +44126,34 @@
     },
     {
       "record_id": "w1165",
-      "record_sha256": "a226e5464f56e95675841de526403a020dda9b1ed402cc6468438a4f6c8ab8e8",
+      "record_sha256": "153d0dab0399cc1a382324ff3f663a85fc5702597da3d2879316d4d11be0ed3a",
       "lemma": "경첩",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1165-s1",
-          "sense_sha256": "f0506164fce2caddd18fb34c66da0bd75c14bf66e745d1cb0e794708e0755f99",
+          "sense_sha256": "f20e0eedb86d5d17abd56e07cc284cd1b43ecbf4a01930dc8b38e74252bbf3bc",
           "content": {
-            "gloss_sha256": "e277c566c722f1fb78dc616b18e577c3d3f8a73314b7384d6e67303846fd1a1c",
+            "gloss_sha256": "47197e3147ee4081eb2f2b054386064f2799ccd78ced77706810c7bf09f23aeb",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 1,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "문이나 뚜껑을 여닫게 하는 쇠붙이"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "02edc0d547cbdcdc635100354bd9957649c79bd41197127354ad4432bfeb4191",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1165-s2",
-          "sense_sha256": "ceb4158262316a87f830612ee8b2333b3ba3ec09ed4fcb2ef9c11635ff5b61c9",
-          "content": {
-            "gloss_sha256": "ef70a52eb1b98c0d0af2bf5fdae0624a519094ee5c6a20e6a33d5611a693fec0",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "98250e1819e94d30657f4294a7ddc58d657053fc8c65531414ee66fe8b3dad21",
             "relation_fingerprints": []
           }
         }
@@ -44326,38 +44318,34 @@
     },
     {
       "record_id": "w1172",
-      "record_sha256": "3974c6cebf8b1b7261615a3a48f26f84d9ddacb036089a07b7489a1717b7d0e5",
+      "record_sha256": "69d787cbbfbb291a718998bd8e071514f4d6aadf6e8840e60abe32ca0bd5d114",
       "lemma": "국자",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1172-s1",
-          "sense_sha256": "b751f4ddd5a2592baea5aa32046a73aa58dcb8cd22e8bb371f273a488a054b2f",
+          "sense_sha256": "9296b705645780ef8e73061a75f08aeda8f86901968cba442ed85f8636691d6d",
           "content": {
-            "gloss_sha256": "19ed1f2f36d75e01abbaeb293cd5a21cf65f7b1274ab3b282b98836a64dfdc2b",
+            "gloss_sha256": "e4467151be0486d1179d0513872a9632023aece05081bfdb27055b038e6e2357",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 2,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "국물이나 물을 뜨는 자루 달린 도구"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "a8c35fb626b90bfa07062b989e2fc226c743956cbbeb8aee5094aca839648735",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1172-s2",
-          "sense_sha256": "63e2edf593c8428fd50a7b26f896f75cb9b91988cfac272f90297f89aba3c014",
-          "content": {
-            "gloss_sha256": "ed938b80c03d6337bbf95e4eca4fed0167e12f63d4ee0ae2a0463f445fc7eeb2",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "b391ab7bd3f94e5d11d715c8a751d332c2e4511ab9868fdc9233fcfff9fae099",
             "relation_fingerprints": []
           }
         }
@@ -44413,38 +44401,34 @@
     },
     {
       "record_id": "w1175",
-      "record_sha256": "792d44a63733e23efd577d5f5fc71bcebd41a401b46fb7d532f2c7c817c044d8",
+      "record_sha256": "f3b413fbb297cf061e45d864fb9b3016f9bbed033b3d3c474c512c8a1f3748c6",
       "lemma": "낫",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1175-s1",
-          "sense_sha256": "f2f17209031072e7838e3cd0054eadb6cbba05e369eef199b13a3c2303e20e58",
+          "sense_sha256": "21c244bf9a632f48ec5eec1c75b047db185f4c1f348ea14cdfc23bb03ee7a834",
           "content": {
-            "gloss_sha256": "1eda03c7687ec91c1cd334ce0d812b7b3f0eb565ef8ae045b3ee87c471179433",
+            "gloss_sha256": "78c9f4f3c762208beb6b999e16e3227337d141890790737f2d913f42c5d5f838",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 1,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "풀이나 곡식을 베는 농기구"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "3ed752568b21cb4c00f6263868e1ec32f36105af46f205195a33d3f26bd30b4e",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1175-s2",
-          "sense_sha256": "3b206c7a9dcef228876bfd60c66af05ac54fc300cc96454922f4927d6266a8b5",
-          "content": {
-            "gloss_sha256": "a304a6ec65bdd1c25fb50a4ec932bd7e15a7e850ebb2552800ad9179b6aad818",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "19f29ed12b5c1992244ea99a5c0c50306410830448c19f5384f2f827cc9da7e2",
             "relation_fingerprints": []
           }
         }
@@ -44812,38 +44796,34 @@
     },
     {
       "record_id": "w1190",
-      "record_sha256": "e19f213c4c482c6d0a3288079275279e69e6cd7a20b3ec7e5b50584f59b25f4e",
+      "record_sha256": "6e339b023d8b84c64f53eeef11e84f479d1ecdf066a9e018975350f8b92568a5",
       "lemma": "방석",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1190-s1",
-          "sense_sha256": "d5b531fd6dea713e8b8a9135d5f450cad2998a7d71c667cef13fe633871b5823",
+          "sense_sha256": "e6605c0e2503fca76ecc388b408ed50c9c70fff357e6a44f810f55f819719418",
           "content": {
-            "gloss_sha256": "b4122361ad8b911320d3e67a5260cf58dca37514594aac8ab0bac37bb29c5159",
+            "gloss_sha256": "d9a2a4633954592377a14ffdc0d718830d28c252c207f503baf92ca2e87f8a01",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 2,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "바닥이나 의자에 까는 작은 깔개"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "9c4a485320cfc73bdfca6b9289174a9c0e0817306428aa34889f3f6319a9d8cb",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1190-s2",
-          "sense_sha256": "eac37c504091ba5f6399b68606219e668c8aed6c3e7ffdb3ae7dd7497fdb3ab2",
-          "content": {
-            "gloss_sha256": "793c6039394d5cf82ae91f31360b78541b4d3fbc37dfc1b9368ef112ed3cd7ab",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "317bd87e411c44b3543e2bd6ac0f3ab1f67802a06a67850bd50d1dd0808e5712",
             "relation_fingerprints": []
           }
         }
@@ -45004,38 +44984,34 @@
     },
     {
       "record_id": "w1197",
-      "record_sha256": "eaaa91fb0c114f0f951f1336edb5b28e1fb76bc2be489980a692ba2dfd0da9a2",
+      "record_sha256": "0a58514a7fd58c1f67f2f781ccacce84d63cd89340cab074dcc9447eb3be650e",
       "lemma": "액자",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1197-s1",
-          "sense_sha256": "a7ab8626b5ced3013be3399fa9c0c1a82688f326bb22379c462d6c0395a11474",
+          "sense_sha256": "e97945f05d9aab2c7bcf9b080b4b8bccfe3c6df310eb081a47cbe18666f79c47",
           "content": {
-            "gloss_sha256": "bbfeee640be2245878a90d344acbbca772c74e8661db55c792fb7646ddad1644",
+            "gloss_sha256": "73f3dc09d9cdc181bdc579251644551ec54409da5e4bc67c715df7f6cd4ec369",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 2,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "그림이나 사진을 끼워 두는 틀"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "c74215e565039ee9f63852d5762348830238d049cb60c73b5ecc0f3af38922e7",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1197-s2",
-          "sense_sha256": "e42489540814e427ce99671845aa795fda83ca26dff7ade0fd959ca3ed30bfeb",
-          "content": {
-            "gloss_sha256": "b08241460b877814f552f0ad29917906ed202a4994bacdb97b035a5745a802fb",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "02097afc569b818bb37db25be48bd845f1d5b49df00a0c827a6f91783c88160e",
             "relation_fingerprints": []
           }
         }
@@ -45550,16 +45526,16 @@
     },
     {
       "record_id": "w1217",
-      "record_sha256": "102bc055ec929c480b83c397dd503f0e5097f30a0ee2fee750f11d6f786ee518",
+      "record_sha256": "9ef6f59a01fd458005d02ba1d364973acb5cfb35f9b151768ba05581017b27c0",
       "lemma": "갈퀴",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1217-s1",
-          "sense_sha256": "72b32e3995d5570945a295ca4f4693e9ff47688b1e82eff0d964aaaeff160bcd",
+          "sense_sha256": "fb95e1a590b35fcde0c5fb75c4b26aa88e116195eb02bcb912bd8a68cfb1a7f0",
           "content": {
-            "gloss_sha256": "efefb1dd72d99a2ede48b8ae9425191ba47310484d8850caa5530f81641f0895",
+            "gloss_sha256": "94a424f603c195e5131dddd4df33bd0b2d573f654e306b63febd90c36a850bb7",
             "observed_domain_axes": [],
             "domain_evidence": [],
             "connector_observations": [],
@@ -45567,21 +45543,6 @@
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "06ab9d451bd6bdd0697297945d7b776b9ef8da62bf92a530a2e07c321c083174",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1217-s2",
-          "sense_sha256": "c9ed687fba4cdd5af5edeac1451f75f6b27393cc5053fce4861b595ae2518dbb",
-          "content": {
-            "gloss_sha256": "8296318d3dcdefc87274e3ed5a0a7ed2efb5d7660bf8f3e1dc45ed03a46f2dbb",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "e30cd7d9466ec975b351a5570bf828ec9a361eb8971363a067cd00f0f4e5b33f",
             "relation_fingerprints": []
           }
         }
@@ -45969,16 +45930,16 @@
     },
     {
       "record_id": "w1230",
-      "record_sha256": "e5cd51bac891bacaa274501983cfc3e7d5ec4943e143bcf7835675ca7d9c4d81",
+      "record_sha256": "4fc191ea7f50442a9de4602ec09635f25ce2e0f878c6a58a9886a6d089c3cc1b",
       "lemma": "공감",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1230-s1",
-          "sense_sha256": "8909c7ae2c39a0f617304b171861981e671ba8c1b44cc58266dd1d700fc02696",
+          "sense_sha256": "8f954fc19e870597d1c61fc7289e3e9a504935c7e7ec796980a0fc6520b6d657",
           "content": {
-            "gloss_sha256": "101206b8ccaf563ab9aba357facf23c348ad7ae952a3ff671f956baf780b01f4",
+            "gloss_sha256": "52ed372288487024cd181db1fb74b051ec9b00be1303a4e3d0e42a3cafffec0e",
             "observed_domain_axes": [
               "affective"
             ],
@@ -45987,29 +45948,25 @@
                 "axis": "affective",
                 "term": "마음",
                 "index": 3,
-                "excerpt": "남의 마음을 함께 느끼는 일"
+                "excerpt": "남의 마음이나 처지를 함께 느끼는 일"
               }
             ],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 5,
+                "left_axis": "affective",
+                "left_term": "마음",
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "남의 마음이나 처지를 함께 느끼는 일"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "c24f27bccab4c7b5d6ecb5d5859f8549051ecc88b847495865e9826dd3b70aae",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1230-s2",
-          "sense_sha256": "fc3fed7019e69f3c5b1c327b2c22d0cbcfa564d5f25fde8b25c14e76ec7e3b8c",
-          "content": {
-            "gloss_sha256": "c68ef248c9e5f87b5fb369db0e07e8078eed1db84973d208af446a42da07043d",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "e341fcf0429bd98593740241cf079200cbc4f42b2f6ee55c51590465185c4e50",
             "relation_fingerprints": []
           }
         }
@@ -47039,38 +46996,34 @@
     },
     {
       "record_id": "w1266",
-      "record_sha256": "ec5c8d111bb871d647dd16981450e2a181e6512ab045e20dadd5e87f140a9d64",
+      "record_sha256": "4873a01aef4ccd59ae82e3c83f736ae29e4d4dcf77da02457c02cd3152a63b3d",
       "lemma": "주제",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1266-s1",
-          "sense_sha256": "70f5dfd9fd91562056a65a316e6062be5a2ba30108be3088ede60a7ae38deefa",
+          "sense_sha256": "9ca20f045440fd632f63ca26c8786c86fa77f25498dd65e037c9a52c30586137",
           "content": {
-            "gloss_sha256": "032df0a1ac1f5da7b3c0161ce9656abe0a743036fdef8877766dfb301b67cd1f",
+            "gloss_sha256": "c3796a7388d09f329e22be22282d819342087b2a791a0f5a966059b32b912b8f",
             "observed_domain_axes": [],
             "domain_evidence": [],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 1,
+                "left_axis": null,
+                "left_term": null,
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "글이나 말에서 중심이 되는 생각"
+              }
+            ],
             "pos": "noun",
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "6574f4bc9e59f73142f125473a0e365c92478b8dfac22979db6686b63549d17d",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1266-s2",
-          "sense_sha256": "6a74e96898b70a61af7b6a412a2074fad625fa390a69047e139930a2eb30f0a6",
-          "content": {
-            "gloss_sha256": "2332667ca2b2dc5168043fa368d601a732de8e8d4cc0281e80d8c0a6958bd827",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "bf810e4146d1c35658752c3a5d091e1c44e75bd1c7a1fe1a79598863304aa4d9",
             "relation_fingerprints": []
           }
         }

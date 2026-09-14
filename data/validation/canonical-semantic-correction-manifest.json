@@ -1,0 +1,368 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-correction-manifest-v1",
+  "scope": "complete-canonical",
+  "authoring_mode": "separately-authored",
+  "decision_source_id": "canonical-semantic-decision-source-20260914",
+  "source_revision": "post-merge review of PR #123 for issue #121",
+  "previous_manifest_sha256": "6bc57bfb970923d565d26660a195c1cdacea390428561408bdf4245de7645869",
+  "previous_correction_source_sha256": "14cb706c5e41754640002e408097dab95fbad70b431f51dc485c02c488a8056c",
+  "base_canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
+  "prospective_canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
+  "base_outputs": {
+    "canonical_import_sha256": "f0f72653898b88d66a56de7ce77cc145fd067ffe88b896e30356ff06ab6be182",
+    "inventory_sha256": "5065a518b7688e2950ed54908ba27184d3a858525580caec4926c31a47863273",
+    "canonical_directory_sha256": "8de05a9361cf19fd0dfad7df964cd30d6022e1478c94cb21e3a350a32a03965f",
+    "semantic_audit_sha256": "7a7b12db7a009fe78f9ff0680646e1c53f6d54c5a77043454b60e417a716d5ff"
+  },
+  "prospective_outputs": {
+    "canonical_import_sha256": "8d3d51bae63503b209e1a7713e8a67fc74616ca03cd80f135a37a0247cf763ed",
+    "inventory_sha256": "f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67",
+    "canonical_directory_sha256": "122af925cac03ac2782346a534a44602d713986c34924d8a439786a4591cb3e3",
+    "semantic_audit_sha256": "73d818153c3548ca01675195b072e696b6972f3c2818d421c67bd661b61530d4"
+  },
+  "corrections": [
+    {
+      "record_id": "w1159",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "4397a4d78beb0ebd9ab38e407f63d2989e1f934b52225125a96b70c7f0fabf58",
+      "after_record_sha256": "6c102b0785316fe0397d23f96fc027d325cb3ac97898a71ed5d460df448aaf2d",
+      "removed_sense_ids": ["w1159-s2"],
+      "rationale": "w1159's paper and cloth glosses describe the same cutting tool; the reviewed canonical meaning now covers both materials in one sense.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1159:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1159-s1"],
+          "evidence": [{"sense_id": "w1159-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1159 w1159-s1 correction review covers gloss e28b47a6b247 and the one cutting-tool meaning.", "gloss_sha256": "e28b47a6b247f06dee3aabf072f1b74f89a8c66eae394182c548fce80124247a", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1159 boundary merge was explicitly resolved: the paper and cloth uses are one cutting-tool sense."
+        },
+        "senses": [{
+          "sense_id": "w1159-s1",
+          "sense_boundary_rationale": "w1159 w1159-s1 is retained as the one corrected atomic cutting-tool sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1159 w1159-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1159 w1159-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "relations-reviewed", "rationale": "w1159 w1159-s1 relation tuples were explicitly reviewed after the correction."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 1, "rationale": "w1159 w1159-s1 corrected gloss e28b47a6b247 was reviewed with noun, entry, and one relation tuple."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1165",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "a226e5464f56e95675841de526403a020dda9b1ed402cc6468438a4f6c8ab8e8",
+      "after_record_sha256": "153d0dab0399cc1a382324ff3f663a85fc5702597da3d2879316d4d11be0ed3a",
+      "removed_sense_ids": ["w1165-s2"],
+      "rationale": "w1165's door and lid glosses describe the same hinge function; the reviewed canonical meaning now covers both uses in one sense.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1165:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1165-s1"],
+          "evidence": [{"sense_id": "w1165-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1165 w1165-s1 correction review covers gloss 47197e3147ee and the one hinge meaning.", "gloss_sha256": "47197e3147ee4081eb2f2b054386064f2799ccd78ced77706810c7bf09f23aeb", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1165 boundary merge was explicitly resolved: door and lid are one hinge use."
+        },
+        "senses": [{
+          "sense_id": "w1165-s1",
+          "sense_boundary_rationale": "w1165 w1165-s1 is retained as the one corrected atomic hinge sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1165 w1165-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1165 w1165-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1165 w1165-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1165 w1165-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1165 w1165-s1 corrected gloss 47197e3147ee was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1172",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "3974c6cebf8b1b7261615a3a48f26f84d9ddacb036089a07b7489a1717b7d0e5",
+      "after_record_sha256": "69d787cbbfbb291a718998bd8e071514f4d6aadf6e8840e60abe32ca0bd5d114",
+      "removed_sense_ids": ["w1172-s2"],
+      "rationale": "w1172's liquid and handle wording describes one ladle; the reviewed canonical meaning now covers the use and physical form together.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1172:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1172-s1"],
+          "evidence": [{"sense_id": "w1172-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1172 w1172-s1 correction review covers gloss e4467151be04 and the one ladle meaning.", "gloss_sha256": "e4467151be0486d1179d0513872a9632023aece05081bfdb27055b038e6e2357", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1172 boundary merge was explicitly resolved: the liquid use and handled form describe one ladle."
+        },
+        "senses": [{
+          "sense_id": "w1172-s1",
+          "sense_boundary_rationale": "w1172 w1172-s1 is retained as the one corrected atomic ladle sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1172 w1172-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1172 w1172-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1172 w1172-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1172 w1172-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1172 w1172-s1 corrected gloss e4467151be04 was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1175",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "792d44a63733e23efd577d5f5fc71bcebd41a401b46fb7d532f2c7c817c044d8",
+      "after_record_sha256": "f3b413fbb297cf061e45d864fb9b3016f9bbed033b3d3c474c512c8a1f3748c6",
+      "removed_sense_ids": ["w1175-s2"],
+      "rationale": "w1175's grass and grain glosses describe the same sickle; the reviewed canonical meaning now covers both materials in one sense.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1175:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1175-s1"],
+          "evidence": [{"sense_id": "w1175-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1175 w1175-s1 correction review covers gloss 78c9f4f3c762 and the one sickle meaning.", "gloss_sha256": "78c9f4f3c762208beb6b999e16e3227337d141890790737f2d913f42c5d5f838", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1175 boundary merge was explicitly resolved: grass and grain are one sickle use."
+        },
+        "senses": [{
+          "sense_id": "w1175-s1",
+          "sense_boundary_rationale": "w1175 w1175-s1 is retained as the one corrected atomic sickle sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1175 w1175-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1175 w1175-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1175 w1175-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1175 w1175-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1175 w1175-s1 corrected gloss 78c9f4f3c762 was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1190",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "e19f213c4c482c6d0a3288079275279e69e6cd7a20b3ec7e5b50584f59b25f4e",
+      "after_record_sha256": "6e339b023d8b84c64f53eeef11e84f479d1ecdf066a9e018975350f8b92568a5",
+      "removed_sense_ids": ["w1190-s2"],
+      "rationale": "w1190's first gloss was malformed and its two rows only separated floor from chair use; the reviewed canonical meaning is a complete single gloss.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1190:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1190-s1"],
+          "evidence": [{"sense_id": "w1190-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1190 w1190-s1 correction review covers gloss d9a2a4633954 and the one complete cushion meaning.", "gloss_sha256": "d9a2a4633954592377a14ffdc0d718830d28c252c207f503baf92ca2e87f8a01", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1190 boundary merge was explicitly resolved after correcting the malformed fragment and removing the floor/chair usage split."
+        },
+        "senses": [{
+          "sense_id": "w1190-s1",
+          "sense_boundary_rationale": "w1190 w1190-s1 is retained as the one corrected atomic cushion sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1190 w1190-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1190 w1190-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1190 w1190-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1190 w1190-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1190 w1190-s1 corrected gloss d9a2a4633954 was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1197",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "eaaa91fb0c114f0f951f1336edb5b28e1fb76bc2be489980a692ba2dfd0da9a2",
+      "after_record_sha256": "0a58514a7fd58c1f67f2f781ccacce84d63cd89340cab074dcc9447eb3be650e",
+      "removed_sense_ids": ["w1197-s2"],
+      "rationale": "w1197's first gloss was malformed and the two rows only separated picture from photograph use; the reviewed canonical meaning is one complete frame gloss.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1197:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1197-s1"],
+          "evidence": [{"sense_id": "w1197-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1197 w1197-s1 correction review covers gloss 73f3dc09d9cd and the one picture-frame meaning.", "gloss_sha256": "73f3dc09d9cdc181bdc579251644551ec54409da5e4bc67c715df7f6cd4ec369", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1197 boundary merge was explicitly resolved after correcting the malformed fragment and removing the picture/photograph usage split."
+        },
+        "senses": [{
+          "sense_id": "w1197-s1",
+          "sense_boundary_rationale": "w1197 w1197-s1 is retained as the one corrected atomic picture-frame sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1197 w1197-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1197 w1197-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1197 w1197-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1197 w1197-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1197 w1197-s1 corrected gloss 73f3dc09d9cd was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1217",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "102bc055ec929c480b83c397dd503f0e5097f30a0ee2fee750f11d6f786ee518",
+      "after_record_sha256": "9ef6f59a01fd458005d02ba1d364973acb5cfb35f9b151768ba05581017b27c0",
+      "removed_sense_ids": ["w1217-s2"],
+      "rationale": "w1217's soil and leaf glosses describe the same rake; the reviewed canonical meaning now covers both uses in one sense.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1217:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1217-s1"],
+          "evidence": [{"sense_id": "w1217-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1217 w1217-s1 correction review covers gloss 94a424f603c1 and the one rake meaning.", "gloss_sha256": "94a424f603c195e5131dddd4df33bd0b2d573f654e306b63febd90c36a850bb7", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1217 boundary merge was explicitly resolved: soil and leaf uses are one rake use."
+        },
+        "senses": [{
+          "sense_id": "w1217-s1",
+          "sense_boundary_rationale": "w1217 w1217-s1 is retained as the one corrected atomic rake sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1217 w1217-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1217 w1217-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1217 w1217-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1217 w1217-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1217 w1217-s1 corrected gloss 94a424f603c1 was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1230",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "e5cd51bac891bacaa274501983cfc3e7d5ec4943e143bcf7835675ca7d9c4d81",
+      "after_record_sha256": "4fc191ea7f50442a9de4602ec09635f25ce2e0f878c6a58a9886a6d089c3cc1b",
+      "removed_sense_ids": ["w1230-s2"],
+      "rationale": "w1230's two glosses are overlapping paraphrases of one empathetic act; the reviewed canonical meaning combines the shared writer-facing scope.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1230:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1230-s1"],
+          "evidence": [{"sense_id": "w1230-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1230 w1230-s1 correction review covers gloss 52ed37228848 and the one empathy meaning.", "gloss_sha256": "52ed372288487024cd181db1fb74b051ec9b00be1303a4e3d0e42a3cafffec0e", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1230 boundary merge was explicitly resolved: the two glosses are overlapping paraphrases of one empathetic act."
+        },
+        "senses": [{
+          "sense_id": "w1230-s1",
+          "sense_boundary_rationale": "w1230 w1230-s1 is retained as the one corrected atomic empathy sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1230 w1230-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1230 w1230-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1230 w1230-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1230 w1230-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": ["affective"], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1230 w1230-s1 corrected gloss 52ed37228848 was reviewed with affective domain, noun, entry, and no relation tuples."}
+        }]
+      }
+    },
+    {
+      "record_id": "w1266",
+      "decision": "corrected",
+      "boundary_decision": "merge",
+      "before_record_sha256": "ec5c8d111bb871d647dd16981450e2a181e6512ab045e20dadd5e87f140a9d64",
+      "after_record_sha256": "4873a01aef4ccd59ae82e3c83f736ae29e4d4dcf77da02457c02cd3152a63b3d",
+      "removed_sense_ids": ["w1266-s2"],
+      "rationale": "w1266's writing and speech glosses only vary by communication context; the reviewed canonical meaning covers both contexts in one sense.",
+      "semantic_review": {
+        "decision_source_id": "canonical-semantic-decision-source-20260914",
+        "boundary": {
+          "review_id": "canonical-semantic-correction-20260915:w1266:boundary",
+          "method": "gloss-and-usage-pairwise-v2",
+          "independence": {
+            "independent_of_sense_count": true,
+            "source": "separately-authored-boundary-decision-source",
+            "decision_source_version": "lexical-semantic-boundary-decisions-v1",
+            "decision_source_id": "canonical-semantic-decision-source-20260914"
+          },
+          "decision": "retain",
+          "action": "retain",
+          "classification": "atomic",
+          "boundary_decision": "atomic",
+          "reviewed_sense_ids": ["w1266-s1"],
+          "evidence": [{"sense_id": "w1266-s1", "evidence_basis": "explicit corrected-gloss and writer-facing usage decision", "rationale": "w1266 w1266-s1 correction review covers gloss c3796a7388d0 and the one topic meaning.", "gloss_sha256": "c3796a7388d09f329e22be22282d819342087b2a791a0f5a966059b32b912b8f", "decision_source_id": "canonical-semantic-decision-source-20260914"}],
+          "pairwise": [],
+          "rationale": "w1266 boundary merge was explicitly resolved: writing and speech contexts do not establish separate senses."
+        },
+        "senses": [{
+          "sense_id": "w1266-s1",
+          "sense_boundary_rationale": "w1266 w1266-s1 is retained as the one corrected atomic topic sense.",
+          "pos": {"decision": "verified", "observed_pos": "noun", "rationale": "w1266 w1266-s1 POS was explicitly verified as noun."},
+          "expression": {"decision": "verified", "expected_record_type": "entry", "observed_record_type": "entry", "rationale": "w1266 w1266-s1 record type was explicitly verified as entry."},
+          "relation": {"decision": "no-relations", "rationale": "w1266 w1266-s1 relation tuples were explicitly reviewed and none were retained.", "no_relation_rationale": "w1266 w1266-s1 has no writer-useful relation tuple after the correction review."},
+          "review_basis": {"observed_domain_axes": [], "pos": "noun", "record_type": "entry", "relation_count": 0, "rationale": "w1266 w1266-s1 corrected gloss c3796a7388d0 was reviewed with noun, entry, and no relation tuples."}
+        }]
+      }
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import {
   auditCanonicalLexicalQuality,
   LexicalQualityError,
   inspectWriterDomainEvidence,
+  inspectGlossQuality,
   inspectGlossConnectors,
   validateLexicalSemanticReview,
   validateLexicalRecord,
@@ -43,7 +44,72 @@ test('the shared audit covers the complete current canonical dictionary', async 
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
   assert.equal(audit.record_count, 1320);
-  assert.equal(audit.sense_count, 1588);
+  assert.equal(audit.sense_count, 1579);
+});
+
+test('the shared lexical audit rejects malformed topic fragments without a record allowlist', () => {
+  const record = {
+    id: 'w9999',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w9999',
+    lemma: '형태오류',
+    search_forms: ['형태오류'],
+    senses: [{ id: 'w9999-s1', pos: 'noun', gloss: '바닥은 깔개' }],
+  };
+  const audit = auditCanonicalLexicalQuality([{ record, source: 'synthetic' }], {
+    throwOnError: false,
+  });
+  assert.equal(audit.blocking_findings[0].code, 'LEXICAL_MALFORMED_GLOSS');
+  assert.equal(audit.blocking_findings[0].sense_id, 'w9999-s1');
+  assert.equal(inspectGlossQuality('바다는 넓다').malformed_structure, false);
+});
+
+test('authored distinct and retain cannot override high-confidence usage or paraphrase frames', () => {
+  const cases = [
+    {
+      lemma: '도구용례',
+      glosses: ['종이를 자르는 도구', '천을 자르는 도구'],
+      relationship: 'usage-variant',
+    },
+    {
+      lemma: '겹침표현',
+      glosses: ['남의 마음을 함께 느끼는 일', '처지를 함께 느끼는 일'],
+      relationship: 'overlapping',
+    },
+    {
+      lemma: '문맥분할',
+      glosses: ['글에서 중심이 되는 생각', '말에서 중심이 되는 생각'],
+      relationship: 'usage-variant',
+    },
+  ];
+  for (const [index, item] of cases.entries()) {
+    const id = `w-semantic-frame-${index + 1}`;
+    const record = {
+      id,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: id,
+      lemma: item.lemma,
+      search_forms: [item.lemma],
+      senses: item.glosses.map((gloss, senseIndex) => ({
+        id: `${id}-s${senseIndex + 1}`,
+        pos: 'noun',
+        gloss,
+      })),
+    };
+    assert.equal(inspectSenseBoundaryPairs(record)[0].relationship, item.relationship);
+    const infos = [{ record, source: 'synthetic' }];
+    const audit = makeSemanticAudit(infos, {
+      boundaryDecisions: {
+        [id]: { decision: 'split', classification: 'separated' },
+      },
+    });
+    assert.throws(
+      () => validateSemanticAuditCoverage(infos, audit),
+      (error) => error.code === 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
+    );
+  }
 });
 
 test('the independent boundary audit uses authored pair decisions for any record', () => {
@@ -518,6 +584,41 @@ test('the common production review cannot override mechanical duplicate or neste
     };
     assert.throws(
       () => validateLexicalSemanticReview(multiSenseProductionReview(record), {
+        decision: 'included',
+        candidateRecord: record,
+        catalogCount: 1,
+        requireSemanticEvidence: true,
+      }),
+      (error) => error.code === 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+    );
+  }
+});
+
+test('the common production review cannot override mechanical usage or paraphrase pairs', () => {
+  const cases = [
+    ['종이를 자르는 도구', '천을 자르는 도구', 'usage-variant'],
+    ['남의 마음을 함께 느끼는 일', '처지를 함께 느끼는 일', 'overlapping'],
+    ['글에서 중심이 되는 생각', '말에서 중심이 되는 생각', 'usage-variant'],
+  ];
+  for (const [index, [leftGloss, rightGloss, relationship]] of cases.entries()) {
+    const record = {
+      id: `w-common-frame-regression-${index + 1}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-common-frame-regression-${index + 1}`,
+      lemma: `공통프레임회귀${index + 1}`,
+      search_forms: [`공통프레임회귀${index + 1}`],
+      senses: [leftGloss, rightGloss].map((gloss, senseIndex) => ({
+        id: `w-common-frame-regression-${index + 1}-s${senseIndex + 1}`,
+        pos: 'noun',
+        gloss,
+      })),
+    };
+    assert.equal(inspectSenseBoundaryPairs(record)[0].relationship, relationship);
+    assert.throws(
+      () => validateLexicalSemanticReview(multiSenseProductionReview(record, {
+        relationship,
+      }), {
         decision: 'included',
         candidateRecord: record,
         catalogCount: 1,

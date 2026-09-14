@@ -30,9 +30,16 @@ candidate-local ID에서 catalog 순서 기준 `w779`~`w1278`로 deterministic r
 - records: 1,320
 - starts: 1,278
 - reference-only: 42
-- senses: 1,588
+- senses: 1,579
 - relations: 487
 - expressions: 73
+
+Post-merge semantic review of PR #123 found nine redundant or malformed
+M5-11 senses. A separately authored correction manifest merged each affected
+record to one reviewed sense, and the complete canonical audit, SQLite
+observation, inventory, and durable M5-11 evidence were regenerated from that
+corrected snapshot. The shared quality gate now blocks the same mechanical
+patterns for future admissions.
 
 ## Automated gate
 
@@ -72,10 +79,10 @@ digest-bound manifest/promotion evidence만 둔다.
 | editorial | `e08ff61b5802f252a17ade1085665c1ad54a6197afb43d4dc67f4d620d3c5237` |
 | relation diff | `8cafe8b3ad3b2013c43d43ce42dbd32da1cdd62e29e167c30f8c48178bcd74cf` |
 | verification | `3ce52a79b081116f4e0f1ad4f68ddacdb9d05e2fe746399953db455b01cd8145` |
-| reviewed import | `f0f72653898b88d66a56de7ce77cc145fd067ffe88b896e30356ff06ab6be182` |
+| reviewed import | `8d3d51bae63503b209e1a7713e8a67fc74616ca03cd80f135a37a0247cf763ed` |
 | #115 authorization | `2063af1bb4a28d08f8e56183c5afc65f38dea7ed595e514d8e4f0593105d4bf7` |
 | base inventory | `2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947` |
-| complete semantic audit | `7a7b12db7a009fe78f9ff0680646e1c53f6d54c5a77043454b60e417a716d5ff` |
+| complete semantic audit | `73d818153c3548ca01675195b072e696b6972f3c2818d421c67bd661b61530d4` |
 
 Committed evidence:
 
@@ -83,10 +90,13 @@ Committed evidence:
 - [`data/batches/m5-11-promotion.json`](../data/batches/m5-11-promotion.json)
 - [`data/batches/m5-11-review.json`](../data/batches/m5-11-review.json)
 - [`data/canonical/m5-11-expansion.jsonl`](../data/canonical/m5-11-expansion.jsonl)
+- [`data/validation/canonical-semantic-correction-manifest.json`](../data/validation/canonical-semantic-correction-manifest.json)
 
-`data/batches/m5-11-promotion.json` records the final canonical directory,
-seed, and inventory digests. `npm run batch:m5-11:check` validates these outputs
-from a clean checkout without access to the external raw inputs.
+`data/batches/m5-11-promotion.json` records the corrected final canonical
+directory, semantic audit, seed, and inventory digests. `npm run
+batch:m5-11:evidence:refresh` is the explicit derived-evidence refresh command;
+`npm run batch:m5-11:check` validates the resulting outputs from a clean
+checkout without access to the external raw inputs.
 
 ## Validation
 

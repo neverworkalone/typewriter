@@ -38,6 +38,7 @@ const SEMANTIC_BOUNDARY_RELATIONSHIPS = Object.freeze([
   'duplicate',
   'nested',
   'usage-variant',
+  'overlapping',
 ]);
 const SEMANTIC_BOUNDARY_PAIR_DECISIONS = Object.freeze(['retain', 'merge', 'rewrite', 'fail']);
 const SEMANTIC_BOUNDARY_METHOD = 'gloss-and-usage-pairwise-v2';
@@ -77,6 +78,15 @@ const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번�
 // rule is shared by canonical and future admissions; it is not tied to a
 // record ID or a milestone batch.
 const MALFORMED_GLOSS_FRAGMENT_PATTERN = /(?:일는|자신는|잘못로운|두근거림가|몸는|걱정는|자극를|느낌의 반응하지|기분가볍다|빛가|빛깔가|짐승는|김가볍게|맛가볍다|공간는|주변가운|물는|산이어진|밭은 쉼터|몸를|종도구|글는|국도구|건물로대|길도구|밥도구|풀는|흙는|사람이어진|창작는|말는|일이야기|거짓이 바르다)/u;
+const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[^\s]+)(?<particle>은|는)\s+(?<predicate>[^\s]+)$/u;
+const VALID_NOMINAL_MODIFIER_PATTERN = /(?:가는|오는|하는|되는|있는|없는)$/u;
+const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
+const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
+  'duplicate',
+  'nested',
+  'usage-variant',
+  'overlapping',
+]);
 
 export class LexicalQualityError extends Error {
   constructor(message, code = 'LEXICAL_QUALITY_ERROR', finding = undefined) {
@@ -225,7 +235,7 @@ function validateAuthoredBoundaryPairs(
       fail(`${pairLabel}.rationale must cite the reviewed sense pair and gloss evidence`, 'LEXICAL_SEMANTIC_EVIDENCE');
     }
     const mechanicalRelationship = expected.relationship;
-    if (['duplicate', 'nested'].includes(mechanicalRelationship)) {
+    if (MECHANICAL_BOUNDARY_RELATIONSHIPS.has(mechanicalRelationship)) {
       if (item.relationship !== mechanicalRelationship) {
         fail(
           `${pairLabel} contradicts the mechanical ${mechanicalRelationship} boundary finding`,
@@ -387,12 +397,25 @@ export function isPlaceholderGloss(gloss) {
 
 export function inspectGlossQuality(gloss) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) {
-    return { token_count: 0, generic_template: false, malformed_fragment: false };
+    return {
+      token_count: 0,
+      generic_template: false,
+      malformed_fragment: false,
+      malformed_structure: false,
+    };
   }
+  const trimmed = gloss.trim();
+  const topicFragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(trimmed);
+  const topicToken = trimmed.split(/\s+/u)[0];
+  const malformedStructure = topicFragment !== null
+    && topicFragment.groups.topic.length >= 2
+    && !VALID_NOMINAL_MODIFIER_PATTERN.test(topicToken)
+    && !VALID_PREDICATE_ENDING_PATTERN.test(topicFragment.groups.predicate);
   return {
-    token_count: gloss.trim().split(/\s+/u).length,
+    token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
-    malformed_fragment: MALFORMED_GLOSS_FRAGMENT_PATTERN.test(gloss),
+    malformed_fragment: MALFORMED_GLOSS_FRAGMENT_PATTERN.test(gloss) || malformedStructure,
+    malformed_structure: malformedStructure,
   };
 }
 
@@ -616,6 +639,23 @@ export function auditCanonicalLexicalQuality(
         connectorCounts[observation.connector] += 1;
         classificationCounts[observation.classification] = (classificationCounts[observation.classification] ?? 0) + 1;
       }
+    }
+    for (const pair of inspectSenseBoundaryPairs(record)) {
+      if (!MECHANICAL_BOUNDARY_RELATIONSHIPS.has(pair.relationship)) continue;
+      const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
+      const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
+      findings.push({
+        code: 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        record_id: record.id,
+        sense_id: null,
+        location: sourceLabel(recordInfo, index),
+        message: `${sourceLabel(recordInfo, index)} contains a high-confidence ${pair.relationship} sense pair (${pair.left_sense_id}/${pair.right_sense_id}); the pair must be merged or rewritten before canonical admission`,
+        boundary_pair: {
+          ...pair,
+          left_gloss: leftSense?.gloss,
+          right_gloss: rightSense?.gloss,
+        },
+      });
     }
   }
   const lemmaOwners = new Map();

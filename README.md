@@ -198,6 +198,12 @@ admission/promotion evidence record the source digests, automated verification
 pass separation, and the explicit fact that no human editorial review, human
 timing, or external human audit is claimed. Run `npm run batch:m5-11:check` to
 revalidate the promoted outputs from durable evidence.
+The post-merge semantic correction pass separately reviewed nine affected
+records, reduced the canonical sense count to 1,579, and refreshed the complete
+canonical audit plus M5-11 derived evidence through
+`npm run batch:m5-11:evidence:refresh`. The shared lexical-quality gate now
+rejects the same malformed gloss and high-confidence duplicate/usage/paraphrase
+patterns for future admissions.
 The proposal, editorial decision, verification, relation diff, and reviewed
 import bodies remain outside the repository; only the explicit promotion step
 mutates canonical, seed, and inventory. See
