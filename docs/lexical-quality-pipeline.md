@@ -38,6 +38,16 @@ The shared implementation is:
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 
+Historical replay uses the same contract at each immutable canonical boundary.
+The scoped envelopes [`data/validation/m5-10a-wave-a2-semantic-audit.json`](../data/validation/m5-10a-wave-a2-semantic-audit.json)
+and [`data/validation/m5-10-wave-b-semantic-audit.json`](../data/validation/m5-10-wave-b-semantic-audit.json)
+cover the complete A2 and Wave B prospective snapshots respectively. Their
+separately authored review rows are retained as scoped durable evidence; each
+historical manifest binds the exact envelope bytes by `review.semantic_audit_sha256`.
+CI copies these committed sources to its external runner staging directory and
+passes them through the A2/Wave B CLI, preserving the repository-local staging
+boundary while keeping replay deterministic.
+
 M5-11 adds its 550-row scope, +500 arithmetic, reserve, source digests, timing,
 and authorization rules around this boundary. Every registration must provide
 the complete current base, the complete prospective canonical dataset, and a

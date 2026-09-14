@@ -605,6 +605,7 @@ if (isMainModule) {
     stagedRecordsPath: args.staged,
     inventoryPath: args.inventory ?? DEFAULT_INVENTORY_PATH,
     baseCanonicalDirectory: args['base-canonical-dir'] ?? DEFAULT_BASE_CANONICAL_DIRECTORY,
+    semanticAuditPath: args['semantic-audit'],
   })
     .then((result) => {
       console.log(

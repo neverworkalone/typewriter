@@ -96,10 +96,15 @@ jobs:
         shell: bash
         run: cp data/canonical/m5-10a-wave-a2.jsonl "$RUNNER_TEMP/typewriter-m5-10a-wave-a2-reviewed.jsonl"
 
+      - name: Materialize the committed Wave A2 semantic audit
+        shell: bash
+        run: cp data/validation/m5-10a-wave-a2-semantic-audit.json "$RUNNER_TEMP/typewriter-m5-10a-wave-a2-semantic-audit.json"
+
       - name: Validate M5-10A Wave A2 stage
         run: >-
           npm run batch:m5-10a:wave-a2:check --
           --staged="$RUNNER_TEMP/typewriter-m5-10a-wave-a2-reviewed.jsonl"
+          --semantic-audit="$RUNNER_TEMP/typewriter-m5-10a-wave-a2-semantic-audit.json"
           --canonical-dir=data/batches/m5-10-wave-b-base-canonical
           --canonical-source-dir=data/canonical
 
@@ -107,10 +112,15 @@ jobs:
         shell: bash
         run: cp data/canonical/m5-10-wave-b.jsonl "$RUNNER_TEMP/typewriter-m5-10-wave-b-reviewed.jsonl"
 
+      - name: Materialize the committed Wave B semantic audit
+        shell: bash
+        run: cp data/validation/m5-10-wave-b-semantic-audit.json "$RUNNER_TEMP/typewriter-m5-10-wave-b-semantic-audit.json"
+
       - name: Validate M5-10 Wave B stage
         run: >-
           npm run batch:m5-10:wave-b:check --
           --staged="$RUNNER_TEMP/typewriter-m5-10-wave-b-reviewed.jsonl"
+          --semantic-audit="$RUNNER_TEMP/typewriter-m5-10-wave-b-semantic-audit.json"
 
       - name: Normalize canonical data
         run: node scripts/normalize/canonical.mjs

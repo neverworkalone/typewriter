@@ -1766,6 +1766,7 @@ if (isMainModule) {
     reportPath: args.report ?? DEFAULT_REPORT_PATH,
     stagedRecordsPath: args.staged,
     proposalPath: args.proposal,
+    semanticAuditPath: args['semantic-audit'],
   })
     .then((summary) => console.log(JSON.stringify(summary, null, 2)))
     .catch((error) => {
