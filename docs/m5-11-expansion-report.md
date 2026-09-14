@@ -1,144 +1,95 @@
-# M5-11 +500 admission report
+# M5-11A +500 admission report
 
-Issue #97 is held before canonical admission.
+Issue #97의 M5-11A 실행 결과는 자동 editorial/verification gate를 통과했고,
+canonical에 정확히 500개 start를 promotion했다. 이 결과는 최신 owner policy가
+허용한 `agent-generated` 경로이며, 사람의 editorial review·timing·independent
+audit 완료를 주장하지 않는다.
 
-## Current state
+## Result
 
-- Input canonical: **778 starts / 820 records**
-- Candidate pool: **550 selected starts**
-- Intended bounded import: **500 starts**
-- Candidate buffer: **50 starts**
-- Current canonical import: **0 rows**
-- Canonical, seed, and inventory mutation: **none**
+| 항목 | 결과 |
+| --- | ---: |
+| base canonical | 778 starts / 820 records |
+| candidate pool | 550 |
+| included | 500 |
+| corrected | 0 |
+| held / rejected | 0 / 0 |
+| deferred reserve | 50 |
+| processed starts | 500 |
+| imported starts | 500 |
+| final canonical | 1,278 starts / 1,320 records |
 
-The candidate catalog is not an editorial decision artifact. The builder refuses
-to manufacture sense, POS, boundary, relation, audit, or admission verdicts. A
-separately supplied human-complete decision artifact and complete gate evidence
-are required before an external reviewed import can be produced.
+`processed_start_count = included + corrected + held + rejected`이고,
+`processed_start_count + deferred = 550`이다. `deferred` 50개는 canonical과
+processed 분모에 포함되지 않는다. Promotion 시 imported record ID는
+candidate-local ID에서 `w779`~`w1278`로 deterministic rebasing됐다.
 
-The tracked catalog contains only the 550 selection IDs, editorial axes, and
-flags. It does not commit unreviewed lemma, POS, gloss, or proposed canonical
-record bodies; those belong in the separately supplied external decision
-artifact, which must match the catalog digest and count. Admission validation
-also requires a complete observed-sense scope, at least one checked boundary,
-non-vacuous sense-bound evidence, and no sense citations on `not-applicable`
-boundaries. Before decisions are supplied, the editor must also provide a
-separately frozen external proposal artifact: every decision binds its
-candidate lemma and proposal-body digest to that artifact. The reserve count is
-derived from the actual `held`/`rejected` rows, so later reserve rows may fill
-the 500 admitted slots rather than forcing every unused row to be `deferred`.
-Proposal records use candidate-local IDs; admission rebases those IDs to the
-next deterministic canonical ID, so an earlier held/rejected row cannot alter
-the frozen lexical body. Both the proposal and decision artifacts are external
-inputs to the builder.
-These checks apply to every candidate rather than a fixed lemma allowlist.
+최종 canonical 요약은 다음과 같다.
 
-Timing is recorded only through the current-clock recorder:
+- records: 1,320
+- starts: 1,278
+- reference-only: 42
+- senses: 1,466
+- relations: 473
+- expressions: 63
 
-```sh
-npm run batch:m5-11:timing -- \
-  --action=start \
-  --pass=target-preparation \
-  --output=/external/m5-11-editorial-timing.json \
-  --unit-ids-file=/external/m5-11-catalog-ids.json \
-  --proposal=/external/m5-11-proposal.json \
-  --artifact=/external/m5-11-editorial.json
-```
+## Automated gate
 
-For the independent audit, start a separate recorder session with the already
-completed editorial and editorial-timing artifacts, and use the audit report
-as the bound output:
+Gate decision은 `APPROVE AUTOMATED BOUNDED`이다. candidate pool/count,
+reserve arithmetic, canonical/candidate lexical collision, placeholder gloss,
+correction rate, relation noise, schema/integrity, relation targets, canonical
+integrity, deterministic SQLite, M4 search/product regression, exact net start
+increase, cumulative target를 모두 자동 검증했다.
 
-```sh
-npm run batch:m5-11:timing -- \
-  --action=start \
-  --pass=post-freeze-audit \
-  --output=/external/m5-11-audit-timing.json \
-  --unit-ids-file=/external/m5-11-catalog-ids.json \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --artifact=/external/m5-11-audit.json
-```
+관계 변경은 없으므로 relation diff는 비어 있으며, relation quota를 적용하지
+않는다. correction rate와 relation noise rate는 모두 `0`; schema/integrity 및
+relation-target blocker도 `0`이다. Human timing과 external audit는 이 정책에서
+필수 항목이 아니므로 durable evidence에 `not-required`로 기록했다.
 
-Each pass is stopped in a later invocation. The recorder owns start/stop
-timestamps, contiguous work events, chronology, and a signed proof digest;
-timestamp, duration, and caller-supplied digest overrides are rejected. The
-session starts only when the bound editorial/audit artifact is absent; the final
-recorder stop reads the artifact produced during the session and binds its
-digest. The independent `post-freeze-audit` session similarly starts from the
-frozen proposal plus completed editorial/timing artifacts, uses a distinct
-session, and must begin after editorial timing completes.
-The prospective verifier also runs the complete committed M4 baseline,
-selection, and relation assertions against the temporary SQLite state. The
-portable manifest and promotion evidence retain the derived timing/check
-summaries and their digest so clean-checkout validation recomputes the gate
-instead of trusting paired summaries.
+검증 pass는 생성 pass와 분리되어 있다.
 
-## Gate
+- generation pass: `m5-11a-generation-20260913`
+- verification pass: `m5-11a-verification-20260913`
+- generator: `codex`
+- generator version: `m5-11a-agent-editorial-v1`
+- `human_editorial_review_complete`: `false`
 
-`HOLD PROCESS` — editorial decision artifact, human editorial review, timing,
-independent audit, and canonical promotion are incomplete. No later stage is
-created or authorized.
+## Source and output binding
 
-Validation:
+Raw proposal, editorial decision, verification, relation diff, and reviewed
+import inputs remain outside the repository. Git에는 compact summary와
+digest-bound manifest/promotion evidence만 둔다.
+
+| source | SHA-256 |
+| --- | --- |
+| proposal | `1d6ae58bfbb8386af45bb485f2c45683b647cd3c237ee8a6efd48c1287276b6c` |
+| editorial | `9308c991de24e506f6ee15f7550d9f0d8552470609f1a1894b6c38e1ddc623a0` |
+| relation diff | `d64eb4d7864aa46f536b239f7cb20929a2e831f7523113c0ae0787135bca0587` |
+| verification | `041a4a15df582bef376559d85ad0cd48dbf367efbe58db674c542f42e9654a47` |
+| reviewed import | `e23eb43655c426e3dc79d771f70dcd216ebf48bf28ddb7633127827fb84578fb` |
+| #115 authorization | `944d86adad9ad3c340aa57ea88b9ed6cc21a9379e4473edc2cd2213b33ff7d88` |
+| base inventory | `2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947` |
+
+Committed evidence:
+
+- [`data/batches/m5-11-admission.json`](../data/batches/m5-11-admission.json)
+- [`data/batches/m5-11-promotion.json`](../data/batches/m5-11-promotion.json)
+- [`data/batches/m5-11-review.json`](../data/batches/m5-11-review.json)
+- [`data/canonical/m5-11-expansion.jsonl`](../data/canonical/m5-11-expansion.jsonl)
+
+`data/batches/m5-11-promotion.json` records the final canonical directory,
+seed, and inventory digests. `npm run batch:m5-11:check` validates these outputs
+from a clean checkout without access to the external raw inputs.
+
+## Validation
+
+The issue-specific check is:
 
 ```sh
 npm run batch:m5-11:check
 ```
 
-## Completed admission path
-
-The completed gate is deliberately separate from the existing HOLD check. All
-proposal, decision, timing, audit, relation-diff, verification, and reviewed
-import files must remain outside the repository until the gate passes:
-
-```sh
-npm run batch:m5-11:admission:check -- \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --audit=/external/m5-11-audit.json \
-  --audit-timing=/external/m5-11-audit-timing.json \
-  --relation-diff=/external/m5-11-relation-diff.json \
-  --verification=/external/m5-11-verification.json \
-  --output=/external/m5-11-reviewed-import.jsonl
-
-npm run batch:m5-11:admission:build -- \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --audit=/external/m5-11-audit.json \
-  --audit-timing=/external/m5-11-audit-timing.json \
-  --relation-diff=/external/m5-11-relation-diff.json \
-  --verification=/external/m5-11-verification.json \
-  --output=/external/m5-11-reviewed-import.jsonl
-
-npm run batch:m5-11:promote -- \
-  --manifest=data/batches/m5-11-admission.json \
-  --proposal=/external/m5-11-proposal.json \
-  --editorial=/external/m5-11-editorial.json \
-  --editorial-timing=/external/m5-11-editorial-timing.json \
-  --audit=/external/m5-11-audit.json \
-  --audit-timing=/external/m5-11-audit-timing.json \
-  --relation-diff=/external/m5-11-relation-diff.json \
-  --verification=/external/m5-11-verification.json \
-  --output=/external/m5-11-reviewed-import.jsonl
-```
-
-The build command writes a compact, digest-bound admission manifest only after
-the complete gate passes. The promotion command revalidates every external
-source, stages canonical plus seed plus inventory in a temporary directory,
-validates the generated inventory, and only then writes
-`data/canonical/m5-11-expansion.jsonl`, the 550 decision rows in the seed, the
-regenerated inventory, and `data/batches/m5-11-promotion.json`. The committed
-manifest stores only portable `external:<source>` labels and SHA-256 digests;
-the explicit paths above are required only for local promotion. Post-promotion
-CI validates committed durable evidence and promoted outputs without reading
-those external files. A failed gate or digest mismatch leaves all three
-source-of-truth files unchanged.
-
-The repository currently has no separately supplied human-complete 550-row
-proposal and decision package, so this completed path is implemented but not
-run against real data. The checked-in state therefore remains the intended
-pre-admission `778 starts / 820 records` HOLD boundary.
+The final PR additionally runs the repository test, canonical/inventory/search
+validation, dictionary build, extension build, both packages, and package
+validation. Chrome for Testing is not needed for this data/validator-only
+change because no browser-only boundary changed.

@@ -40,26 +40,26 @@ async function validateModifiedInventory(mutator) {
 test('validates the M5 inventory and keeps independent start counts', async () => {
   const summary = await validateTargetInventory();
 
-  assert.equal(summary.inventoryEntryCount, 883);
-  assert.equal(summary.canonicalRecordCount, 820);
-  assert.equal(summary.currentStartCount, 778);
+  assert.equal(summary.inventoryEntryCount, 1433);
+  assert.equal(summary.canonicalRecordCount, 1320);
+  assert.equal(summary.currentStartCount, 1278);
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 19);
-  assert.equal(summary.plannedStartCount, 797);
+  assert.equal(summary.plannedStartCount, 1297);
   assert.equal(summary.heldCount, 40);
   assert.equal(summary.duplicateCount, 2);
   assert.equal(summary.inflectedFormCount, 2);
   assert.deepEqual(summary.reasonCodeCounts, {
-    A: 144,
-    C: 133,
-    E: 107,
-    O: 90,
-    Q: 106,
-    S: 132,
-    X: 85,
+    A: 244,
+    C: 213,
+    E: 187,
+    O: 160,
+    Q: 186,
+    S: 212,
+    X: 95,
   });
   assert.deepEqual(summary.recordTypeCounts, {
-    entry: 729,
+    entry: 1229,
     expression: 68,
   });
 });
@@ -70,8 +70,8 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
   try {
     const generated = await generateTargetInventory({ outputPath });
-    assert.equal(generated.entries.length, 883);
-    assert.equal(generated.canonical_snapshot.record_count, 820);
+    assert.equal(generated.entries.length, 1433);
+    assert.equal(generated.canonical_snapshot.record_count, 1320);
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'm5-001').source,
       'canonical',
@@ -93,7 +93,7 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
 test('inventory candidates remain outside canonical input and SQLite build scope', async () => {
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  assert.equal(canonical.records.length, 820);
+  assert.equal(canonical.records.length, 1320);
   assert.equal(canonical.records.some(({ record }) => record.id === 'm5-001'), false);
   assert.equal(canonical.records.some(({ record }) => record.id === 'w301'), true);
   assert.equal(canonical.records.some(({ record }) => record.lemma === '말문이 막히다'), false);
@@ -248,8 +248,8 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
       checkPilotCompleteness: false,
     });
     assert.equal(summary.currentStartCount, 301);
-    assert.equal(summary.candidateStartCount, 496);
-    assert.equal(summary.plannedStartCount, 797);
+    assert.equal(summary.candidateStartCount, 996);
+    assert.equal(summary.plannedStartCount, 1297);
 
     for (const [driftIndex, mutate] of [
       (entry) => {

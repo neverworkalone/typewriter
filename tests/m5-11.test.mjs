@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { buildM511 } from '../scripts/batch/build-m5-11-expansion.mjs';
@@ -12,6 +11,7 @@ import {
   validateM511EditorialDecisions,
 } from '../scripts/batch/m5-11-editorial.mjs';
 import { resolveRepositoryPath, validateM511 } from '../scripts/batch/validate-m5-11.mjs';
+import { validateM511Promotion } from '../scripts/batch/validate-m5-11-promotion.mjs';
 
 const BOUNDARY_IDS = [
   'physical-figurative',
@@ -112,21 +112,30 @@ function bindArtifactToProposal(artifact, proposal) {
   return artifact;
 }
 
-test('M5-11 remains HOLD before a separately supplied editorial decision artifact', async () => {
+test('M5-11A reports the promoted automated +500 result', async () => {
   const result = await validateM511();
 
   assert.deepEqual(result.canonical, {
-    record_count: 820,
-    start_count: 778,
+    record_count: 1320,
+    start_count: 1278,
     reference_only_count: 42,
-    sense_count: 966,
+    sense_count: 1466,
     relation_count: 473,
     expression_count: 63,
   });
-  assert.equal(result.gate_status, 'fail');
-  assert.equal(result.promotion.canonical_mutation, false);
-  assert.equal(result.decisions.unreviewed, 550);
-  assert.ok(result.gate_failures.includes('editorial_decision_artifact'));
+  assert.equal(result.gate_status, 'pass');
+  assert.equal(result.promotion.canonical_mutation, true);
+  assert.equal(result.promoted, true);
+  assert.deepEqual(result.decisions, {
+    included: 500,
+    corrected: 0,
+    held: 0,
+    rejected: 0,
+    deferred: 50,
+    processed_start_count: 500,
+    imported_start_count: 500,
+  });
+  assert.deepEqual(result.gate_failures, []);
 });
 
 test('M5-11 producer cannot manufacture a canonical import without external editorial decisions', async () => {
@@ -447,37 +456,42 @@ test('M5-11 reserve arithmetic allows held and rejected rows before later admiss
   });
 });
 
-test('M5-11 source bindings reject path and digest substitution', async () => {
+test('M5-11 durable source bindings reject path and digest substitution', async () => {
   assert.throws(
     () => resolveRepositoryPath('../outside', 'source.path'),
     /escapes the repository/u,
   );
 
-  const tempDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-'));
-  const stagePath = path.join(tempDirectory, 'stage.json');
+  const tempDirectory = await mkdtemp(path.join(process.cwd(), '.m5-11-source-binding-'));
+  const manifestPath = path.join(tempDirectory, 'admission.json');
+  const promotionEvidencePath = path.join(tempDirectory, 'promotion.json');
   try {
-    const stage = JSON.parse(await readFile('data/batches/m5-11-stage.json', 'utf8'));
-    stage.source.catalog = '../outside';
-    await writeFile(stagePath, `${JSON.stringify(stage)}\n`, 'utf8');
+    await cp('data/batches/m5-11-admission.json', manifestPath);
+    await cp('data/batches/m5-11-promotion.json', promotionEvidencePath);
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+    manifest.sources.proposal.path = '../outside';
+    await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
     await assert.rejects(
-      validateM511({ stagePath }),
-      /catalog path binding/u,
+      validateM511Promotion({ manifestPath, promotionEvidencePath }),
+      /portable external label/u,
     );
 
-    stage.source.catalog = 'scripts/batch/m5-11-catalog.mjs';
-    stage.source.catalog_sha256 = '0'.repeat(64);
-    await writeFile(stagePath, `${JSON.stringify(stage)}\n`, 'utf8');
+    manifest.sources.proposal.path = 'external:proposal';
+    manifest.sources.proposal.sha256 = '0'.repeat(64);
+    await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
     await assert.rejects(
-      validateM511({ stagePath }),
-      /catalog digest binding/u,
+      validateM511Promotion({ manifestPath, promotionEvidencePath }),
+      /promotion evidence source proposal drifted/u,
     );
 
-    stage.source.catalog_sha256 = sha256Json(M5_11_CATALOG);
-    stage.input.base_inventory_sha256 = '0'.repeat(64);
-    await writeFile(stagePath, `${JSON.stringify(stage)}\n`, 'utf8');
+    manifest.sources.proposal.sha256 = JSON.parse(
+      await readFile('data/batches/m5-11-admission.json', 'utf8'),
+    ).sources.proposal.sha256;
+    manifest.sources.base_inventory.path = 'data/batches/m5-11-stage.json';
+    await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
     await assert.rejects(
-      validateM511({ stagePath }),
-      /stage base inventory digest/u,
+      validateM511Promotion({ manifestPath, promotionEvidencePath }),
+      /promotion evidence source base_inventory drifted/u,
     );
   } finally {
     await rm(tempDirectory, { recursive: true, force: true });

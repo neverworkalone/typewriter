@@ -2,6 +2,7 @@
   "schema_version": "1",
   "artifact_id": "m5-11-review-20260913",
   "issue": 97,
+  "parent_issue": 7,
   "batch_id": "m5-11-expansion-20260913",
   "input_inventory_revision": "m5-11",
   "candidate_pool": {
@@ -12,18 +13,43 @@
     "catalog_count": 550,
     "catalog_sha256": "c8860a2ade5701d62f82e56c65973dab73ccc546960b7318319bcb4f12f51788"
   },
-  "status": "pending-editorial-decision",
-  "editorial_review_complete": false,
+  "status": "automated-promotion-complete",
+  "review_mode": "agent-generated",
+  "editorial_review_complete": true,
+  "automated_editorial_review_complete": true,
   "human_editorial_review_complete": false,
+  "provenance": {
+    "kind": "agent_generated",
+    "generator": "codex",
+    "generator_version": "m5-11a-agent-editorial-v1",
+    "pass_id": "m5-11a-generation-20260913"
+  },
   "decisions": {
-    "included": 0,
+    "included": 500,
     "corrected": 0,
     "held": 0,
     "rejected": 0,
-    "deferred": 0,
-    "unreviewed": 550,
-    "processed_start_count": 0
+    "deferred": 50,
+    "unreviewed": 0,
+    "processed_start_count": 500,
+    "imported_start_count": 500
   },
-  "decision_artifact": null,
-  "note": "Candidate metadata is not an editorial decision artifact. No semantic verdict, canonical record, seed promotion, or inventory promotion is created until a separately supplied human-complete decision artifact passes the M5-11 admission validator."
+  "verification": {
+    "generation_verification_separated": true,
+    "generation_pass_id": "m5-11a-generation-20260913",
+    "verification_pass_id": "m5-11a-verification-20260913",
+    "machine_generated": true,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true,
+    "raw_material_excluded": true
+  },
+  "source_digests": {
+    "proposal": "1d6ae58bfbb8386af45bb485f2c45683b647cd3c237ee8a6efd48c1287276b6c",
+    "editorial": "9308c991de24e506f6ee15f7550d9f0d8552470609f1a1894b6c38e1ddc623a0",
+    "relation_diff": "d64eb4d7864aa46f536b239f7cb20929a2e831f7523113c0ae0787135bca0587",
+    "verification": "041a4a15df582bef376559d85ad0cd48dbf367efbe58db674c542f42e9654a47",
+    "reviewed_import": "e23eb43655c426e3dc79d771f70dcd216ebf48bf28ddb7633127827fb84578fb"
+  },
+  "note": "This compact tracked summary records an agent-generated automated editorial and verification pass. It does not claim human editorial review, human timing, or an external human audit. Raw proposal and verification inputs remain outside the repository and are bound by the admission manifest and promotion evidence."
 }

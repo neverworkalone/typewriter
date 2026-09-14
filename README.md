@@ -179,20 +179,20 @@ checks are
 artifact checks `npm run batch:m5-10d:recovery:check` and
 `npm run batch:m5-10d:authorization:check`.
 
-Issue #97's M5-11 work is currently blocked before admission. It consumes the
-digest-bound #115 authorization and records a 550-row candidate pool, but the
-canonical snapshot remains at 778 starts because no separately supplied,
-human-complete editorial decision artifact exists. The builder requires that
-artifact and an import output outside the repository; it cannot manufacture
-senses, boundary verdicts, audit findings, or canonical/seed/inventory
-promotions. The decision artifact must be bound to a separately frozen
-external proposal artifact before any candidate body can be admitted. Run
-`npm run batch:m5-11:check` to verify the HOLD boundary.
-When the external human-complete package exists, use the digest-bound
-`batch:m5-11:admission:check`, `batch:m5-11:admission:build`, and
-`batch:m5-11:promote` sequence documented in
-[`docs/m5-11-expansion-report.md`](docs/m5-11-expansion-report.md); only the
-last command may mutate canonical, seed, and inventory.
+Issue #97's M5-11A work is promoted through the owner-authorized automated
+editorial path. The digest-bound #115 authorization and 550-row candidate pool
+produce exactly 500 imported starts plus a 50-row deferred reserve. Canonical
+advances from 778 to 1,278 starts (820 to 1,320 records); imported IDs are
+deterministically rebased to `w779`~`w1278`. The compact review summary and
+admission/promotion evidence record the source digests, automated verification
+pass separation, and the explicit fact that no human editorial review, human
+timing, or external human audit is claimed. Run `npm run batch:m5-11:check` to
+revalidate the promoted outputs from durable evidence.
+The proposal, editorial decision, verification, relation diff, and reviewed
+import bodies remain outside the repository; only the explicit promotion step
+mutates canonical, seed, and inventory. See
+[`docs/m5-11-expansion-report.md`](docs/m5-11-expansion-report.md) for the
+count arithmetic and source/output digests.
 
 The M3 product UI reuses that projection in the popup and the Settings preview.
 Display choices are user data stored under the extension's local `storage` area;

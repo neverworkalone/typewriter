@@ -4,6 +4,11 @@ import { createHash } from 'node:crypto';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 
 export const M5_11_BATCH_ID = 'm5-11-expansion-20260913';
+export const M5_11_AGENT_REVIEW_MODE = 'agent-generated';
+export const M5_11_AGENT_PROVENANCE_KIND = 'agent_generated';
+export const M5_11_AGENT_GENERATOR = 'codex';
+export const M5_11_AGENT_EDITORIAL_VERSION = 'm5-11a-agent-editorial-v1';
+export const M5_11_AGENT_GATE_DECISION = 'APPROVE AUTOMATED BOUNDED';
 export const M5_11_BOUNDARY_IDS = Object.freeze([
   'physical-figurative',
   'homonym-pos',
@@ -81,6 +86,31 @@ export function expectedInventoryId(index) {
 
 export function expectedCanonicalId(importIndex) {
   return `w${String(779 + importIndex).padStart(3, '0')}`;
+}
+
+export function isM511AgentGeneratedArtifact(artifact) {
+  return artifact?.review_mode === M5_11_AGENT_REVIEW_MODE
+    || artifact?.provenance?.kind === M5_11_AGENT_PROVENANCE_KIND;
+}
+
+export function validateM511AgentProvenance(artifact, label = 'M5-11 agent artifact') {
+  requireObject(artifact, label);
+  if (artifact.review_mode !== M5_11_AGENT_REVIEW_MODE) {
+    fail(`${label}.review_mode must be ${M5_11_AGENT_REVIEW_MODE}`, 'EDITORIAL_PROVENANCE_ERROR');
+  }
+  const provenance = requireObject(artifact.provenance, `${label}.provenance`);
+  if (provenance.kind !== M5_11_AGENT_PROVENANCE_KIND) {
+    fail(`${label}.provenance.kind must be ${M5_11_AGENT_PROVENANCE_KIND}`, 'EDITORIAL_PROVENANCE_ERROR');
+  }
+  if (provenance.generator !== M5_11_AGENT_GENERATOR) {
+    fail(`${label}.provenance.generator must be ${M5_11_AGENT_GENERATOR}`, 'EDITORIAL_PROVENANCE_ERROR');
+  }
+  requireString(provenance.generator_version, `${label}.provenance.generator_version`);
+  requireString(provenance.pass_id, `${label}.provenance.pass_id`);
+  if (artifact.human_editorial_review_complete !== false) {
+    fail(`${label} must not claim human editorial review`, 'EDITORIAL_HUMAN_ATTRIBUTION');
+  }
+  return provenance;
 }
 
 function validateProposalArtifact(proposal, catalog) {
@@ -398,11 +428,25 @@ export function validateM511EditorialDecisions(
   if (artifact.proposal_count !== proposalRows.length) {
     fail('editorial decision artifact proposal count drifted', 'EDITORIAL_PROPOSAL_SOURCE_MISMATCH');
   }
-  if (requireHumanCompletion && artifact.human_editorial_review_complete !== true) {
-    fail('human editorial review is required before M5-11 admission', 'EDITORIAL_HUMAN_REVIEW_REQUIRED');
-  }
-  if (artifact.gate_decision !== 'APPROVE BOUNDED') {
-    fail('M5-11 admission requires an explicit APPROVE BOUNDED decision', 'EDITORIAL_GATE_REQUIRED');
+  const agentGenerated = isM511AgentGeneratedArtifact(artifact);
+  if (agentGenerated) {
+    validateM511AgentProvenance(artifact, 'M5-11 editorial decision artifact');
+    if (artifact.editorial_review_complete !== true) {
+      fail('automated editorial review must be complete before M5-11 admission', 'EDITORIAL_REVIEW_INCOMPLETE');
+    }
+    if (![M5_11_AGENT_GATE_DECISION, 'APPROVE BOUNDED'].includes(artifact.gate_decision)) {
+      fail(
+        `M5-11 automated admission requires an explicit ${M5_11_AGENT_GATE_DECISION} decision`,
+        'EDITORIAL_GATE_REQUIRED',
+      );
+    }
+  } else {
+    if (requireHumanCompletion && artifact.human_editorial_review_complete !== true) {
+      fail('human editorial review is required before M5-11 admission', 'EDITORIAL_HUMAN_REVIEW_REQUIRED');
+    }
+    if (artifact.gate_decision !== 'APPROVE BOUNDED') {
+      fail('M5-11 admission requires an explicit APPROVE BOUNDED decision', 'EDITORIAL_GATE_REQUIRED');
+    }
   }
   const decisions = requireArray(artifact.decisions, 'editorial decision artifact.decisions');
   if (decisions.length !== catalog.length) fail('editorial decision scope must cover the complete catalog', 'EDITORIAL_SCOPE_MISMATCH');

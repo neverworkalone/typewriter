@@ -1,0 +1,7717 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-11-admission-20260913",
+  "issue": 97,
+  "batch_id": "m5-11-expansion-20260913",
+  "authorization": "AUTHORIZE M5-11 +500 VALIDATION",
+  "target": {
+    "net_start_increase": 500,
+    "cumulative_start_target": 1278,
+    "candidate_buffer": 50,
+    "selected_start_count": 550
+  },
+  "base": {
+    "record_count": 820,
+    "start_count": 778,
+    "reference_only_count": 42,
+    "sense_count": 966,
+    "relation_count": 473,
+    "expression_count": 63
+  },
+  "actual": {
+    "record_count": 1320,
+    "start_count": 1278,
+    "reference_only_count": 42,
+    "sense_count": 1466,
+    "relation_count": 473,
+    "expression_count": 63
+  },
+  "decisions": {
+    "included": 500,
+    "corrected": 0,
+    "held": 0,
+    "rejected": 0,
+    "deferred": 50,
+    "processed_start_count": 500,
+    "imported_start_count": 500
+  },
+  "metrics": {
+    "policy": "agent-generated",
+    "candidate_pool_count": 550,
+    "imported_start_count": 500,
+    "reserve_count": 50,
+    "final_start_count": 1278,
+    "canonical_collision_count": 0,
+    "candidate_collision_count": 0,
+    "placeholder_gloss_count": 0,
+    "schema_integrity_blocker_count": 0,
+    "relation_target_blocker_count": 0,
+    "correction_rate_of_selected": 0,
+    "relation_noise_rate_of_candidates": 0,
+    "editor_seconds_per_selected_start": null,
+    "editor_seconds_per_processed_start": null,
+    "editor_time_status": "not-required",
+    "timing_status": "not-required",
+    "unmeasured_timing_pass_count": 0,
+    "audit_status": "not-required",
+    "audit_independent": null,
+    "open_audit_blocker_count": 0,
+    "editorial_review_complete": true,
+    "automated_editorial_review_complete": true,
+    "agent_generated_provenance": true,
+    "generation_verification_separated": true,
+    "human_editorial_review_complete": false,
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true
+  },
+  "relation": {
+    "before_count": 0,
+    "after_count": 0,
+    "added_count": 0,
+    "removed_count": 0,
+    "retyped_count": 0,
+    "retargeted_count": 0,
+    "changed_count": 0,
+    "net_removed_count": 0,
+    "noise_event_count": 0,
+    "noise_rate_of_before": 0,
+    "classification_counts": {}
+  },
+  "timing": {
+    "editorial": {
+      "status": "not-required",
+      "policy": "agent-generated",
+      "measurement_kind": "agent-processing",
+      "timing_kind": "editorial",
+      "session_id": null,
+      "pass_ids": [],
+      "pass_intervals": [],
+      "editor_seconds": null,
+      "audit_seconds": null,
+      "unmeasured_pass_count": 0
+    },
+    "audit": {
+      "status": "not-required",
+      "policy": "agent-generated",
+      "measurement_kind": "agent-processing",
+      "timing_kind": "post-freeze-audit",
+      "session_id": null,
+      "pass_ids": [],
+      "pass_intervals": [],
+      "editor_seconds": null,
+      "audit_seconds": null,
+      "unmeasured_pass_count": 0
+    }
+  },
+  "audit": {
+    "status": "not-required",
+    "policy": "agent-generated",
+    "independent": null,
+    "session_id": null,
+    "open_blocker_count": 0,
+    "finding_count": 0
+  },
+  "verification": {
+    "review_mode": "agent-generated",
+    "editorial_review_complete": true,
+    "automated_editorial_review_complete": true,
+    "human_editorial_review_complete": false,
+    "agent_generated_provenance": true,
+    "generation_verification_separated": true,
+    "generation_pass_id": "m5-11a-generation-20260913",
+    "verification_pass_id": "m5-11a-verification-20260913",
+    "canonical_integrity": true,
+    "deterministic_sqlite": true,
+    "search_product_regression": true,
+    "raw_material_excluded": true,
+    "machine_generated": true,
+    "verifier_version": "m5-11-prospective-verifier-v2",
+    "prospective_canonical_sha256": "9737dd9fa349089045df055baa8bdf454a88065d2b0deb388d6ceb62915527d3",
+    "checks": [
+      {
+        "id": "canonical-integrity",
+        "status": "pass",
+        "result_sha256": "f46e548c7578205c0a682356a7dd57b0dc454b89857c3b55170c637398960809"
+      },
+      {
+        "id": "deterministic-sqlite",
+        "status": "pass",
+        "result_sha256": "d9f2fb4f62ebbb13730a0732f5788fec4b52791d43f2cbfd91481166cece4449"
+      },
+      {
+        "id": "search-product-regression",
+        "status": "pass",
+        "result_sha256": "809097cd6418bffbb5b6d5f56789b36703148110c76859caa8aca4133957c6c1"
+      },
+      {
+        "id": "raw-material-exclusion",
+        "status": "pass",
+        "result_sha256": "85c3375d243c9f47ebf38fd064784993c7fd2669232ba011adc46c8889d139b4"
+      }
+    ],
+    "machine_check_evidence": {
+      "canonical-integrity": {
+        "final_summary": {
+          "record_count": 1320,
+          "start_count": 1278,
+          "reference_only_count": 42,
+          "sense_count": 1466,
+          "relation_count": 473,
+          "expression_count": 63
+        },
+        "prospective_canonical_sha256": "9737dd9fa349089045df055baa8bdf454a88065d2b0deb388d6ceb62915527d3"
+      },
+      "deterministic-sqlite": {
+        "build": {
+          "recordCount": 1320,
+          "senseCount": 1466,
+          "relationCount": 473
+        },
+        "integrity": "ok",
+        "foreign_key_errors": [],
+        "counts": {
+          "records": 1320,
+          "starts": 1278,
+          "references": 42,
+          "senses": 1466,
+          "relations": 473
+        }
+      },
+      "search-product-regression": {
+        "m4": {
+          "corpus_id": "m4-search-regressions",
+          "evaluation": "baseline",
+          "case_count": 10,
+          "cases": [
+            {
+              "id": "m3-exact-lemma-damdamhada",
+              "query": "담담하다",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w026"
+              ],
+              "selected_record_id": "r008",
+              "relation_assertion_count": 2
+            },
+            {
+              "id": "m3-exact-search-form-damdam",
+              "query": "담담",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w026"
+              ],
+              "selected_record_id": null,
+              "relation_assertion_count": 0
+            },
+            {
+              "id": "m3-polysemy-sseuda",
+              "query": "쓰다",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w237"
+              ],
+              "selected_record_id": null,
+              "relation_assertion_count": 4
+            },
+            {
+              "id": "m3-expression-maeumi-noida",
+              "query": "마음이 놓이다",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w288"
+              ],
+              "selected_record_id": null,
+              "relation_assertion_count": 1
+            },
+            {
+              "id": "m3-antonym-sijakhada",
+              "query": "시작하다",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w228"
+              ],
+              "selected_record_id": null,
+              "relation_assertion_count": 1
+            },
+            {
+              "id": "m3-reference-only-free-search-blocked",
+              "query": "덤덤하다",
+              "status": "unsupported",
+              "reason": "reference-only-not-searchable",
+              "result_ids": [],
+              "selected_record_id": null,
+              "relation_assertion_count": 0
+            },
+            {
+              "id": "m4-normalization-hangul-nfd",
+              "query": "담담하다",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w026"
+              ],
+              "selected_record_id": null,
+              "relation_assertion_count": 0
+            },
+            {
+              "id": "m4-normalization-surrounding-space",
+              "query": "  담담하다  ",
+              "status": "ready",
+              "reason": null,
+              "result_ids": [
+                "w026"
+              ],
+              "selected_record_id": null,
+              "relation_assertion_count": 0
+            },
+            {
+              "id": "m4-no-data-unknown-term",
+              "query": "없는 말",
+              "status": "no-match",
+              "reason": "no-exact-match",
+              "result_ids": [],
+              "selected_record_id": null,
+              "relation_assertion_count": 0
+            },
+            {
+              "id": "m4-unsupported-internal-expression-space",
+              "query": "마음이  놓이다",
+              "status": "unsupported",
+              "reason": "internal-whitespace-not-normalized",
+              "result_ids": [],
+              "selected_record_id": null,
+              "relation_assertion_count": 0
+            }
+          ]
+        },
+        "admitted_lemmas": [
+          {
+            "record_id": "w779",
+            "lemma": "가책",
+            "result_ids": [
+              "w779"
+            ]
+          },
+          {
+            "record_id": "w780",
+            "lemma": "감회",
+            "result_ids": [
+              "w780"
+            ]
+          },
+          {
+            "record_id": "w781",
+            "lemma": "감응",
+            "result_ids": [
+              "w781"
+            ]
+          },
+          {
+            "record_id": "w782",
+            "lemma": "경탄",
+            "result_ids": [
+              "w782"
+            ]
+          },
+          {
+            "record_id": "w783",
+            "lemma": "경이",
+            "result_ids": [
+              "w783"
+            ]
+          },
+          {
+            "record_id": "w784",
+            "lemma": "고뇌",
+            "result_ids": [
+              "w784"
+            ]
+          },
+          {
+            "record_id": "w785",
+            "lemma": "고심",
+            "result_ids": [
+              "w785"
+            ]
+          },
+          {
+            "record_id": "w786",
+            "lemma": "괴로움",
+            "result_ids": [
+              "w786"
+            ]
+          },
+          {
+            "record_id": "w787",
+            "lemma": "낭패감",
+            "result_ids": [
+              "w787"
+            ]
+          },
+          {
+            "record_id": "w788",
+            "lemma": "낙관",
+            "result_ids": [
+              "w788"
+            ]
+          },
+          {
+            "record_id": "w789",
+            "lemma": "난감함",
+            "result_ids": [
+              "w789"
+            ]
+          },
+          {
+            "record_id": "w790",
+            "lemma": "망연자실",
+            "result_ids": [
+              "w790"
+            ]
+          },
+          {
+            "record_id": "w791",
+            "lemma": "무력감",
+            "result_ids": [
+              "w791"
+            ]
+          },
+          {
+            "record_id": "w792",
+            "lemma": "배신감",
+            "result_ids": [
+              "w792"
+            ]
+          },
+          {
+            "record_id": "w793",
+            "lemma": "부담감",
+            "result_ids": [
+              "w793"
+            ]
+          },
+          {
+            "record_id": "w794",
+            "lemma": "불신감",
+            "result_ids": [
+              "w794"
+            ]
+          },
+          {
+            "record_id": "w795",
+            "lemma": "상심",
+            "result_ids": [
+              "w795"
+            ]
+          },
+          {
+            "record_id": "w796",
+            "lemma": "소외감",
+            "result_ids": [
+              "w796"
+            ]
+          },
+          {
+            "record_id": "w797",
+            "lemma": "애도",
+            "result_ids": [
+              "w797"
+            ]
+          },
+          {
+            "record_id": "w798",
+            "lemma": "애착",
+            "result_ids": [
+              "w798"
+            ]
+          },
+          {
+            "record_id": "w799",
+            "lemma": "애석함",
+            "result_ids": [
+              "w799"
+            ]
+          },
+          {
+            "record_id": "w800",
+            "lemma": "열망",
+            "result_ids": [
+              "w800"
+            ]
+          },
+          {
+            "record_id": "w801",
+            "lemma": "오해",
+            "result_ids": [
+              "w801"
+            ]
+          },
+          {
+            "record_id": "w802",
+            "lemma": "원한",
+            "result_ids": [
+              "w802"
+            ]
+          },
+          {
+            "record_id": "w803",
+            "lemma": "위축감",
+            "result_ids": [
+              "w803"
+            ]
+          },
+          {
+            "record_id": "w804",
+            "lemma": "자괴감",
+            "result_ids": [
+              "w804"
+            ]
+          },
+          {
+            "record_id": "w805",
+            "lemma": "자긍심",
+            "result_ids": [
+              "w805"
+            ]
+          },
+          {
+            "record_id": "w806",
+            "lemma": "적개심",
+            "result_ids": [
+              "w806"
+            ]
+          },
+          {
+            "record_id": "w807",
+            "lemma": "전전긍긍",
+            "result_ids": [
+              "w807"
+            ]
+          },
+          {
+            "record_id": "w808",
+            "lemma": "절실함",
+            "result_ids": [
+              "w808"
+            ]
+          },
+          {
+            "record_id": "w809",
+            "lemma": "정감",
+            "result_ids": [
+              "w809"
+            ]
+          },
+          {
+            "record_id": "w810",
+            "lemma": "정서",
+            "result_ids": [
+              "w810"
+            ]
+          },
+          {
+            "record_id": "w811",
+            "lemma": "친근감",
+            "result_ids": [
+              "w811"
+            ]
+          },
+          {
+            "record_id": "w812",
+            "lemma": "평정",
+            "result_ids": [
+              "w812"
+            ]
+          },
+          {
+            "record_id": "w813",
+            "lemma": "환멸",
+            "result_ids": [
+              "w813"
+            ]
+          },
+          {
+            "record_id": "w814",
+            "lemma": "황홀",
+            "result_ids": [
+              "w814"
+            ]
+          },
+          {
+            "record_id": "w815",
+            "lemma": "환호",
+            "result_ids": [
+              "w815"
+            ]
+          },
+          {
+            "record_id": "w816",
+            "lemma": "회의감",
+            "result_ids": [
+              "w816"
+            ]
+          },
+          {
+            "record_id": "w817",
+            "lemma": "흥분",
+            "result_ids": [
+              "w817"
+            ]
+          },
+          {
+            "record_id": "w818",
+            "lemma": "흥미",
+            "result_ids": [
+              "w818"
+            ]
+          },
+          {
+            "record_id": "w819",
+            "lemma": "동질감",
+            "result_ids": [
+              "w819"
+            ]
+          },
+          {
+            "record_id": "w820",
+            "lemma": "만족",
+            "result_ids": [
+              "w820"
+            ]
+          },
+          {
+            "record_id": "w821",
+            "lemma": "안심",
+            "result_ids": [
+              "w821"
+            ]
+          },
+          {
+            "record_id": "w822",
+            "lemma": "미안함",
+            "result_ids": [
+              "w822"
+            ]
+          },
+          {
+            "record_id": "w823",
+            "lemma": "죄의식",
+            "result_ids": [
+              "w823"
+            ]
+          },
+          {
+            "record_id": "w824",
+            "lemma": "부끄러움",
+            "result_ids": [
+              "w824"
+            ]
+          },
+          {
+            "record_id": "w825",
+            "lemma": "의기소침",
+            "result_ids": [
+              "w825"
+            ]
+          },
+          {
+            "record_id": "w826",
+            "lemma": "의욕",
+            "result_ids": [
+              "w826"
+            ]
+          },
+          {
+            "record_id": "w827",
+            "lemma": "염려",
+            "result_ids": [
+              "w827"
+            ]
+          },
+          {
+            "record_id": "w828",
+            "lemma": "걱정",
+            "result_ids": [
+              "w828"
+            ]
+          },
+          {
+            "record_id": "w829",
+            "lemma": "조급함",
+            "result_ids": [
+              "w829"
+            ]
+          },
+          {
+            "record_id": "w830",
+            "lemma": "두근거림",
+            "result_ids": [
+              "w830"
+            ]
+          },
+          {
+            "record_id": "w831",
+            "lemma": "떨림",
+            "result_ids": [
+              "w831"
+            ]
+          },
+          {
+            "record_id": "w832",
+            "lemma": "소명감",
+            "result_ids": [
+              "w832"
+            ]
+          },
+          {
+            "record_id": "w833",
+            "lemma": "책임감",
+            "result_ids": [
+              "w833"
+            ]
+          },
+          {
+            "record_id": "w834",
+            "lemma": "감사",
+            "result_ids": [
+              "w834"
+            ]
+          },
+          {
+            "record_id": "w835",
+            "lemma": "격앙",
+            "result_ids": [
+              "w835"
+            ]
+          },
+          {
+            "record_id": "w836",
+            "lemma": "격정",
+            "result_ids": [
+              "w836"
+            ]
+          },
+          {
+            "record_id": "w837",
+            "lemma": "분개",
+            "result_ids": [
+              "w837"
+            ]
+          },
+          {
+            "record_id": "w838",
+            "lemma": "원통함",
+            "result_ids": [
+              "w838"
+            ]
+          },
+          {
+            "record_id": "w839",
+            "lemma": "황망함",
+            "result_ids": [
+              "w839"
+            ]
+          },
+          {
+            "record_id": "w840",
+            "lemma": "숙연함",
+            "result_ids": [
+              "w840"
+            ]
+          },
+          {
+            "record_id": "w841",
+            "lemma": "참담함",
+            "result_ids": [
+              "w841"
+            ]
+          },
+          {
+            "record_id": "w842",
+            "lemma": "처연함",
+            "result_ids": [
+              "w842"
+            ]
+          },
+          {
+            "record_id": "w843",
+            "lemma": "처절함",
+            "result_ids": [
+              "w843"
+            ]
+          },
+          {
+            "record_id": "w844",
+            "lemma": "고양감",
+            "result_ids": [
+              "w844"
+            ]
+          },
+          {
+            "record_id": "w845",
+            "lemma": "들뜸",
+            "result_ids": [
+              "w845"
+            ]
+          },
+          {
+            "record_id": "w846",
+            "lemma": "결핍감",
+            "result_ids": [
+              "w846"
+            ]
+          },
+          {
+            "record_id": "w847",
+            "lemma": "연민감",
+            "result_ids": [
+              "w847"
+            ]
+          },
+          {
+            "record_id": "w848",
+            "lemma": "온정",
+            "result_ids": [
+              "w848"
+            ]
+          },
+          {
+            "record_id": "w849",
+            "lemma": "냉소",
+            "result_ids": [
+              "w849"
+            ]
+          },
+          {
+            "record_id": "w850",
+            "lemma": "비애",
+            "result_ids": [
+              "w850"
+            ]
+          },
+          {
+            "record_id": "w851",
+            "lemma": "비탄",
+            "result_ids": [
+              "w851"
+            ]
+          },
+          {
+            "record_id": "w852",
+            "lemma": "통쾌함",
+            "result_ids": [
+              "w852"
+            ]
+          },
+          {
+            "record_id": "w853",
+            "lemma": "유쾌함",
+            "result_ids": [
+              "w853"
+            ]
+          },
+          {
+            "record_id": "w854",
+            "lemma": "불길함",
+            "result_ids": [
+              "w854"
+            ]
+          },
+          {
+            "record_id": "w855",
+            "lemma": "위기감",
+            "result_ids": [
+              "w855"
+            ]
+          },
+          {
+            "record_id": "w856",
+            "lemma": "당혹",
+            "result_ids": [
+              "w856"
+            ]
+          },
+          {
+            "record_id": "w857",
+            "lemma": "신중함",
+            "result_ids": [
+              "w857"
+            ]
+          },
+          {
+            "record_id": "w858",
+            "lemma": "마음고생",
+            "result_ids": [
+              "w858"
+            ]
+          },
+          {
+            "record_id": "w859",
+            "lemma": "가지런하다",
+            "result_ids": [
+              "w859"
+            ]
+          },
+          {
+            "record_id": "w860",
+            "lemma": "간결하다",
+            "result_ids": [
+              "w860"
+            ]
+          },
+          {
+            "record_id": "w861",
+            "lemma": "강렬하다",
+            "result_ids": [
+              "w861"
+            ]
+          },
+          {
+            "record_id": "w862",
+            "lemma": "개운하다",
+            "result_ids": [
+              "w862"
+            ]
+          },
+          {
+            "record_id": "w863",
+            "lemma": "건장하다",
+            "result_ids": [
+              "w863"
+            ]
+          },
+          {
+            "record_id": "w864",
+            "lemma": "겸손하다",
+            "result_ids": [
+              "w864"
+            ]
+          },
+          {
+            "record_id": "w865",
+            "lemma": "고단하다",
+            "result_ids": [
+              "w865"
+            ]
+          },
+          {
+            "record_id": "w866",
+            "lemma": "고집스럽다",
+            "result_ids": [
+              "w866"
+            ]
+          },
+          {
+            "record_id": "w867",
+            "lemma": "공손하다",
+            "result_ids": [
+              "w867"
+            ]
+          },
+          {
+            "record_id": "w868",
+            "lemma": "과묵하다",
+            "result_ids": [
+              "w868"
+            ]
+          },
+          {
+            "record_id": "w869",
+            "lemma": "괴팍하다",
+            "result_ids": [
+              "w869"
+            ]
+          },
+          {
+            "record_id": "w870",
+            "lemma": "근면하다",
+            "result_ids": [
+              "w870"
+            ]
+          },
+          {
+            "record_id": "w871",
+            "lemma": "기민하다",
+            "result_ids": [
+              "w871"
+            ]
+          },
+          {
+            "record_id": "w872",
+            "lemma": "날렵하다",
+            "result_ids": [
+              "w872"
+            ]
+          },
+          {
+            "record_id": "w873",
+            "lemma": "낭만적이다",
+            "result_ids": [
+              "w873"
+            ]
+          },
+          {
+            "record_id": "w874",
+            "lemma": "냉랭하다",
+            "result_ids": [
+              "w874"
+            ]
+          },
+          {
+            "record_id": "w875",
+            "lemma": "단출하다",
+            "result_ids": [
+              "w875"
+            ]
+          },
+          {
+            "record_id": "w876",
+            "lemma": "대담하다",
+            "result_ids": [
+              "w876"
+            ]
+          },
+          {
+            "record_id": "w877",
+            "lemma": "도도하다",
+            "result_ids": [
+              "w877"
+            ]
+          },
+          {
+            "record_id": "w878",
+            "lemma": "둔감하다",
+            "result_ids": [
+              "w878"
+            ]
+          },
+          {
+            "record_id": "w879",
+            "lemma": "든든하다",
+            "result_ids": [
+              "w879"
+            ]
+          },
+          {
+            "record_id": "w880",
+            "lemma": "따뜻하다",
+            "result_ids": [
+              "w880"
+            ]
+          },
+          {
+            "record_id": "w881",
+            "lemma": "똑똑하다",
+            "result_ids": [
+              "w881"
+            ]
+          },
+          {
+            "record_id": "w882",
+            "lemma": "명료하다",
+            "result_ids": [
+              "w882"
+            ]
+          },
+          {
+            "record_id": "w883",
+            "lemma": "무감각하다",
+            "result_ids": [
+              "w883"
+            ]
+          },
+          {
+            "record_id": "w884",
+            "lemma": "무례하다",
+            "result_ids": [
+              "w884"
+            ]
+          },
+          {
+            "record_id": "w885",
+            "lemma": "무르익다",
+            "result_ids": [
+              "w885"
+            ]
+          },
+          {
+            "record_id": "w886",
+            "lemma": "방만하다",
+            "result_ids": [
+              "w886"
+            ]
+          },
+          {
+            "record_id": "w887",
+            "lemma": "번잡하다",
+            "result_ids": [
+              "w887"
+            ]
+          },
+          {
+            "record_id": "w888",
+            "lemma": "보잘것없다",
+            "result_ids": [
+              "w888"
+            ]
+          },
+          {
+            "record_id": "w889",
+            "lemma": "분명하다",
+            "result_ids": [
+              "w889"
+            ]
+          },
+          {
+            "record_id": "w890",
+            "lemma": "불그스름하다",
+            "result_ids": [
+              "w890"
+            ]
+          },
+          {
+            "record_id": "w891",
+            "lemma": "비겁하다",
+            "result_ids": [
+              "w891"
+            ]
+          },
+          {
+            "record_id": "w892",
+            "lemma": "비범하다",
+            "result_ids": [
+              "w892"
+            ]
+          },
+          {
+            "record_id": "w893",
+            "lemma": "사려 깊다",
+            "result_ids": [
+              "w893"
+            ]
+          },
+          {
+            "record_id": "w894",
+            "lemma": "산뜻하다",
+            "result_ids": [
+              "w894"
+            ]
+          },
+          {
+            "record_id": "w895",
+            "lemma": "상냥하다",
+            "result_ids": [
+              "w895"
+            ]
+          },
+          {
+            "record_id": "w896",
+            "lemma": "선량하다",
+            "result_ids": [
+              "w896"
+            ]
+          },
+          {
+            "record_id": "w897",
+            "lemma": "성나다",
+            "result_ids": [
+              "w897"
+            ]
+          },
+          {
+            "record_id": "w898",
+            "lemma": "순박하다",
+            "result_ids": [
+              "w898"
+            ]
+          },
+          {
+            "record_id": "w899",
+            "lemma": "신기하다",
+            "result_ids": [
+              "w899"
+            ]
+          },
+          {
+            "record_id": "w900",
+            "lemma": "싱겁다",
+            "result_ids": [
+              "w900"
+            ]
+          },
+          {
+            "record_id": "w901",
+            "lemma": "아늑하다",
+            "result_ids": [
+              "w901"
+            ]
+          },
+          {
+            "record_id": "w902",
+            "lemma": "아담하다",
+            "result_ids": [
+              "w902"
+            ]
+          },
+          {
+            "record_id": "w903",
+            "lemma": "애매하다",
+            "result_ids": [
+              "w903"
+            ]
+          },
+          {
+            "record_id": "w904",
+            "lemma": "야속하다",
+            "result_ids": [
+              "w904"
+            ]
+          },
+          {
+            "record_id": "w905",
+            "lemma": "억세다",
+            "result_ids": [
+              "w905"
+            ]
+          },
+          {
+            "record_id": "w906",
+            "lemma": "엄숙하다",
+            "result_ids": [
+              "w906"
+            ]
+          },
+          {
+            "record_id": "w907",
+            "lemma": "어리둥절하다",
+            "result_ids": [
+              "w907"
+            ]
+          },
+          {
+            "record_id": "w908",
+            "lemma": "여유롭다",
+            "result_ids": [
+              "w908"
+            ]
+          },
+          {
+            "record_id": "w909",
+            "lemma": "오만하다",
+            "result_ids": [
+              "w909"
+            ]
+          },
+          {
+            "record_id": "w910",
+            "lemma": "우울하다",
+            "result_ids": [
+              "w910"
+            ]
+          },
+          {
+            "record_id": "w911",
+            "lemma": "위태롭다",
+            "result_ids": [
+              "w911"
+            ]
+          },
+          {
+            "record_id": "w912",
+            "lemma": "유쾌하다",
+            "result_ids": [
+              "w912"
+            ]
+          },
+          {
+            "record_id": "w913",
+            "lemma": "의젓하다",
+            "result_ids": [
+              "w913"
+            ]
+          },
+          {
+            "record_id": "w914",
+            "lemma": "자비롭다",
+            "result_ids": [
+              "w914"
+            ]
+          },
+          {
+            "record_id": "w915",
+            "lemma": "잔잔하다",
+            "result_ids": [
+              "w915"
+            ]
+          },
+          {
+            "record_id": "w916",
+            "lemma": "장엄하다",
+            "result_ids": [
+              "w916"
+            ]
+          },
+          {
+            "record_id": "w917",
+            "lemma": "절박하다",
+            "result_ids": [
+              "w917"
+            ]
+          },
+          {
+            "record_id": "w918",
+            "lemma": "정직하다",
+            "result_ids": [
+              "w918"
+            ]
+          },
+          {
+            "record_id": "w919",
+            "lemma": "조용하다",
+            "result_ids": [
+              "w919"
+            ]
+          },
+          {
+            "record_id": "w920",
+            "lemma": "착하다",
+            "result_ids": [
+              "w920"
+            ]
+          },
+          {
+            "record_id": "w921",
+            "lemma": "청명하다",
+            "result_ids": [
+              "w921"
+            ]
+          },
+          {
+            "record_id": "w922",
+            "lemma": "초라하다",
+            "result_ids": [
+              "w922"
+            ]
+          },
+          {
+            "record_id": "w923",
+            "lemma": "충실하다",
+            "result_ids": [
+              "w923"
+            ]
+          },
+          {
+            "record_id": "w924",
+            "lemma": "친절하다",
+            "result_ids": [
+              "w924"
+            ]
+          },
+          {
+            "record_id": "w925",
+            "lemma": "칠흑같다",
+            "result_ids": [
+              "w925"
+            ]
+          },
+          {
+            "record_id": "w926",
+            "lemma": "탁하다",
+            "result_ids": [
+              "w926"
+            ]
+          },
+          {
+            "record_id": "w927",
+            "lemma": "풍성하다",
+            "result_ids": [
+              "w927"
+            ]
+          },
+          {
+            "record_id": "w928",
+            "lemma": "한가롭다",
+            "result_ids": [
+              "w928"
+            ]
+          },
+          {
+            "record_id": "w929",
+            "lemma": "허약하다",
+            "result_ids": [
+              "w929"
+            ]
+          },
+          {
+            "record_id": "w930",
+            "lemma": "현명하다",
+            "result_ids": [
+              "w930"
+            ]
+          },
+          {
+            "record_id": "w931",
+            "lemma": "호탕하다",
+            "result_ids": [
+              "w931"
+            ]
+          },
+          {
+            "record_id": "w932",
+            "lemma": "화사하다",
+            "result_ids": [
+              "w932"
+            ]
+          },
+          {
+            "record_id": "w933",
+            "lemma": "황량하다",
+            "result_ids": [
+              "w933"
+            ]
+          },
+          {
+            "record_id": "w934",
+            "lemma": "훈훈하다",
+            "result_ids": [
+              "w934"
+            ]
+          },
+          {
+            "record_id": "w935",
+            "lemma": "울퉁불퉁하다",
+            "result_ids": [
+              "w935"
+            ]
+          },
+          {
+            "record_id": "w936",
+            "lemma": "오돌토돌하다",
+            "result_ids": [
+              "w936"
+            ]
+          },
+          {
+            "record_id": "w937",
+            "lemma": "촘촘하다",
+            "result_ids": [
+              "w937"
+            ]
+          },
+          {
+            "record_id": "w938",
+            "lemma": "정숙하다",
+            "result_ids": [
+              "w938"
+            ]
+          },
+          {
+            "record_id": "w939",
+            "lemma": "가루",
+            "result_ids": [
+              "w939"
+            ]
+          },
+          {
+            "record_id": "w940",
+            "lemma": "가슬가슬하다",
+            "result_ids": [
+              "w940"
+            ]
+          },
+          {
+            "record_id": "w941",
+            "lemma": "거품",
+            "result_ids": [
+              "w941"
+            ]
+          },
+          {
+            "record_id": "w942",
+            "lemma": "구릿내",
+            "result_ids": [
+              "w942"
+            ]
+          },
+          {
+            "record_id": "w943",
+            "lemma": "까끌까끌하다",
+            "result_ids": [
+              "w943"
+            ]
+          },
+          {
+            "record_id": "w944",
+            "lemma": "깔깔하다",
+            "result_ids": [
+              "w944"
+            ]
+          },
+          {
+            "record_id": "w945",
+            "lemma": "꽃향기",
+            "result_ids": [
+              "w945"
+            ]
+          },
+          {
+            "record_id": "w946",
+            "lemma": "노린내",
+            "result_ids": [
+              "w946"
+            ]
+          },
+          {
+            "record_id": "w947",
+            "lemma": "눈부심",
+            "result_ids": [
+              "w947"
+            ]
+          },
+          {
+            "record_id": "w948",
+            "lemma": "눈송이",
+            "result_ids": [
+              "w948"
+            ]
+          },
+          {
+            "record_id": "w949",
+            "lemma": "달다",
+            "result_ids": [
+              "w949"
+            ]
+          },
+          {
+            "record_id": "w950",
+            "lemma": "맑다",
+            "result_ids": [
+              "w950"
+            ]
+          },
+          {
+            "record_id": "w951",
+            "lemma": "맑음",
+            "result_ids": [
+              "w951"
+            ]
+          },
+          {
+            "record_id": "w952",
+            "lemma": "매끄럽다",
+            "result_ids": [
+              "w952"
+            ]
+          },
+          {
+            "record_id": "w953",
+            "lemma": "모락모락하다",
+            "result_ids": [
+              "w953"
+            ]
+          },
+          {
+            "record_id": "w954",
+            "lemma": "무지개",
+            "result_ids": [
+              "w954"
+            ]
+          },
+          {
+            "record_id": "w955",
+            "lemma": "미각",
+            "result_ids": [
+              "w955"
+            ]
+          },
+          {
+            "record_id": "w956",
+            "lemma": "미세하다",
+            "result_ids": [
+              "w956"
+            ]
+          },
+          {
+            "record_id": "w957",
+            "lemma": "바람소리",
+            "result_ids": [
+              "w957"
+            ]
+          },
+          {
+            "record_id": "w958",
+            "lemma": "박하향",
+            "result_ids": [
+              "w958"
+            ]
+          },
+          {
+            "record_id": "w959",
+            "lemma": "반사광",
+            "result_ids": [
+              "w959"
+            ]
+          },
+          {
+            "record_id": "w960",
+            "lemma": "반투명하다",
+            "result_ids": [
+              "w960"
+            ]
+          },
+          {
+            "record_id": "w961",
+            "lemma": "발광",
+            "result_ids": [
+              "w961"
+            ]
+          },
+          {
+            "record_id": "w962",
+            "lemma": "밝기",
+            "result_ids": [
+              "w962"
+            ]
+          },
+          {
+            "record_id": "w963",
+            "lemma": "보랏빛",
+            "result_ids": [
+              "w963"
+            ]
+          },
+          {
+            "record_id": "w964",
+            "lemma": "분홍빛",
+            "result_ids": [
+              "w964"
+            ]
+          },
+          {
+            "record_id": "w965",
+            "lemma": "붉은빛",
+            "result_ids": [
+              "w965"
+            ]
+          },
+          {
+            "record_id": "w966",
+            "lemma": "비누향",
+            "result_ids": [
+              "w966"
+            ]
+          },
+          {
+            "record_id": "w967",
+            "lemma": "빛깔",
+            "result_ids": [
+              "w967"
+            ]
+          },
+          {
+            "record_id": "w968",
+            "lemma": "사각거림",
+            "result_ids": [
+              "w968"
+            ]
+          },
+          {
+            "record_id": "w969",
+            "lemma": "상큼하다",
+            "result_ids": [
+              "w969"
+            ]
+          },
+          {
+            "record_id": "w970",
+            "lemma": "서걱거림",
+            "result_ids": [
+              "w970"
+            ]
+          },
+          {
+            "record_id": "w971",
+            "lemma": "선홍빛",
+            "result_ids": [
+              "w971"
+            ]
+          },
+          {
+            "record_id": "w972",
+            "lemma": "소금기",
+            "result_ids": [
+              "w972"
+            ]
+          },
+          {
+            "record_id": "w973",
+            "lemma": "소금물",
+            "result_ids": [
+              "w973"
+            ]
+          },
+          {
+            "record_id": "w974",
+            "lemma": "송진",
+            "result_ids": [
+              "w974"
+            ]
+          },
+          {
+            "record_id": "w975",
+            "lemma": "수증기",
+            "result_ids": [
+              "w975"
+            ]
+          },
+          {
+            "record_id": "w976",
+            "lemma": "시큼함",
+            "result_ids": [
+              "w976"
+            ]
+          },
+          {
+            "record_id": "w977",
+            "lemma": "신기루",
+            "result_ids": [
+              "w977"
+            ]
+          },
+          {
+            "record_id": "w978",
+            "lemma": "신선하다",
+            "result_ids": [
+              "w978"
+            ]
+          },
+          {
+            "record_id": "w979",
+            "lemma": "아지랑이",
+            "result_ids": [
+              "w979"
+            ]
+          },
+          {
+            "record_id": "w980",
+            "lemma": "안개비",
+            "result_ids": [
+              "w980"
+            ]
+          },
+          {
+            "record_id": "w981",
+            "lemma": "알싸함",
+            "result_ids": [
+              "w981"
+            ]
+          },
+          {
+            "record_id": "w982",
+            "lemma": "얼음장",
+            "result_ids": [
+              "w982"
+            ]
+          },
+          {
+            "record_id": "w983",
+            "lemma": "여울",
+            "result_ids": [
+              "w983"
+            ]
+          },
+          {
+            "record_id": "w984",
+            "lemma": "온습",
+            "result_ids": [
+              "w984"
+            ]
+          },
+          {
+            "record_id": "w985",
+            "lemma": "옅다",
+            "result_ids": [
+              "w985"
+            ]
+          },
+          {
+            "record_id": "w986",
+            "lemma": "잔향",
+            "result_ids": [
+              "w986"
+            ]
+          },
+          {
+            "record_id": "w987",
+            "lemma": "조명",
+            "result_ids": [
+              "w987"
+            ]
+          },
+          {
+            "record_id": "w988",
+            "lemma": "짙다",
+            "result_ids": [
+              "w988"
+            ]
+          },
+          {
+            "record_id": "w989",
+            "lemma": "찬바람",
+            "result_ids": [
+              "w989"
+            ]
+          },
+          {
+            "record_id": "w990",
+            "lemma": "찬기운",
+            "result_ids": [
+              "w990"
+            ]
+          },
+          {
+            "record_id": "w991",
+            "lemma": "청량하다",
+            "result_ids": [
+              "w991"
+            ]
+          },
+          {
+            "record_id": "w992",
+            "lemma": "초록빛",
+            "result_ids": [
+              "w992"
+            ]
+          },
+          {
+            "record_id": "w993",
+            "lemma": "콸콸거리다",
+            "result_ids": [
+              "w993"
+            ]
+          },
+          {
+            "record_id": "w994",
+            "lemma": "향취",
+            "result_ids": [
+              "w994"
+            ]
+          },
+          {
+            "record_id": "w995",
+            "lemma": "후각",
+            "result_ids": [
+              "w995"
+            ]
+          },
+          {
+            "record_id": "w996",
+            "lemma": "훈기",
+            "result_ids": [
+              "w996"
+            ]
+          },
+          {
+            "record_id": "w997",
+            "lemma": "흰빛",
+            "result_ids": [
+              "w997"
+            ]
+          },
+          {
+            "record_id": "w998",
+            "lemma": "흐린빛",
+            "result_ids": [
+              "w998"
+            ]
+          },
+          {
+            "record_id": "w999",
+            "lemma": "오돌토돌함",
+            "result_ids": [
+              "w999"
+            ]
+          },
+          {
+            "record_id": "w1000",
+            "lemma": "서늘한기운",
+            "result_ids": [
+              "w1000"
+            ]
+          },
+          {
+            "record_id": "w1001",
+            "lemma": "부스러기",
+            "result_ids": [
+              "w1001"
+            ]
+          },
+          {
+            "record_id": "w1002",
+            "lemma": "빛무리",
+            "result_ids": [
+              "w1002"
+            ]
+          },
+          {
+            "record_id": "w1003",
+            "lemma": "빛살",
+            "result_ids": [
+              "w1003"
+            ]
+          },
+          {
+            "record_id": "w1004",
+            "lemma": "물방울",
+            "result_ids": [
+              "w1004"
+            ]
+          },
+          {
+            "record_id": "w1005",
+            "lemma": "물비린내",
+            "result_ids": [
+              "w1005"
+            ]
+          },
+          {
+            "record_id": "w1006",
+            "lemma": "바람내음",
+            "result_ids": [
+              "w1006"
+            ]
+          },
+          {
+            "record_id": "w1007",
+            "lemma": "잔물결",
+            "result_ids": [
+              "w1007"
+            ]
+          },
+          {
+            "record_id": "w1008",
+            "lemma": "파문",
+            "result_ids": [
+              "w1008"
+            ]
+          },
+          {
+            "record_id": "w1009",
+            "lemma": "투명도",
+            "result_ids": [
+              "w1009"
+            ]
+          },
+          {
+            "record_id": "w1010",
+            "lemma": "차가운빛",
+            "result_ids": [
+              "w1010"
+            ]
+          },
+          {
+            "record_id": "w1011",
+            "lemma": "따뜻한빛",
+            "result_ids": [
+              "w1011"
+            ]
+          },
+          {
+            "record_id": "w1012",
+            "lemma": "윤기",
+            "result_ids": [
+              "w1012"
+            ]
+          },
+          {
+            "record_id": "w1013",
+            "lemma": "광택",
+            "result_ids": [
+              "w1013"
+            ]
+          },
+          {
+            "record_id": "w1014",
+            "lemma": "질감",
+            "result_ids": [
+              "w1014"
+            ]
+          },
+          {
+            "record_id": "w1015",
+            "lemma": "결감",
+            "result_ids": [
+              "w1015"
+            ]
+          },
+          {
+            "record_id": "w1016",
+            "lemma": "공기",
+            "result_ids": [
+              "w1016"
+            ]
+          },
+          {
+            "record_id": "w1017",
+            "lemma": "미온수",
+            "result_ids": [
+              "w1017"
+            ]
+          },
+          {
+            "record_id": "w1018",
+            "lemma": "한기",
+            "result_ids": [
+              "w1018"
+            ]
+          },
+          {
+            "record_id": "w1019",
+            "lemma": "가로수",
+            "result_ids": [
+              "w1019"
+            ]
+          },
+          {
+            "record_id": "w1020",
+            "lemma": "갈대밭",
+            "result_ids": [
+              "w1020"
+            ]
+          },
+          {
+            "record_id": "w1021",
+            "lemma": "고원",
+            "result_ids": [
+              "w1021"
+            ]
+          },
+          {
+            "record_id": "w1022",
+            "lemma": "구릉",
+            "result_ids": [
+              "w1022"
+            ]
+          },
+          {
+            "record_id": "w1023",
+            "lemma": "늪",
+            "result_ids": [
+              "w1023"
+            ]
+          },
+          {
+            "record_id": "w1024",
+            "lemma": "늪지",
+            "result_ids": [
+              "w1024"
+            ]
+          },
+          {
+            "record_id": "w1025",
+            "lemma": "마루금",
+            "result_ids": [
+              "w1025"
+            ]
+          },
+          {
+            "record_id": "w1026",
+            "lemma": "다랑논",
+            "result_ids": [
+              "w1026"
+            ]
+          },
+          {
+            "record_id": "w1027",
+            "lemma": "대숲",
+            "result_ids": [
+              "w1027"
+            ]
+          },
+          {
+            "record_id": "w1028",
+            "lemma": "도랑",
+            "result_ids": [
+              "w1028"
+            ]
+          },
+          {
+            "record_id": "w1029",
+            "lemma": "둑",
+            "result_ids": [
+              "w1029"
+            ]
+          },
+          {
+            "record_id": "w1030",
+            "lemma": "둑길",
+            "result_ids": [
+              "w1030"
+            ]
+          },
+          {
+            "record_id": "w1031",
+            "lemma": "뒷산",
+            "result_ids": [
+              "w1031"
+            ]
+          },
+          {
+            "record_id": "w1032",
+            "lemma": "길머리",
+            "result_ids": [
+              "w1032"
+            ]
+          },
+          {
+            "record_id": "w1033",
+            "lemma": "들풀",
+            "result_ids": [
+              "w1033"
+            ]
+          },
+          {
+            "record_id": "w1034",
+            "lemma": "먼바다",
+            "result_ids": [
+              "w1034"
+            ]
+          },
+          {
+            "record_id": "w1035",
+            "lemma": "모래언덕",
+            "result_ids": [
+              "w1035"
+            ]
+          },
+          {
+            "record_id": "w1036",
+            "lemma": "바위",
+            "result_ids": [
+              "w1036"
+            ]
+          },
+          {
+            "record_id": "w1037",
+            "lemma": "바위틈",
+            "result_ids": [
+              "w1037"
+            ]
+          },
+          {
+            "record_id": "w1038",
+            "lemma": "백사장",
+            "result_ids": [
+              "w1038"
+            ]
+          },
+          {
+            "record_id": "w1039",
+            "lemma": "벼랑",
+            "result_ids": [
+              "w1039"
+            ]
+          },
+          {
+            "record_id": "w1040",
+            "lemma": "볕",
+            "result_ids": [
+              "w1040"
+            ]
+          },
+          {
+            "record_id": "w1041",
+            "lemma": "사구",
+            "result_ids": [
+              "w1041"
+            ]
+          },
+          {
+            "record_id": "w1042",
+            "lemma": "산골",
+            "result_ids": [
+              "w1042"
+            ]
+          },
+          {
+            "record_id": "w1043",
+            "lemma": "산골짜기",
+            "result_ids": [
+              "w1043"
+            ]
+          },
+          {
+            "record_id": "w1044",
+            "lemma": "산길",
+            "result_ids": [
+              "w1044"
+            ]
+          },
+          {
+            "record_id": "w1045",
+            "lemma": "산비탈",
+            "result_ids": [
+              "w1045"
+            ]
+          },
+          {
+            "record_id": "w1046",
+            "lemma": "산촌",
+            "result_ids": [
+              "w1046"
+            ]
+          },
+          {
+            "record_id": "w1047",
+            "lemma": "샘",
+            "result_ids": [
+              "w1047"
+            ]
+          },
+          {
+            "record_id": "w1048",
+            "lemma": "샘터",
+            "result_ids": [
+              "w1048"
+            ]
+          },
+          {
+            "record_id": "w1049",
+            "lemma": "석양",
+            "result_ids": [
+              "w1049"
+            ]
+          },
+          {
+            "record_id": "w1050",
+            "lemma": "섬",
+            "result_ids": [
+              "w1050"
+            ]
+          },
+          {
+            "record_id": "w1051",
+            "lemma": "섬마을",
+            "result_ids": [
+              "w1051"
+            ]
+          },
+          {
+            "record_id": "w1052",
+            "lemma": "소나무숲",
+            "result_ids": [
+              "w1052"
+            ]
+          },
+          {
+            "record_id": "w1053",
+            "lemma": "수풀",
+            "result_ids": [
+              "w1053"
+            ]
+          },
+          {
+            "record_id": "w1054",
+            "lemma": "습지",
+            "result_ids": [
+              "w1054"
+            ]
+          },
+          {
+            "record_id": "w1055",
+            "lemma": "시골",
+            "result_ids": [
+              "w1055"
+            ]
+          },
+          {
+            "record_id": "w1056",
+            "lemma": "신작로",
+            "result_ids": [
+              "w1056"
+            ]
+          },
+          {
+            "record_id": "w1057",
+            "lemma": "아랫목",
+            "result_ids": [
+              "w1057"
+            ]
+          },
+          {
+            "record_id": "w1058",
+            "lemma": "앞마당",
+            "result_ids": [
+              "w1058"
+            ]
+          },
+          {
+            "record_id": "w1059",
+            "lemma": "언덕",
+            "result_ids": [
+              "w1059"
+            ]
+          },
+          {
+            "record_id": "w1060",
+            "lemma": "여울목",
+            "result_ids": [
+              "w1060"
+            ]
+          },
+          {
+            "record_id": "w1061",
+            "lemma": "외딴곳",
+            "result_ids": [
+              "w1061"
+            ]
+          },
+          {
+            "record_id": "w1062",
+            "lemma": "외딴섬",
+            "result_ids": [
+              "w1062"
+            ]
+          },
+          {
+            "record_id": "w1063",
+            "lemma": "울타리",
+            "result_ids": [
+              "w1063"
+            ]
+          },
+          {
+            "record_id": "w1064",
+            "lemma": "원두막",
+            "result_ids": [
+              "w1064"
+            ]
+          },
+          {
+            "record_id": "w1065",
+            "lemma": "잔디밭",
+            "result_ids": [
+              "w1065"
+            ]
+          },
+          {
+            "record_id": "w1066",
+            "lemma": "장터",
+            "result_ids": [
+              "w1066"
+            ]
+          },
+          {
+            "record_id": "w1067",
+            "lemma": "저수지",
+            "result_ids": [
+              "w1067"
+            ]
+          },
+          {
+            "record_id": "w1068",
+            "lemma": "전봇대",
+            "result_ids": [
+              "w1068"
+            ]
+          },
+          {
+            "record_id": "w1069",
+            "lemma": "정원",
+            "result_ids": [
+              "w1069"
+            ]
+          },
+          {
+            "record_id": "w1070",
+            "lemma": "지평선",
+            "result_ids": [
+              "w1070"
+            ]
+          },
+          {
+            "record_id": "w1071",
+            "lemma": "찻길",
+            "result_ids": [
+              "w1071"
+            ]
+          },
+          {
+            "record_id": "w1072",
+            "lemma": "철길",
+            "result_ids": [
+              "w1072"
+            ]
+          },
+          {
+            "record_id": "w1073",
+            "lemma": "초승달",
+            "result_ids": [
+              "w1073"
+            ]
+          },
+          {
+            "record_id": "w1074",
+            "lemma": "초입",
+            "result_ids": [
+              "w1074"
+            ]
+          },
+          {
+            "record_id": "w1075",
+            "lemma": "촌락",
+            "result_ids": [
+              "w1075"
+            ]
+          },
+          {
+            "record_id": "w1076",
+            "lemma": "큰길",
+            "result_ids": [
+              "w1076"
+            ]
+          },
+          {
+            "record_id": "w1077",
+            "lemma": "평야",
+            "result_ids": [
+              "w1077"
+            ]
+          },
+          {
+            "record_id": "w1078",
+            "lemma": "하늘",
+            "result_ids": [
+              "w1078"
+            ]
+          },
+          {
+            "record_id": "w1079",
+            "lemma": "하늘빛",
+            "result_ids": [
+              "w1079"
+            ]
+          },
+          {
+            "record_id": "w1080",
+            "lemma": "해안",
+            "result_ids": [
+              "w1080"
+            ]
+          },
+          {
+            "record_id": "w1081",
+            "lemma": "해변",
+            "result_ids": [
+              "w1081"
+            ]
+          },
+          {
+            "record_id": "w1082",
+            "lemma": "햇볕",
+            "result_ids": [
+              "w1082"
+            ]
+          },
+          {
+            "record_id": "w1083",
+            "lemma": "호숫가",
+            "result_ids": [
+              "w1083"
+            ]
+          },
+          {
+            "record_id": "w1084",
+            "lemma": "호수",
+            "result_ids": [
+              "w1084"
+            ]
+          },
+          {
+            "record_id": "w1085",
+            "lemma": "홍수",
+            "result_ids": [
+              "w1085"
+            ]
+          },
+          {
+            "record_id": "w1086",
+            "lemma": "황혼",
+            "result_ids": [
+              "w1086"
+            ]
+          },
+          {
+            "record_id": "w1087",
+            "lemma": "후미진곳",
+            "result_ids": [
+              "w1087"
+            ]
+          },
+          {
+            "record_id": "w1088",
+            "lemma": "휴게소",
+            "result_ids": [
+              "w1088"
+            ]
+          },
+          {
+            "record_id": "w1089",
+            "lemma": "가로등",
+            "result_ids": [
+              "w1089"
+            ]
+          },
+          {
+            "record_id": "w1090",
+            "lemma": "골목어귀",
+            "result_ids": [
+              "w1090"
+            ]
+          },
+          {
+            "record_id": "w1091",
+            "lemma": "구름층",
+            "result_ids": [
+              "w1091"
+            ]
+          },
+          {
+            "record_id": "w1092",
+            "lemma": "굴뚝",
+            "result_ids": [
+              "w1092"
+            ]
+          },
+          {
+            "record_id": "w1093",
+            "lemma": "논길",
+            "result_ids": [
+              "w1093"
+            ]
+          },
+          {
+            "record_id": "w1094",
+            "lemma": "논둑",
+            "result_ids": [
+              "w1094"
+            ]
+          },
+          {
+            "record_id": "w1095",
+            "lemma": "마을어귀",
+            "result_ids": [
+              "w1095"
+            ]
+          },
+          {
+            "record_id": "w1096",
+            "lemma": "물굽이",
+            "result_ids": [
+              "w1096"
+            ]
+          },
+          {
+            "record_id": "w1097",
+            "lemma": "배수로",
+            "result_ids": [
+              "w1097"
+            ]
+          },
+          {
+            "record_id": "w1098",
+            "lemma": "사잇길",
+            "result_ids": [
+              "w1098"
+            ]
+          },
+          {
+            "record_id": "w1099",
+            "lemma": "가누다",
+            "result_ids": [
+              "w1099"
+            ]
+          },
+          {
+            "record_id": "w1100",
+            "lemma": "가라앉히다",
+            "result_ids": [
+              "w1100"
+            ]
+          },
+          {
+            "record_id": "w1101",
+            "lemma": "차단하다",
+            "result_ids": [
+              "w1101"
+            ]
+          },
+          {
+            "record_id": "w1102",
+            "lemma": "갈아타다",
+            "result_ids": [
+              "w1102"
+            ]
+          },
+          {
+            "record_id": "w1103",
+            "lemma": "감돌다",
+            "result_ids": [
+              "w1103"
+            ]
+          },
+          {
+            "record_id": "w1104",
+            "lemma": "감추다",
+            "result_ids": [
+              "w1104"
+            ]
+          },
+          {
+            "record_id": "w1105",
+            "lemma": "거머쥐다",
+            "result_ids": [
+              "w1105"
+            ]
+          },
+          {
+            "record_id": "w1106",
+            "lemma": "걸터앉다",
+            "result_ids": [
+              "w1106"
+            ]
+          },
+          {
+            "record_id": "w1107",
+            "lemma": "겨누다",
+            "result_ids": [
+              "w1107"
+            ]
+          },
+          {
+            "record_id": "w1108",
+            "lemma": "곁눈질하다",
+            "result_ids": [
+              "w1108"
+            ]
+          },
+          {
+            "record_id": "w1109",
+            "lemma": "구부리다",
+            "result_ids": [
+              "w1109"
+            ]
+          },
+          {
+            "record_id": "w1110",
+            "lemma": "굴리다",
+            "result_ids": [
+              "w1110"
+            ]
+          },
+          {
+            "record_id": "w1111",
+            "lemma": "굽히다",
+            "result_ids": [
+              "w1111"
+            ]
+          },
+          {
+            "record_id": "w1112",
+            "lemma": "끌다",
+            "result_ids": [
+              "w1112"
+            ]
+          },
+          {
+            "record_id": "w1113",
+            "lemma": "나누다",
+            "result_ids": [
+              "w1113"
+            ]
+          },
+          {
+            "record_id": "w1114",
+            "lemma": "낚다",
+            "result_ids": [
+              "w1114"
+            ]
+          },
+          {
+            "record_id": "w1115",
+            "lemma": "내던지다",
+            "result_ids": [
+              "w1115"
+            ]
+          },
+          {
+            "record_id": "w1116",
+            "lemma": "내리다",
+            "result_ids": [
+              "w1116"
+            ]
+          },
+          {
+            "record_id": "w1117",
+            "lemma": "넓히다",
+            "result_ids": [
+              "w1117"
+            ]
+          },
+          {
+            "record_id": "w1118",
+            "lemma": "넘나들다",
+            "result_ids": [
+              "w1118"
+            ]
+          },
+          {
+            "record_id": "w1119",
+            "lemma": "넘치다",
+            "result_ids": [
+              "w1119"
+            ]
+          },
+          {
+            "record_id": "w1120",
+            "lemma": "놓치다",
+            "result_ids": [
+              "w1120"
+            ]
+          },
+          {
+            "record_id": "w1121",
+            "lemma": "다독이다",
+            "result_ids": [
+              "w1121"
+            ]
+          },
+          {
+            "record_id": "w1122",
+            "lemma": "다가오다",
+            "result_ids": [
+              "w1122"
+            ]
+          },
+          {
+            "record_id": "w1123",
+            "lemma": "다그치다",
+            "result_ids": [
+              "w1123"
+            ]
+          },
+          {
+            "record_id": "w1124",
+            "lemma": "달래다",
+            "result_ids": [
+              "w1124"
+            ]
+          },
+          {
+            "record_id": "w1125",
+            "lemma": "닦다",
+            "result_ids": [
+              "w1125"
+            ]
+          },
+          {
+            "record_id": "w1126",
+            "lemma": "당겨오다",
+            "result_ids": [
+              "w1126"
+            ]
+          },
+          {
+            "record_id": "w1127",
+            "lemma": "대치하다",
+            "result_ids": [
+              "w1127"
+            ]
+          },
+          {
+            "record_id": "w1128",
+            "lemma": "던지다",
+            "result_ids": [
+              "w1128"
+            ]
+          },
+          {
+            "record_id": "w1129",
+            "lemma": "돌려세우다",
+            "result_ids": [
+              "w1129"
+            ]
+          },
+          {
+            "record_id": "w1130",
+            "lemma": "들이받다",
+            "result_ids": [
+              "w1130"
+            ]
+          },
+          {
+            "record_id": "w1131",
+            "lemma": "들이키다",
+            "result_ids": [
+              "w1131"
+            ]
+          },
+          {
+            "record_id": "w1132",
+            "lemma": "따라붙다",
+            "result_ids": [
+              "w1132"
+            ]
+          },
+          {
+            "record_id": "w1133",
+            "lemma": "떠오르다",
+            "result_ids": [
+              "w1133"
+            ]
+          },
+          {
+            "record_id": "w1134",
+            "lemma": "떼어내다",
+            "result_ids": [
+              "w1134"
+            ]
+          },
+          {
+            "record_id": "w1135",
+            "lemma": "뚫다",
+            "result_ids": [
+              "w1135"
+            ]
+          },
+          {
+            "record_id": "w1136",
+            "lemma": "뛰놀다",
+            "result_ids": [
+              "w1136"
+            ]
+          },
+          {
+            "record_id": "w1137",
+            "lemma": "마주보다",
+            "result_ids": [
+              "w1137"
+            ]
+          },
+          {
+            "record_id": "w1138",
+            "lemma": "맞서다",
+            "result_ids": [
+              "w1138"
+            ]
+          },
+          {
+            "record_id": "w1139",
+            "lemma": "맞잡다",
+            "result_ids": [
+              "w1139"
+            ]
+          },
+          {
+            "record_id": "w1140",
+            "lemma": "매달리다",
+            "result_ids": [
+              "w1140"
+            ]
+          },
+          {
+            "record_id": "w1141",
+            "lemma": "메우다",
+            "result_ids": [
+              "w1141"
+            ]
+          },
+          {
+            "record_id": "w1142",
+            "lemma": "몰아치다",
+            "result_ids": [
+              "w1142"
+            ]
+          },
+          {
+            "record_id": "w1143",
+            "lemma": "묻다",
+            "result_ids": [
+              "w1143"
+            ]
+          },
+          {
+            "record_id": "w1144",
+            "lemma": "밀려들다",
+            "result_ids": [
+              "w1144"
+            ]
+          },
+          {
+            "record_id": "w1145",
+            "lemma": "버티다",
+            "result_ids": [
+              "w1145"
+            ]
+          },
+          {
+            "record_id": "w1146",
+            "lemma": "벗어나다",
+            "result_ids": [
+              "w1146"
+            ]
+          },
+          {
+            "record_id": "w1147",
+            "lemma": "비비다",
+            "result_ids": [
+              "w1147"
+            ]
+          },
+          {
+            "record_id": "w1148",
+            "lemma": "비켜나다",
+            "result_ids": [
+              "w1148"
+            ]
+          },
+          {
+            "record_id": "w1149",
+            "lemma": "빼앗다",
+            "result_ids": [
+              "w1149"
+            ]
+          },
+          {
+            "record_id": "w1150",
+            "lemma": "뿜어내다",
+            "result_ids": [
+              "w1150"
+            ]
+          },
+          {
+            "record_id": "w1151",
+            "lemma": "사라져가다",
+            "result_ids": [
+              "w1151"
+            ]
+          },
+          {
+            "record_id": "w1152",
+            "lemma": "새다",
+            "result_ids": [
+              "w1152"
+            ]
+          },
+          {
+            "record_id": "w1153",
+            "lemma": "선회하다",
+            "result_ids": [
+              "w1153"
+            ]
+          },
+          {
+            "record_id": "w1154",
+            "lemma": "숨죽이다",
+            "result_ids": [
+              "w1154"
+            ]
+          },
+          {
+            "record_id": "w1155",
+            "lemma": "스치다",
+            "result_ids": [
+              "w1155"
+            ]
+          },
+          {
+            "record_id": "w1156",
+            "lemma": "시달리다",
+            "result_ids": [
+              "w1156"
+            ]
+          },
+          {
+            "record_id": "w1157",
+            "lemma": "실어나르다",
+            "result_ids": [
+              "w1157"
+            ]
+          },
+          {
+            "record_id": "w1158",
+            "lemma": "쏟다",
+            "result_ids": [
+              "w1158"
+            ]
+          },
+          {
+            "record_id": "w1159",
+            "lemma": "쏟아지다",
+            "result_ids": [
+              "w1159"
+            ]
+          },
+          {
+            "record_id": "w1160",
+            "lemma": "안기다",
+            "result_ids": [
+              "w1160"
+            ]
+          },
+          {
+            "record_id": "w1161",
+            "lemma": "앞세우다",
+            "result_ids": [
+              "w1161"
+            ]
+          },
+          {
+            "record_id": "w1162",
+            "lemma": "얹다",
+            "result_ids": [
+              "w1162"
+            ]
+          },
+          {
+            "record_id": "w1163",
+            "lemma": "엎지르다",
+            "result_ids": [
+              "w1163"
+            ]
+          },
+          {
+            "record_id": "w1164",
+            "lemma": "옮기다",
+            "result_ids": [
+              "w1164"
+            ]
+          },
+          {
+            "record_id": "w1165",
+            "lemma": "움켜잡다",
+            "result_ids": [
+              "w1165"
+            ]
+          },
+          {
+            "record_id": "w1166",
+            "lemma": "일구다",
+            "result_ids": [
+              "w1166"
+            ]
+          },
+          {
+            "record_id": "w1167",
+            "lemma": "잇다",
+            "result_ids": [
+              "w1167"
+            ]
+          },
+          {
+            "record_id": "w1168",
+            "lemma": "자라나다",
+            "result_ids": [
+              "w1168"
+            ]
+          },
+          {
+            "record_id": "w1169",
+            "lemma": "재촉하다",
+            "result_ids": [
+              "w1169"
+            ]
+          },
+          {
+            "record_id": "w1170",
+            "lemma": "젖히다",
+            "result_ids": [
+              "w1170"
+            ]
+          },
+          {
+            "record_id": "w1171",
+            "lemma": "조르다",
+            "result_ids": [
+              "w1171"
+            ]
+          },
+          {
+            "record_id": "w1172",
+            "lemma": "주무르다",
+            "result_ids": [
+              "w1172"
+            ]
+          },
+          {
+            "record_id": "w1173",
+            "lemma": "지나다",
+            "result_ids": [
+              "w1173"
+            ]
+          },
+          {
+            "record_id": "w1174",
+            "lemma": "지켜보다",
+            "result_ids": [
+              "w1174"
+            ]
+          },
+          {
+            "record_id": "w1175",
+            "lemma": "질주하다",
+            "result_ids": [
+              "w1175"
+            ]
+          },
+          {
+            "record_id": "w1176",
+            "lemma": "짚다",
+            "result_ids": [
+              "w1176"
+            ]
+          },
+          {
+            "record_id": "w1177",
+            "lemma": "치받다",
+            "result_ids": [
+              "w1177"
+            ]
+          },
+          {
+            "record_id": "w1178",
+            "lemma": "치우다",
+            "result_ids": [
+              "w1178"
+            ]
+          },
+          {
+            "record_id": "w1179",
+            "lemma": "캐묻다",
+            "result_ids": [
+              "w1179"
+            ]
+          },
+          {
+            "record_id": "w1180",
+            "lemma": "휘감다",
+            "result_ids": [
+              "w1180"
+            ]
+          },
+          {
+            "record_id": "w1181",
+            "lemma": "휘몰아치다",
+            "result_ids": [
+              "w1181"
+            ]
+          },
+          {
+            "record_id": "w1182",
+            "lemma": "훑다",
+            "result_ids": [
+              "w1182"
+            ]
+          },
+          {
+            "record_id": "w1183",
+            "lemma": "휘젓다",
+            "result_ids": [
+              "w1183"
+            ]
+          },
+          {
+            "record_id": "w1184",
+            "lemma": "흩어지다",
+            "result_ids": [
+              "w1184"
+            ]
+          },
+          {
+            "record_id": "w1185",
+            "lemma": "흘려보내다",
+            "result_ids": [
+              "w1185"
+            ]
+          },
+          {
+            "record_id": "w1186",
+            "lemma": "힘주다",
+            "result_ids": [
+              "w1186"
+            ]
+          },
+          {
+            "record_id": "w1187",
+            "lemma": "굴절하다",
+            "result_ids": [
+              "w1187"
+            ]
+          },
+          {
+            "record_id": "w1188",
+            "lemma": "마주치다",
+            "result_ids": [
+              "w1188"
+            ]
+          },
+          {
+            "record_id": "w1189",
+            "lemma": "맞이하다",
+            "result_ids": [
+              "w1189"
+            ]
+          },
+          {
+            "record_id": "w1190",
+            "lemma": "부딪치다",
+            "result_ids": [
+              "w1190"
+            ]
+          },
+          {
+            "record_id": "w1191",
+            "lemma": "비집고들어가다",
+            "result_ids": [
+              "w1191"
+            ]
+          },
+          {
+            "record_id": "w1192",
+            "lemma": "삼키다",
+            "result_ids": [
+              "w1192"
+            ]
+          },
+          {
+            "record_id": "w1193",
+            "lemma": "움찔하다",
+            "result_ids": [
+              "w1193"
+            ]
+          },
+          {
+            "record_id": "w1194",
+            "lemma": "깜빡이다",
+            "result_ids": [
+              "w1194"
+            ]
+          },
+          {
+            "record_id": "w1195",
+            "lemma": "끄덕이다",
+            "result_ids": [
+              "w1195"
+            ]
+          },
+          {
+            "record_id": "w1196",
+            "lemma": "숨다",
+            "result_ids": [
+              "w1196"
+            ]
+          },
+          {
+            "record_id": "w1197",
+            "lemma": "솟아오르다",
+            "result_ids": [
+              "w1197"
+            ]
+          },
+          {
+            "record_id": "w1198",
+            "lemma": "잠기다",
+            "result_ids": [
+              "w1198"
+            ]
+          },
+          {
+            "record_id": "w1199",
+            "lemma": "가위",
+            "result_ids": [
+              "w1199"
+            ]
+          },
+          {
+            "record_id": "w1200",
+            "lemma": "가죽",
+            "result_ids": [
+              "w1200"
+            ]
+          },
+          {
+            "record_id": "w1201",
+            "lemma": "간판",
+            "result_ids": [
+              "w1201"
+            ]
+          },
+          {
+            "record_id": "w1202",
+            "lemma": "갑판",
+            "result_ids": [
+              "w1202"
+            ]
+          },
+          {
+            "record_id": "w1203",
+            "lemma": "갓",
+            "result_ids": [
+              "w1203"
+            ]
+          },
+          {
+            "record_id": "w1204",
+            "lemma": "갯벌",
+            "result_ids": [
+              "w1204"
+            ]
+          },
+          {
+            "record_id": "w1205",
+            "lemma": "건반",
+            "result_ids": [
+              "w1205"
+            ]
+          },
+          {
+            "record_id": "w1206",
+            "lemma": "경첩",
+            "result_ids": [
+              "w1206"
+            ]
+          },
+          {
+            "record_id": "w1207",
+            "lemma": "고무줄",
+            "result_ids": [
+              "w1207"
+            ]
+          },
+          {
+            "record_id": "w1208",
+            "lemma": "곡괭이",
+            "result_ids": [
+              "w1208"
+            ]
+          },
+          {
+            "record_id": "w1209",
+            "lemma": "골무",
+            "result_ids": [
+              "w1209"
+            ]
+          },
+          {
+            "record_id": "w1210",
+            "lemma": "공책",
+            "result_ids": [
+              "w1210"
+            ]
+          },
+          {
+            "record_id": "w1211",
+            "lemma": "괭이",
+            "result_ids": [
+              "w1211"
+            ]
+          },
+          {
+            "record_id": "w1212",
+            "lemma": "구두",
+            "result_ids": [
+              "w1212"
+            ]
+          },
+          {
+            "record_id": "w1213",
+            "lemma": "국자",
+            "result_ids": [
+              "w1213"
+            ]
+          },
+          {
+            "record_id": "w1214",
+            "lemma": "기둥",
+            "result_ids": [
+              "w1214"
+            ]
+          },
+          {
+            "record_id": "w1215",
+            "lemma": "나침반",
+            "result_ids": [
+              "w1215"
+            ]
+          },
+          {
+            "record_id": "w1216",
+            "lemma": "납작돌",
+            "result_ids": [
+              "w1216"
+            ]
+          },
+          {
+            "record_id": "w1217",
+            "lemma": "낫",
+            "result_ids": [
+              "w1217"
+            ]
+          },
+          {
+            "record_id": "w1218",
+            "lemma": "냄비",
+            "result_ids": [
+              "w1218"
+            ]
+          },
+          {
+            "record_id": "w1219",
+            "lemma": "노트",
+            "result_ids": [
+              "w1219"
+            ]
+          },
+          {
+            "record_id": "w1220",
+            "lemma": "도르래",
+            "result_ids": [
+              "w1220"
+            ]
+          },
+          {
+            "record_id": "w1221",
+            "lemma": "돋보기",
+            "result_ids": [
+              "w1221"
+            ]
+          },
+          {
+            "record_id": "w1222",
+            "lemma": "등받이",
+            "result_ids": [
+              "w1222"
+            ]
+          },
+          {
+            "record_id": "w1223",
+            "lemma": "라디오",
+            "result_ids": [
+              "w1223"
+            ]
+          },
+          {
+            "record_id": "w1224",
+            "lemma": "망치",
+            "result_ids": [
+              "w1224"
+            ]
+          },
+          {
+            "record_id": "w1225",
+            "lemma": "매듭",
+            "result_ids": [
+              "w1225"
+            ]
+          },
+          {
+            "record_id": "w1226",
+            "lemma": "멍석",
+            "result_ids": [
+              "w1226"
+            ]
+          },
+          {
+            "record_id": "w1227",
+            "lemma": "모자",
+            "result_ids": [
+              "w1227"
+            ]
+          },
+          {
+            "record_id": "w1228",
+            "lemma": "목도리",
+            "result_ids": [
+              "w1228"
+            ]
+          },
+          {
+            "record_id": "w1229",
+            "lemma": "무명천",
+            "result_ids": [
+              "w1229"
+            ]
+          },
+          {
+            "record_id": "w1230",
+            "lemma": "물동이",
+            "result_ids": [
+              "w1230"
+            ]
+          },
+          {
+            "record_id": "w1231",
+            "lemma": "바구니",
+            "result_ids": [
+              "w1231"
+            ]
+          },
+          {
+            "record_id": "w1232",
+            "lemma": "박스",
+            "result_ids": [
+              "w1232"
+            ]
+          },
+          {
+            "record_id": "w1233",
+            "lemma": "방석",
+            "result_ids": [
+              "w1233"
+            ]
+          },
+          {
+            "record_id": "w1234",
+            "lemma": "배낭",
+            "result_ids": [
+              "w1234"
+            ]
+          },
+          {
+            "record_id": "w1235",
+            "lemma": "벽돌",
+            "result_ids": [
+              "w1235"
+            ]
+          },
+          {
+            "record_id": "w1236",
+            "lemma": "보따리",
+            "result_ids": [
+              "w1236"
+            ]
+          },
+          {
+            "record_id": "w1237",
+            "lemma": "손전등",
+            "result_ids": [
+              "w1237"
+            ]
+          },
+          {
+            "record_id": "w1238",
+            "lemma": "수첩",
+            "result_ids": [
+              "w1238"
+            ]
+          },
+          {
+            "record_id": "w1239",
+            "lemma": "스웨터",
+            "result_ids": [
+              "w1239"
+            ]
+          },
+          {
+            "record_id": "w1240",
+            "lemma": "신호등",
+            "result_ids": [
+              "w1240"
+            ]
+          },
+          {
+            "record_id": "w1241",
+            "lemma": "액자",
+            "result_ids": [
+              "w1241"
+            ]
+          },
+          {
+            "record_id": "w1242",
+            "lemma": "양초",
+            "result_ids": [
+              "w1242"
+            ]
+          },
+          {
+            "record_id": "w1243",
+            "lemma": "연장",
+            "result_ids": [
+              "w1243"
+            ]
+          },
+          {
+            "record_id": "w1244",
+            "lemma": "옷걸이",
+            "result_ids": [
+              "w1244"
+            ]
+          },
+          {
+            "record_id": "w1245",
+            "lemma": "우체통",
+            "result_ids": [
+              "w1245"
+            ]
+          },
+          {
+            "record_id": "w1246",
+            "lemma": "유리창",
+            "result_ids": [
+              "w1246"
+            ]
+          },
+          {
+            "record_id": "w1247",
+            "lemma": "이끼",
+            "result_ids": [
+              "w1247"
+            ]
+          },
+          {
+            "record_id": "w1248",
+            "lemma": "자",
+            "result_ids": [
+              "w1248"
+            ]
+          },
+          {
+            "record_id": "w1249",
+            "lemma": "자루",
+            "result_ids": [
+              "w1249"
+            ]
+          },
+          {
+            "record_id": "w1250",
+            "lemma": "장갑",
+            "result_ids": [
+              "w1250"
+            ]
+          },
+          {
+            "record_id": "w1251",
+            "lemma": "재봉틀",
+            "result_ids": [
+              "w1251"
+            ]
+          },
+          {
+            "record_id": "w1252",
+            "lemma": "전등",
+            "result_ids": [
+              "w1252"
+            ]
+          },
+          {
+            "record_id": "w1253",
+            "lemma": "종",
+            "result_ids": [
+              "w1253"
+            ]
+          },
+          {
+            "record_id": "w1254",
+            "lemma": "주걱",
+            "result_ids": [
+              "w1254"
+            ]
+          },
+          {
+            "record_id": "w1255",
+            "lemma": "지팡이",
+            "result_ids": [
+              "w1255"
+            ]
+          },
+          {
+            "record_id": "w1256",
+            "lemma": "찻잔",
+            "result_ids": [
+              "w1256"
+            ]
+          },
+          {
+            "record_id": "w1257",
+            "lemma": "철사",
+            "result_ids": [
+              "w1257"
+            ]
+          },
+          {
+            "record_id": "w1258",
+            "lemma": "초",
+            "result_ids": [
+              "w1258"
+            ]
+          },
+          {
+            "record_id": "w1259",
+            "lemma": "침대",
+            "result_ids": [
+              "w1259"
+            ]
+          },
+          {
+            "record_id": "w1260",
+            "lemma": "칼날",
+            "result_ids": [
+              "w1260"
+            ]
+          },
+          {
+            "record_id": "w1261",
+            "lemma": "톱",
+            "result_ids": [
+              "w1261"
+            ]
+          },
+          {
+            "record_id": "w1262",
+            "lemma": "풍경",
+            "result_ids": [
+              "w1262"
+            ]
+          },
+          {
+            "record_id": "w1263",
+            "lemma": "갈퀴",
+            "result_ids": [
+              "w1263"
+            ]
+          },
+          {
+            "record_id": "w1264",
+            "lemma": "화분",
+            "result_ids": [
+              "w1264"
+            ]
+          },
+          {
+            "record_id": "w1265",
+            "lemma": "흙",
+            "result_ids": [
+              "w1265"
+            ]
+          },
+          {
+            "record_id": "w1266",
+            "lemma": "흙먼지",
+            "result_ids": [
+              "w1266"
+            ]
+          },
+          {
+            "record_id": "w1267",
+            "lemma": "손잡이",
+            "result_ids": [
+              "w1267"
+            ]
+          },
+          {
+            "record_id": "w1268",
+            "lemma": "책더미",
+            "result_ids": [
+              "w1268"
+            ]
+          },
+          {
+            "record_id": "w1269",
+            "lemma": "가치",
+            "result_ids": [
+              "w1269"
+            ]
+          },
+          {
+            "record_id": "w1270",
+            "lemma": "가능성",
+            "result_ids": [
+              "w1270"
+            ]
+          },
+          {
+            "record_id": "w1271",
+            "lemma": "갈등",
+            "result_ids": [
+              "w1271"
+            ]
+          },
+          {
+            "record_id": "w1272",
+            "lemma": "감각",
+            "result_ids": [
+              "w1272"
+            ]
+          },
+          {
+            "record_id": "w1273",
+            "lemma": "감정",
+            "result_ids": [
+              "w1273"
+            ]
+          },
+          {
+            "record_id": "w1274",
+            "lemma": "개성",
+            "result_ids": [
+              "w1274"
+            ]
+          },
+          {
+            "record_id": "w1275",
+            "lemma": "결심",
+            "result_ids": [
+              "w1275"
+            ]
+          },
+          {
+            "record_id": "w1276",
+            "lemma": "결핍",
+            "result_ids": [
+              "w1276"
+            ]
+          },
+          {
+            "record_id": "w1277",
+            "lemma": "공감",
+            "result_ids": [
+              "w1277"
+            ]
+          },
+          {
+            "record_id": "w1278",
+            "lemma": "과정",
+            "result_ids": [
+              "w1278"
+            ]
+          }
+        ]
+      },
+      "raw-material-exclusion": {
+        "canonical_files": [
+          "m5-10-wave-a.jsonl",
+          "m5-10-wave-b.jsonl",
+          "m5-10a-wave-a2.jsonl",
+          "m5-11-expansion.jsonl",
+          "m5-3-calibration.jsonl",
+          "m5-5-recalibration.jsonl",
+          "m5-7-recalibration.jsonl",
+          "m5-9-expansion.jsonl",
+          "pilot.jsonl"
+        ],
+        "candidate_local_ids_present": false,
+        "external_input_paths_present": false
+      }
+    }
+  },
+  "gate": {
+    "policy": "agent-generated",
+    "quality_passes": {
+      "candidate_pool": true,
+      "imported_start_count": true,
+      "reserve_count": true,
+      "canonical_lexical_collisions": true,
+      "candidate_lexical_collisions": true,
+      "placeholder_glosses": true,
+      "correction_rate": true,
+      "relation_noise_rate": true,
+      "relation_noise_below_baseline": true,
+      "automated_editorial_review": true,
+      "agent_generated_provenance": true,
+      "generation_verification_separated": true,
+      "schema_integrity_blockers": true,
+      "relation_target_blockers": true,
+      "canonical_integrity": true,
+      "deterministic_sqlite": true,
+      "search_product_regression": true,
+      "exact_net_start_increase": true,
+      "cumulative_start_target": true
+    },
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED"
+  },
+  "gate_evidence": {
+    "schema_version": "1",
+    "evidence_version": "m5-11a-gate-evidence-v1",
+    "batch_id": "m5-11-expansion-20260913",
+    "policy": "agent-generated",
+    "base_summary": {
+      "record_count": 820,
+      "start_count": 778,
+      "reference_only_count": 42,
+      "sense_count": 966,
+      "relation_count": 473,
+      "expression_count": 63
+    },
+    "final_summary": {
+      "record_count": 1320,
+      "start_count": 1278,
+      "reference_only_count": 42,
+      "sense_count": 1466,
+      "relation_count": 473,
+      "expression_count": 63
+    },
+    "decision_counts": {
+      "included": 500,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 50,
+      "processed_start_count": 500,
+      "imported_start_count": 500
+    },
+    "processed_start_count": 500,
+    "imported_start_count": 500,
+    "relation": {
+      "before_count": 0,
+      "after_count": 0,
+      "added_count": 0,
+      "removed_count": 0,
+      "retyped_count": 0,
+      "retargeted_count": 0,
+      "changed_count": 0,
+      "net_removed_count": 0,
+      "noise_event_count": 0,
+      "noise_rate_of_before": 0,
+      "classification_counts": {}
+    },
+    "timing": {
+      "editorial": {
+        "status": "not-required",
+        "policy": "agent-generated",
+        "measurement_kind": "agent-processing",
+        "timing_kind": "editorial",
+        "session_id": null,
+        "pass_ids": [],
+        "pass_intervals": [],
+        "editor_seconds": null,
+        "audit_seconds": null,
+        "unmeasured_pass_count": 0
+      },
+      "audit": {
+        "status": "not-required",
+        "policy": "agent-generated",
+        "measurement_kind": "agent-processing",
+        "timing_kind": "post-freeze-audit",
+        "session_id": null,
+        "pass_ids": [],
+        "pass_intervals": [],
+        "editor_seconds": null,
+        "audit_seconds": null,
+        "unmeasured_pass_count": 0
+      }
+    },
+    "audit": {
+      "status": "not-required",
+      "policy": "agent-generated",
+      "independent": null,
+      "session_id": null,
+      "open_blocker_count": 0,
+      "finding_count": 0
+    },
+    "verification": {
+      "review_mode": "agent-generated",
+      "editorial_review_complete": true,
+      "automated_editorial_review_complete": true,
+      "human_editorial_review_complete": false,
+      "agent_generated_provenance": true,
+      "generation_verification_separated": true,
+      "generation_pass_id": "m5-11a-generation-20260913",
+      "verification_pass_id": "m5-11a-verification-20260913",
+      "canonical_integrity": true,
+      "deterministic_sqlite": true,
+      "search_product_regression": true,
+      "raw_material_excluded": true,
+      "machine_generated": true,
+      "verifier_version": "m5-11-prospective-verifier-v2",
+      "prospective_canonical_sha256": "9737dd9fa349089045df055baa8bdf454a88065d2b0deb388d6ceb62915527d3",
+      "checks": [
+        {
+          "id": "canonical-integrity",
+          "status": "pass",
+          "result_sha256": "f46e548c7578205c0a682356a7dd57b0dc454b89857c3b55170c637398960809"
+        },
+        {
+          "id": "deterministic-sqlite",
+          "status": "pass",
+          "result_sha256": "d9f2fb4f62ebbb13730a0732f5788fec4b52791d43f2cbfd91481166cece4449"
+        },
+        {
+          "id": "search-product-regression",
+          "status": "pass",
+          "result_sha256": "809097cd6418bffbb5b6d5f56789b36703148110c76859caa8aca4133957c6c1"
+        },
+        {
+          "id": "raw-material-exclusion",
+          "status": "pass",
+          "result_sha256": "85c3375d243c9f47ebf38fd064784993c7fd2669232ba011adc46c8889d139b4"
+        }
+      ],
+      "machine_check_evidence": {
+        "canonical-integrity": {
+          "final_summary": {
+            "record_count": 1320,
+            "start_count": 1278,
+            "reference_only_count": 42,
+            "sense_count": 1466,
+            "relation_count": 473,
+            "expression_count": 63
+          },
+          "prospective_canonical_sha256": "9737dd9fa349089045df055baa8bdf454a88065d2b0deb388d6ceb62915527d3"
+        },
+        "deterministic-sqlite": {
+          "build": {
+            "recordCount": 1320,
+            "senseCount": 1466,
+            "relationCount": 473
+          },
+          "integrity": "ok",
+          "foreign_key_errors": [],
+          "counts": {
+            "records": 1320,
+            "starts": 1278,
+            "references": 42,
+            "senses": 1466,
+            "relations": 473
+          }
+        },
+        "search-product-regression": {
+          "m4": {
+            "corpus_id": "m4-search-regressions",
+            "evaluation": "baseline",
+            "case_count": 10,
+            "cases": [
+              {
+                "id": "m3-exact-lemma-damdamhada",
+                "query": "담담하다",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w026"
+                ],
+                "selected_record_id": "r008",
+                "relation_assertion_count": 2
+              },
+              {
+                "id": "m3-exact-search-form-damdam",
+                "query": "담담",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w026"
+                ],
+                "selected_record_id": null,
+                "relation_assertion_count": 0
+              },
+              {
+                "id": "m3-polysemy-sseuda",
+                "query": "쓰다",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w237"
+                ],
+                "selected_record_id": null,
+                "relation_assertion_count": 4
+              },
+              {
+                "id": "m3-expression-maeumi-noida",
+                "query": "마음이 놓이다",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w288"
+                ],
+                "selected_record_id": null,
+                "relation_assertion_count": 1
+              },
+              {
+                "id": "m3-antonym-sijakhada",
+                "query": "시작하다",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w228"
+                ],
+                "selected_record_id": null,
+                "relation_assertion_count": 1
+              },
+              {
+                "id": "m3-reference-only-free-search-blocked",
+                "query": "덤덤하다",
+                "status": "unsupported",
+                "reason": "reference-only-not-searchable",
+                "result_ids": [],
+                "selected_record_id": null,
+                "relation_assertion_count": 0
+              },
+              {
+                "id": "m4-normalization-hangul-nfd",
+                "query": "담담하다",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w026"
+                ],
+                "selected_record_id": null,
+                "relation_assertion_count": 0
+              },
+              {
+                "id": "m4-normalization-surrounding-space",
+                "query": "  담담하다  ",
+                "status": "ready",
+                "reason": null,
+                "result_ids": [
+                  "w026"
+                ],
+                "selected_record_id": null,
+                "relation_assertion_count": 0
+              },
+              {
+                "id": "m4-no-data-unknown-term",
+                "query": "없는 말",
+                "status": "no-match",
+                "reason": "no-exact-match",
+                "result_ids": [],
+                "selected_record_id": null,
+                "relation_assertion_count": 0
+              },
+              {
+                "id": "m4-unsupported-internal-expression-space",
+                "query": "마음이  놓이다",
+                "status": "unsupported",
+                "reason": "internal-whitespace-not-normalized",
+                "result_ids": [],
+                "selected_record_id": null,
+                "relation_assertion_count": 0
+              }
+            ]
+          },
+          "admitted_lemmas": [
+            {
+              "record_id": "w779",
+              "lemma": "가책",
+              "result_ids": [
+                "w779"
+              ]
+            },
+            {
+              "record_id": "w780",
+              "lemma": "감회",
+              "result_ids": [
+                "w780"
+              ]
+            },
+            {
+              "record_id": "w781",
+              "lemma": "감응",
+              "result_ids": [
+                "w781"
+              ]
+            },
+            {
+              "record_id": "w782",
+              "lemma": "경탄",
+              "result_ids": [
+                "w782"
+              ]
+            },
+            {
+              "record_id": "w783",
+              "lemma": "경이",
+              "result_ids": [
+                "w783"
+              ]
+            },
+            {
+              "record_id": "w784",
+              "lemma": "고뇌",
+              "result_ids": [
+                "w784"
+              ]
+            },
+            {
+              "record_id": "w785",
+              "lemma": "고심",
+              "result_ids": [
+                "w785"
+              ]
+            },
+            {
+              "record_id": "w786",
+              "lemma": "괴로움",
+              "result_ids": [
+                "w786"
+              ]
+            },
+            {
+              "record_id": "w787",
+              "lemma": "낭패감",
+              "result_ids": [
+                "w787"
+              ]
+            },
+            {
+              "record_id": "w788",
+              "lemma": "낙관",
+              "result_ids": [
+                "w788"
+              ]
+            },
+            {
+              "record_id": "w789",
+              "lemma": "난감함",
+              "result_ids": [
+                "w789"
+              ]
+            },
+            {
+              "record_id": "w790",
+              "lemma": "망연자실",
+              "result_ids": [
+                "w790"
+              ]
+            },
+            {
+              "record_id": "w791",
+              "lemma": "무력감",
+              "result_ids": [
+                "w791"
+              ]
+            },
+            {
+              "record_id": "w792",
+              "lemma": "배신감",
+              "result_ids": [
+                "w792"
+              ]
+            },
+            {
+              "record_id": "w793",
+              "lemma": "부담감",
+              "result_ids": [
+                "w793"
+              ]
+            },
+            {
+              "record_id": "w794",
+              "lemma": "불신감",
+              "result_ids": [
+                "w794"
+              ]
+            },
+            {
+              "record_id": "w795",
+              "lemma": "상심",
+              "result_ids": [
+                "w795"
+              ]
+            },
+            {
+              "record_id": "w796",
+              "lemma": "소외감",
+              "result_ids": [
+                "w796"
+              ]
+            },
+            {
+              "record_id": "w797",
+              "lemma": "애도",
+              "result_ids": [
+                "w797"
+              ]
+            },
+            {
+              "record_id": "w798",
+              "lemma": "애착",
+              "result_ids": [
+                "w798"
+              ]
+            },
+            {
+              "record_id": "w799",
+              "lemma": "애석함",
+              "result_ids": [
+                "w799"
+              ]
+            },
+            {
+              "record_id": "w800",
+              "lemma": "열망",
+              "result_ids": [
+                "w800"
+              ]
+            },
+            {
+              "record_id": "w801",
+              "lemma": "오해",
+              "result_ids": [
+                "w801"
+              ]
+            },
+            {
+              "record_id": "w802",
+              "lemma": "원한",
+              "result_ids": [
+                "w802"
+              ]
+            },
+            {
+              "record_id": "w803",
+              "lemma": "위축감",
+              "result_ids": [
+                "w803"
+              ]
+            },
+            {
+              "record_id": "w804",
+              "lemma": "자괴감",
+              "result_ids": [
+                "w804"
+              ]
+            },
+            {
+              "record_id": "w805",
+              "lemma": "자긍심",
+              "result_ids": [
+                "w805"
+              ]
+            },
+            {
+              "record_id": "w806",
+              "lemma": "적개심",
+              "result_ids": [
+                "w806"
+              ]
+            },
+            {
+              "record_id": "w807",
+              "lemma": "전전긍긍",
+              "result_ids": [
+                "w807"
+              ]
+            },
+            {
+              "record_id": "w808",
+              "lemma": "절실함",
+              "result_ids": [
+                "w808"
+              ]
+            },
+            {
+              "record_id": "w809",
+              "lemma": "정감",
+              "result_ids": [
+                "w809"
+              ]
+            },
+            {
+              "record_id": "w810",
+              "lemma": "정서",
+              "result_ids": [
+                "w810"
+              ]
+            },
+            {
+              "record_id": "w811",
+              "lemma": "친근감",
+              "result_ids": [
+                "w811"
+              ]
+            },
+            {
+              "record_id": "w812",
+              "lemma": "평정",
+              "result_ids": [
+                "w812"
+              ]
+            },
+            {
+              "record_id": "w813",
+              "lemma": "환멸",
+              "result_ids": [
+                "w813"
+              ]
+            },
+            {
+              "record_id": "w814",
+              "lemma": "황홀",
+              "result_ids": [
+                "w814"
+              ]
+            },
+            {
+              "record_id": "w815",
+              "lemma": "환호",
+              "result_ids": [
+                "w815"
+              ]
+            },
+            {
+              "record_id": "w816",
+              "lemma": "회의감",
+              "result_ids": [
+                "w816"
+              ]
+            },
+            {
+              "record_id": "w817",
+              "lemma": "흥분",
+              "result_ids": [
+                "w817"
+              ]
+            },
+            {
+              "record_id": "w818",
+              "lemma": "흥미",
+              "result_ids": [
+                "w818"
+              ]
+            },
+            {
+              "record_id": "w819",
+              "lemma": "동질감",
+              "result_ids": [
+                "w819"
+              ]
+            },
+            {
+              "record_id": "w820",
+              "lemma": "만족",
+              "result_ids": [
+                "w820"
+              ]
+            },
+            {
+              "record_id": "w821",
+              "lemma": "안심",
+              "result_ids": [
+                "w821"
+              ]
+            },
+            {
+              "record_id": "w822",
+              "lemma": "미안함",
+              "result_ids": [
+                "w822"
+              ]
+            },
+            {
+              "record_id": "w823",
+              "lemma": "죄의식",
+              "result_ids": [
+                "w823"
+              ]
+            },
+            {
+              "record_id": "w824",
+              "lemma": "부끄러움",
+              "result_ids": [
+                "w824"
+              ]
+            },
+            {
+              "record_id": "w825",
+              "lemma": "의기소침",
+              "result_ids": [
+                "w825"
+              ]
+            },
+            {
+              "record_id": "w826",
+              "lemma": "의욕",
+              "result_ids": [
+                "w826"
+              ]
+            },
+            {
+              "record_id": "w827",
+              "lemma": "염려",
+              "result_ids": [
+                "w827"
+              ]
+            },
+            {
+              "record_id": "w828",
+              "lemma": "걱정",
+              "result_ids": [
+                "w828"
+              ]
+            },
+            {
+              "record_id": "w829",
+              "lemma": "조급함",
+              "result_ids": [
+                "w829"
+              ]
+            },
+            {
+              "record_id": "w830",
+              "lemma": "두근거림",
+              "result_ids": [
+                "w830"
+              ]
+            },
+            {
+              "record_id": "w831",
+              "lemma": "떨림",
+              "result_ids": [
+                "w831"
+              ]
+            },
+            {
+              "record_id": "w832",
+              "lemma": "소명감",
+              "result_ids": [
+                "w832"
+              ]
+            },
+            {
+              "record_id": "w833",
+              "lemma": "책임감",
+              "result_ids": [
+                "w833"
+              ]
+            },
+            {
+              "record_id": "w834",
+              "lemma": "감사",
+              "result_ids": [
+                "w834"
+              ]
+            },
+            {
+              "record_id": "w835",
+              "lemma": "격앙",
+              "result_ids": [
+                "w835"
+              ]
+            },
+            {
+              "record_id": "w836",
+              "lemma": "격정",
+              "result_ids": [
+                "w836"
+              ]
+            },
+            {
+              "record_id": "w837",
+              "lemma": "분개",
+              "result_ids": [
+                "w837"
+              ]
+            },
+            {
+              "record_id": "w838",
+              "lemma": "원통함",
+              "result_ids": [
+                "w838"
+              ]
+            },
+            {
+              "record_id": "w839",
+              "lemma": "황망함",
+              "result_ids": [
+                "w839"
+              ]
+            },
+            {
+              "record_id": "w840",
+              "lemma": "숙연함",
+              "result_ids": [
+                "w840"
+              ]
+            },
+            {
+              "record_id": "w841",
+              "lemma": "참담함",
+              "result_ids": [
+                "w841"
+              ]
+            },
+            {
+              "record_id": "w842",
+              "lemma": "처연함",
+              "result_ids": [
+                "w842"
+              ]
+            },
+            {
+              "record_id": "w843",
+              "lemma": "처절함",
+              "result_ids": [
+                "w843"
+              ]
+            },
+            {
+              "record_id": "w844",
+              "lemma": "고양감",
+              "result_ids": [
+                "w844"
+              ]
+            },
+            {
+              "record_id": "w845",
+              "lemma": "들뜸",
+              "result_ids": [
+                "w845"
+              ]
+            },
+            {
+              "record_id": "w846",
+              "lemma": "결핍감",
+              "result_ids": [
+                "w846"
+              ]
+            },
+            {
+              "record_id": "w847",
+              "lemma": "연민감",
+              "result_ids": [
+                "w847"
+              ]
+            },
+            {
+              "record_id": "w848",
+              "lemma": "온정",
+              "result_ids": [
+                "w848"
+              ]
+            },
+            {
+              "record_id": "w849",
+              "lemma": "냉소",
+              "result_ids": [
+                "w849"
+              ]
+            },
+            {
+              "record_id": "w850",
+              "lemma": "비애",
+              "result_ids": [
+                "w850"
+              ]
+            },
+            {
+              "record_id": "w851",
+              "lemma": "비탄",
+              "result_ids": [
+                "w851"
+              ]
+            },
+            {
+              "record_id": "w852",
+              "lemma": "통쾌함",
+              "result_ids": [
+                "w852"
+              ]
+            },
+            {
+              "record_id": "w853",
+              "lemma": "유쾌함",
+              "result_ids": [
+                "w853"
+              ]
+            },
+            {
+              "record_id": "w854",
+              "lemma": "불길함",
+              "result_ids": [
+                "w854"
+              ]
+            },
+            {
+              "record_id": "w855",
+              "lemma": "위기감",
+              "result_ids": [
+                "w855"
+              ]
+            },
+            {
+              "record_id": "w856",
+              "lemma": "당혹",
+              "result_ids": [
+                "w856"
+              ]
+            },
+            {
+              "record_id": "w857",
+              "lemma": "신중함",
+              "result_ids": [
+                "w857"
+              ]
+            },
+            {
+              "record_id": "w858",
+              "lemma": "마음고생",
+              "result_ids": [
+                "w858"
+              ]
+            },
+            {
+              "record_id": "w859",
+              "lemma": "가지런하다",
+              "result_ids": [
+                "w859"
+              ]
+            },
+            {
+              "record_id": "w860",
+              "lemma": "간결하다",
+              "result_ids": [
+                "w860"
+              ]
+            },
+            {
+              "record_id": "w861",
+              "lemma": "강렬하다",
+              "result_ids": [
+                "w861"
+              ]
+            },
+            {
+              "record_id": "w862",
+              "lemma": "개운하다",
+              "result_ids": [
+                "w862"
+              ]
+            },
+            {
+              "record_id": "w863",
+              "lemma": "건장하다",
+              "result_ids": [
+                "w863"
+              ]
+            },
+            {
+              "record_id": "w864",
+              "lemma": "겸손하다",
+              "result_ids": [
+                "w864"
+              ]
+            },
+            {
+              "record_id": "w865",
+              "lemma": "고단하다",
+              "result_ids": [
+                "w865"
+              ]
+            },
+            {
+              "record_id": "w866",
+              "lemma": "고집스럽다",
+              "result_ids": [
+                "w866"
+              ]
+            },
+            {
+              "record_id": "w867",
+              "lemma": "공손하다",
+              "result_ids": [
+                "w867"
+              ]
+            },
+            {
+              "record_id": "w868",
+              "lemma": "과묵하다",
+              "result_ids": [
+                "w868"
+              ]
+            },
+            {
+              "record_id": "w869",
+              "lemma": "괴팍하다",
+              "result_ids": [
+                "w869"
+              ]
+            },
+            {
+              "record_id": "w870",
+              "lemma": "근면하다",
+              "result_ids": [
+                "w870"
+              ]
+            },
+            {
+              "record_id": "w871",
+              "lemma": "기민하다",
+              "result_ids": [
+                "w871"
+              ]
+            },
+            {
+              "record_id": "w872",
+              "lemma": "날렵하다",
+              "result_ids": [
+                "w872"
+              ]
+            },
+            {
+              "record_id": "w873",
+              "lemma": "낭만적이다",
+              "result_ids": [
+                "w873"
+              ]
+            },
+            {
+              "record_id": "w874",
+              "lemma": "냉랭하다",
+              "result_ids": [
+                "w874"
+              ]
+            },
+            {
+              "record_id": "w875",
+              "lemma": "단출하다",
+              "result_ids": [
+                "w875"
+              ]
+            },
+            {
+              "record_id": "w876",
+              "lemma": "대담하다",
+              "result_ids": [
+                "w876"
+              ]
+            },
+            {
+              "record_id": "w877",
+              "lemma": "도도하다",
+              "result_ids": [
+                "w877"
+              ]
+            },
+            {
+              "record_id": "w878",
+              "lemma": "둔감하다",
+              "result_ids": [
+                "w878"
+              ]
+            },
+            {
+              "record_id": "w879",
+              "lemma": "든든하다",
+              "result_ids": [
+                "w879"
+              ]
+            },
+            {
+              "record_id": "w880",
+              "lemma": "따뜻하다",
+              "result_ids": [
+                "w880"
+              ]
+            },
+            {
+              "record_id": "w881",
+              "lemma": "똑똑하다",
+              "result_ids": [
+                "w881"
+              ]
+            },
+            {
+              "record_id": "w882",
+              "lemma": "명료하다",
+              "result_ids": [
+                "w882"
+              ]
+            },
+            {
+              "record_id": "w883",
+              "lemma": "무감각하다",
+              "result_ids": [
+                "w883"
+              ]
+            },
+            {
+              "record_id": "w884",
+              "lemma": "무례하다",
+              "result_ids": [
+                "w884"
+              ]
+            },
+            {
+              "record_id": "w885",
+              "lemma": "무르익다",
+              "result_ids": [
+                "w885"
+              ]
+            },
+            {
+              "record_id": "w886",
+              "lemma": "방만하다",
+              "result_ids": [
+                "w886"
+              ]
+            },
+            {
+              "record_id": "w887",
+              "lemma": "번잡하다",
+              "result_ids": [
+                "w887"
+              ]
+            },
+            {
+              "record_id": "w888",
+              "lemma": "보잘것없다",
+              "result_ids": [
+                "w888"
+              ]
+            },
+            {
+              "record_id": "w889",
+              "lemma": "분명하다",
+              "result_ids": [
+                "w889"
+              ]
+            },
+            {
+              "record_id": "w890",
+              "lemma": "불그스름하다",
+              "result_ids": [
+                "w890"
+              ]
+            },
+            {
+              "record_id": "w891",
+              "lemma": "비겁하다",
+              "result_ids": [
+                "w891"
+              ]
+            },
+            {
+              "record_id": "w892",
+              "lemma": "비범하다",
+              "result_ids": [
+                "w892"
+              ]
+            },
+            {
+              "record_id": "w893",
+              "lemma": "사려 깊다",
+              "result_ids": [
+                "w893"
+              ]
+            },
+            {
+              "record_id": "w894",
+              "lemma": "산뜻하다",
+              "result_ids": [
+                "w894"
+              ]
+            },
+            {
+              "record_id": "w895",
+              "lemma": "상냥하다",
+              "result_ids": [
+                "w895"
+              ]
+            },
+            {
+              "record_id": "w896",
+              "lemma": "선량하다",
+              "result_ids": [
+                "w896"
+              ]
+            },
+            {
+              "record_id": "w897",
+              "lemma": "성나다",
+              "result_ids": [
+                "w897"
+              ]
+            },
+            {
+              "record_id": "w898",
+              "lemma": "순박하다",
+              "result_ids": [
+                "w898"
+              ]
+            },
+            {
+              "record_id": "w899",
+              "lemma": "신기하다",
+              "result_ids": [
+                "w899"
+              ]
+            },
+            {
+              "record_id": "w900",
+              "lemma": "싱겁다",
+              "result_ids": [
+                "w900"
+              ]
+            },
+            {
+              "record_id": "w901",
+              "lemma": "아늑하다",
+              "result_ids": [
+                "w901"
+              ]
+            },
+            {
+              "record_id": "w902",
+              "lemma": "아담하다",
+              "result_ids": [
+                "w902"
+              ]
+            },
+            {
+              "record_id": "w903",
+              "lemma": "애매하다",
+              "result_ids": [
+                "w903"
+              ]
+            },
+            {
+              "record_id": "w904",
+              "lemma": "야속하다",
+              "result_ids": [
+                "w904"
+              ]
+            },
+            {
+              "record_id": "w905",
+              "lemma": "억세다",
+              "result_ids": [
+                "w905"
+              ]
+            },
+            {
+              "record_id": "w906",
+              "lemma": "엄숙하다",
+              "result_ids": [
+                "w906"
+              ]
+            },
+            {
+              "record_id": "w907",
+              "lemma": "어리둥절하다",
+              "result_ids": [
+                "w907"
+              ]
+            },
+            {
+              "record_id": "w908",
+              "lemma": "여유롭다",
+              "result_ids": [
+                "w908"
+              ]
+            },
+            {
+              "record_id": "w909",
+              "lemma": "오만하다",
+              "result_ids": [
+                "w909"
+              ]
+            },
+            {
+              "record_id": "w910",
+              "lemma": "우울하다",
+              "result_ids": [
+                "w910"
+              ]
+            },
+            {
+              "record_id": "w911",
+              "lemma": "위태롭다",
+              "result_ids": [
+                "w911"
+              ]
+            },
+            {
+              "record_id": "w912",
+              "lemma": "유쾌하다",
+              "result_ids": [
+                "w912"
+              ]
+            },
+            {
+              "record_id": "w913",
+              "lemma": "의젓하다",
+              "result_ids": [
+                "w913"
+              ]
+            },
+            {
+              "record_id": "w914",
+              "lemma": "자비롭다",
+              "result_ids": [
+                "w914"
+              ]
+            },
+            {
+              "record_id": "w915",
+              "lemma": "잔잔하다",
+              "result_ids": [
+                "w915"
+              ]
+            },
+            {
+              "record_id": "w916",
+              "lemma": "장엄하다",
+              "result_ids": [
+                "w916"
+              ]
+            },
+            {
+              "record_id": "w917",
+              "lemma": "절박하다",
+              "result_ids": [
+                "w917"
+              ]
+            },
+            {
+              "record_id": "w918",
+              "lemma": "정직하다",
+              "result_ids": [
+                "w918"
+              ]
+            },
+            {
+              "record_id": "w919",
+              "lemma": "조용하다",
+              "result_ids": [
+                "w919"
+              ]
+            },
+            {
+              "record_id": "w920",
+              "lemma": "착하다",
+              "result_ids": [
+                "w920"
+              ]
+            },
+            {
+              "record_id": "w921",
+              "lemma": "청명하다",
+              "result_ids": [
+                "w921"
+              ]
+            },
+            {
+              "record_id": "w922",
+              "lemma": "초라하다",
+              "result_ids": [
+                "w922"
+              ]
+            },
+            {
+              "record_id": "w923",
+              "lemma": "충실하다",
+              "result_ids": [
+                "w923"
+              ]
+            },
+            {
+              "record_id": "w924",
+              "lemma": "친절하다",
+              "result_ids": [
+                "w924"
+              ]
+            },
+            {
+              "record_id": "w925",
+              "lemma": "칠흑같다",
+              "result_ids": [
+                "w925"
+              ]
+            },
+            {
+              "record_id": "w926",
+              "lemma": "탁하다",
+              "result_ids": [
+                "w926"
+              ]
+            },
+            {
+              "record_id": "w927",
+              "lemma": "풍성하다",
+              "result_ids": [
+                "w927"
+              ]
+            },
+            {
+              "record_id": "w928",
+              "lemma": "한가롭다",
+              "result_ids": [
+                "w928"
+              ]
+            },
+            {
+              "record_id": "w929",
+              "lemma": "허약하다",
+              "result_ids": [
+                "w929"
+              ]
+            },
+            {
+              "record_id": "w930",
+              "lemma": "현명하다",
+              "result_ids": [
+                "w930"
+              ]
+            },
+            {
+              "record_id": "w931",
+              "lemma": "호탕하다",
+              "result_ids": [
+                "w931"
+              ]
+            },
+            {
+              "record_id": "w932",
+              "lemma": "화사하다",
+              "result_ids": [
+                "w932"
+              ]
+            },
+            {
+              "record_id": "w933",
+              "lemma": "황량하다",
+              "result_ids": [
+                "w933"
+              ]
+            },
+            {
+              "record_id": "w934",
+              "lemma": "훈훈하다",
+              "result_ids": [
+                "w934"
+              ]
+            },
+            {
+              "record_id": "w935",
+              "lemma": "울퉁불퉁하다",
+              "result_ids": [
+                "w935"
+              ]
+            },
+            {
+              "record_id": "w936",
+              "lemma": "오돌토돌하다",
+              "result_ids": [
+                "w936"
+              ]
+            },
+            {
+              "record_id": "w937",
+              "lemma": "촘촘하다",
+              "result_ids": [
+                "w937"
+              ]
+            },
+            {
+              "record_id": "w938",
+              "lemma": "정숙하다",
+              "result_ids": [
+                "w938"
+              ]
+            },
+            {
+              "record_id": "w939",
+              "lemma": "가루",
+              "result_ids": [
+                "w939"
+              ]
+            },
+            {
+              "record_id": "w940",
+              "lemma": "가슬가슬하다",
+              "result_ids": [
+                "w940"
+              ]
+            },
+            {
+              "record_id": "w941",
+              "lemma": "거품",
+              "result_ids": [
+                "w941"
+              ]
+            },
+            {
+              "record_id": "w942",
+              "lemma": "구릿내",
+              "result_ids": [
+                "w942"
+              ]
+            },
+            {
+              "record_id": "w943",
+              "lemma": "까끌까끌하다",
+              "result_ids": [
+                "w943"
+              ]
+            },
+            {
+              "record_id": "w944",
+              "lemma": "깔깔하다",
+              "result_ids": [
+                "w944"
+              ]
+            },
+            {
+              "record_id": "w945",
+              "lemma": "꽃향기",
+              "result_ids": [
+                "w945"
+              ]
+            },
+            {
+              "record_id": "w946",
+              "lemma": "노린내",
+              "result_ids": [
+                "w946"
+              ]
+            },
+            {
+              "record_id": "w947",
+              "lemma": "눈부심",
+              "result_ids": [
+                "w947"
+              ]
+            },
+            {
+              "record_id": "w948",
+              "lemma": "눈송이",
+              "result_ids": [
+                "w948"
+              ]
+            },
+            {
+              "record_id": "w949",
+              "lemma": "달다",
+              "result_ids": [
+                "w949"
+              ]
+            },
+            {
+              "record_id": "w950",
+              "lemma": "맑다",
+              "result_ids": [
+                "w950"
+              ]
+            },
+            {
+              "record_id": "w951",
+              "lemma": "맑음",
+              "result_ids": [
+                "w951"
+              ]
+            },
+            {
+              "record_id": "w952",
+              "lemma": "매끄럽다",
+              "result_ids": [
+                "w952"
+              ]
+            },
+            {
+              "record_id": "w953",
+              "lemma": "모락모락하다",
+              "result_ids": [
+                "w953"
+              ]
+            },
+            {
+              "record_id": "w954",
+              "lemma": "무지개",
+              "result_ids": [
+                "w954"
+              ]
+            },
+            {
+              "record_id": "w955",
+              "lemma": "미각",
+              "result_ids": [
+                "w955"
+              ]
+            },
+            {
+              "record_id": "w956",
+              "lemma": "미세하다",
+              "result_ids": [
+                "w956"
+              ]
+            },
+            {
+              "record_id": "w957",
+              "lemma": "바람소리",
+              "result_ids": [
+                "w957"
+              ]
+            },
+            {
+              "record_id": "w958",
+              "lemma": "박하향",
+              "result_ids": [
+                "w958"
+              ]
+            },
+            {
+              "record_id": "w959",
+              "lemma": "반사광",
+              "result_ids": [
+                "w959"
+              ]
+            },
+            {
+              "record_id": "w960",
+              "lemma": "반투명하다",
+              "result_ids": [
+                "w960"
+              ]
+            },
+            {
+              "record_id": "w961",
+              "lemma": "발광",
+              "result_ids": [
+                "w961"
+              ]
+            },
+            {
+              "record_id": "w962",
+              "lemma": "밝기",
+              "result_ids": [
+                "w962"
+              ]
+            },
+            {
+              "record_id": "w963",
+              "lemma": "보랏빛",
+              "result_ids": [
+                "w963"
+              ]
+            },
+            {
+              "record_id": "w964",
+              "lemma": "분홍빛",
+              "result_ids": [
+                "w964"
+              ]
+            },
+            {
+              "record_id": "w965",
+              "lemma": "붉은빛",
+              "result_ids": [
+                "w965"
+              ]
+            },
+            {
+              "record_id": "w966",
+              "lemma": "비누향",
+              "result_ids": [
+                "w966"
+              ]
+            },
+            {
+              "record_id": "w967",
+              "lemma": "빛깔",
+              "result_ids": [
+                "w967"
+              ]
+            },
+            {
+              "record_id": "w968",
+              "lemma": "사각거림",
+              "result_ids": [
+                "w968"
+              ]
+            },
+            {
+              "record_id": "w969",
+              "lemma": "상큼하다",
+              "result_ids": [
+                "w969"
+              ]
+            },
+            {
+              "record_id": "w970",
+              "lemma": "서걱거림",
+              "result_ids": [
+                "w970"
+              ]
+            },
+            {
+              "record_id": "w971",
+              "lemma": "선홍빛",
+              "result_ids": [
+                "w971"
+              ]
+            },
+            {
+              "record_id": "w972",
+              "lemma": "소금기",
+              "result_ids": [
+                "w972"
+              ]
+            },
+            {
+              "record_id": "w973",
+              "lemma": "소금물",
+              "result_ids": [
+                "w973"
+              ]
+            },
+            {
+              "record_id": "w974",
+              "lemma": "송진",
+              "result_ids": [
+                "w974"
+              ]
+            },
+            {
+              "record_id": "w975",
+              "lemma": "수증기",
+              "result_ids": [
+                "w975"
+              ]
+            },
+            {
+              "record_id": "w976",
+              "lemma": "시큼함",
+              "result_ids": [
+                "w976"
+              ]
+            },
+            {
+              "record_id": "w977",
+              "lemma": "신기루",
+              "result_ids": [
+                "w977"
+              ]
+            },
+            {
+              "record_id": "w978",
+              "lemma": "신선하다",
+              "result_ids": [
+                "w978"
+              ]
+            },
+            {
+              "record_id": "w979",
+              "lemma": "아지랑이",
+              "result_ids": [
+                "w979"
+              ]
+            },
+            {
+              "record_id": "w980",
+              "lemma": "안개비",
+              "result_ids": [
+                "w980"
+              ]
+            },
+            {
+              "record_id": "w981",
+              "lemma": "알싸함",
+              "result_ids": [
+                "w981"
+              ]
+            },
+            {
+              "record_id": "w982",
+              "lemma": "얼음장",
+              "result_ids": [
+                "w982"
+              ]
+            },
+            {
+              "record_id": "w983",
+              "lemma": "여울",
+              "result_ids": [
+                "w983"
+              ]
+            },
+            {
+              "record_id": "w984",
+              "lemma": "온습",
+              "result_ids": [
+                "w984"
+              ]
+            },
+            {
+              "record_id": "w985",
+              "lemma": "옅다",
+              "result_ids": [
+                "w985"
+              ]
+            },
+            {
+              "record_id": "w986",
+              "lemma": "잔향",
+              "result_ids": [
+                "w986"
+              ]
+            },
+            {
+              "record_id": "w987",
+              "lemma": "조명",
+              "result_ids": [
+                "w987"
+              ]
+            },
+            {
+              "record_id": "w988",
+              "lemma": "짙다",
+              "result_ids": [
+                "w988"
+              ]
+            },
+            {
+              "record_id": "w989",
+              "lemma": "찬바람",
+              "result_ids": [
+                "w989"
+              ]
+            },
+            {
+              "record_id": "w990",
+              "lemma": "찬기운",
+              "result_ids": [
+                "w990"
+              ]
+            },
+            {
+              "record_id": "w991",
+              "lemma": "청량하다",
+              "result_ids": [
+                "w991"
+              ]
+            },
+            {
+              "record_id": "w992",
+              "lemma": "초록빛",
+              "result_ids": [
+                "w992"
+              ]
+            },
+            {
+              "record_id": "w993",
+              "lemma": "콸콸거리다",
+              "result_ids": [
+                "w993"
+              ]
+            },
+            {
+              "record_id": "w994",
+              "lemma": "향취",
+              "result_ids": [
+                "w994"
+              ]
+            },
+            {
+              "record_id": "w995",
+              "lemma": "후각",
+              "result_ids": [
+                "w995"
+              ]
+            },
+            {
+              "record_id": "w996",
+              "lemma": "훈기",
+              "result_ids": [
+                "w996"
+              ]
+            },
+            {
+              "record_id": "w997",
+              "lemma": "흰빛",
+              "result_ids": [
+                "w997"
+              ]
+            },
+            {
+              "record_id": "w998",
+              "lemma": "흐린빛",
+              "result_ids": [
+                "w998"
+              ]
+            },
+            {
+              "record_id": "w999",
+              "lemma": "오돌토돌함",
+              "result_ids": [
+                "w999"
+              ]
+            },
+            {
+              "record_id": "w1000",
+              "lemma": "서늘한기운",
+              "result_ids": [
+                "w1000"
+              ]
+            },
+            {
+              "record_id": "w1001",
+              "lemma": "부스러기",
+              "result_ids": [
+                "w1001"
+              ]
+            },
+            {
+              "record_id": "w1002",
+              "lemma": "빛무리",
+              "result_ids": [
+                "w1002"
+              ]
+            },
+            {
+              "record_id": "w1003",
+              "lemma": "빛살",
+              "result_ids": [
+                "w1003"
+              ]
+            },
+            {
+              "record_id": "w1004",
+              "lemma": "물방울",
+              "result_ids": [
+                "w1004"
+              ]
+            },
+            {
+              "record_id": "w1005",
+              "lemma": "물비린내",
+              "result_ids": [
+                "w1005"
+              ]
+            },
+            {
+              "record_id": "w1006",
+              "lemma": "바람내음",
+              "result_ids": [
+                "w1006"
+              ]
+            },
+            {
+              "record_id": "w1007",
+              "lemma": "잔물결",
+              "result_ids": [
+                "w1007"
+              ]
+            },
+            {
+              "record_id": "w1008",
+              "lemma": "파문",
+              "result_ids": [
+                "w1008"
+              ]
+            },
+            {
+              "record_id": "w1009",
+              "lemma": "투명도",
+              "result_ids": [
+                "w1009"
+              ]
+            },
+            {
+              "record_id": "w1010",
+              "lemma": "차가운빛",
+              "result_ids": [
+                "w1010"
+              ]
+            },
+            {
+              "record_id": "w1011",
+              "lemma": "따뜻한빛",
+              "result_ids": [
+                "w1011"
+              ]
+            },
+            {
+              "record_id": "w1012",
+              "lemma": "윤기",
+              "result_ids": [
+                "w1012"
+              ]
+            },
+            {
+              "record_id": "w1013",
+              "lemma": "광택",
+              "result_ids": [
+                "w1013"
+              ]
+            },
+            {
+              "record_id": "w1014",
+              "lemma": "질감",
+              "result_ids": [
+                "w1014"
+              ]
+            },
+            {
+              "record_id": "w1015",
+              "lemma": "결감",
+              "result_ids": [
+                "w1015"
+              ]
+            },
+            {
+              "record_id": "w1016",
+              "lemma": "공기",
+              "result_ids": [
+                "w1016"
+              ]
+            },
+            {
+              "record_id": "w1017",
+              "lemma": "미온수",
+              "result_ids": [
+                "w1017"
+              ]
+            },
+            {
+              "record_id": "w1018",
+              "lemma": "한기",
+              "result_ids": [
+                "w1018"
+              ]
+            },
+            {
+              "record_id": "w1019",
+              "lemma": "가로수",
+              "result_ids": [
+                "w1019"
+              ]
+            },
+            {
+              "record_id": "w1020",
+              "lemma": "갈대밭",
+              "result_ids": [
+                "w1020"
+              ]
+            },
+            {
+              "record_id": "w1021",
+              "lemma": "고원",
+              "result_ids": [
+                "w1021"
+              ]
+            },
+            {
+              "record_id": "w1022",
+              "lemma": "구릉",
+              "result_ids": [
+                "w1022"
+              ]
+            },
+            {
+              "record_id": "w1023",
+              "lemma": "늪",
+              "result_ids": [
+                "w1023"
+              ]
+            },
+            {
+              "record_id": "w1024",
+              "lemma": "늪지",
+              "result_ids": [
+                "w1024"
+              ]
+            },
+            {
+              "record_id": "w1025",
+              "lemma": "마루금",
+              "result_ids": [
+                "w1025"
+              ]
+            },
+            {
+              "record_id": "w1026",
+              "lemma": "다랑논",
+              "result_ids": [
+                "w1026"
+              ]
+            },
+            {
+              "record_id": "w1027",
+              "lemma": "대숲",
+              "result_ids": [
+                "w1027"
+              ]
+            },
+            {
+              "record_id": "w1028",
+              "lemma": "도랑",
+              "result_ids": [
+                "w1028"
+              ]
+            },
+            {
+              "record_id": "w1029",
+              "lemma": "둑",
+              "result_ids": [
+                "w1029"
+              ]
+            },
+            {
+              "record_id": "w1030",
+              "lemma": "둑길",
+              "result_ids": [
+                "w1030"
+              ]
+            },
+            {
+              "record_id": "w1031",
+              "lemma": "뒷산",
+              "result_ids": [
+                "w1031"
+              ]
+            },
+            {
+              "record_id": "w1032",
+              "lemma": "길머리",
+              "result_ids": [
+                "w1032"
+              ]
+            },
+            {
+              "record_id": "w1033",
+              "lemma": "들풀",
+              "result_ids": [
+                "w1033"
+              ]
+            },
+            {
+              "record_id": "w1034",
+              "lemma": "먼바다",
+              "result_ids": [
+                "w1034"
+              ]
+            },
+            {
+              "record_id": "w1035",
+              "lemma": "모래언덕",
+              "result_ids": [
+                "w1035"
+              ]
+            },
+            {
+              "record_id": "w1036",
+              "lemma": "바위",
+              "result_ids": [
+                "w1036"
+              ]
+            },
+            {
+              "record_id": "w1037",
+              "lemma": "바위틈",
+              "result_ids": [
+                "w1037"
+              ]
+            },
+            {
+              "record_id": "w1038",
+              "lemma": "백사장",
+              "result_ids": [
+                "w1038"
+              ]
+            },
+            {
+              "record_id": "w1039",
+              "lemma": "벼랑",
+              "result_ids": [
+                "w1039"
+              ]
+            },
+            {
+              "record_id": "w1040",
+              "lemma": "볕",
+              "result_ids": [
+                "w1040"
+              ]
+            },
+            {
+              "record_id": "w1041",
+              "lemma": "사구",
+              "result_ids": [
+                "w1041"
+              ]
+            },
+            {
+              "record_id": "w1042",
+              "lemma": "산골",
+              "result_ids": [
+                "w1042"
+              ]
+            },
+            {
+              "record_id": "w1043",
+              "lemma": "산골짜기",
+              "result_ids": [
+                "w1043"
+              ]
+            },
+            {
+              "record_id": "w1044",
+              "lemma": "산길",
+              "result_ids": [
+                "w1044"
+              ]
+            },
+            {
+              "record_id": "w1045",
+              "lemma": "산비탈",
+              "result_ids": [
+                "w1045"
+              ]
+            },
+            {
+              "record_id": "w1046",
+              "lemma": "산촌",
+              "result_ids": [
+                "w1046"
+              ]
+            },
+            {
+              "record_id": "w1047",
+              "lemma": "샘",
+              "result_ids": [
+                "w1047"
+              ]
+            },
+            {
+              "record_id": "w1048",
+              "lemma": "샘터",
+              "result_ids": [
+                "w1048"
+              ]
+            },
+            {
+              "record_id": "w1049",
+              "lemma": "석양",
+              "result_ids": [
+                "w1049"
+              ]
+            },
+            {
+              "record_id": "w1050",
+              "lemma": "섬",
+              "result_ids": [
+                "w1050"
+              ]
+            },
+            {
+              "record_id": "w1051",
+              "lemma": "섬마을",
+              "result_ids": [
+                "w1051"
+              ]
+            },
+            {
+              "record_id": "w1052",
+              "lemma": "소나무숲",
+              "result_ids": [
+                "w1052"
+              ]
+            },
+            {
+              "record_id": "w1053",
+              "lemma": "수풀",
+              "result_ids": [
+                "w1053"
+              ]
+            },
+            {
+              "record_id": "w1054",
+              "lemma": "습지",
+              "result_ids": [
+                "w1054"
+              ]
+            },
+            {
+              "record_id": "w1055",
+              "lemma": "시골",
+              "result_ids": [
+                "w1055"
+              ]
+            },
+            {
+              "record_id": "w1056",
+              "lemma": "신작로",
+              "result_ids": [
+                "w1056"
+              ]
+            },
+            {
+              "record_id": "w1057",
+              "lemma": "아랫목",
+              "result_ids": [
+                "w1057"
+              ]
+            },
+            {
+              "record_id": "w1058",
+              "lemma": "앞마당",
+              "result_ids": [
+                "w1058"
+              ]
+            },
+            {
+              "record_id": "w1059",
+              "lemma": "언덕",
+              "result_ids": [
+                "w1059"
+              ]
+            },
+            {
+              "record_id": "w1060",
+              "lemma": "여울목",
+              "result_ids": [
+                "w1060"
+              ]
+            },
+            {
+              "record_id": "w1061",
+              "lemma": "외딴곳",
+              "result_ids": [
+                "w1061"
+              ]
+            },
+            {
+              "record_id": "w1062",
+              "lemma": "외딴섬",
+              "result_ids": [
+                "w1062"
+              ]
+            },
+            {
+              "record_id": "w1063",
+              "lemma": "울타리",
+              "result_ids": [
+                "w1063"
+              ]
+            },
+            {
+              "record_id": "w1064",
+              "lemma": "원두막",
+              "result_ids": [
+                "w1064"
+              ]
+            },
+            {
+              "record_id": "w1065",
+              "lemma": "잔디밭",
+              "result_ids": [
+                "w1065"
+              ]
+            },
+            {
+              "record_id": "w1066",
+              "lemma": "장터",
+              "result_ids": [
+                "w1066"
+              ]
+            },
+            {
+              "record_id": "w1067",
+              "lemma": "저수지",
+              "result_ids": [
+                "w1067"
+              ]
+            },
+            {
+              "record_id": "w1068",
+              "lemma": "전봇대",
+              "result_ids": [
+                "w1068"
+              ]
+            },
+            {
+              "record_id": "w1069",
+              "lemma": "정원",
+              "result_ids": [
+                "w1069"
+              ]
+            },
+            {
+              "record_id": "w1070",
+              "lemma": "지평선",
+              "result_ids": [
+                "w1070"
+              ]
+            },
+            {
+              "record_id": "w1071",
+              "lemma": "찻길",
+              "result_ids": [
+                "w1071"
+              ]
+            },
+            {
+              "record_id": "w1072",
+              "lemma": "철길",
+              "result_ids": [
+                "w1072"
+              ]
+            },
+            {
+              "record_id": "w1073",
+              "lemma": "초승달",
+              "result_ids": [
+                "w1073"
+              ]
+            },
+            {
+              "record_id": "w1074",
+              "lemma": "초입",
+              "result_ids": [
+                "w1074"
+              ]
+            },
+            {
+              "record_id": "w1075",
+              "lemma": "촌락",
+              "result_ids": [
+                "w1075"
+              ]
+            },
+            {
+              "record_id": "w1076",
+              "lemma": "큰길",
+              "result_ids": [
+                "w1076"
+              ]
+            },
+            {
+              "record_id": "w1077",
+              "lemma": "평야",
+              "result_ids": [
+                "w1077"
+              ]
+            },
+            {
+              "record_id": "w1078",
+              "lemma": "하늘",
+              "result_ids": [
+                "w1078"
+              ]
+            },
+            {
+              "record_id": "w1079",
+              "lemma": "하늘빛",
+              "result_ids": [
+                "w1079"
+              ]
+            },
+            {
+              "record_id": "w1080",
+              "lemma": "해안",
+              "result_ids": [
+                "w1080"
+              ]
+            },
+            {
+              "record_id": "w1081",
+              "lemma": "해변",
+              "result_ids": [
+                "w1081"
+              ]
+            },
+            {
+              "record_id": "w1082",
+              "lemma": "햇볕",
+              "result_ids": [
+                "w1082"
+              ]
+            },
+            {
+              "record_id": "w1083",
+              "lemma": "호숫가",
+              "result_ids": [
+                "w1083"
+              ]
+            },
+            {
+              "record_id": "w1084",
+              "lemma": "호수",
+              "result_ids": [
+                "w1084"
+              ]
+            },
+            {
+              "record_id": "w1085",
+              "lemma": "홍수",
+              "result_ids": [
+                "w1085"
+              ]
+            },
+            {
+              "record_id": "w1086",
+              "lemma": "황혼",
+              "result_ids": [
+                "w1086"
+              ]
+            },
+            {
+              "record_id": "w1087",
+              "lemma": "후미진곳",
+              "result_ids": [
+                "w1087"
+              ]
+            },
+            {
+              "record_id": "w1088",
+              "lemma": "휴게소",
+              "result_ids": [
+                "w1088"
+              ]
+            },
+            {
+              "record_id": "w1089",
+              "lemma": "가로등",
+              "result_ids": [
+                "w1089"
+              ]
+            },
+            {
+              "record_id": "w1090",
+              "lemma": "골목어귀",
+              "result_ids": [
+                "w1090"
+              ]
+            },
+            {
+              "record_id": "w1091",
+              "lemma": "구름층",
+              "result_ids": [
+                "w1091"
+              ]
+            },
+            {
+              "record_id": "w1092",
+              "lemma": "굴뚝",
+              "result_ids": [
+                "w1092"
+              ]
+            },
+            {
+              "record_id": "w1093",
+              "lemma": "논길",
+              "result_ids": [
+                "w1093"
+              ]
+            },
+            {
+              "record_id": "w1094",
+              "lemma": "논둑",
+              "result_ids": [
+                "w1094"
+              ]
+            },
+            {
+              "record_id": "w1095",
+              "lemma": "마을어귀",
+              "result_ids": [
+                "w1095"
+              ]
+            },
+            {
+              "record_id": "w1096",
+              "lemma": "물굽이",
+              "result_ids": [
+                "w1096"
+              ]
+            },
+            {
+              "record_id": "w1097",
+              "lemma": "배수로",
+              "result_ids": [
+                "w1097"
+              ]
+            },
+            {
+              "record_id": "w1098",
+              "lemma": "사잇길",
+              "result_ids": [
+                "w1098"
+              ]
+            },
+            {
+              "record_id": "w1099",
+              "lemma": "가누다",
+              "result_ids": [
+                "w1099"
+              ]
+            },
+            {
+              "record_id": "w1100",
+              "lemma": "가라앉히다",
+              "result_ids": [
+                "w1100"
+              ]
+            },
+            {
+              "record_id": "w1101",
+              "lemma": "차단하다",
+              "result_ids": [
+                "w1101"
+              ]
+            },
+            {
+              "record_id": "w1102",
+              "lemma": "갈아타다",
+              "result_ids": [
+                "w1102"
+              ]
+            },
+            {
+              "record_id": "w1103",
+              "lemma": "감돌다",
+              "result_ids": [
+                "w1103"
+              ]
+            },
+            {
+              "record_id": "w1104",
+              "lemma": "감추다",
+              "result_ids": [
+                "w1104"
+              ]
+            },
+            {
+              "record_id": "w1105",
+              "lemma": "거머쥐다",
+              "result_ids": [
+                "w1105"
+              ]
+            },
+            {
+              "record_id": "w1106",
+              "lemma": "걸터앉다",
+              "result_ids": [
+                "w1106"
+              ]
+            },
+            {
+              "record_id": "w1107",
+              "lemma": "겨누다",
+              "result_ids": [
+                "w1107"
+              ]
+            },
+            {
+              "record_id": "w1108",
+              "lemma": "곁눈질하다",
+              "result_ids": [
+                "w1108"
+              ]
+            },
+            {
+              "record_id": "w1109",
+              "lemma": "구부리다",
+              "result_ids": [
+                "w1109"
+              ]
+            },
+            {
+              "record_id": "w1110",
+              "lemma": "굴리다",
+              "result_ids": [
+                "w1110"
+              ]
+            },
+            {
+              "record_id": "w1111",
+              "lemma": "굽히다",
+              "result_ids": [
+                "w1111"
+              ]
+            },
+            {
+              "record_id": "w1112",
+              "lemma": "끌다",
+              "result_ids": [
+                "w1112"
+              ]
+            },
+            {
+              "record_id": "w1113",
+              "lemma": "나누다",
+              "result_ids": [
+                "w1113"
+              ]
+            },
+            {
+              "record_id": "w1114",
+              "lemma": "낚다",
+              "result_ids": [
+                "w1114"
+              ]
+            },
+            {
+              "record_id": "w1115",
+              "lemma": "내던지다",
+              "result_ids": [
+                "w1115"
+              ]
+            },
+            {
+              "record_id": "w1116",
+              "lemma": "내리다",
+              "result_ids": [
+                "w1116"
+              ]
+            },
+            {
+              "record_id": "w1117",
+              "lemma": "넓히다",
+              "result_ids": [
+                "w1117"
+              ]
+            },
+            {
+              "record_id": "w1118",
+              "lemma": "넘나들다",
+              "result_ids": [
+                "w1118"
+              ]
+            },
+            {
+              "record_id": "w1119",
+              "lemma": "넘치다",
+              "result_ids": [
+                "w1119"
+              ]
+            },
+            {
+              "record_id": "w1120",
+              "lemma": "놓치다",
+              "result_ids": [
+                "w1120"
+              ]
+            },
+            {
+              "record_id": "w1121",
+              "lemma": "다독이다",
+              "result_ids": [
+                "w1121"
+              ]
+            },
+            {
+              "record_id": "w1122",
+              "lemma": "다가오다",
+              "result_ids": [
+                "w1122"
+              ]
+            },
+            {
+              "record_id": "w1123",
+              "lemma": "다그치다",
+              "result_ids": [
+                "w1123"
+              ]
+            },
+            {
+              "record_id": "w1124",
+              "lemma": "달래다",
+              "result_ids": [
+                "w1124"
+              ]
+            },
+            {
+              "record_id": "w1125",
+              "lemma": "닦다",
+              "result_ids": [
+                "w1125"
+              ]
+            },
+            {
+              "record_id": "w1126",
+              "lemma": "당겨오다",
+              "result_ids": [
+                "w1126"
+              ]
+            },
+            {
+              "record_id": "w1127",
+              "lemma": "대치하다",
+              "result_ids": [
+                "w1127"
+              ]
+            },
+            {
+              "record_id": "w1128",
+              "lemma": "던지다",
+              "result_ids": [
+                "w1128"
+              ]
+            },
+            {
+              "record_id": "w1129",
+              "lemma": "돌려세우다",
+              "result_ids": [
+                "w1129"
+              ]
+            },
+            {
+              "record_id": "w1130",
+              "lemma": "들이받다",
+              "result_ids": [
+                "w1130"
+              ]
+            },
+            {
+              "record_id": "w1131",
+              "lemma": "들이키다",
+              "result_ids": [
+                "w1131"
+              ]
+            },
+            {
+              "record_id": "w1132",
+              "lemma": "따라붙다",
+              "result_ids": [
+                "w1132"
+              ]
+            },
+            {
+              "record_id": "w1133",
+              "lemma": "떠오르다",
+              "result_ids": [
+                "w1133"
+              ]
+            },
+            {
+              "record_id": "w1134",
+              "lemma": "떼어내다",
+              "result_ids": [
+                "w1134"
+              ]
+            },
+            {
+              "record_id": "w1135",
+              "lemma": "뚫다",
+              "result_ids": [
+                "w1135"
+              ]
+            },
+            {
+              "record_id": "w1136",
+              "lemma": "뛰놀다",
+              "result_ids": [
+                "w1136"
+              ]
+            },
+            {
+              "record_id": "w1137",
+              "lemma": "마주보다",
+              "result_ids": [
+                "w1137"
+              ]
+            },
+            {
+              "record_id": "w1138",
+              "lemma": "맞서다",
+              "result_ids": [
+                "w1138"
+              ]
+            },
+            {
+              "record_id": "w1139",
+              "lemma": "맞잡다",
+              "result_ids": [
+                "w1139"
+              ]
+            },
+            {
+              "record_id": "w1140",
+              "lemma": "매달리다",
+              "result_ids": [
+                "w1140"
+              ]
+            },
+            {
+              "record_id": "w1141",
+              "lemma": "메우다",
+              "result_ids": [
+                "w1141"
+              ]
+            },
+            {
+              "record_id": "w1142",
+              "lemma": "몰아치다",
+              "result_ids": [
+                "w1142"
+              ]
+            },
+            {
+              "record_id": "w1143",
+              "lemma": "묻다",
+              "result_ids": [
+                "w1143"
+              ]
+            },
+            {
+              "record_id": "w1144",
+              "lemma": "밀려들다",
+              "result_ids": [
+                "w1144"
+              ]
+            },
+            {
+              "record_id": "w1145",
+              "lemma": "버티다",
+              "result_ids": [
+                "w1145"
+              ]
+            },
+            {
+              "record_id": "w1146",
+              "lemma": "벗어나다",
+              "result_ids": [
+                "w1146"
+              ]
+            },
+            {
+              "record_id": "w1147",
+              "lemma": "비비다",
+              "result_ids": [
+                "w1147"
+              ]
+            },
+            {
+              "record_id": "w1148",
+              "lemma": "비켜나다",
+              "result_ids": [
+                "w1148"
+              ]
+            },
+            {
+              "record_id": "w1149",
+              "lemma": "빼앗다",
+              "result_ids": [
+                "w1149"
+              ]
+            },
+            {
+              "record_id": "w1150",
+              "lemma": "뿜어내다",
+              "result_ids": [
+                "w1150"
+              ]
+            },
+            {
+              "record_id": "w1151",
+              "lemma": "사라져가다",
+              "result_ids": [
+                "w1151"
+              ]
+            },
+            {
+              "record_id": "w1152",
+              "lemma": "새다",
+              "result_ids": [
+                "w1152"
+              ]
+            },
+            {
+              "record_id": "w1153",
+              "lemma": "선회하다",
+              "result_ids": [
+                "w1153"
+              ]
+            },
+            {
+              "record_id": "w1154",
+              "lemma": "숨죽이다",
+              "result_ids": [
+                "w1154"
+              ]
+            },
+            {
+              "record_id": "w1155",
+              "lemma": "스치다",
+              "result_ids": [
+                "w1155"
+              ]
+            },
+            {
+              "record_id": "w1156",
+              "lemma": "시달리다",
+              "result_ids": [
+                "w1156"
+              ]
+            },
+            {
+              "record_id": "w1157",
+              "lemma": "실어나르다",
+              "result_ids": [
+                "w1157"
+              ]
+            },
+            {
+              "record_id": "w1158",
+              "lemma": "쏟다",
+              "result_ids": [
+                "w1158"
+              ]
+            },
+            {
+              "record_id": "w1159",
+              "lemma": "쏟아지다",
+              "result_ids": [
+                "w1159"
+              ]
+            },
+            {
+              "record_id": "w1160",
+              "lemma": "안기다",
+              "result_ids": [
+                "w1160"
+              ]
+            },
+            {
+              "record_id": "w1161",
+              "lemma": "앞세우다",
+              "result_ids": [
+                "w1161"
+              ]
+            },
+            {
+              "record_id": "w1162",
+              "lemma": "얹다",
+              "result_ids": [
+                "w1162"
+              ]
+            },
+            {
+              "record_id": "w1163",
+              "lemma": "엎지르다",
+              "result_ids": [
+                "w1163"
+              ]
+            },
+            {
+              "record_id": "w1164",
+              "lemma": "옮기다",
+              "result_ids": [
+                "w1164"
+              ]
+            },
+            {
+              "record_id": "w1165",
+              "lemma": "움켜잡다",
+              "result_ids": [
+                "w1165"
+              ]
+            },
+            {
+              "record_id": "w1166",
+              "lemma": "일구다",
+              "result_ids": [
+                "w1166"
+              ]
+            },
+            {
+              "record_id": "w1167",
+              "lemma": "잇다",
+              "result_ids": [
+                "w1167"
+              ]
+            },
+            {
+              "record_id": "w1168",
+              "lemma": "자라나다",
+              "result_ids": [
+                "w1168"
+              ]
+            },
+            {
+              "record_id": "w1169",
+              "lemma": "재촉하다",
+              "result_ids": [
+                "w1169"
+              ]
+            },
+            {
+              "record_id": "w1170",
+              "lemma": "젖히다",
+              "result_ids": [
+                "w1170"
+              ]
+            },
+            {
+              "record_id": "w1171",
+              "lemma": "조르다",
+              "result_ids": [
+                "w1171"
+              ]
+            },
+            {
+              "record_id": "w1172",
+              "lemma": "주무르다",
+              "result_ids": [
+                "w1172"
+              ]
+            },
+            {
+              "record_id": "w1173",
+              "lemma": "지나다",
+              "result_ids": [
+                "w1173"
+              ]
+            },
+            {
+              "record_id": "w1174",
+              "lemma": "지켜보다",
+              "result_ids": [
+                "w1174"
+              ]
+            },
+            {
+              "record_id": "w1175",
+              "lemma": "질주하다",
+              "result_ids": [
+                "w1175"
+              ]
+            },
+            {
+              "record_id": "w1176",
+              "lemma": "짚다",
+              "result_ids": [
+                "w1176"
+              ]
+            },
+            {
+              "record_id": "w1177",
+              "lemma": "치받다",
+              "result_ids": [
+                "w1177"
+              ]
+            },
+            {
+              "record_id": "w1178",
+              "lemma": "치우다",
+              "result_ids": [
+                "w1178"
+              ]
+            },
+            {
+              "record_id": "w1179",
+              "lemma": "캐묻다",
+              "result_ids": [
+                "w1179"
+              ]
+            },
+            {
+              "record_id": "w1180",
+              "lemma": "휘감다",
+              "result_ids": [
+                "w1180"
+              ]
+            },
+            {
+              "record_id": "w1181",
+              "lemma": "휘몰아치다",
+              "result_ids": [
+                "w1181"
+              ]
+            },
+            {
+              "record_id": "w1182",
+              "lemma": "훑다",
+              "result_ids": [
+                "w1182"
+              ]
+            },
+            {
+              "record_id": "w1183",
+              "lemma": "휘젓다",
+              "result_ids": [
+                "w1183"
+              ]
+            },
+            {
+              "record_id": "w1184",
+              "lemma": "흩어지다",
+              "result_ids": [
+                "w1184"
+              ]
+            },
+            {
+              "record_id": "w1185",
+              "lemma": "흘려보내다",
+              "result_ids": [
+                "w1185"
+              ]
+            },
+            {
+              "record_id": "w1186",
+              "lemma": "힘주다",
+              "result_ids": [
+                "w1186"
+              ]
+            },
+            {
+              "record_id": "w1187",
+              "lemma": "굴절하다",
+              "result_ids": [
+                "w1187"
+              ]
+            },
+            {
+              "record_id": "w1188",
+              "lemma": "마주치다",
+              "result_ids": [
+                "w1188"
+              ]
+            },
+            {
+              "record_id": "w1189",
+              "lemma": "맞이하다",
+              "result_ids": [
+                "w1189"
+              ]
+            },
+            {
+              "record_id": "w1190",
+              "lemma": "부딪치다",
+              "result_ids": [
+                "w1190"
+              ]
+            },
+            {
+              "record_id": "w1191",
+              "lemma": "비집고들어가다",
+              "result_ids": [
+                "w1191"
+              ]
+            },
+            {
+              "record_id": "w1192",
+              "lemma": "삼키다",
+              "result_ids": [
+                "w1192"
+              ]
+            },
+            {
+              "record_id": "w1193",
+              "lemma": "움찔하다",
+              "result_ids": [
+                "w1193"
+              ]
+            },
+            {
+              "record_id": "w1194",
+              "lemma": "깜빡이다",
+              "result_ids": [
+                "w1194"
+              ]
+            },
+            {
+              "record_id": "w1195",
+              "lemma": "끄덕이다",
+              "result_ids": [
+                "w1195"
+              ]
+            },
+            {
+              "record_id": "w1196",
+              "lemma": "숨다",
+              "result_ids": [
+                "w1196"
+              ]
+            },
+            {
+              "record_id": "w1197",
+              "lemma": "솟아오르다",
+              "result_ids": [
+                "w1197"
+              ]
+            },
+            {
+              "record_id": "w1198",
+              "lemma": "잠기다",
+              "result_ids": [
+                "w1198"
+              ]
+            },
+            {
+              "record_id": "w1199",
+              "lemma": "가위",
+              "result_ids": [
+                "w1199"
+              ]
+            },
+            {
+              "record_id": "w1200",
+              "lemma": "가죽",
+              "result_ids": [
+                "w1200"
+              ]
+            },
+            {
+              "record_id": "w1201",
+              "lemma": "간판",
+              "result_ids": [
+                "w1201"
+              ]
+            },
+            {
+              "record_id": "w1202",
+              "lemma": "갑판",
+              "result_ids": [
+                "w1202"
+              ]
+            },
+            {
+              "record_id": "w1203",
+              "lemma": "갓",
+              "result_ids": [
+                "w1203"
+              ]
+            },
+            {
+              "record_id": "w1204",
+              "lemma": "갯벌",
+              "result_ids": [
+                "w1204"
+              ]
+            },
+            {
+              "record_id": "w1205",
+              "lemma": "건반",
+              "result_ids": [
+                "w1205"
+              ]
+            },
+            {
+              "record_id": "w1206",
+              "lemma": "경첩",
+              "result_ids": [
+                "w1206"
+              ]
+            },
+            {
+              "record_id": "w1207",
+              "lemma": "고무줄",
+              "result_ids": [
+                "w1207"
+              ]
+            },
+            {
+              "record_id": "w1208",
+              "lemma": "곡괭이",
+              "result_ids": [
+                "w1208"
+              ]
+            },
+            {
+              "record_id": "w1209",
+              "lemma": "골무",
+              "result_ids": [
+                "w1209"
+              ]
+            },
+            {
+              "record_id": "w1210",
+              "lemma": "공책",
+              "result_ids": [
+                "w1210"
+              ]
+            },
+            {
+              "record_id": "w1211",
+              "lemma": "괭이",
+              "result_ids": [
+                "w1211"
+              ]
+            },
+            {
+              "record_id": "w1212",
+              "lemma": "구두",
+              "result_ids": [
+                "w1212"
+              ]
+            },
+            {
+              "record_id": "w1213",
+              "lemma": "국자",
+              "result_ids": [
+                "w1213"
+              ]
+            },
+            {
+              "record_id": "w1214",
+              "lemma": "기둥",
+              "result_ids": [
+                "w1214"
+              ]
+            },
+            {
+              "record_id": "w1215",
+              "lemma": "나침반",
+              "result_ids": [
+                "w1215"
+              ]
+            },
+            {
+              "record_id": "w1216",
+              "lemma": "납작돌",
+              "result_ids": [
+                "w1216"
+              ]
+            },
+            {
+              "record_id": "w1217",
+              "lemma": "낫",
+              "result_ids": [
+                "w1217"
+              ]
+            },
+            {
+              "record_id": "w1218",
+              "lemma": "냄비",
+              "result_ids": [
+                "w1218"
+              ]
+            },
+            {
+              "record_id": "w1219",
+              "lemma": "노트",
+              "result_ids": [
+                "w1219"
+              ]
+            },
+            {
+              "record_id": "w1220",
+              "lemma": "도르래",
+              "result_ids": [
+                "w1220"
+              ]
+            },
+            {
+              "record_id": "w1221",
+              "lemma": "돋보기",
+              "result_ids": [
+                "w1221"
+              ]
+            },
+            {
+              "record_id": "w1222",
+              "lemma": "등받이",
+              "result_ids": [
+                "w1222"
+              ]
+            },
+            {
+              "record_id": "w1223",
+              "lemma": "라디오",
+              "result_ids": [
+                "w1223"
+              ]
+            },
+            {
+              "record_id": "w1224",
+              "lemma": "망치",
+              "result_ids": [
+                "w1224"
+              ]
+            },
+            {
+              "record_id": "w1225",
+              "lemma": "매듭",
+              "result_ids": [
+                "w1225"
+              ]
+            },
+            {
+              "record_id": "w1226",
+              "lemma": "멍석",
+              "result_ids": [
+                "w1226"
+              ]
+            },
+            {
+              "record_id": "w1227",
+              "lemma": "모자",
+              "result_ids": [
+                "w1227"
+              ]
+            },
+            {
+              "record_id": "w1228",
+              "lemma": "목도리",
+              "result_ids": [
+                "w1228"
+              ]
+            },
+            {
+              "record_id": "w1229",
+              "lemma": "무명천",
+              "result_ids": [
+                "w1229"
+              ]
+            },
+            {
+              "record_id": "w1230",
+              "lemma": "물동이",
+              "result_ids": [
+                "w1230"
+              ]
+            },
+            {
+              "record_id": "w1231",
+              "lemma": "바구니",
+              "result_ids": [
+                "w1231"
+              ]
+            },
+            {
+              "record_id": "w1232",
+              "lemma": "박스",
+              "result_ids": [
+                "w1232"
+              ]
+            },
+            {
+              "record_id": "w1233",
+              "lemma": "방석",
+              "result_ids": [
+                "w1233"
+              ]
+            },
+            {
+              "record_id": "w1234",
+              "lemma": "배낭",
+              "result_ids": [
+                "w1234"
+              ]
+            },
+            {
+              "record_id": "w1235",
+              "lemma": "벽돌",
+              "result_ids": [
+                "w1235"
+              ]
+            },
+            {
+              "record_id": "w1236",
+              "lemma": "보따리",
+              "result_ids": [
+                "w1236"
+              ]
+            },
+            {
+              "record_id": "w1237",
+              "lemma": "손전등",
+              "result_ids": [
+                "w1237"
+              ]
+            },
+            {
+              "record_id": "w1238",
+              "lemma": "수첩",
+              "result_ids": [
+                "w1238"
+              ]
+            },
+            {
+              "record_id": "w1239",
+              "lemma": "스웨터",
+              "result_ids": [
+                "w1239"
+              ]
+            },
+            {
+              "record_id": "w1240",
+              "lemma": "신호등",
+              "result_ids": [
+                "w1240"
+              ]
+            },
+            {
+              "record_id": "w1241",
+              "lemma": "액자",
+              "result_ids": [
+                "w1241"
+              ]
+            },
+            {
+              "record_id": "w1242",
+              "lemma": "양초",
+              "result_ids": [
+                "w1242"
+              ]
+            },
+            {
+              "record_id": "w1243",
+              "lemma": "연장",
+              "result_ids": [
+                "w1243"
+              ]
+            },
+            {
+              "record_id": "w1244",
+              "lemma": "옷걸이",
+              "result_ids": [
+                "w1244"
+              ]
+            },
+            {
+              "record_id": "w1245",
+              "lemma": "우체통",
+              "result_ids": [
+                "w1245"
+              ]
+            },
+            {
+              "record_id": "w1246",
+              "lemma": "유리창",
+              "result_ids": [
+                "w1246"
+              ]
+            },
+            {
+              "record_id": "w1247",
+              "lemma": "이끼",
+              "result_ids": [
+                "w1247"
+              ]
+            },
+            {
+              "record_id": "w1248",
+              "lemma": "자",
+              "result_ids": [
+                "w1248"
+              ]
+            },
+            {
+              "record_id": "w1249",
+              "lemma": "자루",
+              "result_ids": [
+                "w1249"
+              ]
+            },
+            {
+              "record_id": "w1250",
+              "lemma": "장갑",
+              "result_ids": [
+                "w1250"
+              ]
+            },
+            {
+              "record_id": "w1251",
+              "lemma": "재봉틀",
+              "result_ids": [
+                "w1251"
+              ]
+            },
+            {
+              "record_id": "w1252",
+              "lemma": "전등",
+              "result_ids": [
+                "w1252"
+              ]
+            },
+            {
+              "record_id": "w1253",
+              "lemma": "종",
+              "result_ids": [
+                "w1253"
+              ]
+            },
+            {
+              "record_id": "w1254",
+              "lemma": "주걱",
+              "result_ids": [
+                "w1254"
+              ]
+            },
+            {
+              "record_id": "w1255",
+              "lemma": "지팡이",
+              "result_ids": [
+                "w1255"
+              ]
+            },
+            {
+              "record_id": "w1256",
+              "lemma": "찻잔",
+              "result_ids": [
+                "w1256"
+              ]
+            },
+            {
+              "record_id": "w1257",
+              "lemma": "철사",
+              "result_ids": [
+                "w1257"
+              ]
+            },
+            {
+              "record_id": "w1258",
+              "lemma": "초",
+              "result_ids": [
+                "w1258"
+              ]
+            },
+            {
+              "record_id": "w1259",
+              "lemma": "침대",
+              "result_ids": [
+                "w1259"
+              ]
+            },
+            {
+              "record_id": "w1260",
+              "lemma": "칼날",
+              "result_ids": [
+                "w1260"
+              ]
+            },
+            {
+              "record_id": "w1261",
+              "lemma": "톱",
+              "result_ids": [
+                "w1261"
+              ]
+            },
+            {
+              "record_id": "w1262",
+              "lemma": "풍경",
+              "result_ids": [
+                "w1262"
+              ]
+            },
+            {
+              "record_id": "w1263",
+              "lemma": "갈퀴",
+              "result_ids": [
+                "w1263"
+              ]
+            },
+            {
+              "record_id": "w1264",
+              "lemma": "화분",
+              "result_ids": [
+                "w1264"
+              ]
+            },
+            {
+              "record_id": "w1265",
+              "lemma": "흙",
+              "result_ids": [
+                "w1265"
+              ]
+            },
+            {
+              "record_id": "w1266",
+              "lemma": "흙먼지",
+              "result_ids": [
+                "w1266"
+              ]
+            },
+            {
+              "record_id": "w1267",
+              "lemma": "손잡이",
+              "result_ids": [
+                "w1267"
+              ]
+            },
+            {
+              "record_id": "w1268",
+              "lemma": "책더미",
+              "result_ids": [
+                "w1268"
+              ]
+            },
+            {
+              "record_id": "w1269",
+              "lemma": "가치",
+              "result_ids": [
+                "w1269"
+              ]
+            },
+            {
+              "record_id": "w1270",
+              "lemma": "가능성",
+              "result_ids": [
+                "w1270"
+              ]
+            },
+            {
+              "record_id": "w1271",
+              "lemma": "갈등",
+              "result_ids": [
+                "w1271"
+              ]
+            },
+            {
+              "record_id": "w1272",
+              "lemma": "감각",
+              "result_ids": [
+                "w1272"
+              ]
+            },
+            {
+              "record_id": "w1273",
+              "lemma": "감정",
+              "result_ids": [
+                "w1273"
+              ]
+            },
+            {
+              "record_id": "w1274",
+              "lemma": "개성",
+              "result_ids": [
+                "w1274"
+              ]
+            },
+            {
+              "record_id": "w1275",
+              "lemma": "결심",
+              "result_ids": [
+                "w1275"
+              ]
+            },
+            {
+              "record_id": "w1276",
+              "lemma": "결핍",
+              "result_ids": [
+                "w1276"
+              ]
+            },
+            {
+              "record_id": "w1277",
+              "lemma": "공감",
+              "result_ids": [
+                "w1277"
+              ]
+            },
+            {
+              "record_id": "w1278",
+              "lemma": "과정",
+              "result_ids": [
+                "w1278"
+              ]
+            }
+          ]
+        },
+        "raw-material-exclusion": {
+          "canonical_files": [
+            "m5-10-wave-a.jsonl",
+            "m5-10-wave-b.jsonl",
+            "m5-10a-wave-a2.jsonl",
+            "m5-11-expansion.jsonl",
+            "m5-3-calibration.jsonl",
+            "m5-5-recalibration.jsonl",
+            "m5-7-recalibration.jsonl",
+            "m5-9-expansion.jsonl",
+            "pilot.jsonl"
+          ],
+          "candidate_local_ids_present": false,
+          "external_input_paths_present": false
+        }
+      }
+    },
+    "metrics": {
+      "policy": "agent-generated",
+      "candidate_pool_count": 550,
+      "imported_start_count": 500,
+      "reserve_count": 50,
+      "final_start_count": 1278,
+      "canonical_collision_count": 0,
+      "candidate_collision_count": 0,
+      "placeholder_gloss_count": 0,
+      "schema_integrity_blocker_count": 0,
+      "relation_target_blocker_count": 0,
+      "correction_rate_of_selected": 0,
+      "relation_noise_rate_of_candidates": 0,
+      "editor_seconds_per_selected_start": null,
+      "editor_seconds_per_processed_start": null,
+      "editor_time_status": "not-required",
+      "timing_status": "not-required",
+      "unmeasured_timing_pass_count": 0,
+      "audit_status": "not-required",
+      "audit_independent": null,
+      "open_audit_blocker_count": 0,
+      "editorial_review_complete": true,
+      "automated_editorial_review_complete": true,
+      "agent_generated_provenance": true,
+      "generation_verification_separated": true,
+      "human_editorial_review_complete": false,
+      "canonical_integrity": true,
+      "deterministic_sqlite": true,
+      "search_product_regression": true
+    },
+    "gate": {
+      "policy": "agent-generated",
+      "quality_passes": {
+        "candidate_pool": true,
+        "imported_start_count": true,
+        "reserve_count": true,
+        "canonical_lexical_collisions": true,
+        "candidate_lexical_collisions": true,
+        "placeholder_glosses": true,
+        "correction_rate": true,
+        "relation_noise_rate": true,
+        "relation_noise_below_baseline": true,
+        "automated_editorial_review": true,
+        "agent_generated_provenance": true,
+        "generation_verification_separated": true,
+        "schema_integrity_blockers": true,
+        "relation_target_blockers": true,
+        "canonical_integrity": true,
+        "deterministic_sqlite": true,
+        "search_product_regression": true,
+        "exact_net_start_increase": true,
+        "cumulative_start_target": true
+      },
+      "gate_status": "pass",
+      "decision": "APPROVE AUTOMATED BOUNDED"
+    }
+  },
+  "gate_evidence_sha256": "c28144caf8fecb699c1f0b8b8a6be0f6cb48fbc194b897a72d9c474ab216795c",
+  "sources": {
+    "proposal": {
+      "source_id": "proposal",
+      "path": "external:proposal",
+      "sha256": "1d6ae58bfbb8386af45bb485f2c45683b647cd3c237ee8a6efd48c1287276b6c"
+    },
+    "editorial": {
+      "source_id": "editorial",
+      "path": "external:editorial",
+      "sha256": "9308c991de24e506f6ee15f7550d9f0d8552470609f1a1894b6c38e1ddc623a0"
+    },
+    "relation_diff": {
+      "source_id": "relation_diff",
+      "path": "external:relation_diff",
+      "sha256": "d64eb4d7864aa46f536b239f7cb20929a2e831f7523113c0ae0787135bca0587"
+    },
+    "verification": {
+      "source_id": "verification",
+      "path": "external:verification",
+      "sha256": "041a4a15df582bef376559d85ad0cd48dbf367efbe58db674c542f42e9654a47"
+    },
+    "reviewed_import": {
+      "source_id": "reviewed_import",
+      "path": "external:reviewed_import",
+      "sha256": "e23eb43655c426e3dc79d771f70dcd216ebf48bf28ddb7633127827fb84578fb"
+    },
+    "authorization": {
+      "source_id": "authorization",
+      "path": "data/batches/m5-10d-m5-11-authorization-20260912.json",
+      "sha256": "944d86adad9ad3c340aa57ea88b9ed6cc21a9379e4473edc2cd2213b33ff7d88"
+    },
+    "base_inventory": {
+      "source_id": "base_inventory",
+      "path": "data/batches/m5-11-base-inventory.json",
+      "sha256": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
+    }
+  },
+  "promotion": {
+    "canonical_mutation": false,
+    "seed_mutation": false,
+    "inventory_mutation": false,
+    "note": "The explicit promotion command must consume this passing manifest; admission validation never mutates canonical data."
+  }
+}

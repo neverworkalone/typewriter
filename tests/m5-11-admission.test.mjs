@@ -21,12 +21,17 @@ import {
   runM511ProspectiveVerification,
   validateM511TimingArtifact,
   validateM511Admission,
+  validateM511VerificationArtifact,
 } from '../scripts/batch/validate-m5-11-admission.mjs';
 import { buildM511PromotionSeed, promoteM511 } from '../scripts/batch/promote-m5-11.mjs';
 import { main as recordM511Timing } from '../scripts/batch/record-m5-11-timing.mjs';
 import { validateM511DurableEvidence } from '../scripts/batch/validate-m5-11-promotion.mjs';
-import { M5_11_BATCH_ID } from '../scripts/batch/m5-11-editorial.mjs';
-import { sha256Json, sha256ProposalRow } from '../scripts/batch/m5-11-editorial.mjs';
+import {
+  M5_11_BATCH_ID,
+  sha256Json,
+  sha256ProposalRow,
+  validateM511EditorialDecisions,
+} from '../scripts/batch/m5-11-editorial.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
 
@@ -424,6 +429,47 @@ function makeSources(catalog) {
   };
 }
 
+function makeAgentSources(catalog) {
+  const fixture = makeSources(catalog);
+  fixture.editorial = structuredClone(fixture.editorial);
+  Object.assign(fixture.editorial, {
+    review_mode: 'agent-generated',
+    editorial_review_complete: true,
+    automated_editorial_review_complete: true,
+    human_editorial_review_complete: false,
+    gate_decision: 'APPROVE AUTOMATED BOUNDED',
+    provenance: {
+      kind: 'agent_generated',
+      generator: 'codex',
+      generator_version: 'm5-11a-agent-editorial-v1',
+      pass_id: 'agent-generation-pass',
+    },
+  });
+  fixture.editorialSource = fileSource('/tmp/m5-11-agent-editorial.json', fixture.editorial);
+  fixture.verification = structuredClone(fixture.verification);
+  Object.assign(fixture.verification, {
+    review_mode: 'agent-generated',
+    automated_editorial_review_complete: true,
+    human_editorial_review_complete: false,
+    generation_verification_separated: true,
+    generation_pass_id: 'agent-generation-pass',
+    verification_pass_id: 'agent-verification-pass',
+    generation_editorial_sha256: fixture.editorialSource.sha256,
+    provenance: {
+      kind: 'agent_generated',
+      generator: 'codex',
+      generator_version: 'm5-11a-agent-editorial-v1',
+      pass_id: 'agent-verification-pass',
+    },
+    machine_check_evidence: Object.fromEntries(
+      M5_11_MACHINE_CHECK_IDS.map((id) => [id, { observed: true }]),
+    ),
+  });
+  fixture.verification.editorial_sha256 = fixture.editorialSource.sha256;
+  fixture.verificationSource = fileSource('/tmp/m5-11-agent-verification.json', fixture.verification);
+  return fixture;
+}
+
 function makeBaseRecords() {
   return [{
     id: 'w001',
@@ -582,6 +628,111 @@ test('M5-11 completed admission gate derives counts and passes the bounded thres
   assert.equal(result.processed_start_count, 4);
   assert.equal(result.metrics.editor_seconds_per_processed_start, 1);
   assert.equal(result.final_summary.start_count, 3);
+});
+
+test('M5-11A accepts truthful agent provenance without human timing or audit', () => {
+  const fixture = makeAgentSources(makeCatalog());
+  const result = deriveM511AdmissionGate({
+    ...fixture,
+    editorialTiming: undefined,
+    editorialTimingSource: undefined,
+    audit: undefined,
+    auditSource: undefined,
+    auditTiming: undefined,
+    auditTimingSource: undefined,
+    baseRecords: makeBaseRecords(),
+    baseSummary: {
+      record_count: 1,
+      start_count: 1,
+      reference_only_count: 0,
+      sense_count: 1,
+      relation_count: 0,
+      expression_count: 0,
+    },
+    expectedImportedCount: 2,
+    expectedCumulativeStartCount: 3,
+    candidateBuffer: 2,
+    expectedCandidatePoolCount: 4,
+    checkPilotCompleteness: false,
+  });
+
+  assert.equal(result.gate.gate_status, 'pass');
+  assert.equal(result.gate.decision, 'APPROVE AUTOMATED BOUNDED');
+  assert.equal(result.timing.editorial.status, 'not-required');
+  assert.equal(result.audit.status, 'not-required');
+  assert.equal(result.verification.human_editorial_review_complete, false);
+  assert.equal(result.verification.generation_verification_separated, true);
+});
+
+test('M5-11A rejects human attribution and reused generation/verification passes', () => {
+  const attributed = makeAgentSources(makeCatalog());
+  attributed.editorial.human_editorial_review_complete = true;
+  assert.throws(
+    () => validateM511EditorialDecisions(attributed.editorial, {
+      catalog: attributed.catalog,
+      proposal: attributed.proposal,
+      expectedImportedCount: 2,
+    }),
+    /must not claim human editorial review/u,
+  );
+
+  const reused = makeAgentSources(makeCatalog());
+  reused.verification.verification_pass_id = reused.verification.generation_pass_id;
+  reused.verification.provenance.pass_id = reused.verification.verification_pass_id;
+  assert.throws(
+    () => validateM511VerificationArtifact(reused.verification, {
+      source: reused.verificationSource,
+      finalSummary: {
+        record_count: 3,
+        start_count: 3,
+        reference_only_count: 0,
+        sense_count: 3,
+        relation_count: 0,
+        expression_count: 0,
+      },
+      reviewedImportSha256: reused.reviewedImportSource.sha256,
+      editorialSourceSha256: reused.editorialSource.sha256,
+      proposalSourceSha256: reused.proposalSource.sha256,
+      relationDiffSha256: reused.relationDiffSource.sha256,
+    }),
+    /generation and verification passes must be distinct/u,
+  );
+});
+
+test('M5-11A rejects a corrected record that collides with canonical lexical data', () => {
+  const fixture = makeAgentSources(makeCatalog());
+  const corrected = fixture.editorial.decisions[2];
+  corrected.decision = 'corrected';
+  corrected.corrected_lemma = '기존말';
+  corrected.canonical_record.lemma = '기존말';
+  corrected.canonical_record.search_forms = ['기존말'];
+
+  assert.throws(
+    () => deriveM511AdmissionGate({
+      ...fixture,
+      editorialTiming: undefined,
+      editorialTimingSource: undefined,
+      audit: undefined,
+      auditSource: undefined,
+      auditTiming: undefined,
+      auditTimingSource: undefined,
+      baseRecords: makeBaseRecords(),
+      baseSummary: {
+        record_count: 1,
+        start_count: 1,
+        reference_only_count: 0,
+        sense_count: 1,
+        relation_count: 0,
+        expression_count: 0,
+      },
+      expectedImportedCount: 2,
+      expectedCumulativeStartCount: 3,
+      candidateBuffer: 2,
+      expectedCandidatePoolCount: 4,
+      checkPilotCompleteness: false,
+    }),
+    /promoted canonical record .* collides with canonical lexical value/u,
+  );
 });
 
 test('M5-11 promotion seed preserves the 500-plus-reserve decision state', () => {
