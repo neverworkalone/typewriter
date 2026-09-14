@@ -8,7 +8,6 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
-import { createLexicalProductionState } from './lexical-production-state.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 import {
@@ -241,15 +240,10 @@ export async function buildM511({
       authorization_ref: 'M5-11 reviewed-import gate; explicit promotion remains separate',
     },
   };
-  const productionStageSources = Object.fromEntries(
-    Object.entries(productionStageEvidence).map(([stageId, stage]) => [stageId, stage.source_bytes]),
-  );
-  const productionState = createLexicalProductionState({
-    batchId: M5_11_BATCH_ID,
-    stages: productionStageEvidence,
-  });
+  let productionState;
+  let productionStageSources;
   if (editorial.semantic) {
-    validateLexicalProduction({
+    const productionResult = validateLexicalProduction({
       batchId: M5_11_BATCH_ID,
       candidateRecords,
       reviews: editorial.proposalRows.map((row, index) => {
@@ -268,8 +262,6 @@ export async function buildM511({
       prospectiveRecords: combinedRecords,
       semanticAudit,
       stageEvidence: productionStageEvidence,
-      productionState,
-      productionStateSources: productionStageSources,
       checkPilotCompleteness: true,
       catalogCount: M5_11_CATALOG.length,
       expectedSelectedCount: IMPORTED_RECORD_COUNT,
@@ -277,6 +269,11 @@ export async function buildM511({
       reviewedLabel: 'M5-11 shared production reviewed records',
       prospectiveLabel: 'M5-11 shared production prospective records',
     });
+    productionState = productionResult.production_state;
+    productionStageSources = productionResult.production_state_sources;
+  }
+  if (!productionState || !productionStageSources) {
+    throw new Error('M5-11 build requires the shared lexical producer to complete admission after validation');
   }
   validateLexicalAddition({
     batchId: M5_11_BATCH_ID,

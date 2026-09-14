@@ -13,7 +13,7 @@ import { validateBatch } from '../scripts/batch/validate-batch.mjs';
 import { validateExpansionStage } from '../scripts/batch/validate-m5-8-process.mjs';
 import { validateWaveARelationScreen } from '../scripts/batch/validate-wave-a-relation-screen.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from '../scripts/batch/lexical-production-state.mjs';
 import {
@@ -253,10 +253,10 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
         authorization_ref: 'historical-wave-a-explicit-admission',
       },
     };
-    validatedManifest.production_state = createLexicalProductionState({
+    validatedManifest.production_state = produceLexicalProductionState({
       batchId: validatedManifest.batch_id,
       stages: productionStages,
-    });
+    }).state;
     await writeFile(validatedManifestPath, `${JSON.stringify(validatedManifest, null, 2)}\n`, 'utf8');
 
     const summary = await validateBatch({

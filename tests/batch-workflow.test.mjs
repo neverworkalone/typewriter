@@ -25,7 +25,7 @@ import {
 } from '../scripts/validate/target-inventory.mjs';
 import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from '../scripts/batch/lexical-production-state.mjs';
 
@@ -209,10 +209,10 @@ async function writeFixtureFiles({
       authorization_ref: 'fixture-explicit-admission',
     },
   };
-  manifest.production_state = createLexicalProductionState({
+  manifest.production_state = produceLexicalProductionState({
     batchId: manifest.batch_id,
     stages: productionStages,
-  });
+  }).state;
   manifest.review.semantic_audit_sha256 = createHash('sha256').update(semanticAuditBytes).digest('hex');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(

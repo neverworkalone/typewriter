@@ -33,7 +33,7 @@ import { evaluateExpansionGate } from '../scripts/batch/validate-m5-8-process.mj
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from '../scripts/batch/lexical-production-state.mjs';
 
@@ -60,7 +60,7 @@ async function makeStagingDirectory() {
   const manifestPath = path.join(directory, 'manifest.json');
   const manifest = await readJson(DEFAULT_OUTPUT_PATH);
   manifest.review.semantic_audit_sha256 = semanticAudit.sha256;
-  manifest.production_state = createLexicalProductionState({
+  manifest.production_state = produceLexicalProductionState({
     batchId: manifest.batch_id,
     stages: {
       candidate_intake: {
@@ -94,7 +94,7 @@ async function makeStagingDirectory() {
         authorization_ref: 'wave-b-test-explicit-admission',
       },
     },
-  });
+  }).state;
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(manifestPath, manifestBytes);
   const stagePath = path.join(directory, 'stage.json');

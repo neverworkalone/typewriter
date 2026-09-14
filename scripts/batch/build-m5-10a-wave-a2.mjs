@@ -21,7 +21,7 @@ import {
   validateA2TimingInput,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from './lexical-production-state.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -313,10 +313,10 @@ export function createWaveA2Manifest({
         authorization_ref: 'wave-a2-explicit-admission',
       },
     };
-    sharedProductionState = createLexicalProductionState({
+    sharedProductionState = produceLexicalProductionState({
       batchId: A2_BATCH_ID,
       stages,
-    });
+    }).state;
   }
 
   const manifest = {

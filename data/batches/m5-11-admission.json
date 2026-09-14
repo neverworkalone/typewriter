@@ -22,7 +22,7 @@
     "record_count": 1320,
     "start_count": 1278,
     "reference_only_count": 42,
-    "sense_count": 1607,
+    "sense_count": 1606,
     "relation_count": 487,
     "expression_count": 73
   },
@@ -444,12 +444,12 @@
       {
         "id": "canonical-integrity",
         "status": "pass",
-        "result_sha256": "42cfa47f3bfdff0cb912f9f07fdbf3b368f5070529df8d7e54bf8acc1ad9a1ca"
+        "result_sha256": "c751d40402a02aa09ff3cbc9cc73eff48de5870abe0649e8f89a15012f2ef689"
       },
       {
         "id": "deterministic-sqlite",
         "status": "pass",
-        "result_sha256": "39e9cd82d642ab55921d043a3287faedb69c79848a1794d9bd19222a2d515487"
+        "result_sha256": "c7899a28bea84278fd099d73729ecb7d2bc331114cafddb855e86606e1922e23"
       },
       {
         "id": "search-product-regression",
@@ -473,16 +473,16 @@
           "record_count": 1320,
           "start_count": 1278,
           "reference_only_count": 42,
-          "sense_count": 1607,
+          "sense_count": 1606,
           "relation_count": 487,
           "expression_count": 73
         },
-        "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
+        "prospective_canonical_sha256": "c5268d507aa3a685c2b9b5f53fd8b9449a1736f8d1360f830a22c3b3da97e8c0"
       },
       "deterministic-sqlite": {
         "build": {
           "recordCount": 1320,
-          "senseCount": 1607,
+          "senseCount": 1606,
           "relationCount": 487
         },
         "integrity": "ok",
@@ -491,7 +491,7 @@
           "records": 1320,
           "starts": 1278,
           "references": 42,
-          "senses": 1607,
+          "senses": 1606,
           "relations": 487
         }
       },
@@ -4474,7 +4474,7 @@
       "record_count": 1320,
       "start_count": 1278,
       "reference_only_count": 42,
-      "sense_count": 1607,
+      "sense_count": 1606,
       "relation_count": 487,
       "expression_count": 73
     },
@@ -4858,12 +4858,12 @@
         {
           "id": "canonical-integrity",
           "status": "pass",
-          "result_sha256": "42cfa47f3bfdff0cb912f9f07fdbf3b368f5070529df8d7e54bf8acc1ad9a1ca"
+          "result_sha256": "c751d40402a02aa09ff3cbc9cc73eff48de5870abe0649e8f89a15012f2ef689"
         },
         {
           "id": "deterministic-sqlite",
           "status": "pass",
-          "result_sha256": "39e9cd82d642ab55921d043a3287faedb69c79848a1794d9bd19222a2d515487"
+          "result_sha256": "c7899a28bea84278fd099d73729ecb7d2bc331114cafddb855e86606e1922e23"
         },
         {
           "id": "search-product-regression",
@@ -4887,16 +4887,16 @@
             "record_count": 1320,
             "start_count": 1278,
             "reference_only_count": 42,
-            "sense_count": 1607,
+            "sense_count": 1606,
             "relation_count": 487,
             "expression_count": 73
           },
-          "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
+          "prospective_canonical_sha256": "c5268d507aa3a685c2b9b5f53fd8b9449a1736f8d1360f830a22c3b3da97e8c0"
         },
         "deterministic-sqlite": {
           "build": {
             "recordCount": 1320,
-            "senseCount": 1607,
+            "senseCount": 1606,
             "relationCount": 487
           },
           "integrity": "ok",
@@ -4905,7 +4905,7 @@
             "records": 1320,
             "starts": 1278,
             "references": 42,
-            "senses": 1607,
+            "senses": 1606,
             "relations": 487
           }
         },
@@ -9206,7 +9206,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "33c80206e6d64f28bdfbaac0c2874c5c9c7d602557dd1531d0f69ab3b1479ec3",
+  "gate_evidence_sha256": "d31e7e2a406a056dbae56eaa2680029555ba4208e2fad25420e62181786e09fe",
   "sources": {
     "proposal": {
       "source_id": "proposal",
@@ -9236,7 +9236,7 @@
     "authorization": {
       "source_id": "authorization",
       "path": "data/batches/m5-10d-m5-11-authorization-20260912.json",
-      "sha256": "4091aff47c01b4451b9239ea3f1b0068110431c29268e713abc9bf1bd3004dbb"
+      "sha256": "339779479ed262e8b9330637e6b944424cc3cdf1245c0861364d3ea8006753e3"
     },
     "base_inventory": {
       "source_id": "base_inventory",

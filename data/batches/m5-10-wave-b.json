@@ -17,7 +17,7 @@
     "input_artifact": "data/batches/m5-10-wave-b-editorial-input.json",
     "input_sha256": "cc666cbf7158fe58fcba342c7a90ea2282664ca9be9409f0baea3969439a757d",
     "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
-    "semantic_audit_sha256": "27f2179cc5103abdf136b1a5a059ca9fa1dbf01836a98b64437b098cb6453446"
+    "semantic_audit_sha256": "6b3c01525c31cf70976efc24d1686bb93807809334d0349969dd71451262fa7f"
   },
   "sense_review": {
     "status": "complete",
@@ -14544,7 +14544,7 @@
     }
   ],
   "production_state": {
-    "contract_version": "lexical-production-state-v1",
+    "contract_version": "lexical-production-state-v2",
     "pipeline_version": "lexical-production-v1",
     "batch_id": "m5-10-wave-b-20260909",
     "stages": [
@@ -14556,7 +14556,13 @@
           "to": "candidate-intake-complete"
         },
         "source_path": "data/canonical/m5-10-wave-b.jsonl",
-        "source_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206"
+        "payload_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
+        "source_sha256": "ce68e6683ddb9e55cf0177dd6862c35b4bb7934703604110d5d9fdc72ecfe6a2",
+        "input_sha256": null,
+        "output_sha256": "ce68e6683ddb9e55cf0177dd6862c35b4bb7934703604110d5d9fdc72ecfe6a2",
+        "predecessor": null,
+        "operation": "validate-candidate-intake-output",
+        "transition_sha256": "78182aef0d630774c68c530dcba8bd9e417a683514dde2098406939daf094b3e"
       },
       {
         "id": "semantic_review",
@@ -14566,7 +14572,16 @@
           "to": "semantic-review-complete"
         },
         "source_path": "data/validation/m5-10-wave-b-semantic-audit.json",
-        "source_sha256": "27f2179cc5103abdf136b1a5a059ca9fa1dbf01836a98b64437b098cb6453446"
+        "payload_sha256": "6b3c01525c31cf70976efc24d1686bb93807809334d0349969dd71451262fa7f",
+        "source_sha256": "fe38e2643e3313c145d1bcf4631b9dfbd22fb0e593a58b17d4231b307656ff69",
+        "input_sha256": "ce68e6683ddb9e55cf0177dd6862c35b4bb7934703604110d5d9fdc72ecfe6a2",
+        "output_sha256": "fe38e2643e3313c145d1bcf4631b9dfbd22fb0e593a58b17d4231b307656ff69",
+        "predecessor": {
+          "stage_id": "candidate_intake",
+          "output_sha256": "ce68e6683ddb9e55cf0177dd6862c35b4bb7934703604110d5d9fdc72ecfe6a2"
+        },
+        "operation": "validate-semantic-review-output",
+        "transition_sha256": "1f7b475324f67e20ecc978cbf0a032982df0b0367f0ac5123eb9f669376796ce"
       },
       {
         "id": "selection",
@@ -14576,8 +14591,17 @@
           "to": "selection-complete"
         },
         "source_path": "data/canonical/m5-10-wave-b.jsonl",
-        "source_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
-        "policy": "wave-b-reviewed-selection"
+        "payload_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
+        "source_sha256": "1b6a6eb0ee5672e8564f04b7e32663e3f658c9b44370009371b61294e48ecf47",
+        "input_sha256": "fe38e2643e3313c145d1bcf4631b9dfbd22fb0e593a58b17d4231b307656ff69",
+        "output_sha256": "1b6a6eb0ee5672e8564f04b7e32663e3f658c9b44370009371b61294e48ecf47",
+        "predecessor": {
+          "stage_id": "semantic_review",
+          "output_sha256": "fe38e2643e3313c145d1bcf4631b9dfbd22fb0e593a58b17d4231b307656ff69"
+        },
+        "operation": "validate-selection-output",
+        "policy": "wave-b-reviewed-selection",
+        "transition_sha256": "aab4093de4e26ad21878baa0bd5ef7e3fe21a996e5f471bc1a95162df7569ec1"
       },
       {
         "id": "prospective_canonical",
@@ -14587,7 +14611,16 @@
           "to": "prospective-canonical-complete"
         },
         "source_path": "wave-b:prospective-canonical-record-values",
-        "source_sha256": "c2ab4616a7ceb4a0244578e8c19858d461d009568df06b1ce38f2633477f84ca"
+        "payload_sha256": "c2ab4616a7ceb4a0244578e8c19858d461d009568df06b1ce38f2633477f84ca",
+        "source_sha256": "570d558fa6065941753e80b1397a1eab3fe5cfb3dde34ba4bcaae3edab2194ce",
+        "input_sha256": "1b6a6eb0ee5672e8564f04b7e32663e3f658c9b44370009371b61294e48ecf47",
+        "output_sha256": "570d558fa6065941753e80b1397a1eab3fe5cfb3dde34ba4bcaae3edab2194ce",
+        "predecessor": {
+          "stage_id": "selection",
+          "output_sha256": "1b6a6eb0ee5672e8564f04b7e32663e3f658c9b44370009371b61294e48ecf47"
+        },
+        "operation": "validate-prospective-canonical-output",
+        "transition_sha256": "f50a97fd789734f08f8c66f45a251413a4638133313b85f0061f38964a16e225"
       },
       {
         "id": "audit",
@@ -14597,19 +14630,40 @@
           "to": "audit-complete"
         },
         "source_path": "data/validation/m5-10-wave-b-semantic-audit.json",
-        "source_sha256": "27f2179cc5103abdf136b1a5a059ca9fa1dbf01836a98b64437b098cb6453446"
+        "payload_sha256": "6b3c01525c31cf70976efc24d1686bb93807809334d0349969dd71451262fa7f",
+        "source_sha256": "4d946c5c5dbc6a7ced6a8be335c8d3335f9ddeae76484419897b757d4e33ee31",
+        "input_sha256": "570d558fa6065941753e80b1397a1eab3fe5cfb3dde34ba4bcaae3edab2194ce",
+        "output_sha256": "4d946c5c5dbc6a7ced6a8be335c8d3335f9ddeae76484419897b757d4e33ee31",
+        "predecessor": {
+          "stage_id": "prospective_canonical",
+          "output_sha256": "570d558fa6065941753e80b1397a1eab3fe5cfb3dde34ba4bcaae3edab2194ce"
+        },
+        "operation": "validate-complete-canonical-audit-output",
+        "transition_sha256": "303b1c37e6d9843b9d60d87cf3219f96f5ad3935db42bf4d2ca1b469f57f88e4"
       },
       {
         "id": "admission",
         "status": "complete",
         "transition": {
           "from": "audit-complete",
-          "to": "admission-authorized"
+          "to": "admission-complete"
         },
         "source_path": "data/batches/m5-10-wave-b-authorization.json",
-        "source_sha256": "692c9b3c50c47879a7bab42aecb7284b8c4224c704fe460f2554b66c35f80496",
+        "payload_sha256": "5163104c03e90fcd581df04f113288d6b122cd102c395ea3680273b31638997e",
+        "source_sha256": "015a36380594c3a22274121ddd912f5d10ff0d319dd30453ca24c7fa1172a0cd",
+        "input_sha256": "4d946c5c5dbc6a7ced6a8be335c8d3335f9ddeae76484419897b757d4e33ee31",
+        "output_sha256": "015a36380594c3a22274121ddd912f5d10ff0d319dd30453ca24c7fa1172a0cd",
+        "predecessor": {
+          "stage_id": "audit",
+          "output_sha256": "4d946c5c5dbc6a7ced6a8be335c8d3335f9ddeae76484419897b757d4e33ee31"
+        },
+        "operation": "commit-authorized-admission-output",
         "decision": "admit",
-        "authorization_ref": "data/batches/m5-10-wave-b-authorization.json"
+        "authorization_ref": "data/batches/m5-10-wave-b-authorization.json",
+        "authorization_sha256": "5163104c03e90fcd581df04f113288d6b122cd102c395ea3680273b31638997e",
+        "admission_status": "admitted",
+        "admission_result_sha256": "6111df3a1f682dc744338b4dc3992c889b50924e942509d2ec0665ce20162171",
+        "transition_sha256": "baa4bae67b96b5ca0071cce41eee5d2a51afb050dcaf7b668b507e8c3225b9d3"
       }
     ]
   }

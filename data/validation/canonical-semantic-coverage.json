@@ -6,10 +6,10 @@
   "lexical_quality_ruleset_version": "lexical-quality-v1",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "f5283c5c79cddc61678c6e43ef49d8ff084faa686e1fb6be26a0a0490b9deb36"
+    "canonical_records_sha256": "00bdf29de80f4393c42dcd8798c2da0c8d51867b187f4d8d17a2f9dc4f22b4b2"
   },
   "record_count": 1320,
-  "sense_count": 1607,
+  "sense_count": 1606,
   "records": [
     {
       "record_id": "r001",
@@ -46545,7 +46545,7 @@
     },
     {
       "record_id": "w1241",
-      "record_sha256": "51f6a1ccde614dd26ab6da6cf829a83d78d1e2570595a2effdf8856dfc31ac7e",
+      "record_sha256": "5c61572a76184ff7b414774ab21dbda38f54f9a2b893e693d780feeb573358d8",
       "lemma": "목표",
       "record_type": "entry",
       "role": "start",
@@ -46573,32 +46573,6 @@
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "9ad15e56c839048ba1a31de2d28aa44f298be60851fad0c270ecda4b14e40926",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1241-s2",
-          "sense_sha256": "092f05e7e43454867385c6bf4f86a4e5c3f2d3ad9a6eb63af6a804fe87cd74b5",
-          "content": {
-            "gloss_sha256": "f5b30845f933a5e5cfb48c37449e66c63f9abc06906e2dbc3ff0f2243c9f8317",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [
-              {
-                "connector": "이나",
-                "index": 5,
-                "left_axis": null,
-                "left_term": null,
-                "right_axis": null,
-                "right_term": null,
-                "classification": "unclassified-coordination",
-                "excerpt": "어떤 행동이나 계획이 향하는 지점"
-              }
-            ],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "7aa21c7a1267ab86509ff01245e77e51387c2e6a94a03474361be2a6f96f1aeb",
             "relation_fingerprints": []
           }
         }

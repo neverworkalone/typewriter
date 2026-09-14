@@ -119,7 +119,7 @@ test('M5-11A reports the promoted semantically verified +500 result', async () =
     record_count: 1320,
     start_count: 1278,
     reference_only_count: 42,
-    sense_count: 1607,
+    sense_count: 1606,
     relation_count: 487,
     expression_count: 73,
   });

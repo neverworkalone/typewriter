@@ -49,7 +49,7 @@ import {
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from '../scripts/batch/lexical-production-state.mjs';
 
@@ -577,7 +577,7 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
     );
     const manifestWithSemanticAudit = await readBatchJson('m5-10-wave-a2.json');
     manifestWithSemanticAudit.review.semantic_audit_sha256 = semanticAudit.sha256;
-    manifestWithSemanticAudit.production_state = createLexicalProductionState({
+    manifestWithSemanticAudit.production_state = produceLexicalProductionState({
       batchId: manifestWithSemanticAudit.batch_id,
       stages: {
         candidate_intake: {
@@ -611,7 +611,7 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
           authorization_ref: 'a2-test-explicit-admission',
         },
       },
-    });
+    }).state;
     await writeFile(manifestPath, `${JSON.stringify(manifestWithSemanticAudit, null, 2)}\n`, 'utf8');
     const metricsWithManifestOverride = await readBatchJson('m5-10a-wave-a2-metrics.json');
     metricsWithManifestOverride.source.manifest = path.relative(path.resolve('.'), manifestPath);
@@ -928,7 +928,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       ...baseForPromotion.records,
       ...referenceRecords.slice(canonical.records.length),
     ].map(({ record }) => record);
-    validatedPromotedManifest.production_state = createLexicalProductionState({
+    validatedPromotedManifest.production_state = produceLexicalProductionState({
       batchId: validatedPromotedManifest.batch_id,
       stages: {
         candidate_intake: {
@@ -959,7 +959,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
           authorization_ref: 'a2-test-explicit-admission',
         },
       },
-    });
+    }).state;
     await writeFile(promotedManifestPath, `${JSON.stringify(validatedPromotedManifest)}\n`, 'utf8');
     await writeFile(stagedRecordsPath, reviewedStagingBytes);
     const promotion = await validateBatch({

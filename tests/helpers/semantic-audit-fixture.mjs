@@ -5,11 +5,15 @@ import {
   assembleSemanticAuditArtifact,
   buildSemanticCoverageArtifact,
   canonicalRecordsSha256,
+  SEMANTIC_BOUNDARY_METHOD,
+  SEMANTIC_BOUNDARY_RULESET_VERSION,
+  SEMANTIC_REVIEW_CONTRACT_VERSION,
+  inspectSenseBoundaryPairs,
   sha256Json,
 } from '../../scripts/validate/semantic-audit.mjs';
 import { inspectWriterDomainEvidence } from '../../scripts/validate/lexical-quality.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from '../../scripts/batch/lexical-production-state.mjs';
 
@@ -39,7 +43,7 @@ export function makeProductionState({
     },
     semantic_review: {
       source_path: `${artifactId}:semantic-review`,
-      source_bytes: productionSourceBytes(semanticAudit),
+      source_bytes: productionSourceBytes({ stage: 'semantic_review', semantic_audit: semanticAudit }),
     },
     selection: {
       source_path: `${artifactId}:selection`,
@@ -52,7 +56,7 @@ export function makeProductionState({
     },
     audit: {
       source_path: `${artifactId}:audit`,
-      source_bytes: productionSourceBytes(semanticAudit),
+      source_bytes: productionSourceBytes({ stage: 'audit', semantic_audit: semanticAudit }),
     },
     admission: {
       source_path: `${artifactId}:admission`,
@@ -61,12 +65,7 @@ export function makeProductionState({
       authorization_ref: `${artifactId}:explicit-admission`,
     },
   };
-  return {
-    state: createLexicalProductionState({ batchId, stages: sources }),
-    sources: Object.fromEntries(
-      Object.entries(sources).map(([stageId, stage]) => [stageId, stage.source_bytes]),
-    ),
-  };
+  return produceLexicalProductionState({ batchId, stages: sources });
 }
 
 export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'test-semantic-review' } = {}) {
@@ -74,9 +73,46 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
   const coverage = buildSemanticCoverageArtifact(recordInfos, {
     artifactId: `${artifactId}-coverage`,
   });
+  const boundaryReviewFor = (record) => {
+    const pairs = inspectSenseBoundaryPairs(record);
+    const domainAxes = [...new Set(
+      record.senses.flatMap((sense) => inspectWriterDomainEvidence(sense.gloss).axes),
+    )];
+    const decision = pairs.length === 0 ? 'retain' : 'split';
+    const classification = decision === 'retain'
+      ? 'atomic'
+      : domainAxes.length > 1 ? 'coordinated' : 'separated';
+    const reviewId = `${artifactId}:${record.id}:boundary`;
+    return {
+      status: 'pass',
+      review_id: reviewId,
+      method: SEMANTIC_BOUNDARY_METHOD,
+      independence: {
+        independent_of_sense_count: true,
+        source: 'separately-authored-gloss-and-usage-evidence',
+      },
+      decision,
+      classification,
+      reviewed_sense_ids: record.senses.map(({ id }) => id),
+      evidence: record.senses.map((sense) => ({
+        sense_id: sense.id,
+        gloss_sha256: sha256Json(sense.gloss),
+        evidence_basis: domainAxes.length > 0
+          ? `gloss domain axes ${domainAxes.join(', ')}`
+          : 'gloss subject, predicate, and writer-facing usage were reviewed',
+        rationale: `${record.id} ${sense.id} reviewed gloss ${sha256Json(sense.gloss).slice(0, 12)} independently of the current sense count.`,
+      })),
+      pairwise: pairs.map((pair) => ({
+        ...pair,
+        rationale: `${record.id} ${pair.left_sense_id} and ${pair.right_sense_id} have separately evidenced distinguishing gloss terms: ${[...pair.left_distinctive_tokens, ...pair.right_distinctive_tokens].join(', ') || 'content review required'}.`,
+      })),
+      rationale: `${record.id} boundary outcome ${decision} was resolved from gloss and usage evidence, not from the current sense count.`,
+    };
+  };
+  const boundaryReviews = new Map(records.map((record) => [record.id, boundaryReviewFor(record)]));
   return {
     schema_version: '2',
-    contract_version: 'lexical-semantic-review-v1',
+    contract_version: SEMANTIC_REVIEW_CONTRACT_VERSION,
     artifact_id: artifactId,
     scope: 'complete-canonical',
     review_mode: 'agent-authored-decision',
@@ -87,6 +123,7 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
       review_mode: 'agent-authored-decision',
       method: 'record-by-record fixture semantic re-audit with source-bound facts',
       ruleset_version: 'lexical-quality-v1',
+      boundary_ruleset_version: SEMANTIC_BOUNDARY_RULESET_VERSION,
       record_count: records.length,
       sense_count: records.reduce((sum, record) => sum + record.senses.length, 0),
       open_finding_count: 0,
@@ -99,8 +136,16 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
           after_record_sha256: change.prospective_record_sha256 ?? sha256Json(record),
           source_revision: 'test-fixture-base',
           rationale: change.rationale ?? `${change.record_id} was corrected before the fixture re-audit.`,
+          boundary_decision: change.boundary_decision ?? 'rewrite',
         };
       }),
+      boundary_decision_history: changes.map((change) => ({
+        record_id: change.record_id,
+        decision: change.boundary_decision ?? 'rewrite',
+        before_record_sha256: change.base_record_sha256 ?? sha256Json(records.find(({ id }) => id === change.record_id)),
+        after_record_sha256: change.prospective_record_sha256 ?? sha256Json(records.find(({ id }) => id === change.record_id)),
+        rationale: `${change.record_id} boundary ${change.boundary_decision ?? 'rewrite'} was resolved and re-reviewed.`,
+      })),
     },
     source: {
       kind: 'canonical-jsonl-record-values',
@@ -111,26 +156,26 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
     records: records.map((record) => ({
       record_id: record.id,
       record_sha256: sha256Json(record),
+      boundary_review: boundaryReviews.get(record.id),
       sense_reviews: record.senses.map((sense, senseIndex) => {
         const coverageRecord = coverage.records.find(({ record_id: recordId }) => recordId === record.id);
         const coverageSense = coverageRecord.sense_coverage[senseIndex];
+        const boundaryReview = boundaryReviews.get(record.id);
         const domainAxes = inspectWriterDomainEvidence(sense.gloss).axes;
-        const boundaryDecision = domainAxes.length > 1
-          ? 'coordinated'
-          : record.senses.length > 1
-            ? 'split'
-            : 'atomic';
         const relationCount = sense.relations?.length ?? 0;
         return {
           sense_id: sense.id,
           sense_sha256: sha256Json(sense),
           sense_boundary: {
             status: 'pass',
-            action: record.senses.length > 1 ? 'split' : 'retain',
-            classification: record.senses.length > 1 ? 'separated' : 'atomic',
-            boundary_decision: boundaryDecision,
+            action: boundaryReview.decision,
+            classification: boundaryReview.classification,
+            boundary_decision: boundaryReview.decision === 'retain'
+              ? 'atomic'
+              : boundaryReview.classification === 'coordinated' ? 'coordinated' : boundaryReview.decision,
+            boundary_review_id: boundaryReview.review_id,
             reviewed_sense_ids: record.senses.map(({ id }) => id),
-            rationale: `${record.id} ${sense.id} was explicitly reviewed for the complete test canonical scope.`,
+            rationale: `${record.id} ${sense.id} was explicitly reviewed against the independent boundary evidence.`,
           },
           pos: {
             status: 'pass',

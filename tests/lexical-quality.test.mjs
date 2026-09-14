@@ -15,6 +15,7 @@ import { validateLexicalProduction } from '../scripts/batch/lexical-production.m
 import {
   buildSemanticCoverageArtifact,
   canonicalRecordsSha256,
+  inspectSenseBoundaryPairs,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
@@ -41,7 +42,57 @@ test('the shared audit covers the complete current canonical dictionary', async 
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
   assert.equal(audit.record_count, 1320);
-  assert.equal(audit.sense_count, 1607);
+  assert.equal(audit.sense_count, 1606);
+});
+
+test('the independent boundary audit rejects duplicate and nested sense glosses for any record', () => {
+  const makeRecord = (glosses) => ({
+    id: 'w-boundary-regression',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-boundary-regression',
+    lemma: '경계회귀',
+    search_forms: ['경계회귀'],
+    senses: glosses.map((gloss, index) => ({
+      id: `w-boundary-regression-s${index + 1}`,
+      pos: 'noun',
+      gloss,
+    })),
+  });
+
+  for (const glosses of [
+    ['같은 뜻을 설명한다', '같은 뜻을 설명한다'],
+    ['붉은 꽃', '붉은 꽃 피어남'],
+  ]) {
+    const record = makeRecord(glosses);
+    const pairs = inspectSenseBoundaryPairs(record);
+    assert.notEqual(pairs[0].relationship, 'distinct');
+    const infos = [{ record, source: 'future-candidate' }];
+    const audit = makeSemanticAudit(infos);
+    assert.throws(
+      () => validateSemanticAuditCoverage(infos, audit),
+      (error) => error.code === 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
+    );
+  }
+});
+
+test('the boundary audit rejects evidence that claims independence but uses the current sense count', () => {
+  const record = {
+    id: 'w-boundary-independence',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-boundary-independence',
+    lemma: '독립검수',
+    search_forms: ['독립검수'],
+    senses: [{ id: 'w-boundary-independence-s1', pos: 'noun', gloss: '내용을 따로 살피는 검수.' }],
+  };
+  const infos = [{ record, source: 'future-candidate' }];
+  const audit = makeSemanticAudit(infos);
+  audit.review.records[0].boundary_review.independence.independent_of_sense_count = false;
+  assert.throws(
+    () => validateSemanticAuditCoverage(infos, audit),
+    (error) => error.code === 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
+  );
 });
 
 test('the common-domain rule accepts coordinated senses without an ID exception', async () => {
@@ -470,15 +521,12 @@ test('reviewed existing-record correction passes while an unreviewed replacement
   assert.equal(admitted.reviewed_count, 1);
   assert.throws(
     () => validateLexicalAddition({
-      batchId: 'future-batch-unreviewed-correction',
+      batchId: 'future-batch-correction',
       baseRecords: baseInfos,
       reviewedRecords: [],
       prospectiveRecords: prospectiveInfos,
       semanticAudit: audit,
-      productionState: {
-        ...correctionProductionState.state,
-        batch_id: 'future-batch-unreviewed-correction',
-      },
+      productionState: correctionProductionState.state,
       productionStateSources: correctionProductionState.sources,
     }),
     /does not preserve base record w903|corrected/u,

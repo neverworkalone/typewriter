@@ -15,7 +15,7 @@ import {
 } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from './lexical-production-state.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
@@ -641,7 +641,7 @@ export async function validateM511Promotion({
     baseRecords: canonical.records,
     prospectiveRecords: canonical.records,
     semanticAudit,
-    productionState: createLexicalProductionState({
+    productionState: produceLexicalProductionState({
       batchId: manifest.batch_id,
       stages: {
         candidate_intake: {
@@ -678,7 +678,7 @@ export async function validateM511Promotion({
           authorization_ref: 'm5-11-promotion-evidence',
         },
       },
-    }),
+    }).state,
     productionStateSources: {
       candidate_intake: productionSourceBytes(finalRecords),
       semantic_review: semanticAuditBytes,

@@ -16,7 +16,7 @@
     "input_artifact": "data/batches/m5-10a-wave-a2-editorial-input.json",
     "input_sha256": "67b84e6e8fc2fdf60338464717f1d4ca592bef51effd47e5b35ebd6358c44a39",
     "reviewed_staging_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
-    "semantic_audit_sha256": "794ab61d8e91c2fed7fb97db6685227179168f75d0aaffef6286fbabd3e03511",
+    "semantic_audit_sha256": "47666eb049f4d40622ae4bead4f493c26b32434259ec0592409c0c8e9551f360",
     "completed_at": "2026-09-09T12:08:33.438Z"
   },
   "sense_review": {
@@ -3987,7 +3987,7 @@
     }
   ],
   "production_state": {
-    "contract_version": "lexical-production-state-v1",
+    "contract_version": "lexical-production-state-v2",
     "pipeline_version": "lexical-production-v1",
     "batch_id": "m5-10-wave-a2-20260909",
     "stages": [
@@ -3999,7 +3999,13 @@
           "to": "candidate-intake-complete"
         },
         "source_path": "data/canonical/m5-10a-wave-a2.jsonl",
-        "source_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8"
+        "payload_sha256": "4be5e7571f0d219fe3a30e68eaa0dc0cca832fbfe8402fe379a46f9f4e7768a8",
+        "source_sha256": "94807b17f19a1e8f11c255c155244bda9ea63214055b22a8465e6288dd71885b",
+        "input_sha256": null,
+        "output_sha256": "94807b17f19a1e8f11c255c155244bda9ea63214055b22a8465e6288dd71885b",
+        "predecessor": null,
+        "operation": "validate-candidate-intake-output",
+        "transition_sha256": "f2984f5e5aa71711c3c9b2a4fd83f7d5756ecb55dc9151f03a6fea7a2158b1f0"
       },
       {
         "id": "semantic_review",
@@ -4009,7 +4015,16 @@
           "to": "semantic-review-complete"
         },
         "source_path": "data/validation/m5-10a-wave-a2-semantic-audit.json",
-        "source_sha256": "794ab61d8e91c2fed7fb97db6685227179168f75d0aaffef6286fbabd3e03511"
+        "payload_sha256": "47666eb049f4d40622ae4bead4f493c26b32434259ec0592409c0c8e9551f360",
+        "source_sha256": "f2bed919b16691cd5be6ec21971496920fbc617bded04966208b7d29ea098c7b",
+        "input_sha256": "94807b17f19a1e8f11c255c155244bda9ea63214055b22a8465e6288dd71885b",
+        "output_sha256": "f2bed919b16691cd5be6ec21971496920fbc617bded04966208b7d29ea098c7b",
+        "predecessor": {
+          "stage_id": "candidate_intake",
+          "output_sha256": "94807b17f19a1e8f11c255c155244bda9ea63214055b22a8465e6288dd71885b"
+        },
+        "operation": "validate-semantic-review-output",
+        "transition_sha256": "a0f185fa63b20584f71fe98a08eccb8d72a01bfb57cd63b3d92b009dfd55d67c"
       },
       {
         "id": "selection",
@@ -4019,8 +4034,17 @@
           "to": "selection-complete"
         },
         "source_path": "data/batches/m5-10a-wave-a2-editorial-input.json",
-        "source_sha256": "67b84e6e8fc2fdf60338464717f1d4ca592bef51effd47e5b35ebd6358c44a39",
-        "policy": "wave-a2-reviewed-selection"
+        "payload_sha256": "67b84e6e8fc2fdf60338464717f1d4ca592bef51effd47e5b35ebd6358c44a39",
+        "source_sha256": "8d14e7e572d9510d62c73d89ad5a8fd0f48f97c3ee88f5b222339099a99862a0",
+        "input_sha256": "f2bed919b16691cd5be6ec21971496920fbc617bded04966208b7d29ea098c7b",
+        "output_sha256": "8d14e7e572d9510d62c73d89ad5a8fd0f48f97c3ee88f5b222339099a99862a0",
+        "predecessor": {
+          "stage_id": "semantic_review",
+          "output_sha256": "f2bed919b16691cd5be6ec21971496920fbc617bded04966208b7d29ea098c7b"
+        },
+        "operation": "validate-selection-output",
+        "policy": "wave-a2-reviewed-selection",
+        "transition_sha256": "efe442d496e55594bb5eea5f7d1f0df88e768bfafd2f3b4c13ae3e1a1c02f7f6"
       },
       {
         "id": "prospective_canonical",
@@ -4030,7 +4054,16 @@
           "to": "prospective-canonical-complete"
         },
         "source_path": "a2:prospective-canonical-record-values",
-        "source_sha256": "346a091b9cd4749f2c495674b8ec0b712cf9469ff97f6d12521a8190062530bb"
+        "payload_sha256": "346a091b9cd4749f2c495674b8ec0b712cf9469ff97f6d12521a8190062530bb",
+        "source_sha256": "9182c9ecac750d46fcd42621e1cbd8e500962f38592ed35d9961a9c036ba7abb",
+        "input_sha256": "8d14e7e572d9510d62c73d89ad5a8fd0f48f97c3ee88f5b222339099a99862a0",
+        "output_sha256": "9182c9ecac750d46fcd42621e1cbd8e500962f38592ed35d9961a9c036ba7abb",
+        "predecessor": {
+          "stage_id": "selection",
+          "output_sha256": "8d14e7e572d9510d62c73d89ad5a8fd0f48f97c3ee88f5b222339099a99862a0"
+        },
+        "operation": "validate-prospective-canonical-output",
+        "transition_sha256": "dc63a164f3d7165a33dbcbaed8ed2288bcc57a4d08f9b00de3a4fdabdee1c4be"
       },
       {
         "id": "audit",
@@ -4040,19 +4073,40 @@
           "to": "audit-complete"
         },
         "source_path": "data/validation/m5-10a-wave-a2-semantic-audit.json",
-        "source_sha256": "794ab61d8e91c2fed7fb97db6685227179168f75d0aaffef6286fbabd3e03511"
+        "payload_sha256": "47666eb049f4d40622ae4bead4f493c26b32434259ec0592409c0c8e9551f360",
+        "source_sha256": "691bf2a98a7d2081bc54f5dfe6d757dd53c70291377335df46a7950a09902d97",
+        "input_sha256": "9182c9ecac750d46fcd42621e1cbd8e500962f38592ed35d9961a9c036ba7abb",
+        "output_sha256": "691bf2a98a7d2081bc54f5dfe6d757dd53c70291377335df46a7950a09902d97",
+        "predecessor": {
+          "stage_id": "prospective_canonical",
+          "output_sha256": "9182c9ecac750d46fcd42621e1cbd8e500962f38592ed35d9961a9c036ba7abb"
+        },
+        "operation": "validate-complete-canonical-audit-output",
+        "transition_sha256": "47c8d5a0e9218aa01fa77d13e63db2e920db9ae81e85e75e063d60e5fbb519b0"
       },
       {
         "id": "admission",
         "status": "complete",
         "transition": {
           "from": "audit-complete",
-          "to": "admission-authorized"
+          "to": "admission-complete"
         },
         "source_path": "data/validation/m5-10a-wave-a2-semantic-audit.json",
-        "source_sha256": "794ab61d8e91c2fed7fb97db6685227179168f75d0aaffef6286fbabd3e03511",
+        "payload_sha256": "47666eb049f4d40622ae4bead4f493c26b32434259ec0592409c0c8e9551f360",
+        "source_sha256": "daec0179de4be06b113f5030f87f96a6fe0b48f0b348218aaeabeb23aae4d060",
+        "input_sha256": "691bf2a98a7d2081bc54f5dfe6d757dd53c70291377335df46a7950a09902d97",
+        "output_sha256": "daec0179de4be06b113f5030f87f96a6fe0b48f0b348218aaeabeb23aae4d060",
+        "predecessor": {
+          "stage_id": "audit",
+          "output_sha256": "691bf2a98a7d2081bc54f5dfe6d757dd53c70291377335df46a7950a09902d97"
+        },
+        "operation": "commit-authorized-admission-output",
         "decision": "admit",
-        "authorization_ref": "wave-a2-explicit-admission"
+        "authorization_ref": "wave-a2-explicit-admission",
+        "authorization_sha256": "47666eb049f4d40622ae4bead4f493c26b32434259ec0592409c0c8e9551f360",
+        "admission_status": "admitted",
+        "admission_result_sha256": "3047ac92759976478c630204189185976078633c75e94c54bfbe5522453dbd70",
+        "transition_sha256": "69a272ec64e50367a5f3ec1bdc5abea458563bd13dd9baa36b46ebadc6e0911d"
       }
     ]
   }

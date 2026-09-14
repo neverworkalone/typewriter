@@ -16,7 +16,7 @@ import {
   validateBatchManifest,
 } from './validate-batch.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from './lexical-production-state.mjs';
 import { createMetricsArtifact, assertMetricsMatch } from './derive-metrics.mjs';
@@ -1306,10 +1306,10 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
         authorization_ref: admissionSource?.path ?? 'wave-b-explicit-admission',
       },
     };
-    sharedProductionState = createLexicalProductionState({
+    sharedProductionState = produceLexicalProductionState({
       batchId: WAVE_B_BATCH_ID,
       stages,
-    });
+    }).state;
   }
   const manifest = {
     schema_version: '1',
@@ -1713,7 +1713,7 @@ export async function validateWaveB({
     semanticAuditPath,
     inventoryPath,
     canonicalDirectory: baseCanonicalDirectory,
-    productionStateSources: manifestSource.value.production_state.stages.find(({ id }) => id === 'admission').source_sha256
+    productionStateSources: manifestSource.value.production_state.stages.find(({ id }) => id === 'admission').payload_sha256
       === authorizationSource.sha256
       ? { admission: authorizationSource.bytes }
       : {},

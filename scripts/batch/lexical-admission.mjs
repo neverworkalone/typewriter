@@ -7,7 +7,13 @@ import {
   canonicalRecordsSha256,
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
-import { validateLexicalProductionState } from './lexical-production-state.mjs';
+import {
+  productionBytesSha256,
+  productionSourceBytes,
+  isLexicalProductionRun,
+  validateLexicalProductionPreAuditState,
+  validateLexicalProductionState,
+} from './lexical-production-state.mjs';
 
 export const LEXICAL_ADMISSION_PIPELINE_VERSION = 'lexical-admission-v1';
 
@@ -51,6 +57,10 @@ export function validateLexicalAddition({
   semanticAudit,
   productionState,
   productionStateSources,
+  productionRun,
+  productionAuditStage,
+  productionAuthorizationEvidence,
+  productionAdmissionStage,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
@@ -66,13 +76,26 @@ export function validateLexicalAddition({
   if (semanticAudit === undefined) {
     throw new Error('lexical admission requires source-bound semantic_audit coverage');
   }
-  if (productionState === undefined) {
-    throw new Error('lexical admission requires the complete production_state');
+  let validatedProductionState;
+  if (productionRun !== undefined) {
+    if (!isLexicalProductionRun(productionRun)) {
+      throw new Error('lexical admission requires a producer-owned live production run');
+    }
+    const preAuditState = productionRun.getPreAuditState();
+    const preAuditSources = productionStateSources ?? productionRun.getPreAuditSourceBytesByStage();
+    validateLexicalProductionPreAuditState(preAuditState, {
+      batchId,
+      sourceBytesByStage: preAuditSources,
+    });
+  } else {
+    if (productionState === undefined) {
+      throw new Error('lexical admission requires the complete production_state');
+    }
+    validatedProductionState = validateLexicalProductionState(productionState, {
+      batchId,
+      sourceBytesByStage: productionStateSources,
+    });
   }
-  const validatedProductionState = validateLexicalProductionState(productionState, {
-    batchId,
-    sourceBytesByStage: productionStateSources,
-  });
   const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
@@ -138,6 +161,51 @@ export function validateLexicalAddition({
     scope: `${batchId}:prospective-canonical`,
     throwOnError: true,
   });
+
+  if (productionRun !== undefined) {
+    if (productionAuditStage === undefined
+      || productionAuthorizationEvidence === undefined
+      || productionAdmissionStage === undefined) {
+      throw new Error('lexical admission requires producer authorization and admission stage evidence');
+    }
+    const auditToken = productionRun.completeAudit({
+      predecessor: productionAuditStage.predecessor,
+      sourcePath: productionAuditStage.sourcePath,
+      sourceBytes: productionAuditStage.sourceBytes,
+    });
+    const authorization = productionRun.authorizeAdmission({
+      predecessor: auditToken,
+      authorizationRef: productionAuthorizationEvidence.authorizationRef,
+      authorizationBytes: productionAuthorizationEvidence.authorizationBytes,
+    });
+    const gateBytes = productionSourceBytes({
+      batch_id: batchId,
+      pipeline_version: LEXICAL_ADMISSION_PIPELINE_VERSION,
+      candidate_count: candidateInfos.length,
+      reviewed_count: reviewedInfos.length,
+      prospective_record_count: prospectiveInfos.length,
+      semantic_audit: semanticAuditCoverage,
+      lexical_audit: audit,
+    });
+    const admissionToken = productionRun.completeAdmission({
+      authorization,
+      sourcePath: productionAdmissionStage.sourcePath,
+      sourceBytes: productionAdmissionStage.sourceBytes,
+      decision: 'admit',
+      admissionResult: {
+        status: 'admitted',
+        gate_digest: productionBytesSha256(gateBytes),
+      },
+    });
+    // The token is deliberately consumed only after every shared admission
+    // check above has succeeded.  A producer run that fails earlier cannot
+    // expose a completed admission state.
+    void admissionToken;
+    validatedProductionState = validateLexicalProductionState(productionRun.getState(), {
+      batchId,
+      sourceBytesByStage: productionRun.getSourceBytesByStage(),
+    });
+  }
 
   return {
     pipeline_version: LEXICAL_ADMISSION_PIPELINE_VERSION,

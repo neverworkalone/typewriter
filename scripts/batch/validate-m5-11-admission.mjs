@@ -56,7 +56,7 @@ import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import {
-  createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
 } from './lexical-production-state.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -136,6 +136,7 @@ function createM511ProductionEvidence({
   editorialSource,
   semanticAuditSource,
   admissionSource,
+  materializeState = false,
 } = {}) {
   const recordValue = (recordInfo) => recordInfo?.record ?? recordInfo;
   const prospectiveRecords = [
@@ -189,10 +190,13 @@ function createM511ProductionEvidence({
     },
   };
   return {
-    state: createLexicalProductionState({ batchId, stages }),
-    sources: Object.fromEntries(
-      Object.entries(stages).map(([stageId, stage]) => [stageId, stage.source_bytes]),
-    ),
+    stageEvidence: stages,
+    ...(materializeState ? {
+      state: produceLexicalProductionState({ batchId, stages }).state,
+      sources: Object.fromEntries(
+        Object.entries(stages).map(([stageId, stage]) => [stageId, stage.source_bytes]),
+      ),
+    } : {}),
   };
 }
 
@@ -1257,6 +1261,7 @@ function validateM511SharedProduction({
   expectedImportedCount,
   checkPilotCompleteness,
   semanticAudit,
+  productionStageEvidence,
   productionState,
   productionStateSources,
 } = {}) {
@@ -1289,9 +1294,10 @@ function validateM511SharedProduction({
     reviews,
     baseRecords: baseRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
-      semanticAudit,
-      productionState,
-      productionStateSources,
+    semanticAudit,
+    stageEvidence: productionStageEvidence,
+    productionState,
+    productionStateSources,
     checkPilotCompleteness,
     catalogCount: catalog.length,
     expectedSelectedCount: expectedImportedCount,
@@ -1855,6 +1861,7 @@ export function deriveM511AdmissionGate({
       editorialSource,
       semanticAuditSource,
       admissionSource: authorizationSource ?? reviewedImportSource,
+      materializeState: !agentGenerated,
     });
   const decisions = editorialResult.decisionCounts;
   const importedInventoryIds = editorialResult.decisions
@@ -1895,10 +1902,14 @@ export function deriveM511AdmissionGate({
       expectedImportedCount,
       checkPilotCompleteness,
       semanticAudit,
+      productionStageEvidence: productionEvidence.stageEvidence,
       productionState: productionEvidence.state,
       productionStateSources: productionEvidence.sources,
     })
     : null;
+  const admittedProductionState = sharedProduction?.production.production_state ?? productionEvidence.state;
+  const admittedProductionSources = sharedProduction?.production.production_state_sources
+    ?? productionEvidence.sources;
   const placeholderGlossCount = validateImportedRecords(
     importedRecords,
     baseRecords,
@@ -1906,8 +1917,8 @@ export function deriveM511AdmissionGate({
     checkPilotCompleteness,
     {
       semanticAudit,
-      productionState: productionEvidence.state,
-      productionStateSources: productionEvidence.sources,
+      productionState: admittedProductionState,
+      productionStateSources: admittedProductionSources,
     },
   );
   if (finalSummary.start_count !== expectedCumulativeStartCount) {
@@ -2088,7 +2099,7 @@ export function deriveM511AdmissionGate({
         candidate_count: sharedProduction.production.candidate_count,
         selected_count: sharedProduction.production.selected_count,
         review_count: sharedProduction.production.review_count,
-        production_state: productionEvidence.state,
+        production_state: admittedProductionState,
         semantic_audit: sharedProduction.production.admission.semantic_audit,
       },
     } : {}),
@@ -2115,7 +2126,7 @@ export function deriveM511AdmissionGate({
     audit: auditResult,
     verification: verificationResult,
     semantic_audit: semanticAudit,
-    production_state: productionEvidence.state,
+    production_state: admittedProductionState,
     metrics,
     gate,
     gate_evidence: gateEvidence,
@@ -2318,7 +2329,25 @@ export async function validateM511Admission({
     editorialSource,
     semanticAuditSource,
     admissionSource: authorizationSource,
+    materializeState: !automatedPolicy,
   });
+  const sharedProduction = automatedPolicy
+    ? validateM511SharedProduction({
+      editorialResult: editorialPreview,
+      catalog,
+      baseRecords: previewBaseRecords,
+      importedRecords: editorialPreview.importedRecords,
+      proposalSource,
+      editorialSource,
+      expectedImportedCount,
+      checkPilotCompleteness,
+      semanticAudit: semanticAuditSource.value,
+      productionStageEvidence: productionEvidence.stageEvidence,
+    })
+    : null;
+  const admittedProductionState = sharedProduction?.production.production_state ?? productionEvidence.state;
+  const admittedProductionSources = sharedProduction?.production.production_state_sources
+    ?? productionEvidence.sources;
   validateImportedRecords(
     editorialPreview.importedRecords,
     previewBaseRecords,
@@ -2326,8 +2355,8 @@ export async function validateM511Admission({
     checkPilotCompleteness,
     {
       semanticAudit: semanticAuditSource.value,
-      productionState: productionEvidence.state,
-      productionStateSources: productionEvidence.sources,
+      productionState: admittedProductionState,
+      productionStateSources: admittedProductionSources,
     },
   );
   const previewFinalSummary = canonicalSummary([
@@ -2338,8 +2367,8 @@ export async function validateM511Admission({
     baseCanonicalDirectory,
     importedRecords: editorialPreview.importedRecords,
     semanticAudit: semanticAuditSource.value,
-    productionState: productionEvidence.state,
-    productionStateSources: productionEvidence.sources,
+    productionState: admittedProductionState,
+    productionStateSources: admittedProductionSources,
     expectedFinalSummary: previewFinalSummary,
     checkPilotCompleteness,
     semanticSummary: editorialPreview.semantic,
@@ -2371,8 +2400,8 @@ export async function validateM511Admission({
     semanticAudit: semanticAuditSource.value,
     semanticAuditSource,
     reviewedImportSource,
-    productionState: productionEvidence.state,
-    productionStateSources: productionEvidence.sources,
+    productionState: admittedProductionState,
+    productionStateSources: admittedProductionSources,
     authorizationSource,
     baseRecords: baseCanonical.records.map(recordOf),
     baseSummary,
