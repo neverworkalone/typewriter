@@ -10,7 +10,12 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import {
+  productionSourceBytes,
+  validateLexicalProductionState,
+} from './lexical-production-state.mjs';
 import {
   DEFAULT_INVENTORY_PATH,
   readTargetInventory,
@@ -917,26 +922,19 @@ function validateDeterministicSenseIds(recordInfos) {
 }
 
 function validateNoDuplicateLexicalKeys(recordInfos) {
-  const fields = [
-    ['lemma', (record) => [record.lemma], 'DUPLICATE_LEMMA'],
-    ['search form', (record) => record.search_forms, 'DUPLICATE_SEARCH_FORM'],
-  ];
-
-  for (const [label, valuesForRecord, code] of fields) {
-    const owners = new Map();
-    for (const recordInfo of recordInfos) {
-      for (const value of valuesForRecord(recordInfo.record)) {
-        const normalizedValue = value.normalize('NFC');
-        const recordIds = owners.get(normalizedValue) ?? [];
-        recordIds.push(recordInfo.record.id);
-        owners.set(normalizedValue, recordIds);
-      }
-    }
-    for (const [value, recordIds] of owners) {
-      if (recordIds.length > 1) {
-        fail(`${label} ${value} is duplicated by ${recordIds.join(', ')}`, code);
-      }
-    }
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    scope: 'batch prospective lexical audit',
+    throwOnError: false,
+  });
+  const duplicateFinding = audit.blocking_findings.find(({ code }) => [
+    'LEXICAL_DUPLICATE_LEMMA',
+    'LEXICAL_DUPLICATE_SEARCH_FORM',
+  ].includes(code));
+  if (duplicateFinding) {
+    const code = duplicateFinding.code === 'LEXICAL_DUPLICATE_LEMMA'
+      ? 'DUPLICATE_LEMMA'
+      : 'DUPLICATE_SEARCH_FORM';
+    fail(duplicateFinding.message, code);
   }
 }
 
@@ -1086,6 +1084,7 @@ export async function validateBatch({
   inventoryPath = DEFAULT_INVENTORY_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   allowRepositoryStaging = false,
+  productionStateSources: productionStateSourceOverrides = {},
 } = {}) {
   if (!manifestPath) {
     fail('manifestPath is required', 'MISSING_MANIFEST_PATH');
@@ -1102,6 +1101,12 @@ export async function validateBatch({
   const manifest = await readManifest(manifestPath);
   if (manifest.review.status !== 'complete') {
     fail('batch review must be complete before canonical import', 'REVIEW_NOT_COMPLETE');
+  }
+  if (manifest.production_state === undefined) {
+    fail(
+      'active batch admission requires the complete shared production_state; legacy manifests must be migrated before reuse',
+      'MISSING_PRODUCTION_STATE',
+    );
   }
 
   let semanticAuditBytes;
@@ -1140,9 +1145,7 @@ export async function validateBatch({
   let stagedResult;
   let stagedBytes;
   try {
-    if (Object.hasOwn(manifest.review, 'reviewed_staging_sha256')) {
-      stagedBytes = await readFile(stagedRecordsPath);
-    }
+    stagedBytes = await readFile(stagedRecordsPath);
     stagedResult = await readCanonicalRecords(stagedRecordsPath);
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -1151,7 +1154,7 @@ export async function validateBatch({
     throw error;
   }
 
-  if (stagedBytes) {
+  if (Object.hasOwn(manifest.review, 'reviewed_staging_sha256')) {
     const stagedDigest = createHash('sha256').update(stagedBytes).digest('hex');
     if (stagedDigest !== manifest.review.reviewed_staging_sha256) {
       fail(
@@ -1169,6 +1172,23 @@ export async function validateBatch({
   validateReferenceClosure(manifest.records, stagedResult.records, canonicalResult.records);
 
   const prospectiveRecords = [...canonicalResult.records, ...stagedResult.records];
+  const productionStateSources = {
+    candidate_intake: stagedBytes,
+    semantic_review: semanticAuditBytes,
+    selection: stagedBytes,
+    prospective_canonical: productionSourceBytes(prospectiveRecords.map(({ record }) => record)),
+    audit: semanticAuditBytes,
+    admission: stagedBytes,
+    ...productionStateSourceOverrides,
+  };
+  try {
+    validateLexicalProductionState(manifest.production_state, {
+      batchId: manifest.batch_id,
+      sourceBytesByStage: productionStateSources,
+    });
+  } catch (error) {
+    fail(`shared production_state validation failed: ${error.message}`, error.code);
+  }
   const manifestRecordByCanonicalId = new Map(
     manifest.records
       .filter(({ canonical_id: canonicalId }) => canonicalId)
@@ -1184,6 +1204,8 @@ export async function validateBatch({
     reviewedRecords,
     prospectiveRecords,
     semanticAudit,
+    productionState: manifest.production_state,
+    productionStateSources,
     checkPilotCompleteness: false,
     candidateLabel: `${manifest.batch_id} candidate records`,
     reviewedLabel: `${manifest.batch_id} reviewed records`,

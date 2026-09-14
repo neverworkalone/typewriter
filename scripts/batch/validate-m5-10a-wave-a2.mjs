@@ -218,6 +218,7 @@ export async function validateWaveA2({
   const staged = stagedRecordsPath
     ? await readCanonicalRecords(stagedRecordsPath)
     : { records: [] };
+  const stagedBytes = stagedRecordsPath ? await readFile(stagedRecordsPath) : undefined;
   const referenceRecords = mergeReferenceRecords(canonical.records, staged.records);
   validateA2CanonicalBoundary({
     editorialInput: editorialSource.value,
@@ -485,6 +486,11 @@ export async function validateWaveA2({
       ...sourceRef(relationDiffPath, relationDiffSource.bytes),
       value: relationDiffSource.value,
     },
+    editorialInputBytes: editorialSource.bytes,
+    semanticAuditBytes: semanticAuditSource?.bytes,
+    reviewedStagingBytes: stagedBytes,
+    prospectiveRecords: [...canonical.records, ...staged.records].map((recordInfo) => recordInfo.record ?? recordInfo),
+    productionState: manifestSource.value.production_state,
   });
   assert.deepEqual(
     manifestSource.value,
@@ -504,6 +510,10 @@ export async function validateWaveA2({
       inventoryPath,
       canonicalDirectory: baseCanonicalDirectory,
       allowRepositoryStaging: true,
+      productionStateSources: {
+        selection: editorialSource.bytes,
+        ...(semanticAuditSource ? { admission: semanticAuditSource.bytes } : {}),
+      },
     });
     assert.equal(batchResult.manifest.batch_id, A2_BATCH_ID, 'validated batch has the wrong batch_id');
     batchResult.proposedSenseCount = metricsSource.value.derived.canonical_import.imported_sense_count;

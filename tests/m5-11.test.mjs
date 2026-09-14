@@ -347,6 +347,7 @@ test('mixed-sense candidates require concrete boundary evidence before admission
   unlistedMixedSense.decisions[0].decision = 'corrected';
   unlistedMixedSense.decisions[0].corrected_lemma = '깜빡이다';
   unlistedMixedSense.decisions[0].canonical_record.lemma = '깜빡이다';
+  unlistedMixedSense.decisions[0].canonical_record.search_forms = ['깜빡이다'];
   unlistedMixedSense.decisions[0].canonical_record.senses = [
     { id: 'w779-s1', pos: 'verb', gloss: '눈을 잠깐 감았다 뜨다' },
   ];

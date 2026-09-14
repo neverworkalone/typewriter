@@ -439,12 +439,12 @@
     "semantic_findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256",
     "machine_generated": true,
     "verifier_version": "m5-11-prospective-verifier-v3",
-    "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad",
+    "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637",
     "checks": [
       {
         "id": "canonical-integrity",
         "status": "pass",
-        "result_sha256": "641f8b55f007bd08a180e56935b7604c185bd6422b1536845189aa4b33a9ab3c"
+        "result_sha256": "42cfa47f3bfdff0cb912f9f07fdbf3b368f5070529df8d7e54bf8acc1ad9a1ca"
       },
       {
         "id": "deterministic-sqlite",
@@ -477,7 +477,7 @@
           "relation_count": 487,
           "expression_count": 73
         },
-        "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+        "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
       },
       "deterministic-sqlite": {
         "build": {
@@ -4853,12 +4853,12 @@
       "semantic_findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256",
       "machine_generated": true,
       "verifier_version": "m5-11-prospective-verifier-v3",
-      "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad",
+      "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637",
       "checks": [
         {
           "id": "canonical-integrity",
           "status": "pass",
-          "result_sha256": "641f8b55f007bd08a180e56935b7604c185bd6422b1536845189aa4b33a9ab3c"
+          "result_sha256": "42cfa47f3bfdff0cb912f9f07fdbf3b368f5070529df8d7e54bf8acc1ad9a1ca"
         },
         {
           "id": "deterministic-sqlite",
@@ -4891,7 +4891,7 @@
             "relation_count": 487,
             "expression_count": 73
           },
-          "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+          "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
         },
         "deterministic-sqlite": {
           "build": {
@@ -9206,7 +9206,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "c2eaba60c30b01c27fa98b14fa334cc777d8dd8ea60fe8e6f7f1759446b6af4e",
+  "gate_evidence_sha256": "33c80206e6d64f28bdfbaac0c2874c5c9c7d602557dd1531d0f69ab3b1479ec3",
   "sources": {
     "proposal": {
       "source_id": "proposal",
@@ -9231,7 +9231,7 @@
     "reviewed_import": {
       "source_id": "reviewed_import",
       "path": "external:reviewed_import",
-      "sha256": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691"
+      "sha256": "3ba7feb2e11721e8055449bf07a117aa34e31305474550501951c0c6e437b78a"
     },
     "authorization": {
       "source_id": "authorization",

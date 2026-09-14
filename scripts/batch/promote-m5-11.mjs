@@ -18,6 +18,7 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import { DEFAULT_SEMANTIC_AUDIT_PATH } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import { productionSourceBytes } from './lexical-production-state.mjs';
 import {
   generateTargetInventory,
 } from '../inventory/generate-target-inventory.mjs';
@@ -369,12 +370,25 @@ async function buildProspectiveState({
     });
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const canonicalRecords = canonical.records.map(({ record }) => record);
+    if (!result.production_state) {
+      fail('M5-11 promotion requires the shared production state from the passing admission gate', 'MISSING_PRODUCTION_STATE');
+    }
+    const productionStateSources = {
+      candidate_intake: result.sources?.proposal?.bytes,
+      semantic_review: result.sources?.editorial?.bytes,
+      selection: result.sources?.editorial?.bytes,
+      prospective_canonical: productionSourceBytes(canonicalRecords),
+      audit: result.sources?.semantic_audit?.bytes,
+      admission: result.sources?.authorization?.bytes ?? result.sources?.reviewed_import?.bytes,
+    };
     validateLexicalAddition({
       batchId: M5_11_BATCH_ID,
       baseRecords: baseCanonical.records,
       reviewedRecords: result.imported_records,
       prospectiveRecords: canonical.records,
       semanticAudit,
+      productionState: result.production_state,
+      productionStateSources,
       checkPilotCompleteness: true,
       reviewedLabel: 'M5-11 promotion reviewed records',
       prospectiveLabel: 'M5-11 promotion prospective canonical records',

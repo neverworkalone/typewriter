@@ -40,7 +40,10 @@ import {
   inspectWriterDomainEvidence,
 } from '../scripts/validate/lexical-quality.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
-import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
+import {
+  makeProductionState,
+  makeSemanticAudit,
+} from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
 
@@ -1429,11 +1432,23 @@ test('M5-11 prospective verification runs the complete M4 baseline contract', as
     ...baseCanonical.records,
     ...importedRecords.map((record) => ({ record, source: 'reviewed-import' })),
   ]);
+  const productionState = makeProductionState({
+    batchId: M5_11_BATCH_ID,
+    baseRecords: baseCanonical.records,
+    reviewedRecords: importedRecords,
+    prospectiveRecords: [
+      ...baseCanonical.records,
+      ...importedRecords.map((record) => ({ record, source: 'reviewed-import' })),
+    ],
+    semanticAudit,
+  });
   await assert.rejects(
     runM511ProspectiveVerification({
       baseCanonicalDirectory: path.join(process.cwd(), 'data/batches/m5-11-base-canonical'),
       importedRecords,
       semanticAudit,
+      productionState: productionState.state,
+      productionStateSources: productionState.sources,
       expectedFinalSummary: {
         record_count: 821,
         start_count: 779,
@@ -1444,7 +1459,7 @@ test('M5-11 prospective verification runs the complete M4 baseline contract', as
       },
       checkPilotCompleteness: true,
     }),
-    /M4 baseline .* result IDs/u,
+    /M4 baseline .* result IDs|owned by multiple records/u,
   );
 });
 

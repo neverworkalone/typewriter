@@ -17,7 +17,7 @@
     "input_artifact": "data/batches/m5-10-wave-b-editorial-input.json",
     "input_sha256": "cc666cbf7158fe58fcba342c7a90ea2282664ca9be9409f0baea3969439a757d",
     "reviewed_staging_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
-    "semantic_audit_sha256": "6ad5a9b5350ae2ea034f80fba838aa0d50637c4a63c12b042f13ff22da1f59f6"
+    "semantic_audit_sha256": "27f2179cc5103abdf136b1a5a059ca9fa1dbf01836a98b64437b098cb6453446"
   },
   "sense_review": {
     "status": "complete",
@@ -14542,5 +14542,75 @@
       "decision": "deferred",
       "decision_note": "m5-534 w798 말을 꺼내다: source evidence is retained, but this candidate remains outside the completed Wave B sense review and is deferred."
     }
-  ]
+  ],
+  "production_state": {
+    "contract_version": "lexical-production-state-v1",
+    "pipeline_version": "lexical-production-v1",
+    "batch_id": "m5-10-wave-b-20260909",
+    "stages": [
+      {
+        "id": "candidate_intake",
+        "status": "complete",
+        "transition": {
+          "from": "created",
+          "to": "candidate-intake-complete"
+        },
+        "source_path": "data/canonical/m5-10-wave-b.jsonl",
+        "source_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206"
+      },
+      {
+        "id": "semantic_review",
+        "status": "complete",
+        "transition": {
+          "from": "candidate-intake-complete",
+          "to": "semantic-review-complete"
+        },
+        "source_path": "data/validation/m5-10-wave-b-semantic-audit.json",
+        "source_sha256": "27f2179cc5103abdf136b1a5a059ca9fa1dbf01836a98b64437b098cb6453446"
+      },
+      {
+        "id": "selection",
+        "status": "complete",
+        "transition": {
+          "from": "semantic-review-complete",
+          "to": "selection-complete"
+        },
+        "source_path": "data/canonical/m5-10-wave-b.jsonl",
+        "source_sha256": "575def45e3df1fdfca79cb060ab2a3c4b04c060a067d806ab78454af15abb206",
+        "policy": "wave-b-reviewed-selection"
+      },
+      {
+        "id": "prospective_canonical",
+        "status": "complete",
+        "transition": {
+          "from": "selection-complete",
+          "to": "prospective-canonical-complete"
+        },
+        "source_path": "wave-b:prospective-canonical-record-values",
+        "source_sha256": "c2ab4616a7ceb4a0244578e8c19858d461d009568df06b1ce38f2633477f84ca"
+      },
+      {
+        "id": "audit",
+        "status": "complete",
+        "transition": {
+          "from": "prospective-canonical-complete",
+          "to": "audit-complete"
+        },
+        "source_path": "data/validation/m5-10-wave-b-semantic-audit.json",
+        "source_sha256": "27f2179cc5103abdf136b1a5a059ca9fa1dbf01836a98b64437b098cb6453446"
+      },
+      {
+        "id": "admission",
+        "status": "complete",
+        "transition": {
+          "from": "audit-complete",
+          "to": "admission-authorized"
+        },
+        "source_path": "data/batches/m5-10-wave-b-authorization.json",
+        "source_sha256": "692c9b3c50c47879a7bab42aecb7284b8c4224c704fe460f2554b66c35f80496",
+        "decision": "admit",
+        "authorization_ref": "data/batches/m5-10-wave-b-authorization.json"
+      }
+    ]
+  }
 }

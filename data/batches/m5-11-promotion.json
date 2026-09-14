@@ -466,12 +466,12 @@
     "semantic_findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256",
     "machine_generated": true,
     "verifier_version": "m5-11-prospective-verifier-v3",
-    "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad",
+    "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637",
     "checks": [
       {
         "id": "canonical-integrity",
         "status": "pass",
-        "result_sha256": "641f8b55f007bd08a180e56935b7604c185bd6422b1536845189aa4b33a9ab3c"
+        "result_sha256": "42cfa47f3bfdff0cb912f9f07fdbf3b368f5070529df8d7e54bf8acc1ad9a1ca"
       },
       {
         "id": "deterministic-sqlite",
@@ -504,7 +504,7 @@
           "relation_count": 487,
           "expression_count": 73
         },
-        "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+        "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
       },
       "deterministic-sqlite": {
         "build": {
@@ -4849,12 +4849,12 @@
       "semantic_findings_sha256": "74ade404bb9b5a10ac31fcc9960bfa0906722d4bb74dfa7ae2ac9f8a0cb93256",
       "machine_generated": true,
       "verifier_version": "m5-11-prospective-verifier-v3",
-      "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad",
+      "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637",
       "checks": [
         {
           "id": "canonical-integrity",
           "status": "pass",
-          "result_sha256": "641f8b55f007bd08a180e56935b7604c185bd6422b1536845189aa4b33a9ab3c"
+          "result_sha256": "42cfa47f3bfdff0cb912f9f07fdbf3b368f5070529df8d7e54bf8acc1ad9a1ca"
         },
         {
           "id": "deterministic-sqlite",
@@ -4887,7 +4887,7 @@
             "relation_count": 487,
             "expression_count": 73
           },
-          "prospective_canonical_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+          "prospective_canonical_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
         },
         "deterministic-sqlite": {
           "build": {
@@ -9202,7 +9202,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "c2eaba60c30b01c27fa98b14fa334cc777d8dd8ea60fe8e6f7f1759446b6af4e",
+  "gate_evidence_sha256": "33c80206e6d64f28bdfbaac0c2874c5c9c7d602557dd1531d0f69ab3b1479ec3",
   "authorization": "AUTHORIZE M5-11 +500 VALIDATION",
   "decisions": {
     "included": 488,
@@ -9237,7 +9237,7 @@
     "reviewed_import": {
       "source_id": "reviewed_import",
       "path": "external:reviewed_import",
-      "sha256": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691"
+      "sha256": "3ba7feb2e11721e8055449bf07a117aa34e31305474550501951c0c6e437b78a"
     },
     "authorization": {
       "source_id": "authorization",
@@ -9253,7 +9253,7 @@
   "outputs": {
     "canonical_import": {
       "path": "data/canonical/m5-11-expansion.jsonl",
-      "sha256": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691",
+      "sha256": "3ba7feb2e11721e8055449bf07a117aa34e31305474550501951c0c6e437b78a",
       "record_count": 500,
       "first_canonical_id": "w779",
       "last_canonical_id": "w1278"
@@ -9271,7 +9271,7 @@
       "current_start_count": 1278,
       "current_reference_only_count": 42
     },
-    "canonical_directory_sha256": "4e0137922bf16d698d5b57e6f24919e2af8caad88d25c674ec6827f08f17c4ad"
+    "canonical_directory_sha256": "4938f32a8add8474bb34492eda4b1824c82eac1dd90c280e7eb4ee9b58de5637"
   },
   "stage": {
     "stage_id": "m5-11-plus-500",
@@ -9295,7 +9295,7 @@
       "editorial": "e08ff61b5802f252a17ade1085665c1ad54a6197afb43d4dc67f4d620d3c5237",
       "relation_diff": "8cafe8b3ad3b2013c43d43ce42dbd32da1cdd62e29e167c30f8c48178bcd74cf",
       "verification": "3ce52a79b081116f4e0f1ad4f68ddacdb9d05e2fe746399953db455b01cd8145",
-      "reviewed_import": "12d9498adb5bf0eba24574b4253f7b2ac1100a71c2dc109bf03b242a0877d691",
+      "reviewed_import": "3ba7feb2e11721e8055449bf07a117aa34e31305474550501951c0c6e437b78a",
       "authorization": "4091aff47c01b4451b9239ea3f1b0068110431c29268e713abc9bf1bd3004dbb",
       "base_inventory": "2d6ec1f03ce4c52bb16509354e501d2e1e10dc684bc068b995b9cead1f4eb947"
     }

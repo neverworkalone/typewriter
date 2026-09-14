@@ -1,6 +1,8 @@
-import { createHash } from 'node:crypto';
-
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import {
+  createLexicalProductionState,
+  validateLexicalProductionState,
+} from './lexical-production-state.mjs';
 import { validateLexicalSemanticReview } from '../validate/lexical-quality.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
@@ -66,31 +68,56 @@ function semanticReviewInput(entry, index) {
   return entry;
 }
 
-function validateStageEvidence(stageEvidence) {
+function validateStageEvidence(
+  stageEvidence,
+  {
+    productionState,
+    batchId,
+    productionStateSources,
+  } = {},
+) {
+  if (productionState !== undefined) {
+    try {
+      return validateLexicalProductionState(productionState, {
+        batchId,
+        sourceBytesByStage: productionStateSources,
+      });
+    } catch (error) {
+      fail(`production_state failed: ${error.message}`, error.code);
+    }
+  }
+  if (stageEvidence === undefined) {
+    fail('production.stage_evidence or production_state is required', 'LEXICAL_PRODUCTION_STAGE_REQUIRED');
+  }
   const stages = requireObject(stageEvidence, 'production.stage_evidence');
-  for (const stageId of ['candidate_intake', 'semantic_review', 'selection']) {
+  const sources = {};
+  for (const stageId of [
+    'candidate_intake',
+    'semantic_review',
+    'selection',
+    'prospective_canonical',
+    'audit',
+    'admission',
+  ]) {
     const stage = requireObject(stages[stageId], `production.stage_evidence.${stageId}`);
-    if (stage.status !== 'complete') {
-      fail(`production.stage_evidence.${stageId}.status must be complete`, 'LEXICAL_PRODUCTION_STAGE_INCOMPLETE');
-    }
-    requireString(stage.source_path, `production.stage_evidence.${stageId}.source_path`);
-    requireString(stage.source_sha256, `production.stage_evidence.${stageId}.source_sha256`);
-    if (!/^[a-f0-9]{64}$/u.test(stage.source_sha256)) {
-      fail(`production.stage_evidence.${stageId}.source_sha256 must be a SHA-256 digest`, 'LEXICAL_PRODUCTION_STAGE_BINDING');
-    }
-    const sourceBytes = requireSourceBytes(
+    sources[stageId] = requireSourceBytes(
       stage.source_bytes,
       `production.stage_evidence.${stageId}.source_bytes`,
     );
-    const actualDigest = createHash('sha256').update(sourceBytes).digest('hex');
-    if (actualDigest !== stage.source_sha256) {
-      fail(
-        `production.stage_evidence.${stageId}.source_sha256 does not match source_bytes`,
-        'LEXICAL_PRODUCTION_STAGE_BINDING',
-      );
-    }
   }
-  requireString(stages.selection.policy, 'production.stage_evidence.selection.policy');
+  let state;
+  try {
+    state = createLexicalProductionState({
+      batchId,
+      stages,
+    });
+    return validateLexicalProductionState(state, {
+      batchId,
+      sourceBytesByStage: sources,
+    });
+  } catch (error) {
+    fail(`production stage evidence failed: ${error.message}`, error.code);
+  }
 }
 
 /**
@@ -109,6 +136,8 @@ export function validateLexicalProduction({
   prospectiveRecords,
   semanticAudit,
   stageEvidence,
+  productionState,
+  productionStateSources,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -143,7 +172,16 @@ export function validateLexicalProduction({
   if (semanticAudit === undefined) {
     fail('production.semantic_audit is required; semantic coverage cannot be inferred from a batch delta', 'SEMANTIC_AUDIT_REQUIRED');
   }
-  validateStageEvidence(stageEvidence);
+  const validatedProductionState = validateStageEvidence(stageEvidence, {
+    productionState,
+    batchId,
+    productionStateSources,
+  });
+  const admissionProductionStateSources = productionStateSources ?? Object.fromEntries(
+    ['candidate_intake', 'semantic_review', 'selection', 'prospective_canonical', 'audit', 'admission']
+      .filter((stageId) => stageEvidence?.[stageId]?.source_bytes !== undefined)
+      .map((stageId) => [stageId, stageEvidence[stageId].source_bytes]),
+  );
 
   const candidateRecordsById = new Map();
   for (const [index, candidateInfo] of candidates.entries()) {
@@ -280,6 +318,8 @@ export function validateLexicalProduction({
       baseRecords,
       prospectiveRecords,
       semanticAudit,
+      productionState: validatedProductionState,
+      productionStateSources: admissionProductionStateSources,
       checkPilotCompleteness,
       candidateLabel,
       reviewedLabel,
@@ -296,6 +336,7 @@ export function validateLexicalProduction({
     correction_count: correctionRecords.length,
     review_count: reviewRows.length,
     selection_ranks: ranks,
+    production_state: validatedProductionState,
     admission,
   };
 }

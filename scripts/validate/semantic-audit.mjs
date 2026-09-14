@@ -436,6 +436,86 @@ function validateSemanticReviewSense(record, sense, review, senseIndex, label) {
   }
 
   if (senseIndex < 0) fail(`${label} has an invalid sense index`, 'SEMANTIC_AUDIT_SCOPE');
+
+  const basis = requireObject(review.review_basis, `${label}.review_basis`);
+  if (basis.record_id !== record.id || basis.sense_id !== sense.id || basis.lemma !== record.lemma) {
+    fail(`${label}.review_basis identity is not bound to the canonical sense`, 'SEMANTIC_AUDIT_BINDING');
+  }
+  requireDigest(basis.gloss_sha256, `${label}.review_basis.gloss_sha256`);
+  if (basis.gloss_sha256 !== sha256Json(sense.gloss)) {
+    fail(`${label}.review_basis.gloss_sha256 does not bind the canonical gloss`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+  }
+  if (basis.pos !== sense.pos || basis.record_type !== record.record_type) {
+    fail(`${label}.review_basis POS or record type does not bind the canonical source`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+  }
+  const basisDomainEvidence = inspectWriterDomainEvidence(sense.gloss);
+  assertExact(
+    basis.observed_domain_axes,
+    basisDomainEvidence.axes,
+    `${label}.review_basis.observed_domain_axes`,
+    'SEMANTIC_AUDIT_CONTENT_MISMATCH',
+  );
+  const basisRelations = senseRelationCoverage(sense);
+  if (basis.relation_count !== basisRelations.relation_count) {
+    fail(`${label}.review_basis.relation_count does not bind canonical relations`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+  }
+  requireString(basis.rationale, `${label}.review_basis.rationale`);
+  const glossDigestPrefix = basis.gloss_sha256.slice(0, 12);
+  if (!basis.rationale.includes(record.id)
+    || !basis.rationale.includes(sense.id)
+    || !basis.rationale.includes(glossDigestPrefix)) {
+    fail(
+      `${label}.review_basis.rationale must cite the record, sense, and reviewed gloss digest`,
+      'SEMANTIC_AUDIT_GENERIC_EVIDENCE',
+    );
+  }
+}
+
+function validateSemanticReviewPass(recordInfos, artifact, label) {
+  const pass = requireObject(artifact.review_pass, `${label}.review_pass`);
+  requireString(pass.id, `${label}.review_pass.id`);
+  if (pass.status !== 'complete') fail(`${label}.review_pass.status must be complete`, 'SEMANTIC_AUDIT_INCOMPLETE');
+  requireString(pass.reviewer, `${label}.review_pass.reviewer`);
+  if (pass.review_mode !== artifact.review_mode) {
+    fail(`${label}.review_pass.review_mode must bind artifact.review_mode`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
+  requireString(pass.method, `${label}.review_pass.method`);
+  if (pass.ruleset_version !== LEXICAL_QUALITY_RULESET_VERSION) {
+    fail(`${label}.review_pass.ruleset_version is unsupported`, 'SEMANTIC_AUDIT_SCHEMA');
+  }
+  const records = recordInfos.map(recordOf);
+  const senseCount = records.reduce((sum, record) => sum + record.senses.length, 0);
+  if (pass.record_count !== records.length || pass.sense_count !== senseCount) {
+    fail(`${label}.review_pass counts do not cover the complete canonical input`, 'SEMANTIC_AUDIT_SCOPE');
+  }
+  if (pass.open_finding_count !== 0) {
+    fail(`${label}.review_pass cannot be complete with open findings`, 'SEMANTIC_AUDIT_INCOMPLETE');
+  }
+  const history = requireArray(pass.correction_history, `${label}.review_pass.correction_history`);
+  if (pass.correction_count !== history.length) {
+    fail(`${label}.review_pass.correction_count does not match correction_history`, 'SEMANTIC_AUDIT_SCOPE');
+  }
+  const recordsById = new Map(records.map((record) => [record.id, record]));
+  const correctionIds = new Set();
+  for (const [index, correction] of history.entries()) {
+    const correctionLabel = `${label}.review_pass.correction_history[${index}]`;
+    requireObject(correction, correctionLabel);
+    requireString(correction.record_id, `${correctionLabel}.record_id`);
+    if (correctionIds.has(correction.record_id)) {
+      fail(`${correctionLabel}.record_id is duplicated`, 'SEMANTIC_AUDIT_SCOPE');
+    }
+    correctionIds.add(correction.record_id);
+    const record = recordsById.get(correction.record_id);
+    if (!record) fail(`${correctionLabel}.record_id is not canonical`, 'SEMANTIC_AUDIT_SCOPE');
+    requireDigest(correction.before_record_sha256, `${correctionLabel}.before_record_sha256`);
+    requireDigest(correction.after_record_sha256, `${correctionLabel}.after_record_sha256`);
+    if (correction.after_record_sha256 !== sha256Json(record)
+      || correction.before_record_sha256 === correction.after_record_sha256) {
+      fail(`${correctionLabel} is not bound to the repaired canonical record`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+    }
+    requireString(correction.source_revision, `${correctionLabel}.source_revision`);
+    requireString(correction.rationale, `${correctionLabel}.rationale`);
+  }
 }
 
 function validateSemanticReviewChanges(recordInfos, baseRecords, changes, label) {
@@ -495,6 +575,7 @@ export function validateSemanticReviewArtifact(
   }
   if (artifact.scope !== 'complete-canonical') fail(`${label}.scope must be complete-canonical`, 'SEMANTIC_AUDIT_SCOPE');
   if (artifact.review_mode !== 'agent-authored-decision') fail(`${label}.review_mode must be agent-authored-decision`, 'SEMANTIC_AUDIT_PROVENANCE');
+  validateSemanticReviewPass(recordInfos, artifact, label);
   const records = recordInfos.map(recordOf);
   const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
   const source = requireObject(artifact.source, `${label}.source`);

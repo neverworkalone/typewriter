@@ -101,6 +101,9 @@ test('rejects dirty repositories unless explicitly allowed', async () => {
     await execFile('git', ['config', 'user.email', 'typewriter@example.test'], {
       cwd: repositoryDirectory,
     });
+    await execFile('git', ['config', 'commit.gpgsign', 'false'], {
+      cwd: repositoryDirectory,
+    });
     await writeFile(path.join(repositoryDirectory, 'tracked.txt'), 'clean\n');
     await execFile('git', ['add', 'tracked.txt'], { cwd: repositoryDirectory });
     await execFile('git', ['commit', '-q', '-m', 'initial'], {
@@ -141,6 +144,9 @@ test('accepts current HEAD refs and rejects a different explicit commit', async 
       cwd: repositoryDirectory,
     });
     await execFile('git', ['config', 'user.email', 'typewriter@example.test'], {
+      cwd: repositoryDirectory,
+    });
+    await execFile('git', ['config', 'commit.gpgsign', 'false'], {
       cwd: repositoryDirectory,
     });
     await writeFile(path.join(repositoryDirectory, 'tracked.txt'), 'first\n');

@@ -7,6 +7,7 @@ import {
   canonicalRecordsSha256,
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
+import { validateLexicalProductionState } from './lexical-production-state.mjs';
 
 export const LEXICAL_ADMISSION_PIPELINE_VERSION = 'lexical-admission-v1';
 
@@ -48,6 +49,8 @@ export function validateLexicalAddition({
   baseRecords,
   prospectiveRecords,
   semanticAudit,
+  productionState,
+  productionStateSources,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
@@ -63,6 +66,13 @@ export function validateLexicalAddition({
   if (semanticAudit === undefined) {
     throw new Error('lexical admission requires source-bound semantic_audit coverage');
   }
+  if (productionState === undefined) {
+    throw new Error('lexical admission requires the complete production_state');
+  }
+  const validatedProductionState = validateLexicalProductionState(productionState, {
+    batchId,
+    sourceBytesByStage: productionStateSources,
+  });
   const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
@@ -137,6 +147,7 @@ export function validateLexicalAddition({
     prospective_record_count: prospectiveInfos.length,
     base_record_count: baseInfos.length,
     base_records_sha256: canonicalRecordsSha256(baseInfos),
+    production_state: validatedProductionState,
     semantic_audit: semanticAuditCoverage,
     indexes,
     audit,

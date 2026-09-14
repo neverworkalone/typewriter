@@ -15,6 +15,10 @@ import {
   validateBatch,
   validateBatchManifest,
 } from './validate-batch.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from './lexical-production-state.mjs';
 import { createMetricsArtifact, assertMetricsMatch } from './derive-metrics.mjs';
 import { validateRelationDiff } from './relation-diff.mjs';
 import { evaluateExpansionGate, hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -1254,13 +1258,59 @@ function preflightCheckpoint(recordReview, processed) {
   return checkpoint;
 }
 
-export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, semanticAuditSource, reviewedStagingPath } = {}) {
+export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, semanticAuditSource, reviewedStagingPath, reviewedStagingBytes, prospectiveRecords, semanticAuditBytes, admissionSource, productionState } = {}) {
   validateWaveBAuditInput({ audit: auditInput, editorialInput, relationDiff: relationDiffSource.value });
   const expectedUnitIdsByPass = deriveWaveBTimingUnitSets({ editorialInput, auditInput });
   validateWaveBTimingInput(timingInput, { timingKind: 'editorial', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
   validateWaveBTimingInput(auditTimingInput, { timingKind: 'post-freeze-audit', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, reviewedStagingPath, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
   validateWaveBTimingDecisionWork({ timingInput, auditTimingInput, editorialInput, auditInput });
   validateWaveBChronology({ editorialInput, auditInput, timingInput, auditTimingInput });
+  let sharedProductionState = productionState;
+  if (!sharedProductionState) {
+    if (!reviewedStagingBytes || !prospectiveRecords || !semanticAuditBytes) {
+      fail('Wave B manifest requires the shared production_state sources', 'MISSING_PRODUCTION_STATE');
+    }
+    const admissionBytes = admissionSource?.bytes ?? semanticAuditBytes;
+    const stages = {
+      candidate_intake: {
+        status: 'complete',
+        source_path: reviewedStagingPath,
+        source_bytes: reviewedStagingBytes,
+      },
+      semantic_review: {
+        status: 'complete',
+        source_path: semanticAuditSource.path,
+        source_bytes: semanticAuditBytes,
+      },
+      selection: {
+        status: 'complete',
+        source_path: reviewedStagingPath,
+        source_bytes: reviewedStagingBytes,
+        policy: 'wave-b-reviewed-selection',
+      },
+      prospective_canonical: {
+        status: 'complete',
+        source_path: 'wave-b:prospective-canonical-record-values',
+        source_bytes: productionSourceBytes(prospectiveRecords.map(recordOf)),
+      },
+      audit: {
+        status: 'complete',
+        source_path: semanticAuditSource.path,
+        source_bytes: semanticAuditBytes,
+      },
+      admission: {
+        status: 'complete',
+        source_path: admissionSource?.path ?? semanticAuditSource.path,
+        source_bytes: admissionBytes,
+        decision: 'admit',
+        authorization_ref: admissionSource?.path ?? 'wave-b-explicit-admission',
+      },
+    };
+    sharedProductionState = createLexicalProductionState({
+      batchId: WAVE_B_BATCH_ID,
+      stages,
+    });
+  }
   const manifest = {
     schema_version: '1',
     batch_id: WAVE_B_BATCH_ID,
@@ -1282,6 +1332,7 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
       reviewed_staging_sha256: editorialInput.reviewed_staging_sha256,
       ...(semanticAuditSource ? { semantic_audit_sha256: semanticAuditSource.sha256 } : {}),
     },
+    production_state: sharedProductionState,
     sense_review: {
       status: 'complete',
       reviewed_start_count: WAVE_B_IMPORTED_START_COUNT,
@@ -1653,9 +1704,20 @@ export async function validateWaveB({
       ? { path: relativeSourcePath(semanticAuditPath), sha256: semanticAuditSource.sha256 }
       : undefined,
     reviewedStagingPath: resolvedStagedRecordsPath,
+    productionState: manifestSource.value.production_state,
   });
   assertEqual(manifestSource.value, projectedManifest, 'Wave B manifest differs from explicit input artifacts', 'MANIFEST_DRIFT');
-  const batchResult = await validateBatch({ manifestPath, stagedRecordsPath: resolvedStagedRecordsPath, semanticAuditPath, inventoryPath, canonicalDirectory: baseCanonicalDirectory });
+  const batchResult = await validateBatch({
+    manifestPath,
+    stagedRecordsPath: resolvedStagedRecordsPath,
+    semanticAuditPath,
+    inventoryPath,
+    canonicalDirectory: baseCanonicalDirectory,
+    productionStateSources: manifestSource.value.production_state.stages.find(({ id }) => id === 'admission').source_sha256
+      === authorizationSource.sha256
+      ? { admission: authorizationSource.bytes }
+      : {},
+  });
   exactIds(staged.records.map(recordOf).map(({ id }) => id), WAVE_B_IMPORTED_CANONICAL_IDS, 'Wave B reviewed staging');
   assertEqual(staged.records.length, WAVE_B_IMPORTED_START_COUNT, 'Wave B reviewed staging count drifted', 'STAGED_COUNT_MISMATCH');
   const verification = verificationSource.value;

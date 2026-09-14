@@ -49,6 +49,12 @@ const COMMON_DOMAIN_PAIRS = new Set([
 ]);
 
 const PLACEHOLDER_GLOSS_PATTERN = /^(?:placeholder|tbd|todo|n\/a|na|미정|미작성|임시|예시|테스트)(?:[\s:.-]|$)/iu;
+const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번째|두 번째|세 번째|네 번째)\s+구체적 의미/u;
+// These fragments are high-confidence signs of an unfinished gloss: an
+// unattached Korean particle/compound or a one-token drafting stub.  The
+// rule is shared by canonical and future admissions; it is not tied to a
+// record ID or a milestone batch.
+const MALFORMED_GLOSS_FRAGMENT_PATTERN = /(?:일는|자신는|잘못로운|두근거림가|몸는|걱정는|자극를|느낌의 반응하지|기분가볍다|빛가|빛깔가|짐승는|김가볍게|맛가볍다|공간는|주변가운|물는|산이어진|밭은 쉼터|몸를|종도구|글는|국도구|건물로대|길도구|밥도구|풀는|흙는|사람이어진|창작는|말는|일이야기|거짓이 바르다)/u;
 
 export class LexicalQualityError extends Error {
   constructor(message, code = 'LEXICAL_QUALITY_ERROR', finding = undefined) {
@@ -233,6 +239,17 @@ export function isPlaceholderGloss(gloss) {
   return typeof gloss !== 'string' || PLACEHOLDER_GLOSS_PATTERN.test(gloss.trim());
 }
 
+export function inspectGlossQuality(gloss) {
+  if (typeof gloss !== 'string' || gloss.trim().length === 0) {
+    return { token_count: 0, generic_template: false, malformed_fragment: false };
+  }
+  return {
+    token_count: gloss.trim().split(/\s+/u).length,
+    generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
+    malformed_fragment: MALFORMED_GLOSS_FRAGMENT_PATTERN.test(gloss),
+  };
+}
+
 function recordQualityFindings(record, {
   label = 'record',
   mode = 'canonical',
@@ -251,6 +268,23 @@ function recordQualityFindings(record, {
   }
   if (typeof record.lemma !== 'string' || record.lemma.trim().length === 0) {
     findings.push({ code: 'LEXICAL_LEMMA', message: `${label}.lemma must be a non-empty string` });
+  }
+  if (Array.isArray(record.search_forms)) {
+    const normalizedForms = record.search_forms
+      .filter((form) => typeof form === 'string')
+      .map((form) => form.normalize('NFC'));
+    if (typeof record.lemma === 'string' && !normalizedForms.includes(record.lemma.normalize('NFC'))) {
+      findings.push({
+        code: 'LEXICAL_SEARCH_FORM_LEMMA',
+        message: `${label}.search_forms must include the lemma`,
+      });
+    }
+    if (new Set(normalizedForms).size !== normalizedForms.length) {
+      findings.push({
+        code: 'LEXICAL_SEARCH_FORM_DUPLICATE',
+        message: `${label}.search_forms must not contain duplicate normalized forms`,
+      });
+    }
   }
   if (!Array.isArray(record.senses) || record.senses.length === 0) {
     findings.push({ code: 'LEXICAL_SENSES', message: `${label}.senses must contain at least one sense` });
@@ -290,6 +324,23 @@ function recordQualityFindings(record, {
       findings.push({
         code: 'LEXICAL_PLACEHOLDER_GLOSS',
         message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
+      });
+    }
+    const glossQuality = inspectGlossQuality(sense.gloss);
+    if (glossQuality.token_count < 2) {
+      findings.push({
+        code: 'LEXICAL_GLOSS_TOO_SHORT',
+        message: `${senseLabel}.gloss must contain at least two whitespace-delimited words`,
+      });
+    } else if (glossQuality.generic_template) {
+      findings.push({
+        code: 'LEXICAL_GENERIC_GLOSS',
+        message: `${senseLabel}.gloss is a generic drafting template and must be replaced with a reviewed meaning`,
+      });
+    } else if (glossQuality.malformed_fragment) {
+      findings.push({
+        code: 'LEXICAL_MALFORMED_GLOSS',
+        message: `${senseLabel}.gloss contains an unfinished or malformed lexical fragment`,
       });
     }
     const observations = inspectGlossConnectors(sense.gloss);
@@ -420,6 +471,46 @@ export function auditCanonicalLexicalQuality(
         classificationCounts[observation.classification] = (classificationCounts[observation.classification] ?? 0) + 1;
       }
     }
+  }
+  const lemmaOwners = new Map();
+  const searchFormOwners = new Map();
+  for (const [index, record] of normalized.entries()) {
+    if (!record || typeof record !== 'object') continue;
+    const location = sourceLabel(recordInfos[index], index);
+    if (typeof record.lemma === 'string') {
+      const key = record.lemma.normalize('NFC');
+      const owners = lemmaOwners.get(key) ?? [];
+      owners.push(record.id ?? location);
+      lemmaOwners.set(key, owners);
+    }
+    const searchForms = Array.isArray(record.search_forms) ? record.search_forms : [];
+    for (const form of searchForms) {
+      if (typeof form !== 'string') continue;
+      const key = form.normalize('NFC');
+      const owners = searchFormOwners.get(key) ?? [];
+      owners.push(record.id ?? location);
+      searchFormOwners.set(key, owners);
+    }
+  }
+  for (const [lemma, owners] of lemmaOwners.entries()) {
+    if (owners.length < 2) continue;
+    findings.push({
+      code: 'LEXICAL_DUPLICATE_LEMMA',
+      record_id: owners[1],
+      sense_id: null,
+      location: scope,
+      message: `lemma ${JSON.stringify(lemma)} is owned by multiple records: ${owners.join(', ')}`,
+    });
+  }
+  for (const [searchForm, owners] of searchFormOwners.entries()) {
+    if (owners.length < 2) continue;
+    findings.push({
+      code: 'LEXICAL_DUPLICATE_SEARCH_FORM',
+      record_id: owners[1],
+      sense_id: null,
+      location: scope,
+      message: `search form ${JSON.stringify(searchForm)} is owned by multiple records: ${owners.join(', ')}`,
+    });
   }
   const report = {
     ruleset_version: LEXICAL_QUALITY_RULESET_VERSION,

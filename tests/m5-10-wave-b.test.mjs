@@ -32,6 +32,10 @@ import {
 import { evaluateExpansionGate } from '../scripts/batch/validate-m5-8-process.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from '../scripts/batch/lexical-production-state.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_SHARD_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-b.jsonl');
@@ -56,6 +60,41 @@ async function makeStagingDirectory() {
   const manifestPath = path.join(directory, 'manifest.json');
   const manifest = await readJson(DEFAULT_OUTPUT_PATH);
   manifest.review.semantic_audit_sha256 = semanticAudit.sha256;
+  manifest.production_state = createLexicalProductionState({
+    batchId: manifest.batch_id,
+    stages: {
+      candidate_intake: {
+        source_path: stagingPath,
+        source_bytes: await readFile(stagingPath),
+      },
+      semantic_review: {
+        source_path: semanticAuditPath,
+        source_bytes: semanticAudit.bytes,
+      },
+      selection: {
+        source_path: stagingPath,
+        source_bytes: await readFile(stagingPath),
+        policy: 'wave-b-test-selection',
+      },
+      prospective_canonical: {
+        source_path: 'wave-b-test:prospective-canonical-record-values',
+        source_bytes: productionSourceBytes([
+          ...baseCanonical.records,
+          ...staged.records,
+        ].map(({ record }) => record)),
+      },
+      audit: {
+        source_path: semanticAuditPath,
+        source_bytes: semanticAudit.bytes,
+      },
+      admission: {
+        source_path: stagingPath,
+        source_bytes: await readFile(stagingPath),
+        decision: 'admit',
+        authorization_ref: 'wave-b-test-explicit-admission',
+      },
+    },
+  });
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(manifestPath, manifestBytes);
   const stagePath = path.join(directory, 'stage.json');

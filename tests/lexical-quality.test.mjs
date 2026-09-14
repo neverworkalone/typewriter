@@ -17,7 +17,10 @@ import {
   canonicalRecordsSha256,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
-import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
+import {
+  makeProductionState,
+  makeSemanticAudit,
+} from './helpers/semantic-audit-fixture.mjs';
 import {
   DatasetIntegrityError,
   validateDatasetRecords,
@@ -72,6 +75,26 @@ test('the shared audit rejects placeholder glosses for any batch', async () => {
   );
 });
 
+test('the shared audit rejects duplicate lemmas and search forms without a batch exception', () => {
+  const records = ['w904', 'w905'].map((id) => ({
+    record: {
+      id,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: id,
+      lemma: '중복표제어',
+      search_forms: ['중복표제어'],
+      senses: [{ id: `${id}-s1`, pos: 'noun', gloss: '서로 겹치는 표제어 의미.' }],
+    },
+    source: 'synthetic',
+  }));
+  const audit = auditCanonicalLexicalQuality(records, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings.map(({ code }) => code).sort(),
+    ['LEXICAL_DUPLICATE_LEMMA', 'LEXICAL_DUPLICATE_SEARCH_FORM'],
+  );
+});
+
 test('record-type and POS classification are common admission invariants', () => {
   const expressionWithEntryPos = {
     id: 'w903',
@@ -109,6 +132,13 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
   }];
   const baseRecordInfos = baseRecords.map((record) => ({ record, source: 'base' }));
   const baseAudit = makeSemanticAudit(baseRecordInfos);
+  const invalidProductionState = makeProductionState({
+    batchId: 'future-batch-2040',
+    candidateRecords: [invalid],
+    baseRecords: baseRecordInfos,
+    prospectiveRecords: baseRecordInfos,
+    semanticAudit: baseAudit,
+  });
   assert.throws(
     () => validateLexicalAddition({
       batchId: 'future-batch-2040',
@@ -116,6 +146,8 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
       baseRecords: baseRecordInfos,
       prospectiveRecords: baseRecordInfos,
       semanticAudit: baseAudit,
+      productionState: invalidProductionState.state,
+      productionStateSources: invalidProductionState.sources,
     }),
     /distinct writer domains/u,
   );
@@ -136,6 +168,14 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
     ...baseRecordInfos,
     { record: admitted, source: 'prospective' },
   ];
+  const validProductionState = makeProductionState({
+    batchId: 'future-batch-2040',
+    candidateRecords: [valid],
+    reviewedRecords: [admitted],
+    baseRecords: baseRecordInfos,
+    prospectiveRecords: prospectiveRecordInfos,
+    semanticAudit: makeSemanticAudit(prospectiveRecordInfos),
+  });
   const result = validateLexicalAddition({
     batchId: 'future-batch-2040',
     candidateRecords: [valid],
@@ -143,6 +183,8 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
     baseRecords: baseRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
     semanticAudit: makeSemanticAudit(prospectiveRecordInfos),
+    productionState: validProductionState.state,
+    productionStateSources: validProductionState.sources,
   });
   assert.equal(result.pipeline_version, 'lexical-admission-v1');
   assert.equal(result.batch_id, 'future-batch-2040');
@@ -170,6 +212,13 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
     senses: [{ id: 'w779-s1', pos: 'noun', gloss: '새 의미' }],
   };
   const partial = [{ record: newRecord, source: 'partial' }];
+  const partialProductionState = makeProductionState({
+    batchId: 'future-batch-2041',
+    reviewedRecords: [newRecord],
+    baseRecords: baseRecordInfos,
+    prospectiveRecords: partial,
+    semanticAudit: makeSemanticAudit(partial),
+  });
   assert.throws(
     () => validateLexicalAddition({
       batchId: 'future-batch-2041',
@@ -177,6 +226,8 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
       baseRecords,
       prospectiveRecords: partial,
       semanticAudit: makeSemanticAudit(partial),
+      productionState: partialProductionState.state,
+      productionStateSources: partialProductionState.sources,
     }),
     /missing base record w001|does not preserve base record w001/u,
   );
@@ -267,6 +318,15 @@ test('the shared production review catches 과/와 and connector-free merged dom
     };
     const baseInfos = baseRecords.map((record) => ({ record, source: 'base' }));
     const prospectiveInfos = [...baseInfos, { record: reviewedRecord, source: 'prospective' }];
+    const semanticAudit = makeSemanticAudit(prospectiveInfos);
+    const productionState = makeProductionState({
+      batchId: `future-batch-204${index + 2}`,
+      candidateRecords: [candidateRecord],
+      reviewedRecords: [reviewedRecord],
+      baseRecords: baseInfos,
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit,
+    });
     assert.throws(
       () => validateLexicalProduction({
         batchId: `future-batch-204${index + 2}`,
@@ -284,28 +344,9 @@ test('the shared production review catches 과/와 and connector-free merged dom
         }],
         baseRecords: baseInfos,
         prospectiveRecords: prospectiveInfos,
-        semanticAudit: makeSemanticAudit(prospectiveInfos),
-        stageEvidence: {
-          candidate_intake: {
-            status: 'complete',
-            source_path: '/tmp/future-proposal.json',
-            source_bytes: Buffer.from('future proposal'),
-            source_sha256: createHash('sha256').update('future proposal').digest('hex'),
-          },
-          semantic_review: {
-            status: 'complete',
-            source_path: '/tmp/future-review.json',
-            source_bytes: Buffer.from('future review'),
-            source_sha256: createHash('sha256').update('future review').digest('hex'),
-          },
-          selection: {
-            status: 'complete',
-            source_path: '/tmp/future-selection.json',
-            source_bytes: Buffer.from('future selection'),
-            source_sha256: createHash('sha256').update('future selection').digest('hex'),
-            policy: 'shared',
-          },
-        },
+        semanticAudit,
+        productionState: productionState.state,
+        productionStateSources: productionState.sources,
         catalogCount: 1,
         expectedSelectedCount: 1,
       }),
@@ -410,12 +451,21 @@ test('reviewed existing-record correction passes while an unreviewed replacement
     rationale: 'w903 was explicitly corrected and re-reviewed before replacement.',
   }];
   const audit = makeSemanticAudit(prospectiveInfos, { changes });
+  const correctionProductionState = makeProductionState({
+    batchId: 'future-batch-correction',
+    reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+  });
   const admitted = validateLexicalAddition({
     batchId: 'future-batch-correction',
     baseRecords: baseInfos,
     reviewedRecords: [{ record: corrected, decision: 'corrected' }],
     prospectiveRecords: prospectiveInfos,
     semanticAudit: audit,
+    productionState: correctionProductionState.state,
+    productionStateSources: correctionProductionState.sources,
   });
   assert.equal(admitted.reviewed_count, 1);
   assert.throws(
@@ -425,6 +475,11 @@ test('reviewed existing-record correction passes while an unreviewed replacement
       reviewedRecords: [],
       prospectiveRecords: prospectiveInfos,
       semanticAudit: audit,
+      productionState: {
+        ...correctionProductionState.state,
+        batch_id: 'future-batch-unreviewed-correction',
+      },
+      productionStateSources: correctionProductionState.sources,
     }),
     /does not preserve base record w903|corrected/u,
   );

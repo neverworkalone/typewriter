@@ -13,6 +13,10 @@ import { validateBatch } from '../scripts/batch/validate-batch.mjs';
 import { validateExpansionStage } from '../scripts/batch/validate-m5-8-process.mjs';
 import { validateWaveARelationScreen } from '../scripts/batch/validate-wave-a-relation-screen.mjs';
 import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from '../scripts/batch/lexical-production-state.mjs';
+import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
@@ -199,13 +203,60 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
     const outputPath = path.join(temporaryDirectory, 'import.jsonl');
     const waveRecords = await readFile(CANONICAL_IMPORT_PATH, 'utf8');
     await writeFile(stagedRecordsPath, waveRecords, 'utf8');
+    const historicalCanonical = await readCanonicalRecords(HISTORICAL_CANONICAL_DIRECTORY);
+    const staged = await readCanonicalRecords(CANONICAL_IMPORT_PATH);
     const semanticAudit = await writeSemanticAuditFixture(
       semanticAuditPath,
-      canonical.records,
+      [...historicalCanonical.records, ...staged.records],
       { artifactId: 'm5-10-wave-a-test-semantic-audit' },
     );
     const validatedManifest = structuredClone(manifest);
     validatedManifest.review.semantic_audit_sha256 = semanticAudit.sha256;
+    const stagedBytes = Buffer.from(waveRecords, 'utf8');
+    const semanticAuditBytes = await readFile(semanticAuditPath);
+    const prospectiveRecords = [
+      ...historicalCanonical.records,
+      ...staged.records,
+    ].map(({ record }) => record);
+    const productionStages = {
+      candidate_intake: {
+        status: 'complete',
+        source_path: stagedRecordsPath,
+        source_bytes: stagedBytes,
+      },
+      semantic_review: {
+        status: 'complete',
+        source_path: semanticAuditPath,
+        source_bytes: semanticAuditBytes,
+      },
+      selection: {
+        status: 'complete',
+        source_path: stagedRecordsPath,
+        source_bytes: stagedBytes,
+        policy: 'historical-wave-a-selection',
+      },
+      prospective_canonical: {
+        status: 'complete',
+        source_path: 'wave-a:prospective-canonical',
+        source_bytes: productionSourceBytes(prospectiveRecords),
+      },
+      audit: {
+        status: 'complete',
+        source_path: semanticAuditPath,
+        source_bytes: semanticAuditBytes,
+      },
+      admission: {
+        status: 'complete',
+        source_path: stagedRecordsPath,
+        source_bytes: stagedBytes,
+        decision: 'admit',
+        authorization_ref: 'historical-wave-a-explicit-admission',
+      },
+    };
+    validatedManifest.production_state = createLexicalProductionState({
+      batchId: validatedManifest.batch_id,
+      stages: productionStages,
+    });
     await writeFile(validatedManifestPath, `${JSON.stringify(validatedManifest, null, 2)}\n`, 'utf8');
 
     const summary = await validateBatch({

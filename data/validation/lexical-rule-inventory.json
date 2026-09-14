@@ -1,0 +1,324 @@
+{
+  "schema_version": "1",
+  "inventory_id": "typewriter-lexical-rule-inventory",
+  "revision": "m5-11",
+  "scope": {
+    "from": "M2",
+    "through": "PR #120",
+    "purpose": "Classify lexical production, validation, audit, admission, and regression rules before M5-11B completion."
+  },
+  "rules": [
+    {
+      "id": "canonical-record-schema",
+      "title": "Canonical JSONL record schema",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "schema/canonical-record.schema.json",
+        "symbol": "canonical record schema"
+      },
+      "historical_sources": ["M2"],
+      "applies_to": "every canonical and prospective record",
+      "disposition": "retained-common"
+    },
+    {
+      "id": "canonical-jsonl-read-and-normalization",
+      "title": "Canonical JSONL parsing and normalized source records",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/canonical-jsonl.mjs",
+        "symbol": "readCanonicalRecords"
+      },
+      "historical_sources": ["M2", "normalization"],
+      "applies_to": "every canonical input and clean-checkout validation",
+      "disposition": "retained-common"
+    },
+    {
+      "id": "dataset-reference-and-relation-integrity",
+      "title": "Record, sense, reference-closure, and relation integrity",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/dataset-integrity.mjs",
+        "symbol": "validateDatasetRecords"
+      },
+      "historical_sources": ["M2", "M5 relation admission"],
+      "applies_to": "every canonical and prospective dataset",
+      "disposition": "retained-common"
+    },
+    {
+      "id": "lexical-identity-and-search-forms",
+      "title": "Lemma, normalized search-form, record-type, and POS identity",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/lexical-quality.mjs",
+        "symbol": "validateLexicalRecord and auditCanonicalLexicalQuality"
+      },
+      "historical_sources": ["M2", "M4", "M5"],
+      "applies_to": "every existing, corrected, and newly proposed record",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "writer-facing-gloss-quality",
+      "title": "Atomic, useful, non-placeholder gloss quality",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/lexical-quality.mjs",
+        "symbol": "inspectGlossQuality and recordQualityFindings"
+      },
+      "historical_sources": ["M2", "M5 editorial review"],
+      "applies_to": "every sense in canonical and prospective data",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "writer-domain-boundaries",
+      "title": "Sensory, affective, state, action, literal, and figurative boundaries",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/lexical-quality.mjs",
+        "symbol": "inspectWriterDomainEvidence and inspectGlossConnectors"
+      },
+      "historical_sources": ["M5 sense preflight", "M5-11 semantic review"],
+      "applies_to": "every sense regardless of batch or record identifier",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "semantic-audit-coverage-and-binding",
+      "title": "Source-bound per-sense semantic audit coverage",
+      "classification": "admission invariant",
+      "implementation": {
+        "path": "scripts/validate/semantic-audit.mjs",
+        "symbol": "validateSemanticAuditCoverage and validateSemanticReviewArtifact"
+      },
+      "historical_sources": ["M5-10", "M5-11"],
+      "applies_to": "every admission and corrected canonical snapshot",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "canonical-inventory-closure",
+      "title": "Canonical-to-inventory closure and planned-start accounting",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/target-inventory.mjs",
+        "symbol": "validateTargetInventory"
+      },
+      "historical_sources": ["M5 inventory"],
+      "applies_to": "the full canonical dictionary and its review seed",
+      "disposition": "retained-common"
+    },
+    {
+      "id": "deterministic-sqlite-build",
+      "title": "Canonical JSONL to deterministic SQLite projection",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/build/dictionary.mjs",
+        "symbol": "dictionary build pipeline"
+      },
+      "historical_sources": ["M2", "M4"],
+      "applies_to": "every canonical revision",
+      "disposition": "retained-common"
+    },
+    {
+      "id": "search-product-regressions",
+      "title": "Search and product projection regression contract",
+      "classification": "dictionary-wide invariant",
+      "implementation": {
+        "path": "scripts/validate/search-regressions.mjs",
+        "symbol": "search regression suite"
+      },
+      "historical_sources": ["M4"],
+      "applies_to": "the complete built dictionary and representative writer lookups",
+      "disposition": "retained-common"
+    },
+    {
+      "id": "production-state-transitions",
+      "title": "Shared candidate-to-admission production state machine",
+      "classification": "admission invariant",
+      "implementation": {
+        "path": "scripts/batch/lexical-production-state.mjs",
+        "symbol": "LEXICAL_PRODUCTION_STAGE_IDS and validateLexicalProductionState"
+      },
+      "historical_sources": ["M5-11B"],
+      "applies_to": "generic, historical M5, and future lexical admissions",
+      "disposition": "new-common"
+    },
+    {
+      "id": "production-review-selection-orchestration",
+      "title": "Shared semantic review, decision, selection, and prospective binding",
+      "classification": "admission invariant",
+      "implementation": {
+        "path": "scripts/batch/lexical-production.mjs",
+        "symbol": "validateLexicalProduction"
+      },
+      "historical_sources": ["M5 batch validators", "M5-11B"],
+      "applies_to": "every candidate pool and correction set",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "complete-prospective-admission",
+      "title": "Complete-base, complete-prospective, audit-bound admission gate",
+      "classification": "admission invariant",
+      "implementation": {
+        "path": "scripts/batch/lexical-admission.mjs",
+        "symbol": "validateLexicalAddition"
+      },
+      "historical_sources": ["M5-11A", "M5-11B"],
+      "applies_to": "all new and corrected records before promotion",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "generic-reviewed-batch-integration",
+      "title": "Generic reviewed import uses the shared production and admission gate",
+      "classification": "admission invariant",
+      "implementation": {
+        "path": "scripts/batch/validate-batch.mjs",
+        "symbol": "validateBatch"
+      },
+      "historical_sources": ["M5 reviewed import", "M5-11B"],
+      "applies_to": "any generic batch ID and external reviewed input",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "future-batch-shared-entrypoint",
+      "title": "Future batch configuration is limited to scope and policy around shared production",
+      "classification": "admission invariant",
+      "implementation": {
+        "path": "scripts/batch/import-reviewed-batch.mjs",
+        "symbol": "writeReviewedBatchImport"
+      },
+      "historical_sources": ["M5-11B"],
+      "applies_to": "future reviewed batches without a new lexical validator",
+      "disposition": "consolidated-common"
+    },
+    {
+      "id": "m5-11-scope-count-and-rebase-policy",
+      "title": "M5-11 candidate scope, +500 selection count, reserve, and deterministic IDs",
+      "classification": "batch policy",
+      "implementation": {
+        "path": "scripts/batch/validate-m5-11-admission.mjs",
+        "symbol": "validateM511Admission"
+      },
+      "historical_sources": ["M5-11A"],
+      "applies_to": "M5-11 only",
+      "disposition": "retained-batch-policy"
+    },
+    {
+      "id": "m5-11-timing-and-authorization-policy",
+      "title": "M5-11 measured timing, independent audit, and explicit authorization",
+      "classification": "batch policy",
+      "implementation": {
+        "path": "scripts/batch/timing.mjs",
+        "symbol": "recorder-owned timing contract"
+      },
+      "historical_sources": ["M5-10D", "M5-11A"],
+      "applies_to": "M5-11 only",
+      "disposition": "retained-batch-policy"
+    },
+    {
+      "id": "m5-10a-wave-a2-scope-policy",
+      "title": "Historical Wave A2 scope and chronology policy",
+      "classification": "batch policy",
+      "implementation": {
+        "path": "scripts/batch/validate-m5-10a-wave-a2.mjs",
+        "symbol": "validateWaveA2"
+      },
+      "historical_sources": ["M5-10A"],
+      "applies_to": "historical Wave A2 replay only",
+      "disposition": "retained-historical-policy"
+    },
+    {
+      "id": "m5-10-wave-b-scope-policy",
+      "title": "Historical Wave B scope and previous-stage chain policy",
+      "classification": "batch policy",
+      "implementation": {
+        "path": "scripts/batch/validate-m5-10-wave-b.mjs",
+        "symbol": "validateWaveB"
+      },
+      "historical_sources": ["M5-10"],
+      "applies_to": "historical Wave B replay only",
+      "disposition": "retained-historical-policy"
+    },
+    {
+      "id": "m5-8-ladder-result-assertions",
+      "title": "M5-8 ladder counts, historical sense cases, and relation cases",
+      "classification": "historical assertion",
+      "implementation": {
+        "path": "scripts/batch/validate-m5-8-process.mjs",
+        "symbol": "validateM58Process"
+      },
+      "historical_sources": ["M5-8"],
+      "applies_to": "historical result preservation; not a future lexical quality exemption",
+      "disposition": "retained-history-only"
+    },
+    {
+      "id": "m5-9-repair-result-assertions",
+      "title": "M5-9 repair authorization and relation regression results",
+      "classification": "historical assertion",
+      "implementation": {
+        "path": "scripts/batch/validate-m5-9-repair.mjs",
+        "symbol": "validateM59Repair"
+      },
+      "historical_sources": ["M5-9"],
+      "applies_to": "historical result preservation",
+      "disposition": "retained-history-only"
+    },
+    {
+      "id": "m5-10d-recovery-chain-assertions",
+      "title": "M5-10D workload, recovery, and authorization chain results",
+      "classification": "historical assertion",
+      "implementation": {
+        "path": "scripts/batch/validate-m5-10d-recovery.mjs",
+        "symbol": "historical recovery validation"
+      },
+      "historical_sources": ["M5-10D"],
+      "applies_to": "historical result preservation",
+      "disposition": "retained-history-only"
+    },
+    {
+      "id": "m5-11-base-snapshot-assertion",
+      "title": "M5-11 retained 778-start base snapshot",
+      "classification": "historical assertion",
+      "implementation": {
+        "path": "scripts/batch/build-m5-11-expansion.mjs",
+        "symbol": "BASE_CANONICAL_SHA256 and assertBaseCanonical"
+      },
+      "historical_sources": ["PR #120", "M5-11A"],
+      "applies_to": "M5-11 reproducibility only",
+      "disposition": "retained-history-only"
+    },
+    {
+      "id": "legacy-batch-local-lexical-quality-forks",
+      "title": "Per-batch copies of dictionary-wide lexical quality rules",
+      "classification": "obsolete/duplicate",
+      "implementation": {
+        "path": "none",
+        "symbol": "removed in favor of lexical-quality.mjs"
+      },
+      "historical_sources": ["M5 batch review validators"],
+      "applies_to": "no active path",
+      "disposition": "forbidden; use the shared lexical-quality contract"
+    },
+    {
+      "id": "legacy-direct-canonical-append",
+      "title": "Direct canonical append without complete prospective audit",
+      "classification": "obsolete/duplicate",
+      "implementation": {
+        "path": "none",
+        "symbol": "forbidden by lexical-admission and promotion boundaries"
+      },
+      "historical_sources": ["pre-M5 import practice"],
+      "applies_to": "no active path",
+      "disposition": "forbidden; promotion must consume an admitted prospective dataset"
+    },
+    {
+      "id": "legacy-self-declared-semantic-pass",
+      "title": "Self-declared semantic pass without per-sense source-bound evidence",
+      "classification": "obsolete/duplicate",
+      "implementation": {
+        "path": "none",
+        "symbol": "replaced by semantic-audit.mjs review_basis"
+      },
+      "historical_sources": ["pre-PR #120 audit artifacts"],
+      "applies_to": "no active path",
+      "disposition": "forbidden; deterministic coverage cannot manufacture semantic decisions"
+    }
+  ]
+}

@@ -55,6 +55,10 @@ import {
 import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from './lexical-production-state.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
 
@@ -122,6 +126,74 @@ function requireString(value, label) {
 function requireArray(value, label) {
   if (!Array.isArray(value)) fail(`${label} must be an array`, 'ARTIFACT_SHAPE_ERROR');
   return value;
+}
+
+function createM511ProductionEvidence({
+  batchId = M5_11_BATCH_ID,
+  baseRecords = [],
+  importedRecords = [],
+  proposalSource,
+  editorialSource,
+  semanticAuditSource,
+  admissionSource,
+} = {}) {
+  const recordValue = (recordInfo) => recordInfo?.record ?? recordInfo;
+  const prospectiveRecords = [
+    ...baseRecords.map(recordValue),
+    ...importedRecords.map(recordValue),
+  ];
+  const prospectiveBytes = productionSourceBytes(prospectiveRecords);
+  const finalSource = admissionSource ?? editorialSource;
+  if (!proposalSource || !editorialSource || !semanticAuditSource || !finalSource) {
+    fail('M5-11 production state requires source-bound proposal, editorial, semantic-audit, and admission artifacts', 'MISSING_PRODUCTION_STATE');
+  }
+  const stages = {
+    candidate_intake: {
+      status: 'complete',
+      source_path: proposalSource.path,
+      source_bytes: proposalSource.bytes,
+      source_sha256: proposalSource.sha256,
+    },
+    semantic_review: {
+      status: 'complete',
+      source_path: editorialSource.path,
+      source_bytes: editorialSource.bytes,
+      source_sha256: editorialSource.sha256,
+    },
+    selection: {
+      status: 'complete',
+      source_path: editorialSource.path,
+      source_bytes: editorialSource.bytes,
+      source_sha256: editorialSource.sha256,
+      policy: 'semantic-quality-and-coverage',
+    },
+    prospective_canonical: {
+      status: 'complete',
+      source_path: 'external:prospective-canonical-record-values',
+      source_bytes: prospectiveBytes,
+      source_sha256: sha256(prospectiveBytes),
+    },
+    audit: {
+      status: 'complete',
+      source_path: semanticAuditSource.path,
+      source_bytes: semanticAuditSource.bytes,
+      source_sha256: semanticAuditSource.sha256,
+    },
+    admission: {
+      status: 'complete',
+      source_path: finalSource.path,
+      source_bytes: finalSource.bytes,
+      source_sha256: finalSource.sha256,
+      decision: 'admit',
+      authorization_ref: finalSource.path,
+    },
+  };
+  return {
+    state: createLexicalProductionState({ batchId, stages }),
+    sources: Object.fromEntries(
+      Object.entries(stages).map(([stageId, stage]) => [stageId, stage.source_bytes]),
+    ),
+  };
 }
 
 function requireFiniteNumber(value, label) {
@@ -1124,7 +1196,7 @@ function validateImportedRecords(
   baseRecords,
   expectedImportedCount,
   checkPilotCompleteness,
-  { semanticAudit } = {},
+  { semanticAudit, productionState, productionStateSources } = {},
 ) {
   if (importedRecords.length !== expectedImportedCount) {
     fail(`reviewed import must contain exactly ${expectedImportedCount} records`, 'CANONICAL_COUNT_MISMATCH');
@@ -1165,6 +1237,8 @@ function validateImportedRecords(
     reviewedRecords: importedRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
     semanticAudit,
+    productionState,
+    productionStateSources,
     checkPilotCompleteness,
     candidateLabel: 'M5-11 candidate records',
     reviewedLabel: 'M5-11 reviewed records',
@@ -1183,6 +1257,8 @@ function validateM511SharedProduction({
   expectedImportedCount,
   checkPilotCompleteness,
   semanticAudit,
+  productionState,
+  productionStateSources,
 } = {}) {
   const candidateRecords = editorialResult.proposalRows.map(({ candidate_record: candidateRecord }, index) => ({
     record: candidateRecord,
@@ -1213,28 +1289,9 @@ function validateM511SharedProduction({
     reviews,
     baseRecords: baseRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
-    semanticAudit,
-    stageEvidence: {
-      candidate_intake: {
-        status: 'complete',
-        source_path: proposalSource.path,
-        source_bytes: proposalSource.bytes,
-        source_sha256: proposalSource.sha256,
-      },
-      semantic_review: {
-        status: 'complete',
-        source_path: editorialSource.path,
-        source_bytes: editorialSource.bytes,
-        source_sha256: editorialSource.sha256,
-      },
-      selection: {
-        status: 'complete',
-        source_path: editorialSource.path,
-        source_bytes: editorialSource.bytes,
-        source_sha256: editorialSource.sha256,
-        policy: 'semantic-quality-and-coverage',
-      },
-    },
+      semanticAudit,
+      productionState,
+      productionStateSources,
     checkPilotCompleteness,
     catalogCount: catalog.length,
     expectedSelectedCount: expectedImportedCount,
@@ -1535,6 +1592,8 @@ export async function runM511ProspectiveVerification({
   baseCanonicalDirectory,
   importedRecords,
   semanticAudit,
+  productionState,
+  productionStateSources,
   expectedFinalSummary,
   checkPilotCompleteness = true,
   semanticSummary = null,
@@ -1562,6 +1621,8 @@ export async function runM511ProspectiveVerification({
       baseRecords: baseRecordInfos,
       prospectiveRecords: canonical.records,
       semanticAudit,
+      productionState,
+      productionStateSources,
       checkPilotCompleteness,
       prospectiveLabel: 'M5-11 prospective verification canonical records',
     });
@@ -1755,6 +1816,9 @@ export function deriveM511AdmissionGate({
   machineVerification,
   expectedCandidatePoolCount = 550,
   semanticAudit,
+  productionState,
+  productionStateSources,
+  authorizationSource,
 } = {}) {
   if (semanticAudit === undefined) {
     fail('M5-11 admission gate requires the pre-written prospective semantic audit', 'MISSING_SEMANTIC_AUDIT');
@@ -1781,6 +1845,17 @@ export function deriveM511AdmissionGate({
     })
     : undefined;
   const importedRecords = editorialResult.importedRecords;
+  const productionEvidence = productionState
+    ? { state: productionState, sources: productionStateSources }
+    : createM511ProductionEvidence({
+      batchId: M5_11_BATCH_ID,
+      baseRecords,
+      importedRecords,
+      proposalSource,
+      editorialSource,
+      semanticAuditSource,
+      admissionSource: authorizationSource ?? reviewedImportSource,
+    });
   const decisions = editorialResult.decisionCounts;
   const importedInventoryIds = editorialResult.decisions
     .filter(({ record }) => record)
@@ -1820,6 +1895,8 @@ export function deriveM511AdmissionGate({
       expectedImportedCount,
       checkPilotCompleteness,
       semanticAudit,
+      productionState: productionEvidence.state,
+      productionStateSources: productionEvidence.sources,
     })
     : null;
   const placeholderGlossCount = validateImportedRecords(
@@ -1827,7 +1904,11 @@ export function deriveM511AdmissionGate({
     baseRecords,
     expectedImportedCount,
     checkPilotCompleteness,
-    { semanticAudit },
+    {
+      semanticAudit,
+      productionState: productionEvidence.state,
+      productionStateSources: productionEvidence.sources,
+    },
   );
   if (finalSummary.start_count !== expectedCumulativeStartCount) {
     fail(`final canonical start count must be ${expectedCumulativeStartCount}`, 'CANONICAL_COUNT_MISMATCH');
@@ -2007,6 +2088,7 @@ export function deriveM511AdmissionGate({
         candidate_count: sharedProduction.production.candidate_count,
         selected_count: sharedProduction.production.selected_count,
         review_count: sharedProduction.production.review_count,
+        production_state: productionEvidence.state,
         semantic_audit: sharedProduction.production.admission.semantic_audit,
       },
     } : {}),
@@ -2033,6 +2115,7 @@ export function deriveM511AdmissionGate({
     audit: auditResult,
     verification: verificationResult,
     semantic_audit: semanticAudit,
+    production_state: productionEvidence.state,
     metrics,
     gate,
     gate_evidence: gateEvidence,
@@ -2227,12 +2310,25 @@ export async function validateM511Admission({
     expectedImportedCount,
   });
   const previewBaseRecords = baseCanonical.records.map(recordOf);
+  const productionEvidence = createM511ProductionEvidence({
+    batchId: M5_11_BATCH_ID,
+    baseRecords: previewBaseRecords,
+    importedRecords: editorialPreview.importedRecords,
+    proposalSource,
+    editorialSource,
+    semanticAuditSource,
+    admissionSource: authorizationSource,
+  });
   validateImportedRecords(
     editorialPreview.importedRecords,
     previewBaseRecords,
     expectedImportedCount,
     checkPilotCompleteness,
-    { semanticAudit: semanticAuditSource.value },
+    {
+      semanticAudit: semanticAuditSource.value,
+      productionState: productionEvidence.state,
+      productionStateSources: productionEvidence.sources,
+    },
   );
   const previewFinalSummary = canonicalSummary([
     ...previewBaseRecords,
@@ -2242,6 +2338,8 @@ export async function validateM511Admission({
     baseCanonicalDirectory,
     importedRecords: editorialPreview.importedRecords,
     semanticAudit: semanticAuditSource.value,
+    productionState: productionEvidence.state,
+    productionStateSources: productionEvidence.sources,
     expectedFinalSummary: previewFinalSummary,
     checkPilotCompleteness,
     semanticSummary: editorialPreview.semantic,
@@ -2273,6 +2371,9 @@ export async function validateM511Admission({
     semanticAudit: semanticAuditSource.value,
     semanticAuditSource,
     reviewedImportSource,
+    productionState: productionEvidence.state,
+    productionStateSources: productionEvidence.sources,
+    authorizationSource,
     baseRecords: baseCanonical.records.map(recordOf),
     baseSummary,
     expectedImportedCount,

@@ -8,9 +8,65 @@ import {
   sha256Json,
 } from '../../scripts/validate/semantic-audit.mjs';
 import { inspectWriterDomainEvidence } from '../../scripts/validate/lexical-quality.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from '../../scripts/batch/lexical-production-state.mjs';
 
 function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
+}
+
+export function makeProductionState({
+  batchId = 'test-production-batch',
+  candidateRecords = [],
+  reviewedRecords = [],
+  baseRecords = [],
+  prospectiveRecords = [],
+  semanticAudit = {},
+  artifactId = 'test-production-state',
+} = {}) {
+  const candidateValues = candidateRecords.map(recordOf);
+  const reviewedValues = reviewedRecords.map(recordOf);
+  const baseValues = baseRecords.map(recordOf);
+  const prospectiveValues = prospectiveRecords.length > 0
+    ? prospectiveRecords.map(recordOf)
+    : [...baseValues, ...reviewedValues];
+  const sources = {
+    candidate_intake: {
+      source_path: `${artifactId}:candidate-intake`,
+      source_bytes: productionSourceBytes(candidateValues),
+    },
+    semantic_review: {
+      source_path: `${artifactId}:semantic-review`,
+      source_bytes: productionSourceBytes(semanticAudit),
+    },
+    selection: {
+      source_path: `${artifactId}:selection`,
+      source_bytes: productionSourceBytes(reviewedValues),
+      policy: 'test-shared-selection',
+    },
+    prospective_canonical: {
+      source_path: `${artifactId}:prospective-canonical`,
+      source_bytes: productionSourceBytes(prospectiveValues),
+    },
+    audit: {
+      source_path: `${artifactId}:audit`,
+      source_bytes: productionSourceBytes(semanticAudit),
+    },
+    admission: {
+      source_path: `${artifactId}:admission`,
+      source_bytes: productionSourceBytes({ batch_id: batchId, decision: 'admit', record_ids: prospectiveValues.map(({ id }) => id) }),
+      decision: 'admit',
+      authorization_ref: `${artifactId}:explicit-admission`,
+    },
+  };
+  return {
+    state: createLexicalProductionState({ batchId, stages: sources }),
+    sources: Object.fromEntries(
+      Object.entries(sources).map(([stageId, stage]) => [stageId, stage.source_bytes]),
+    ),
+  };
 }
 
 export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'test-semantic-review' } = {}) {
@@ -24,6 +80,28 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
     artifact_id: artifactId,
     scope: 'complete-canonical',
     review_mode: 'agent-authored-decision',
+    review_pass: {
+      id: `${artifactId}-pass`,
+      status: 'complete',
+      reviewer: 'test-agent',
+      review_mode: 'agent-authored-decision',
+      method: 'record-by-record fixture semantic re-audit with source-bound facts',
+      ruleset_version: 'lexical-quality-v1',
+      record_count: records.length,
+      sense_count: records.reduce((sum, record) => sum + record.senses.length, 0),
+      open_finding_count: 0,
+      correction_count: changes.length,
+      correction_history: changes.map((change) => {
+        const record = records.find(({ id }) => id === change.record_id);
+        return {
+          record_id: change.record_id,
+          before_record_sha256: change.base_record_sha256 ?? sha256Json(record),
+          after_record_sha256: change.prospective_record_sha256 ?? sha256Json(record),
+          source_revision: 'test-fixture-base',
+          rationale: change.rationale ?? `${change.record_id} was corrected before the fixture re-audit.`,
+        };
+      }),
+    },
     source: {
       kind: 'canonical-jsonl-record-values',
       canonical_records_sha256: canonicalRecordsSha256(recordInfos),
@@ -75,6 +153,17 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
             ...(relationCount === 0
               ? { no_relation_rationale: `${record.id} ${sense.id} has no relation tuple after review.` }
               : {}),
+          },
+          review_basis: {
+            record_id: record.id,
+            sense_id: sense.id,
+            lemma: record.lemma,
+            gloss_sha256: sha256Json(sense.gloss),
+            observed_domain_axes: domainAxes,
+            pos: sense.pos,
+            record_type: record.record_type,
+            relation_count: relationCount,
+            rationale: `${record.id} ${sense.id} reviewed gloss ${sha256Json(sense.gloss).slice(0, 12)} with its POS, type, boundary, and relation outcome.`,
           },
         };
       }),

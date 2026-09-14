@@ -81,6 +81,9 @@
     "measurement": {
       "$ref": "#/$defs/measurement"
     },
+    "production_state": {
+      "$ref": "#/$defs/productionState"
+    },
     "records": {
       "type": "array",
       "minItems": 1,
@@ -159,6 +162,54 @@
     }
   ],
   "$defs": {
+    "productionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "pipeline_version", "batch_id", "stages"],
+      "properties": {
+        "contract_version": { "const": "lexical-production-state-v1" },
+        "pipeline_version": { "const": "lexical-production-v1" },
+        "batch_id": { "type": "string", "pattern": "\\S" },
+        "stages": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/productionStage" }
+        }
+      }
+    },
+    "productionStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "transition", "source_path", "source_sha256"],
+      "properties": {
+        "id": {
+          "enum": [
+            "candidate_intake",
+            "semantic_review",
+            "selection",
+            "prospective_canonical",
+            "audit",
+            "admission"
+          ]
+        },
+        "status": { "const": "complete" },
+        "transition": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "pattern": "\\S" },
+            "to": { "type": "string", "pattern": "\\S" }
+          }
+        },
+        "source_path": { "type": "string", "pattern": "\\S" },
+        "source_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "policy": { "type": "string", "pattern": "\\S" },
+        "decision": { "const": "admit" },
+        "authorization_ref": { "type": "string", "pattern": "\\S" }
+      }
+    },
     "record": {
       "type": "object",
       "additionalProperties": false,

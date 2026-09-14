@@ -258,6 +258,10 @@ export async function buildArtifacts({
     auditTimingInputSource: { path: relativeSourcePath(auditTimingInputPath), sha256: auditTimingSource.sha256 },
     semanticAuditSource: { path: relativeSourcePath(resolvedSemanticAuditPath), sha256: semanticAuditSource.sha256 },
     reviewedStagingPath: resolvedStagingPath,
+    reviewedStagingBytes: stagedBytes,
+    prospectiveRecords: [...baseCanonical.records, ...staged.records],
+    semanticAuditBytes: semanticAuditSource.bytes,
+    admissionSource: authorizationSource,
   });
   await writeJson(outputPath, manifest);
   const manifestSource = await readJsonSource(outputPath, 'Wave B manifest');

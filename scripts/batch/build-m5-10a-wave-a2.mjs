@@ -20,6 +20,10 @@ import {
   validateA2ProposalStagingDigest,
   validateA2TimingInput,
 } from './validate-m5-10a-wave-a2-inputs.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from './lexical-production-state.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -203,6 +207,11 @@ export function createWaveA2Manifest({
   auditTimingInputSource,
   semanticAuditSource,
   relationDiffSource,
+  reviewedStagingBytes,
+  prospectiveRecords,
+  semanticAuditBytes,
+  editorialInputBytes,
+  productionState,
 } = {}) {
   const editorial = validateA2EditorialInput({ input: editorialInput, canonicalRecords });
   const audit = validateA2AuditInput({
@@ -262,6 +271,54 @@ export function createWaveA2Manifest({
   if (semanticAuditSource) review.semantic_audit_sha256 = semanticAuditSource.sha256;
   if (promotionReady) review.completed_at = editorial.completed_at;
 
+  let sharedProductionState = productionState;
+  if (promotionReady && !sharedProductionState) {
+    if (!reviewedStagingBytes || !prospectiveRecords || !semanticAuditBytes) {
+      const missing = new Error('verified A2 manifest requires the shared production_state sources');
+      missing.code = 'MISSING_PRODUCTION_STATE';
+      throw missing;
+    }
+    const stages = {
+      candidate_intake: {
+        status: 'complete',
+        source_path: 'external:a2-reviewed-staging',
+        source_bytes: reviewedStagingBytes,
+      },
+      semantic_review: {
+        status: 'complete',
+        source_path: semanticAuditSource.path,
+        source_bytes: semanticAuditBytes,
+      },
+      selection: {
+        status: 'complete',
+        source_path: editorialInputSource.path,
+        source_bytes: editorialInputBytes ?? productionSourceBytes(editorialInput),
+        policy: 'wave-a2-reviewed-selection',
+      },
+      prospective_canonical: {
+        status: 'complete',
+        source_path: 'external:a2-prospective-canonical-record-values',
+        source_bytes: productionSourceBytes(prospectiveRecords),
+      },
+      audit: {
+        status: 'complete',
+        source_path: semanticAuditSource.path,
+        source_bytes: semanticAuditBytes,
+      },
+      admission: {
+        status: 'complete',
+        source_path: semanticAuditSource.path,
+        source_bytes: semanticAuditBytes,
+        decision: 'admit',
+        authorization_ref: 'wave-a2-explicit-admission',
+      },
+    };
+    sharedProductionState = createLexicalProductionState({
+      batchId: A2_BATCH_ID,
+      stages,
+    });
+  }
+
   const manifest = {
     schema_version: '1',
     batch_id: A2_BATCH_ID,
@@ -275,6 +332,7 @@ export function createWaveA2Manifest({
     },
     generated_at: editorial.created_at,
     review,
+    ...(sharedProductionState ? { production_state: sharedProductionState } : {}),
     sense_review: {
       status: promotionReady ? editorial.sense_review.status : 'incomplete',
       reviewed_start_count: promotionReady ? editorial.sense_review.reviewed_start_count : 0,
@@ -412,6 +470,11 @@ export async function buildWaveA2Manifest({
         sha256: semanticAuditSource.sha256,
       }
       : undefined,
+    editorialInputBytes: editorialInputSource.bytes,
+    semanticAuditBytes: semanticAuditSource?.bytes,
+    reviewedStagingBytes: stagedRecordsPath ? await readFile(stagedRecordsPath) : undefined,
+    prospectiveRecords: [...canonical.records, ...staged.records].map((recordInfo) => recordInfo.record ?? recordInfo),
+    productionState: undefined,
     relationDiffSource: {
       path: path.relative(repositoryDirectory, relationDiffPath),
       sha256: relationDiffSource.sha256,

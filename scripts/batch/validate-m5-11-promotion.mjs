@@ -14,6 +14,10 @@ import {
   readSemanticAuditArtifact,
 } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from './lexical-production-state.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { evaluateExpansionGate } from './validate-m5-8-process.mjs';
@@ -624,9 +628,10 @@ export async function validateM511Promotion({
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
   const semanticAudit = await readSemanticAuditArtifact(resolvedSemanticAuditPath);
+  const semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
+  const finalRecords = canonical.records.map(({ record }) => record);
   const semanticAuditSource = manifest.sources?.semantic_audit;
   if (semanticAuditSource) {
-    const semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
     if (sha256(semanticAuditBytes) !== semanticAuditSource.sha256) {
       fail('promoted semantic audit digest drifted from the admission source', 'OUTPUT_DIGEST_MISMATCH');
     }
@@ -636,10 +641,55 @@ export async function validateM511Promotion({
     baseRecords: canonical.records,
     prospectiveRecords: canonical.records,
     semanticAudit,
+    productionState: createLexicalProductionState({
+      batchId: manifest.batch_id,
+      stages: {
+        candidate_intake: {
+          status: 'complete',
+          source_path: 'promotion:canonical-source',
+          source_bytes: productionSourceBytes(finalRecords),
+        },
+        semantic_review: {
+          status: 'complete',
+          source_path: 'promotion:semantic-audit',
+          source_bytes: semanticAuditBytes,
+        },
+        selection: {
+          status: 'complete',
+          source_path: 'promotion:gate-evidence',
+          source_bytes: productionSourceBytes(evidence),
+          policy: 'passing-admission-gate',
+        },
+        prospective_canonical: {
+          status: 'complete',
+          source_path: 'promotion:prospective-canonical',
+          source_bytes: productionSourceBytes(finalRecords),
+        },
+        audit: {
+          status: 'complete',
+          source_path: 'promotion:semantic-audit',
+          source_bytes: semanticAuditBytes,
+        },
+        admission: {
+          status: 'complete',
+          source_path: 'promotion:gate-evidence',
+          source_bytes: productionSourceBytes(evidence),
+          decision: 'admit',
+          authorization_ref: 'm5-11-promotion-evidence',
+        },
+      },
+    }),
+    productionStateSources: {
+      candidate_intake: productionSourceBytes(finalRecords),
+      semantic_review: semanticAuditBytes,
+      selection: productionSourceBytes(evidence),
+      prospective_canonical: productionSourceBytes(finalRecords),
+      audit: semanticAuditBytes,
+      admission: productionSourceBytes(evidence),
+    },
     checkPilotCompleteness: true,
     prospectiveLabel: 'M5-11 promoted canonical records',
   });
-  const finalRecords = canonical.records.map(({ record }) => record);
   const finalSummary = canonicalSummary(finalRecords);
   assertSummary(finalSummary, durable.summary, 'canonical promotion output');
 

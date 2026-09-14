@@ -24,6 +24,10 @@ import {
   readTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
 import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
+import {
+  createLexicalProductionState,
+  productionSourceBytes,
+} from '../scripts/batch/lexical-production-state.mjs';
 
 function createManifest() {
   return {
@@ -159,14 +163,61 @@ async function writeFixtureFiles({
       lineNumber: index + 1,
     })),
   ]);
+  const stagedBytes = Buffer.from(
+    records.length > 0
+      ? `${records.map((record) => JSON.stringify(record)).join('\n')}\n`
+      : '',
+    'utf8',
+  );
   const semanticAuditBytes = Buffer.from(`${JSON.stringify(semanticAudit, null, 2)}\n`, 'utf8');
+  const prospectiveValues = [
+    ...canonical.records.map(({ record }) => record),
+    ...records,
+  ];
+  const productionStages = {
+    candidate_intake: {
+      status: 'complete',
+      source_path: stagedRecordsPath,
+      source_bytes: stagedBytes,
+    },
+    semantic_review: {
+      status: 'complete',
+      source_path: semanticAuditPath,
+      source_bytes: semanticAuditBytes,
+    },
+    selection: {
+      status: 'complete',
+      source_path: stagedRecordsPath,
+      source_bytes: stagedBytes,
+      policy: 'fixture-selection',
+    },
+    prospective_canonical: {
+      status: 'complete',
+      source_path: 'fixture:prospective-canonical',
+      source_bytes: productionSourceBytes(prospectiveValues),
+    },
+    audit: {
+      status: 'complete',
+      source_path: semanticAuditPath,
+      source_bytes: semanticAuditBytes,
+    },
+    admission: {
+      status: 'complete',
+      source_path: stagedRecordsPath,
+      source_bytes: stagedBytes,
+      decision: 'admit',
+      authorization_ref: 'fixture-explicit-admission',
+    },
+  };
+  manifest.production_state = createLexicalProductionState({
+    batchId: manifest.batch_id,
+    stages: productionStages,
+  });
   manifest.review.semantic_audit_sha256 = createHash('sha256').update(semanticAuditBytes).digest('hex');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(
     stagedRecordsPath,
-    records.length > 0
-      ? `${records.map((record) => JSON.stringify(record)).join('\n')}\n`
-      : '',
+    stagedBytes,
     'utf8',
   );
   await writeFile(semanticAuditPath, semanticAuditBytes);
@@ -441,6 +492,31 @@ test('rejects incomplete review before reading or importing staged rows', async 
         return true;
       },
     );
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('active generic admission requires shared production state and preserves the canonical base on failure', async () => {
+  const fixture = await createFixture();
+
+  try {
+    const manifest = await readManifest(fixture.manifestPath);
+    delete manifest.production_state;
+    await writeFile(fixture.manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
+
+    await assert.rejects(
+      validateBatch(fixture),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError);
+        assert.equal(error.code, 'MISSING_PRODUCTION_STATE');
+        return true;
+      },
+    );
+
+    const canonical = await readCanonicalRecords(fixture.canonicalDirectory);
+    assert.equal(canonical.records.length, 620);
+    assert.equal(canonical.records.some(({ record }) => record.id === 'w579'), false);
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }

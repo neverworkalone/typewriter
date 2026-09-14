@@ -8,6 +8,7 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
+import { createLexicalProductionState } from './lexical-production-state.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 import {
@@ -195,6 +196,58 @@ export async function buildM511({
     filePath: 'm5-11-frozen-proposal',
     lineNumber: index + 1,
   }));
+  const prospectiveCanonicalBytes = Buffer.from(
+    `${JSON.stringify(combinedRecords.map(({ record }) => record))}\n`,
+    'utf8',
+  );
+  const productionStageEvidence = {
+    candidate_intake: {
+      status: 'complete',
+      source_path: proposalSource.path,
+      source_bytes: proposalSource.bytes,
+      source_sha256: proposalSource.sha256,
+    },
+    semantic_review: {
+      status: 'complete',
+      source_path: editorialSource.path,
+      source_bytes: editorialSource.bytes,
+      source_sha256: editorialSource.sha256,
+    },
+    selection: {
+      status: 'complete',
+      source_path: editorialSource.path,
+      source_bytes: editorialSource.bytes,
+      source_sha256: editorialSource.sha256,
+      policy: 'semantic-quality-and-coverage',
+    },
+    prospective_canonical: {
+      status: 'complete',
+      source_path: 'external:prospective-canonical-record-values',
+      source_bytes: prospectiveCanonicalBytes,
+      source_sha256: sha256(prospectiveCanonicalBytes),
+    },
+    audit: {
+      status: 'complete',
+      source_path: semanticAuditSource.path,
+      source_bytes: semanticAuditSource.bytes,
+      source_sha256: semanticAuditSource.sha256,
+    },
+    admission: {
+      status: 'complete',
+      source_path: editorialSource.path,
+      source_bytes: editorialSource.bytes,
+      source_sha256: editorialSource.sha256,
+      decision: 'admit',
+      authorization_ref: 'M5-11 reviewed-import gate; explicit promotion remains separate',
+    },
+  };
+  const productionStageSources = Object.fromEntries(
+    Object.entries(productionStageEvidence).map(([stageId, stage]) => [stageId, stage.source_bytes]),
+  );
+  const productionState = createLexicalProductionState({
+    batchId: M5_11_BATCH_ID,
+    stages: productionStageEvidence,
+  });
   if (editorial.semantic) {
     validateLexicalProduction({
       batchId: M5_11_BATCH_ID,
@@ -214,27 +267,9 @@ export async function buildM511({
       baseRecords: canonical.records,
       prospectiveRecords: combinedRecords,
       semanticAudit,
-      stageEvidence: {
-        candidate_intake: {
-          status: 'complete',
-          source_path: proposalSource.path,
-          source_bytes: proposalSource.bytes,
-          source_sha256: proposalSource.sha256,
-        },
-        semantic_review: {
-          status: 'complete',
-          source_path: editorialSource.path,
-          source_bytes: editorialSource.bytes,
-          source_sha256: editorialSource.sha256,
-        },
-        selection: {
-          status: 'complete',
-          source_path: editorialSource.path,
-          source_bytes: editorialSource.bytes,
-          source_sha256: editorialSource.sha256,
-          policy: 'semantic-quality-and-coverage',
-        },
-      },
+      stageEvidence: productionStageEvidence,
+      productionState,
+      productionStateSources: productionStageSources,
       checkPilotCompleteness: true,
       catalogCount: M5_11_CATALOG.length,
       expectedSelectedCount: IMPORTED_RECORD_COUNT,
@@ -254,6 +289,8 @@ export async function buildM511({
     })),
     prospectiveRecords: combinedRecords,
     semanticAudit,
+    productionState,
+    productionStateSources: productionStageSources,
     checkPilotCompleteness: true,
     reviewedLabel: 'M5-11 reviewed records',
     prospectiveLabel: 'M5-11 prospective canonical records',
