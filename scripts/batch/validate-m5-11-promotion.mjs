@@ -635,6 +635,21 @@ export async function validateM511Promotion({
     if (sha256(semanticAuditBytes) !== semanticAuditSource.sha256) {
       fail('promoted semantic audit digest drifted from the admission source', 'OUTPUT_DIGEST_MISMATCH');
     }
+    const completeCanonicalReview = evidence.verification?.machine_check_evidence?.['semantic-quality']
+      ?.complete_canonical_review;
+    const reviewPass = semanticAudit.review?.review_pass;
+    if (!completeCanonicalReview || !reviewPass
+      || completeCanonicalReview.review_sha256 !== sha256Json(semanticAudit.review)
+      || completeCanonicalReview.review_pass_id !== reviewPass.id
+      || completeCanonicalReview.status !== reviewPass.status
+      || completeCanonicalReview.record_count !== reviewPass.record_count
+      || completeCanonicalReview.sense_count !== reviewPass.sense_count
+      || completeCanonicalReview.open_finding_count !== reviewPass.open_finding_count
+      || completeCanonicalReview.correction_count !== reviewPass.correction_count
+      || completeCanonicalReview.boundary_decision_source_version
+        !== reviewPass.boundary_decision_source_version) {
+      fail('complete canonical semantic review evidence drifted from the bound audit', 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+    }
   }
   validateLexicalAddition({
     batchId: manifest.batch_id,

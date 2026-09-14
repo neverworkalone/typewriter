@@ -8,6 +8,7 @@ import {
 } from './canonical-jsonl.mjs';
 import {
   DEFAULT_SEMANTIC_AUDIT_PATH,
+  DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH,
   DEFAULT_SEMANTIC_COVERAGE_PATH,
   DEFAULT_SEMANTIC_REVIEW_PATH,
   SEMANTIC_BOUNDARY_METHOD,
@@ -16,7 +17,7 @@ import {
   assembleSemanticAuditArtifact,
   buildSemanticCoverageArtifact,
   canonicalRecordsSha256,
-  inspectSenseBoundaryPairs,
+  SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
   sha256Json,
 } from './semantic-audit.mjs';
 import { inspectWriterDomainEvidence } from './lexical-quality.mjs';
@@ -25,6 +26,30 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
 function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
+}
+
+function bindPairwiseRationale(record, pairwise) {
+  return pairwise.map((item) => {
+    const leftGlossSha256 = item.left_gloss_sha256;
+    const rightGlossSha256 = item.right_gloss_sha256;
+    const requiredEvidence = [
+      record.id,
+      item.left_sense_id,
+      item.right_sense_id,
+      leftGlossSha256?.slice(0, 12),
+      rightGlossSha256?.slice(0, 12),
+    ];
+    if (requiredEvidence.every((fragment) => fragment && item.rationale?.includes(fragment))) {
+      return item;
+    }
+    const prefix = item.rationale?.trim();
+    const evidence = `reviewed sense pair ${item.left_sense_id}/${item.right_sense_id} `
+      + `with gloss evidence ${leftGlossSha256?.slice(0, 12)} and ${rightGlossSha256?.slice(0, 12)}`;
+    return {
+      ...item,
+      rationale: `${prefix ? `${prefix} ` : ''}${record.id} ${evidence}.`,
+    };
+  });
 }
 
 function relationCoverage(sense, coverageSense) {
@@ -42,15 +67,13 @@ function relationCoverage(sense, coverageSense) {
   };
 }
 
-function boundaryReview(record, artifactId) {
-  const pairs = inspectSenseBoundaryPairs(record);
-  const domainAxes = [...new Set(
-    record.senses.flatMap((sense) => inspectWriterDomainEvidence(sense.gloss).axes),
-  )];
-  const decision = pairs.length === 0 ? 'retain' : 'split';
-  const classification = decision === 'retain'
-    ? 'atomic'
-    : domainAxes.length > 1 ? 'coordinated' : 'separated';
+function boundaryReview(record, artifactId, decisionSource) {
+  const authored = decisionSource.records.find(({ record_id: recordId }) => recordId === record.id);
+  if (!authored) throw new Error(`boundary decision source is missing ${record.id}`);
+  const expectedSenseIds = record.senses.map(({ id }) => id);
+  if (JSON.stringify(authored.sense_ids ?? expectedSenseIds) !== JSON.stringify(expectedSenseIds)) {
+    throw new Error(`boundary decision source sense coverage drifted for ${record.id}`);
+  }
   const reviewId = `${artifactId}:${record.id}:boundary`;
   return {
     status: 'pass',
@@ -58,12 +81,13 @@ function boundaryReview(record, artifactId) {
     method: SEMANTIC_BOUNDARY_METHOD,
     independence: {
       independent_of_sense_count: true,
-      source: 'separately-authored-gloss-and-usage-evidence',
-      inspected_fields: ['gloss', 'writer_domain_axes', 'pairwise_shared_and_distinctive_tokens'],
+      source: 'separately-authored-boundary-decision-source',
+      decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
+      inspected_fields: ['gloss', 'writer-facing-usage', 'pairwise-authored-decision'],
     },
-    decision,
-    classification,
-    reviewed_sense_ids: record.senses.map(({ id }) => id),
+    decision: authored.decision,
+    classification: authored.classification,
+    reviewed_sense_ids: expectedSenseIds,
     evidence: record.senses.map((sense) => {
       const evidence = inspectWriterDomainEvidence(sense.gloss);
       const glossSha256 = sha256Json(sense.gloss);
@@ -76,11 +100,8 @@ function boundaryReview(record, artifactId) {
         rationale: `${record.id} ${sense.id} reviewed gloss ${glossSha256.slice(0, 12)} independently of the current sense count.`,
       };
     }),
-    pairwise: pairs.map((pair) => ({
-      ...pair,
-      rationale: `${record.id} ${pair.left_sense_id} and ${pair.right_sense_id} were compared by shared and distinctive gloss content: ${[...pair.left_distinctive_tokens, ...pair.right_distinctive_tokens].join(', ') || 'no distinctive token'}.`,
-    })),
-    rationale: `${record.id} boundary outcome ${decision} was resolved from gloss and usage evidence, not from the current sense count.`,
+    pairwise: bindPairwiseRationale(record, authored.pairwise),
+    rationale: authored.rationale,
   };
 }
 
@@ -127,32 +148,54 @@ function reviewSense(record, sense, coverageSense, boundary) {
   };
 }
 
-function correctionHistory(oldReview, recordsById) {
+function correctionHistory(oldReview, recordsById, boundaryDecisionSource) {
   const oldHistory = oldReview.review_pass?.correction_history ?? [];
-  return oldHistory.map((oldCorrection) => {
+  const sourceCorrections = new Map(
+    boundaryDecisionSource.records
+      .filter((record) => record.correction)
+      .map((record) => [record.record_id, record.correction]),
+  );
+  const existingIds = new Set(oldHistory.map(({ record_id: recordId }) => recordId));
+  const history = oldHistory.map((oldCorrection) => {
     const record = recordsById.get(oldCorrection.record_id);
     if (!record) throw new Error(`correction history references missing record ${oldCorrection.record_id}`);
-    const boundaryDecision = oldCorrection.boundary_decision
-      ?? (record.id === 'w1241' ? 'merge' : 'rewrite');
+    const sourceCorrection = sourceCorrections.get(record.id);
+    const boundaryDecision = sourceCorrection?.boundary_decision
+      ?? oldCorrection.boundary_decision
+      ?? 'rewrite';
     return {
       record_id: record.id,
       before_record_sha256: oldCorrection.before_record_sha256,
       after_record_sha256: sha256Json(record),
       source_revision: oldCorrection.source_revision,
-      rationale: oldCorrection.rationale,
+      rationale: sourceCorrection?.rationale ?? oldCorrection.rationale,
       boundary_decision: boundaryDecision,
     };
   });
+  for (const [recordId, correction] of sourceCorrections) {
+    if (existingIds.has(recordId)) continue;
+    const record = recordsById.get(recordId);
+    if (!record) throw new Error(`boundary correction references missing record ${recordId}`);
+    history.push({
+      record_id: recordId,
+      before_record_sha256: correction.before_record_sha256,
+      after_record_sha256: sha256Json(record),
+      source_revision: correction.source_revision,
+      rationale: correction.rationale,
+      boundary_decision: correction.boundary_decision,
+    });
+  }
+  return history;
 }
 
-function buildSemanticReview(recordInfos, oldReview, { artifactId } = {}) {
+function buildSemanticReview(recordInfos, oldReview, boundaryDecisionSource, { artifactId } = {}) {
   const records = recordInfos.map(recordOf);
   const coverage = buildSemanticCoverageArtifact(recordInfos, {
     artifactId: 'canonical-semantic-coverage',
   });
   const coverageByRecord = new Map(coverage.records.map((item) => [item.record_id, item]));
   const recordsById = new Map(records.map((record) => [record.id, record]));
-  const history = correctionHistory(oldReview, recordsById);
+  const history = correctionHistory(oldReview, recordsById, boundaryDecisionSource);
   const reviewPass = oldReview.review_pass ?? {};
   return {
     schema_version: '2',
@@ -168,6 +211,7 @@ function buildSemanticReview(recordInfos, oldReview, { artifactId } = {}) {
       method: reviewPass.method ?? 'record-by-record complete-canonical semantic re-audit with source-bound facts',
       ruleset_version: 'lexical-quality-v1',
       boundary_ruleset_version: SEMANTIC_BOUNDARY_RULESET_VERSION,
+      boundary_decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
       record_count: records.length,
       sense_count: records.reduce((sum, record) => sum + record.senses.length, 0),
       open_finding_count: 0,
@@ -188,7 +232,7 @@ function buildSemanticReview(recordInfos, oldReview, { artifactId } = {}) {
     record_count: records.length,
     sense_count: records.reduce((sum, record) => sum + record.senses.length, 0),
     records: records.map((record) => {
-      const boundary = boundaryReview(record, artifactId);
+      const boundary = boundaryReview(record, artifactId, boundaryDecisionSource);
       const coverageRecord = coverageByRecord.get(record.id);
       return {
         record_id: record.id,
@@ -210,9 +254,15 @@ async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
 }
 
-async function rebuildOne({ canonicalDirectory, oldReview, auditOutputPath, reviewOutputPath, coverageOutputPath }) {
+async function rebuildOne({ canonicalDirectory, oldReview, boundaryDecisionSource, auditOutputPath, reviewOutputPath, coverageOutputPath }) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
-  const review = buildSemanticReview(canonical.records, oldReview, {
+  const canonicalDigest = canonicalRecordsSha256(canonical.records);
+  if (boundaryDecisionSource.contract_version !== SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION
+    || boundaryDecisionSource.scope !== 'complete-canonical'
+    || boundaryDecisionSource.source?.canonical_records_sha256 !== canonicalDigest) {
+    throw new Error('boundary decision source is not bound to the complete canonical input');
+  }
+  const review = buildSemanticReview(canonical.records, oldReview, boundaryDecisionSource, {
     artifactId: oldReview.artifact_id ?? path.basename(reviewOutputPath, '.json'),
   });
   const audit = assembleSemanticAuditArtifact(canonical.records, review, {
@@ -241,6 +291,7 @@ export async function rebuildSemanticEvidence({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   reviewInputPath = DEFAULT_SEMANTIC_REVIEW_PATH,
   auditInputPath,
+  boundaryDecisionInputPath = DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH,
   reviewOutputPath = DEFAULT_SEMANTIC_REVIEW_PATH,
   coverageOutputPath = DEFAULT_SEMANTIC_COVERAGE_PATH,
   auditOutputPath = DEFAULT_SEMANTIC_AUDIT_PATH,
@@ -248,9 +299,11 @@ export async function rebuildSemanticEvidence({
   const oldReview = auditInputPath
     ? (await readJson(auditInputPath)).review
     : await readJson(reviewInputPath);
+  const boundaryDecisionSource = await readJson(boundaryDecisionInputPath);
   return rebuildOne({
     canonicalDirectory,
     oldReview,
+    boundaryDecisionSource,
     auditOutputPath,
     reviewOutputPath,
     coverageOutputPath,
@@ -278,6 +331,7 @@ if (isMainModule) {
     canonicalDirectory: args.canonical ?? DEFAULT_CANONICAL_DIRECTORY,
     reviewInputPath: args['review-input'] ?? DEFAULT_SEMANTIC_REVIEW_PATH,
     auditInputPath: args['audit-input'],
+    boundaryDecisionInputPath: args['boundary-decisions'] ?? DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH,
     reviewOutputPath: args.review ?? DEFAULT_SEMANTIC_REVIEW_PATH,
     coverageOutputPath: args.coverage ?? DEFAULT_SEMANTIC_COVERAGE_PATH,
     auditOutputPath: args.audit ?? DEFAULT_SEMANTIC_AUDIT_PATH,

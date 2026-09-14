@@ -30,7 +30,7 @@ candidate-local ID에서 catalog 순서 기준 `w779`~`w1278`로 deterministic r
 - records: 1,320
 - starts: 1,278
 - reference-only: 42
-- senses: 1,606
+- senses: 1,590
 - relations: 487
 - expressions: 73
 

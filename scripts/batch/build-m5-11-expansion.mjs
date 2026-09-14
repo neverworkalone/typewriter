@@ -242,6 +242,7 @@ export async function buildM511({
   };
   let productionState;
   let productionStageSources;
+  let productionPayloads;
   if (editorial.semantic) {
     const productionResult = validateLexicalProduction({
       batchId: M5_11_BATCH_ID,
@@ -271,6 +272,7 @@ export async function buildM511({
     });
     productionState = productionResult.production_state;
     productionStageSources = productionResult.production_state_sources;
+    productionPayloads = productionResult.production_payloads;
   }
   if (!productionState || !productionStageSources) {
     throw new Error('M5-11 build requires the shared lexical producer to complete admission after validation');
@@ -288,6 +290,7 @@ export async function buildM511({
     semanticAudit,
     productionState,
     productionStateSources: productionStageSources,
+    productionPayloads,
     checkPilotCompleteness: true,
     reviewedLabel: 'M5-11 reviewed records',
     prospectiveLabel: 'M5-11 prospective canonical records',

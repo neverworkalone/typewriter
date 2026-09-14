@@ -1,8 +1,9 @@
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
+  createLexicalProductionPayload,
   createLexicalProductionRun,
   productionBytesSha256,
-  productionStageBytes,
+  productionValueSha256,
   validateLexicalProductionPreAuditState,
   validateLexicalProductionState,
 } from './lexical-production-state.mjs';
@@ -71,19 +72,108 @@ function semanticReviewInput(entry, index) {
   return entry;
 }
 
+function valuesOf(recordInfos) {
+  return recordInfos.map(recordOf);
+}
+
+function createPreAuditPayloads({
+  batchId,
+  candidates,
+  reviewRows,
+  selectedRecords,
+  correctionRecords,
+  ranks,
+  selectedRanks,
+  baseRecords,
+  prospectiveRecords,
+} = {}) {
+  const candidateValues = valuesOf(candidates);
+  const reviewedValues = valuesOf([...selectedRecords, ...correctionRecords]);
+  const candidateOutput = candidateValues;
+  const reviewOutput = {
+    review_rows: reviewRows,
+    reviewed_records: reviewedValues,
+  };
+  const selectionOutput = {
+    selected_records: reviewedValues,
+    selection_ranks: selectedRanks,
+  };
+  const prospectiveOutput = valuesOf(prospectiveRecords);
+  const specs = {
+    candidate_intake: {
+      input: null,
+      output: candidateOutput,
+      inputKind: 'none',
+      outputKind: 'candidate-records',
+      details: {
+      candidate_records_sha256: productionValueSha256(candidateOutput),
+      candidate_count: candidateValues.length,
+      },
+    },
+    semantic_review: {
+      input: candidateOutput,
+      output: reviewOutput,
+      inputKind: 'candidate-records',
+      outputKind: 'reviewed-records',
+      details: {
+      candidate_records_sha256: productionValueSha256(candidateOutput),
+      review_rows_sha256: productionValueSha256(reviewRows),
+      reviewed_records_sha256: productionValueSha256(reviewedValues),
+      },
+    },
+    selection: {
+      input: reviewOutput,
+      output: selectionOutput,
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+      reviewed_records_sha256: productionValueSha256(reviewedValues),
+      selected_records_sha256: productionValueSha256(reviewedValues),
+      selection_ranks_sha256: productionValueSha256(selectedRanks),
+      },
+    },
+    prospective_canonical: {
+      input: selectionOutput,
+      output: prospectiveOutput,
+      inputKind: 'selected-records',
+      outputKind: 'prospective-canonical',
+      details: {
+        base_records_sha256: productionValueSha256(valuesOf(baseRecords)),
+        prospective_records_sha256: productionValueSha256(prospectiveOutput),
+      },
+    },
+  };
+  const payloads = Object.fromEntries(
+    Object.entries(specs).map(([stageId, spec]) => [
+      stageId,
+      createLexicalProductionPayload({ stageId, batchId, ...spec }),
+    ]),
+  );
+  return {
+    ...payloads,
+    payload_specs: specs,
+    outputs: { candidateOutput, reviewOutput, selectionOutput, prospectiveOutput },
+  };
+}
+
 function validateStageEvidence(
   stageEvidence,
   {
     productionState,
     batchId,
     productionStateSources,
+    expectedPayloads,
+    payloadSpecs,
   } = {},
 ) {
   if (productionState !== undefined) {
     try {
+      const allowReplay = productionState.producer_mode === 'replay';
       const state = validateLexicalProductionState(productionState, {
         batchId,
         sourceBytesByStage: productionStateSources,
+        expectedPayloads: allowReplay ? undefined : expectedPayloads,
+        allowReplay,
       });
       return {
         state,
@@ -132,6 +222,7 @@ function validateStageEvidence(
   }
   try {
     const run = createLexicalProductionRun({ batchId });
+    const typedPayloadSpecs = payloadSpecs ?? expectedPayloads?.payload_specs;
     const tokens = {};
     const methodNames = {
       candidate_intake: 'completeCandidateIntake',
@@ -143,11 +234,10 @@ function validateStageEvidence(
     for (const stageId of stageIds.slice(0, 4)) {
       const stage = stages[stageId];
       const previousStageId = stageIds[stageIds.indexOf(stageId) - 1];
-      const sourceBytes = productionStageBytes(stageId, stage.source_bytes);
       tokens[stageId] = run[methodNames[stageId]]({
         ...(previousStageId ? { predecessor: tokens[previousStageId] } : {}),
         sourcePath: stage.source_path,
-        sourceBytes,
+        payloadSpec: typedPayloadSpecs?.[stageId],
         ...(stageId === 'selection' ? { policy: stage.policy ?? 'shared-selection-policy' } : {}),
       });
     }
@@ -159,17 +249,16 @@ function validateStageEvidence(
     const auditStage = {
       predecessor: tokens.prospective_canonical,
       sourcePath: auditEvidence.source_path,
-      sourceBytes: productionStageBytes('audit', auditEvidence.source_bytes),
     };
     const admissionStage = {
       sourcePath: admissionEvidence.source_path,
-      sourceBytes: productionStageBytes('admission', admissionEvidence.source_bytes),
     };
     const preAuditState = run.getPreAuditState();
     const preAuditSources = run.getPreAuditSourceBytesByStage();
     validateLexicalProductionPreAuditState(preAuditState, {
       batchId,
       sourceBytesByStage: preAuditSources,
+      expectedPayloads,
     });
     return {
       state: undefined,
@@ -206,6 +295,7 @@ export function validateLexicalProduction({
   stageEvidence,
   productionState,
   productionStateSources,
+  productionPayloads,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -251,6 +341,7 @@ export function validateLexicalProduction({
   }
   const selectedRecords = [];
   const ranks = [];
+  const selectedRanks = [];
   const candidateIds = new Set();
   for (const [index, rawEntry] of reviewRows.entries()) {
     const entry = semanticReviewInput(rawEntry, index);
@@ -293,6 +384,9 @@ export function validateLexicalProduction({
       fail(`production.reviews[${index}] semantic review failed: ${error.message}`, error.code);
     }
     ranks.push(result.selection_rank);
+    if (['included', 'corrected'].includes(entry.decision)) {
+      selectedRanks.push(result.selection_rank);
+    }
   }
 
   const correctionRecords = [];
@@ -341,6 +435,7 @@ export function validateLexicalProduction({
       semantic_review: entry.semantic_review,
     });
     ranks.push(result.selection_rank);
+    selectedRanks.push(result.selection_rank);
   }
 
   if (new Set(ranks).size !== ranks.length) {
@@ -366,10 +461,25 @@ export function validateLexicalProduction({
     }
   }
 
+  const preAuditPayloads = productionState === undefined
+    ? createPreAuditPayloads({
+      batchId,
+      candidates,
+      reviewRows,
+      selectedRecords,
+      correctionRecords,
+      ranks,
+      selectedRanks,
+      baseRecords,
+      prospectiveRecords,
+    })
+    : productionPayloads;
   const productionContext = validateStageEvidence(stageEvidence, {
     productionState,
     batchId,
     productionStateSources,
+    expectedPayloads: preAuditPayloads,
+    payloadSpecs: preAuditPayloads?.payload_specs,
   });
 
   let admission;
@@ -387,6 +497,7 @@ export function validateLexicalProduction({
       productionAuditStage: productionContext.auditStage,
       productionAuthorizationEvidence: productionContext.authorizationEvidence,
       productionAdmissionStage: productionContext.admissionStage,
+      productionPayloads: preAuditPayloads,
       checkPilotCompleteness,
       candidateLabel,
       reviewedLabel,
@@ -407,6 +518,7 @@ export function validateLexicalProduction({
     production_state_sources: productionContext.run
       ? productionContext.run.getSourceBytesByStage()
       : productionContext.sources,
+    production_payloads: admission.production_payloads,
     admission,
   };
 }

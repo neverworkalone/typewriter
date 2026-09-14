@@ -34,6 +34,13 @@ export const SEMANTIC_BOUNDARY_RELATIONSHIPS = Object.freeze([
   'usage-variant',
 ]);
 export const SEMANTIC_BOUNDARY_METHOD = 'gloss-and-usage-pairwise-v2';
+export const SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION = 'lexical-semantic-boundary-decisions-v1';
+export const SEMANTIC_BOUNDARY_PAIR_DECISIONS = Object.freeze([
+  'retain',
+  'merge',
+  'rewrite',
+  'fail',
+]);
 export const DEFAULT_SEMANTIC_REVIEW_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/validation/canonical-semantic-review.json',
@@ -45,6 +52,10 @@ export const DEFAULT_SEMANTIC_COVERAGE_PATH = path.resolve(
 export const DEFAULT_SEMANTIC_AUDIT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/validation/canonical-semantic-audit.json',
+);
+export const DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/validation/canonical-semantic-boundary-decisions.json',
 );
 
 export class SemanticAuditError extends Error {
@@ -453,6 +464,10 @@ function validateBoundaryReview(record, boundary, label) {
     fail(`${label}.independence must not derive its decision from the current sense count`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
   }
   requireString(independence.source, `${label}.independence.source`);
+  requireString(independence.decision_source_version, `${label}.independence.decision_source_version`);
+  if (independence.decision_source_version !== SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION) {
+    fail(`${label}.independence.decision_source_version is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
   const decision = requireEnum(boundary.decision, SEMANTIC_BOUNDARY_DECISIONS, `${label}.decision`);
   if (!['retain', 'split'].includes(decision)) {
     fail(`${label}.decision ${decision} must be resolved before a complete audit can pass`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
@@ -495,7 +510,15 @@ function validateBoundaryReview(record, boundary, label) {
       fail(`${evidenceLabel}.rationale must cite record, sense, and gloss evidence`, 'SEMANTIC_AUDIT_GENERIC_EVIDENCE');
     }
   }
-  const expectedPairs = inspectSenseBoundaryPairs(record);
+  const expectedPairs = [];
+  for (let leftIndex = 0; leftIndex < record.senses.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < record.senses.length; rightIndex += 1) {
+      expectedPairs.push({
+        left_sense_id: record.senses[leftIndex].id,
+        right_sense_id: record.senses[rightIndex].id,
+      });
+    }
+  }
   const pairwise = requireArray(boundary.pairwise, `${label}.pairwise`);
   if (pairwise.length !== expectedPairs.length) {
     fail(`${label}.pairwise must review every sense pair`, 'SEMANTIC_AUDIT_SCOPE');
@@ -513,44 +536,44 @@ function validateBoundaryReview(record, boundary, label) {
     ));
     if (!expected) fail(`${pairLabel} is not bound to the canonical sense pair`, 'SEMANTIC_AUDIT_BINDING');
     requireEnum(item.relationship, SEMANTIC_BOUNDARY_RELATIONSHIPS, `${pairLabel}.relationship`);
-    if (expected.relationship !== 'distinct') {
-      fail(
-        `${pairLabel} contains an unresolved ${expected.relationship} sense pair; merge, rewrite, or fail before admission`,
-        'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
-      );
+    requireEnum(item.decision, SEMANTIC_BOUNDARY_PAIR_DECISIONS, `${pairLabel}.decision`);
+    const leftSense = record.senses.find(({ id }) => id === item.left_sense_id);
+    const rightSense = record.senses.find(({ id }) => id === item.right_sense_id);
+    requireDigest(item.left_gloss_sha256, `${pairLabel}.left_gloss_sha256`);
+    requireDigest(item.right_gloss_sha256, `${pairLabel}.right_gloss_sha256`);
+    if (item.left_gloss_sha256 !== sha256Json(leftSense.gloss)
+      || item.right_gloss_sha256 !== sha256Json(rightSense.gloss)) {
+      fail(`${pairLabel} gloss evidence does not match the canonical sense pair`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     }
-    if (item.relationship !== 'distinct') {
-      fail(`${pairLabel}.relationship must be distinct for a resolved canonical sense set`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
+    requireString(item.evidence_basis, `${pairLabel}.evidence_basis`);
+    if (item.evidence_basis.toLowerCase().includes('sense count')) {
+      fail(`${pairLabel}.evidence_basis cannot use the current sense count as semantic evidence`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
     }
-    assertExact(item.shared_tokens, expected.shared_tokens, `${pairLabel}.shared_tokens`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
-    assertExact(
-      item.left_distinctive_tokens,
-      expected.left_distinctive_tokens,
-      `${pairLabel}.left_distinctive_tokens`,
-      'SEMANTIC_AUDIT_CONTENT_MISMATCH',
-    );
-    assertExact(
-      item.right_distinctive_tokens,
-      expected.right_distinctive_tokens,
-      `${pairLabel}.right_distinctive_tokens`,
-      'SEMANTIC_AUDIT_CONTENT_MISMATCH',
-    );
+    requireString(item.distinguishing_feature, `${pairLabel}.distinguishing_feature`);
+    if (item.distinguishing_feature.toLowerCase().includes('sense count')) {
+      fail(`${pairLabel}.distinguishing_feature cannot use the current sense count as semantic evidence`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
+    }
     requireString(item.rationale, `${pairLabel}.rationale`);
     if (!item.rationale.includes(record.id)
       || !item.rationale.includes(item.left_sense_id)
-      || !item.rationale.includes(item.right_sense_id)) {
-      fail(`${pairLabel}.rationale must cite the reviewed sense pair`, 'SEMANTIC_AUDIT_GENERIC_EVIDENCE');
+      || !item.rationale.includes(item.right_sense_id)
+      || !item.rationale.includes(item.left_gloss_sha256.slice(0, 12))
+      || !item.rationale.includes(item.right_gloss_sha256.slice(0, 12))) {
+      fail(`${pairLabel}.rationale must cite the reviewed sense pair and gloss evidence`, 'SEMANTIC_AUDIT_GENERIC_EVIDENCE');
     }
-  }
-  if ((expectedPairs.length === 0 && decision !== 'retain')
-    || (expectedPairs.length > 0 && decision !== 'split')) {
-    fail(`${label}.decision is not the explicit resolved outcome for the reviewed pair evidence`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
   }
   if (decision === 'retain' && classification !== 'atomic') {
     fail(`${label}.classification must be atomic for a retained single-sense outcome`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
   }
   if (decision === 'split' && !['separated', 'coordinated'].includes(classification)) {
     fail(`${label}.classification must explain a retained multi-sense outcome`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
+  }
+  const pairDecisions = pairwise.map(({ decision: pairDecision }) => pairDecision);
+  if (decision === 'retain' && pairDecisions.some((pairDecision) => pairDecision !== 'retain')) {
+    fail(`${label}.decision retain conflicts with a pair requiring merge, rewrite, or failure`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
+  }
+  if (decision === 'split' && pairDecisions.some((pairDecision) => pairDecision !== 'retain')) {
+    fail(`${label}.decision split cannot pass while a pair remains unresolved`, 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER');
   }
   requireString(boundary.rationale, `${label}.rationale`);
   if (!boundary.rationale.includes(record.id)) {
@@ -701,6 +724,9 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
   }
   if (pass.boundary_ruleset_version !== SEMANTIC_BOUNDARY_RULESET_VERSION) {
     fail(`${label}.review_pass.boundary_ruleset_version is unsupported`, 'SEMANTIC_AUDIT_SCHEMA');
+  }
+  if (pass.boundary_decision_source_version !== SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION) {
+    fail(`${label}.review_pass.boundary_decision_source_version is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
   }
   const records = recordInfos.map(recordOf);
   const senseCount = records.reduce((sum, record) => sum + record.senses.length, 0);

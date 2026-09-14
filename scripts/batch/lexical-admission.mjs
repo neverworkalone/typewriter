@@ -8,7 +8,9 @@ import {
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
 import {
+  createLexicalProductionPayload,
   productionBytesSha256,
+  productionValueSha256,
   productionSourceBytes,
   isLexicalProductionRun,
   validateLexicalProductionPreAuditState,
@@ -61,6 +63,7 @@ export function validateLexicalAddition({
   productionAuditStage,
   productionAuthorizationEvidence,
   productionAdmissionStage,
+  productionPayloads,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
@@ -77,6 +80,7 @@ export function validateLexicalAddition({
     throw new Error('lexical admission requires source-bound semantic_audit coverage');
   }
   let validatedProductionState;
+  let validatedProductionPayloads = productionPayloads;
   if (productionRun !== undefined) {
     if (!isLexicalProductionRun(productionRun)) {
       throw new Error('lexical admission requires a producer-owned live production run');
@@ -86,6 +90,7 @@ export function validateLexicalAddition({
     validateLexicalProductionPreAuditState(preAuditState, {
       batchId,
       sourceBytesByStage: preAuditSources,
+      expectedPayloads: productionPayloads,
     });
   } else {
     if (productionState === undefined) {
@@ -94,6 +99,8 @@ export function validateLexicalAddition({
     validatedProductionState = validateLexicalProductionState(productionState, {
       batchId,
       sourceBytesByStage: productionStateSources,
+      expectedPayloads: productionPayloads,
+      allowReplay: productionState.producer_mode === 'replay',
     });
   }
   const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
@@ -168,10 +175,28 @@ export function validateLexicalAddition({
       || productionAdmissionStage === undefined) {
       throw new Error('lexical admission requires producer authorization and admission stage evidence');
     }
+    const auditOutput = {
+      prospective_records_sha256: productionValueSha256(prospectiveInfos.map(recordOf)),
+      semantic_audit_sha256: productionValueSha256(semanticAudit),
+      lexical_audit_sha256: productionValueSha256(audit),
+    };
+    const auditPayloadSpec = {
+      input: productionPayloads?.outputs?.prospectiveOutput
+        ?? prospectiveInfos.map(recordOf),
+      output: auditOutput,
+      inputKind: 'prospective-canonical',
+      outputKind: 'complete-canonical-audit',
+      details: auditOutput,
+    };
+    const auditPayload = createLexicalProductionPayload({
+      stageId: 'audit',
+      batchId,
+      ...auditPayloadSpec,
+    });
     const auditToken = productionRun.completeAudit({
       predecessor: productionAuditStage.predecessor,
       sourcePath: productionAuditStage.sourcePath,
-      sourceBytes: productionAuditStage.sourceBytes,
+      payloadSpec: auditPayloadSpec,
     });
     const authorization = productionRun.authorizeAdmission({
       predecessor: auditToken,
@@ -187,15 +212,31 @@ export function validateLexicalAddition({
       semantic_audit: semanticAuditCoverage,
       lexical_audit: audit,
     });
+    const admissionOutput = {
+      status: 'admitted',
+      gate_digest: productionBytesSha256(gateBytes),
+    };
+    const admissionPayloadSpec = {
+      input: auditOutput,
+      output: admissionOutput,
+      inputKind: 'complete-canonical-audit',
+      outputKind: 'admitted-canonical',
+      details: {
+        authorization_sha256: authorization.authorization_sha256,
+        gate_sha256: admissionOutput.gate_digest,
+      },
+    };
+    const admissionPayload = createLexicalProductionPayload({
+      stageId: 'admission',
+      batchId,
+      ...admissionPayloadSpec,
+    });
     const admissionToken = productionRun.completeAdmission({
       authorization,
       sourcePath: productionAdmissionStage.sourcePath,
-      sourceBytes: productionAdmissionStage.sourceBytes,
+      payloadSpec: admissionPayloadSpec,
       decision: 'admit',
-      admissionResult: {
-        status: 'admitted',
-        gate_digest: productionBytesSha256(gateBytes),
-      },
+      admissionResult: admissionOutput,
     });
     // The token is deliberately consumed only after every shared admission
     // check above has succeeded.  A producer run that fails earlier cannot
@@ -204,7 +245,17 @@ export function validateLexicalAddition({
     validatedProductionState = validateLexicalProductionState(productionRun.getState(), {
       batchId,
       sourceBytesByStage: productionRun.getSourceBytesByStage(),
+      expectedPayloads: {
+        ...productionPayloads,
+        audit: auditPayload,
+        admission: admissionPayload,
+      },
     });
+    validatedProductionPayloads = {
+      ...productionPayloads,
+      audit: auditPayload,
+      admission: admissionPayload,
+    };
   }
 
   return {
@@ -216,6 +267,7 @@ export function validateLexicalAddition({
     base_record_count: baseInfos.length,
     base_records_sha256: canonicalRecordsSha256(baseInfos),
     production_state: validatedProductionState,
+    production_payloads: validatedProductionPayloads,
     semantic_audit: semanticAuditCoverage,
     indexes,
     audit,

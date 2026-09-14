@@ -1185,6 +1185,7 @@ export async function validateBatch({
     validateLexicalProductionState(manifest.production_state, {
       batchId: manifest.batch_id,
       sourceBytesByStage: productionStateSources,
+      allowReplay: manifest.production_state.producer_mode === 'replay',
     });
   } catch (error) {
     fail(`shared production_state validation failed: ${error.message}`, error.code);

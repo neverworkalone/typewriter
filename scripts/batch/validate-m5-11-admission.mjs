@@ -1200,7 +1200,7 @@ function validateImportedRecords(
   baseRecords,
   expectedImportedCount,
   checkPilotCompleteness,
-  { semanticAudit, productionState, productionStateSources } = {},
+  { semanticAudit, productionState, productionStateSources, productionPayloads } = {},
 ) {
   if (importedRecords.length !== expectedImportedCount) {
     fail(`reviewed import must contain exactly ${expectedImportedCount} records`, 'CANONICAL_COUNT_MISMATCH');
@@ -1243,6 +1243,7 @@ function validateImportedRecords(
     semanticAudit,
     productionState,
     productionStateSources,
+    productionPayloads,
     checkPilotCompleteness,
     candidateLabel: 'M5-11 candidate records',
     reviewedLabel: 'M5-11 reviewed records',
@@ -1600,6 +1601,7 @@ export async function runM511ProspectiveVerification({
   semanticAudit,
   productionState,
   productionStateSources,
+  productionPayloads,
   expectedFinalSummary,
   checkPilotCompleteness = true,
   semanticSummary = null,
@@ -1629,6 +1631,7 @@ export async function runM511ProspectiveVerification({
       semanticAudit,
       productionState,
       productionStateSources,
+      productionPayloads,
       checkPilotCompleteness,
       prospectiveLabel: 'M5-11 prospective verification canonical records',
     });
@@ -1720,9 +1723,26 @@ export async function runM511ProspectiveVerification({
       candidate_local_ids_present: false,
       external_input_paths_present: false,
     };
+    const completeCanonicalReview = semanticAudit?.review?.review_pass
+      ? {
+        artifact_id: semanticAudit.review.artifact_id ?? null,
+        contract_version: semanticAudit.review.contract_version ?? null,
+        review_pass_id: semanticAudit.review.review_pass.id,
+        status: semanticAudit.review.review_pass.status,
+        reviewer: semanticAudit.review.review_pass.reviewer,
+        record_count: semanticAudit.review.review_pass.record_count,
+        sense_count: semanticAudit.review.review_pass.sense_count,
+        open_finding_count: semanticAudit.review.review_pass.open_finding_count,
+        correction_count: semanticAudit.review.review_pass.correction_count,
+        boundary_decision_source_version: semanticAudit.review.review_pass.boundary_decision_source_version,
+        canonical_records_sha256: semanticAudit.source?.canonical_records_sha256 ?? null,
+        review_sha256: sha256Json(semanticAudit.review),
+      }
+      : null;
     const semanticObservation = {
       status: semanticSummary && semanticCoverage ? 'pass' : 'not-required',
       semantic_audit: lexicalAdmission.semantic_audit,
+      complete_canonical_review: completeCanonicalReview,
       summary: semanticSummary,
       coverage: semanticCoverage,
       finding_count: semanticFindings?.length ?? 0,
@@ -1910,6 +1930,7 @@ export function deriveM511AdmissionGate({
   const admittedProductionState = sharedProduction?.production.production_state ?? productionEvidence.state;
   const admittedProductionSources = sharedProduction?.production.production_state_sources
     ?? productionEvidence.sources;
+  const admittedProductionPayloads = sharedProduction?.production.production_payloads;
   const placeholderGlossCount = validateImportedRecords(
     importedRecords,
     baseRecords,
@@ -1919,6 +1940,7 @@ export function deriveM511AdmissionGate({
       semanticAudit,
       productionState: admittedProductionState,
       productionStateSources: admittedProductionSources,
+      productionPayloads: admittedProductionPayloads,
     },
   );
   if (finalSummary.start_count !== expectedCumulativeStartCount) {
@@ -2348,6 +2370,7 @@ export async function validateM511Admission({
   const admittedProductionState = sharedProduction?.production.production_state ?? productionEvidence.state;
   const admittedProductionSources = sharedProduction?.production.production_state_sources
     ?? productionEvidence.sources;
+  const admittedProductionPayloads = sharedProduction?.production.production_payloads;
   validateImportedRecords(
     editorialPreview.importedRecords,
     previewBaseRecords,
@@ -2357,6 +2380,7 @@ export async function validateM511Admission({
       semanticAudit: semanticAuditSource.value,
       productionState: admittedProductionState,
       productionStateSources: admittedProductionSources,
+      productionPayloads: admittedProductionPayloads,
     },
   );
   const previewFinalSummary = canonicalSummary([
@@ -2369,6 +2393,7 @@ export async function validateM511Admission({
     semanticAudit: semanticAuditSource.value,
     productionState: admittedProductionState,
     productionStateSources: admittedProductionSources,
+    productionPayloads: admittedProductionPayloads,
     expectedFinalSummary: previewFinalSummary,
     checkPilotCompleteness,
     semanticSummary: editorialPreview.semantic,

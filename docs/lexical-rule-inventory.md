@@ -51,7 +51,7 @@ SQLite → search → package → clean-checkout validation
 
 ## Full-canonical re-audit
 
-PR #120 이후 canonical snapshot은 1,320 records / 1,278 starts / 42 reference-only / 1,606 senses다. [`data/validation/canonical-semantic-review.json`](../data/validation/canonical-semantic-review.json), [`canonical-semantic-coverage.json`](../data/validation/canonical-semantic-coverage.json), [`canonical-semantic-audit.json`](../data/validation/canonical-semantic-audit.json)이 같은 canonical content digest에 결속되어 있으며, review pass는 모든 record/sense를 포함하고 open blocker 0건을 요구한다.
+PR #120 이후 canonical snapshot은 1,320 records / 1,278 starts / 42 reference-only / 1,590 senses다. [`data/validation/canonical-semantic-review.json`](../data/validation/canonical-semantic-review.json), [`canonical-semantic-coverage.json`](../data/validation/canonical-semantic-coverage.json), [`canonical-semantic-audit.json`](../data/validation/canonical-semantic-audit.json)이 같은 canonical content digest에 결속되어 있으며, review pass는 모든 record/sense를 포함하고 open blocker 0건을 요구한다.
 
 기존 데이터 수정은 silent mutation이 아니다. 변경이 필요한 경우 separately authored `corrected` decision과 correction history가 있어야 하며, 새 audit가 수정 후 digest를 다시 확인한다. 기존 start를 줄이거나 record ID에 따라 검사를 생략하지 않는다.
 

@@ -5,10 +5,10 @@ import {
   assembleSemanticAuditArtifact,
   buildSemanticCoverageArtifact,
   canonicalRecordsSha256,
+  SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
   SEMANTIC_BOUNDARY_METHOD,
   SEMANTIC_BOUNDARY_RULESET_VERSION,
   SEMANTIC_REVIEW_CONTRACT_VERSION,
-  inspectSenseBoundaryPairs,
   sha256Json,
 } from '../../scripts/validate/semantic-audit.mjs';
 import { inspectWriterDomainEvidence } from '../../scripts/validate/lexical-quality.mjs';
@@ -68,28 +68,58 @@ export function makeProductionState({
   return produceLexicalProductionState({ batchId, stages: sources });
 }
 
-export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'test-semantic-review' } = {}) {
+export function makeSemanticReview(
+  recordInfos,
+  {
+    changes = [],
+    artifactId = 'test-semantic-review',
+    boundaryDecisions = {},
+  } = {},
+) {
   const records = recordInfos.map(recordOf);
   const coverage = buildSemanticCoverageArtifact(recordInfos, {
     artifactId: `${artifactId}-coverage`,
   });
   const boundaryReviewFor = (record) => {
-    const pairs = inspectSenseBoundaryPairs(record);
-    const domainAxes = [...new Set(
-      record.senses.flatMap((sense) => inspectWriterDomainEvidence(sense.gloss).axes),
-    )];
-    const decision = pairs.length === 0 ? 'retain' : 'split';
-    const classification = decision === 'retain'
-      ? 'atomic'
-      : domainAxes.length > 1 ? 'coordinated' : 'separated';
+    const authoredBoundary = boundaryDecisions[record.id] ?? {
+      decision: 'retain',
+      classification: 'atomic',
+      pairwise: [],
+    };
+    const decision = authoredBoundary.decision;
+    const classification = authoredBoundary.classification ?? (decision === 'retain' ? 'atomic' : 'separated');
     const reviewId = `${artifactId}:${record.id}:boundary`;
+    const pairs = [];
+    for (let leftIndex = 0; leftIndex < record.senses.length; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < record.senses.length; rightIndex += 1) {
+        const left = record.senses[leftIndex];
+        const right = record.senses[rightIndex];
+        const leftGlossSha256 = sha256Json(left.gloss);
+        const rightGlossSha256 = sha256Json(right.gloss);
+        const authoredPair = authoredBoundary.pairwise?.find((pair) => (
+          pair.left_sense_id === left.id && pair.right_sense_id === right.id
+        ));
+        pairs.push({
+          left_sense_id: left.id,
+          right_sense_id: right.id,
+          relationship: authoredPair?.relationship ?? 'distinct',
+          decision: authoredPair?.decision ?? 'retain',
+          left_gloss_sha256: leftGlossSha256,
+          right_gloss_sha256: rightGlossSha256,
+          evidence_basis: 'fixture pair was explicitly authored as a distinct writer-facing use',
+          distinguishing_feature: 'fixture senses have separate reviewed usage conditions',
+          rationale: `${record.id} ${left.id} ${right.id} pair cites ${leftGlossSha256.slice(0, 12)} and ${rightGlossSha256.slice(0, 12)}.`,
+        });
+      }
+    }
     return {
       status: 'pass',
       review_id: reviewId,
       method: SEMANTIC_BOUNDARY_METHOD,
       independence: {
         independent_of_sense_count: true,
-        source: 'separately-authored-gloss-and-usage-evidence',
+        source: 'separately-authored-fixture-boundary-decision',
+        decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
       },
       decision,
       classification,
@@ -97,16 +127,11 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
       evidence: record.senses.map((sense) => ({
         sense_id: sense.id,
         gloss_sha256: sha256Json(sense.gloss),
-        evidence_basis: domainAxes.length > 0
-          ? `gloss domain axes ${domainAxes.join(', ')}`
-          : 'gloss subject, predicate, and writer-facing usage were reviewed',
+        evidence_basis: 'gloss subject, predicate, and writer-facing usage were reviewed',
         rationale: `${record.id} ${sense.id} reviewed gloss ${sha256Json(sense.gloss).slice(0, 12)} independently of the current sense count.`,
       })),
-      pairwise: pairs.map((pair) => ({
-        ...pair,
-        rationale: `${record.id} ${pair.left_sense_id} and ${pair.right_sense_id} have separately evidenced distinguishing gloss terms: ${[...pair.left_distinctive_tokens, ...pair.right_distinctive_tokens].join(', ') || 'content review required'}.`,
-      })),
-      rationale: `${record.id} boundary outcome ${decision} was resolved from gloss and usage evidence, not from the current sense count.`,
+      pairwise: pairs,
+      rationale: `${record.id} boundary outcome ${decision} was explicitly authored from gloss and usage evidence.`,
     };
   };
   const boundaryReviews = new Map(records.map((record) => [record.id, boundaryReviewFor(record)]));
@@ -124,6 +149,7 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
       method: 'record-by-record fixture semantic re-audit with source-bound facts',
       ruleset_version: 'lexical-quality-v1',
       boundary_ruleset_version: SEMANTIC_BOUNDARY_RULESET_VERSION,
+      boundary_decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
       record_count: records.length,
       sense_count: records.reduce((sum, record) => sum + record.senses.length, 0),
       open_finding_count: 0,
@@ -218,10 +244,15 @@ export function makeSemanticReview(recordInfos, { changes = [], artifactId = 'te
 }
 
 export function makeSemanticAudit(recordInfos, options = {}) {
-  const { changes = [], artifactId = 'test-semantic-audit' } = options;
+  const {
+    changes = [],
+    artifactId = 'test-semantic-audit',
+    boundaryDecisions = {},
+  } = options;
   const review = makeSemanticReview(recordInfos, {
     changes,
     artifactId: `${artifactId}-review`,
+    boundaryDecisions,
   });
   return assembleSemanticAuditArtifact(recordInfos, review, { artifactId });
 }

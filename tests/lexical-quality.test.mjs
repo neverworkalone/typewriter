@@ -42,10 +42,10 @@ test('the shared audit covers the complete current canonical dictionary', async 
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
   assert.equal(audit.record_count, 1320);
-  assert.equal(audit.sense_count, 1606);
+  assert.equal(audit.sense_count, 1590);
 });
 
-test('the independent boundary audit rejects duplicate and nested sense glosses for any record', () => {
+test('the independent boundary audit uses authored pair decisions for any record', () => {
   const makeRecord = (glosses) => ({
     id: 'w-boundary-regression',
     record_type: 'entry',
@@ -65,15 +65,46 @@ test('the independent boundary audit rejects duplicate and nested sense glosses 
     ['붉은 꽃', '붉은 꽃 피어남'],
   ]) {
     const record = makeRecord(glosses);
-    const pairs = inspectSenseBoundaryPairs(record);
-    assert.notEqual(pairs[0].relationship, 'distinct');
     const infos = [{ record, source: 'future-candidate' }];
-    const audit = makeSemanticAudit(infos);
+    const audit = makeSemanticAudit(infos, {
+      boundaryDecisions: {
+        [record.id]: { decision: 'split', classification: 'separated' },
+      },
+    });
+    const pair = audit.review.records[0].boundary_review.pairwise[0];
+    pair.relationship = glosses[0] === glosses[1] ? 'duplicate' : 'nested';
+    pair.decision = 'merge';
     assert.throws(
       () => validateSemanticAuditCoverage(infos, audit),
       (error) => error.code === 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
     );
   }
+});
+
+test('usage-variant pair decisions are explicit and do not depend on pair count', () => {
+  const record = {
+    id: 'w-boundary-usage-variant',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-boundary-usage-variant',
+    lemma: '용례변주',
+    search_forms: ['용례변주'],
+    senses: [
+      { id: 'w-boundary-usage-variant-s1', pos: 'noun', gloss: '손으로 만지는 표면의 감각.' },
+      { id: 'w-boundary-usage-variant-s2', pos: 'noun', gloss: '말에서 드러나는 표면적인 인상.' },
+    ],
+  };
+  const infos = [{ record, source: 'future-candidate' }];
+  const audit = makeSemanticAudit(infos, {
+    boundaryDecisions: {
+      [record.id]: { decision: 'split', classification: 'separated' },
+    },
+  });
+  const boundary = audit.review.records[0].boundary_review;
+  boundary.pairwise[0].relationship = 'usage-variant';
+  assert.equal(boundary.decision, 'split');
+  assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, audit));
+  assert.equal(inspectSenseBoundaryPairs(record)[0].relationship, 'distinct');
 });
 
 test('the boundary audit rejects evidence that claims independence but uses the current sense count', () => {
