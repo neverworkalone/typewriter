@@ -31,10 +31,16 @@ The shared implementation is:
   creates pass/boundary/relation decisions;
 - `data/validation/canonical-semantic-review.json` — the separately authored
   complete decision artifact;
+- `data/validation/canonical-semantic-decision-source.json` — the separately
+  authored source consumed by the rebuild step; it binds the review artifact by
+  source ID and digest, so canonical facts alone cannot manufacture a pass;
 - `data/validation/canonical-semantic-coverage.json` — deterministic facts and
   digests derived from canonical values;
 - `data/validation/canonical-semantic-audit.json` — the validated envelope that
   binds both artifacts to one canonical snapshot;
+- `scripts/validate/rebuild-semantic-evidence.mjs` — rebuilds deterministic
+  coverage from that decision source only and fails when the authored source is
+  missing or replaced by a legacy/replay review;
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 
@@ -46,7 +52,9 @@ separately authored review rows are retained as scoped durable evidence; each
 historical manifest binds the exact envelope bytes by `review.semantic_audit_sha256`.
 CI copies these committed sources to its external runner staging directory and
 passes them through the A2/Wave B CLI, preserving the repository-local staging
-boundary while keeping replay deterministic.
+boundary while keeping replay deterministic. Replay is an explicit historical
+verification mode; generic and future admissions must use a live
+`lexical-production` run with typed stage payloads.
 
 M5-11 adds its 550-row scope, +500 arithmetic, reserve, source digests, timing,
 and authorization rules around this boundary. Every registration must provide

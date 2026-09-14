@@ -12,7 +12,7 @@ import {
   M5_10A_PROCESS_REVISION,
   M5_10A_SENSE_BOUNDARY_IDS,
   assertExternalStagingPath,
-  validateBatch,
+  validateHistoricalBatch,
   validateBatchManifest,
 } from './validate-batch.mjs';
 import {
@@ -1603,6 +1603,7 @@ export async function validateWaveB({
   stagedRecordsPath,
   proposalPath,
   semanticAuditPath,
+  productionStateSources = {},
 } = {}) {
   if (!stagedRecordsPath) fail('Wave B validation requires an external --staged path', 'MISSING_STAGED_PATH');
   const resolvedStagedRecordsPath = path.resolve(stagedRecordsPath);
@@ -1707,16 +1708,23 @@ export async function validateWaveB({
     productionState: manifestSource.value.production_state,
   });
   assertEqual(manifestSource.value, projectedManifest, 'Wave B manifest differs from explicit input artifacts', 'MANIFEST_DRIFT');
-  const batchResult = await validateBatch({
+  const batchResult = await validateHistoricalBatch({
     manifestPath,
     stagedRecordsPath: resolvedStagedRecordsPath,
     semanticAuditPath,
     inventoryPath,
     canonicalDirectory: baseCanonicalDirectory,
-    productionStateSources: manifestSource.value.production_state.stages.find(({ id }) => id === 'admission').payload_sha256
-      === authorizationSource.sha256
-      ? { admission: authorizationSource.bytes }
-      : {},
+    // Wave B validation is a retained historical replay boundary. The
+    // generic admission validator remains fail-closed because this call uses
+    // the explicitly named historical boundary.
+    allowReplay: true,
+    productionStateSources: {
+      ...productionStateSources,
+      ...(manifestSource.value.production_state.stages.find(({ id }) => id === 'admission').payload_sha256
+        === authorizationSource.sha256
+        ? { admission: authorizationSource.bytes }
+        : {}),
+    },
   });
   exactIds(staged.records.map(recordOf).map(({ id }) => id), WAVE_B_IMPORTED_CANONICAL_IDS, 'Wave B reviewed staging');
   assertEqual(staged.records.length, WAVE_B_IMPORTED_START_COUNT, 'Wave B reviewed staging count drifted', 'STAGED_COUNT_MISMATCH');

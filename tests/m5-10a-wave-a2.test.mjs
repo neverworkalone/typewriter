@@ -47,11 +47,10 @@ import {
   validateRelationDiff,
 } from '../scripts/batch/relation-diff.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
-import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
 import {
-  produceLexicalProductionState,
-  productionSourceBytes,
-} from '../scripts/batch/lexical-production-state.mjs';
+  makeProductionState,
+  writeSemanticAuditFixture,
+} from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
@@ -577,41 +576,17 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
     );
     const manifestWithSemanticAudit = await readBatchJson('m5-10-wave-a2.json');
     manifestWithSemanticAudit.review.semantic_audit_sha256 = semanticAudit.sha256;
-    manifestWithSemanticAudit.production_state = produceLexicalProductionState({
+    const promotedRecords = canonical.records.filter(({ record }) => reviewedIds.includes(record.id));
+    const production = makeProductionState({
       batchId: manifestWithSemanticAudit.batch_id,
-      stages: {
-        candidate_intake: {
-          source_path: reviewedStagingPath,
-          source_bytes: reviewedStagingBytes,
-        },
-        semantic_review: {
-          source_path: semanticAuditPath,
-          source_bytes: semanticAudit.bytes,
-        },
-        selection: {
-          source_path: 'a2-test:editorial-selection',
-          source_bytes: editorialInputBytes,
-          policy: 'a2-test-reviewed-selection',
-        },
-        prospective_canonical: {
-          source_path: 'a2-test:prospective-canonical-record-values',
-          source_bytes: productionSourceBytes([
-            ...baseForValidation.records,
-            ...canonical.records.filter(({ record }) => reviewedIds.includes(record.id)),
-          ].map(({ record }) => record)),
-        },
-        audit: {
-          source_path: semanticAuditPath,
-          source_bytes: semanticAudit.bytes,
-        },
-        admission: {
-          source_path: semanticAuditPath,
-          source_bytes: semanticAudit.bytes,
-          decision: 'admit',
-          authorization_ref: 'a2-test-explicit-admission',
-        },
-      },
-    }).state;
+      candidateRecords: promotedRecords,
+      reviewedRecords: promotedRecords,
+      baseRecords: baseForValidation.records,
+      prospectiveRecords: [...baseForValidation.records, ...promotedRecords],
+      semanticAudit: semanticAudit.artifact,
+      artifactId: 'm5-10a-wave-a2-validation-production',
+    });
+    manifestWithSemanticAudit.production_state = production.state;
     await writeFile(manifestPath, `${JSON.stringify(manifestWithSemanticAudit, null, 2)}\n`, 'utf8');
     const metricsWithManifestOverride = await readBatchJson('m5-10a-wave-a2-metrics.json');
     metricsWithManifestOverride.source.manifest = path.relative(path.resolve('.'), manifestPath);
@@ -623,6 +598,7 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
       semanticAuditPath,
       canonicalDirectory: A2_POSTIMPORT_CANONICAL_DIRECTORY,
       canonicalSourcePath: CURRENT_CANONICAL_DIRECTORY,
+      productionStateSources: production.sources,
     })).batch, {
       batch_id: 'm5-10-wave-a2-20260909',
       validation_status: 'validated',
@@ -924,42 +900,17 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     );
     const validatedPromotedManifest = structuredClone(promotedManifest);
     validatedPromotedManifest.review.semantic_audit_sha256 = semanticAudit.sha256;
-    const promotionProspectiveValues = [
-      ...baseForPromotion.records,
-      ...referenceRecords.slice(canonical.records.length),
-    ].map(({ record }) => record);
-    validatedPromotedManifest.production_state = produceLexicalProductionState({
+    const promotionStagedRecords = referenceRecords.slice(canonical.records.length);
+    const promotionProduction = makeProductionState({
       batchId: validatedPromotedManifest.batch_id,
-      stages: {
-        candidate_intake: {
-          source_path: stagedRecordsPath,
-          source_bytes: reviewedStagingBytes,
-        },
-        semantic_review: {
-          source_path: semanticAuditPath,
-          source_bytes: semanticAudit.bytes,
-        },
-        selection: {
-          source_path: 'a2-test:editorial-selection',
-          source_bytes: manifestSources.editorialInputBytes,
-          policy: 'a2-test-reviewed-selection',
-        },
-        prospective_canonical: {
-          source_path: 'a2-test:prospective-canonical-record-values',
-          source_bytes: productionSourceBytes(promotionProspectiveValues),
-        },
-        audit: {
-          source_path: semanticAuditPath,
-          source_bytes: semanticAudit.bytes,
-        },
-        admission: {
-          source_path: semanticAuditPath,
-          source_bytes: semanticAudit.bytes,
-          decision: 'admit',
-          authorization_ref: 'a2-test-explicit-admission',
-        },
-      },
-    }).state;
+      candidateRecords: promotionStagedRecords,
+      reviewedRecords: promotionStagedRecords,
+      baseRecords: baseForPromotion.records,
+      prospectiveRecords: [...baseForPromotion.records, ...promotionStagedRecords],
+      semanticAudit: semanticAudit.artifact,
+      artifactId: 'm5-10a-wave-a2-promotion-production',
+    });
+    validatedPromotedManifest.production_state = promotionProduction.state;
     await writeFile(promotedManifestPath, `${JSON.stringify(validatedPromotedManifest)}\n`, 'utf8');
     await writeFile(stagedRecordsPath, reviewedStagingBytes);
     const promotion = await validateBatch({
@@ -969,8 +920,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       inventoryPath: A2_INVENTORY_PATH,
       canonicalDirectory: A2_BASE_CANONICAL_DIRECTORY,
       productionStateSources: {
-        selection: manifestSources.editorialInputBytes,
-        admission: semanticAudit.bytes,
+        ...promotionProduction.sources,
       },
     });
     assert.equal(promotion.stagedRecordCount, 50);
@@ -988,8 +938,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
         inventoryPath: A2_INVENTORY_PATH,
         canonicalDirectory: A2_BASE_CANONICAL_DIRECTORY,
         productionStateSources: {
-          selection: manifestSources.editorialInputBytes,
-          admission: semanticAudit.bytes,
+          ...promotionProduction.sources,
         },
       }),
       (error) => error.code === 'REVIEWED_STAGING_DIGEST_MISMATCH',

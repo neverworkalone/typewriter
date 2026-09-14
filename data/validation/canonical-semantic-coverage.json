@@ -6,10 +6,10 @@
   "lexical_quality_ruleset_version": "lexical-quality-v1",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "9d3ca09287b2a1d366415f9dfe691096c492b59de3f41e3aa9768bf90e178737"
+    "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4"
   },
   "record_count": 1320,
-  "sense_count": 1590,
+  "sense_count": 1588,
   "records": [
     {
       "record_id": "r001",
@@ -45945,16 +45945,16 @@
     },
     {
       "record_id": "w1229",
-      "record_sha256": "eec2573fd76bee02aba2bfa3606329c79c62b7635e579d4d87f6d92120d0d056",
+      "record_sha256": "4703f06599a7ebcb1ae7d57d9c2aa1c34dfb69200d7abc2b6e42fbfb4ec385fd",
       "lemma": "결핍",
       "record_type": "entry",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1229-s1",
-          "sense_sha256": "4d09fe076a24f409739cd984a8657190cfb5e0a439d8dd95d22b7627d90820da",
+          "sense_sha256": "8ada3dbeb434daf72e3d9c757333fcfe19d9f17f10b422cbefce19badf3ae1f2",
           "content": {
-            "gloss_sha256": "8684e7c080ccee56c38447e3e8b742f75bd14b687bb270c06df69767cd094a89",
+            "gloss_sha256": "6944bd5edde350a80dd85a3d71ce93b5ef04254e621c513fd8867dc15467dec6",
             "observed_domain_axes": [],
             "domain_evidence": [],
             "connector_observations": [],
@@ -45962,21 +45962,6 @@
             "record_type": "entry",
             "relation_count": 0,
             "relation_sha256": "2e3d0dd11e48d7ccd0564cf410f8c9c9346e315fc7d731a2bc5cc2e13c19586b",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1229-s2",
-          "sense_sha256": "4438775c14f0dbe304f674c431cc26abe835c052e6243b70aec97c6a403d124b",
-          "content": {
-            "gloss_sha256": "7ab4623f486e9d0cc3b344b10ab4494b9ad5443c71b4c60afddb80a78d8c9893",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "noun",
-            "record_type": "entry",
-            "relation_count": 0,
-            "relation_sha256": "22f78c0e188f17b76367ff16ca6a1a81bffee850a0dc5d63d3c911b498e43150",
             "relation_fingerprints": []
           }
         }
@@ -47141,16 +47126,16 @@
     },
     {
       "record_id": "w1269",
-      "record_sha256": "83fff2a917e247b3e40ec4eeffd25a9a587dbc40636c8871a11c5cd504c6dce5",
+      "record_sha256": "8c8a8021bed050805c2721596566d9a7d61c623d7fe83b345d6585fab0beedaf",
       "lemma": "눈치를 보다",
       "record_type": "expression",
       "role": "start",
       "sense_coverage": [
         {
           "sense_id": "w1269-s1",
-          "sense_sha256": "4dc012b70f89ddb7f206f82dd0a85e4f2e2a9099a2e24d062a743dc320d39d31",
+          "sense_sha256": "20e7723e47e0ce6a3fa0a06cb03b98451c4276fceb13d07cc048c896991dc0e7",
           "content": {
-            "gloss_sha256": "32ff19da762c7ce17bf49b946e6dda21b7dbdb4c86d412c079f4f0c2612107f6",
+            "gloss_sha256": "614f88817ed09479bb2a76e82d6b6a4156d43d2215633f0f69220a48debf53ab",
             "observed_domain_axes": [
               "affective"
             ],
@@ -47159,29 +47144,25 @@
                 "axis": "affective",
                 "term": "기분",
                 "index": 4,
-                "excerpt": "상대의 기분을 살피며 행동하다"
+                "excerpt": "상대의 기분이나 반응을 살피며 조심스럽게 행동하"
               }
             ],
-            "connector_observations": [],
+            "connector_observations": [
+              {
+                "connector": "이나",
+                "index": 6,
+                "left_axis": "affective",
+                "left_term": "기분",
+                "right_axis": null,
+                "right_term": null,
+                "classification": "unclassified-coordination",
+                "excerpt": "상대의 기분이나 반응을 살피며 조심스럽게 행동하다"
+              }
+            ],
             "pos": "expression",
             "record_type": "expression",
             "relation_count": 0,
             "relation_sha256": "f54fa27ba24315c83b6b31661a56ffcc8685450847c3ae1e7bf3d19500dbe12e",
-            "relation_fingerprints": []
-          }
-        },
-        {
-          "sense_id": "w1269-s2",
-          "sense_sha256": "784e0ebe18338540c1ce9f809aa22875789175b6e51a42b982a0970a3575896d",
-          "content": {
-            "gloss_sha256": "19d9311f9d1b32b3f50e79f0b29e56df5b2416c8e8fc6363b09a4798aa892aa4",
-            "observed_domain_axes": [],
-            "domain_evidence": [],
-            "connector_observations": [],
-            "pos": "expression",
-            "record_type": "expression",
-            "relation_count": 0,
-            "relation_sha256": "4dbcb04a2d1b0bd2994be422df43858f3c0017795f75c0f1a3bfa4958b4a477d",
             "relation_fingerprints": []
           }
         }

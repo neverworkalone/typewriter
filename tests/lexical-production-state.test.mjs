@@ -6,6 +6,7 @@ import {
   createLexicalProductionPayload,
   createLexicalProductionRun,
   createLexicalProductionState,
+  produceLexicalProductionState,
   productionSourceBytes,
   productionStageBytes,
   productionValueSha256,
@@ -224,6 +225,46 @@ test('producer rejects omitted predecessors, reused payloads, and stale source b
   assert.throws(
     () => validateLexicalProductionState(valid.state, {
       batchId: 'future-batch-special-case', sourceBytesByStage: valid.sourceBytesByStage, expectedPayloads: valid.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_SCOPE',
+  );
+});
+
+test('replay state is historical-only and live producer stage omission fails closed', () => {
+  const live = makeRun('future-batch-replay-boundary');
+  const replayStages = Object.fromEntries(live.state.stages.map((stage) => [stage.id, {
+    status: 'complete',
+    source_path: stage.source_path,
+    source_bytes: live.sourceBytesByStage[stage.id],
+    ...(stage.id === 'selection' ? { policy: stage.policy } : {}),
+    ...(stage.id === 'admission' ? { authorization_ref: stage.authorization_ref } : {}),
+  }]));
+  const replay = produceLexicalProductionState({
+    batchId: 'future-batch-replay-boundary',
+    stages: replayStages,
+  });
+
+  assert.equal(replay.state.producer_mode, 'replay');
+  assert.throws(
+    () => validateLexicalProductionState(replay.state, {
+      batchId: 'future-batch-replay-boundary',
+      sourceBytesByStage: replay.sources,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+  );
+  assert.doesNotThrow(() => validateLexicalProductionState(replay.state, {
+    batchId: 'future-batch-replay-boundary',
+    sourceBytesByStage: replay.sources,
+    allowReplay: true,
+  }));
+
+  const omittedStage = structuredClone(live.state);
+  omittedStage.stages.splice(3, 1);
+  assert.throws(
+    () => validateLexicalProductionState(omittedStage, {
+      batchId: 'future-batch-replay-boundary',
+      sourceBytesByStage: live.sourceBytesByStage,
+      expectedPayloads: live.payloads,
     }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_SCOPE',
   );

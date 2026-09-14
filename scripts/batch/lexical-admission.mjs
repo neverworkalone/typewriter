@@ -50,7 +50,7 @@ function asRecordInfos(records, source, fallbackPath) {
  * candidate bodies are checked, reviewed canonical bodies are checked, and
  * the complete prospective dictionary is checked for every admission.
  */
-export function validateLexicalAddition({
+function validateLexicalAdditionInternal({
   batchId,
   candidateRecords = [],
   reviewedRecords = [],
@@ -64,6 +64,7 @@ export function validateLexicalAddition({
   productionAuthorizationEvidence,
   productionAdmissionStage,
   productionPayloads,
+  allowReplay = false,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
@@ -96,11 +97,19 @@ export function validateLexicalAddition({
     if (productionState === undefined) {
       throw new Error('lexical admission requires the complete production_state');
     }
+    if (productionState.producer_mode === 'replay' && !allowReplay) {
+      const error = new Error(
+        'active lexical admission requires a live producer run; replay state is reserved for explicit historical verification',
+      );
+      error.code = 'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN';
+      throw error;
+    }
+    const replayState = productionState.producer_mode === 'replay';
     validatedProductionState = validateLexicalProductionState(productionState, {
       batchId,
       sourceBytesByStage: productionStateSources,
-      expectedPayloads: productionPayloads,
-      allowReplay: productionState.producer_mode === 'replay',
+      expectedPayloads: replayState ? undefined : productionPayloads,
+      allowReplay,
     });
   }
   const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
@@ -154,12 +163,14 @@ export function validateLexicalAddition({
   const semanticAuditCoverage = validateSemanticAuditCoverage(prospectiveInfos, semanticAudit, {
     baseRecords: baseInfos,
     label: `${batchId} semantic audit`,
+    requireDecisionSource: !allowReplay,
   });
   const indexes = validateDatasetRecords(prospectiveInfos, {
     checkPilotCompleteness,
     semanticAudit,
     requireSemanticAudit: true,
     semanticAuditBaseRecords: baseInfos,
+    requireDecisionSource: !allowReplay,
   });
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset
@@ -272,4 +283,34 @@ export function validateLexicalAddition({
     indexes,
     audit,
   };
+}
+
+/**
+ * Validate a new admission.  Replay is not an option on the common API:
+ * active and future registrations must be backed by a live producer run.
+ */
+export function validateLexicalAddition(options = {}) {
+  if (options?.allowReplay === true) {
+    const error = new Error(
+      'generic lexical admission never accepts replay; use validateHistoricalLexicalAddition for explicit historical verification',
+    );
+    error.code = 'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN';
+    throw error;
+  }
+  return validateLexicalAdditionInternal({ ...options, allowReplay: false });
+}
+
+/**
+ * Historical verification boundary for durable/replayed artifacts.  Keeping
+ * this separate makes the replay exception visible at every caller.
+ */
+export function validateHistoricalLexicalAddition(options = {}) {
+  if (options?.allowReplay !== true) {
+    const error = new Error(
+      'historical lexical admission requires an explicit allowReplay: true opt-in',
+    );
+    error.code = 'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED';
+    throw error;
+  }
+  return validateLexicalAdditionInternal({ ...options, allowReplay: true });
 }

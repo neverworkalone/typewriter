@@ -42,7 +42,7 @@ test('the shared audit covers the complete current canonical dictionary', async 
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
   assert.equal(audit.record_count, 1320);
-  assert.equal(audit.sense_count, 1590);
+  assert.equal(audit.sense_count, 1588);
 });
 
 test('the independent boundary audit uses authored pair decisions for any record', () => {
@@ -72,6 +72,10 @@ test('the independent boundary audit uses authored pair decisions for any record
       },
     });
     const pair = audit.review.records[0].boundary_review.pairwise[0];
+    assert.throws(
+      () => validateSemanticAuditCoverage(infos, audit),
+      (error) => error.code === 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
+    );
     pair.relationship = glosses[0] === glosses[1] ? 'duplicate' : 'nested';
     pair.decision = 'merge';
     assert.throws(
@@ -230,6 +234,7 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
       semanticAudit: baseAudit,
       productionState: invalidProductionState.state,
       productionStateSources: invalidProductionState.sources,
+      productionPayloads: invalidProductionState.payloads,
     }),
     /distinct writer domains/u,
   );
@@ -267,6 +272,7 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
     semanticAudit: makeSemanticAudit(prospectiveRecordInfos),
     productionState: validProductionState.state,
     productionStateSources: validProductionState.sources,
+    productionPayloads: validProductionState.payloads,
   });
   assert.equal(result.pipeline_version, 'lexical-admission-v1');
   assert.equal(result.batch_id, 'future-batch-2040');
@@ -310,6 +316,7 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
       semanticAudit: makeSemanticAudit(partial),
       productionState: partialProductionState.state,
       productionStateSources: partialProductionState.sources,
+      productionPayloads: partialProductionState.payloads,
     }),
     /missing base record w001|does not preserve base record w001/u,
   );
@@ -429,6 +436,7 @@ test('the shared production review catches 과/와 and connector-free merged dom
         semanticAudit,
         productionState: productionState.state,
         productionStateSources: productionState.sources,
+        productionPayloads: productionState.payloads,
         catalogCount: 1,
         expectedSelectedCount: 1,
       }),
@@ -548,6 +556,7 @@ test('reviewed existing-record correction passes while an unreviewed replacement
     semanticAudit: audit,
     productionState: correctionProductionState.state,
     productionStateSources: correctionProductionState.sources,
+    productionPayloads: correctionProductionState.payloads,
   });
   assert.equal(admitted.reviewed_count, 1);
   assert.throws(
@@ -559,6 +568,7 @@ test('reviewed existing-record correction passes while an unreviewed replacement
       semanticAudit: audit,
       productionState: correctionProductionState.state,
       productionStateSources: correctionProductionState.sources,
+      productionPayloads: correctionProductionState.payloads,
     }),
     /does not preserve base record w903|corrected/u,
   );

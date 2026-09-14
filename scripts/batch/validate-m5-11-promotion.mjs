@@ -13,7 +13,7 @@ import {
   DEFAULT_SEMANTIC_AUDIT_PATH,
   readSemanticAuditArtifact,
 } from '../validate/semantic-audit.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateHistoricalLexicalAddition } from './lexical-admission.mjs';
 import {
   produceLexicalProductionState,
   productionSourceBytes,
@@ -651,7 +651,7 @@ export async function validateM511Promotion({
       fail('complete canonical semantic review evidence drifted from the bound audit', 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
     }
   }
-  validateLexicalAddition({
+  validateHistoricalLexicalAddition({
     batchId: manifest.batch_id,
     baseRecords: canonical.records,
     prospectiveRecords: canonical.records,
@@ -702,6 +702,7 @@ export async function validateM511Promotion({
       audit: semanticAuditBytes,
       admission: productionSourceBytes(evidence),
     },
+    allowReplay: true,
     checkPilotCompleteness: true,
     prospectiveLabel: 'M5-11 promoted canonical records',
   });

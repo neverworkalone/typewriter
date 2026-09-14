@@ -1449,6 +1449,7 @@ test('M5-11 prospective verification runs the complete M4 baseline contract', as
       semanticAudit,
       productionState: productionState.state,
       productionStateSources: productionState.sources,
+      productionPayloads: productionState.payloads,
       expectedFinalSummary: {
         record_count: 821,
         start_count: 779,

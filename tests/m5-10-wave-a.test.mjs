@@ -13,15 +13,14 @@ import { validateBatch } from '../scripts/batch/validate-batch.mjs';
 import { validateExpansionStage } from '../scripts/batch/validate-m5-8-process.mjs';
 import { validateWaveARelationScreen } from '../scripts/batch/validate-wave-a-relation-screen.mjs';
 import {
-  produceLexicalProductionState,
-  productionSourceBytes,
-} from '../scripts/batch/lexical-production-state.mjs';
-import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateRelationDiff } from '../scripts/batch/relation-diff.mjs';
-import { writeSemanticAuditFixture } from './helpers/semantic-audit-fixture.mjs';
+import {
+  makeProductionState,
+  writeSemanticAuditFixture,
+} from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CANONICAL_IMPORT_PATH = path.join(DEFAULT_CANONICAL_DIRECTORY, 'm5-10-wave-a.jsonl');
@@ -218,45 +217,16 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       ...historicalCanonical.records,
       ...staged.records,
     ].map(({ record }) => record);
-    const productionStages = {
-      candidate_intake: {
-        status: 'complete',
-        source_path: stagedRecordsPath,
-        source_bytes: stagedBytes,
-      },
-      semantic_review: {
-        status: 'complete',
-        source_path: semanticAuditPath,
-        source_bytes: semanticAuditBytes,
-      },
-      selection: {
-        status: 'complete',
-        source_path: stagedRecordsPath,
-        source_bytes: stagedBytes,
-        policy: 'historical-wave-a-selection',
-      },
-      prospective_canonical: {
-        status: 'complete',
-        source_path: 'wave-a:prospective-canonical',
-        source_bytes: productionSourceBytes(prospectiveRecords),
-      },
-      audit: {
-        status: 'complete',
-        source_path: semanticAuditPath,
-        source_bytes: semanticAuditBytes,
-      },
-      admission: {
-        status: 'complete',
-        source_path: stagedRecordsPath,
-        source_bytes: stagedBytes,
-        decision: 'admit',
-        authorization_ref: 'historical-wave-a-explicit-admission',
-      },
-    };
-    validatedManifest.production_state = produceLexicalProductionState({
+    const production = makeProductionState({
       batchId: validatedManifest.batch_id,
-      stages: productionStages,
-    }).state;
+      candidateRecords: staged.records,
+      reviewedRecords: staged.records,
+      baseRecords: historicalCanonical.records,
+      prospectiveRecords: [...historicalCanonical.records, ...staged.records],
+      semanticAudit: semanticAudit.artifact,
+      artifactId: 'm5-10-wave-a-test-production',
+    });
+    validatedManifest.production_state = production.state;
     await writeFile(validatedManifestPath, `${JSON.stringify(validatedManifest, null, 2)}\n`, 'utf8');
 
     const summary = await validateBatch({
@@ -265,6 +235,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       semanticAuditPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      productionStateSources: production.sources,
     });
     assert.equal(summary.canonicalRecordCount, 570);
     assert.equal(summary.stagedRecordCount, 50);
@@ -285,6 +256,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       outputPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      productionStateSources: production.sources,
     });
     assert.equal(imported.outputRecordCount, 50);
     assert.equal(await readFile(outputPath, 'utf8'), waveRecords);

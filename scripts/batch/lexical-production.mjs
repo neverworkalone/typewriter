@@ -164,15 +164,22 @@ function validateStageEvidence(
     productionStateSources,
     expectedPayloads,
     payloadSpecs,
+    allowReplay = false,
   } = {},
 ) {
   if (productionState !== undefined) {
     try {
-      const allowReplay = productionState.producer_mode === 'replay';
+      if (productionState.producer_mode === 'replay' && !allowReplay) {
+        fail(
+          'active lexical production requires a live producer run; replay state is reserved for explicit historical verification',
+          'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+        );
+      }
+      const replayState = productionState.producer_mode === 'replay';
       const state = validateLexicalProductionState(productionState, {
         batchId,
         sourceBytesByStage: productionStateSources,
-        expectedPayloads: allowReplay ? undefined : expectedPayloads,
+        expectedPayloads: replayState ? undefined : expectedPayloads,
         allowReplay,
       });
       return {
@@ -296,6 +303,7 @@ export function validateLexicalProduction({
   productionState,
   productionStateSources,
   productionPayloads,
+  allowReplay = false,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -303,6 +311,12 @@ export function validateLexicalProduction({
   reviewedLabel = 'production reviewed records',
   prospectiveLabel = 'production prospective canonical records',
 } = {}) {
+  if (allowReplay === true) {
+    fail(
+      'generic lexical production never accepts replay; use an explicit historical validator boundary',
+      'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
   if (typeof batchId !== 'string' || batchId.trim().length === 0) {
     fail('production.batch_id must be a non-empty string', 'LEXICAL_PRODUCTION_SCOPE');
   }
@@ -480,6 +494,7 @@ export function validateLexicalProduction({
     productionStateSources,
     expectedPayloads: preAuditPayloads,
     payloadSpecs: preAuditPayloads?.payload_specs,
+    allowReplay,
   });
 
   let admission;
@@ -498,6 +513,7 @@ export function validateLexicalProduction({
       productionAuthorizationEvidence: productionContext.authorizationEvidence,
       productionAdmissionStage: productionContext.admissionStage,
       productionPayloads: preAuditPayloads,
+      allowReplay,
       checkPilotCompleteness,
       candidateLabel,
       reviewedLabel,

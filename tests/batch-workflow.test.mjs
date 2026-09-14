@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   BatchValidationError,
   REPOSITORY_DIRECTORY,
+  validateHistoricalBatch,
   validateBatch,
   validateBatchManifest,
 } from '../scripts/batch/validate-batch.mjs';
@@ -23,11 +24,11 @@ import {
   DEFAULT_INVENTORY_PATH,
   readTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
-import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
 import {
-  produceLexicalProductionState,
-  productionSourceBytes,
-} from '../scripts/batch/lexical-production-state.mjs';
+  makeProductionState,
+  makeSemanticAudit,
+} from './helpers/semantic-audit-fixture.mjs';
+import { produceLexicalProductionState } from '../scripts/batch/lexical-production-state.mjs';
 
 function createManifest() {
   return {
@@ -117,7 +118,7 @@ async function createFixture() {
   const directory = await mkdtemp(path.join(tmpdir(), 'typewriter-batch-'));
   const manifest = createManifest();
   const records = createStagedRecords();
-  const { manifestPath, stagedRecordsPath, semanticAuditPath } = await writeFixtureFiles({
+  const fixtureFiles = await writeFixtureFiles({
     directory,
     manifest,
     records,
@@ -125,9 +126,7 @@ async function createFixture() {
   });
   return {
     directory,
-    manifestPath,
-    stagedRecordsPath,
-    semanticAuditPath,
+    ...fixtureFiles,
     canonicalDirectory: FIXTURE_CANONICAL_DIRECTORY,
     inventoryPath: FIXTURE_INVENTORY_PATH,
   };
@@ -174,45 +173,16 @@ async function writeFixtureFiles({
     ...canonical.records.map(({ record }) => record),
     ...records,
   ];
-  const productionStages = {
-    candidate_intake: {
-      status: 'complete',
-      source_path: stagedRecordsPath,
-      source_bytes: stagedBytes,
-    },
-    semantic_review: {
-      status: 'complete',
-      source_path: semanticAuditPath,
-      source_bytes: semanticAuditBytes,
-    },
-    selection: {
-      status: 'complete',
-      source_path: stagedRecordsPath,
-      source_bytes: stagedBytes,
-      policy: 'fixture-selection',
-    },
-    prospective_canonical: {
-      status: 'complete',
-      source_path: 'fixture:prospective-canonical',
-      source_bytes: productionSourceBytes(prospectiveValues),
-    },
-    audit: {
-      status: 'complete',
-      source_path: semanticAuditPath,
-      source_bytes: semanticAuditBytes,
-    },
-    admission: {
-      status: 'complete',
-      source_path: stagedRecordsPath,
-      source_bytes: stagedBytes,
-      decision: 'admit',
-      authorization_ref: 'fixture-explicit-admission',
-    },
-  };
-  manifest.production_state = produceLexicalProductionState({
+  const production = makeProductionState({
     batchId: manifest.batch_id,
-    stages: productionStages,
-  }).state;
+    candidateRecords: records,
+    reviewedRecords: records,
+    baseRecords: canonical.records,
+    prospectiveRecords: prospectiveValues,
+    semanticAudit,
+    artifactId: `${manifest.batch_id}-production`,
+  });
+  manifest.production_state = production.state;
   manifest.review.semantic_audit_sha256 = createHash('sha256').update(semanticAuditBytes).digest('hex');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(
@@ -221,7 +191,12 @@ async function writeFixtureFiles({
     'utf8',
   );
   await writeFile(semanticAuditPath, semanticAuditBytes);
-  return { manifestPath, stagedRecordsPath, semanticAuditPath };
+  return {
+    manifestPath,
+    stagedRecordsPath,
+    semanticAuditPath,
+    productionStateSources: production.sources,
+  };
 }
 
 async function createIdBoundaryFixture() {
@@ -306,7 +281,7 @@ async function createIdBoundaryFixture() {
       gloss: '네 자리 식별자를 사용하는 신규 record.',
     }],
   };
-  const { manifestPath, stagedRecordsPath, semanticAuditPath } = await writeFixtureFiles({
+  const fixtureFiles = await writeFixtureFiles({
     directory,
     manifest,
     records: [stagedRecord],
@@ -315,9 +290,7 @@ async function createIdBoundaryFixture() {
 
   return {
     directory,
-    manifestPath,
-    stagedRecordsPath,
-    semanticAuditPath,
+    ...fixtureFiles,
     inventoryPath,
     canonicalDirectory,
   };
@@ -459,11 +432,11 @@ test('accepts a reviewed record with zero relations when no closure is needed', 
     const records = await readStagedRecords(fixture.stagedRecordsPath);
     manifest.records = [manifest.records[0]];
     records[0].senses[0].relations = [];
-    await writeFixtureFiles({
+    Object.assign(fixture, await writeFixtureFiles({
       directory: fixture.directory,
       manifest,
       records: [records[0]],
-    });
+    }));
 
     const summary = await validateBatch(fixture);
     assert.equal(summary.stagedRecordCount, 1);
@@ -517,6 +490,55 @@ test('active generic admission requires shared production state and preserves th
     const canonical = await readCanonicalRecords(fixture.canonicalDirectory);
     assert.equal(canonical.records.length, 620);
     assert.equal(canonical.records.some(({ record }) => record.id === 'w579'), false);
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('generic admission rejects reconstructed replay while explicit historical validation accepts it', async () => {
+  const fixture = await createFixture();
+
+  try {
+    const manifest = await readManifest(fixture.manifestPath);
+    const replayStages = Object.fromEntries(manifest.production_state.stages.map((stage) => [stage.id, {
+      status: 'complete',
+      source_path: stage.source_path,
+      source_bytes: fixture.productionStateSources[stage.id],
+      ...(stage.id === 'selection' ? { policy: stage.policy } : {}),
+      ...(stage.id === 'admission' ? { authorization_ref: stage.authorization_ref } : {}),
+    }]));
+    const replay = produceLexicalProductionState({
+      batchId: manifest.batch_id,
+      stages: replayStages,
+    });
+    manifest.production_state = replay.state;
+    await writeFile(fixture.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+    await assert.rejects(
+      validateBatch({ ...fixture, productionStateSources: replay.sources }),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError);
+        assert.equal(error.code, 'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN');
+        return true;
+      },
+    );
+    await assert.rejects(
+      validateBatch({
+        ...fixture,
+        allowReplay: true,
+        productionStateSources: replay.sources,
+      }),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError);
+        assert.equal(error.code, 'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN');
+        return true;
+      },
+    );
+    await assert.doesNotReject(() => validateHistoricalBatch({
+      ...fixture,
+      allowReplay: true,
+      productionStateSources: replay.sources,
+    }));
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }
@@ -599,7 +621,7 @@ test('rejects unapproved staged rows and non-deterministic canonical IDs', async
     records[0].candidate_id = 'w630';
     records[0].senses[0].id = 'w630-s1';
     manifest.records[0].canonical_id = 'w630';
-    await writeFixtureFiles({ directory: fixture.directory, manifest, records });
+    Object.assign(fixture, await writeFixtureFiles({ directory: fixture.directory, manifest, records }));
     await assert.rejects(
       validateBatch({
         ...fixture,

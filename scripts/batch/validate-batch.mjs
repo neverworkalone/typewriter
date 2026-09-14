@@ -11,8 +11,12 @@ import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
 import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
+  validateHistoricalLexicalAddition,
+  validateLexicalAddition,
+} from './lexical-admission.mjs';
+import {
+  readLexicalProductionPayloads,
   productionSourceBytes,
   validateLexicalProductionState,
 } from './lexical-production-state.mjs';
@@ -1077,13 +1081,14 @@ function validateStagedMapping(manifestRecords, stagedRecordInfos) {
   return stagedById;
 }
 
-export async function validateBatch({
+async function validateBatchInternal({
   manifestPath,
   stagedRecordsPath,
   semanticAuditPath,
   inventoryPath = DEFAULT_INVENTORY_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   allowRepositoryStaging = false,
+  allowReplay = false,
   productionStateSources: productionStateSourceOverrides = {},
 } = {}) {
   if (!manifestPath) {
@@ -1181,11 +1186,23 @@ export async function validateBatch({
     admission: stagedBytes,
     ...productionStateSourceOverrides,
   };
+  const replayState = manifest.production_state.producer_mode === 'replay';
+  if (replayState && !allowReplay) {
+    fail(
+      'active batch admission requires a live producer run; historical replay state is not accepted',
+      'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
+  let productionPayloads;
   try {
+    productionPayloads = replayState && allowReplay
+      ? undefined
+      : readLexicalProductionPayloads(productionStateSources);
     validateLexicalProductionState(manifest.production_state, {
       batchId: manifest.batch_id,
       sourceBytesByStage: productionStateSources,
-      allowReplay: manifest.production_state.producer_mode === 'replay',
+      expectedPayloads: productionPayloads,
+      allowReplay,
     });
   } catch (error) {
     fail(`shared production_state validation failed: ${error.message}`, error.code);
@@ -1199,7 +1216,11 @@ export async function validateBatch({
     ...recordInfo,
     decision: manifestRecordByCanonicalId.get(recordInfo.record.id)?.decision,
   }));
-  validateLexicalAddition({
+  const historicalReplay = replayState && allowReplay;
+  const lexicalAdmission = historicalReplay
+    ? validateHistoricalLexicalAddition
+    : validateLexicalAddition;
+  lexicalAdmission({
     batchId: manifest.batch_id,
     baseRecords: canonicalResult.records,
     reviewedRecords,
@@ -1207,6 +1228,8 @@ export async function validateBatch({
     semanticAudit,
     productionState: manifest.production_state,
     productionStateSources,
+    productionPayloads,
+    allowReplay: historicalReplay,
     checkPilotCompleteness: false,
     candidateLabel: `${manifest.batch_id} candidate records`,
     reviewedLabel: `${manifest.batch_id} reviewed records`,
@@ -1236,6 +1259,35 @@ export async function validateBatch({
     counts,
     stagedRecords: stagedResult.records,
   };
+}
+
+/**
+ * Validate an active/future batch.  Replay is intentionally not an option on
+ * this public boundary: only a live lexical-production run may authorize a
+ * new admission.
+ */
+export async function validateBatch(options = {}) {
+  if (options?.allowReplay === true) {
+    fail(
+      'generic batch validation never accepts replay; use validateHistoricalBatch for an explicit historical verification',
+      'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
+  return validateBatchInternal({ ...options, allowReplay: false });
+}
+
+/**
+ * Historical verification boundary.  Callers must opt into this named API so
+ * a replay state cannot accidentally become the normal admission path.
+ */
+export async function validateHistoricalBatch(options = {}) {
+  if (options?.allowReplay !== true) {
+    fail(
+      'historical batch validation requires an explicit allowReplay: true opt-in',
+      'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
+    );
+  }
+  return validateBatchInternal({ ...options, allowReplay: true });
 }
 
 export function assertImportArtifactPath(outputPath, canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY) {

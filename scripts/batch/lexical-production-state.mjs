@@ -197,6 +197,24 @@ export function productionStageBytes(stageId, payloadBytes) {
   return stageEnvelopeBytes(stageId, payload);
 }
 
+/**
+ * Read the typed payloads emitted by a live producer from its persisted stage
+ * envelopes. Active admission callers use these only as an additional binding
+ * after they have supplied the producer-owned source bytes; raw artifacts and
+ * replay envelopes are not accepted here.
+ */
+export function readLexicalProductionPayloads(sourceBytesByStage) {
+  const sources = requireObject(sourceBytesByStage, 'production state source bytes');
+  return Object.fromEntries(LEXICAL_PRODUCTION_STAGE_IDS.map((stageId) => [
+    stageId,
+    parseStageSource(
+      stageId,
+      sources[stageId],
+      `production state ${stageId}`,
+    ).payload,
+  ]));
+}
+
 function replayStageBytes(stageId, sourceBytes) {
   const bytes = asBytes(sourceBytes, `production stage ${stageId}.source_bytes`);
   try {
@@ -1069,7 +1087,7 @@ function validateStage(
   if (!['live', 'replay'].includes(stage.payload_mode)) {
     fail(`${label}.payload_mode must identify a live or replay producer output`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
   }
-  if (stage.payload_mode === 'replay' && !allowReplay) {
+  if (stage.payload_mode === 'replay' && (state.producer_mode !== 'replay' || !allowReplay)) {
     fail(`${label} replay output is not accepted by the live admission validator`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
   }
   const payloadInputSha256 = stage.payload_input_sha256 === null

@@ -21,7 +21,7 @@ import { validateRelationDiff } from './relation-diff.mjs';
 import {
   REPOSITORY_DIRECTORY,
   assertExternalStagingPath,
-  validateBatch,
+  validateHistoricalBatch,
   validateBatchManifest,
 } from './validate-batch.mjs';
 import {
@@ -176,6 +176,7 @@ export async function validateWaveA2({
   inventoryPath = DEFAULT_INVENTORY_PATH,
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
   semanticAuditPath,
+  productionStateSources = {},
 } = {}) {
   if (semanticAuditPath) assertExternalStagingPath(semanticAuditPath);
   const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, planSource, verificationSource, semanticAuditSource] = await Promise.all([
@@ -503,16 +504,21 @@ export async function validateWaveA2({
     if (!stagedRecordsPath) {
       fail('verified A2 promotion requires an external --staged canonical input', 'MISSING_A2_STAGED_PATH');
     }
-    batchResult = await validateBatch({
+    batchResult = await validateHistoricalBatch({
       manifestPath,
       stagedRecordsPath,
       semanticAuditPath,
       inventoryPath,
       canonicalDirectory: baseCanonicalDirectory,
       allowRepositoryStaging: true,
+      // This named validator is the explicit historical replay boundary for
+      // the retained A2 artifact. Generic/future admission keeps its
+      // fail-closed replay policy.
+      allowReplay: true,
       productionStateSources: {
         selection: editorialSource.bytes,
         ...(semanticAuditSource ? { admission: semanticAuditSource.bytes } : {}),
+        ...productionStateSources,
       },
     });
     assert.equal(batchResult.manifest.batch_id, A2_BATCH_ID, 'validated batch has the wrong batch_id');

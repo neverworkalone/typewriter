@@ -273,6 +273,7 @@ export function validateDatasetRecords(
     semanticAudit,
     requireSemanticAudit = false,
     semanticAuditBaseRecords,
+    requireDecisionSource = true,
   } = {},
 ) {
   const indexes = indexRecords(recordInfos);
@@ -287,6 +288,7 @@ export function validateDatasetRecords(
       validateSemanticAuditCoverage(recordInfos, semanticAudit, {
         baseRecords: semanticAuditBaseRecords,
         label: 'complete canonical semantic audit',
+        requireDecisionSource,
       });
     } catch (error) {
       fail(error.message, error.code);

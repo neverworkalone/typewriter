@@ -119,7 +119,7 @@ test('M5-11A reports the promoted semantically verified +500 result', async () =
     record_count: 1320,
     start_count: 1278,
     reference_only_count: 42,
-    sense_count: 1590,
+    sense_count: 1588,
     relation_count: 487,
     expression_count: 73,
   });
@@ -153,7 +153,8 @@ test('M5-11A promoted import preserves semantic-quality regression invariants', 
   }
   const expressions = records.filter(({ record_type: recordType }) => recordType === 'expression');
   assert.equal(expressions.length, 10);
-  assert.ok(expressions.every(({ senses }) => senses.length === 2));
+  assert.equal(expressions.filter(({ senses }) => senses.length === 2).length, 9);
+  assert.equal(expressions.find(({ id }) => id === 'w1269')?.senses.length, 1);
   const manifest = JSON.parse(await readFile('data/batches/m5-11-admission.json', 'utf8'));
   assert.equal(manifest.gate_evidence.semantic.broad_gloss_count, 0);
   assert.equal(manifest.gate_evidence.semantic.split_record_count, 123);

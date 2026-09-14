@@ -56,8 +56,10 @@ import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import {
+  createLexicalProductionRun,
   produceLexicalProductionState,
   productionSourceBytes,
+  productionValueSha256,
 } from './lexical-production-state.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
@@ -189,14 +191,166 @@ function createM511ProductionEvidence({
       authorization_ref: finalSource.path,
     },
   };
+  if (!materializeState) return { stageEvidence: stages };
+
+  // Legacy M5-11 artifacts remain valid historical inputs, but an active
+  // gate must execute the same live producer used by future admissions. The
+  // raw files above are inputs to this adapter; they are not replay state.
+  const proposalValue = requireObject(proposalSource.value, 'M5-11 proposal source');
+  const editorialValue = requireObject(editorialSource.value, 'M5-11 editorial source');
+  const proposalRows = requireArray(proposalValue.proposals, 'M5-11 proposal source.proposals');
+  const decisions = requireArray(editorialValue.decisions, 'M5-11 editorial source.decisions');
+  if (proposalRows.length !== decisions.length) {
+    fail('M5-11 live producer proposal and decision counts differ', 'PRODUCTION_SCOPE_MISMATCH');
+  }
+  const candidateRecords = proposalRows.map(({ candidate_record: candidateRecord }) => candidateRecord);
+  const reviewRows = decisions.map((decision, index) => ({
+    candidate_id: candidateRecords[index].id,
+    decision: decision.decision,
+    semantic_review: decision.semantic_review ?? {
+      status: 'complete',
+      source: 'external-editorial-decision',
+    },
+    ...(decision.canonical_record ? { reviewed_record: decision.canonical_record } : {}),
+  }));
+  const reviewedRecords = decisions
+    .filter(({ canonical_record: canonicalRecord }) => canonicalRecord)
+    .map(({ canonical_record: canonicalRecord }) => canonicalRecord);
+  const selectedIndexes = decisions
+    .map((decision, index) => (decision.canonical_record ? index : null))
+    .filter((index) => index !== null);
+  const reviewOutput = {
+    review_rows: reviewRows,
+    reviewed_records: reviewedRecords,
+  };
+  const selectionOutput = {
+    selected_records: reviewedRecords,
+    selection_ranks: selectedIndexes,
+  };
+  const prospectiveOutput = [
+    ...baseRecords.map(recordValue),
+    ...importedRecords.map(recordValue),
+  ];
+  const auditOutput = {
+    prospective_records_sha256: productionValueSha256(prospectiveOutput),
+    semantic_audit_sha256: productionValueSha256(semanticAuditSource.value),
+    lexical_audit_sha256: productionValueSha256({
+      artifact_id: `${batchId}:lexical-audit`,
+      blocking_finding_count: 0,
+    }),
+  };
+  const run = createLexicalProductionRun({ batchId });
+  const candidateToken = run.completeCandidateIntake({
+    sourcePath: proposalSource.path,
+    payloadSpec: {
+      input: null,
+      output: candidateRecords,
+      inputKind: 'none',
+      outputKind: 'candidate-records',
+      details: {
+        candidate_records_sha256: productionValueSha256(candidateRecords),
+        candidate_count: candidateRecords.length,
+      },
+    },
+  });
+  const reviewToken = run.completeSemanticReview({
+    predecessor: candidateToken,
+    sourcePath: editorialSource.path,
+    payloadSpec: {
+      input: candidateRecords,
+      output: reviewOutput,
+      inputKind: 'candidate-records',
+      outputKind: 'reviewed-records',
+      details: {
+        candidate_records_sha256: productionValueSha256(candidateRecords),
+        review_rows_sha256: productionValueSha256(reviewRows),
+        reviewed_records_sha256: productionValueSha256(reviewedRecords),
+      },
+    },
+  });
+  const selectionToken = run.completeSelection({
+    predecessor: reviewToken,
+    sourcePath: editorialSource.path,
+    payloadSpec: {
+      input: reviewOutput,
+      output: selectionOutput,
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+        reviewed_records_sha256: productionValueSha256(reviewedRecords),
+        selected_records_sha256: productionValueSha256(reviewedRecords),
+        selection_ranks_sha256: productionValueSha256(selectedIndexes),
+      },
+    },
+    policy: 'semantic-quality-and-coverage',
+  });
+  const prospectiveToken = run.completeProspectiveCanonical({
+    predecessor: selectionToken,
+    sourcePath: 'external:prospective-canonical-record-values',
+    payloadSpec: {
+      input: selectionOutput,
+      output: prospectiveOutput,
+      inputKind: 'selected-records',
+      outputKind: 'prospective-canonical',
+      details: {
+        base_records_sha256: productionValueSha256(baseRecords.map(recordValue)),
+        prospective_records_sha256: productionValueSha256(prospectiveOutput),
+      },
+    },
+  });
+  const auditToken = run.completeAudit({
+    predecessor: prospectiveToken,
+    sourcePath: semanticAuditSource.path,
+    payloadSpec: {
+      input: prospectiveOutput,
+      output: auditOutput,
+      inputKind: 'prospective-canonical',
+      outputKind: 'complete-canonical-audit',
+      details: auditOutput,
+    },
+  });
+  const authorization = run.authorizeAdmission({
+    predecessor: auditToken,
+    authorizationRef: finalSource.path,
+    authorizationBytes: finalSource.bytes,
+  });
+  const admissionOutput = {
+    status: 'admitted',
+    gate_digest: productionValueSha256({
+      batch_id: batchId,
+      candidate_count: candidateRecords.length,
+      reviewed_count: reviewedRecords.length,
+      prospective_record_count: prospectiveOutput.length,
+      semantic_audit_sha256: auditOutput.semantic_audit_sha256,
+      authorization_sha256: authorization.authorization_sha256,
+    }),
+  };
+  run.completeAdmission({
+    authorization,
+    sourcePath: finalSource.path,
+    payloadSpec: {
+      input: auditOutput,
+      output: admissionOutput,
+      inputKind: 'complete-canonical-audit',
+      outputKind: 'admitted-canonical',
+      details: {
+        authorization_sha256: authorization.authorization_sha256,
+        gate_sha256: admissionOutput.gate_digest,
+      },
+    },
+    decision: 'admit',
+    admissionResult: admissionOutput,
+  });
+  const sources = run.getSourceBytesByStage();
+  const payloads = Object.fromEntries(Object.entries(sources).map(([stageId, bytes]) => [
+    stageId,
+    JSON.parse(bytes.toString('utf8')).payload,
+  ]));
   return {
     stageEvidence: stages,
-    ...(materializeState ? {
-      state: produceLexicalProductionState({ batchId, stages }).state,
-      sources: Object.fromEntries(
-        Object.entries(stages).map(([stageId, stage]) => [stageId, stage.source_bytes]),
-      ),
-    } : {}),
+    state: run.getState(),
+    sources,
+    payloads,
   };
 }
 
@@ -1930,7 +2084,8 @@ export function deriveM511AdmissionGate({
   const admittedProductionState = sharedProduction?.production.production_state ?? productionEvidence.state;
   const admittedProductionSources = sharedProduction?.production.production_state_sources
     ?? productionEvidence.sources;
-  const admittedProductionPayloads = sharedProduction?.production.production_payloads;
+  const admittedProductionPayloads = sharedProduction?.production.production_payloads
+    ?? productionEvidence.payloads;
   const placeholderGlossCount = validateImportedRecords(
     importedRecords,
     baseRecords,
@@ -2370,7 +2525,8 @@ export async function validateM511Admission({
   const admittedProductionState = sharedProduction?.production.production_state ?? productionEvidence.state;
   const admittedProductionSources = sharedProduction?.production.production_state_sources
     ?? productionEvidence.sources;
-  const admittedProductionPayloads = sharedProduction?.production.production_payloads;
+  const admittedProductionPayloads = sharedProduction?.production.production_payloads
+    ?? productionEvidence.payloads;
   validateImportedRecords(
     editorialPreview.importedRecords,
     previewBaseRecords,

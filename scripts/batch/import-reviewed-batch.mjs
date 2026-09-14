@@ -25,6 +25,7 @@ export async function writeReviewedBatchImport({
   outputPath,
   inventoryPath,
   canonicalDirectory,
+  productionStateSources,
 } = {}) {
   assertImportArtifactPath(outputPath, canonicalDirectory);
   const summary = await validateBatch({
@@ -33,6 +34,7 @@ export async function writeReviewedBatchImport({
     semanticAuditPath,
     inventoryPath,
     canonicalDirectory,
+    productionStateSources,
   });
 
   const records = summary.stagedRecords
