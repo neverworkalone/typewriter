@@ -10,7 +10,6 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
   DEFAULT_INVENTORY_PATH,
@@ -1083,6 +1082,7 @@ function validateStagedMapping(manifestRecords, stagedRecordInfos) {
 export async function validateBatch({
   manifestPath,
   stagedRecordsPath,
+  semanticAuditPath,
   inventoryPath = DEFAULT_INVENTORY_PATH,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   allowRepositoryStaging = false,
@@ -1093,11 +1093,34 @@ export async function validateBatch({
   if (!stagedRecordsPath) {
     fail('stagedRecordsPath is required', 'MISSING_STAGED_PATH');
   }
+  if (!semanticAuditPath) {
+    fail('semanticAuditPath is required; admission cannot generate semantic decisions', 'MISSING_SEMANTIC_AUDIT_PATH');
+  }
   assertExternalStagingPath(stagedRecordsPath, allowRepositoryStaging);
+  assertExternalStagingPath(semanticAuditPath, allowRepositoryStaging);
 
   const manifest = await readManifest(manifestPath);
   if (manifest.review.status !== 'complete') {
     fail('batch review must be complete before canonical import', 'REVIEW_NOT_COMPLETE');
+  }
+
+  let semanticAuditBytes;
+  let semanticAudit;
+  try {
+    semanticAuditBytes = await readFile(semanticAuditPath);
+    semanticAudit = JSON.parse(semanticAuditBytes.toString('utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      fail(`semantic audit artifact does not exist: ${semanticAuditPath}`, 'MISSING_SEMANTIC_AUDIT');
+    }
+    if (error instanceof SyntaxError) {
+      fail(`semantic audit artifact is not valid JSON: ${semanticAuditPath}`, 'INVALID_SEMANTIC_AUDIT');
+    }
+    throw error;
+  }
+  const semanticAuditDigest = createHash('sha256').update(semanticAuditBytes).digest('hex');
+  if (manifest.review.semantic_audit_sha256 !== semanticAuditDigest) {
+    fail('semantic audit artifact digest does not match the complete batch manifest', 'SEMANTIC_AUDIT_DIGEST_MISMATCH');
   }
 
   await validateTargetInventory({ inventoryPath, canonicalDirectory });
@@ -1146,13 +1169,19 @@ export async function validateBatch({
   validateReferenceClosure(manifest.records, stagedResult.records, canonicalResult.records);
 
   const prospectiveRecords = [...canonicalResult.records, ...stagedResult.records];
-  const semanticAudit = buildSemanticAuditArtifact(prospectiveRecords, {
-    artifactId: `${manifest.batch_id}-prospective-semantic-audit`,
-  });
+  const manifestRecordByCanonicalId = new Map(
+    manifest.records
+      .filter(({ canonical_id: canonicalId }) => canonicalId)
+      .map((manifestRecord) => [manifestRecord.canonical_id, manifestRecord]),
+  );
+  const reviewedRecords = stagedResult.records.map((recordInfo) => ({
+    ...recordInfo,
+    decision: manifestRecordByCanonicalId.get(recordInfo.record.id)?.decision,
+  }));
   validateLexicalAddition({
     batchId: manifest.batch_id,
     baseRecords: canonicalResult.records,
-    reviewedRecords: stagedResult.records,
+    reviewedRecords,
     prospectiveRecords,
     semanticAudit,
     checkPilotCompleteness: false,
@@ -1210,6 +1239,7 @@ export async function main(argv = process.argv.slice(2)) {
   const summary = await validateBatch({
     manifestPath: args.manifest,
     stagedRecordsPath: args['staged-records'],
+    semanticAuditPath: args['semantic-audit'],
     inventoryPath: args.inventory,
     canonicalDirectory: args['canonical-dir'],
   });

@@ -12,7 +12,12 @@ import {
 } from '../scripts/validate/lexical-quality.mjs';
 import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs';
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
-import { buildSemanticAuditArtifact } from '../scripts/validate/semantic-audit.mjs';
+import {
+  buildSemanticCoverageArtifact,
+  canonicalRecordsSha256,
+  validateSemanticAuditCoverage,
+} from '../scripts/validate/semantic-audit.mjs';
+import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
 import {
   DatasetIntegrityError,
   validateDatasetRecords,
@@ -103,7 +108,7 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
     senses: [{ id: 'w001-s1', pos: 'noun', gloss: '기존 의미' }],
   }];
   const baseRecordInfos = baseRecords.map((record) => ({ record, source: 'base' }));
-  const baseAudit = buildSemanticAuditArtifact(baseRecordInfos);
+  const baseAudit = makeSemanticAudit(baseRecordInfos);
   assert.throws(
     () => validateLexicalAddition({
       batchId: 'future-batch-2040',
@@ -137,7 +142,7 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
     reviewedRecords: [admitted],
     baseRecords: baseRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
-    semanticAudit: buildSemanticAuditArtifact(prospectiveRecordInfos),
+    semanticAudit: makeSemanticAudit(prospectiveRecordInfos),
   });
   assert.equal(result.pipeline_version, 'lexical-admission-v1');
   assert.equal(result.batch_id, 'future-batch-2040');
@@ -171,9 +176,9 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
       reviewedRecords: [newRecord],
       baseRecords,
       prospectiveRecords: partial,
-      semanticAudit: buildSemanticAuditArtifact(partial),
+      semanticAudit: makeSemanticAudit(partial),
     }),
-    /does not preserve base record w001/u,
+    /missing base record w001|does not preserve base record w001/u,
   );
   assert.throws(
     () => validateDatasetRecords(baseRecordInfos, { requireSemanticAudit: true }),
@@ -279,7 +284,7 @@ test('the shared production review catches 과/와 and connector-free merged dom
         }],
         baseRecords: baseInfos,
         prospectiveRecords: prospectiveInfos,
-        semanticAudit: buildSemanticAuditArtifact(prospectiveInfos),
+        semanticAudit: makeSemanticAudit(prospectiveInfos),
         stageEvidence: {
           candidate_intake: {
             status: 'complete',
@@ -317,5 +322,110 @@ test('a later batch cannot bypass the shared generation and review stages', () =
       reviews: [],
     }),
     /reviews must cover every candidate record/u,
+  );
+});
+
+test('a semantic audit becomes stale when gloss, POS, or relation content changes', () => {
+  const base = {
+    id: 'w901',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w901',
+    lemma: '감사기준',
+    search_forms: ['감사기준'],
+    senses: [{
+      id: 'w901-s1',
+      pos: 'noun',
+      gloss: '검증 가능한 의미 기준.',
+    }],
+  };
+  const baseInfos = [{ record: base, source: 'base' }];
+  const audit = makeSemanticAudit(baseInfos);
+  const mutations = [
+    (record) => ({
+      ...record,
+      senses: [{ ...record.senses[0], gloss: '검증 가능한 수정 의미 기준.' }],
+    }),
+    (record) => ({
+      ...record,
+      senses: [{ ...record.senses[0], pos: 'adjective' }],
+    }),
+    (record) => ({
+      ...record,
+      senses: [{
+        ...record.senses[0],
+        relations: [{ target: 'w902', type: 'near', note: '검증 관계' }],
+      }],
+    }),
+  ];
+  for (const mutate of mutations) {
+    const prospective = [{ record: mutate(structuredClone(base)), source: 'prospective' }];
+    assert.throws(
+      () => validateSemanticAuditCoverage(prospective, audit),
+      /does not match|mismatch|drifted/u,
+    );
+  }
+});
+
+test('deterministic coverage alone cannot satisfy the semantic review contract', () => {
+  const record = {
+    id: 'w902',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w902',
+    lemma: '검수범위',
+    search_forms: ['검수범위'],
+    senses: [{ id: 'w902-s1', pos: 'noun', gloss: '명시적으로 검수할 범위.' }],
+  };
+  const infos = [{ record, source: 'prospective' }];
+  const coverageOnly = buildSemanticCoverageArtifact(infos);
+  assert.throws(
+    () => validateSemanticAuditCoverage(infos, coverageOnly),
+    /contract version|semantic audit\.coverage|review/u,
+  );
+  assert.equal(Object.hasOwn(coverageOnly.records[0].sense_coverage[0], 'sense_boundary'), false);
+});
+
+test('reviewed existing-record correction passes while an unreviewed replacement fails', () => {
+  const base = {
+    id: 'w903',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w903',
+    lemma: '교정대상',
+    search_forms: ['교정대상'],
+    senses: [{ id: 'w903-s1', pos: 'noun', gloss: '기존 의미.' }],
+  };
+  const corrected = {
+    ...base,
+    senses: [{ id: 'w903-s1', pos: 'noun', gloss: '검수 후 확정한 의미.' }],
+  };
+  const baseInfos = [{ record: base, source: 'base' }];
+  const prospectiveInfos = [{ record: corrected, source: 'prospective' }];
+  const changes = [{
+    record_id: corrected.id,
+    decision: 'corrected',
+    base_record_sha256: createHash('sha256').update(JSON.stringify(base), 'utf8').digest('hex'),
+    prospective_record_sha256: createHash('sha256').update(JSON.stringify(corrected), 'utf8').digest('hex'),
+    rationale: 'w903 was explicitly corrected and re-reviewed before replacement.',
+  }];
+  const audit = makeSemanticAudit(prospectiveInfos, { changes });
+  const admitted = validateLexicalAddition({
+    batchId: 'future-batch-correction',
+    baseRecords: baseInfos,
+    reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+  });
+  assert.equal(admitted.reviewed_count, 1);
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-unreviewed-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+    }),
+    /does not preserve base record w903|corrected/u,
   );
 });

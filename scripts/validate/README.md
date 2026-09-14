@@ -37,11 +37,15 @@ validating a smaller independent fixture.
 `lexical-quality.mjs` is the shared dictionary-wide semantic gate. It audits the
 complete canonical directory and the same prospective canonical set used by
 reviewed batch importers. It covers expression/POS shape, placeholder glosses,
-and writer-domain sense boundaries. `semantic-audit.mjs` binds every canonical
-record and sense to its source digest, POS/expression classification, boundary
-evidence, and relation outcome; the durable artifact is
-`data/validation/canonical-semantic-audit.json`. A batch may add scope, reserve,
-timing, or authorization rules, but it cannot bypass this common audit or
-introduce a batch/ID allowlist. Candidate-producing workflows additionally use
-the batch-neutral `scripts/batch/lexical-production.mjs` contract for complete
-candidate coverage, source-bound semantic review, and selection.
+and writer-domain sense boundaries. The semantic-audit v2 contract separates
+deterministic content coverage from authored semantic decisions:
+`data/validation/canonical-semantic-coverage.json` contains only source facts and
+digests, `data/validation/canonical-semantic-review.json` contains the complete
+decision rows, and `data/validation/canonical-semantic-audit.json` binds both to
+one canonical snapshot. Admission consumes a pre-written matching envelope; it
+never regenerates semantic decisions from the records it is admitting. A batch
+may add scope, reserve, timing, or authorization rules, but it cannot bypass
+this common audit or introduce a batch/ID allowlist. Candidate-producing
+workflows additionally use the batch-neutral
+`scripts/batch/lexical-production.mjs` contract for complete candidate coverage,
+source-bound semantic review, and selection.

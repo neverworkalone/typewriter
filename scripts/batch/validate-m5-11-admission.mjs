@@ -56,7 +56,6 @@ import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
-import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
 
 const require = createRequire(import.meta.url);
@@ -1157,15 +1156,15 @@ function validateImportedRecords(
   const baseRecordInfos = recordInfos(baseRecords, 'base-canonical');
   const importedRecordInfos = recordInfos(importedRecords, 'external-reviewed-import');
   const prospectiveRecordInfos = [...baseRecordInfos, ...importedRecordInfos];
-  const completeSemanticAudit = semanticAudit ?? buildSemanticAuditArtifact(prospectiveRecordInfos, {
-    artifactId: 'm5-11-prospective-semantic-audit',
-  });
+  if (semanticAudit === undefined) {
+    fail('M5-11 reviewed import requires a separately authored prospective semantic audit', 'MISSING_SEMANTIC_AUDIT');
+  }
   validateLexicalAddition({
     batchId: M5_11_BATCH_ID,
     baseRecords: baseRecordInfos,
     reviewedRecords: importedRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
-    semanticAudit: completeSemanticAudit,
+    semanticAudit,
     checkPilotCompleteness,
     candidateLabel: 'M5-11 candidate records',
     reviewedLabel: 'M5-11 reviewed records',
@@ -1194,9 +1193,9 @@ function validateM511SharedProduction({
   const baseRecordInfos = recordInfos(baseRecords, 'm5-11-base-canonical');
   const importedRecordInfos = recordInfos(importedRecords, 'm5-11-reviewed-import');
   const prospectiveRecordInfos = [...baseRecordInfos, ...importedRecordInfos];
-  const completeSemanticAudit = semanticAudit ?? buildSemanticAuditArtifact(prospectiveRecordInfos, {
-    artifactId: 'm5-11-prospective-semantic-audit',
-  });
+  if (semanticAudit === undefined) {
+    fail('M5-11 shared production requires a separately authored prospective semantic audit', 'MISSING_SEMANTIC_AUDIT');
+  }
   const reviews = catalog.map((catalogEntry, index) => {
     const decisionResult = editorialResult.decisions[index];
     return {
@@ -1214,7 +1213,7 @@ function validateM511SharedProduction({
     reviews,
     baseRecords: baseRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
-    semanticAudit: completeSemanticAudit,
+    semanticAudit,
     stageEvidence: {
       candidate_intake: {
         status: 'complete',
@@ -1245,7 +1244,7 @@ function validateM511SharedProduction({
   });
   return {
     production,
-    semanticAudit: completeSemanticAudit,
+    semanticAudit,
   };
 }
 
@@ -1535,6 +1534,7 @@ function validateM4SearchRegressionAgainstDatabase(database) {
 export async function runM511ProspectiveVerification({
   baseCanonicalDirectory,
   importedRecords,
+  semanticAudit,
   expectedFinalSummary,
   checkPilotCompleteness = true,
   semanticSummary = null,
@@ -1554,9 +1554,9 @@ export async function runM511ProspectiveVerification({
     );
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const records = canonical.records.map(recordOf);
-    const semanticAudit = buildSemanticAuditArtifact(canonical.records, {
-      artifactId: 'm5-11-prospective-semantic-audit',
-    });
+    if (semanticAudit === undefined) {
+      fail('M5-11 prospective verification requires the pre-written semantic audit', 'MISSING_SEMANTIC_AUDIT');
+    }
     const lexicalAdmission = validateLexicalAddition({
       batchId: M5_11_BATCH_ID,
       baseRecords: baseRecordInfos,
@@ -1744,6 +1744,7 @@ export function deriveM511AdmissionGate({
   verification,
   verificationSource,
   reviewedImportSource,
+  semanticAuditSource,
   baseRecords,
   baseSummary = canonicalSummary(baseRecords),
   expectedImportedCount = 500,
@@ -1753,7 +1754,18 @@ export function deriveM511AdmissionGate({
   plan = DEFAULT_PLAN,
   machineVerification,
   expectedCandidatePoolCount = 550,
+  semanticAudit,
 } = {}) {
+  if (semanticAudit === undefined) {
+    fail('M5-11 admission gate requires the pre-written prospective semantic audit', 'MISSING_SEMANTIC_AUDIT');
+  }
+  validateFileSource(semanticAuditSource, 'M5-11 prospective semantic audit source file');
+  assertDeep(
+    semanticAuditSource.value,
+    semanticAudit,
+    'M5-11 prospective semantic audit source value',
+    'SEMANTIC_AUDIT_SOURCE_MISMATCH',
+  );
   const editorialResult = validateM511EditorialDecisions(editorial, {
     catalog,
     proposal,
@@ -1797,9 +1809,6 @@ export function deriveM511AdmissionGate({
     ...recordInfos(baseRecords, 'm5-11-base-canonical'),
     ...recordInfos(importedRecords, 'm5-11-reviewed-import'),
   ];
-  const semanticAudit = buildSemanticAuditArtifact(prospectiveRecordInfos, {
-    artifactId: 'm5-11-prospective-semantic-audit',
-  });
   const sharedProduction = agentGenerated
     ? validateM511SharedProduction({
       editorialResult,
@@ -2023,6 +2032,7 @@ export function deriveM511AdmissionGate({
     },
     audit: auditResult,
     verification: verificationResult,
+    semantic_audit: semanticAudit,
     metrics,
     gate,
     gate_evidence: gateEvidence,
@@ -2032,6 +2042,7 @@ export function deriveM511AdmissionGate({
       relation_diff: relationDiffSource,
       verification: verificationSource,
       reviewed_import: reviewedImportSource,
+      semantic_audit: semanticAuditSource,
       ...(editorialTimingSource ? { editorial_timing: editorialTimingSource } : {}),
       ...(auditSource ? { audit: auditSource } : {}),
       ...(auditTimingSource ? { audit_timing: auditTimingSource } : {}),
@@ -2103,6 +2114,7 @@ export async function validateM511Admission({
   auditTimingPath,
   relationDiffPath,
   verificationPath,
+  semanticAuditPath,
   reviewedImportPath,
   catalog = M5_11_CATALOG,
   baseCanonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-base-canonical'),
@@ -2123,12 +2135,13 @@ export async function validateM511Admission({
     editorialDecisionPath,
     relationDiffPath,
     verificationPath,
+    semanticAuditPath,
     reviewedImportPath,
   };
   for (const [key, value] of Object.entries(required)) {
     if (!value) fail(`${key} is required`, 'MISSING_INPUT');
   }
-  const [proposalSource, editorialSource, editorialTimingSource, auditSource, auditTimingSource, relationDiffSource, verificationSource, reviewedImportSource] = await Promise.all([
+  const [proposalSource, editorialSource, editorialTimingSource, auditSource, auditTimingSource, relationDiffSource, verificationSource, semanticAuditSource, reviewedImportSource] = await Promise.all([
     readJsonSource(proposalPath, 'M5-11 frozen proposal'),
     readJsonSource(editorialDecisionPath, 'M5-11 editorial decisions'),
     editorialTimingPath
@@ -2142,6 +2155,7 @@ export async function validateM511Admission({
       : null,
     readJsonSource(relationDiffPath, 'M5-11 relation diff'),
     readJsonSource(verificationPath, 'M5-11 verification'),
+    readJsonSource(semanticAuditPath, 'M5-11 prospective semantic audit'),
     readReviewedImportSource(reviewedImportPath),
   ]);
   const automatedPolicy = isM511AgentGeneratedArtifact(editorialSource.value);
@@ -2218,6 +2232,7 @@ export async function validateM511Admission({
     previewBaseRecords,
     expectedImportedCount,
     checkPilotCompleteness,
+    { semanticAudit: semanticAuditSource.value },
   );
   const previewFinalSummary = canonicalSummary([
     ...previewBaseRecords,
@@ -2226,6 +2241,7 @@ export async function validateM511Admission({
   const machineVerification = await runM511ProspectiveVerification({
     baseCanonicalDirectory,
     importedRecords: editorialPreview.importedRecords,
+    semanticAudit: semanticAuditSource.value,
     expectedFinalSummary: previewFinalSummary,
     checkPilotCompleteness,
     semanticSummary: editorialPreview.semantic,
@@ -2254,6 +2270,8 @@ export async function validateM511Admission({
     relationDiffSource,
     verification: verificationSource.value,
     verificationSource,
+    semanticAudit: semanticAuditSource.value,
+    semanticAuditSource,
     reviewedImportSource,
     baseRecords: baseCanonical.records.map(recordOf),
     baseSummary,

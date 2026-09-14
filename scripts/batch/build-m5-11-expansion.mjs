@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -117,6 +116,7 @@ function createImportBytes(records) {
 export async function buildM511({
   editorialDecisionPath,
   proposalPath,
+  semanticAuditPath,
   outputPath,
   canonicalDirectory = BASE_CANONICAL_DIRECTORY,
 } = {}) {
@@ -142,9 +142,22 @@ export async function buildM511({
     editorialDecisionPath,
     'M5-11 editorial decision artifact',
   );
+  if (!semanticAuditPath) {
+    throw new Error(
+      'M5-11 build requires --semantic-audit=<external prospective semantic audit>; the producer cannot manufacture semantic decisions',
+    );
+  }
+  const resolvedSemanticAuditPath = assertExternalInput(
+    semanticAuditPath,
+    'M5-11 prospective semantic audit',
+  );
 
   const editorialSource = await readJsonSource(resolvedEditorialDecisionPath, 'M5-11 editorial decisions');
   const proposalSource = await readJsonSource(resolvedProposalPath, 'M5-11 frozen proposal artifact');
+  const semanticAuditSource = await readJsonSource(
+    resolvedSemanticAuditPath,
+    'M5-11 prospective semantic audit',
+  );
   const resolvedCanonicalDirectory = path.resolve(canonicalDirectory);
   if (resolvedCanonicalDirectory !== BASE_CANONICAL_DIRECTORY) {
     throw new Error(
@@ -175,9 +188,7 @@ export async function buildM511({
       lineNumber: index + 1,
     })),
   ];
-  const semanticAudit = buildSemanticAuditArtifact(combinedRecords, {
-    artifactId: 'm5-11-prospective-semantic-audit',
-  });
+  const semanticAudit = semanticAuditSource.value;
   const candidateRecords = editorial.proposalRows.map(({ candidate_record: candidateRecord }, index) => ({
     record: candidateRecord,
     source: 'm5-11-frozen-proposal',
@@ -256,6 +267,7 @@ export async function buildM511({
     proposal_sha256: sha256Json(proposalSource.value),
     proposal_count: M5_11_CATALOG.length,
     editorial_sha256: editorialSource.sha256,
+    semantic_audit_sha256: semanticAuditSource.sha256,
     reviewed_import: {
       path: resolvedOutputPath,
       repository_relative_path: null,
@@ -304,6 +316,7 @@ if (isMainModule) {
   buildM511({
     editorialDecisionPath: args.editorial,
     proposalPath: args.proposal,
+    semanticAuditPath: args['semantic-audit'],
     outputPath: args.output,
     canonicalDirectory: args['canonical-dir'] ?? BASE_CANONICAL_DIRECTORY,
   })

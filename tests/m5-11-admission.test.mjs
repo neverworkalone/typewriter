@@ -39,6 +39,8 @@ import {
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
 } from '../scripts/validate/lexical-quality.mjs';
+import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
+import { makeSemanticAudit } from './helpers/semantic-audit-fixture.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
 
@@ -415,6 +417,7 @@ function makeSources(catalog) {
     })),
   };
   const verificationSource = fileSource('/tmp/m5-11-verification.json', verification);
+  const semanticAuditResult = makeSemanticAuditSource(makeBaseRecords(), imported);
   return {
     catalog,
     proposal,
@@ -433,6 +436,8 @@ function makeSources(catalog) {
     verificationSource,
     reviewedImport: imported,
     reviewedImportSource,
+    semanticAudit: semanticAuditResult.value,
+    semanticAuditSource: semanticAuditResult.source,
   };
 }
 
@@ -609,6 +614,13 @@ function makeAgentSources(catalog) {
   fixture.verification.relation_diff_sha256 = fixture.relationDiffSource.sha256;
   fixture.verification.reviewed_import_sha256 = fixture.reviewedImportSource.sha256;
   fixture.verificationSource = fileSource('/tmp/m5-11-agent-verification.json', fixture.verification);
+  const semanticAuditResult = makeSemanticAuditSource(
+    makeBaseRecords(),
+    fixture.reviewedImport,
+    '/tmp/m5-11-agent-semantic-audit.json',
+  );
+  fixture.semanticAudit = semanticAuditResult.value;
+  fixture.semanticAuditSource = semanticAuditResult.source;
   return fixture;
 }
 
@@ -622,6 +634,19 @@ function makeBaseRecords() {
     search_forms: ['기존말'],
     senses: [{ id: 'w001-s1', pos: 'noun', gloss: '기존 의미' }],
   }];
+}
+
+function makeSemanticAuditSource(baseRecords, importedRecords, filePath = '/tmp/m5-11-semantic-audit.json') {
+  const recordInfos = [
+    ...baseRecords.map((record) => ({ record, source: 'base' })),
+    ...importedRecords.map((record) => ({ record, source: 'reviewed-import' })),
+  ];
+  const value = makeSemanticAudit(recordInfos);
+  const bytes = Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  return {
+    value,
+    source: fileSource(filePath, value, bytes),
+  };
 }
 
 function makeRelationBaseRecords() {
@@ -703,7 +728,7 @@ function refreshTimingArtifact(artifact, {
   else if (proof) artifact.recording_proof_sha256 = createM511TimingProof(artifact);
 }
 
-function rebindFixtureSources(fixture) {
+function rebindFixtureSources(fixture, baseRecords = makeBaseRecords()) {
   fixture.proposalSource = fileSource(fixture.proposalSource.path, fixture.proposal);
   fixture.editorial.proposal_sha256 = sha256Json(fixture.proposal);
   fixture.editorial.proposal_count = fixture.proposal.proposals.length;
@@ -736,6 +761,13 @@ function rebindFixtureSources(fixture) {
   fixture.verification.proposal_sha256 = fixture.proposalSource.sha256;
   fixture.verification.relation_diff_sha256 = fixture.relationDiffSource.sha256;
   fixture.verificationSource = fileSource(fixture.verificationSource.path, fixture.verification);
+  const semanticAuditResult = makeSemanticAuditSource(
+    baseRecords,
+    fixture.reviewedImport,
+    fixture.semanticAuditSource?.path ?? '/tmp/m5-11-semantic-audit.json',
+  );
+  fixture.semanticAudit = semanticAuditResult.value;
+  fixture.semanticAuditSource = semanticAuditResult.source;
   return fixture;
 }
 
@@ -1032,7 +1064,7 @@ test('M5-11 gate accepts exact correction, relation-noise, and editor-time thres
     expression_count: 0,
   };
   fixture.verificationSource = fileSource(fixture.verificationSource.path, fixture.verification);
-  rebindFixtureSources(fixture);
+  rebindFixtureSources(fixture, makeRelationBaseRecords());
 
   const result = deriveM511AdmissionGate({
     ...fixture,
@@ -1171,6 +1203,7 @@ test('M5-11 admission rejects repository-local external review inputs', async ()
       auditTimingPath: input,
       relationDiffPath: input,
       verificationPath: input,
+      semanticAuditPath: input,
       reviewedImportPath: input,
     }),
     /must remain outside the repository/u,
@@ -1357,6 +1390,7 @@ test('M5-11 relation evidence rejects a diff event sourced from the frozen base'
     }],
   };
   fixture.relationDiffSource = fileSource('/tmp/m5-11-phantom-base-relation.json', fixture.relationDiff);
+  rebindFixtureSources(fixture, makeRelationBaseRecords());
   assert.throws(
     () => deriveM511AdmissionGate({
       ...fixture,
@@ -1388,10 +1422,18 @@ test('M5-11 prospective verification runs the complete M4 baseline contract', as
     search_forms: ['담담하다'],
     senses: [{ id: 'w779-s1', pos: 'adjective', gloss: '검증용 충돌 의미' }],
   }];
+  const baseCanonical = await readCanonicalRecords(
+    path.join(process.cwd(), 'data/batches/m5-11-base-canonical'),
+  );
+  const semanticAudit = makeSemanticAudit([
+    ...baseCanonical.records,
+    ...importedRecords.map((record) => ({ record, source: 'reviewed-import' })),
+  ]);
   await assert.rejects(
     runM511ProspectiveVerification({
       baseCanonicalDirectory: path.join(process.cwd(), 'data/batches/m5-11-base-canonical'),
       importedRecords,
+      semanticAudit,
       expectedFinalSummary: {
         record_count: 821,
         start_count: 779,

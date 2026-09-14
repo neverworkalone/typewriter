@@ -73,9 +73,27 @@ export function validateLexicalAddition({
   if (baseRecordsById.size !== baseInfos.length) {
     throw new Error('lexical admission base_records contains duplicate record IDs');
   }
+  if (prospectiveRecordsById.size !== prospectiveInfos.length) {
+    throw new Error('lexical admission prospective_records contains duplicate record IDs');
+  }
+  const reviewedInfosById = new Map();
+  for (const recordInfo of reviewedInfos) {
+    const record = recordOf(recordInfo);
+    if (reviewedInfosById.has(record.id)) {
+      throw new Error(`lexical admission reviewed records contains duplicate record ID ${record.id}`);
+    }
+    reviewedInfosById.set(record.id, recordInfo);
+    if (baseRecordsById.has(record.id) && recordInfo.decision !== 'corrected') {
+      throw new Error(`lexical admission replacement of base record ${record.id} requires an explicit corrected decision`);
+    }
+  }
   for (const [recordId, baseRecord] of baseRecordsById) {
     const prospectiveRecord = prospectiveRecordsById.get(recordId);
-    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(baseRecord)) {
+    if (!prospectiveRecord) {
+      throw new Error(`lexical admission prospective_records is missing base record ${recordId}`);
+    }
+    if (JSON.stringify(prospectiveRecord) !== JSON.stringify(baseRecord)
+      && reviewedInfosById.get(recordId)?.decision !== 'corrected') {
       throw new Error(`lexical admission prospective_records does not preserve base record ${recordId}`);
     }
   }
@@ -94,12 +112,14 @@ export function validateLexicalAddition({
   }
 
   const semanticAuditCoverage = validateSemanticAuditCoverage(prospectiveInfos, semanticAudit, {
+    baseRecords: baseInfos,
     label: `${batchId} semantic audit`,
   });
   const indexes = validateDatasetRecords(prospectiveInfos, {
     checkPilotCompleteness,
     semanticAudit,
     requireSemanticAudit: true,
+    semanticAuditBaseRecords: baseInfos,
   });
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset

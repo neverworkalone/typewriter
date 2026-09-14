@@ -175,8 +175,10 @@ export async function validateWaveA2({
   stagedRecordsPath,
   inventoryPath = DEFAULT_INVENTORY_PATH,
   baseCanonicalDirectory = DEFAULT_BASE_CANONICAL_DIRECTORY,
+  semanticAuditPath,
 } = {}) {
-  const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, planSource, verificationSource] = await Promise.all([
+  if (semanticAuditPath) assertExternalStagingPath(semanticAuditPath);
+  const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, planSource, verificationSource, semanticAuditSource] = await Promise.all([
     readJsonSource(manifestPath, 'Wave A2 manifest'),
     readJsonSource(editorialInputPath, 'Wave A2 editorial input'),
     readJsonSource(auditInputPath, 'Wave A2 audit input'),
@@ -187,6 +189,9 @@ export async function validateWaveA2({
     readJsonSource(stagePath, 'Wave A2 stage report'),
     readJsonSource(planPath, 'M5-8 expansion plan'),
     readJsonSource(verificationPath, 'Wave A2 verification'),
+    semanticAuditPath
+      ? readJsonSource(semanticAuditPath, 'Wave A2 prospective semantic audit')
+      : Promise.resolve(null),
   ]);
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const editorialDecisionSource = editorialSource.value.source_kind === 'unverified-draft'
@@ -473,6 +478,9 @@ export async function validateWaveA2({
     auditInputSource: sourceRef(auditInputPath, auditSource.bytes),
     timingInputSource: sourceRef(timingInputPath, timingSource.bytes),
     auditTimingInputSource: sourceRef(auditTimingInputPath, auditTimingSource.bytes),
+    semanticAuditSource: semanticAuditSource
+      ? sourceRef(semanticAuditPath, semanticAuditSource.bytes)
+      : undefined,
     relationDiffSource: {
       ...sourceRef(relationDiffPath, relationDiffSource.bytes),
       value: relationDiffSource.value,
@@ -492,6 +500,7 @@ export async function validateWaveA2({
     batchResult = await validateBatch({
       manifestPath,
       stagedRecordsPath,
+      semanticAuditPath,
       inventoryPath,
       canonicalDirectory: baseCanonicalDirectory,
       allowRepositoryStaging: true,

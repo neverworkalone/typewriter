@@ -62,6 +62,7 @@ const EXTERNAL_SOURCE_KEYS = new Set([
   'audit_timing',
   'relation_diff',
   'verification',
+  'semantic_audit',
   'reviewed_import',
 ]);
 
@@ -148,6 +149,7 @@ if (isMainModule) {
     auditTimingPath: args['audit-timing'],
     relationDiffPath: requireArgument(args, 'relation-diff'),
     verificationPath: requireArgument(args, 'verification'),
+    semanticAuditPath: requireArgument(args, 'semantic-audit'),
     reviewedImportPath: requireArgument(args, 'output'),
     manifestPath: args.manifest ?? DEFAULT_MANIFEST_PATH,
   })

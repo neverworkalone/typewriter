@@ -1254,7 +1254,7 @@ function preflightCheckpoint(recordReview, processed) {
   return checkpoint;
 }
 
-export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, reviewedStagingPath } = {}) {
+export function createWaveBManifest({ editorialInput, auditInput, timingInput, auditTimingInput, relationDiffSource, editorialInputSource, auditInputSource, timingInputSource, auditTimingInputSource, semanticAuditSource, reviewedStagingPath } = {}) {
   validateWaveBAuditInput({ audit: auditInput, editorialInput, relationDiff: relationDiffSource.value });
   const expectedUnitIdsByPass = deriveWaveBTimingUnitSets({ editorialInput, auditInput });
   validateWaveBTimingInput(timingInput, { timingKind: 'editorial', reviewedStagingSha256: editorialInput.reviewed_staging_sha256, auditSessionId: auditInput.provenance.session_id, expectedUnitIdsByPass });
@@ -1280,6 +1280,7 @@ export function createWaveBManifest({ editorialInput, auditInput, timingInput, a
       input_artifact: editorialInputSource.path,
       input_sha256: editorialInputSource.sha256,
       reviewed_staging_sha256: editorialInput.reviewed_staging_sha256,
+      ...(semanticAuditSource ? { semantic_audit_sha256: semanticAuditSource.sha256 } : {}),
     },
     sense_review: {
       status: 'complete',
@@ -1550,11 +1551,12 @@ export async function validateWaveB({
   reportPath = DEFAULT_REPORT_PATH,
   stagedRecordsPath,
   proposalPath,
+  semanticAuditPath,
 } = {}) {
   if (!stagedRecordsPath) fail('Wave B validation requires an external --staged path', 'MISSING_STAGED_PATH');
   const resolvedStagedRecordsPath = path.resolve(stagedRecordsPath);
   assertExternalStagingPath(resolvedStagedRecordsPath);
-  const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, verificationSource, planSource, authorizationSource] = await Promise.all([
+  const [manifestSource, editorialSource, auditSource, timingSource, auditTimingSource, relationDiffSource, metricsSource, stageSource, verificationSource, planSource, authorizationSource, semanticAuditSource] = await Promise.all([
     readJsonSource(manifestPath, 'Wave B manifest'),
     readJsonSource(editorialInputPath, 'Wave B editorial input'),
     readJsonSource(auditInputPath, 'Wave B audit input'),
@@ -1566,6 +1568,9 @@ export async function validateWaveB({
     readJsonSource(verificationPath, 'Wave B verification'),
     readJsonSource(planPath, 'M5-8 expansion plan'),
     readJsonSource(authorizationPath, 'Wave B authorization'),
+    semanticAuditPath
+      ? readJsonSource(semanticAuditPath, 'Wave B prospective semantic audit')
+      : Promise.resolve(null),
   ]);
   const [canonical, baseCanonical, staged, canonicalSha256] = await Promise.all([
     readCanonicalRecords(canonicalDirectory),
@@ -1644,10 +1649,13 @@ export async function validateWaveB({
     auditInputSource: { path: relativeSourcePath(auditInputPath), sha256: auditSource.sha256 },
     timingInputSource: { path: relativeSourcePath(timingInputPath), sha256: timingSource.sha256 },
     auditTimingInputSource: { path: relativeSourcePath(auditTimingInputPath), sha256: auditTimingSource.sha256 },
+    semanticAuditSource: semanticAuditSource
+      ? { path: relativeSourcePath(semanticAuditPath), sha256: semanticAuditSource.sha256 }
+      : undefined,
     reviewedStagingPath: resolvedStagedRecordsPath,
   });
   assertEqual(manifestSource.value, projectedManifest, 'Wave B manifest differs from explicit input artifacts', 'MANIFEST_DRIFT');
-  const batchResult = await validateBatch({ manifestPath, stagedRecordsPath: resolvedStagedRecordsPath, inventoryPath, canonicalDirectory: baseCanonicalDirectory });
+  const batchResult = await validateBatch({ manifestPath, stagedRecordsPath: resolvedStagedRecordsPath, semanticAuditPath, inventoryPath, canonicalDirectory: baseCanonicalDirectory });
   exactIds(staged.records.map(recordOf).map(({ id }) => id), WAVE_B_IMPORTED_CANONICAL_IDS, 'Wave B reviewed staging');
   assertEqual(staged.records.length, WAVE_B_IMPORTED_START_COUNT, 'Wave B reviewed staging count drifted', 'STAGED_COUNT_MISMATCH');
   const verification = verificationSource.value;

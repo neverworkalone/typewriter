@@ -104,6 +104,7 @@ export function validateLexicalProduction({
   batchId,
   candidateRecords,
   reviews,
+  corrections = [],
   baseRecords,
   prospectiveRecords,
   semanticAudit,
@@ -120,7 +121,10 @@ export function validateLexicalProduction({
   }
   const candidates = requireArray(candidateRecords, 'production.candidate_records');
   const reviewRows = requireArray(reviews, 'production.reviews');
-  if (candidates.length === 0) fail('production.candidate_records must not be empty', 'LEXICAL_PRODUCTION_SCOPE');
+  const correctionRows = requireArray(corrections, 'production.corrections');
+  if (candidates.length === 0 && correctionRows.length === 0) {
+    fail('production must contain candidate records or reviewed corrections', 'LEXICAL_PRODUCTION_SCOPE');
+  }
   if (reviewRows.length !== candidates.length) {
     fail('production.reviews must cover every candidate record', 'LEXICAL_PRODUCTION_SCOPE');
   }
@@ -170,7 +174,11 @@ export function validateLexicalProduction({
       if (duplicateSelectedId) {
         fail(`production.reviews selects duplicate reviewed record ${reviewedRecord.id}`, 'LEXICAL_PRODUCTION_SCOPE');
       }
-      selectedRecords.push(entry.reviewed_record);
+      selectedRecords.push({
+        record: entry.reviewed_record,
+        decision: entry.decision,
+        semantic_review: entry.semantic_review,
+      });
     } else if (reviewedRecord) {
       fail(`production.reviews[${index}] non-selected decision must not carry reviewed_record`, 'LEXICAL_PRODUCTION_REVIEW_MISMATCH');
     }
@@ -192,11 +200,60 @@ export function validateLexicalProduction({
     ranks.push(result.selection_rank);
   }
 
+  const correctionRecords = [];
+  const correctionIds = new Set();
+  const baseRecordsById = new Map(
+    (baseRecords ?? []).map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]),
+  );
+  for (const [index, rawEntry] of correctionRows.entries()) {
+    const label = `production.corrections[${index}]`;
+    const entry = requireObject(rawEntry, label);
+    requireString(entry.record_id, `${label}.record_id`);
+    if (correctionIds.has(entry.record_id)) {
+      fail(`${label}.record_id is duplicated`, 'LEXICAL_PRODUCTION_SCOPE');
+    }
+    correctionIds.add(entry.record_id);
+    if (entry.decision !== 'corrected') {
+      fail(`${label}.decision must be corrected`, 'LEXICAL_PRODUCTION_DECISION');
+    }
+    const baseRecord = baseRecordsById.get(entry.record_id);
+    if (!baseRecord) {
+      fail(`${label}.record_id is not present in base_records`, 'LEXICAL_PRODUCTION_BINDING');
+    }
+    const reviewedRecord = recordOf(entry.reviewed_record);
+    if (!reviewedRecord || reviewedRecord.id !== entry.record_id) {
+      fail(`${label}.reviewed_record must replace the named base record`, 'LEXICAL_PRODUCTION_BINDING');
+    }
+    requireObject(entry.semantic_review, `${label}.semantic_review`);
+    let result;
+    try {
+      result = validateLexicalSemanticReview(entry.semantic_review, {
+        decision: 'corrected',
+        candidateRecord: baseRecord,
+        reviewedRecord,
+        inventoryId: entry.inventory_id,
+        expectedRecordType: entry.expected_record_type,
+        catalogCount: catalogCount ?? Math.max(candidates.length, 1),
+        requireSemanticEvidence: true,
+        selectionRationaleTokens: ['verification', 'coverage'],
+      });
+    } catch (error) {
+      fail(`${label} semantic review failed: ${error.message}`, error.code);
+    }
+    correctionRecords.push({
+      record: reviewedRecord,
+      decision: 'corrected',
+      semantic_review: entry.semantic_review,
+    });
+    ranks.push(result.selection_rank);
+  }
+
   if (new Set(ranks).size !== ranks.length) {
     fail('production semantic selection ranks must be unique', 'LEXICAL_PRODUCTION_SELECTION');
   }
-  if (expectedSelectedCount !== undefined && selectedRecords.length !== expectedSelectedCount) {
-    fail(`production selected ${selectedRecords.length} record(s), expected ${expectedSelectedCount}`, 'LEXICAL_PRODUCTION_SELECTION');
+  const selectedCount = selectedRecords.length + correctionRecords.length;
+  if (expectedSelectedCount !== undefined && selectedCount !== expectedSelectedCount) {
+    fail(`production selected ${selectedCount} record(s), expected ${expectedSelectedCount}`, 'LEXICAL_PRODUCTION_SELECTION');
   }
 
   const prospectiveRecordsById = new Map(
@@ -219,7 +276,7 @@ export function validateLexicalProduction({
     admission = validateLexicalAddition({
       batchId,
       candidateRecords: candidates,
-      reviewedRecords: selectedRecords,
+      reviewedRecords: [...selectedRecords, ...correctionRecords],
       baseRecords,
       prospectiveRecords,
       semanticAudit,
@@ -235,7 +292,8 @@ export function validateLexicalProduction({
     pipeline_version: LEXICAL_PRODUCTION_PIPELINE_VERSION,
     batch_id: batchId,
     candidate_count: candidates.length,
-    selected_count: selectedRecords.length,
+    selected_count: selectedCount,
+    correction_count: correctionRecords.length,
     review_count: reviewRows.length,
     selection_ranks: ranks,
     admission,

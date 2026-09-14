@@ -9,7 +9,10 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
+import {
+  DEFAULT_SEMANTIC_AUDIT_PATH,
+  readSemanticAuditArtifact,
+} from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -47,7 +50,7 @@ const REQUIRED_SOURCE_KEYS = Object.freeze([
   'authorization',
   'base_inventory',
 ]);
-const OPTIONAL_SOURCE_KEYS = Object.freeze(['editorial_timing', 'audit', 'audit_timing']);
+const OPTIONAL_SOURCE_KEYS = Object.freeze(['editorial_timing', 'audit', 'audit_timing', 'semantic_audit']);
 const SOURCE_KEYS = Object.freeze([...REQUIRED_SOURCE_KEYS, ...OPTIONAL_SOURCE_KEYS]);
 const EXTERNAL_SOURCE_KEYS = new Set([
   'proposal',
@@ -58,6 +61,7 @@ const EXTERNAL_SOURCE_KEYS = new Set([
   'relation_diff',
   'verification',
   'reviewed_import',
+  'semantic_audit',
 ]);
 
 const DEFAULT_MANIFEST_PATH = path.join(
@@ -605,21 +609,28 @@ export async function validateM511Promotion({
   currentCanonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   currentSeedPath = DEFAULT_SEED_PATH,
   currentInventoryPath = DEFAULT_INVENTORY_PATH,
+  semanticAuditPath = DEFAULT_SEMANTIC_AUDIT_PATH,
 } = {}) {
   const resolvedManifestPath = repositoryPath(manifestPath, 'manifest path');
   const resolvedEvidencePath = repositoryPath(promotionEvidencePath, 'promotion evidence path');
   const resolvedCanonicalDirectory = repositoryPath(currentCanonicalDirectory, 'canonical directory');
   const resolvedSeedPath = repositoryPath(currentSeedPath, 'seed path');
   const resolvedInventoryPath = repositoryPath(currentInventoryPath, 'inventory path');
+  const resolvedSemanticAuditPath = repositoryPath(semanticAuditPath, 'semantic audit path');
   const manifest = await readJson(resolvedManifestPath, 'M5-11 admission manifest');
   const evidence = await readJson(resolvedEvidencePath, 'M5-11 promotion evidence');
 
   const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
-  const semanticAudit = buildSemanticAuditArtifact(canonical.records, {
-    artifactId: 'm5-11-promoted-semantic-audit',
-  });
+  const semanticAudit = await readSemanticAuditArtifact(resolvedSemanticAuditPath);
+  const semanticAuditSource = manifest.sources?.semantic_audit;
+  if (semanticAuditSource) {
+    const semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
+    if (sha256(semanticAuditBytes) !== semanticAuditSource.sha256) {
+      fail('promoted semantic audit digest drifted from the admission source', 'OUTPUT_DIGEST_MISMATCH');
+    }
+  }
   validateLexicalAddition({
     batchId: manifest.batch_id,
     baseRecords: canonical.records,

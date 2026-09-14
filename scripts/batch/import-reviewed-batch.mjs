@@ -21,6 +21,7 @@ export function compareCanonicalIds(left, right) {
 export async function writeReviewedBatchImport({
   manifestPath,
   stagedRecordsPath,
+  semanticAuditPath,
   outputPath,
   inventoryPath,
   canonicalDirectory,
@@ -29,6 +30,7 @@ export async function writeReviewedBatchImport({
   const summary = await validateBatch({
     manifestPath,
     stagedRecordsPath,
+    semanticAuditPath,
     inventoryPath,
     canonicalDirectory,
   });
@@ -70,6 +72,7 @@ export async function main(argv = process.argv.slice(2)) {
   const summary = await writeReviewedBatchImport({
     manifestPath: args.manifest,
     stagedRecordsPath: args['staged-records'],
+    semanticAuditPath: args['semantic-audit'],
     outputPath: args.output,
     inventoryPath: args.inventory,
     canonicalDirectory: args['canonical-dir'],
