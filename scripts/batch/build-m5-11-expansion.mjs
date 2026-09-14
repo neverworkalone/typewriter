@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateLexicalProduction } from './lexical-production.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 import {
@@ -61,7 +63,12 @@ function assertExternalInput(filePath, label) {
 async function readJsonSource(filePath, label) {
   const bytes = await readFile(filePath);
   try {
-    return { value: JSON.parse(bytes.toString('utf8')), sha256: sha256(bytes), path: filePath };
+    return {
+      value: JSON.parse(bytes.toString('utf8')),
+      bytes,
+      sha256: sha256(bytes),
+      path: filePath,
+    };
   } catch (error) {
     throw new Error(`${label} is not valid JSON: ${error.message}`, { cause: error });
   }
@@ -161,16 +168,81 @@ export async function buildM511({
 
   const combinedRecords = [
     ...canonical.records,
-    ...importedRecords.map((record) => ({ record, source: 'external-reviewed-import' })),
+    ...importedRecords.map((record, index) => ({
+      record,
+      source: 'external-reviewed-import',
+      filePath: 'external-reviewed-import',
+      lineNumber: index + 1,
+    })),
   ];
+  const semanticAudit = buildSemanticAuditArtifact(combinedRecords, {
+    artifactId: 'm5-11-prospective-semantic-audit',
+  });
+  const candidateRecords = editorial.proposalRows.map(({ candidate_record: candidateRecord }, index) => ({
+    record: candidateRecord,
+    source: 'm5-11-frozen-proposal',
+    filePath: 'm5-11-frozen-proposal',
+    lineNumber: index + 1,
+  }));
+  if (editorial.semantic) {
+    validateLexicalProduction({
+      batchId: M5_11_BATCH_ID,
+      candidateRecords,
+      reviews: editorial.proposalRows.map((row, index) => {
+        const decisionResult = editorial.decisions[index];
+        const catalogEntry = M5_11_CATALOG[index];
+        return {
+          candidate_id: row.candidate_record.id,
+          inventory_id: catalogEntry.inventory_id,
+          decision: decisionResult.decision.decision,
+          semantic_review: editorial.artifact.decisions[index].semantic_review,
+          ...(decisionResult.record ? { reviewed_record: decisionResult.record } : {}),
+          expected_record_type: catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry',
+        };
+      }),
+      baseRecords: canonical.records,
+      prospectiveRecords: combinedRecords,
+      semanticAudit,
+      stageEvidence: {
+        candidate_intake: {
+          status: 'complete',
+          source_path: proposalSource.path,
+          source_bytes: proposalSource.bytes,
+          source_sha256: proposalSource.sha256,
+        },
+        semantic_review: {
+          status: 'complete',
+          source_path: editorialSource.path,
+          source_bytes: editorialSource.bytes,
+          source_sha256: editorialSource.sha256,
+        },
+        selection: {
+          status: 'complete',
+          source_path: editorialSource.path,
+          source_bytes: editorialSource.bytes,
+          source_sha256: editorialSource.sha256,
+          policy: 'semantic-quality-and-coverage',
+        },
+      },
+      checkPilotCompleteness: true,
+      catalogCount: M5_11_CATALOG.length,
+      expectedSelectedCount: IMPORTED_RECORD_COUNT,
+      candidateLabel: 'M5-11 shared production candidates',
+      reviewedLabel: 'M5-11 shared production reviewed records',
+      prospectiveLabel: 'M5-11 shared production prospective records',
+    });
+  }
   validateLexicalAddition({
     batchId: M5_11_BATCH_ID,
+    candidateRecords,
+    baseRecords: canonical.records,
     reviewedRecords: importedRecords.map((record, index) => ({
       record,
       filePath: 'external-reviewed-import',
       lineNumber: index + 1,
     })),
     prospectiveRecords: combinedRecords,
+    semanticAudit,
     checkPilotCompleteness: true,
     reviewedLabel: 'M5-11 reviewed records',
     prospectiveLabel: 'M5-11 prospective canonical records',

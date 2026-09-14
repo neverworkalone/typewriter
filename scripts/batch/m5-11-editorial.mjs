@@ -8,7 +8,6 @@ import {
   validateLexicalRecord,
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
 
 export const M5_11_BATCH_ID = 'm5-11-expansion-20260913';
 export const M5_11_AGENT_REVIEW_MODE = 'agent-generated';
@@ -461,6 +460,7 @@ function validateSemanticReview(review, {
       // connector to be resolved before selection.  The same shared module
       // also supplies the less restrictive, domain-aware canonical audit.
       rejectAnyBroadConnector: true,
+      requireSemanticEvidence: true,
       selectionRationaleTokens: ['verification', 'coverage'],
     });
   } catch (error) {
@@ -674,13 +674,14 @@ export function validateM511EditorialDecisions(
   }
   const proposalRows = validateProposalArtifact(proposal, catalog);
   try {
-    // Candidate intake is part of the same batch-neutral producer contract as
-    // reviewed admission.  The M5-11 checks below add only catalog bindings,
-    // decisions, and selection arithmetic around this shared validation.
-    validateLexicalAddition({
-      batchId: artifact.batch_id,
-      candidateRecords: proposalRows.map(({ candidate_record: candidateRecord }) => candidateRecord),
-      candidateLabel: 'M5-11 candidate records',
+    // Candidate intake is always shared with later batches. Complete-base,
+    // review, selection, and prospective-canonical binding are enforced by
+    // lexical-production at the admission boundary once all rows are known.
+    proposalRows.forEach(({ candidate_record: candidateRecord }, index) => {
+      validateSharedLexicalRecord(candidateRecord, {
+        label: `M5-11 candidate records[${index}]`,
+        mode: 'candidate',
+      });
     });
   } catch (error) {
     fail(error.message, error.code);

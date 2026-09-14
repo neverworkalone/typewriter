@@ -35,6 +35,10 @@ import {
   validateM511EditorialDecisions,
 } from '../scripts/batch/m5-11-editorial.mjs';
 import { compareRelationSnapshots } from '../scripts/batch/relation-diff.mjs';
+import {
+  inspectGlossConnectors,
+  inspectWriterDomainEvidence,
+} from '../scripts/validate/lexical-quality.mjs';
 
 const BATCH_ID = 'm5-11-expansion-20260913';
 
@@ -494,6 +498,17 @@ function makeAgentSources(catalog) {
           action: 'retain',
           classification: 'atomic',
           rationale: `${catalogEntry.inventory_id} ${sense.id} is an atomic sense after verification`,
+          semantic_evidence: {
+            status: 'pass',
+            gloss_sha256: sha256Json(sense.gloss),
+            observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+            domain_evidence: inspectWriterDomainEvidence(sense.gloss).matches,
+            connector_observations: inspectGlossConnectors(sense.gloss),
+            rationale: `${catalogEntry.inventory_id} ${sense.id} domain evidence was checked`,
+            boundary_decision: inspectWriterDomainEvidence(sense.gloss).axes.length > 1
+              ? 'coordinated'
+              : 'atomic',
+          },
         })),
       },
       pos: {

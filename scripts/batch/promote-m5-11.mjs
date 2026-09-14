@@ -16,6 +16,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
   generateTargetInventory,
@@ -337,6 +338,7 @@ async function buildProspectiveState({
   const temporaryInventoryPath = path.join(temporaryDirectory, 'm5-target-inventory.json');
 
   try {
+    const baseCanonical = await readCanonicalRecords(currentCanonicalDirectory);
     await cp(currentCanonicalDirectory, temporaryCanonicalDirectory, { recursive: true });
     const importBytes = createM511ImportBytes(result.imported_records);
     await writeFile(path.join(temporaryCanonicalDirectory, path.basename(importPath)), importBytes);
@@ -366,10 +368,15 @@ async function buildProspectiveState({
     });
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const canonicalRecords = canonical.records.map(({ record }) => record);
+    const semanticAudit = buildSemanticAuditArtifact(canonical.records, {
+      artifactId: 'm5-11-prospective-semantic-audit',
+    });
     validateLexicalAddition({
       batchId: M5_11_BATCH_ID,
+      baseRecords: baseCanonical.records,
       reviewedRecords: result.imported_records,
       prospectiveRecords: canonical.records,
+      semanticAudit,
       checkPilotCompleteness: true,
       reviewedLabel: 'M5-11 promotion reviewed records',
       prospectiveLabel: 'M5-11 promotion prospective canonical records',

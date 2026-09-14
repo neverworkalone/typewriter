@@ -12,6 +12,7 @@ From the repository root:
 node scripts/validate/canonical-jsonl.mjs
 node scripts/validate/dataset-integrity.mjs
 node scripts/validate/lexical-quality.mjs
+node scripts/validate/semantic-audit.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
 node --test tests/lexical-quality.test.mjs
@@ -36,6 +37,11 @@ validating a smaller independent fixture.
 `lexical-quality.mjs` is the shared dictionary-wide semantic gate. It audits the
 complete canonical directory and the same prospective canonical set used by
 reviewed batch importers. It covers expression/POS shape, placeholder glosses,
-and writer-domain sense boundaries. A batch may add scope, reserve, timing, or
-authorization rules, but it cannot bypass this common audit or introduce a
-batch/ID allowlist.
+and writer-domain sense boundaries. `semantic-audit.mjs` binds every canonical
+record and sense to its source digest, POS/expression classification, boundary
+evidence, and relation outcome; the durable artifact is
+`data/validation/canonical-semantic-audit.json`. A batch may add scope, reserve,
+timing, or authorization rules, but it cannot bypass this common audit or
+introduce a batch/ID allowlist. Candidate-producing workflows additionally use
+the batch-neutral `scripts/batch/lexical-production.mjs` contract for complete
+candidate coverage, source-bound semantic review, and selection.

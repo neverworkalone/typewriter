@@ -6,6 +6,11 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
+import {
+  DEFAULT_SEMANTIC_AUDIT_PATH,
+  readSemanticAuditArtifact,
+  validateSemanticAuditCoverage,
+} from './semantic-audit.mjs';
 
 const EXPECTED_PILOT_CANDIDATE_IDS = Object.freeze(
   Array.from({ length: 300 }, (_, index) => `w${String(index + 1).padStart(3, '0')}`),
@@ -263,11 +268,28 @@ export function validatePilotCompleteness(recordInfos) {
 
 export function validateDatasetRecords(
   recordInfos,
-  { checkPilotCompleteness = false } = {},
+  {
+    checkPilotCompleteness = false,
+    semanticAudit,
+    requireSemanticAudit = false,
+  } = {},
 ) {
   const indexes = indexRecords(recordInfos);
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
+
+  if (requireSemanticAudit) {
+    if (semanticAudit === undefined) {
+      fail('complete canonical validation requires semantic-audit coverage', 'SEMANTIC_AUDIT_REQUIRED');
+    }
+    try {
+      validateSemanticAuditCoverage(recordInfos, semanticAudit, {
+        label: 'complete canonical semantic audit',
+      });
+    } catch (error) {
+      fail(error.message, error.code);
+    }
+  }
 
   // The canonical directory is the product boundary.  Every record already
   // in the dictionary, every changed record, and every prospective import must
@@ -300,7 +322,26 @@ export async function validateDatasetDirectory(
   options = {},
 ) {
   const result = await readCanonicalRecords(directory);
-  const indexes = validateDatasetRecords(result.records, options);
+  const isDefaultCanonical = path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const requireSemanticAudit = options.requireSemanticAudit ?? isDefaultCanonical;
+  let semanticAudit = options.semanticAudit;
+  if (requireSemanticAudit && semanticAudit === undefined) {
+    try {
+      semanticAudit = await readSemanticAuditArtifact(
+        options.semanticAuditPath ?? DEFAULT_SEMANTIC_AUDIT_PATH,
+      );
+    } catch (error) {
+      if (error.code === 'SEMANTIC_AUDIT_MISSING') {
+        fail(error.message, error.code);
+      }
+      throw error;
+    }
+  }
+  const indexes = validateDatasetRecords(result.records, {
+    ...options,
+    semanticAudit,
+    requireSemanticAudit,
+  });
   const senseCount = result.records.reduce(
     (count, recordInfo) => count + recordInfo.record.senses.length,
     0,

@@ -9,6 +9,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -616,9 +617,14 @@ export async function validateM511Promotion({
   const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
+  const semanticAudit = buildSemanticAuditArtifact(canonical.records, {
+    artifactId: 'm5-11-promoted-semantic-audit',
+  });
   validateLexicalAddition({
     batchId: manifest.batch_id,
+    baseRecords: canonical.records,
     prospectiveRecords: canonical.records,
+    semanticAudit,
     checkPilotCompleteness: true,
     prospectiveLabel: 'M5-11 promoted canonical records',
   });

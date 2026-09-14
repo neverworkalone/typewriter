@@ -54,7 +54,9 @@ import {
 } from './validate-m5-11.mjs';
 import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateLexicalProduction } from './lexical-production.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
 
 const require = createRequire(import.meta.url);
@@ -224,6 +226,17 @@ function canonicalSummary(records) {
 
 function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
+}
+
+function recordInfos(records, source, filePath = source) {
+  return records.map((recordInfo, index) => recordInfo?.record
+    ? recordInfo
+    : {
+      record: recordInfo,
+      source,
+      filePath,
+      lineNumber: index + 1,
+    });
 }
 
 function importedRecordIds(importedRecords) {
@@ -1107,7 +1120,13 @@ function validateM511SemanticRelationBindings(semantic, relationDiff) {
   };
 }
 
-function validateImportedRecords(importedRecords, baseRecords, expectedImportedCount, checkPilotCompleteness) {
+function validateImportedRecords(
+  importedRecords,
+  baseRecords,
+  expectedImportedCount,
+  checkPilotCompleteness,
+  { semanticAudit } = {},
+) {
   if (importedRecords.length !== expectedImportedCount) {
     fail(`reviewed import must contain exactly ${expectedImportedCount} records`, 'CANONICAL_COUNT_MISMATCH');
   }
@@ -1135,26 +1154,99 @@ function validateImportedRecords(importedRecords, baseRecords, expectedImportedC
       }
     }
   }
-  const baseRecordInfos = baseRecords.map((record, index) => ({
-    record,
-    filePath: 'base-canonical',
-    lineNumber: index + 1,
-  }));
-  const importedRecordInfos = importedRecords.map((record, index) => ({
-    record,
-    filePath: 'external-reviewed-import',
-    lineNumber: index + 1,
-  }));
+  const baseRecordInfos = recordInfos(baseRecords, 'base-canonical');
+  const importedRecordInfos = recordInfos(importedRecords, 'external-reviewed-import');
+  const prospectiveRecordInfos = [...baseRecordInfos, ...importedRecordInfos];
+  const completeSemanticAudit = semanticAudit ?? buildSemanticAuditArtifact(prospectiveRecordInfos, {
+    artifactId: 'm5-11-prospective-semantic-audit',
+  });
   validateLexicalAddition({
     batchId: M5_11_BATCH_ID,
+    baseRecords: baseRecordInfos,
     reviewedRecords: importedRecordInfos,
-    prospectiveRecords: [...baseRecordInfos, ...importedRecordInfos],
+    prospectiveRecords: prospectiveRecordInfos,
+    semanticAudit: completeSemanticAudit,
     checkPilotCompleteness,
     candidateLabel: 'M5-11 candidate records',
     reviewedLabel: 'M5-11 reviewed records',
     prospectiveLabel: 'M5-11 prospective canonical records',
   });
   return 0;
+}
+
+function validateM511SharedProduction({
+  editorialResult,
+  catalog,
+  baseRecords,
+  importedRecords,
+  proposalSource,
+  editorialSource,
+  expectedImportedCount,
+  checkPilotCompleteness,
+  semanticAudit,
+} = {}) {
+  const candidateRecords = editorialResult.proposalRows.map(({ candidate_record: candidateRecord }, index) => ({
+    record: candidateRecord,
+    source: 'm5-11-frozen-proposal',
+    filePath: 'm5-11-frozen-proposal',
+    lineNumber: index + 1,
+  }));
+  const baseRecordInfos = recordInfos(baseRecords, 'm5-11-base-canonical');
+  const importedRecordInfos = recordInfos(importedRecords, 'm5-11-reviewed-import');
+  const prospectiveRecordInfos = [...baseRecordInfos, ...importedRecordInfos];
+  const completeSemanticAudit = semanticAudit ?? buildSemanticAuditArtifact(prospectiveRecordInfos, {
+    artifactId: 'm5-11-prospective-semantic-audit',
+  });
+  const reviews = catalog.map((catalogEntry, index) => {
+    const decisionResult = editorialResult.decisions[index];
+    return {
+      candidate_id: candidateRecords[index].record.id,
+      inventory_id: catalogEntry.inventory_id,
+      decision: decisionResult.decision.decision,
+      semantic_review: editorialResult.artifact.decisions[index].semantic_review,
+      ...(decisionResult.record ? { reviewed_record: decisionResult.record } : {}),
+      expected_record_type: catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry',
+    };
+  });
+  const production = validateLexicalProduction({
+    batchId: M5_11_BATCH_ID,
+    candidateRecords,
+    reviews,
+    baseRecords: baseRecordInfos,
+    prospectiveRecords: prospectiveRecordInfos,
+    semanticAudit: completeSemanticAudit,
+    stageEvidence: {
+      candidate_intake: {
+        status: 'complete',
+        source_path: proposalSource.path,
+        source_bytes: proposalSource.bytes,
+        source_sha256: proposalSource.sha256,
+      },
+      semantic_review: {
+        status: 'complete',
+        source_path: editorialSource.path,
+        source_bytes: editorialSource.bytes,
+        source_sha256: editorialSource.sha256,
+      },
+      selection: {
+        status: 'complete',
+        source_path: editorialSource.path,
+        source_bytes: editorialSource.bytes,
+        source_sha256: editorialSource.sha256,
+        policy: 'semantic-quality-and-coverage',
+      },
+    },
+    checkPilotCompleteness,
+    catalogCount: catalog.length,
+    expectedSelectedCount: expectedImportedCount,
+    candidateLabel: 'M5-11 shared production candidates',
+    reviewedLabel: 'M5-11 shared production reviewed records',
+    prospectiveLabel: 'M5-11 shared production prospective records',
+  });
+  return {
+    production,
+    semanticAudit: completeSemanticAudit,
+  };
 }
 
 function normalizedLexicalValue(value) {
@@ -1296,6 +1388,14 @@ export function evaluateM511AgentGate({
     exact_net_start_increase: exactNetStartIncrease === true,
     cumulative_start_target: metrics.final_start_count === expectedCumulativeStartCount,
   };
+  // Preserve the shape of already-promoted M5-11A evidence while requiring
+  // the common production stage for every newly derived gate.  New admission
+  // metrics always include this field; historical summaries predate the
+  // batch-neutral producer contract and are independently covered by the
+  // complete canonical semantic audit.
+  if (metrics.shared_lexical_production !== undefined) {
+    qualityPasses.shared_lexical_production = metrics.shared_lexical_production === true;
+  }
   const gateStatus = Object.values(qualityPasses).every(Boolean) ? 'pass' : 'fail';
   return {
     policy: M5_11_AGENT_REVIEW_MODE,
@@ -1445,6 +1545,8 @@ export async function runM511ProspectiveVerification({
   const temporaryCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
   const temporarySqlitePath = path.join(temporaryDirectory, 'dictionary.sqlite');
   try {
+    const baseCanonical = await readCanonicalRecords(baseCanonicalDirectory);
+    const baseRecordInfos = baseCanonical.records;
     await cp(baseCanonicalDirectory, temporaryCanonicalDirectory, { recursive: true });
     await writeFile(
       path.join(temporaryCanonicalDirectory, 'm5-11-expansion.jsonl'),
@@ -1452,9 +1554,14 @@ export async function runM511ProspectiveVerification({
     );
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const records = canonical.records.map(recordOf);
-    validateLexicalAddition({
+    const semanticAudit = buildSemanticAuditArtifact(canonical.records, {
+      artifactId: 'm5-11-prospective-semantic-audit',
+    });
+    const lexicalAdmission = validateLexicalAddition({
       batchId: M5_11_BATCH_ID,
+      baseRecords: baseRecordInfos,
       prospectiveRecords: canonical.records,
+      semanticAudit,
       checkPilotCompleteness,
       prospectiveLabel: 'M5-11 prospective verification canonical records',
     });
@@ -1548,6 +1655,7 @@ export async function runM511ProspectiveVerification({
     };
     const semanticObservation = {
       status: semanticSummary && semanticCoverage ? 'pass' : 'not-required',
+      semantic_audit: lexicalAdmission.semantic_audit,
       summary: semanticSummary,
       coverage: semanticCoverage,
       finding_count: semanticFindings?.length ?? 0,
@@ -1595,6 +1703,7 @@ export async function runM511ProspectiveVerification({
       'canonical-integrity': {
         final_summary: finalSummary,
         prospective_canonical_sha256: prospectiveCanonicalSha256,
+        semantic_audit: lexicalAdmission.semantic_audit,
       },
       'deterministic-sqlite': sqliteObservation,
       'search-product-regression': searchObservation,
@@ -1684,11 +1793,32 @@ export function deriveM511AdmissionGate({
   const reviewedImportSha256 = reviewedImportSource?.sha256 ?? sha256Json(importedRecords);
   const finalRecords = [...baseRecords, ...importedRecords];
   const finalSummary = canonicalSummary(finalRecords);
+  const prospectiveRecordInfos = [
+    ...recordInfos(baseRecords, 'm5-11-base-canonical'),
+    ...recordInfos(importedRecords, 'm5-11-reviewed-import'),
+  ];
+  const semanticAudit = buildSemanticAuditArtifact(prospectiveRecordInfos, {
+    artifactId: 'm5-11-prospective-semantic-audit',
+  });
+  const sharedProduction = agentGenerated
+    ? validateM511SharedProduction({
+      editorialResult,
+      catalog,
+      baseRecords,
+      importedRecords,
+      proposalSource,
+      editorialSource,
+      expectedImportedCount,
+      checkPilotCompleteness,
+      semanticAudit,
+    })
+    : null;
   const placeholderGlossCount = validateImportedRecords(
     importedRecords,
     baseRecords,
     expectedImportedCount,
     checkPilotCompleteness,
+    { semanticAudit },
   );
   if (finalSummary.start_count !== expectedCumulativeStartCount) {
     fail(`final canonical start count must be ${expectedCumulativeStartCount}`, 'CANONICAL_COUNT_MISMATCH');
@@ -1805,6 +1935,7 @@ export function deriveM511AdmissionGate({
     deterministic_sqlite: verificationResult.deterministic_sqlite,
     search_product_regression: verificationResult.search_product_regression,
     semantic_review_complete: agentGenerated ? semantic.complete : null,
+    shared_lexical_production: agentGenerated ? sharedProduction?.production?.pipeline_version === 'lexical-production-v1' : null,
     semantic_quality_blocker_count: agentGenerated ? semantic.broad_gloss_count : 0,
     semantic_selection_rank_valid: agentGenerated ? semantic.selection_rank_valid : null,
     semantic_axis_coverage_complete: agentGenerated ? semanticCoverage.axis_coverage_complete : null,
@@ -1861,6 +1992,15 @@ export function deriveM511AdmissionGate({
     audit: auditResult,
     verification: verificationResult,
     ...(semantic ? { semantic, semantic_coverage: semanticCoverage } : {}),
+    ...(sharedProduction ? {
+      lexical_production: {
+        pipeline_version: sharedProduction.production.pipeline_version,
+        candidate_count: sharedProduction.production.candidate_count,
+        selected_count: sharedProduction.production.selected_count,
+        review_count: sharedProduction.production.review_count,
+        semantic_audit: sharedProduction.production.admission.semantic_audit,
+      },
+    } : {}),
     metrics,
     gate,
   };

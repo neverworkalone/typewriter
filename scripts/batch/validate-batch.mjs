@@ -10,6 +10,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { buildSemanticAuditArtifact } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
   DEFAULT_INVENTORY_PATH,
@@ -1144,10 +1145,16 @@ export async function validateBatch({
   validateNoDuplicateLexicalKeys([...canonicalResult.records, ...stagedResult.records]);
   validateReferenceClosure(manifest.records, stagedResult.records, canonicalResult.records);
 
+  const prospectiveRecords = [...canonicalResult.records, ...stagedResult.records];
+  const semanticAudit = buildSemanticAuditArtifact(prospectiveRecords, {
+    artifactId: `${manifest.batch_id}-prospective-semantic-audit`,
+  });
   validateLexicalAddition({
     batchId: manifest.batch_id,
+    baseRecords: canonicalResult.records,
     reviewedRecords: stagedResult.records,
-    prospectiveRecords: [...canonicalResult.records, ...stagedResult.records],
+    prospectiveRecords,
+    semanticAudit,
     checkPilotCompleteness: false,
     candidateLabel: `${manifest.batch_id} candidate records`,
     reviewedLabel: `${manifest.batch_id} reviewed records`,

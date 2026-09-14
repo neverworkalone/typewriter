@@ -7,6 +7,10 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import { validateDatasetRecords } from './dataset-integrity.mjs';
+import {
+  DEFAULT_SEMANTIC_AUDIT_PATH,
+  readSemanticAuditArtifact,
+} from './semantic-audit.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_INVENTORY_PATH = path.resolve(
@@ -486,7 +490,15 @@ export async function validateTargetInventory({
   }
 
   const canonicalResult = await readCanonicalRecords(canonicalDirectory);
-  validateDatasetRecords(canonicalResult.records, { checkPilotCompleteness });
+  const requireSemanticAudit = path.resolve(canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const semanticAudit = requireSemanticAudit
+    ? await readSemanticAuditArtifact(DEFAULT_SEMANTIC_AUDIT_PATH)
+    : undefined;
+  validateDatasetRecords(canonicalResult.records, {
+    checkPilotCompleteness,
+    semanticAudit,
+    requireSemanticAudit,
+  });
   const canonicalById = new Map(
     canonicalResult.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),
   );
