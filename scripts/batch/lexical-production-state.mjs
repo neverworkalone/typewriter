@@ -472,6 +472,23 @@ function validateLivePayload(stageId, payload, {
     ? null
     : requirePayloadDigest(payload.input_sha256, `production stage ${stageId}.payload.input_sha256`);
   const outputSha256 = requirePayloadDigest(payload.output_sha256, `production stage ${stageId}.payload.output_sha256`);
+  if (!Object.hasOwn(payload, 'input')) {
+    fail(`production stage ${stageId}.payload.input must preserve the exact typed operation input`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
+  }
+  if (!Object.hasOwn(payload, 'output')) {
+    fail(`production stage ${stageId}.payload.output must preserve the exact typed operation output`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
+  }
+  if (payload.input === undefined) {
+    fail(`production stage ${stageId}.payload.input must be null or a typed value`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
+  }
+  requirePayloadValue(payload.output, `production stage ${stageId}.payload.output`);
+  if ((inputSha256 === null && payload.input !== null)
+    || (inputSha256 !== null && productionValueSha256(payload.input) !== inputSha256)) {
+    fail(`production stage ${stageId}.payload.input_sha256 does not bind its exact typed input`, 'LEXICAL_PRODUCTION_STATE_BINDING');
+  }
+  if (productionValueSha256(payload.output) !== outputSha256) {
+    fail(`production stage ${stageId}.payload.output_sha256 does not bind its exact typed output`, 'LEXICAL_PRODUCTION_STATE_BINDING');
+  }
   if (predecessorPayloadOutputSha256 === undefined) {
     if (inputSha256 !== null) {
       fail(`production stage ${stageId}.payload.input_sha256 must begin at null`, 'LEXICAL_PRODUCTION_STATE_TRANSITION');
@@ -507,9 +524,7 @@ function validateLivePayload(stageId, payload, {
       fail(`production stage ${stageId}.payload.details.${key} must be a non-negative integer`, 'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED');
     }
   }
-  if (input !== undefined || output !== undefined) {
-    assertPayloadOutputDetails(stageId, input, output, details);
-  }
+  assertPayloadOutputDetails(stageId, payload.input, payload.output, details);
   return { inputSha256, outputSha256 };
 }
 
@@ -539,6 +554,8 @@ export function createLexicalProductionPayload({
     mode: 'live',
     stage_id: stageId,
     batch_id: batchId,
+    input: input === undefined ? null : structuredClone(input),
+    output: structuredClone(requirePayloadValue(output)),
     input_sha256: input === null || input === undefined ? null : productionValueSha256(input),
     output_sha256: productionValueSha256(output),
     input_kind: inputKind,

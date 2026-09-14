@@ -196,6 +196,7 @@ async function writeFixtureFiles({
     stagedRecordsPath,
     semanticAuditPath,
     productionStateSources: production.sources,
+    productionPayloads: production.payloads,
   };
 }
 
@@ -539,6 +540,58 @@ test('generic admission rejects reconstructed replay while explicit historical v
       allowReplay: true,
       productionStateSources: replay.sources,
     }));
+  } finally {
+    await rm(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test('generic admission rejects a live producer output that is not bound to staged records', async () => {
+  const fixture = await createFixture();
+
+  try {
+    const manifest = await readManifest(fixture.manifestPath);
+    const canonical = await readCanonicalRecords(fixture.canonicalDirectory);
+    const staged = await readStagedRecords(fixture.stagedRecordsPath);
+    const drifted = structuredClone(staged[0]);
+    drifted.senses[0].gloss = 'producer output that was not reviewed in the staged batch.';
+    const driftedProspective = [
+      ...canonical.records.map(({ record }) => record),
+      drifted,
+      ...staged.slice(1),
+    ];
+    const driftedAudit = makeSemanticAudit([
+      ...canonical.records,
+      ...driftedProspective.slice(canonical.records.length).map((record, index) => ({
+        record,
+        source: 'drifted-producer-output',
+        filePath: 'drifted-producer-output',
+        lineNumber: index + 1,
+      })),
+    ]);
+    const driftedProduction = makeProductionState({
+      batchId: manifest.batch_id,
+      candidateRecords: [drifted, ...staged.slice(1)],
+      reviewedRecords: [drifted, ...staged.slice(1)],
+      baseRecords: canonical.records,
+      prospectiveRecords: driftedProspective,
+      semanticAudit: driftedAudit,
+      artifactId: `${manifest.batch_id}-drifted-production`,
+    });
+    manifest.production_state = driftedProduction.state;
+    await writeFile(fixture.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+
+    await assert.rejects(
+      validateBatch({
+        ...fixture,
+        productionStateSources: driftedProduction.sources,
+      }),
+      (error) => {
+        assert.ok(error instanceof BatchValidationError);
+        assert.equal(error.code, 'LEXICAL_PRODUCTION_BINDING');
+        assert.match(error.message, /selection output|staged batch/u);
+        return true;
+      },
+    );
   } finally {
     await rm(fixture.directory, { recursive: true, force: true });
   }

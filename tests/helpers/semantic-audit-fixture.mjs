@@ -10,8 +10,14 @@ import {
   SEMANTIC_BOUNDARY_RULESET_VERSION,
   SEMANTIC_REVIEW_CONTRACT_VERSION,
   sha256Json,
+  validateSemanticAuditCoverage,
 } from '../../scripts/validate/semantic-audit.mjs';
-import { inspectWriterDomainEvidence } from '../../scripts/validate/lexical-quality.mjs';
+import {
+  auditCanonicalLexicalQuality,
+  inspectGlossConnectors,
+  inspectWriterDomainEvidence,
+} from '../../scripts/validate/lexical-quality.mjs';
+import { inspectSenseBoundaryPairs } from '../../scripts/validate/sense-boundary.mjs';
 import {
   createLexicalProductionRun,
   productionBytesSha256,
@@ -21,6 +27,116 @@ import {
 
 function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
+}
+
+function makeProductionSemanticReview(record, {
+  decision,
+  artifactId,
+  rank,
+} = {}) {
+  const decisionSourceId = `${artifactId}:decision-source`;
+  const multiSense = record.senses.length > 1;
+  const action = multiSense ? 'split' : 'retain';
+  const classification = multiSense ? 'separated' : 'atomic';
+  const pairs = inspectSenseBoundaryPairs(record).map((pair) => {
+    const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
+    const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
+    const leftGlossSha256 = sha256Json(leftSense.gloss);
+    const rightGlossSha256 = sha256Json(rightSense.gloss);
+    return {
+      left_sense_id: pair.left_sense_id,
+      right_sense_id: pair.right_sense_id,
+      relationship: pair.relationship,
+      decision: 'retain',
+      left_gloss_sha256: leftGlossSha256,
+      right_gloss_sha256: rightGlossSha256,
+      evidence_basis: 'fixture pair was explicitly reviewed from both glosses and usage conditions',
+      distinguishing_feature: 'fixture pair has separately authored writer-facing usage conditions',
+      decision_source_id: decisionSourceId,
+      rationale: `${record.id} ${pair.left_sense_id} ${pair.right_sense_id} pair cites ${leftGlossSha256.slice(0, 12)} and ${rightGlossSha256.slice(0, 12)}.`,
+    };
+  });
+  return {
+    status: 'complete',
+    decision_source: {
+      kind: 'separately-authored-semantic-decision-source',
+      contract_version: 'lexical-semantic-decision-source-v1',
+      source_id: decisionSourceId,
+      path: `tests/fixtures/${artifactId}-decision-source.json`,
+    },
+    sense_boundary: {
+      status: 'pass',
+      decision_source_id: decisionSourceId,
+      review_id: `${artifactId}:${record.id}:boundary`,
+      method: SEMANTIC_BOUNDARY_METHOD,
+      independence: {
+        independent_of_sense_count: true,
+        source: 'separately-authored-fixture-boundary-decision',
+        decision_source_id: decisionSourceId,
+        decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
+      },
+      findings: record.senses.map((sense) => ({
+        sense_id: sense.id,
+        action,
+        classification,
+        rationale: `${record.id} ${sense.id} boundary was independently reviewed from the authored decision source`,
+        semantic_evidence: {
+          status: 'pass',
+          gloss_sha256: sha256Json(sense.gloss),
+          observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+          domain_evidence: inspectWriterDomainEvidence(sense.gloss).matches,
+          connector_observations: inspectGlossConnectors(sense.gloss),
+          rationale: `${record.id} ${sense.id} gloss domains were authored and reviewed`,
+          boundary_decision: inspectWriterDomainEvidence(sense.gloss).axes.length > 1
+            ? 'coordinated'
+            : multiSense ? 'split' : 'atomic',
+          decision_source_id: decisionSourceId,
+        },
+      })),
+      pairwise: pairs,
+      rationale: `${record.id} boundary was explicitly authored independently of the current sense count`,
+    },
+    pos: {
+      status: 'pass',
+      decision: 'verified',
+      observed_pos: record.senses.map(({ pos }) => pos),
+      decision_source_id: decisionSourceId,
+      rationale: `${record.id} POS was explicitly verified from the authored decision source`,
+    },
+    expression: {
+      status: 'pass',
+      decision: 'verified',
+      expected_record_type: record.record_type,
+      observed_record_type: record.record_type,
+      decision_source_id: decisionSourceId,
+      rationale: `${record.id} expression classification was explicitly verified`,
+    },
+    relation: {
+      status: 'pass',
+      decision_source_id: decisionSourceId,
+      per_sense: record.senses.map((sense) => {
+        const relationCount = sense.relations?.length ?? 0;
+        return {
+          sense_id: sense.id,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          decision_source_id: decisionSourceId,
+          relation_count: relationCount,
+          relation_ids: relationCount > 0
+            ? sense.relations.map((_, index) => `${sense.id}:relation-${index + 1}`)
+            : [],
+          ...(relationCount === 0
+            ? { no_relation_rationale: `${record.id} ${sense.id} has no relation tuple after authored review.` }
+            : {}),
+        };
+      }),
+    },
+    selection: {
+      status: ['included', 'corrected'].includes(decision) ? 'selected' : decision,
+      rank,
+      score: 1,
+      rationale: `${record.id} was selected by authored verification and coverage evidence`,
+    },
+  };
 }
 
 export function makeProductionState({
@@ -41,14 +157,45 @@ export function makeProductionState({
   const reviewRows = candidateValues.map((candidate, index) => ({
     candidate_id: candidate.id,
     decision: reviewedValues[index] ? 'included' : 'held',
-    semantic_review: { status: 'complete', source: `${artifactId}:semantic-review` },
+    semantic_review: makeProductionSemanticReview(reviewedValues[index] ?? candidate, {
+      decision: reviewedValues[index] ? 'included' : 'held',
+      artifactId,
+      rank: index + 1,
+    }),
     ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
   }));
-  const selectedRanks = reviewedValues.map((_, index) => index);
+  const selectedRanks = reviewedValues.map((_, index) => index + 1);
   const candidateOutput = candidateValues;
   const reviewOutput = { review_rows: reviewRows, reviewed_records: reviewedValues };
   const selectionOutput = { selected_records: reviewedValues, selection_ranks: selectedRanks };
   const prospectiveOutput = prospectiveValues;
+  const baseInfos = baseRecords.map((recordInfo, index) => (
+    recordInfo?.record
+      ? recordInfo
+      : {
+        record: recordInfo,
+        source: 'base-canonical',
+        filePath: 'base-canonical',
+        lineNumber: index + 1,
+      }
+  ));
+  const prospectiveInfos = prospectiveRecords.length > 0
+    ? prospectiveRecords
+    : prospectiveValues.map((record, index) => ({
+      record,
+      source: 'prospective-canonical',
+      filePath: 'prospective-canonical',
+      lineNumber: index + 1,
+    }));
+  const semanticAuditCoverage = validateSemanticAuditCoverage(prospectiveInfos, semanticAudit, {
+    baseRecords: baseInfos,
+    label: `${batchId} semantic audit`,
+    requireDecisionSource: true,
+  });
+  const lexicalAudit = auditCanonicalLexicalQuality(prospectiveInfos, {
+    scope: `${batchId}:prospective-canonical`,
+    throwOnError: false,
+  });
   const specs = {
     candidate_intake: {
       input: null,
@@ -96,7 +243,7 @@ export function makeProductionState({
   const auditOutput = {
     prospective_records_sha256: productionValueSha256(prospectiveOutput),
     semantic_audit_sha256: productionValueSha256(semanticAudit),
-    lexical_audit_sha256: productionValueSha256({ artifact_id: `${artifactId}:lexical-audit`, blocking_finding_count: 0 }),
+    lexical_audit_sha256: productionValueSha256(lexicalAudit),
   };
   specs.audit = {
     input: prospectiveOutput,
@@ -111,10 +258,13 @@ export function makeProductionState({
     decision: 'admit',
   });
   const gateBytes = productionSourceBytes({
-    artifact_id: artifactId,
     batch_id: batchId,
+    pipeline_version: 'lexical-admission-v1',
     candidate_count: candidateValues.length,
+    reviewed_count: reviewedValues.length,
     prospective_record_count: prospectiveValues.length,
+    semantic_audit: semanticAuditCoverage,
+    lexical_audit: lexicalAudit,
   });
   const admissionOutput = {
     status: 'admitted',

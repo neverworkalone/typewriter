@@ -7,6 +7,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
 /**
  * Shared lexical-quality rules used by canonical validation and every reviewed
@@ -22,6 +23,27 @@ const ROLES = Object.freeze(['start', 'reference-only']);
 const ENTRY_POS = Object.freeze(['noun', 'adjective', 'verb']);
 const ALL_POS = Object.freeze([...ENTRY_POS, 'expression']);
 const CONNECTORS = Object.freeze(['이나', '또는', '거나']);
+const SEMANTIC_BOUNDARY_ACTIONS = Object.freeze(['retain', 'split', 'merge', 'rewrite', 'fail']);
+const SEMANTIC_BOUNDARY_CLASSIFICATIONS = Object.freeze([
+  'atomic',
+  'separated',
+  'coordinated',
+  'overlapping',
+  'nested',
+  'usage-variant',
+  'unresolved',
+]);
+const SEMANTIC_BOUNDARY_RELATIONSHIPS = Object.freeze([
+  'distinct',
+  'duplicate',
+  'nested',
+  'usage-variant',
+]);
+const SEMANTIC_BOUNDARY_PAIR_DECISIONS = Object.freeze(['retain', 'merge', 'rewrite', 'fail']);
+const SEMANTIC_BOUNDARY_METHOD = 'gloss-and-usage-pairwise-v2';
+const SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION = 'lexical-semantic-boundary-decisions-v1';
+const SEMANTIC_DECISION_SOURCE_KIND = 'separately-authored-semantic-decision-source';
+const SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v1';
 
 // These are deliberately writer-facing semantic domains, not record IDs or
 // historical batch exceptions.  They let the audit distinguish a genuinely
@@ -104,6 +126,130 @@ function requireEnum(value, values, label) {
   if (!values.includes(value)) {
     fail(`${label} must be one of ${values.join(', ')} (received ${String(value)})`, 'LEXICAL_VALUE_ERROR');
   }
+}
+
+function validateSemanticDecisionSource(review, label) {
+  const source = requireObject(review.decision_source, `${label}.decision_source`);
+  if (source.kind !== SEMANTIC_DECISION_SOURCE_KIND) {
+    fail(
+      `${label}.decision_source.kind must identify a separately authored decision source`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  if (source.contract_version !== SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
+    fail(
+      `${label}.decision_source.contract_version is unsupported`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  requireString(source.source_id, `${label}.decision_source.source_id`);
+  requireString(source.path, `${label}.decision_source.path`);
+  return source.source_id;
+}
+
+function boundaryDecisionForFinding(action, classification) {
+  if (action === 'retain') return classification === 'coordinated' ? 'coordinated' : 'atomic';
+  if (action === 'split') return classification === 'coordinated' ? 'coordinated' : 'split';
+  return action;
+}
+
+function validateAuthoredBoundaryPairs(
+  record,
+  boundary,
+  label,
+  { decisionSourceId, productionDecision } = {},
+) {
+  requireString(boundary.review_id, `${label}.review_id`);
+  requireString(boundary.method, `${label}.method`);
+  if (boundary.method !== SEMANTIC_BOUNDARY_METHOD) {
+    fail(`${label}.method must use the independent pairwise boundary method`, 'LEXICAL_SEMANTIC_PROVENANCE');
+  }
+  const independence = requireObject(boundary.independence, `${label}.independence`);
+  if (independence.independent_of_sense_count !== true) {
+    fail(
+      `${label}.independence must not derive its decision from the current sense count`,
+      'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+    );
+  }
+  requireString(independence.source, `${label}.independence.source`);
+  requireString(independence.decision_source_id, `${label}.independence.decision_source_id`);
+  if (independence.decision_source_id !== decisionSourceId) {
+    fail(`${label}.independence.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+  }
+  requireString(independence.decision_source_version, `${label}.independence.decision_source_version`);
+  if (independence.decision_source_version !== SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION) {
+    fail(`${label}.independence.decision_source_version is unsupported`, 'LEXICAL_SEMANTIC_PROVENANCE');
+  }
+
+  const expectedPairs = inspectSenseBoundaryPairs(record);
+  const pairwise = requireArray(boundary.pairwise, `${label}.pairwise`);
+  if (pairwise.length !== expectedPairs.length) {
+    fail(`${label}.pairwise must review every sense pair`, 'LEXICAL_SEMANTIC_SCOPE');
+  }
+  const expectedByKey = new Map(expectedPairs.map((pair) => [
+    `${pair.left_sense_id}:${pair.right_sense_id}`,
+    pair,
+  ]));
+  const seen = new Set();
+  for (const [index, item] of pairwise.entries()) {
+    const pairLabel = `${label}.pairwise[${index}]`;
+    requireObject(item, pairLabel);
+    requireString(item.left_sense_id, `${pairLabel}.left_sense_id`);
+    requireString(item.right_sense_id, `${pairLabel}.right_sense_id`);
+    const key = `${item.left_sense_id}:${item.right_sense_id}`;
+    if (seen.has(key)) fail(`${pairLabel} is duplicated`, 'LEXICAL_SEMANTIC_SCOPE');
+    seen.add(key);
+    const expected = expectedByKey.get(key);
+    if (!expected) fail(`${pairLabel} is not bound to the reviewed sense pair`, 'LEXICAL_SEMANTIC_BINDING');
+    requireEnum(item.relationship, SEMANTIC_BOUNDARY_RELATIONSHIPS, `${pairLabel}.relationship`);
+    requireEnum(item.decision, SEMANTIC_BOUNDARY_PAIR_DECISIONS, `${pairLabel}.decision`);
+    const leftSense = record.senses.find(({ id }) => id === item.left_sense_id);
+    const rightSense = record.senses.find(({ id }) => id === item.right_sense_id);
+    const leftGlossSha256 = sha256Json(leftSense.gloss);
+    const rightGlossSha256 = sha256Json(rightSense.gloss);
+    if (item.left_gloss_sha256 !== leftGlossSha256 || item.right_gloss_sha256 !== rightGlossSha256) {
+      fail(`${pairLabel} gloss evidence does not bind the reviewed sense pair`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+    requireString(item.evidence_basis, `${pairLabel}.evidence_basis`);
+    requireString(item.distinguishing_feature, `${pairLabel}.distinguishing_feature`);
+    requireString(item.rationale, `${pairLabel}.rationale`);
+    requireString(item.decision_source_id, `${pairLabel}.decision_source_id`);
+    if (item.decision_source_id !== decisionSourceId) {
+      fail(`${pairLabel}.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
+    if (!item.rationale.includes(record.id)
+      || !item.rationale.includes(item.left_sense_id)
+      || !item.rationale.includes(item.right_sense_id)
+      || !item.rationale.includes(leftGlossSha256.slice(0, 12))
+      || !item.rationale.includes(rightGlossSha256.slice(0, 12))) {
+      fail(`${pairLabel}.rationale must cite the reviewed sense pair and gloss evidence`, 'LEXICAL_SEMANTIC_EVIDENCE');
+    }
+    const mechanicalRelationship = expected.relationship;
+    if (['duplicate', 'nested'].includes(mechanicalRelationship)) {
+      if (item.relationship !== mechanicalRelationship) {
+        fail(
+          `${pairLabel} contradicts the mechanical ${mechanicalRelationship} boundary finding`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      if (item.decision === 'retain') {
+        fail(
+          `${pairLabel} cannot retain a mechanical ${mechanicalRelationship} pair`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+      if (['included', 'corrected'].includes(productionDecision)) {
+        fail(
+          `${pairLabel} remains a mechanical ${mechanicalRelationship} pair in an importable reviewed record`,
+          'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+        );
+      }
+    }
+  }
+  if (seen.size !== expectedPairs.length) {
+    fail(`${label}.pairwise must cover every canonical sense pair`, 'LEXICAL_SEMANTIC_SCOPE');
+  }
+  return pairwise;
 }
 
 function recordOf(recordInfo) {
@@ -582,6 +728,19 @@ export function validateLexicalSemanticReview(review, {
   if (boundary.status !== 'pass') {
     fail(`${label}.sense_boundary.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
   }
+  const decisionSourceId = requireSemanticEvidence
+    ? validateSemanticDecisionSource(review, label)
+    : undefined;
+  if (requireSemanticEvidence) {
+    requireString(boundary.decision_source_id, `${label}.sense_boundary.decision_source_id`);
+    if (boundary.decision_source_id !== decisionSourceId) {
+      fail(`${label}.sense_boundary.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
+    validateAuthoredBoundaryPairs(record, boundary, `${label}.sense_boundary`, {
+      decisionSourceId,
+      productionDecision: decision,
+    });
+  }
   const findings = requireArray(boundary.findings, `${label}.sense_boundary.findings`, { minItems: 1 });
   assert.deepEqual(
     findings.map(({ sense_id: senseId }) => senseId),
@@ -592,13 +751,11 @@ export function validateLexicalSemanticReview(review, {
     const senseLabel = `${label}.sense_boundary.findings[${senseIndex}]`;
     requireObject(finding, senseLabel);
     const sense = record.senses[senseIndex];
-    const expectedAction = record.senses.length > 1 ? 'split' : 'retain';
-    const expectedClassification = record.senses.length > 1 ? 'separated' : 'atomic';
-    if (finding.sense_id !== sense.id
-      || finding.action !== expectedAction
-      || finding.classification !== expectedClassification) {
-      fail(`${senseLabel} does not prove an atomic sense boundary`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    if (finding.sense_id !== sense.id) {
+      fail(`${senseLabel}.sense_id is not bound to the reviewed sense`, 'LEXICAL_SEMANTIC_BINDING');
     }
+    requireEnum(finding.action, SEMANTIC_BOUNDARY_ACTIONS, `${senseLabel}.action`);
+    requireEnum(finding.classification, SEMANTIC_BOUNDARY_CLASSIFICATIONS, `${senseLabel}.classification`);
     requireString(finding.rationale, `${senseLabel}.rationale`);
     if (inventoryId !== undefined
       && (!finding.rationale.includes(inventoryId) || !finding.rationale.includes(sense.id))) {
@@ -656,22 +813,42 @@ export function validateLexicalSemanticReview(review, {
         ['atomic', 'split', 'coordinated'],
         `${senseLabel}.semantic_evidence.boundary_decision`,
       );
-      if (record.senses.length === 1 && derivedDomainAxes.length > 1
-        && semanticEvidence.boundary_decision !== 'coordinated') {
+      if (derivedDomainAxes.length > 1 && semanticEvidence.boundary_decision !== 'coordinated') {
         fail(
-          `${senseLabel} has multiple writer domains in one sense; the semantic review must split or explicitly justify a coordinated domain`,
+          `${senseLabel} has multiple writer domains; the semantic review must explicitly justify a coordinated domain`,
           'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
         );
       }
-      if (record.senses.length > 1
-        && !['split', 'coordinated'].includes(semanticEvidence.boundary_decision)) {
-        fail(`${senseLabel} belongs to a multi-sense record but is not marked split/coordinated`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+      if (requireSemanticEvidence) {
+        requireString(semanticEvidence.decision_source_id, `${senseLabel}.semantic_evidence.decision_source_id`);
+        if (semanticEvidence.decision_source_id !== decisionSourceId) {
+          fail(`${senseLabel}.semantic_evidence.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+        }
+        const expectedBoundaryDecision = boundaryDecisionForFinding(finding.action, finding.classification);
+        const boundaryDecisionMatches = semanticEvidence.boundary_decision === expectedBoundaryDecision
+          || (semanticEvidence.boundary_decision === 'coordinated'
+            && ['atomic', 'split'].includes(expectedBoundaryDecision));
+        if (!boundaryDecisionMatches) {
+          fail(
+            `${senseLabel}.semantic_evidence.boundary_decision does not match the authored boundary decision`,
+            'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+          );
+        }
       }
     }
   }
 
   const pos = requireObject(review.pos, `${label}.pos`);
   if (pos.status !== 'pass') fail(`${label}.pos.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  if (requireSemanticEvidence) {
+    if (pos.decision !== 'verified') {
+      fail(`${label}.pos.decision must be verified by an authored semantic decision`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+    }
+    requireString(pos.decision_source_id, `${label}.pos.decision_source_id`);
+    if (pos.decision_source_id !== decisionSourceId) {
+      fail(`${label}.pos.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
+  }
   assert.deepEqual(
     pos.observed_pos,
     record.senses.map(({ pos: sensePos }) => sensePos),
@@ -685,6 +862,15 @@ export function validateLexicalSemanticReview(review, {
   const expression = requireObject(review.expression, `${label}.expression`);
   if (expression.status !== 'pass') {
     fail(`${label}.expression.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  if (requireSemanticEvidence) {
+    if (expression.decision !== 'verified') {
+      fail(`${label}.expression.decision must be verified by an authored semantic decision`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+    }
+    requireString(expression.decision_source_id, `${label}.expression.decision_source_id`);
+    if (expression.decision_source_id !== decisionSourceId) {
+      fail(`${label}.expression.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
   }
   if (expectedRecordType !== undefined
     && (expression.expected_record_type !== expectedRecordType
@@ -700,6 +886,12 @@ export function validateLexicalSemanticReview(review, {
   const relation = requireObject(review.relation, `${label}.relation`);
   if (relation.status !== 'pass') {
     fail(`${label}.relation.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  if (requireSemanticEvidence) {
+    requireString(relation.decision_source_id, `${label}.relation.decision_source_id`);
+    if (relation.decision_source_id !== decisionSourceId) {
+      fail(`${label}.relation.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
   }
   const perSense = requireArray(relation.per_sense, `${label}.relation.per_sense`, { minItems: 1 });
   assert.deepEqual(
@@ -719,6 +911,16 @@ export function validateLexicalSemanticReview(review, {
     const actualRelationCount = sense.relations?.length ?? 0;
     if (senseDecision.sense_id !== sense.id || senseDecision.relation_count !== actualRelationCount) {
       fail(`${senseLabel} does not bind the reviewed relation count`, 'LEXICAL_RELATION_BINDING');
+    }
+    if (requireSemanticEvidence) {
+      const expectedDecision = actualRelationCount === 0 ? 'no-relations' : 'relations-reviewed';
+      if (senseDecision.decision !== expectedDecision) {
+        fail(`${senseLabel}.decision must be ${expectedDecision} from an authored relation decision`, 'LEXICAL_RELATION_BINDING');
+      }
+      requireString(senseDecision.decision_source_id, `${senseLabel}.decision_source_id`);
+      if (senseDecision.decision_source_id !== decisionSourceId) {
+        fail(`${senseLabel}.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+      }
     }
     const relationIds = requireArray(senseDecision.relation_ids, `${senseLabel}.relation_ids`);
     if (relationIds.some((relationId) => typeof relationId !== 'string' || relationId.trim().length === 0)) {

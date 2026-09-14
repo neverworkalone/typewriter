@@ -39,6 +39,7 @@ import {
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
 } from '../scripts/validate/lexical-quality.mjs';
+import { inspectSenseBoundaryPairs } from '../scripts/validate/sense-boundary.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
   makeProductionState,
@@ -494,18 +495,54 @@ function makeAgentSources(catalog) {
     const proposalRecord = fixture.proposal.proposals[index].candidate_record;
     const record = decision.canonical_record ?? proposalRecord;
     const imported = decision.canonical_record !== undefined;
+    const decisionSourceId = `${catalogEntry.inventory_id}:decision-source`;
+    const boundaryAction = record.senses.length > 1 ? 'split' : 'retain';
+    const boundaryClassification = record.senses.length > 1 ? 'separated' : 'atomic';
+    const pairwise = inspectSenseBoundaryPairs(record).map((pair) => {
+      const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
+      const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
+      const leftGlossSha256 = sha256Json(leftSense.gloss);
+      const rightGlossSha256 = sha256Json(rightSense.gloss);
+      return {
+        left_sense_id: pair.left_sense_id,
+        right_sense_id: pair.right_sense_id,
+        relationship: pair.relationship,
+        decision: 'retain',
+        left_gloss_sha256: leftGlossSha256,
+        right_gloss_sha256: rightGlossSha256,
+        evidence_basis: 'M5-11 fixture pair was explicitly reviewed from both glosses',
+        distinguishing_feature: 'M5-11 fixture pair has separate writer-facing usage conditions',
+        decision_source_id: decisionSourceId,
+        rationale: `${record.id} ${pair.left_sense_id} ${pair.right_sense_id} pair cites ${leftGlossSha256.slice(0, 12)} and ${rightGlossSha256.slice(0, 12)}.`,
+      };
+    });
     decision.semantic_review = {
       version: M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
       status: 'complete',
+      decision_source: {
+        kind: 'separately-authored-semantic-decision-source',
+        contract_version: 'lexical-semantic-decision-source-v1',
+        source_id: decisionSourceId,
+        path: `tests/fixtures/${catalogEntry.inventory_id}-decision-source.json`,
+      },
       axis: catalogEntry.axis,
       flags: [...catalogEntry.flags],
       sense_boundary: {
         status: 'pass',
+        decision_source_id: decisionSourceId,
+        review_id: `${catalogEntry.inventory_id}:boundary`,
+        method: 'gloss-and-usage-pairwise-v2',
+        independence: {
+          independent_of_sense_count: true,
+          source: 'separately-authored-m5-11-fixture-boundary-decision',
+          decision_source_id: decisionSourceId,
+          decision_source_version: 'lexical-semantic-boundary-decisions-v1',
+        },
         findings: record.senses.map((sense) => ({
           sense_id: sense.id,
-          action: 'retain',
-          classification: 'atomic',
-          rationale: `${catalogEntry.inventory_id} ${sense.id} is an atomic sense after verification`,
+          action: boundaryAction,
+          classification: boundaryClassification,
+          rationale: `${catalogEntry.inventory_id} ${sense.id} boundary was explicitly authored after verification`,
           semantic_evidence: {
             status: 'pass',
             gloss_sha256: sha256Json(sense.gloss),
@@ -515,25 +552,35 @@ function makeAgentSources(catalog) {
             rationale: `${catalogEntry.inventory_id} ${sense.id} domain evidence was checked`,
             boundary_decision: inspectWriterDomainEvidence(sense.gloss).axes.length > 1
               ? 'coordinated'
-              : 'atomic',
+              : boundaryAction === 'split' ? 'split' : 'atomic',
+            decision_source_id: decisionSourceId,
           },
         })),
+        pairwise,
+        rationale: `${record.id} boundary was authored independently of the current sense count`,
       },
       pos: {
         status: 'pass',
+        decision: 'verified',
         observed_pos: record.senses.map(({ pos }) => pos),
+        decision_source_id: decisionSourceId,
         rationale: `${catalogEntry.inventory_id} POS was verified against every sense`,
       },
       expression: {
         status: 'pass',
+        decision: 'verified',
         expected_record_type: 'entry',
         observed_record_type: record.record_type,
+        decision_source_id: decisionSourceId,
         rationale: `${catalogEntry.inventory_id} verification classified this candidate as an entry`,
       },
       relation: {
         status: 'pass',
+        decision_source_id: decisionSourceId,
         per_sense: record.senses.map((sense) => ({
           sense_id: sense.id,
+          decision: sense.relations?.length ? 'relations-reviewed' : 'no-relations',
+          decision_source_id: decisionSourceId,
           relation_count: sense.relations?.length ?? 0,
           relation_ids: sense.relations?.length ? [relationId] : [],
           ...(sense.relations?.length

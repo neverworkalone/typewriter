@@ -8,6 +8,7 @@ import {
   LexicalQualityError,
   inspectWriterDomainEvidence,
   inspectGlossConnectors,
+  validateLexicalSemanticReview,
   validateLexicalRecord,
 } from '../scripts/validate/lexical-quality.mjs';
 import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs';
@@ -330,10 +331,26 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
   const record = reviewedRecord ?? candidateRecord;
   const sense = record.senses[0];
   const evidence = inspectWriterDomainEvidence(gloss);
+  const decisionSourceId = `future-batch:${record.id}:decision-source`;
   return {
     status: 'complete',
+    decision_source: {
+      kind: 'separately-authored-semantic-decision-source',
+      contract_version: 'lexical-semantic-decision-source-v1',
+      source_id: decisionSourceId,
+      path: `tests/fixtures/${record.id}-decision-source.json`,
+    },
     sense_boundary: {
       status: 'pass',
+      decision_source_id: decisionSourceId,
+      review_id: `future-batch:${record.id}:boundary`,
+      method: 'gloss-and-usage-pairwise-v2',
+      independence: {
+        independent_of_sense_count: true,
+        source: 'separately-authored-future-boundary-decision',
+        decision_source_id: decisionSourceId,
+        decision_source_version: 'lexical-semantic-boundary-decisions-v1',
+      },
       findings: [{
         sense_id: sense.id,
         action: 'retain',
@@ -347,24 +364,34 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
           connector_observations: inspectGlossConnectors(gloss),
           rationale: `future-batch ${sense.id} observed domain axes were reviewed`,
           boundary_decision: boundaryDecision,
+          decision_source_id: decisionSourceId,
         },
       }],
+      pairwise: [],
+      rationale: `future-batch ${record.id} boundary was authored independently of the current sense count`,
     },
     pos: {
       status: 'pass',
+      decision: 'verified',
       observed_pos: [sense.pos],
+      decision_source_id: decisionSourceId,
       rationale: 'future-batch POS was reviewed',
     },
     expression: {
       status: 'pass',
+      decision: 'verified',
       expected_record_type: 'entry',
       observed_record_type: record.record_type,
+      decision_source_id: decisionSourceId,
       rationale: 'future-batch expression classification was reviewed',
     },
     relation: {
       status: 'pass',
+      decision_source_id: decisionSourceId,
       per_sense: [{
         sense_id: sense.id,
+        decision: 'no-relations',
+        decision_source_id: decisionSourceId,
         relation_count: 0,
         relation_ids: [],
         no_relation_rationale: `future-batch ${sense.id} has no relation tuple after review`,
@@ -378,6 +405,128 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
     },
   };
 }
+
+function multiSenseProductionReview(record, { relationship = 'distinct', pairDecision = 'retain' } = {}) {
+  const decisionSourceId = `future-batch:${record.id}:decision-source`;
+  const pair = inspectSenseBoundaryPairs(record)[0];
+  const left = record.senses[0];
+  const right = record.senses[1];
+  const leftGlossSha256 = createHash('sha256').update(JSON.stringify(left.gloss), 'utf8').digest('hex');
+  const rightGlossSha256 = createHash('sha256').update(JSON.stringify(right.gloss), 'utf8').digest('hex');
+  return {
+    status: 'complete',
+    decision_source: {
+      kind: 'separately-authored-semantic-decision-source',
+      contract_version: 'lexical-semantic-decision-source-v1',
+      source_id: decisionSourceId,
+      path: `tests/fixtures/${record.id}-decision-source.json`,
+    },
+    sense_boundary: {
+      status: 'pass',
+      decision_source_id: decisionSourceId,
+      review_id: `future-batch:${record.id}:boundary`,
+      method: 'gloss-and-usage-pairwise-v2',
+      independence: {
+        independent_of_sense_count: true,
+        source: 'separately-authored-future-boundary-decision',
+        decision_source_id: decisionSourceId,
+        decision_source_version: 'lexical-semantic-boundary-decisions-v1',
+      },
+      findings: record.senses.map((sense) => ({
+        sense_id: sense.id,
+        action: 'split',
+        classification: 'separated',
+        rationale: `${record.id} ${sense.id} was reviewed from the authored pair decision`,
+        semantic_evidence: {
+          status: 'pass',
+          gloss_sha256: createHash('sha256').update(JSON.stringify(sense.gloss), 'utf8').digest('hex'),
+          observed_domain_axes: [],
+          domain_evidence: [],
+          connector_observations: [],
+          rationale: `${record.id} ${sense.id} semantic evidence was authored`,
+          boundary_decision: 'split',
+          decision_source_id: decisionSourceId,
+        },
+      })),
+      pairwise: [{
+        left_sense_id: pair.left_sense_id,
+        right_sense_id: pair.right_sense_id,
+        relationship,
+        decision: pairDecision,
+        left_gloss_sha256: leftGlossSha256,
+        right_gloss_sha256: rightGlossSha256,
+        evidence_basis: 'both glosses were explicitly compared by the reviewer',
+        distinguishing_feature: 'the pair has an authored writer-facing distinction',
+        decision_source_id: decisionSourceId,
+        rationale: `${record.id} ${left.id} ${right.id} pair cites ${leftGlossSha256.slice(0, 12)} and ${rightGlossSha256.slice(0, 12)}.`,
+      }],
+      rationale: `${record.id} pair boundary was authored independently of the current sense count`,
+    },
+    pos: {
+      status: 'pass',
+      decision: 'verified',
+      observed_pos: ['noun', 'noun'],
+      decision_source_id: decisionSourceId,
+      rationale: `${record.id} POS was explicitly verified`,
+    },
+    expression: {
+      status: 'pass',
+      decision: 'verified',
+      expected_record_type: 'entry',
+      observed_record_type: 'entry',
+      decision_source_id: decisionSourceId,
+      rationale: `${record.id} record type was explicitly verified`,
+    },
+    relation: {
+      status: 'pass',
+      decision_source_id: decisionSourceId,
+      per_sense: record.senses.map((sense) => ({
+        sense_id: sense.id,
+        decision: 'no-relations',
+        decision_source_id: decisionSourceId,
+        relation_count: 0,
+        relation_ids: [],
+        no_relation_rationale: `${record.id} ${sense.id} has no relation tuple after authored review`,
+      })),
+    },
+    selection: {
+      status: 'selected',
+      rank: 1,
+      score: 1,
+      rationale: `${record.id} selected by authored verification and coverage`,
+    },
+  };
+}
+
+test('the common production review cannot override mechanical duplicate or nested pairs', () => {
+  for (const glosses of [
+    ['같은 뜻을 설명한다', '같은 뜻을 설명한다'],
+    ['붉은 꽃', '붉은 꽃 피어남'],
+  ]) {
+    const record = {
+      id: 'w-common-boundary-regression',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w-common-boundary-regression',
+      lemma: '공통경계회귀',
+      search_forms: ['공통경계회귀'],
+      senses: glosses.map((gloss, index) => ({
+        id: `w-common-boundary-regression-s${index + 1}`,
+        pos: 'noun',
+        gloss,
+      })),
+    };
+    assert.throws(
+      () => validateLexicalSemanticReview(multiSenseProductionReview(record), {
+        decision: 'included',
+        candidateRecord: record,
+        catalogCount: 1,
+        requireSemanticEvidence: true,
+      }),
+      (error) => error.code === 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+    );
+  }
+});
 
 test('the shared production review catches 과/와 and connector-free merged domains', () => {
   const baseRecords = [{
