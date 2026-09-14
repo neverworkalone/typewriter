@@ -53,7 +53,7 @@ import {
   resolveRepositoryPath,
 } from './validate-m5-11.mjs';
 import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
 
@@ -1135,21 +1135,25 @@ function validateImportedRecords(importedRecords, baseRecords, expectedImportedC
       }
     }
   }
-  validateDatasetRecords(
-    [
-      ...baseRecords.map((record, index) => ({
-        record,
-        filePath: 'base-canonical',
-        lineNumber: index + 1,
-      })),
-      ...importedRecords.map((record, index) => ({
-        record,
-        filePath: 'external-reviewed-import',
-        lineNumber: index + 1,
-      })),
-    ],
-    { checkPilotCompleteness },
-  );
+  const baseRecordInfos = baseRecords.map((record, index) => ({
+    record,
+    filePath: 'base-canonical',
+    lineNumber: index + 1,
+  }));
+  const importedRecordInfos = importedRecords.map((record, index) => ({
+    record,
+    filePath: 'external-reviewed-import',
+    lineNumber: index + 1,
+  }));
+  validateLexicalAddition({
+    batchId: M5_11_BATCH_ID,
+    reviewedRecords: importedRecordInfos,
+    prospectiveRecords: [...baseRecordInfos, ...importedRecordInfos],
+    checkPilotCompleteness,
+    candidateLabel: 'M5-11 candidate records',
+    reviewedLabel: 'M5-11 reviewed records',
+    prospectiveLabel: 'M5-11 prospective canonical records',
+  });
   return 0;
 }
 
@@ -1448,7 +1452,12 @@ export async function runM511ProspectiveVerification({
     );
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const records = canonical.records.map(recordOf);
-    validateDatasetRecords(canonical.records, { checkPilotCompleteness });
+    validateLexicalAddition({
+      batchId: M5_11_BATCH_ID,
+      prospectiveRecords: canonical.records,
+      checkPilotCompleteness,
+      prospectiveLabel: 'M5-11 prospective verification canonical records',
+    });
     const finalSummary = canonicalSummary(records);
     assertDeep(finalSummary, expectedFinalSummary, 'prospective canonical summary', 'VERIFICATION_METRICS_MISMATCH');
     const prospectiveCanonicalSha256 = await hashCanonicalDirectory(temporaryCanonicalDirectory);

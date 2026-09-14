@@ -9,7 +9,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { evaluateExpansionGate } from './validate-m5-8-process.mjs';
@@ -616,7 +616,12 @@ export async function validateM511Promotion({
   const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
-  validateDatasetRecords(canonical.records, { checkPilotCompleteness: true });
+  validateLexicalAddition({
+    batchId: manifest.batch_id,
+    prospectiveRecords: canonical.records,
+    checkPilotCompleteness: true,
+    prospectiveLabel: 'M5-11 promoted canonical records',
+  });
   const finalRecords = canonical.records.map(({ record }) => record);
   const finalSummary = canonicalSummary(finalRecords);
   assertSummary(finalSummary, durable.summary, 'canonical promotion output');

@@ -1,0 +1,607 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  DEFAULT_CANONICAL_DIRECTORY,
+  readCanonicalRecords,
+} from './canonical-jsonl.mjs';
+
+/**
+ * Shared lexical-quality rules used by canonical validation and every reviewed
+ * admission path.  Batch modules may tighten a rule for a particular review
+ * (for example, an agent pass can reject every broad connector), but they do
+ * not replace these repository-wide invariants.
+ */
+export const LEXICAL_QUALITY_RULESET_VERSION = 'lexical-quality-v1';
+export const BROAD_GLOSS_CONNECTOR_PATTERN = /(?:이나|또는|거나)/u;
+
+const RECORD_TYPES = Object.freeze(['entry', 'expression']);
+const ROLES = Object.freeze(['start', 'reference-only']);
+const ENTRY_POS = Object.freeze(['noun', 'adjective', 'verb']);
+const ALL_POS = Object.freeze([...ENTRY_POS, 'expression']);
+const CONNECTORS = Object.freeze(['이나', '또는', '거나']);
+
+// These are deliberately writer-facing semantic domains, not record IDs or
+// historical batch exceptions.  They let the audit distinguish a genuinely
+// disjunctive definition ("taste or mood") from a normal coordinated phrase
+// ("taste or smell") without pretending that every Korean conjunction is a
+// separate dictionary sense.
+const WRITER_DOMAIN_TERMS = Object.freeze({
+  taste: Object.freeze(['맛', '미각', '입맛']),
+  smell: Object.freeze(['냄새', '향', '향기', '후각']),
+  sound: Object.freeze(['소리', '목소리', '음성', '울림', '청각']),
+  visual: Object.freeze(['빛', '빛깔', '색', '윤곽', '시각']),
+  tactile: Object.freeze(['표면', '감촉', '촉감', '질감']),
+  affective: Object.freeze(['분위기', '감정', '기분', '정서', '마음']),
+  body: Object.freeze(['목', '목구멍', '몸', '신체', '피부']),
+});
+
+// A single gloss may legitimately state a property over a shared writer
+// domain.  This is a semantic rule, not a grandfathered record allowlist.
+const COMMON_DOMAIN_PAIRS = new Set([
+  'affective:body',
+  'smell:taste',
+  'tactile:visual',
+]);
+
+const PLACEHOLDER_GLOSS_PATTERN = /^(?:placeholder|tbd|todo|n\/a|na|미정|미작성|임시|예시|테스트)(?:[\s:.-]|$)/iu;
+
+export class LexicalQualityError extends Error {
+  constructor(message, code = 'LEXICAL_QUALITY_ERROR', finding = undefined) {
+    super(message);
+    this.name = 'LexicalQualityError';
+    this.code = code;
+    this.finding = finding;
+  }
+}
+
+function fail(message, code = 'LEXICAL_QUALITY_ERROR', finding = undefined) {
+  throw new LexicalQualityError(message, code, finding);
+}
+
+function requireObject(value, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail(`${label} must be an object`, 'LEXICAL_SHAPE_ERROR');
+  }
+  return value;
+}
+
+function requireString(value, label) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    fail(`${label} must be a non-empty string`, 'LEXICAL_VALUE_ERROR');
+  }
+  if (value !== value.trim()) {
+    fail(`${label} must not have leading or trailing whitespace`, 'LEXICAL_VALUE_ERROR');
+  }
+  if (value.normalize('NFC') !== value) {
+    fail(`${label} must be NFC-normalized`, 'LEXICAL_VALUE_ERROR');
+  }
+  return value;
+}
+
+function requireArray(value, label, { minItems = 0 } = {}) {
+  if (!Array.isArray(value) || value.length < minItems) {
+    fail(`${label} must be an array with at least ${minItems} item(s)`, 'LEXICAL_SHAPE_ERROR');
+  }
+  return value;
+}
+
+function requireEnum(value, values, label) {
+  if (!values.includes(value)) {
+    fail(`${label} must be one of ${values.join(', ')} (received ${String(value)})`, 'LEXICAL_VALUE_ERROR');
+  }
+}
+
+function recordOf(recordInfo) {
+  return recordInfo?.record ?? recordInfo;
+}
+
+function sourceLabel(recordInfo, index) {
+  if (!recordInfo || !recordInfo.filePath) return `records[${index}]`;
+  return `${recordInfo.filePath}:${recordInfo.lineNumber ?? index + 1}`;
+}
+
+function nearestDomainAxis(text, direction) {
+  const matches = [];
+  for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
+    for (const term of terms) {
+      let from = 0;
+      while (true) {
+        const index = text.indexOf(term, from);
+        if (index < 0) break;
+        matches.push({ axis, term, index, end: index + term.length });
+        from = index + term.length;
+      }
+    }
+  }
+  if (matches.length === 0) return undefined;
+  const longestMatches = matches.filter((candidate) => !matches.some((other) => (
+    other.term.length > candidate.term.length
+      && other.index <= candidate.index
+      && other.end >= candidate.end
+  )));
+  return direction === 'left'
+    ? longestMatches.sort((left, right) => right.index - left.index)[0]
+    : longestMatches.sort((left, right) => left.index - right.index)[0];
+}
+
+function pairKey(leftAxis, rightAxis) {
+  return [leftAxis, rightAxis].sort().join(':');
+}
+
+function hasCoordinationCue(gloss, connectorIndex, connector) {
+  const tail = gloss.slice(connectorIndex + connector.length, connectorIndex + connector.length + 18);
+  // "A이나 B 등" is a normal coordinated class, not a claim that A and B
+  // are separate senses.  The cue is structural and applies to any record.
+  return /\s등(?:이|은|는|을|를|에|으로|에서|과|와|도|만|$)/u.test(tail);
+}
+
+/**
+ * Return the conjunction observations used by both the batch semantic gate
+ * and the complete-canonical audit.
+ */
+export function inspectGlossConnectors(gloss) {
+  if (typeof gloss !== 'string') return [];
+  const observations = [];
+  for (const connector of CONNECTORS) {
+    let from = 0;
+    while (true) {
+      const index = gloss.indexOf(connector, from);
+      if (index < 0) break;
+      const leftText = gloss.slice(Math.max(0, index - 24), index);
+      const rightText = gloss.slice(index + connector.length, index + connector.length + 28);
+      const left = nearestDomainAxis(leftText, 'left');
+      const right = nearestDomainAxis(rightText, 'right');
+      const sameDomain = left && right && left.axis === right.axis;
+      const commonDomain = left && right && COMMON_DOMAIN_PAIRS.has(pairKey(left.axis, right.axis));
+      const contextual = hasCoordinationCue(gloss, index, connector);
+      let classification = 'unclassified-coordination';
+      if (sameDomain) classification = 'same-domain-coordination';
+      else if (commonDomain) classification = 'common-domain-coordination';
+      else if (contextual) classification = 'contextual-coordination';
+      else if (left && right) classification = 'disjunctive-domain';
+      observations.push({
+        connector,
+        index,
+        left_axis: left?.axis ?? null,
+        left_term: left?.term ?? null,
+        right_axis: right?.axis ?? null,
+        right_term: right?.term ?? null,
+        classification,
+        excerpt: gloss.slice(Math.max(0, index - 18), index + connector.length + 24),
+      });
+      from = index + connector.length;
+    }
+  }
+  return observations.sort((left, right) => left.index - right.index);
+}
+
+export function hasBroadGlossConnector(gloss) {
+  return typeof gloss === 'string' && BROAD_GLOSS_CONNECTOR_PATTERN.test(gloss);
+}
+
+export function isPlaceholderGloss(gloss) {
+  return typeof gloss !== 'string' || PLACEHOLDER_GLOSS_PATTERN.test(gloss.trim());
+}
+
+function recordQualityFindings(record, {
+  label = 'record',
+  mode = 'canonical',
+  rejectAnyBroadConnector = false,
+} = {}) {
+  const findings = [];
+  if (!record || typeof record !== 'object' || Array.isArray(record)) {
+    findings.push({ code: 'LEXICAL_SHAPE_ERROR', message: `${label} must be an object` });
+    return findings;
+  }
+  if (!RECORD_TYPES.includes(record.record_type)) {
+    findings.push({ code: 'LEXICAL_RECORD_TYPE', message: `${label}.record_type must be entry or expression` });
+  }
+  if (!ROLES.includes(record.role)) {
+    findings.push({ code: 'LEXICAL_ROLE', message: `${label}.role must be start or reference-only` });
+  }
+  if (typeof record.lemma !== 'string' || record.lemma.trim().length === 0) {
+    findings.push({ code: 'LEXICAL_LEMMA', message: `${label}.lemma must be a non-empty string` });
+  }
+  if (!Array.isArray(record.senses) || record.senses.length === 0) {
+    findings.push({ code: 'LEXICAL_SENSES', message: `${label}.senses must contain at least one sense` });
+    return findings;
+  }
+  if (mode === 'canonical' && typeof record.id === 'string' && !/^[wr][0-9]{3,}$/u.test(record.id)) {
+    findings.push({ code: 'LEXICAL_CANONICAL_ID', message: `${label}.id must be a canonical w/r identifier` });
+  }
+  if (record.record_type === 'expression' && record.senses.some(({ pos }) => pos !== 'expression')) {
+    findings.push({
+      code: 'LEXICAL_EXPRESSION_POS',
+      message: `${label} expression record must use expression POS for every sense`,
+    });
+  }
+  if (record.record_type === 'entry' && record.senses.some(({ pos }) => pos === 'expression')) {
+    findings.push({
+      code: 'LEXICAL_ENTRY_EXPRESSION_POS',
+      message: `${label} entry record must not contain expression POS`,
+    });
+  }
+  for (const [senseIndex, sense] of record.senses.entries()) {
+    const senseLabel = `${label}.senses[${senseIndex}]`;
+    if (!sense || typeof sense !== 'object' || Array.isArray(sense)) {
+      findings.push({ code: 'LEXICAL_SENSE_SHAPE', message: `${senseLabel} must be an object` });
+      continue;
+    }
+    if (!ALL_POS.includes(sense.pos)) {
+      findings.push({ code: 'LEXICAL_SENSE_POS', message: `${senseLabel}.pos is not a supported part of speech` });
+    } else if (record.record_type === 'entry' && !ENTRY_POS.includes(sense.pos)) {
+      findings.push({ code: 'LEXICAL_ENTRY_POS', message: `${senseLabel}.pos is invalid for an entry` });
+    }
+    if (typeof sense.gloss !== 'string' || sense.gloss.trim().length === 0) {
+      findings.push({ code: 'LEXICAL_GLOSS_EMPTY', message: `${senseLabel}.gloss must be non-empty` });
+      continue;
+    }
+    if (isPlaceholderGloss(sense.gloss)) {
+      findings.push({
+        code: 'LEXICAL_PLACEHOLDER_GLOSS',
+        message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
+      });
+    }
+    const observations = inspectGlossConnectors(sense.gloss);
+    if (rejectAnyBroadConnector && observations.length > 0) {
+      findings.push({
+        code: 'LEXICAL_BROAD_GLOSS',
+        message: `${senseLabel}.gloss contains a broad connector`,
+      });
+    } else {
+      for (const observation of observations) {
+        if (observation.classification !== 'disjunctive-domain') continue;
+        findings.push({
+          code: 'LEXICAL_MERGED_SENSE_GLOSS',
+          message: `${senseLabel}.gloss joins distinct writer domains (${observation.left_axis} and ${observation.right_axis}) with ${observation.connector} in "${observation.excerpt}"; split the senses or rewrite the gloss to one domain`,
+          observation,
+        });
+      }
+    }
+  }
+  return findings;
+}
+
+/**
+ * Validate one candidate or canonical record through the shared quality
+ * contract.  Structural JSON Schema and cross-record relation checks remain
+ * separate concerns and are invoked by the admission pipeline.
+ */
+export function validateLexicalRecord(record, options = {}) {
+  const {
+    label = 'record',
+    mode = 'canonical',
+    expectedId,
+    expectedLemma,
+    rejectAnyBroadConnector = false,
+  } = options;
+  requireObject(record, label);
+  requireString(record.id, `${label}.id`);
+  requireString(record.lemma, `${label}.lemma`);
+  if (expectedId !== undefined && record.id !== expectedId) {
+    fail(`${label}.id must be ${expectedId}`, 'LEXICAL_ID_BINDING');
+  }
+  if (expectedLemma !== undefined && record.lemma !== expectedLemma) {
+    fail(`${label}.lemma must bind the reviewed candidate`, 'LEXICAL_LEMMA_BINDING');
+  }
+  requireEnum(record.record_type, RECORD_TYPES, `${label}.record_type`);
+  requireEnum(record.role, ROLES, `${label}.role`);
+  if (record.role === 'start') {
+    requireString(record.candidate_id, `${label}.candidate_id`);
+    if (record.candidate_id !== record.id) {
+      fail(`${label}.candidate_id must equal the start record id`, 'LEXICAL_CANDIDATE_BINDING');
+    }
+  } else if (record.role === 'reference-only' && record.id.startsWith('r')
+    && Object.hasOwn(record, 'candidate_id')) {
+    fail(`${label} pure reference-only record must not carry candidate_id`, 'LEXICAL_REFERENCE_CANDIDATE');
+  }
+  const forms = requireArray(record.search_forms, `${label}.search_forms`, { minItems: 1 });
+  for (const [index, form] of forms.entries()) requireString(form, `${label}.search_forms[${index}]`);
+  const senses = requireArray(record.senses, `${label}.senses`, { minItems: 1 });
+  for (const [index, sense] of senses.entries()) {
+    requireObject(sense, `${label}.senses[${index}]`);
+    requireString(sense.id, `${label}.senses[${index}].id`);
+    requireEnum(sense.pos, ALL_POS, `${label}.senses[${index}].pos`);
+    requireString(sense.gloss, `${label}.senses[${index}].gloss`);
+    if (!sense.id.startsWith(`${record.id}-`)) {
+      fail(`${label}.senses[${index}].id must belong to ${record.id}`, 'LEXICAL_SENSE_BINDING');
+    }
+  }
+  if (mode === 'canonical' && record.record_type === 'expression'
+    && senses.some(({ pos }) => pos !== 'expression')) {
+    fail(`${label} expression record must use expression POS for every sense`, 'LEXICAL_EXPRESSION_POS');
+  }
+  const findings = recordQualityFindings(record, { label, mode, rejectAnyBroadConnector });
+  if (findings.length > 0) {
+    const finding = findings[0];
+    fail(finding.message, finding.code, finding);
+  }
+  return record;
+}
+
+export function findLexicalQualityFindings(record, options = {}) {
+  return recordQualityFindings(record, options);
+}
+
+/**
+ * Run the complete canonical audit.  The returned report is deterministic and
+ * can be embedded in a batch verification artifact.  No batch ID, record ID,
+ * or historical allowlist can suppress a finding.
+ */
+export function auditCanonicalLexicalQuality(
+  recordInfos,
+  { scope = 'complete-canonical', throwOnError = true } = {},
+) {
+  const normalized = recordInfos.map(recordOf);
+  const findings = [];
+  const connectorCounts = Object.fromEntries(CONNECTORS.map((connector) => [connector, 0]));
+  const classificationCounts = {};
+  let senseCount = 0;
+  for (const [index, recordInfo] of recordInfos.entries()) {
+    const record = normalized[index];
+    if (!record || typeof record !== 'object') {
+      findings.push({
+        code: 'LEXICAL_SHAPE_ERROR',
+        record_id: null,
+        sense_id: null,
+        location: sourceLabel(recordInfo, index),
+        message: 'record must be an object',
+      });
+      continue;
+    }
+    const qualityFindings = recordQualityFindings(record, {
+      label: sourceLabel(recordInfo, index),
+      mode: 'canonical',
+    });
+    for (const finding of qualityFindings) {
+      const senseMatch = /\.senses\[(\d+)\]/u.exec(finding.message);
+      const senseIndex = senseMatch ? Number(senseMatch[1]) : undefined;
+      findings.push({
+        ...finding,
+        record_id: record.id ?? null,
+        sense_id: senseIndex === undefined ? null : record.senses?.[senseIndex]?.id ?? null,
+        location: sourceLabel(recordInfo, index),
+      });
+    }
+    for (const sense of record.senses ?? []) {
+      senseCount += 1;
+      for (const observation of inspectGlossConnectors(sense.gloss)) {
+        connectorCounts[observation.connector] += 1;
+        classificationCounts[observation.classification] = (classificationCounts[observation.classification] ?? 0) + 1;
+      }
+    }
+  }
+  const report = {
+    ruleset_version: LEXICAL_QUALITY_RULESET_VERSION,
+    scope,
+    record_count: normalized.length,
+    sense_count: senseCount,
+    connector_counts: connectorCounts,
+    connector_classification_counts: Object.fromEntries(
+      Object.entries(classificationCounts).sort(([left], [right]) => left.localeCompare(right)),
+    ),
+    blocking_findings: findings,
+    blocking_finding_count: findings.length,
+  };
+  if (throwOnError && findings.length > 0) {
+    const finding = findings[0];
+    throw new LexicalQualityError(
+      `${finding.location}: ${finding.message}`,
+      finding.code,
+      finding,
+    );
+  }
+  return report;
+}
+
+function semanticStatusForDecision(decision) {
+  return ['included', 'corrected'].includes(decision) ? 'selected' : decision;
+}
+
+/**
+ * Shared semantic-review contract.  Batch-specific modules supply scope
+ * bindings (axis, inventory IDs, rank ranges); this function owns the
+ * reusable sense/POS/expression/relation/selection checks.
+ */
+export function validateLexicalSemanticReview(review, {
+  decision,
+  candidateRecord,
+  reviewedRecord,
+  inventoryId,
+  label = 'semantic_review',
+  version,
+  expectedRecordType,
+  catalogCount = 550,
+  rejectAnyBroadConnector = false,
+  selectionRationaleTokens = ['verification', 'coverage'],
+} = {}) {
+  requireObject(review, label);
+  if (version !== undefined && review.version !== version) {
+    fail(`${label}.version must be ${version}`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  if (review.status !== 'complete') {
+    fail(`${label}.status must be complete`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  const record = reviewedRecord ?? candidateRecord;
+  validateLexicalRecord(candidateRecord, {
+    label: `${label}.candidate_record`,
+    mode: 'candidate',
+    rejectAnyBroadConnector,
+  });
+  if (reviewedRecord) {
+    validateLexicalRecord(reviewedRecord, {
+      label: `${label}.reviewed_record`,
+      mode: 'canonical',
+      rejectAnyBroadConnector,
+    });
+  }
+
+  const boundary = requireObject(review.sense_boundary, `${label}.sense_boundary`);
+  if (boundary.status !== 'pass') {
+    fail(`${label}.sense_boundary.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  const findings = requireArray(boundary.findings, `${label}.sense_boundary.findings`, { minItems: 1 });
+  assert.deepEqual(
+    findings.map(({ sense_id: senseId }) => senseId),
+    record.senses.map(({ id }) => id),
+    `${label}.sense_boundary.findings must bind every reviewed sense`,
+  );
+  for (const [senseIndex, finding] of findings.entries()) {
+    const senseLabel = `${label}.sense_boundary.findings[${senseIndex}]`;
+    requireObject(finding, senseLabel);
+    const sense = record.senses[senseIndex];
+    const expectedAction = record.senses.length > 1 ? 'split' : 'retain';
+    const expectedClassification = record.senses.length > 1 ? 'separated' : 'atomic';
+    if (finding.sense_id !== sense.id
+      || finding.action !== expectedAction
+      || finding.classification !== expectedClassification) {
+      fail(`${senseLabel} does not prove an atomic sense boundary`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+    requireString(finding.rationale, `${senseLabel}.rationale`);
+    if (inventoryId !== undefined
+      && (!finding.rationale.includes(inventoryId) || !finding.rationale.includes(sense.id))) {
+      fail(`${senseLabel}.rationale must bind ${inventoryId} and ${sense.id}`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+  }
+
+  const pos = requireObject(review.pos, `${label}.pos`);
+  if (pos.status !== 'pass') fail(`${label}.pos.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  assert.deepEqual(
+    pos.observed_pos,
+    record.senses.map(({ pos: sensePos }) => sensePos),
+    `${label}.pos.observed_pos must bind every reviewed sense`,
+  );
+  requireString(pos.rationale, `${label}.pos.rationale`);
+  if (inventoryId !== undefined && !pos.rationale.includes(inventoryId)) {
+    fail(`${label}.pos.rationale must bind ${inventoryId}`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+
+  const expression = requireObject(review.expression, `${label}.expression`);
+  if (expression.status !== 'pass') {
+    fail(`${label}.expression.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  if (expectedRecordType !== undefined
+    && (expression.expected_record_type !== expectedRecordType
+      || expression.observed_record_type !== record.record_type
+      || record.record_type !== expectedRecordType)) {
+    fail(`${label}.expression does not bind the expression-unit classification`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+  }
+  requireString(expression.rationale, `${label}.expression.rationale`);
+  if (inventoryId !== undefined && !expression.rationale.includes(inventoryId)) {
+    fail(`${label}.expression.rationale must bind ${inventoryId}`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+
+  const relation = requireObject(review.relation, `${label}.relation`);
+  if (relation.status !== 'pass') {
+    fail(`${label}.relation.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  const perSense = requireArray(relation.per_sense, `${label}.relation.per_sense`, { minItems: 1 });
+  assert.deepEqual(
+    perSense.map(({ sense_id: senseId }) => senseId),
+    record.senses.map(({ id }) => id),
+    `${label}.relation.per_sense must bind every reviewed sense`,
+  );
+  const relationBindings = [];
+  let relationCount = 0;
+  let noRelationRationaleCount = 0;
+  let relationSenseCount = 0;
+  let noRelationSenseCount = 0;
+  for (const [senseIndex, senseDecision] of perSense.entries()) {
+    const senseLabel = `${label}.relation.per_sense[${senseIndex}]`;
+    requireObject(senseDecision, senseLabel);
+    const sense = record.senses[senseIndex];
+    const actualRelationCount = sense.relations?.length ?? 0;
+    if (senseDecision.sense_id !== sense.id || senseDecision.relation_count !== actualRelationCount) {
+      fail(`${senseLabel} does not bind the reviewed relation count`, 'LEXICAL_RELATION_BINDING');
+    }
+    const relationIds = requireArray(senseDecision.relation_ids, `${senseLabel}.relation_ids`);
+    if (relationIds.some((relationId) => typeof relationId !== 'string' || relationId.trim().length === 0)) {
+      fail(`${senseLabel}.relation_ids must contain non-empty IDs`, 'LEXICAL_RELATION_BINDING');
+    }
+    if (actualRelationCount === 0) {
+      if (relationIds.length !== 0) fail(`${senseLabel}.relation_ids must be empty`, 'LEXICAL_RELATION_BINDING');
+      requireString(senseDecision.no_relation_rationale, `${senseLabel}.no_relation_rationale`);
+      if (inventoryId !== undefined
+        && (!senseDecision.no_relation_rationale.includes(inventoryId)
+          || !senseDecision.no_relation_rationale.includes(sense.id))) {
+        fail(`${senseLabel}.no_relation_rationale must bind ${inventoryId} and ${sense.id}`, 'LEXICAL_SEMANTIC_BINDING');
+      }
+      noRelationRationaleCount += 1;
+      noRelationSenseCount += 1;
+    } else {
+      if (relationIds.length !== actualRelationCount || senseDecision.no_relation_rationale !== undefined) {
+        fail(`${senseLabel} must bind every relation tuple without a no-relation rationale`, 'LEXICAL_RELATION_BINDING');
+      }
+      relationCount += actualRelationCount;
+      relationSenseCount += 1;
+      relationBindings.push({
+        inventory_id: inventoryId,
+        source_sense: sense.id,
+        relation_ids: [...relationIds],
+      });
+    }
+  }
+
+  const selection = requireObject(review.selection, `${label}.selection`);
+  const expectedSelectionStatus = semanticStatusForDecision(decision);
+  if (selection.status !== expectedSelectionStatus) {
+    fail(`${label}.selection.status must be ${expectedSelectionStatus}`, 'LEXICAL_SELECTION_BINDING');
+  }
+  if (!Number.isInteger(selection.rank) || selection.rank < 1 || selection.rank > catalogCount) {
+    fail(`${label}.selection.rank must be within the candidate pool`, 'LEXICAL_SELECTION_BINDING');
+  }
+  if (!Number.isFinite(selection.score)) {
+    fail(`${label}.selection.score must be finite`, 'LEXICAL_SELECTION_BINDING');
+  }
+  requireString(selection.rationale, `${label}.selection.rationale`);
+  if (inventoryId !== undefined && !selection.rationale.includes(inventoryId)) {
+    fail(`${label}.selection.rationale must bind ${inventoryId}`, 'LEXICAL_SELECTION_BINDING');
+  }
+  if (selectionRationaleTokens.length > 0
+    && !selectionRationaleTokens.some((token) => selection.rationale.includes(token))) {
+    fail(`${label}.selection.rationale must bind ${selectionRationaleTokens.join(' or ')}`, 'LEXICAL_SELECTION_BINDING');
+  }
+
+  return {
+    selection_rank: selection.rank,
+    selection_score: selection.score,
+    sense_count: record.senses.length,
+    relation_count: relationCount,
+    relation_bindings: relationBindings,
+    no_relation_rationale_count: noRelationRationaleCount,
+    relation_sense_count: relationSenseCount,
+    no_relation_sense_count: noRelationSenseCount,
+    broad_gloss_count: record.senses.filter(({ gloss }) => hasBroadGlossConnector(gloss)).length,
+  };
+}
+
+export const WRITER_DOMAIN_POLICY = Object.freeze({
+  ruleset_version: LEXICAL_QUALITY_RULESET_VERSION,
+  domain_terms: WRITER_DOMAIN_TERMS,
+  common_domain_pairs: [...COMMON_DOMAIN_PAIRS].sort(),
+  disjunctive_connector_behavior: 'block distinct writer domains unless same/common/contextual domain is observable',
+});
+
+export async function validateCanonicalLexicalQuality(
+  directory = DEFAULT_CANONICAL_DIRECTORY,
+) {
+  const result = await readCanonicalRecords(directory);
+  return auditCanonicalLexicalQuality(result.records, {
+    scope: 'complete-canonical',
+    throwOnError: true,
+  });
+}
+
+const isMainModule = process.argv[1]
+  && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isMainModule) {
+  validateCanonicalLexicalQuality()
+    .then((report) => console.log(JSON.stringify(report, null, 2)))
+    .catch((error) => {
+      console.error(error.code ? `${error.code}: ${error.message}` : error.message);
+      process.exitCode = 1;
+    });
+}

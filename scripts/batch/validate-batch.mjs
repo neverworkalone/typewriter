@@ -10,7 +10,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
   DEFAULT_INVENTORY_PATH,
   readTargetInventory,
@@ -1144,10 +1144,15 @@ export async function validateBatch({
   validateNoDuplicateLexicalKeys([...canonicalResult.records, ...stagedResult.records]);
   validateReferenceClosure(manifest.records, stagedResult.records, canonicalResult.records);
 
-  validateDatasetRecords(
-    [...canonicalResult.records, ...stagedResult.records],
-    { checkPilotCompleteness: false },
-  );
+  validateLexicalAddition({
+    batchId: manifest.batch_id,
+    reviewedRecords: stagedResult.records,
+    prospectiveRecords: [...canonicalResult.records, ...stagedResult.records],
+    checkPilotCompleteness: false,
+    candidateLabel: `${manifest.batch_id} candidate records`,
+    reviewedLabel: `${manifest.batch_id} reviewed records`,
+    prospectiveLabel: `${manifest.batch_id} prospective canonical records`,
+  });
 
   const counts = Object.fromEntries(DECISIONS.map((decision) => [
     decision,

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
 import {
@@ -163,7 +163,18 @@ export async function buildM511({
     ...canonical.records,
     ...importedRecords.map((record) => ({ record, source: 'external-reviewed-import' })),
   ];
-  validateDatasetRecords(combinedRecords, { checkPilotCompleteness: true });
+  validateLexicalAddition({
+    batchId: M5_11_BATCH_ID,
+    reviewedRecords: importedRecords.map((record, index) => ({
+      record,
+      filePath: 'external-reviewed-import',
+      lineNumber: index + 1,
+    })),
+    prospectiveRecords: combinedRecords,
+    checkPilotCompleteness: true,
+    reviewedLabel: 'M5-11 reviewed records',
+    prospectiveLabel: 'M5-11 prospective canonical records',
+  });
   const importBytes = createImportBytes(importedRecords);
   await writeFile(resolvedOutputPath, importBytes);
 

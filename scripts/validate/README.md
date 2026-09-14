@@ -11,8 +11,10 @@ From the repository root:
 ```sh
 node scripts/validate/canonical-jsonl.mjs
 node scripts/validate/dataset-integrity.mjs
+node scripts/validate/lexical-quality.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
+node --test tests/lexical-quality.test.mjs
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -30,3 +32,10 @@ building are handled by later M2 commands. The dataset command requires the
 current `w001`–`w300` pilot candidates by default; additional post-pilot start
 candidates are allowed for M5 expansion. Pass `--no-pilot-regression` when
 validating a smaller independent fixture.
+
+`lexical-quality.mjs` is the shared dictionary-wide semantic gate. It audits the
+complete canonical directory and the same prospective canonical set used by
+reviewed batch importers. It covers expression/POS shape, placeholder glosses,
+and writer-domain sense boundaries. A batch may add scope, reserve, timing, or
+authorization rules, but it cannot bypass this common audit or introduce a
+batch/ID allowlist.

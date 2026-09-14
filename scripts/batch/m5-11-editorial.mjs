@@ -2,6 +2,13 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
+import {
+  BROAD_GLOSS_CONNECTOR_PATTERN,
+  hasBroadGlossConnector,
+  validateLexicalRecord,
+  validateLexicalSemanticReview,
+} from '../validate/lexical-quality.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 
 export const M5_11_BATCH_ID = 'm5-11-expansion-20260913';
 export const M5_11_AGENT_REVIEW_MODE = 'agent-generated';
@@ -11,7 +18,7 @@ export const M5_11_AGENT_EDITORIAL_VERSION = 'm5-11a-agent-editorial-v2';
 export const M5_11_AGENT_SEMANTIC_REVIEW_VERSION = 'm5-11a-semantic-review-v2';
 export const M5_11_AGENT_RELATION_BEARING_AXES = Object.freeze(['Q', 'S', 'C', 'A', 'O', 'X']);
 export const M5_11_AGENT_MIN_AXIS_COVERAGE_RATIO = 0.8;
-export const M5_11_BROAD_GLOSS_PATTERN = /(?:이나|또는|거나)/u;
+export const M5_11_BROAD_GLOSS_PATTERN = BROAD_GLOSS_CONNECTOR_PATTERN;
 export const M5_11_AGENT_GATE_DECISION = 'APPROVE AUTOMATED BOUNDED';
 export const M5_11_BOUNDARY_IDS = Object.freeze([
   'physical-figurative',
@@ -97,8 +104,14 @@ export function isM511AgentGeneratedArtifact(artifact) {
     || artifact?.provenance?.kind === M5_11_AGENT_PROVENANCE_KIND;
 }
 
-export function hasM511BroadGlossConnector(gloss) {
-  return typeof gloss === 'string' && M5_11_BROAD_GLOSS_PATTERN.test(gloss);
+export const hasM511BroadGlossConnector = hasBroadGlossConnector;
+
+function validateSharedLexicalRecord(record, options) {
+  try {
+    return validateLexicalRecord(record, options);
+  } catch (error) {
+    fail(error.message, error.code);
+  }
 }
 
 export function validateM511AgentProvenance(artifact, label = 'M5-11 agent artifact') {
@@ -314,6 +327,12 @@ function validateCanonicalRecord(record, expectedId, label, expectedLemma) {
       fail(`${senseLabel}.relations must be an array when present`, 'EDITORIAL_RELATION_BINDING');
     }
   }
+  validateSharedLexicalRecord(record, {
+    label,
+    mode: 'canonical',
+    expectedId,
+    expectedLemma,
+  });
   return record;
 }
 
@@ -409,10 +428,6 @@ function validateDecision(decision, catalogEntry, proposalRow, expectedId, impor
   return { decision, record: undefined };
 }
 
-function semanticStatusForDecision(decision) {
-  return ['included', 'corrected'].includes(decision) ? 'selected' : decision;
-}
-
 function validateSemanticReview(review, {
   decision,
   catalogEntry,
@@ -423,168 +438,41 @@ function validateSemanticReview(review, {
 } = {}) {
   const inventoryId = catalogEntry.inventory_id;
   const label = `decisions[${index}].semantic_review`;
-  requireObject(review, label);
-  if (review.version !== M5_11_AGENT_SEMANTIC_REVIEW_VERSION) {
-    fail(`${label}.version must be ${M5_11_AGENT_SEMANTIC_REVIEW_VERSION}`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
-  }
-  if (review.status !== 'complete') {
-    fail(`${label}.status must be complete`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
-  }
+  const proposalRecord = proposalRow.candidate_record;
   if (review.axis !== catalogEntry.axis) {
     fail(`${label}.axis must bind ${inventoryId} catalog axis`, 'EDITORIAL_SEMANTIC_BINDING');
   }
   assertJsonEqual(review.flags, catalogEntry.flags, `${label}.flags`, 'EDITORIAL_SEMANTIC_BINDING');
-
-  const proposalRecord = proposalRow.candidate_record;
-  for (const [source, sourceRecord] of [['candidate', proposalRecord], ['reviewed', record]]) {
-    for (const sense of sourceRecord.senses) {
-      if (hasM511BroadGlossConnector(sense.gloss)) {
-        fail(
-          `${label} ${source} sense ${sense.id} contains a broad gloss connector`,
-          'EDITORIAL_SEMANTIC_QUALITY_BLOCKER',
-        );
-      }
-    }
-  }
-
-  const boundary = requireObject(review.sense_boundary, `${label}.sense_boundary`);
-  if (boundary.status !== 'pass') {
-    fail(`${label}.sense_boundary.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
-  }
-  const findings = requireArray(boundary.findings, `${label}.sense_boundary.findings`);
-  assertJsonEqual(
-    findings.map(({ sense_id: senseId }) => senseId),
-    record.senses.map(({ id }) => id),
-    `${label}.sense_boundary.findings sense IDs`,
-    'EDITORIAL_SEMANTIC_BINDING',
-  );
-  for (const [senseIndex, finding] of findings.entries()) {
-    const findingLabel = `${label}.sense_boundary.findings[${senseIndex}]`;
-    requireObject(finding, findingLabel);
-    const sense = record.senses[senseIndex];
-    const expectedAction = record.senses.length > 1 ? 'split' : 'retain';
-    const expectedClassification = record.senses.length > 1 ? 'separated' : 'atomic';
-    if (finding.sense_id !== sense.id
-      || finding.action !== expectedAction
-      || finding.classification !== expectedClassification) {
-      fail(`${findingLabel} does not prove an atomic sense boundary`, 'EDITORIAL_SEMANTIC_BOUNDARY_BLOCKER');
-    }
-    requireString(finding.rationale, `${findingLabel}.rationale`);
-    if (!finding.rationale.includes(inventoryId) || !finding.rationale.includes(sense.id)) {
-      fail(`${findingLabel}.rationale must bind ${inventoryId} and ${sense.id}`, 'EDITORIAL_SEMANTIC_BINDING');
-    }
-  }
-
-  const pos = requireObject(review.pos, `${label}.pos`);
-  if (pos.status !== 'pass') fail(`${label}.pos.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
-  assertJsonEqual(
-    pos.observed_pos,
-    record.senses.map(({ pos: sensePos }) => sensePos),
-    `${label}.pos.observed_pos`,
-    'EDITORIAL_SEMANTIC_BINDING',
-  );
-  requireString(pos.rationale, `${label}.pos.rationale`);
-  if (!pos.rationale.includes(inventoryId)) {
-    fail(`${label}.pos.rationale must bind ${inventoryId}`, 'EDITORIAL_SEMANTIC_BINDING');
-  }
-
-  const expression = requireObject(review.expression, `${label}.expression`);
-  if (expression.status !== 'pass') {
-    fail(`${label}.expression.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
-  }
   const expectedRecordType = catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry';
-  if (expression.expected_record_type !== expectedRecordType
-    || expression.observed_record_type !== record.record_type
-    || record.record_type !== expectedRecordType) {
-    fail(`${label}.expression does not bind the expression-unit classification`, 'EDITORIAL_SEMANTIC_BOUNDARY_BLOCKER');
-  }
-  requireString(expression.rationale, `${label}.expression.rationale`);
-  if (!expression.rationale.includes(inventoryId)) {
-    fail(`${label}.expression.rationale must bind ${inventoryId}`, 'EDITORIAL_SEMANTIC_BINDING');
-  }
-
-  const relation = requireObject(review.relation, `${label}.relation`);
-  if (relation.status !== 'pass') {
-    fail(`${label}.relation.status must be pass`, 'EDITORIAL_SEMANTIC_REVIEW_INCOMPLETE');
-  }
-  const perSense = requireArray(relation.per_sense, `${label}.relation.per_sense`);
-  assertJsonEqual(
-    perSense.map(({ sense_id: senseId }) => senseId),
-    record.senses.map(({ id }) => id),
-    `${label}.relation.per_sense sense IDs`,
-    'EDITORIAL_SEMANTIC_BINDING',
-  );
-  const relationBindings = [];
-  let relationCandidateCount = 0;
-  let noRelationRationaleCount = 0;
-  let relationSenseCount = 0;
-  let noRelationSenseCount = 0;
-  for (const [senseIndex, senseDecision] of perSense.entries()) {
-    const senseLabel = `${label}.relation.per_sense[${senseIndex}]`;
-    requireObject(senseDecision, senseLabel);
-    const sense = record.senses[senseIndex];
-    const relationCount = sense.relations?.length ?? 0;
-    if (senseDecision.sense_id !== sense.id || senseDecision.relation_count !== relationCount) {
-      fail(`${senseLabel} does not bind the reviewed relation count`, 'EDITORIAL_RELATION_BINDING');
-    }
-    const relationIds = requireArray(senseDecision.relation_ids, `${senseLabel}.relation_ids`);
-    if (relationIds.some((relationId) => typeof relationId !== 'string' || relationId.trim().length === 0)) {
-      fail(`${senseLabel}.relation_ids must contain non-empty IDs`, 'EDITORIAL_RELATION_BINDING');
-    }
-    if (relationCount === 0) {
-      if (relationIds.length !== 0) fail(`${senseLabel}.relation_ids must be empty`, 'EDITORIAL_RELATION_BINDING');
-      requireString(senseDecision.no_relation_rationale, `${senseLabel}.no_relation_rationale`);
-      if (!senseDecision.no_relation_rationale.includes(inventoryId)
-        || !senseDecision.no_relation_rationale.includes(sense.id)) {
-        fail(`${senseLabel}.no_relation_rationale must bind ${inventoryId} and ${sense.id}`, 'EDITORIAL_SEMANTIC_BINDING');
-      }
-      noRelationRationaleCount += 1;
-      noRelationSenseCount += 1;
-    } else {
-      if (relationIds.length !== relationCount || senseDecision.no_relation_rationale !== undefined) {
-        fail(`${senseLabel} must bind every relation tuple without a no-relation rationale`, 'EDITORIAL_RELATION_BINDING');
-      }
-      relationCandidateCount += relationCount;
-      relationSenseCount += 1;
-      relationBindings.push({
-        inventory_id: inventoryId,
-        source_sense: sense.id,
-        relation_ids: [...relationIds],
-      });
-    }
-  }
-
-  const selection = requireObject(review.selection, `${label}.selection`);
-  const expectedSelectionStatus = semanticStatusForDecision(decision.decision);
-  if (selection.status !== expectedSelectionStatus) {
-    fail(`${label}.selection.status must be ${expectedSelectionStatus}`, 'EDITORIAL_SELECTION_BINDING');
-  }
-  if (!Number.isInteger(selection.rank) || selection.rank < 1 || selection.rank > catalogCount) {
-    fail(`${label}.selection.rank must be within the candidate pool`, 'EDITORIAL_SELECTION_BINDING');
-  }
-  if (!Number.isFinite(selection.score)) {
-    fail(`${label}.selection.score must be finite`, 'EDITORIAL_SELECTION_BINDING');
-  }
-  requireString(selection.rationale, `${label}.selection.rationale`);
-  if (!selection.rationale.includes(inventoryId)
-    || (!selection.rationale.includes('verification') && !selection.rationale.includes('coverage'))) {
-    fail(`${label}.selection.rationale must bind verification/coverage for ${inventoryId}`, 'EDITORIAL_SELECTION_BINDING');
+  let sharedResult;
+  try {
+    sharedResult = validateLexicalSemanticReview(review, {
+      decision: decision.decision,
+      candidateRecord: proposalRecord,
+      reviewedRecord: ['included', 'corrected'].includes(decision.decision)
+        ? record
+        : undefined,
+      inventoryId,
+      label,
+      version: M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
+      expectedRecordType,
+      catalogCount,
+      // M5-11A's automated semantic pass deliberately requires every broad
+      // connector to be resolved before selection.  The same shared module
+      // also supplies the less restrictive, domain-aware canonical audit.
+      rejectAnyBroadConnector: true,
+      selectionRationaleTokens: ['verification', 'coverage'],
+    });
+  } catch (error) {
+    fail(error.message, error.code);
   }
 
   return {
     inventory_id: inventoryId,
     decision: decision.decision,
     axis: catalogEntry.axis,
-    selection_rank: selection.rank,
-    selection_score: selection.score,
+    ...sharedResult,
     record_type: record.record_type,
-    sense_count: record.senses.length,
-    relation_count: relationCandidateCount,
-    relation_bindings: relationBindings,
-    no_relation_rationale_count: noRelationRationaleCount,
-    relation_sense_count: relationSenseCount,
-    no_relation_sense_count: noRelationSenseCount,
-    broad_gloss_count: record.senses.filter(({ gloss }) => hasM511BroadGlossConnector(gloss)).length,
   };
 }
 
@@ -785,6 +673,18 @@ export function validateM511EditorialDecisions(
     fail('editorial decision artifact catalog count drifted', 'EDITORIAL_SOURCE_MISMATCH');
   }
   const proposalRows = validateProposalArtifact(proposal, catalog);
+  try {
+    // Candidate intake is part of the same batch-neutral producer contract as
+    // reviewed admission.  The M5-11 checks below add only catalog bindings,
+    // decisions, and selection arithmetic around this shared validation.
+    validateLexicalAddition({
+      batchId: artifact.batch_id,
+      candidateRecords: proposalRows.map(({ candidate_record: candidateRecord }) => candidateRecord),
+      candidateLabel: 'M5-11 candidate records',
+    });
+  } catch (error) {
+    fail(error.message, error.code);
+  }
   if (artifact.proposal_sha256 !== sha256Json(proposal)) {
     fail('editorial decision artifact proposal digest drifted', 'EDITORIAL_PROPOSAL_SOURCE_MISMATCH');
   }

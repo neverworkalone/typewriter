@@ -16,7 +16,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateLexicalAddition } from './lexical-admission.mjs';
 import {
   generateTargetInventory,
 } from '../inventory/generate-target-inventory.mjs';
@@ -366,7 +366,14 @@ async function buildProspectiveState({
     });
     const canonical = await readCanonicalRecords(temporaryCanonicalDirectory);
     const canonicalRecords = canonical.records.map(({ record }) => record);
-    validateDatasetRecords(canonical.records, { checkPilotCompleteness: true });
+    validateLexicalAddition({
+      batchId: M5_11_BATCH_ID,
+      reviewedRecords: result.imported_records,
+      prospectiveRecords: canonical.records,
+      checkPilotCompleteness: true,
+      reviewedLabel: 'M5-11 promotion reviewed records',
+      prospectiveLabel: 'M5-11 promotion prospective canonical records',
+    });
     const canonicalDigest = await hashCanonicalDirectory(temporaryCanonicalDirectory);
     const inventoryBytes = await readFile(temporaryInventoryPath);
 

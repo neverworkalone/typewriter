@@ -89,6 +89,12 @@ The M5 reviewed batch workflow, external staging boundary, manifest contract, an
 canonical import gate are documented in
 [`docs/m5-batch-workflow.md`](docs/m5-batch-workflow.md).
 
+All current and future word admissions use the same dictionary-wide lexical
+quality and prospective-canonical audit described in
+[`docs/lexical-quality-pipeline.md`](docs/lexical-quality-pipeline.md). Run
+`npm run validate:lexical` for the standalone complete-canonical report; the
+regular `npm run validate` invokes the same audit through dataset integrity.
+
 The first M5-3 calibration batch measurements and expansion gate are recorded in
 [`docs/m5-3-calibration-report.md`](docs/m5-3-calibration-report.md).
 

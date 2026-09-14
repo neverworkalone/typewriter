@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs && node scripts/validate/target-inventory.mjs",
+    "validate:lexical": "node scripts/validate/lexical-quality.mjs",
     "inventory:generate": "node scripts/inventory/generate-target-inventory.mjs",
     "validate:inventory": "node scripts/validate/target-inventory.mjs",
     "batch:validate": "node scripts/batch/validate-batch.mjs",
