@@ -162,6 +162,25 @@ Preserve unrelated local changes. Use a separate worktree when necessary.
 
 This rule applies when starting a new issue, not when continuing an existing issue or addressing feedback on its PR.
 
+### Generalize lexical validation
+
+Lexical quality rules discovered while working on one batch or word should
+normally become shared validation, not batch-specific checks.
+
+When a defect represents a general lexical rule:
+
+- implement the rule in the common producer, validator, audit, or admission
+  layer;
+- apply it to the complete existing canonical dataset where applicable;
+- ensure every future lexical addition passes the same rule automatically;
+- use minimal synthetic fixtures to prove the rule rather than encoding only
+  the current affected words;
+- keep batch-specific validation only for genuinely batch-specific properties
+  such as scope, counts, ID allocation, timing, or authorization.
+
+Do not fix a recurring lexical defect by adding another batch- or word-specific
+test when a repository-wide invariant can express the rule.
+
 ## Validation
 
 Run the validation appropriate to the changed surface.

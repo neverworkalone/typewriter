@@ -123,6 +123,12 @@ records alone is insufficient.
 Do not declare the work complete while the new regression is absent,
 unexecuted, or disconnected from the preflight/CI gate.
 
+For lexical rules, verify that a generalized invariant applies to all relevant
+existing canonical data and automatically to future additions.
+
+Do not accept batch-, record-, or word-specific regression logic when the
+defect represents a dictionary-wide or admission-wide rule.
+
 ## Follow-up review
 
 Use the previously reviewed head as the baseline.

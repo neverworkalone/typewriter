@@ -24,3 +24,14 @@ valid input passes.
 
 Otherwise, a passing deterministic check is sufficient evidence for the
 property it covers.
+
+For lexical validators and regression tests:
+
+- prefer repository-wide invariants over batch-, record-, or word-specific
+  checks;
+- verify that general rules run against all applicable existing canonical data;
+- verify that future lexical additions reach the same rule through the common
+  validation/admission path;
+- allow batch-specific checks only for genuinely batch-specific constraints;
+- reject fixtures that merely memorize affected canonical records when a small
+  synthetic fixture can prove the general rule.
