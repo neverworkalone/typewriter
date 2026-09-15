@@ -8,13 +8,12 @@ surface-level entry a writer can intentionally search for. A sense, relation,
 expression attached to another record, `reference-only` record, inflected form, or
 duplicate does not increase the start count.
 
-The reviewable inventory is [`data/inventory/m5-target-inventory.json`](../data/inventory/m5-target-inventory.json).
-It contains a current snapshot of the canonical records plus non-canonical M5
-decisions. The new and held decisions are authored in
-[`data/inventory/m5-target-seed.json`](../data/inventory/m5-target-seed.json) and
-are combined with the current canonical snapshot by
+The reviewable inventory is an on-demand projection built by
 [`scripts/inventory/generate-target-inventory.mjs`](../scripts/inventory/generate-target-inventory.mjs).
-The generated inventory is never read by the dictionary builder.
+It joins the current canonical records with non-canonical M5 decisions. The new and held decisions are authored in
+[`data/inventory/m5-target-seed.json`](../data/inventory/m5-target-seed.json) and
+are combined with the current canonical snapshot in memory. The deterministic
+projection is not tracked or read by the dictionary builder.
 
 The current inventory is an initial M5 tranche, not a claim that 5,000 words have
 already been selected. It gives the workflow a representative next batch while

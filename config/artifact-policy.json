@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "description": "Typewriter tracks editorial inputs and historical evidence; deterministic projections are generated in memory or temporary workspaces.",
+  "protected_roots": [
+    "data/inventory",
+    "data/validation"
+  ],
+  "deterministic_projection_patterns": [
+    "data/inventory/m5-target-inventory.json",
+    "data/validation/canonical-semantic-audit.json",
+    "data/validation/*-semantic-coverage.json",
+    "data/validation/*-semantic-review.json"
+  ],
+  "durable_tracked_patterns": [
+    "data/inventory/m5-target-seed.json",
+    "data/validation/canonical-semantic-boundary-decisions.json",
+    "data/validation/canonical-semantic-correction-manifest.json",
+    "data/validation/canonical-semantic-decision-source.json",
+    "data/validation/lexical-rule-inventory.json",
+    "data/validation/m5-*-semantic-audit.json",
+    "data/validation/m5-*-semantic-boundary-decisions.json"
+  ]
+}

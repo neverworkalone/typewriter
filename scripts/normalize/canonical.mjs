@@ -7,8 +7,7 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import {
-  DEFAULT_SEMANTIC_AUDIT_PATH,
-  readSemanticAuditArtifact,
+  buildCanonicalSemanticAudit,
 } from '../validate/semantic-audit.mjs';
 
 export const NORMALIZATION_VERSION = '1';
@@ -77,7 +76,7 @@ export async function normalizeCanonicalDirectory(
   const result = await readCanonicalRecords(directory);
   const requireSemanticAudit = path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   const semanticAudit = requireSemanticAudit
-    ? await readSemanticAuditArtifact(DEFAULT_SEMANTIC_AUDIT_PATH)
+    ? (await buildCanonicalSemanticAudit({ canonicalDirectory: directory })).artifact
     : undefined;
   validateDatasetRecords(result.records, {
     checkPilotCompleteness,

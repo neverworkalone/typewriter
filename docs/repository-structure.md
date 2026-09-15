@@ -12,7 +12,7 @@ work areas are documented here without creating empty scaffolding.
 | Material | Responsibility | Location | Repository rule |
 | --- | --- | --- | --- |
 | Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
-| M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/` | Tracked for review, but never a canonical input and never a product build input. |
+| M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/m5-target-seed.json` plus the on-demand projection builder | The authored seed is tracked; the deterministic inventory projection is rebuilt in memory and is never a canonical or product build input. |
 | M5 batch manifest and measurements | Review metadata, generator identity, decisions, event-level relation diffs, timing passes, and derived calibration measurements; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records, raw drafts, and external source text remain outside the repository. |
 | Raw unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | A temporary workspace outside this repository | Never committed. Keep only the review decision and permitted Typewriter-authored result when appropriate. |

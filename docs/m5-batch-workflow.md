@@ -108,8 +108,9 @@ npm run batch:import -- \
 does not modify `data/canonical/`, does not build SQLite, and refuses output paths
 inside the repository or canonical input. The editor performs the final deliberate
 canonical-file change together with the corresponding M5 seed transition
-(`status: "promoted"` plus `canonical_id`), regenerates the target inventory, and
-then runs the ordinary canonical validator, normalizer, and build checks. A held or
+(`status: "promoted"` plus `canonical_id`), rebuilds the target inventory
+projection in memory, and then runs the ordinary canonical validator, normalizer,
+and build checks. A held or
 rejected row can never be emitted by this command.
 
 ## ID and reproducibility rules

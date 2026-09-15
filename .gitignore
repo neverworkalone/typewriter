@@ -22,6 +22,13 @@ data/draft/
 data/reference/
 data/local/
 
+# Deterministic semantic/inventory projections are generated in memory or a
+# temporary workspace; they are never durable repository inputs.
+data/inventory/m5-target-inventory.json
+data/validation/canonical-semantic-audit.json
+data/validation/*-semantic-coverage.json
+data/validation/*-semantic-review.json
+
 # Temporary relation-diff files created by batch-tooling tests
 data/batches/test-m5-8-process-*.json
 data/batches/test-m5-9a-*.json

@@ -7,7 +7,7 @@ import {
 } from './canonical-jsonl.mjs';
 import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
 import {
-  DEFAULT_SEMANTIC_AUDIT_PATH,
+  buildCanonicalSemanticAudit,
   readSemanticAuditArtifact,
   validateSemanticAuditCoverage,
 } from './semantic-audit.mjs';
@@ -330,15 +330,14 @@ export async function validateDatasetDirectory(
   const requireSemanticAudit = options.requireSemanticAudit ?? isDefaultCanonical;
   let semanticAudit = options.semanticAudit;
   if (requireSemanticAudit && semanticAudit === undefined) {
-    try {
-      semanticAudit = await readSemanticAuditArtifact(
-        options.semanticAuditPath ?? DEFAULT_SEMANTIC_AUDIT_PATH,
-      );
-    } catch (error) {
-      if (error.code === 'SEMANTIC_AUDIT_MISSING') {
-        fail(error.message, error.code);
-      }
-      throw error;
+    if (options.semanticAuditPath) {
+      semanticAudit = await readSemanticAuditArtifact(options.semanticAuditPath);
+    } else if (isDefaultCanonical) {
+      ({ artifact: semanticAudit } = await buildCanonicalSemanticAudit({
+        canonicalDirectory: directory,
+      }));
+    } else {
+      fail('complete canonical validation requires semantic-audit coverage', 'SEMANTIC_AUDIT_REQUIRED');
     }
   }
   const indexes = validateDatasetRecords(result.records, {

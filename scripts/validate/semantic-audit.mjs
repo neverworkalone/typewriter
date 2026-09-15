@@ -293,6 +293,54 @@ export function assembleSemanticAuditArtifact(
   };
 }
 
+/**
+ * Reconstruct the complete audit envelope from canonical records and the
+ * authoritative decision source without persisting any derived projection.
+ * The decision source remains the only durable semantic input; coverage,
+ * review, and the outer audit envelope are deterministic views of it.
+ */
+export function buildSemanticAuditFromDecisionSource(
+  recordInfos,
+  decisionSource,
+  { artifactId = 'canonical-semantic-audit', baseRecords } = {},
+) {
+  const semanticReview = validateSemanticDecisionSource(
+    recordInfos,
+    decisionSource,
+    {
+      baseRecords: baseRecords ?? recordInfos,
+      label: 'semantic decision source',
+    },
+  );
+  const artifact = assembleSemanticAuditArtifact(recordInfos, semanticReview, {
+    artifactId,
+  });
+  validateSemanticAuditCoverage(recordInfos, artifact, {
+    baseRecords: baseRecords ?? recordInfos,
+    label: 'reconstructed semantic audit',
+  });
+  return artifact;
+}
+
+export async function buildCanonicalSemanticAudit({
+  canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  artifactId = 'canonical-semantic-audit',
+} = {}) {
+  const canonical = await readCanonicalRecords(canonicalDirectory);
+  const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
+  const artifact = buildSemanticAuditFromDecisionSource(
+    canonical.records,
+    decisionSource,
+    { artifactId },
+  );
+  return { canonical, decisionSource, artifact };
+}
+
+export function serializeSemanticAuditArtifact(artifact) {
+  return Buffer.from(`${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+}
+
 function assertExact(actual, expected, label, code = 'SEMANTIC_AUDIT_BINDING') {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     fail(`${label} does not match the canonical source`, code);
@@ -1204,18 +1252,20 @@ export async function readSemanticDecisionSourceArtifact(
 
 export async function validateCanonicalSemanticAudit(
   directory = DEFAULT_CANONICAL_DIRECTORY,
-  auditPath = DEFAULT_SEMANTIC_AUDIT_PATH,
+  auditPath,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
 ) {
-  const canonical = await readCanonicalRecords(directory);
-  const artifact = await readSemanticAuditArtifact(auditPath);
-  const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
-  const authoredReview = validateSemanticDecisionSource(canonical.records, decisionSource, {
-    baseRecords: canonical.records,
-    label: 'canonical semantic decision source',
+  const { canonical, artifact } = await buildCanonicalSemanticAudit({
+    canonicalDirectory: directory,
+    decisionSourcePath,
   });
-  if (JSON.stringify(authoredReview) !== JSON.stringify(artifact.review)) {
-    fail('canonical semantic audit review is not the authored decision source output', 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+  // Explicit non-default paths are retained for historical/replay callers.
+  // The current canonical audit path is deliberately reconstructed in memory.
+  if (auditPath && path.resolve(auditPath) !== path.resolve(DEFAULT_SEMANTIC_AUDIT_PATH)) {
+    const persisted = await readSemanticAuditArtifact(auditPath);
+    if (JSON.stringify(persisted) !== JSON.stringify(artifact)) {
+      fail('persisted semantic audit does not match the reconstructed audit', 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+    }
   }
   return validateSemanticAuditCoverage(canonical.records, artifact, {
     baseRecords: canonical.records,

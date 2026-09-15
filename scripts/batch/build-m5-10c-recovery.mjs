@@ -25,6 +25,7 @@ import {
   validateM5CEditorialDecisions,
   validateM5CProposal,
   validateM5CTiming,
+  readInventorySource,
 } from './validate-m5-10c-recovery.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -173,7 +174,7 @@ export async function buildM5CRecovery({
     readJsonSource(failedVerificationPath, 'failed Wave B verification'),
     readJsonSource(failedRelationDiffPath, 'failed Wave B relation diff'),
     readJsonSource(repairRevisionPath, 'M5-10A repair revision'),
-    readJsonSource(inventoryPath, 'M5 target inventory'),
+    readInventorySource(inventoryPath, canonicalDirectory),
     readCanonicalRecords(canonicalDirectory),
   ]);
 

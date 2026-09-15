@@ -14,6 +14,7 @@ import {
   DEFAULT_WORKLOAD_PATH,
   M5_10D_PROCESS_REVISION,
   assertM5DRecoveryAuthorizable,
+  readInventorySource,
   validateM5DRecovery,
 } from './validate-m5-10d-recovery.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -74,7 +75,7 @@ export async function buildM5DAuthorization({
     readSource(workloadPath),
     readSource(failedStagePath),
     readSource(repairRevisionPath),
-    readSource(inventoryPath),
+    readInventorySource(inventoryPath, canonicalDirectory),
   ]);
   await requireMissing(outputPath);
   const failedStage = failedStageSource.value;

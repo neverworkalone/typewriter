@@ -16,10 +16,11 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { DEFAULT_SEMANTIC_AUDIT_PATH } from '../validate/semantic-audit.mjs';
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { productionSourceBytes } from './lexical-production-state.mjs';
 import {
+  buildTargetInventory,
+  serializeTargetInventory,
   generateTargetInventory,
 } from '../inventory/generate-target-inventory.mjs';
 import {
@@ -493,7 +494,9 @@ export async function promoteM511({
     authorizationPath: authorizationSource.path,
     baseInventoryPath: baseInventorySource.path,
     currentCanonicalDirectory: resolvedCurrentCanonicalDirectory,
-    currentInventoryPath: resolvedCurrentInventoryPath,
+    currentInventoryPath: path.resolve(currentInventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)
+      ? undefined
+      : resolvedCurrentInventoryPath,
     currentSeedPath: resolvedCurrentSeedPath,
     expectedImportedCount: manifest.target.net_start_increase,
     expectedCumulativeStartCount: manifest.target.cumulative_start_target,
@@ -522,8 +525,12 @@ export async function promoteM511({
     fail('current canonical is not the retained 778-start snapshot', 'UNAUTHORIZED_PROMOTION');
   }
   const currentSeedBytes = await readFile(resolvedCurrentSeedPath);
-  const currentInventoryBytes = await readFile(resolvedCurrentInventoryPath);
-  const originalSemanticAuditBytes = await readFile(DEFAULT_SEMANTIC_AUDIT_PATH);
+  const currentInventoryBytes = path.resolve(currentInventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)
+    ? serializeTargetInventory(await buildTargetInventory({
+      canonicalDirectory: resolvedCurrentCanonicalDirectory,
+      seedPath: resolvedCurrentSeedPath,
+    }))
+    : await readFile(resolvedCurrentInventoryPath);
   const semanticAuditBytes = await readFile(externalPaths.semantic_audit);
   if (sha256(semanticAuditBytes) !== semanticAuditSource.sha256) {
     fail('external semantic audit digest does not match the admission manifest', 'SOURCE_BINDING_MISMATCH');
@@ -598,6 +605,7 @@ export async function promoteM511({
       },
       inventory: {
         path: path.relative(REPOSITORY_DIRECTORY, resolvedCurrentInventoryPath),
+        materialization: 'on-demand',
         sha256: prospective.inventorySha256,
         entry_count: prospective.inventoryValidation.inventoryEntryCount,
         canonical_record_count: prospective.inventoryValidation.canonicalRecordCount,
@@ -605,7 +613,8 @@ export async function promoteM511({
         current_reference_only_count: prospective.inventoryValidation.currentReferenceOnlyCount,
       },
       semantic_audit: {
-        path: path.relative(REPOSITORY_DIRECTORY, DEFAULT_SEMANTIC_AUDIT_PATH),
+        path: 'data/validation/canonical-semantic-audit.json',
+        materialization: 'on-demand',
         sha256: sha256(semanticAuditBytes),
         record_count: result.final_summary.record_count,
         sense_count: result.final_summary.sense_count,
@@ -635,28 +644,24 @@ export async function promoteM511({
   };
 
   const originalSeedBytes = currentSeedBytes;
-  const originalInventoryBytes = currentInventoryBytes;
   let importWritten = false;
   let seedWritten = false;
-  let inventoryWritten = false;
-  let semanticAuditWritten = false;
   let evidenceWritten = false;
   try {
     await writeFile(resolvedCanonicalImportPath, prospective.importBytes);
     importWritten = true;
-    await writeFile(DEFAULT_SEMANTIC_AUDIT_PATH, semanticAuditBytes);
-    semanticAuditWritten = true;
     await writeFile(resolvedCurrentSeedPath, prospective.seedBytes);
     seedWritten = true;
-    await writeFile(resolvedCurrentInventoryPath, prospective.inventoryBytes);
-    inventoryWritten = true;
     await writeFile(resolvedEvidencePath, `${JSON.stringify(promotion, null, 2)}\n`, 'utf8');
     evidenceWritten = true;
 
     const finalCanonicalDigest = await hashCanonicalDirectory(resolvedCurrentCanonicalDirectory);
     const finalSeedDigest = sha256(await readFile(resolvedCurrentSeedPath));
-    const finalInventoryDigest = sha256(await readFile(resolvedCurrentInventoryPath));
-    const finalSemanticAuditDigest = sha256(await readFile(DEFAULT_SEMANTIC_AUDIT_PATH));
+    const finalInventoryDigest = sha256(serializeTargetInventory(await buildTargetInventory({
+      canonicalDirectory: resolvedCurrentCanonicalDirectory,
+      seedPath: resolvedCurrentSeedPath,
+    })));
+    const finalSemanticAuditDigest = sha256(semanticAuditBytes);
     if (finalCanonicalDigest !== prospective.canonicalDigest
       || finalSeedDigest !== prospective.seedSha256
       || finalInventoryDigest !== prospective.inventorySha256
@@ -680,9 +685,7 @@ export async function promoteM511({
     };
   } catch (error) {
     if (evidenceWritten) await rm(resolvedEvidencePath, { force: true });
-    if (inventoryWritten) await writeFile(resolvedCurrentInventoryPath, originalInventoryBytes);
     if (seedWritten) await writeFile(resolvedCurrentSeedPath, originalSeedBytes);
-    if (semanticAuditWritten) await writeFile(DEFAULT_SEMANTIC_AUDIT_PATH, originalSemanticAuditBytes);
     if (importWritten) await rm(resolvedCanonicalImportPath, { force: true });
     throw error;
   } finally {

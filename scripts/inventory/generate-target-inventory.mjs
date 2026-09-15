@@ -17,6 +17,10 @@ export const DEFAULT_OUTPUT_PATH = path.resolve(
   '../../data/inventory/m5-target-inventory.json',
 );
 
+export function serializeTargetInventory(inventory) {
+  return Buffer.from(`${JSON.stringify(inventory, null, 2)}\n`, 'utf8');
+}
+
 const CATEGORY_RANGES = Object.freeze([
   [1, 30, 'E'],
   [31, 60, 'Q'],
@@ -201,13 +205,12 @@ function promotedCanonicalEntry(recordInfo, seedEntry) {
   };
 }
 
-export async function generateTargetInventory({
+export async function buildTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
   generatedFromSeedPath = seedPath,
   generatedFromCanonicalDirectory = canonicalDirectory,
   canonicalScopeDirectory = canonicalDirectory,
-  outputPath = DEFAULT_OUTPUT_PATH,
 } = {}) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const seed = JSON.parse(await readFile(seedPath, 'utf8'));
@@ -302,14 +305,26 @@ export async function generateTargetInventory({
     entries,
   };
 
-  await writeFile(outputPath, `${JSON.stringify(inventory, null, 2)}\n`, 'utf8');
+  return inventory;
+}
+
+/**
+ * Materialize the generated inventory only when an explicit output path is
+ * supplied. The current inventory is a deterministic view of canonical plus
+ * seed data and is otherwise kept in memory.
+ */
+export async function generateTargetInventory(options = {}) {
+  const inventory = await buildTargetInventory(options);
+  if (options.outputPath) {
+    await writeFile(options.outputPath, serializeTargetInventory(inventory), 'utf8');
+  }
   return inventory;
 }
 
 export async function main() {
   const inventory = await generateTargetInventory();
   console.log(
-    `Generated ${inventory.entries.length} target inventory row(s) from ${inventory.canonical_snapshot.record_count} canonical record(s) and ${inventory.entries.length - inventory.canonical_snapshot.record_count} non-canonical decision(s).`,
+    `Built ${inventory.entries.length} target inventory row(s) in memory from ${inventory.canonical_snapshot.record_count} canonical record(s) and ${inventory.entries.length - inventory.canonical_snapshot.record_count} non-canonical decision(s).`,
   );
 }
 

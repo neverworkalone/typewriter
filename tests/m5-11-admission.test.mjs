@@ -42,6 +42,10 @@ import {
 import { inspectSenseBoundaryPairs } from '../scripts/validate/sense-boundary.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../scripts/inventory/generate-target-inventory.mjs';
+import {
   makeProductionState,
   makeSemanticAudit,
 } from './helpers/semantic-audit-fixture.mjs';
@@ -1225,17 +1229,18 @@ test('M5-11 promotion failure leaves canonical, seed, and inventory untouched', 
   const paths = {
     canonical: path.join(process.cwd(), 'data/canonical/m5-9-expansion.jsonl'),
     seed: path.join(process.cwd(), 'data/inventory/m5-target-seed.json'),
-    inventory: path.join(process.cwd(), 'data/inventory/m5-target-inventory.json'),
   };
   try {
     await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8');
     const before = await Promise.all(Object.values(paths).map((filePath) => readFile(filePath)));
+    const inventoryBefore = serializeTargetInventory(await buildTargetInventory());
     await assert.rejects(
       promoteM511({ manifestPath }),
       /only a passing APPROVE BOUNDED admission manifest/u,
     );
     const after = await Promise.all(Object.values(paths).map((filePath) => readFile(filePath)));
     after.forEach((bytes, index) => assert.deepEqual(bytes, before[index]));
+    assert.deepEqual(serializeTargetInventory(await buildTargetInventory()), inventoryBefore);
   } finally {
     await rm(manifestPath, { force: true });
     await rm(temporaryDirectory, { recursive: true, force: true });

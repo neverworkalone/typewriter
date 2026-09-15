@@ -15,9 +15,7 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import {
-  DEFAULT_SEMANTIC_AUDIT_PATH,
   DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH,
-  DEFAULT_SEMANTIC_COVERAGE_PATH,
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
   SEMANTIC_BOUNDARY_METHOD,
@@ -757,17 +755,25 @@ function prepareBoundaryDecisions(boundaryDecisions, manifest, decisionSource) {
 
 async function promoteFiles(files) {
   const entries = [...files.entries()];
-  const originals = await Promise.all(entries.map(async ([filePath]) => ({
-    filePath,
-    bytes: await readFile(filePath),
-  })));
+  const originals = await Promise.all(entries.map(async ([filePath]) => {
+    try {
+      return { filePath, bytes: await readFile(filePath), existed: true };
+    } catch (error) {
+      if (error.code === 'ENOENT') return { filePath, bytes: undefined, existed: false };
+      throw error;
+    }
+  }));
   try {
     for (const [filePath, bytes] of entries) {
       await mkdir(path.dirname(filePath), { recursive: true });
       await writeFile(filePath, bytes);
     }
   } catch (error) {
-    await Promise.all(originals.map(({ filePath, bytes }) => writeFile(filePath, bytes)));
+    await Promise.all(originals.map(({ filePath, bytes, existed }) => (
+      existed
+        ? writeFile(filePath, bytes)
+        : rm(filePath, { force: true })
+    )));
     throw error;
   }
 }
@@ -957,9 +963,15 @@ export async function applyCorrections({
     }
     promotionFiles.set(decisionSourcePath, await readFile(temporaryDecisionSourcePath));
     promotionFiles.set(boundaryDecisionsPath, await readFile(temporaryBoundaryDecisionsPath));
-    promotionFiles.set(reviewOutputPath, await readFile(temporaryReviewOutputPath));
-    promotionFiles.set(coverageOutputPath, await readFile(temporaryCoverageOutputPath));
-    promotionFiles.set(auditOutputPath, semanticAuditBytes);
+    if (reviewOutputPath) {
+      promotionFiles.set(reviewOutputPath, await readFile(temporaryReviewOutputPath));
+    }
+    if (coverageOutputPath) {
+      promotionFiles.set(coverageOutputPath, await readFile(temporaryCoverageOutputPath));
+    }
+    if (auditOutputPath) {
+      promotionFiles.set(auditOutputPath, semanticAuditBytes);
+    }
     await promoteFiles(promotionFiles);
 
     return {
@@ -1000,9 +1012,9 @@ if (isMainModule) {
     correctionManifestPath: args.corrections,
     amendExisting: args['amend-existing'] === 'true',
     boundaryDecisionsPath: args['boundary-decisions'] ?? DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH,
-    reviewOutputPath: args.review ?? path.resolve(SCRIPT_DIRECTORY, '../../data/validation/canonical-semantic-review.json'),
-    coverageOutputPath: args.coverage ?? DEFAULT_SEMANTIC_COVERAGE_PATH,
-    auditOutputPath: args.audit ?? DEFAULT_SEMANTIC_AUDIT_PATH,
+    reviewOutputPath: args.review,
+    coverageOutputPath: args.coverage,
+    auditOutputPath: args.audit,
   })
     .then((result) => console.log(JSON.stringify(result, null, 2)))
     .catch((error) => {

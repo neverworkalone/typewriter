@@ -5,6 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import {
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { validateM5DAuthorization } from './validate-m5-10d-recovery.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
@@ -17,7 +21,6 @@ const INVENTORY_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/inventory');
 const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
 const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-11-base-canonical');
 const BASE_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-11-base-inventory.json');
-const CURRENT_INVENTORY_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-inventory.json');
 const CURRENT_SEED_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
 const REVIEW_PATH = path.join(BATCH_DIRECTORY, 'm5-11-review.json');
 const STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-11-stage.json');
@@ -129,7 +132,7 @@ function canonicalSummary(recordInfos) {
 export async function validateM511({
   stagePath = STAGE_PATH,
   reviewPath = REVIEW_PATH,
-  currentInventoryPath = CURRENT_INVENTORY_PATH,
+  currentInventoryPath,
   currentSeedPath = CURRENT_SEED_PATH,
   authorizationPath = AUTHORIZATION_PATH,
   currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
@@ -160,7 +163,15 @@ export async function validateM511({
   }
   const stage = await readJson(stagePath, 'M5-11 stage');
   const review = await readJson(reviewPath, 'M5-11 review');
-  const currentInventory = await readJson(currentInventoryPath, 'current M5 inventory');
+  const currentInventory = currentInventoryPath
+    ? await readJson(currentInventoryPath, 'current M5 inventory')
+    : await buildTargetInventory({
+      canonicalDirectory: currentCanonicalDirectory,
+      seedPath: currentSeedPath,
+    });
+  const currentInventoryBytes = currentInventoryPath
+    ? await readFile(currentInventoryPath)
+    : serializeTargetInventory(currentInventory);
   const currentSeed = await readJson(currentSeedPath, 'current M5 seed');
   const currentCanonical = await readCanonicalRecords(currentCanonicalDirectory);
   const baseCanonical = await readCanonicalRecords(baseCanonicalDirectory);
@@ -183,7 +194,7 @@ export async function validateM511({
   }, 'stage.input.base_inventory');
   assertEqual(baseInventory.value.revision, 'm5-11', 'base inventory revision');
   assertEqual(stage.input.inventory_revision, currentInventory.revision, 'stage inventory revision');
-  assertEqual(sha256(await readFile(currentInventoryPath)), M5_11_BASE_INVENTORY_SHA256, 'current inventory must remain unchanged', 'UNAUTHORIZED_PROMOTION');
+  assertEqual(sha256(currentInventoryBytes), M5_11_BASE_INVENTORY_SHA256, 'current inventory must remain unchanged', 'UNAUTHORIZED_PROMOTION');
   assertEqual(stage.source.seed, repositoryRelativePath(currentSeedPath), 'seed path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.seed_sha256, M5_11_BASE_SEED_SHA256, 'seed digest binding', 'DIGEST_MISMATCH');
   assertEqual(sha256(await readFile(currentSeedPath)), M5_11_BASE_SEED_SHA256, 'current seed must remain unchanged', 'UNAUTHORIZED_PROMOTION');

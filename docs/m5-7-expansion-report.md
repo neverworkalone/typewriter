@@ -3,7 +3,7 @@
 Issue: #89<br>
 Batch: `m5-7-recalibration-20260907`<br>
 Selection inventory: [`data/batches/m5-7-preimport-inventory.json`](../data/batches/m5-7-preimport-inventory.json), revision `m5-4`<br>
-Final inventory: [`data/inventory/m5-target-inventory.json`](../data/inventory/m5-target-inventory.json), revision `m5-5`<br>
+Final inventory projection: canonical snapshot + [`data/inventory/m5-target-seed.json`](../data/inventory/m5-target-seed.json), revision `m5-5` (reconstructed on demand)<br>
 Manifest: [`data/batches/m5-7-recalibration.json`](../data/batches/m5-7-recalibration.json)<br>
 Derived metrics: [`data/batches/m5-7-recalibration-metrics.json`](../data/batches/m5-7-recalibration-metrics.json)<br>
 Relation event ledger: [`data/batches/m5-7-recalibration-relation-diff.json`](../data/batches/m5-7-recalibration-relation-diff.json)<br>
