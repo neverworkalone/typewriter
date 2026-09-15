@@ -44,7 +44,7 @@ function typedRecord(id, lemma = id) {
 function emitThroughAudit(batchId) {
   const run = createLexicalProductionRun({ batchId });
   const candidateOutput = [typedRecord(`${batchId}:candidate`, 'candidate')];
-  const reviewedRecord = typedRecord(`${batchId}:reviewed`, 'reviewed');
+  const reviewedRecord = typedRecord(`${batchId}:candidate`, 'reviewed');
   const reviewRows = [{
     candidate_id: `${batchId}:candidate`,
     decision: 'included',
@@ -181,6 +181,34 @@ test('shared producer rejects review rows that are not covered by candidate inta
       outputKind: 'reviewed-records',
       details: {
         candidate_records_sha256: productionValueSha256([]),
+        review_rows_sha256: productionValueSha256(reviewRows),
+        reviewed_records_sha256: productionValueSha256([reviewedRecord]),
+      },
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+});
+
+test('shared producer rejects a reviewed record whose identity does not match its covered candidate', () => {
+  const batchId = 'future-batch-mismatched-reviewed-id';
+  const candidate = typedRecord(`${batchId}:candidate`, 'candidate');
+  const reviewedRecord = typedRecord(`${batchId}:unrelated`, 'unrelated');
+  const reviewRows = [{
+    candidate_id: candidate.id,
+    decision: 'corrected',
+    semantic_review: {},
+    reviewed_record: reviewedRecord,
+  }];
+  assert.throws(
+    () => createLexicalProductionPayload({
+      stageId: 'semantic_review',
+      batchId,
+      input: [candidate],
+      output: { review_rows: reviewRows, reviewed_records: [reviewedRecord] },
+      inputKind: 'candidate-records',
+      outputKind: 'reviewed-records',
+      details: {
+        candidate_records_sha256: productionValueSha256([candidate]),
         review_rows_sha256: productionValueSha256(reviewRows),
         reviewed_records_sha256: productionValueSha256([reviewedRecord]),
       },

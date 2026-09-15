@@ -39,6 +39,7 @@ import {
   evaluateM511SemanticCoverage,
   expectedCanonicalId,
   isM511AgentGeneratedArtifact,
+  rebaseM511CandidateRecord,
   sha256Json,
   validateM511AgentProvenance,
   validateM511EditorialDecisions,
@@ -203,7 +204,12 @@ function createM511ProductionEvidence({
   if (proposalRows.length !== decisions.length) {
     fail('M5-11 live producer proposal and decision counts differ', 'PRODUCTION_SCOPE_MISMATCH');
   }
-  const candidateRecords = proposalRows.map(({ candidate_record: candidateRecord }) => candidateRecord);
+  const candidateRecords = proposalRows.map(({ candidate_record: candidateRecord }, index) => {
+    const decision = decisions[index];
+    return decision.canonical_record
+      ? rebaseM511CandidateRecord(candidateRecord, decision.canonical_record.id)
+      : candidateRecord;
+  });
   const reviewRows = decisions.map((decision, index) => ({
     candidate_id: candidateRecords[index].id,
     decision: decision.decision,
@@ -1420,12 +1426,18 @@ function validateM511SharedProduction({
   productionState,
   productionStateSources,
 } = {}) {
-  const candidateRecords = editorialResult.proposalRows.map(({ candidate_record: candidateRecord }, index) => ({
-    record: candidateRecord,
-    source: 'm5-11-frozen-proposal',
-    filePath: 'm5-11-frozen-proposal',
-    lineNumber: index + 1,
-  }));
+  const candidateRecords = editorialResult.proposalRows.map(({ candidate_record: candidateRecord }, index) => {
+    const reviewedRecord = editorialResult.decisions[index].record;
+    const producerCandidate = reviewedRecord
+      ? rebaseM511CandidateRecord(candidateRecord, reviewedRecord.id)
+      : candidateRecord;
+    return {
+      record: producerCandidate,
+      source: 'm5-11-frozen-proposal',
+      filePath: 'm5-11-frozen-proposal',
+      lineNumber: index + 1,
+    };
+  });
   const baseRecordInfos = recordInfos(baseRecords, 'm5-11-base-canonical');
   const importedRecordInfos = recordInfos(importedRecords, 'm5-11-reviewed-import');
   const prospectiveRecordInfos = [...baseRecordInfos, ...importedRecordInfos];

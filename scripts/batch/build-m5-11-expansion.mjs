@@ -14,6 +14,7 @@ import {
   M5_11_BATCH_ID,
   expectedCanonicalId,
   expectedInventoryId,
+  rebaseM511CandidateRecord,
   sha256Json,
   validateM511EditorialDecisions,
 } from './m5-11-editorial.mjs';
@@ -189,12 +190,18 @@ export async function buildM511({
     })),
   ];
   const semanticAudit = semanticAuditSource.value;
-  const candidateRecords = editorial.proposalRows.map(({ candidate_record: candidateRecord }, index) => ({
-    record: candidateRecord,
-    source: 'm5-11-frozen-proposal',
-    filePath: 'm5-11-frozen-proposal',
-    lineNumber: index + 1,
-  }));
+  const candidateRecords = editorial.proposalRows.map(({ candidate_record: candidateRecord }, index) => {
+    const reviewedRecord = editorial.decisions[index].record;
+    const producerCandidate = reviewedRecord
+      ? rebaseM511CandidateRecord(candidateRecord, reviewedRecord.id)
+      : candidateRecord;
+    return {
+      record: producerCandidate,
+      source: 'm5-11-frozen-proposal',
+      filePath: 'm5-11-frozen-proposal',
+      lineNumber: index + 1,
+    };
+  });
   const prospectiveCanonicalBytes = Buffer.from(
     `${JSON.stringify(combinedRecords.map(({ record }) => record))}\n`,
     'utf8',
@@ -251,7 +258,7 @@ export async function buildM511({
         const decisionResult = editorial.decisions[index];
         const catalogEntry = M5_11_CATALOG[index];
         return {
-          candidate_id: row.candidate_record.id,
+          candidate_id: candidateRecords[index].record.id,
           inventory_id: catalogEntry.inventory_id,
           decision: decisionResult.decision.decision,
           semantic_review: editorial.artifact.decisions[index].semantic_review,

@@ -336,16 +336,11 @@ test('a later batch ID uses the same producer and prospective-dictionary gate', 
 
   const valid = {
     ...invalid,
-    id: 'candidate-future-002',
-    candidate_id: 'candidate-future-002',
-    senses: [{ id: 'candidate-future-002-s1', pos: 'adjective', gloss: '맛이나 냄새가 은은하다' }],
-  };
-  const admitted = {
-    ...valid,
     id: 'w779',
     candidate_id: 'w779',
     senses: [{ id: 'w779-s1', pos: 'adjective', gloss: '맛이나 냄새가 은은하다' }],
   };
+  const admitted = valid;
   const prospectiveRecordInfos = [
     ...baseRecordInfos,
     { record: admitted, source: 'prospective' },
@@ -669,13 +664,13 @@ test('the shared production review catches 과/와 and connector-free merged dom
   }];
   for (const [index, gloss] of ['맛과 분위기가 이어진다', '맛 분위기가 이어진다'].entries()) {
     const candidateRecord = {
-      id: `proposal-future-${index + 1}`,
+      id: `w${779 + index}`,
       record_type: 'entry',
       role: 'start',
-      candidate_id: `proposal-future-${index + 1}`,
+      candidate_id: `w${779 + index}`,
       lemma: `미래말${index + 1}`,
       search_forms: [`미래말${index + 1}`],
-      senses: [{ id: `proposal-future-${index + 1}-s1`, pos: 'adjective', gloss }],
+      senses: [{ id: `w${779 + index}-s1`, pos: 'adjective', gloss }],
     };
     const reviewedRecord = {
       ...candidateRecord,

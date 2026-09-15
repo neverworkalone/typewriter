@@ -380,6 +380,17 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
         );
       }
       reviewedByCandidate.add(row.candidate_id);
+      // A selected review may revise the record body, but it cannot change
+      // which candidate it reviewed. Batch-specific ID allocation must happen
+      // before candidate_intake; this shared contract never permits a new
+      // reviewed record to appear under a covered candidate row.
+      if (['included', 'corrected'].includes(row.decision)
+        && row.reviewed_record.id !== row.candidate_id) {
+        fail(
+          `${label}.output.review_rows[${index}].reviewed_record.id must equal candidate_id`,
+          'LEXICAL_PRODUCTION_STATE_BINDING',
+        );
+      }
     }
     if (reviewedByCandidate.size !== candidateIds.size) {
       fail(

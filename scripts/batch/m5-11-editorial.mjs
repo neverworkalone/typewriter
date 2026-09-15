@@ -219,7 +219,7 @@ function validateCandidateRecord(record, expectedLemma, label) {
   return record;
 }
 
-function rebaseProposalRecord(candidateRecord, expectedId) {
+export function rebaseM511CandidateRecord(candidateRecord, expectedId) {
   return {
     ...candidateRecord,
     id: expectedId,
@@ -405,7 +405,7 @@ function validateDecision(decision, catalogEntry, proposalRow, expectedId, impor
       correctedLemma,
     );
     if (decision.decision === 'included'
-      && sha256Json(record) !== sha256Json(rebaseProposalRecord(proposalRow.candidate_record, expectedId))) {
+      && sha256Json(record) !== sha256Json(rebaseM511CandidateRecord(proposalRow.candidate_record, expectedId))) {
       fail(`${label}.canonical_record does not match the frozen proposal body`, 'EDITORIAL_PROPOSAL_BINDING');
     }
     validateBoundaryChecks(
