@@ -26,17 +26,14 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Read manifest version
-        id: manifest
+      - name: Validate manifest version
         shell: bash
         run: |
-          manifest_version="$(node -e '
+          node -e '
             const fs = require("node:fs");
             const manifest = JSON.parse(fs.readFileSync("public/manifest.json", "utf8"));
             if (typeof manifest.version !== "string" || manifest.version.length === 0) process.exit(1);
-            process.stdout.write(manifest.version);
-          ')"
-          echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
+          '
 
       - name: Validate canonical JSONL
         run: node scripts/validate/canonical-jsonl.mjs
@@ -152,58 +149,7 @@ jobs:
       - name: Run product unit tests
         run: npm run test:unit
 
+      # Pre-1.0 CI intentionally ends at the product build. Release verification
+      # remains available for manual runs and future release automation.
       - name: Build product extension
         run: npm run build
-
-      - name: Build non-minified release package
-        env:
-          TYPEWRITER_ZIP_DIR: ${{ runner.temp }}/typewriter-package-nonmin
-        run: npm run package
-
-      - name: Install Chrome for Testing
-        id: chrome
-        shell: bash
-        run: |
-          cft_metadata="$RUNNER_TEMP/chrome-for-testing.json"
-          cft_archive="$RUNNER_TEMP/chrome-for-testing.zip"
-          cft_directory="$RUNNER_TEMP/chrome-for-testing"
-          curl --fail --silent --show-error --location \
-            https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json \
-            -o "$cft_metadata"
-          cft_url="$(node -e '
-            const fs = require("node:fs");
-            const metadata = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-            const download = metadata.channels.Stable.downloads.chrome.find(
-              ({ platform }) => platform === "linux64",
-            );
-            if (!download) process.exit(1);
-            process.stdout.write(download.url);
-          ' "$cft_metadata")"
-          curl --fail --silent --show-error --location "$cft_url" -o "$cft_archive"
-          mkdir -p "$cft_directory"
-          unzip -q "$cft_archive" -d "$cft_directory"
-          chrome_path="$cft_directory/chrome-linux64/chrome"
-          chmod +x "$chrome_path"
-          "$chrome_path" --version
-          echo "path=$chrome_path" >> "$GITHUB_OUTPUT"
-
-      - name: Verify non-minified package in Chrome
-        env:
-          TYPEWRITER_ZIP_DIR: ${{ runner.temp }}/typewriter-package-nonmin
-        run: >-
-          npm run test:mv3:package --
-          --chrome="${{ steps.chrome.outputs.path }}"
-          --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-nonmin/typewriter_${{ steps.manifest.outputs.version }}.zip"
-
-      - name: Build minified release package
-        env:
-          TYPEWRITER_ZIP_DIR: ${{ runner.temp }}/typewriter-package-minified
-        run: npm run package:minify
-
-      - name: Verify minified package in Chrome
-        run: >-
-          npm run test:mv3:package --
-          --chrome="${{ steps.chrome.outputs.path }}"
-          --extension=dist
-          --zip="${{ runner.temp }}/typewriter-package-minified/typewriter_${{ steps.manifest.outputs.version }}.zip"
