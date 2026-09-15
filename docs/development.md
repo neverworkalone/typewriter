@@ -209,8 +209,9 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.13.x, and runs the same validator, normalization, SQLite build, product
-package, integrated audit, and regression commands as the local workflow:
+Node.js 22.13.x, and runs the validator, normalization, SQLite build, integrated
+audit, regression, unit-test, and product-build checks required for pre-1.0
+development:
 
 1. `node scripts/validate/canonical-jsonl.mjs`
 2. `node --test tests/validate-canonical-jsonl.test.mjs`
@@ -227,15 +228,16 @@ package, integrated audit, and regression commands as the local workflow:
 13. `npm run batch:m5-10a:repair:check`
 14. `npm run test:unit`
 15. `npm run build`
-16. `npm run package`
-17. Chrome verification of the non-minified product package
-18. `npm run package:minify`
-19. Chrome verification of the minified product package
 
-The workflow proves that the documented JSONL, dataset, normalization, SQLite,
-reproducibility, integrated audit, product package, and both Chrome-loaded release
-package checks run in a clean environment. It does not claim that the canonical
-dictionary has editorial, lexical, relation, or coverage quality.
+Release ZIP creation (`npm run package` and `npm run package:minify`) and Chrome for
+Testing package verification (`npm run test:mv3:package`) are intentionally deferred
+from ordinary pre-1.0 PR/push CI to keep feedback focused and inexpensive. The
+underlying scripts remain available for explicit manual execution and future
+release-oriented automation; this is a scheduling decision, not deprecation. The
+workflow proves that the documented JSONL, dataset, normalization, SQLite,
+integrated-audit, regression, unit-test, and product-build checks run in a clean
+environment. It does not claim that the canonical dictionary has editorial,
+lexical, relation, or coverage quality.
 
 ## Failure diagnosis
 
