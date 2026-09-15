@@ -148,8 +148,8 @@ export function makeProductionState({
   semanticAudit = {},
   artifactId = 'test-production-state',
 } = {}) {
-  const candidateValues = candidateRecords.map(recordOf);
   const reviewedValues = reviewedRecords.map(recordOf);
+  const candidateValues = (candidateRecords.length > 0 ? candidateRecords : reviewedRecords).map(recordOf);
   const baseValues = baseRecords.map(recordOf);
   const prospectiveValues = prospectiveRecords.length > 0
     ? prospectiveRecords.map(recordOf)

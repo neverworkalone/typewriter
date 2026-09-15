@@ -449,7 +449,11 @@ function buildProspectiveRecords(canonical, manifest, canonicalDigest) {
 
 function createCorrectionProductionInputs({ manifest, baseRecords, prospectiveRecords }) {
   const batchId = `semantic-correction:${manifest.source_revision}`;
-  const candidateOutput = [];
+  // The candidate intake is the authored, reviewed replacement proposal. The
+  // exact base snapshot remains bound separately by the prospective stage and
+  // the admission gate, so a correction cannot be created without its base
+  // while the producer still has a real candidate for every review row.
+  const candidateOutput = manifest.corrections.map(({ after_record }) => after_record);
   const reviewedValues = manifest.corrections.map(({ after_record }) => after_record);
   const reviewRows = manifest.corrections.map((correction) => ({
     candidate_id: correction.record_id,
@@ -526,6 +530,10 @@ function createCorrectionProductionInputs({ manifest, baseRecords, prospectiveRe
   };
   return {
     batchId,
+    candidateRecords: manifest.corrections.map(({ after_record }) => ({
+      record: after_record,
+      source: `${batchId}:candidate-intake`,
+    })),
     productionPayloads,
     reviewedRecords: manifest.corrections.map((correction) => ({
       record: correction.after_record,
@@ -543,6 +551,7 @@ function validateCorrectionWithLiveProducer({
 }) {
   const {
     batchId,
+    candidateRecords,
     productionPayloads,
     reviewedRecords,
   } = createCorrectionProductionInputs({ manifest, baseRecords, prospectiveRecords });
@@ -590,7 +599,7 @@ function validateCorrectionWithLiveProducer({
   });
   const admission = validateLexicalAddition({
     batchId,
-    candidateRecords: [],
+    candidateRecords,
     reviewedRecords,
     baseRecords,
     prospectiveRecords,

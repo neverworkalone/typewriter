@@ -309,6 +309,17 @@ function assertTypedRecordArray(value, label) {
   return records;
 }
 
+function assertUniqueTypedRecordIds(records, label) {
+  const ids = new Set();
+  for (const [index, record] of records.entries()) {
+    if (ids.has(record.id)) {
+      fail(`${label}[${index}].id duplicates an earlier producer record`, 'LEXICAL_PRODUCTION_STATE_SCOPE');
+    }
+    ids.add(record.id);
+  }
+  return ids;
+}
+
 function assertTypedReviewRows(value, label) {
   const rows = assertPayloadArray(value, label);
   rows.forEach((row, index) => {
@@ -334,7 +345,8 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
   requirePayloadValue(output, `${label}.output`);
   requireObject(details, `${label}.details`);
   if (stageId === 'candidate_intake') {
-    assertTypedRecordArray(output, `${label}.output`);
+    const candidateRecords = assertTypedRecordArray(output, `${label}.output`);
+    assertUniqueTypedRecordIds(candidateRecords, `${label}.output`);
     assertPayloadDigest(
       details.candidate_records_sha256,
       productionValueSha256(output),
@@ -348,10 +360,43 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
 
   requirePayloadValue(input, `${label}.input`);
   if (stageId === 'semantic_review') {
-    assertTypedRecordArray(input, `${label}.input`);
+    const candidateRecords = assertTypedRecordArray(input, `${label}.input`);
+    const candidateIds = assertUniqueTypedRecordIds(candidateRecords, `${label}.input`);
     const outputObject = assertPayloadObject(output, `${label}.output`);
-    assertTypedReviewRows(outputObject.review_rows, `${label}.output.review_rows`);
-    assertTypedRecordArray(outputObject.reviewed_records, `${label}.output.reviewed_records`);
+    const reviewRows = assertTypedReviewRows(outputObject.review_rows, `${label}.output.review_rows`);
+    const reviewedRecords = assertTypedRecordArray(outputObject.reviewed_records, `${label}.output.reviewed_records`);
+    const reviewedByCandidate = new Set();
+    for (const [index, row] of reviewRows.entries()) {
+      if (!candidateIds.has(row.candidate_id)) {
+        fail(
+          `${label}.output.review_rows[${index}].candidate_id is not present in candidate intake`,
+          'LEXICAL_PRODUCTION_STATE_BINDING',
+        );
+      }
+      if (reviewedByCandidate.has(row.candidate_id)) {
+        fail(
+          `${label}.output.review_rows[${index}].candidate_id duplicates an earlier review row`,
+          'LEXICAL_PRODUCTION_STATE_SCOPE',
+        );
+      }
+      reviewedByCandidate.add(row.candidate_id);
+    }
+    if (reviewedByCandidate.size !== candidateIds.size) {
+      fail(
+        `${label}.output.review_rows must cover every candidate exactly once`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    const selectedReviewRecords = reviewRows
+      .filter(({ decision }) => ['included', 'corrected'].includes(decision))
+      .map(({ reviewed_record: reviewedRecord }) => reviewedRecord);
+    if (JSON.stringify(selectedReviewRecords) !== JSON.stringify(reviewedRecords)) {
+      fail(
+        `${label}.output.reviewed_records must be exactly the included/corrected review outputs`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    assertUniqueTypedRecordIds(reviewedRecords, `${label}.output.reviewed_records`);
     assertPayloadDigest(
       details.candidate_records_sha256,
       productionValueSha256(input),

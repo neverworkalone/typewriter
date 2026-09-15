@@ -162,6 +162,33 @@ test('shared producer emits and validates all six transitions with lineage', () 
   assert.ok(result.stages.every((stage) => stage.payload_mode === 'live'));
 });
 
+test('shared producer rejects review rows that are not covered by candidate intake', () => {
+  const batchId = 'future-batch-mismatched-review';
+  const reviewedRecord = typedRecord(`${batchId}:reviewed`, 'reviewed');
+  const reviewRows = [{
+    candidate_id: `${batchId}:missing-candidate`,
+    decision: 'corrected',
+    semantic_review: {},
+    reviewed_record: reviewedRecord,
+  }];
+  assert.throws(
+    () => createLexicalProductionPayload({
+      stageId: 'semantic_review',
+      batchId,
+      input: [],
+      output: { review_rows: reviewRows, reviewed_records: [reviewedRecord] },
+      inputKind: 'candidate-records',
+      outputKind: 'reviewed-records',
+      details: {
+        candidate_records_sha256: productionValueSha256([]),
+        review_rows_sha256: productionValueSha256(reviewRows),
+        reviewed_records_sha256: productionValueSha256([reviewedRecord]),
+      },
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+});
+
 test('post-hoc descriptors and fabricated pre-admission admission fail closed', () => {
   assert.throws(
     () => createLexicalProductionState({

@@ -108,6 +108,7 @@ test('semantic correction promotion reconstructs prospective canonical from the 
     });
     const prospective = await readCanonicalRecords(canonicalDirectory);
     assert.equal(result.inputRevision, 'base');
+    assert.equal(result.admissionStatus, 'admitted');
     assert.equal(result.canonicalRecordsSha256, manifest.prospective_canonical_records_sha256);
     assert.equal(canonicalRecordsSha256(prospective.records), manifest.prospective_canonical_records_sha256);
     const audit = await readSemanticAuditArtifact(evidence.auditOutputPath);
