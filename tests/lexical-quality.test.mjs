@@ -73,6 +73,11 @@ test('authored distinct and retain cannot override high-confidence usage or para
       relationship: 'usage-variant',
     },
     {
+      lemma: '한음절동작',
+      glosses: ['국물을 뜨는 도구', '물을 뜨는 자루 달린 도구'],
+      relationship: 'usage-variant',
+    },
+    {
       lemma: '겹침표현',
       glosses: ['남의 마음을 함께 느끼는 일', '처지를 함께 느끼는 일'],
       relationship: 'overlapping',
@@ -110,6 +115,29 @@ test('authored distinct and retain cannot override high-confidence usage or para
       (error) => error.code === 'SEMANTIC_AUDIT_BOUNDARY_BLOCKER',
     );
   }
+});
+
+test('generic tool heads do not turn unrelated action frames into usage variants', () => {
+  const record = {
+    id: 'w-tool-negative-control',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-tool-negative-control',
+    lemma: '열쇠',
+    search_forms: ['열쇠'],
+    senses: [
+      { id: 'w-tool-negative-control-s1', pos: 'noun', gloss: '문을 여는 도구' },
+      { id: 'w-tool-negative-control-s2', pos: 'noun', gloss: '문제를 푸는 도구' },
+    ],
+  };
+  const infos = [{ record, source: 'synthetic' }];
+  assert.equal(inspectSenseBoundaryPairs(record)[0].relationship, 'distinct');
+  const audit = makeSemanticAudit(infos, {
+    boundaryDecisions: {
+      [record.id]: { decision: 'split', classification: 'separated' },
+    },
+  });
+  assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, audit));
 });
 
 test('the independent boundary audit uses authored pair decisions for any record', () => {

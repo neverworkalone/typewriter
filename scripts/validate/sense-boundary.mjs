@@ -47,8 +47,11 @@ function frameForGloss(gloss) {
 
 function actionStems(text) {
   return glossWords(text)
-    .map((word) => word.replace(/(?:는|ㄴ|은|인|게)$/u, ''))
-    .filter((word) => word.length >= 2);
+    .filter((word) => !TOOL_HEAD_PATTERN.test(word))
+    .map((word) => word.match(/(?:는|ㄴ|은|인|게)$/u)
+      ? word.replace(/(?:는|ㄴ|은|인|게)$/u, '')
+      : undefined)
+    .filter((word) => typeof word === 'string' && word.length >= 1);
 }
 
 function sharedActionStem(leftTail, rightTail) {

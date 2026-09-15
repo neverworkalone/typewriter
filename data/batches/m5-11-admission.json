@@ -464,7 +464,7 @@
       {
         "id": "semantic-quality",
         "status": "pass",
-        "result_sha256": "d1d8842f9cd40676ea04e33234330a265ca82f021b01b3324f9d74434154455f"
+        "result_sha256": "c87887a33ff0b1853c535f98ddd03b76eaf31db2692f67fba4f9b788c05547da"
       }
     ],
     "machine_check_evidence": {
@@ -4163,7 +4163,7 @@
           "correction_count": 68,
           "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
           "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
-          "review_sha256": "f81a083a860191b2929f18a0b1484a8528695982893bc7b261d0f9b440a0010b"
+          "review_sha256": "3f084f31a2f2f037d7b6f5e7d761e28311045ca1d343448afab423b93c1cb099"
         },
         "summary": null,
         "coverage": null,
@@ -4632,7 +4632,7 @@
         {
           "id": "semantic-quality",
           "status": "pass",
-          "result_sha256": "d1d8842f9cd40676ea04e33234330a265ca82f021b01b3324f9d74434154455f"
+          "result_sha256": "c87887a33ff0b1853c535f98ddd03b76eaf31db2692f67fba4f9b788c05547da"
         }
       ],
       "machine_check_evidence": {
@@ -8331,7 +8331,7 @@
             "correction_count": 68,
             "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
             "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
-            "review_sha256": "f81a083a860191b2929f18a0b1484a8528695982893bc7b261d0f9b440a0010b"
+            "review_sha256": "3f084f31a2f2f037d7b6f5e7d761e28311045ca1d343448afab423b93c1cb099"
           },
           "summary": null,
           "coverage": null,
@@ -8714,7 +8714,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "d12d68754644ceac06f3ea5ebaf2020b2bdd7bd08e5c8aba97252d3b84873f2b",
+  "gate_evidence_sha256": "09850cf7f8af4ab7d304d7033f8bc0a8994c6ad19b5f3829097ae4c66b0c814d",
   "sources": {
     "proposal": {
       "source_id": "proposal",
@@ -8754,7 +8754,7 @@
     "semantic_audit": {
       "source_id": "semantic_audit",
       "path": "external:semantic_audit",
-      "sha256": "73d818153c3548ca01675195b072e696b6972f3c2818d421c67bd661b61530d4"
+      "sha256": "e2f13857053e932d6814fafa1eaa16ba329b863e219206c753cf03ad24d4db72"
     }
   },
   "promotion": {
@@ -8766,7 +8766,7 @@
   "correction_source": {
     "kind": "separately-authored-correction-manifest",
     "path": "data/validation/canonical-semantic-correction-manifest.json",
-    "sha256": "8748e1a72f3fbd7f78ec155e22d418ea8165160c33e60591ef49b3c52c7b5e8d",
+    "sha256": "cdcd4409913a6316be5324d382ffaec618c045ea8f037fd642e7c27f0ad9b9d2",
     "source_revision": "post-merge review of PR #123 for issue #121"
   }
 }

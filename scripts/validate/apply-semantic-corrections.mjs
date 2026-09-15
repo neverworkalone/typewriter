@@ -1,4 +1,12 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,8 +22,17 @@ import {
   SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
   SEMANTIC_BOUNDARY_METHOD,
   canonicalRecordsSha256,
+  readSemanticAuditArtifact,
   sha256Json,
 } from './semantic-audit.mjs';
+import { validateLexicalAddition } from '../batch/lexical-admission.mjs';
+import {
+  createLexicalProductionPayload,
+  createLexicalProductionRun,
+  productionSourceBytes,
+  productionValueSha256,
+} from '../batch/lexical-production-state.mjs';
+import { validateDatasetDirectory } from './dataset-integrity.mjs';
 import { inspectWriterDomainEvidence } from './lexical-quality.mjs';
 import { rebuildSemanticEvidence } from './rebuild-semantic-evidence.mjs';
 
@@ -46,6 +63,10 @@ function requireDigest(value, label) {
   requireString(value, label);
   if (!/^[a-f0-9]{64}$/u.test(value)) fail(`${label} must be a SHA-256 digest`);
   return value;
+}
+
+function sha256Bytes(value) {
+  return createHash('sha256').update(value).digest('hex');
 }
 
 // Keep the semantic decision source acyclic with the output digests that bind
@@ -319,6 +340,429 @@ function replaceRecordReview(previous, record, correction, decisionSourceId) {
   return next;
 }
 
+function validateCorrectionRecordBindings(correction, label) {
+  if (!correction.before_record || typeof correction.before_record !== 'object'
+    || Array.isArray(correction.before_record)) {
+    fail(`${label}.before_record must contain the authored base record`);
+  }
+  if (!correction.after_record || typeof correction.after_record !== 'object'
+    || Array.isArray(correction.after_record)) {
+    fail(`${label}.after_record must contain the authored prospective record`);
+  }
+  if (correction.before_record.id !== correction.record_id
+    || correction.after_record.id !== correction.record_id) {
+    fail(`${label}.before_record and after_record must use correction.record_id`);
+  }
+  if (sha256Json(correction.before_record) !== correction.before_record_sha256) {
+    fail(`${label}.before_record does not match before_record_sha256`);
+  }
+  if (sha256Json(correction.after_record) !== correction.after_record_sha256) {
+    fail(`${label}.after_record does not match after_record_sha256`);
+  }
+  const beforeSenseIds = new Set(correction.before_record.senses.map(({ id }) => id));
+  const afterSenseIds = new Set(correction.after_record.senses.map(({ id }) => id));
+  for (const senseId of correction.removed_sense_ids) {
+    if (!beforeSenseIds.has(senseId) || afterSenseIds.has(senseId)) {
+      fail(`${label}.removed_sense_ids must be present only in before_record`);
+    }
+  }
+}
+
+function canonicalFileRelativePath(canonicalDirectory, filePath) {
+  if (canonicalDirectory.endsWith('.jsonl')) return path.basename(canonicalDirectory);
+  const relativePath = path.relative(canonicalDirectory, filePath);
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    fail(`canonical record path ${filePath} is outside canonical directory ${canonicalDirectory}`);
+  }
+  return relativePath;
+}
+
+async function writeCanonicalSnapshot({ canonicalDirectory, canonical, replacements, outputDirectory }) {
+  const recordsByFile = new Map();
+  for (const recordInfo of canonical.records) {
+    const relativePath = canonicalFileRelativePath(canonicalDirectory, recordInfo.filePath);
+    const records = recordsByFile.get(relativePath) ?? [];
+    records.push(replacements.get(recordInfo.record.id) ?? recordInfo.record);
+    recordsByFile.set(relativePath, records);
+  }
+  const outputFiles = new Map();
+  for (const [relativePath, records] of recordsByFile.entries()) {
+    const outputPath = path.join(outputDirectory, relativePath);
+    const bytes = Buffer.from(`${records.map((record) => JSON.stringify(record)).join('\n')}\n`, 'utf8');
+    await mkdir(path.dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, bytes);
+    outputFiles.set(outputPath, bytes);
+  }
+  return outputFiles;
+}
+
+function buildProspectiveRecords(canonical, manifest, canonicalDigest) {
+  const mode = canonicalDigest === manifest.base_canonical_records_sha256
+    ? 'base'
+    : canonicalDigest === manifest.prospective_canonical_records_sha256
+      ? 'prospective'
+      : undefined;
+  if (!mode) {
+    fail('canonical input must match the correction manifest base or prospective digest');
+  }
+  const currentById = new Map(canonical.records.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
+  const baseById = new Map(
+    manifest.corrections.map((correction) => [correction.record_id, correction.before_record]),
+  );
+  const replacements = new Map();
+  for (const [index, correction] of manifest.corrections.entries()) {
+    const label = `correction manifest.corrections[${index}]`;
+    validateCorrectionRecordBindings(correction, label);
+    const current = currentById.get(correction.record_id);
+    if (!current) fail(`${correction.record_id} is missing from canonical input`);
+    const expectedDigest = mode === 'base'
+      ? correction.before_record_sha256
+      : correction.after_record_sha256;
+    if (sha256Json(current) !== expectedDigest) {
+      fail(`${correction.record_id} canonical record is not at the manifest ${mode} revision`);
+    }
+    replacements.set(correction.record_id, correction.after_record);
+  }
+  const prospectiveRecords = canonical.records.map((recordInfo) => ({
+    ...recordInfo,
+    record: replacements.get(recordInfo.record.id) ?? recordInfo.record,
+  }));
+  const baseRecords = canonical.records.map((recordInfo) => ({
+    ...recordInfo,
+    record: baseById.get(recordInfo.record.id) ?? recordInfo.record,
+  }));
+  if (canonicalRecordsSha256(baseRecords) !== manifest.base_canonical_records_sha256) {
+    fail('authored correction records do not reproduce the manifest base canonical digest');
+  }
+  const prospectiveDigest = canonicalRecordsSha256(prospectiveRecords);
+  if (prospectiveDigest !== manifest.prospective_canonical_records_sha256) {
+    fail('authored correction records do not reproduce the manifest prospective canonical digest');
+  }
+  return {
+    mode,
+    replacements,
+    baseRecords,
+    prospectiveRecords,
+    prospectiveDigest,
+  };
+}
+
+function createCorrectionProductionInputs({ manifest, baseRecords, prospectiveRecords }) {
+  const batchId = `semantic-correction:${manifest.source_revision}`;
+  const candidateOutput = [];
+  const reviewedValues = manifest.corrections.map(({ after_record }) => after_record);
+  const reviewRows = manifest.corrections.map((correction) => ({
+    candidate_id: correction.record_id,
+    decision: 'corrected',
+    semantic_review: correction.semantic_review,
+    reviewed_record: correction.after_record,
+  }));
+  const reviewOutput = {
+    review_rows: reviewRows,
+    reviewed_records: reviewedValues,
+  };
+  const selectionRanks = manifest.corrections.map((_, index) => index + 1);
+  const selectionOutput = {
+    selected_records: reviewedValues,
+    selection_ranks: selectionRanks,
+  };
+  const prospectiveOutput = prospectiveRecords.map(({ record }) => record);
+  const specs = {
+    candidate_intake: {
+      input: null,
+      output: candidateOutput,
+      inputKind: 'none',
+      outputKind: 'candidate-records',
+      details: {
+        candidate_records_sha256: productionValueSha256(candidateOutput),
+        candidate_count: candidateOutput.length,
+      },
+    },
+    semantic_review: {
+      input: candidateOutput,
+      output: reviewOutput,
+      inputKind: 'candidate-records',
+      outputKind: 'reviewed-records',
+      details: {
+        candidate_records_sha256: productionValueSha256(candidateOutput),
+        review_rows_sha256: productionValueSha256(reviewRows),
+        reviewed_records_sha256: productionValueSha256(reviewedValues),
+      },
+    },
+    selection: {
+      input: reviewOutput,
+      output: selectionOutput,
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+        reviewed_records_sha256: productionValueSha256(reviewedValues),
+        selected_records_sha256: productionValueSha256(reviewedValues),
+        selection_ranks_sha256: productionValueSha256(selectionRanks),
+      },
+    },
+    prospective_canonical: {
+      input: selectionOutput,
+      output: prospectiveOutput,
+      inputKind: 'selected-records',
+      outputKind: 'prospective-canonical',
+      details: {
+        base_records_sha256: productionValueSha256(baseRecords.map(({ record }) => record)),
+        prospective_records_sha256: productionValueSha256(prospectiveOutput),
+      },
+    },
+  };
+  const productionPayloads = Object.fromEntries(
+    Object.entries(specs).map(([stageId, spec]) => [
+      stageId,
+      createLexicalProductionPayload({ stageId, batchId, ...spec }),
+    ]),
+  );
+  productionPayloads.payload_specs = specs;
+  productionPayloads.outputs = {
+    candidateOutput,
+    reviewOutput,
+    selectionOutput,
+    prospectiveOutput,
+  };
+  return {
+    batchId,
+    productionPayloads,
+    reviewedRecords: manifest.corrections.map((correction) => ({
+      record: correction.after_record,
+      decision: 'corrected',
+      semantic_review: correction.semantic_review,
+    })),
+  };
+}
+
+function validateCorrectionWithLiveProducer({
+  manifest,
+  baseRecords,
+  prospectiveRecords,
+  semanticAudit,
+}) {
+  const {
+    batchId,
+    productionPayloads,
+    reviewedRecords,
+  } = createCorrectionProductionInputs({ manifest, baseRecords, prospectiveRecords });
+  const run = createLexicalProductionRun({ batchId });
+  const sourcePrefix = `correction-manifest:${manifest.source_revision}`;
+  const candidateToken = run.completeCandidateIntake({
+    sourcePath: `${sourcePrefix}:candidate-intake`,
+    payloadSpec: productionPayloads.payload_specs.candidate_intake,
+  });
+  const reviewToken = run.completeSemanticReview({
+    predecessor: candidateToken,
+    sourcePath: `${sourcePrefix}:semantic-review`,
+    payloadSpec: productionPayloads.payload_specs.semantic_review,
+  });
+  const selectionToken = run.completeSelection({
+    predecessor: reviewToken,
+    sourcePath: `${sourcePrefix}:selection`,
+    payloadSpec: productionPayloads.payload_specs.selection,
+    policy: 'correction-manifest-reviewed-selection',
+  });
+  const prospectiveToken = run.completeProspectiveCanonical({
+    predecessor: selectionToken,
+    sourcePath: `${sourcePrefix}:prospective-canonical`,
+    payloadSpec: productionPayloads.payload_specs.prospective_canonical,
+  });
+  // The committed audit is intentionally a prospective-canonical artifact:
+  // its ordinary validation has no historical base.  For this promotion gate
+  // bind the same authored audit to the exact base -> prospective correction
+  // rows in memory, so the shared admission validator checks the replacement
+  // transition without changing the durable audit digest.
+  const semanticAuditForBaseValidation = structuredClone(semanticAudit);
+  semanticAuditForBaseValidation.review.changes = manifest.corrections.map((correction) => ({
+    record_id: correction.record_id,
+    decision: 'corrected',
+    base_record_sha256: correction.before_record_sha256,
+    prospective_record_sha256: correction.after_record_sha256,
+    rationale: correction.rationale,
+  }));
+  const authorizationBytes = productionSourceBytes({
+    kind: 'semantic-correction-admission-authorization',
+    manifest_source_revision: manifest.source_revision,
+    manifest_decision_digest: correctionDecisionDigest(manifest),
+    base_canonical_records_sha256: manifest.base_canonical_records_sha256,
+    prospective_canonical_records_sha256: manifest.prospective_canonical_records_sha256,
+  });
+  const admission = validateLexicalAddition({
+    batchId,
+    candidateRecords: [],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit: semanticAuditForBaseValidation,
+    productionRun: run,
+    productionAuditStage: {
+      predecessor: prospectiveToken,
+      sourcePath: `${sourcePrefix}:audit`,
+    },
+    productionAuthorizationEvidence: {
+      authorizationRef: `${sourcePrefix}:authorization`,
+      authorizationBytes,
+    },
+    productionAdmissionStage: {
+      sourcePath: `${sourcePrefix}:admission`,
+    },
+    productionPayloads,
+    checkPilotCompleteness: true,
+    candidateLabel: 'semantic correction candidate records',
+    reviewedLabel: 'semantic correction reviewed records',
+    prospectiveLabel: 'semantic correction prospective canonical records',
+  });
+  return {
+    batchId,
+    status: admission.production_state?.stages?.at(-1)?.admission_status,
+    admission,
+  };
+}
+
+function updateCorrectionHistory(authoredReview, manifest, alreadyApplied) {
+  if (alreadyApplied) {
+    const correctionKeys = new Map(
+      manifest.corrections.map((correction) => [
+        `${correction.record_id}:${correction.after_record_sha256}`,
+        correction,
+      ]),
+    );
+    authoredReview.review_pass.correction_history = authoredReview.review_pass.correction_history.map((history) => {
+      const correction = correctionKeys.get(`${history.record_id}:${history.after_record_sha256}`);
+      return correction
+        ? {
+          ...history,
+          source_revision: manifest.source_revision,
+          rationale: correction.rationale,
+          boundary_decision: correction.boundary_decision,
+        }
+        : history;
+    });
+    authoredReview.review_pass.boundary_decision_history = authoredReview.review_pass.boundary_decision_history.map((history) => {
+      const correction = correctionKeys.get(`${history.record_id}:${history.after_record_sha256}`);
+      return correction
+        ? {
+          ...history,
+          decision: correction.boundary_decision,
+          rationale: correction.semantic_review.boundary.rationale,
+        }
+        : history;
+    });
+    authoredReview.review_pass.correction_count = authoredReview.review_pass.correction_history.length;
+  } else {
+    appendCorrectionHistory(authoredReview.review_pass, manifest);
+  }
+}
+
+function prepareDecisionSource({
+  decisionSource,
+  manifest,
+  prospectiveRecords,
+  correctionManifestPath,
+}) {
+  if (decisionSource.source_id !== manifest.decision_source_id) {
+    fail('decision source id does not match correction manifest.decision_source_id');
+  }
+  const sourceDigest = decisionSource.source?.canonical_records_sha256;
+  const sourceAtBase = sourceDigest === manifest.base_canonical_records_sha256;
+  const sourceAtProspective = sourceDigest === manifest.prospective_canonical_records_sha256;
+  if (!sourceAtBase && !sourceAtProspective) {
+    fail('decision source does not point at the correction manifest base or prospective digest');
+  }
+  if (sourceAtProspective && ![
+    manifest.previous_manifest_sha256,
+    manifest.previous_correction_source_sha256,
+    sha256Json(manifest),
+    correctionDecisionDigest(manifest),
+  ].includes(decisionSource.correction_source?.sha256)) {
+    fail('existing correction source is not the manifest revision being amended');
+  }
+
+  const next = structuredClone(decisionSource);
+  const authoredReview = next.authored_review;
+  const authoredById = new Map(authoredReview.records.map((record) => [record.record_id, record]));
+  const prospectiveById = new Map(prospectiveRecords.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
+  for (const correction of manifest.corrections) {
+    const record = prospectiveById.get(correction.record_id);
+    const authoredRecord = authoredById.get(correction.record_id);
+    if (!record || !authoredRecord) fail(`${correction.record_id} is missing from canonical or authored review`);
+    const expectedAuthoredDigest = sourceAtProspective
+      ? correction.after_record_sha256
+      : correction.before_record_sha256;
+    if (authoredRecord.record_sha256 !== expectedAuthoredDigest) {
+      fail(`${correction.record_id} authored review is not at the manifest ${sourceAtProspective ? 'prospective' : 'base'} revision`);
+    }
+    authoredById.set(
+      correction.record_id,
+      replaceRecordReview(authoredRecord, record, correction, next.source_id),
+    );
+  }
+
+  authoredReview.records = authoredReview.records.map((record) => authoredById.get(record.record_id) ?? record);
+  const canonicalDigest = manifest.prospective_canonical_records_sha256;
+  authoredReview.source.canonical_records_sha256 = canonicalDigest;
+  authoredReview.record_count = prospectiveRecords.length;
+  authoredReview.sense_count = prospectiveRecords.reduce((sum, recordInfo) => sum + recordInfo.record.senses.length, 0);
+  authoredReview.review_pass.record_count = authoredReview.record_count;
+  authoredReview.review_pass.sense_count = authoredReview.sense_count;
+  updateCorrectionHistory(authoredReview, manifest, sourceAtProspective);
+  authoredReview.review_pass.correction_source = {
+    kind: 'separately-authored-correction-manifest',
+    path: path.relative(path.resolve(SCRIPT_DIRECTORY, '../..'), correctionManifestPath),
+    sha256: correctionDecisionDigest(manifest),
+    source_revision: manifest.source_revision,
+  };
+  next.source.canonical_records_sha256 = canonicalDigest;
+  next.authored_review = authoredReview;
+  next.authored_review_sha256 = sha256Json(authoredReview);
+  next.correction_source = authoredReview.review_pass.correction_source;
+  return { decisionSource: next, sourceAtProspective };
+}
+
+function prepareBoundaryDecisions(boundaryDecisions, manifest, decisionSource) {
+  const sourceDigest = boundaryDecisions.source?.canonical_records_sha256;
+  if (![manifest.base_canonical_records_sha256, manifest.prospective_canonical_records_sha256].includes(sourceDigest)) {
+    fail('boundary decision artifact does not point at the correction manifest base or prospective digest');
+  }
+  const next = structuredClone(boundaryDecisions);
+  const reviewedById = new Map(decisionSource.authored_review.records.map((record) => [record.record_id, record]));
+  const boundaryById = new Map(next.records.map((record) => [record.record_id, record]));
+  for (const correction of manifest.corrections) {
+    const reviewedRecord = reviewedById.get(correction.record_id);
+    if (!reviewedRecord || !boundaryById.has(correction.record_id)) {
+      fail(`${correction.record_id} is missing from boundary decision artifact`);
+    }
+    boundaryById.set(correction.record_id, {
+      record_id: correction.record_id,
+      decision: reviewedRecord.boundary_review.decision,
+      classification: reviewedRecord.boundary_review.classification,
+      rationale: reviewedRecord.boundary_review.rationale,
+      pairwise: reviewedRecord.boundary_review.pairwise,
+    });
+  }
+  next.records = next.records.map((record) => boundaryById.get(record.record_id) ?? record);
+  next.source.canonical_records_sha256 = manifest.prospective_canonical_records_sha256;
+  return next;
+}
+
+async function promoteFiles(files) {
+  const entries = [...files.entries()];
+  const originals = await Promise.all(entries.map(async ([filePath]) => ({
+    filePath,
+    bytes: await readFile(filePath),
+  })));
+  try {
+    for (const [filePath, bytes] of entries) {
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, bytes);
+    }
+  } catch (error) {
+    await Promise.all(originals.map(({ filePath, bytes }) => writeFile(filePath, bytes)));
+    throw error;
+  }
+}
+
 function validateManifest(manifest) {
   if (manifest.schema_version !== '1'
     || manifest.contract_version !== CORRECTION_MANIFEST_CONTRACT_VERSION) {
@@ -363,6 +807,7 @@ function validateManifest(manifest) {
     if (!Array.isArray(correction.removed_sense_ids) || correction.removed_sense_ids.length === 0) {
       fail(`${label}.removed_sense_ids must identify the reviewed redundant sense(s)`);
     }
+    validateCorrectionRecordBindings(correction, label);
     if (!correction.semantic_review || typeof correction.semantic_review !== 'object') {
       fail(`${label}.semantic_review must contain explicit boundary, POS, expression, and relation decisions`);
     }
@@ -396,7 +841,7 @@ function appendCorrectionHistory(reviewPass, manifest) {
   reviewPass.correction_count = reviewPass.correction_history.length;
 }
 
-async function applyCorrections({
+export async function applyCorrections({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   correctionManifestPath,
@@ -416,146 +861,113 @@ async function applyCorrections({
   validateManifest(manifest);
 
   const canonicalDigest = canonicalRecordsSha256(canonical.records);
-  if (canonicalDigest !== manifest.prospective_canonical_records_sha256) {
-    fail('canonical input does not match correction manifest prospective digest');
-  }
-  if (decisionSource.source_id !== manifest.decision_source_id) {
-    fail('decision source id does not match correction manifest.decision_source_id');
-  }
-  const oldSourceDigest = decisionSource.source?.canonical_records_sha256;
-  const alreadyApplied = oldSourceDigest === manifest.prospective_canonical_records_sha256;
-  if (oldSourceDigest !== manifest.base_canonical_records_sha256 && !alreadyApplied) {
-    fail('decision source does not point at the correction manifest base or prospective digest');
-  }
-  if (alreadyApplied && !amendExisting) {
+  const {
+    mode,
+    replacements,
+    baseRecords,
+    prospectiveRecords,
+    prospectiveDigest,
+  } = buildProspectiveRecords(
+    canonical,
+    manifest,
+    canonicalDigest,
+  );
+  if (mode === 'prospective' && !amendExisting) {
     fail('correction manifest has already been applied; use --amend-existing=true only to rebind its explicit decision evidence');
   }
-  if (alreadyApplied
-    && ![
-      manifest.previous_manifest_sha256,
-      manifest.previous_correction_source_sha256,
-      sha256Json(manifest),
-      correctionDecisionDigest(manifest),
-    ].includes(decisionSource.correction_source?.sha256)) {
-    fail('existing correction source is not the manifest revision being amended');
-  }
-  const canonicalById = new Map(canonical.records.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
-  const authoredReview = decisionSource.authored_review;
-  const authoredById = new Map(authoredReview.records.map((record) => [record.record_id, record]));
 
-  for (const correction of manifest.corrections) {
-    const record = canonicalById.get(correction.record_id);
-    const authoredRecord = authoredById.get(correction.record_id);
-    if (!record || !authoredRecord) fail(`${correction.record_id} is missing from canonical or authored review`);
-    const expectedAuthoredDigest = alreadyApplied
-      ? correction.after_record_sha256
-      : correction.before_record_sha256;
-    if (authoredRecord.record_sha256 !== expectedAuthoredDigest) {
-      fail(`${correction.record_id} authored review is not at the manifest ${alreadyApplied ? 'prospective' : 'base'} revision`);
-    }
-    if (sha256Json(record) !== correction.after_record_sha256) {
-      fail(`${correction.record_id} canonical content does not match the manifest after digest`);
-    }
-    const presentRemovedSenseIds = correction.removed_sense_ids.filter((senseId) => (
-      record.senses.some((sense) => sense.id === senseId)
-    ));
-    if (presentRemovedSenseIds.length > 0) fail(`${correction.record_id} still contains a reviewed redundant sense`);
-    authoredById.set(
-      correction.record_id,
-      replaceRecordReview(authoredRecord, record, correction, decisionSource.source_id),
+  const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'typewriter-semantic-correction-'));
+  const temporaryCanonicalDirectory = path.join(temporaryRoot, 'canonical');
+  const temporaryDecisionSourcePath = path.join(temporaryRoot, 'decision-source.json');
+  const temporaryBoundaryDecisionsPath = path.join(temporaryRoot, 'boundary-decisions.json');
+  const temporaryReviewOutputPath = path.join(temporaryRoot, 'canonical-semantic-review.json');
+  const temporaryCoverageOutputPath = path.join(temporaryRoot, 'canonical-semantic-coverage.json');
+  const temporaryAuditOutputPath = path.join(temporaryRoot, 'canonical-semantic-audit.json');
+
+  try {
+    const canonicalFiles = await writeCanonicalSnapshot({
+      canonicalDirectory,
+      canonical,
+      replacements,
+      outputDirectory: temporaryCanonicalDirectory,
+    });
+    const prepared = prepareDecisionSource({
+      decisionSource,
+      manifest,
+      prospectiveRecords,
+      correctionManifestPath,
+    });
+    await writeFile(
+      temporaryDecisionSourcePath,
+      `${JSON.stringify(prepared.decisionSource, null, 2)}\n`,
+      'utf8',
     );
-  }
-
-  authoredReview.records = authoredReview.records.map((record) => authoredById.get(record.record_id) ?? record);
-  authoredReview.source.canonical_records_sha256 = canonicalDigest;
-  authoredReview.record_count = canonical.records.length;
-  authoredReview.sense_count = canonical.records.reduce((sum, recordInfo) => sum + recordInfo.record.senses.length, 0);
-  authoredReview.review_pass.record_count = authoredReview.record_count;
-  authoredReview.review_pass.sense_count = authoredReview.sense_count;
-  if (alreadyApplied) {
-    const correctionKeys = new Map(
-      manifest.corrections.map((correction) => [
-        `${correction.record_id}:${correction.after_record_sha256}`,
-        correction,
-      ]),
+    const generated = await rebuildSemanticEvidence({
+      canonicalDirectory: temporaryCanonicalDirectory,
+      decisionSourceInputPath: temporaryDecisionSourcePath,
+      reviewOutputPath: temporaryReviewOutputPath,
+      coverageOutputPath: temporaryCoverageOutputPath,
+      auditOutputPath: temporaryAuditOutputPath,
+    });
+    const semanticAudit = await readSemanticAuditArtifact(temporaryAuditOutputPath);
+    await validateDatasetDirectory(temporaryCanonicalDirectory, {
+      checkPilotCompleteness: true,
+      requireSemanticAudit: true,
+      semanticAudit,
+      semanticAuditPath: temporaryAuditOutputPath,
+    });
+    const semanticAuditBytes = await readFile(temporaryAuditOutputPath);
+    const semanticAuditDigest = sha256Bytes(semanticAuditBytes);
+    if (semanticAuditDigest !== manifest.prospective_outputs.semantic_audit_sha256) {
+      fail(`rebuilt semantic audit does not match the correction manifest prospective output digest (actual ${semanticAuditDigest})`);
+    }
+    const liveAdmission = validateCorrectionWithLiveProducer({
+      manifest,
+      baseRecords,
+      prospectiveRecords,
+      semanticAudit,
+    });
+    const preparedBoundaryDecisions = prepareBoundaryDecisions(
+      boundaryDecisions,
+      manifest,
+      prepared.decisionSource,
     );
-    authoredReview.review_pass.correction_history = authoredReview.review_pass.correction_history.map((history) => {
-      const correction = correctionKeys.get(`${history.record_id}:${history.after_record_sha256}`);
-      return correction
-        ? {
-          ...history,
-          source_revision: manifest.source_revision,
-          rationale: correction.rationale,
-          boundary_decision: correction.boundary_decision,
-        }
-        : history;
-    });
-    authoredReview.review_pass.boundary_decision_history = authoredReview.review_pass.boundary_decision_history.map((history) => {
-      const correction = correctionKeys.get(`${history.record_id}:${history.after_record_sha256}`);
-      return correction
-        ? {
-          ...history,
-          decision: correction.boundary_decision,
-          rationale: correction.semantic_review.boundary.rationale,
-        }
-        : history;
-    });
-    authoredReview.review_pass.correction_count = authoredReview.review_pass.correction_history.length;
-  } else {
-    appendCorrectionHistory(authoredReview.review_pass, manifest);
+    await writeFile(
+      temporaryBoundaryDecisionsPath,
+      `${JSON.stringify(preparedBoundaryDecisions, null, 2)}\n`,
+      'utf8',
+    );
+
+    const promotionFiles = new Map();
+    for (const [temporaryPath] of canonicalFiles) {
+      const relativePath = path.relative(temporaryCanonicalDirectory, temporaryPath);
+      const targetPath = canonicalDirectory.endsWith('.jsonl')
+        ? canonicalDirectory
+        : path.join(canonicalDirectory, relativePath);
+      promotionFiles.set(targetPath, await readFile(temporaryPath));
+    }
+    promotionFiles.set(decisionSourcePath, await readFile(temporaryDecisionSourcePath));
+    promotionFiles.set(boundaryDecisionsPath, await readFile(temporaryBoundaryDecisionsPath));
+    promotionFiles.set(reviewOutputPath, await readFile(temporaryReviewOutputPath));
+    promotionFiles.set(coverageOutputPath, await readFile(temporaryCoverageOutputPath));
+    promotionFiles.set(auditOutputPath, semanticAuditBytes);
+    await promoteFiles(promotionFiles);
+
+    return {
+      decisionSourcePath,
+      correctionManifestPath,
+      inputRevision: mode,
+      amendExisting: prepared.sourceAtProspective,
+      canonicalRecordsSha256: prospectiveDigest,
+      recordCount: generated.recordCount,
+      senseCount: generated.senseCount,
+      correctionCount: manifest.corrections.length,
+      admissionStatus: liveAdmission.status,
+      producerBatchId: liveAdmission.batchId,
+    };
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
   }
-  authoredReview.review_pass.correction_source = {
-    kind: 'separately-authored-correction-manifest',
-    path: path.relative(path.resolve(SCRIPT_DIRECTORY, '../..'), correctionManifestPath),
-    sha256: correctionDecisionDigest(manifest),
-    source_revision: manifest.source_revision,
-  };
-
-  decisionSource.source.canonical_records_sha256 = canonicalDigest;
-  decisionSource.authored_review = authoredReview;
-  decisionSource.authored_review_sha256 = sha256Json(authoredReview);
-  decisionSource.correction_source = authoredReview.review_pass.correction_source;
-  await writeFile(decisionSourcePath, `${JSON.stringify(decisionSource, null, 2)}\n`, 'utf8');
-
-  const generated = await rebuildSemanticEvidence({
-    canonicalDirectory,
-    decisionSourceInputPath: decisionSourcePath,
-    reviewOutputPath,
-    coverageOutputPath,
-    auditOutputPath,
-  });
-
-  const expectedBoundarySourceDigest = alreadyApplied
-    ? manifest.prospective_canonical_records_sha256
-    : manifest.base_canonical_records_sha256;
-  if (boundaryDecisions.source?.canonical_records_sha256 !== expectedBoundarySourceDigest) {
-    fail('boundary decision artifact does not point at the correction manifest expected digest');
-  }
-  const boundaryById = new Map(boundaryDecisions.records.map((record) => [record.record_id, record]));
-  for (const correction of manifest.corrections) {
-    const reviewedRecord = authoredById.get(correction.record_id);
-    if (!boundaryById.has(correction.record_id)) fail(`${correction.record_id} is missing from boundary decision artifact`);
-    boundaryById.set(correction.record_id, {
-      record_id: correction.record_id,
-      decision: reviewedRecord.boundary_review.decision,
-      classification: reviewedRecord.boundary_review.classification,
-      rationale: reviewedRecord.boundary_review.rationale,
-      pairwise: reviewedRecord.boundary_review.pairwise,
-    });
-  }
-  boundaryDecisions.records = boundaryDecisions.records.map((record) => boundaryById.get(record.record_id) ?? record);
-  boundaryDecisions.source.canonical_records_sha256 = canonicalDigest;
-  await writeFile(boundaryDecisionsPath, `${JSON.stringify(boundaryDecisions, null, 2)}\n`, 'utf8');
-
-  return {
-    decisionSourcePath,
-    correctionManifestPath,
-    amendExisting: alreadyApplied,
-    canonicalRecordsSha256: canonicalDigest,
-    recordCount: generated.recordCount,
-    senseCount: generated.senseCount,
-    correctionCount: manifest.corrections.length,
-  };
 }
 
 function parseArguments(argv) {

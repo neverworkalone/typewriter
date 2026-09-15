@@ -6,7 +6,7 @@
   "decision_source_id": "canonical-semantic-decision-source-20260914",
   "source_revision": "post-merge review of PR #123 for issue #121",
   "previous_manifest_sha256": "6bc57bfb970923d565d26660a195c1cdacea390428561408bdf4245de7645869",
-  "previous_correction_source_sha256": "14cb706c5e41754640002e408097dab95fbad70b431f51dc485c02c488a8056c",
+  "previous_correction_source_sha256": "8312fac4a3c5729e3b45e0b34e6bc89fd46c0a9ada9fa7c780d140ab1a9c0650",
   "base_canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4",
   "prospective_canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
   "base_outputs": {
@@ -19,7 +19,7 @@
     "canonical_import_sha256": "8d3d51bae63503b209e1a7713e8a67fc74616ca03cd80f135a37a0247cf763ed",
     "inventory_sha256": "f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67",
     "canonical_directory_sha256": "122af925cac03ac2782346a534a44602d713986c34924d8a439786a4591cb3e3",
-    "semantic_audit_sha256": "73d818153c3548ca01675195b072e696b6972f3c2818d421c67bd661b61530d4"
+    "semantic_audit_sha256": "e2f13857053e932d6814fafa1eaa16ba329b863e219206c753cf03ad24d4db72"
   },
   "corrections": [
     {
@@ -30,6 +30,8 @@
       "after_record_sha256": "6c102b0785316fe0397d23f96fc027d325cb3ac97898a71ed5d460df448aaf2d",
       "removed_sense_ids": ["w1159-s2"],
       "rationale": "w1159's paper and cloth glosses describe the same cutting tool; the reviewed canonical meaning now covers both materials in one sense.",
+      "before_record": {"id":"w1159","record_type":"entry","role":"start","candidate_id":"w1159","lemma":"가위","search_forms":["가위"],"senses":[{"id":"w1159-s1","pos":"noun","gloss":"종이를 자르는 도구","relations":[{"target":"w244","target_sense":"w244-s1","type":"association","note":"종이와 기록 작업에서 함께 쓰이는 도구로 이어 준다."}]},{"id":"w1159-s2","pos":"noun","gloss":"천을 자르는 도구"}]},
+      "after_record": {"id":"w1159","record_type":"entry","role":"start","candidate_id":"w1159","lemma":"가위","search_forms":["가위"],"senses":[{"id":"w1159-s1","pos":"noun","gloss":"종이나 천 따위를 자르는 도구","relations":[{"target":"w244","target_sense":"w244-s1","type":"association","note":"종이와 기록 작업에서 함께 쓰이는 도구로 이어 준다."}]}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -68,6 +70,8 @@
       "after_record_sha256": "153d0dab0399cc1a382324ff3f663a85fc5702597da3d2879316d4d11be0ed3a",
       "removed_sense_ids": ["w1165-s2"],
       "rationale": "w1165's door and lid glosses describe the same hinge function; the reviewed canonical meaning now covers both uses in one sense.",
+      "before_record": {"id":"w1165","record_type":"entry","role":"start","candidate_id":"w1165","lemma":"경첩","search_forms":["경첩"],"senses":[{"id":"w1165-s1","pos":"noun","gloss":"문을 여닫게 하는 쇠붙이"},{"id":"w1165-s2","pos":"noun","gloss":"뚜껑을 여닫게 하는 쇠붙이"}]},
+      "after_record": {"id":"w1165","record_type":"entry","role":"start","candidate_id":"w1165","lemma":"경첩","search_forms":["경첩"],"senses":[{"id":"w1165-s1","pos":"noun","gloss":"문이나 뚜껑을 여닫게 하는 쇠붙이"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -106,6 +110,8 @@
       "after_record_sha256": "69d787cbbfbb291a718998bd8e071514f4d6aadf6e8840e60abe32ca0bd5d114",
       "removed_sense_ids": ["w1172-s2"],
       "rationale": "w1172's liquid and handle wording describes one ladle; the reviewed canonical meaning now covers the use and physical form together.",
+      "before_record": {"id":"w1172","record_type":"entry","role":"start","candidate_id":"w1172","lemma":"국자","search_forms":["국자"],"senses":[{"id":"w1172-s1","pos":"noun","gloss":"국물을 뜨는 도구"},{"id":"w1172-s2","pos":"noun","gloss":"물을 뜨는 자루 달린 도구"}]},
+      "after_record": {"id":"w1172","record_type":"entry","role":"start","candidate_id":"w1172","lemma":"국자","search_forms":["국자"],"senses":[{"id":"w1172-s1","pos":"noun","gloss":"국물이나 물을 뜨는 자루 달린 도구"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -144,6 +150,8 @@
       "after_record_sha256": "f3b413fbb297cf061e45d864fb9b3016f9bbed033b3d3c474c512c8a1f3748c6",
       "removed_sense_ids": ["w1175-s2"],
       "rationale": "w1175's grass and grain glosses describe the same sickle; the reviewed canonical meaning now covers both materials in one sense.",
+      "before_record": {"id":"w1175","record_type":"entry","role":"start","candidate_id":"w1175","lemma":"낫","search_forms":["낫"],"senses":[{"id":"w1175-s1","pos":"noun","gloss":"풀을 베는 농기구"},{"id":"w1175-s2","pos":"noun","gloss":"곡식을 베는 농기구"}]},
+      "after_record": {"id":"w1175","record_type":"entry","role":"start","candidate_id":"w1175","lemma":"낫","search_forms":["낫"],"senses":[{"id":"w1175-s1","pos":"noun","gloss":"풀이나 곡식을 베는 농기구"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -182,6 +190,8 @@
       "after_record_sha256": "6e339b023d8b84c64f53eeef11e84f479d1ecdf066a9e018975350f8b92568a5",
       "removed_sense_ids": ["w1190-s2"],
       "rationale": "w1190's first gloss was malformed and its two rows only separated floor from chair use; the reviewed canonical meaning is a complete single gloss.",
+      "before_record": {"id":"w1190","record_type":"entry","role":"start","candidate_id":"w1190","lemma":"방석","search_forms":["방석"],"senses":[{"id":"w1190-s1","pos":"noun","gloss":"바닥은 깔개"},{"id":"w1190-s2","pos":"noun","gloss":"의자에 까는 작은 깔개"}]},
+      "after_record": {"id":"w1190","record_type":"entry","role":"start","candidate_id":"w1190","lemma":"방석","search_forms":["방석"],"senses":[{"id":"w1190-s1","pos":"noun","gloss":"바닥이나 의자에 까는 작은 깔개"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -220,6 +230,8 @@
       "after_record_sha256": "0a58514a7fd58c1f67f2f781ccacce84d63cd89340cab074dcc9447eb3be650e",
       "removed_sense_ids": ["w1197-s2"],
       "rationale": "w1197's first gloss was malformed and the two rows only separated picture from photograph use; the reviewed canonical meaning is one complete frame gloss.",
+      "before_record": {"id":"w1197","record_type":"entry","role":"start","candidate_id":"w1197","lemma":"액자","search_forms":["액자"],"senses":[{"id":"w1197-s1","pos":"noun","gloss":"그림는 틀"},{"id":"w1197-s2","pos":"noun","gloss":"사진을 끼워 두는 틀"}]},
+      "after_record": {"id":"w1197","record_type":"entry","role":"start","candidate_id":"w1197","lemma":"액자","search_forms":["액자"],"senses":[{"id":"w1197-s1","pos":"noun","gloss":"그림이나 사진을 끼워 두는 틀"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -258,6 +270,8 @@
       "after_record_sha256": "9ef6f59a01fd458005d02ba1d364973acb5cfb35f9b151768ba05581017b27c0",
       "removed_sense_ids": ["w1217-s2"],
       "rationale": "w1217's soil and leaf glosses describe the same rake; the reviewed canonical meaning now covers both uses in one sense.",
+      "before_record": {"id":"w1217","record_type":"entry","role":"start","candidate_id":"w1217","lemma":"갈퀴","search_forms":["갈퀴"],"senses":[{"id":"w1217-s1","pos":"noun","gloss":"흙을 고르는 농기구"},{"id":"w1217-s2","pos":"noun","gloss":"낙엽을 긁어모으는 농기구"}]},
+      "after_record": {"id":"w1217","record_type":"entry","role":"start","candidate_id":"w1217","lemma":"갈퀴","search_forms":["갈퀴"],"senses":[{"id":"w1217-s1","pos":"noun","gloss":"흙을 고르고 낙엽을 긁어모으는 농기구"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -296,6 +310,8 @@
       "after_record_sha256": "4fc191ea7f50442a9de4602ec09635f25ce2e0f878c6a58a9886a6d089c3cc1b",
       "removed_sense_ids": ["w1230-s2"],
       "rationale": "w1230's two glosses are overlapping paraphrases of one empathetic act; the reviewed canonical meaning combines the shared writer-facing scope.",
+      "before_record": {"id":"w1230","record_type":"entry","role":"start","candidate_id":"w1230","lemma":"공감","search_forms":["공감"],"senses":[{"id":"w1230-s1","pos":"noun","gloss":"남의 마음을 함께 느끼는 일"},{"id":"w1230-s2","pos":"noun","gloss":"처지를 함께 느끼는 일"}]},
+      "after_record": {"id":"w1230","record_type":"entry","role":"start","candidate_id":"w1230","lemma":"공감","search_forms":["공감"],"senses":[{"id":"w1230-s1","pos":"noun","gloss":"남의 마음이나 처지를 함께 느끼는 일"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
@@ -334,6 +350,8 @@
       "after_record_sha256": "4873a01aef4ccd59ae82e3c83f736ae29e4d4dcf77da02457c02cd3152a63b3d",
       "removed_sense_ids": ["w1266-s2"],
       "rationale": "w1266's writing and speech glosses only vary by communication context; the reviewed canonical meaning covers both contexts in one sense.",
+      "before_record": {"id":"w1266","record_type":"entry","role":"start","candidate_id":"w1266","lemma":"주제","search_forms":["주제"],"senses":[{"id":"w1266-s1","pos":"noun","gloss":"글에서 중심이 되는 생각"},{"id":"w1266-s2","pos":"noun","gloss":"말에서 중심이 되는 생각"}]},
+      "after_record": {"id":"w1266","record_type":"entry","role":"start","candidate_id":"w1266","lemma":"주제","search_forms":["주제"],"senses":[{"id":"w1266-s1","pos":"noun","gloss":"글이나 말에서 중심이 되는 생각"}]},
       "semantic_review": {
         "decision_source_id": "canonical-semantic-decision-source-20260914",
         "boundary": {
