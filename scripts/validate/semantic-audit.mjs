@@ -35,6 +35,13 @@ export const SEMANTIC_BOUNDARY_RELATIONSHIPS = Object.freeze([
   'duplicate',
   'nested',
   'usage-variant',
+  'overlapping',
+]);
+const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
+  'duplicate',
+  'nested',
+  'usage-variant',
+  'overlapping',
 ]);
 export const SEMANTIC_BOUNDARY_METHOD = 'gloss-and-usage-pairwise-v2';
 export const SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION = 'lexical-semantic-boundary-decisions-v1';
@@ -565,7 +572,7 @@ function validateBoundaryReview(
   );
   for (const item of pairwise) {
     const mechanicalPair = mechanicalPairsByKey.get(`${item.left_sense_id}:${item.right_sense_id}`);
-    if (!mechanicalPair || !['duplicate', 'nested'].includes(mechanicalPair.relationship)) continue;
+    if (!mechanicalPair || !MECHANICAL_BOUNDARY_RELATIONSHIPS.has(mechanicalPair.relationship)) continue;
     if (item.relationship !== mechanicalPair.relationship) {
       fail(
         `${label}.pairwise for ${item.left_sense_id}/${item.right_sense_id} contradicts the mechanical ${mechanicalPair.relationship} finding`,
@@ -802,24 +809,19 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
     fail(`${label}.review_pass.correction_count does not match correction_history`, 'SEMANTIC_AUDIT_SCOPE');
   }
   const recordsById = new Map(records.map((record) => [record.id, record]));
-  const correctionIds = new Set();
-  const correctionsById = new Map();
+  const correctionKeys = new Set();
+  const correctionsByKey = new Map();
+  const correctionsByRecord = new Map();
   for (const [index, correction] of history.entries()) {
     const correctionLabel = `${label}.review_pass.correction_history[${index}]`;
     requireObject(correction, correctionLabel);
     requireString(correction.record_id, `${correctionLabel}.record_id`);
-    if (correctionIds.has(correction.record_id)) {
-      fail(`${correctionLabel}.record_id is duplicated`, 'SEMANTIC_AUDIT_SCOPE');
-    }
-    correctionIds.add(correction.record_id);
-    correctionsById.set(correction.record_id, correction);
     const record = recordsById.get(correction.record_id);
     if (!record) fail(`${correctionLabel}.record_id is not canonical`, 'SEMANTIC_AUDIT_SCOPE');
     requireDigest(correction.before_record_sha256, `${correctionLabel}.before_record_sha256`);
     requireDigest(correction.after_record_sha256, `${correctionLabel}.after_record_sha256`);
-    if (correction.after_record_sha256 !== sha256Json(record)
-      || correction.before_record_sha256 === correction.after_record_sha256) {
-      fail(`${correctionLabel} is not bound to the repaired canonical record`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+    if (correction.before_record_sha256 === correction.after_record_sha256) {
+      fail(`${correctionLabel} is not bound to a changed canonical record`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     }
     requireString(correction.source_revision, `${correctionLabel}.source_revision`);
     requireString(correction.rationale, `${correctionLabel}.rationale`);
@@ -828,21 +830,51 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
       SEMANTIC_BOUNDARY_DECISIONS,
       `${correctionLabel}.boundary_decision`,
     );
+    const correctionKey = `${correction.record_id}:${correction.after_record_sha256}`;
+    if (correctionKeys.has(correctionKey)) {
+      fail(`${correctionLabel} duplicates a correction revision`, 'SEMANTIC_AUDIT_SCOPE');
+    }
+    correctionKeys.add(correctionKey);
+    correctionsByKey.set(correctionKey, correction);
+    const recordHistory = correctionsByRecord.get(correction.record_id) ?? [];
+    const previousCorrection = recordHistory.at(-1);
+    if (previousCorrection
+      && correction.before_record_sha256 !== previousCorrection.after_record_sha256) {
+      fail(
+        `${correctionLabel}.before_record_sha256 does not continue the previous correction for ${correction.record_id}`,
+        'SEMANTIC_AUDIT_CONTENT_MISMATCH',
+      );
+    }
+    recordHistory.push(correction);
+    correctionsByRecord.set(correction.record_id, recordHistory);
+  }
+  for (const [recordId, recordHistory] of correctionsByRecord.entries()) {
+    const record = recordsById.get(recordId);
+    const lastCorrection = recordHistory.at(-1);
+    if (lastCorrection.after_record_sha256 !== sha256Json(record)) {
+      fail(
+        `${label}.review_pass.correction_history for ${recordId} is not bound to the repaired canonical record`,
+        'SEMANTIC_AUDIT_CONTENT_MISMATCH',
+      );
+    }
   }
   const boundaryHistory = requireArray(
     pass.boundary_decision_history,
     `${label}.review_pass.boundary_decision_history`,
   );
-  const boundaryHistoryIds = new Set();
+  const boundaryHistoryKeys = new Set();
   for (const [index, boundaryChange] of boundaryHistory.entries()) {
     const boundaryLabel = `${label}.review_pass.boundary_decision_history[${index}]`;
     requireObject(boundaryChange, boundaryLabel);
     requireString(boundaryChange.record_id, `${boundaryLabel}.record_id`);
-    if (boundaryHistoryIds.has(boundaryChange.record_id)) {
-      fail(`${boundaryLabel}.record_id is duplicated`, 'SEMANTIC_AUDIT_SCOPE');
+    requireDigest(boundaryChange.before_record_sha256, `${boundaryLabel}.before_record_sha256`);
+    requireDigest(boundaryChange.after_record_sha256, `${boundaryLabel}.after_record_sha256`);
+    const boundaryHistoryKey = `${boundaryChange.record_id}:${boundaryChange.after_record_sha256}`;
+    if (boundaryHistoryKeys.has(boundaryHistoryKey)) {
+      fail(`${boundaryLabel} duplicates a correction revision`, 'SEMANTIC_AUDIT_SCOPE');
     }
-    boundaryHistoryIds.add(boundaryChange.record_id);
-    const correction = correctionsById.get(boundaryChange.record_id);
+    boundaryHistoryKeys.add(boundaryHistoryKey);
+    const correction = correctionsByKey.get(boundaryHistoryKey);
     if (!correction) {
       fail(`${boundaryLabel}.record_id must bind to a reviewed correction`, 'SEMANTIC_AUDIT_BINDING');
     }
@@ -859,7 +891,7 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
       fail(`${boundaryLabel}.rationale must cite the corrected record`, 'SEMANTIC_AUDIT_GENERIC_EVIDENCE');
     }
   }
-  if (boundaryHistoryIds.size !== correctionIds.size) {
+  if (boundaryHistoryKeys.size !== correctionKeys.size) {
     fail(`${label}.review_pass.boundary_decision_history must cover every correction`, 'SEMANTIC_AUDIT_SCOPE');
   }
 }

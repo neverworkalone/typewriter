@@ -6,7 +6,7 @@
   "reviewer": "codex-agent",
   "source": {
     "kind": "canonical-jsonl-record-values",
-    "canonical_records_sha256": "e834096490e008f80671937bd5a417a47d7c9caf208d7fb4274d8fa846a0e0d4"
+    "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f"
   },
   "records": [
     {
@@ -6269,23 +6269,10 @@
     },
     {
       "record_id": "w1159",
-      "decision": "split",
-      "classification": "separated",
-      "rationale": "w1159 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1159-s1",
-          "right_sense_id": "w1159-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "43215d0e674e8e7a6fc6df2222a1b3943b7d3510c764483f6336c6c9c376acc2",
-          "right_gloss_sha256": "abc56627dddf00d4e9345da2e094db3abd885ea4cbbb8b5f203533f53845d5c7",
-          "evidence_basis": "independent comparison found distinct lexical referents or usage conditions",
-          "distinguishing_feature": "referent, event, or grammatical use remains distinct for writers",
-          "rationale": "w1159 w1159-s1 w1159-s2 pair was separately reviewed with glosses 43215d0e674e and abc56627dddf.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1159 boundary merge was explicitly resolved: the paper and cloth uses are one cutting-tool sense.",
+      "pairwise": []
     },
     {
       "record_id": "w1160",
@@ -6324,23 +6311,10 @@
     },
     {
       "record_id": "w1165",
-      "decision": "split",
-      "classification": "separated",
-      "rationale": "w1165 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1165-s1",
-          "right_sense_id": "w1165-s2",
-          "relationship": "distinct",
-          "decision": "retain",
-          "left_gloss_sha256": "e277c566c722f1fb78dc616b18e577c3d3f8a73314b7384d6e67303846fd1a1c",
-          "right_gloss_sha256": "ef70a52eb1b98c0d0af2bf5fdae0624a519094ee5c6a20e6a33d5611a693fec0",
-          "evidence_basis": "independent comparison found distinct lexical referents or usage conditions",
-          "distinguishing_feature": "referent, event, or grammatical use remains distinct for writers",
-          "rationale": "w1165 w1165-s1 w1165-s2 pair was separately reviewed with glosses e277c566c722 and ef70a52eb1b9.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1165 boundary merge was explicitly resolved: door and lid are one hinge use.",
+      "pairwise": []
     },
     {
       "record_id": "w1166",
@@ -6392,23 +6366,10 @@
     },
     {
       "record_id": "w1172",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1172 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1172-s1",
-          "right_sense_id": "w1172-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "19ed1f2f36d75e01abbaeb293cd5a21cf65f7b1274ab3b282b98836a64dfdc2b",
-          "right_gloss_sha256": "ed938b80c03d6337bbf95e4eca4fed0167e12f63d4ee0ae2a0463f445fc7eeb2",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1172 w1172-s1 w1172-s2 pair was separately reviewed with glosses 19ed1f2f36d7 and ed938b80c03d.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1172 boundary merge was explicitly resolved: the liquid use and handled form describe one ladle.",
+      "pairwise": []
     },
     {
       "record_id": "w1173",
@@ -6432,23 +6393,10 @@
     },
     {
       "record_id": "w1175",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1175 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1175-s1",
-          "right_sense_id": "w1175-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "1eda03c7687ec91c1cd334ce0d812b7b3f0eb565ef8ae045b3ee87c471179433",
-          "right_gloss_sha256": "a304a6ec65bdd1c25fb50a4ec932bd7e15a7e850ebb2552800ad9179b6aad818",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1175 w1175-s1 w1175-s2 pair was separately reviewed with glosses 1eda03c7687e and a304a6ec65bd.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1175 boundary merge was explicitly resolved: grass and grain are one sickle use.",
+      "pairwise": []
     },
     {
       "record_id": "w1176",
@@ -6575,23 +6523,10 @@
     },
     {
       "record_id": "w1190",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1190 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1190-s1",
-          "right_sense_id": "w1190-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "b4122361ad8b911320d3e67a5260cf58dca37514594aac8ab0bac37bb29c5159",
-          "right_gloss_sha256": "793c6039394d5cf82ae91f31360b78541b4d3fbc37dfc1b9368ef112ed3cd7ab",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1190 w1190-s1 w1190-s2 pair was separately reviewed with glosses b4122361ad8b and 793c6039394d.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1190 boundary merge was explicitly resolved after correcting the malformed fragment and removing the floor/chair usage split.",
+      "pairwise": []
     },
     {
       "record_id": "w1191",
@@ -6637,23 +6572,10 @@
     },
     {
       "record_id": "w1197",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1197 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1197-s1",
-          "right_sense_id": "w1197-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "bbfeee640be2245878a90d344acbbca772c74e8661db55c792fb7646ddad1644",
-          "right_gloss_sha256": "b08241460b877814f552f0ad29917906ed202a4994bacdb97b035a5745a802fb",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1197 w1197-s1 w1197-s2 pair was separately reviewed with glosses bbfeee640be2 and b08241460b87.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1197 boundary merge was explicitly resolved after correcting the malformed fragment and removing the picture/photograph usage split.",
+      "pairwise": []
     },
     {
       "record_id": "w1198",
@@ -6827,23 +6749,10 @@
     },
     {
       "record_id": "w1217",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1217 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1217-s1",
-          "right_sense_id": "w1217-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "efefb1dd72d99a2ede48b8ae9425191ba47310484d8850caa5530f81641f0895",
-          "right_gloss_sha256": "8296318d3dcdefc87274e3ed5a0a7ed2efb5d7660bf8f3e1dc45ed03a46f2dbb",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1217 w1217-s1 w1217-s2 pair was separately reviewed with glosses efefb1dd72d9 and 8296318d3dcd.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1217 boundary merge was explicitly resolved: soil and leaf uses are one rake use.",
+      "pairwise": []
     },
     {
       "record_id": "w1218",
@@ -6970,23 +6879,10 @@
     },
     {
       "record_id": "w1230",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1230 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1230-s1",
-          "right_sense_id": "w1230-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "101206b8ccaf563ab9aba357facf23c348ad7ae952a3ff671f956baf780b01f4",
-          "right_gloss_sha256": "c68ef248c9e5f87b5fb369db0e07e8078eed1db84973d208af446a42da07043d",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1230 w1230-s1 w1230-s2 pair was separately reviewed with glosses 101206b8ccaf and c68ef248c9e5.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1230 boundary merge was explicitly resolved: the two glosses are overlapping paraphrases of one empathetic act.",
+      "pairwise": []
     },
     {
       "record_id": "w1231",
@@ -7375,23 +7271,10 @@
     },
     {
       "record_id": "w1266",
-      "decision": "split",
-      "classification": "coordinated",
-      "rationale": "w1266 boundary decision was authored from each sense gloss and pairwise writer-facing usage evidence; no current sense count was used as the decision source.",
-      "pairwise": [
-        {
-          "left_sense_id": "w1266-s1",
-          "right_sense_id": "w1266-s2",
-          "relationship": "usage-variant",
-          "decision": "retain",
-          "left_gloss_sha256": "032df0a1ac1f5da7b3c0161ce9656abe0a743036fdef8877766dfb301b67cd1f",
-          "right_gloss_sha256": "2332667ca2b2dc5168043fa368d601a732de8e8d4cc0281e80d8c0a6958bd827",
-          "evidence_basis": "independent comparison found distinct physical, figurative, or contextual writer uses",
-          "distinguishing_feature": "physical and abstract/contextual uses have different writer-facing conditions",
-          "rationale": "w1266 w1266-s1 w1266-s2 pair was separately reviewed with glosses 032df0a1ac1f and 2332667ca2b2.",
-          "decision_source_id": "canonical-semantic-decision-source-20260914"
-        }
-      ]
+      "decision": "retain",
+      "classification": "atomic",
+      "rationale": "w1266 boundary merge was explicitly resolved: writing and speech contexts do not establish separate senses.",
+      "pairwise": []
     },
     {
       "record_id": "w1267",

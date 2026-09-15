@@ -1,4 +1,4 @@
-# Lexical rule inventory — M2 to PR #120
+# Lexical rule inventory — M2 to PR #123
 
 이 문서는 M2부터 PR #120까지 Typewriter의 단어 생산·편집·감사·admission·회귀 규칙을 분류한 기록이다. 규칙이 특정 `m5-*` 파일이나 과거 record ID에 등장했다는 이유만으로 batch policy가 되지는 않는다. 현재와 미래의 단어에 적용되어야 하는 규칙은 shared implementation에만 둔다.
 
@@ -51,7 +51,7 @@ SQLite → search → package → clean-checkout validation
 
 ## Full-canonical re-audit
 
-PR #120 이후 canonical snapshot은 1,320 records / 1,278 starts / 42 reference-only / 1,588 senses다. [`data/validation/canonical-semantic-decision-source.json`](../data/validation/canonical-semantic-decision-source.json), [`data/validation/canonical-semantic-review.json`](../data/validation/canonical-semantic-review.json), [`canonical-semantic-coverage.json`](../data/validation/canonical-semantic-coverage.json), [`canonical-semantic-audit.json`](../data/validation/canonical-semantic-audit.json)이 같은 canonical content digest에 결속되어 있으며, review pass는 모든 record/sense를 포함하고 open blocker 0건을 요구한다.
+PR #123 post-merge correction 이후 canonical snapshot은 1,320 records / 1,278 starts / 42 reference-only / 1,579 senses다. [`data/validation/canonical-semantic-decision-source.json`](../data/validation/canonical-semantic-decision-source.json), [`data/validation/canonical-semantic-review.json`](../data/validation/canonical-semantic-review.json), [`canonical-semantic-coverage.json`](../data/validation/canonical-semantic-coverage.json), [`canonical-semantic-audit.json`](../data/validation/canonical-semantic-audit.json)이 같은 canonical content digest에 결속되어 있으며, review pass는 모든 record/sense를 포함하고 open blocker 0건을 요구한다. 기계적으로 확정 가능한 duplicate/nested/usage-variant/overlapping pair는 authored `distinct`/`retain`으로 덮을 수 없고, 변경된 record는 [`canonical-semantic-correction-manifest.json`](../data/validation/canonical-semantic-correction-manifest.json)의 별도 decision evidence와 correction history를 요구한다.
 
 기존 데이터 수정은 silent mutation이 아니다. 변경이 필요한 경우 separately authored `corrected` decision과 correction history가 있어야 하며, 새 audit가 수정 후 digest를 다시 확인한다. 기존 start를 줄이거나 record ID에 따라 검사를 생략하지 않는다.
 

@@ -713,6 +713,9 @@ export async function validateM511Promotion({
   if (!importOutput || typeof importOutput.path !== 'string' || typeof importOutput.sha256 !== 'string') {
     fail('promotion evidence is missing the canonical import output', 'OUTPUT_BINDING_MISMATCH');
   }
+  if (importOutput.sha256 !== manifest.sources?.reviewed_import?.sha256) {
+    fail('canonical import output is not bound to the reviewed import source', 'OUTPUT_BINDING_MISMATCH');
+  }
   const resolvedImportPath = repositoryPath(importOutput.path, 'canonical import output');
   const importBytes = await readFile(resolvedImportPath);
   if (sha256(importBytes) !== importOutput.sha256) {
@@ -732,6 +735,28 @@ export async function validateM511Promotion({
   const finalById = new Map(finalRecords.map((record) => [record.id, record]));
   for (const record of importedRecords) {
     assertSummary(finalById.get(record.id), record, `promoted canonical ${record.id}`);
+  }
+
+  const semanticAuditOutput = evidence.outputs?.semantic_audit;
+  if (!semanticAuditOutput
+    || typeof semanticAuditOutput.path !== 'string'
+    || typeof semanticAuditOutput.sha256 !== 'string') {
+    fail('promotion evidence is missing the complete semantic audit output', 'OUTPUT_BINDING_MISMATCH');
+  }
+  if (semanticAuditOutput.sha256 !== manifest.sources?.semantic_audit?.sha256) {
+    fail('complete semantic audit output is not bound to the semantic audit source', 'OUTPUT_BINDING_MISMATCH');
+  }
+  const resolvedSemanticAuditOutputPath = repositoryPath(
+    semanticAuditOutput.path,
+    'semantic audit output',
+  );
+  if (resolvedSemanticAuditOutputPath !== resolvedSemanticAuditPath) {
+    fail('complete semantic audit output path drifted from the validated audit', 'OUTPUT_BINDING_MISMATCH');
+  }
+  if (semanticAuditOutput.sha256 !== sha256(semanticAuditBytes)
+    || semanticAuditOutput.record_count !== semanticAudit.record_count
+    || semanticAuditOutput.sense_count !== semanticAudit.sense_count) {
+    fail('complete semantic audit output digest or counts drifted', 'OUTPUT_DIGEST_MISMATCH');
   }
 
   const canonicalDigest = await hashCanonicalDirectory(resolvedCanonicalDirectory);

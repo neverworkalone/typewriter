@@ -20,16 +20,16 @@ The shared implementation is:
 - `scripts/validate/lexical-quality.mjs` — lexical invariants, writer-domain
   sense-boundary observations, placeholder detection, and the complete-canonical
   audit report;
-- `scripts/validate/sense-boundary.mjs` — the common mechanical duplicate and
-  nested-gloss pair inspection used by both the complete audit and every live
-  semantic review. Authored `distinct`/`retain` decisions cannot override a
-  mechanical blocker;
+- `scripts/validate/sense-boundary.mjs` — the common mechanical duplicate,
+  nested-gloss, high-confidence usage-frame, and paraphrase-overlap inspection
+  used by both the complete audit and every live semantic review. Authored
+  `distinct`/`retain` decisions cannot override a mechanical blocker;
 - `scripts/batch/lexical-admission.mjs` — the batch-neutral producer/admission
   boundary that validates candidate bodies, reviewed canonical bodies, and the
   complete prospective dataset;
 - `scripts/batch/lexical-production.mjs` — the batch-neutral candidate intake,
   source-bound semantic review, selection, and admission orchestration;
-- `scripts/validate/semantic-audit.mjs` — the v2 contract that keeps
+- `scripts/validate/semantic-audit.mjs` — the v3 contract that keeps
   deterministic content coverage separate from explicitly authored semantic
   decisions. `buildSemanticCoverageArtifact()` may collect facts, but it never
   creates pass/boundary/relation decisions;
@@ -45,6 +45,10 @@ The shared implementation is:
 - `scripts/validate/rebuild-semantic-evidence.mjs` — rebuilds deterministic
   coverage from that decision source only and fails when the authored source is
   missing or replaced by a legacy/replay review;
+- `scripts/validate/apply-semantic-corrections.mjs` — consumes a separately
+  authored correction manifest, validates explicit boundary/POS/expression/
+  relation decisions, and rebuilds the complete audit without manufacturing
+  semantic pass rationales;
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 
@@ -75,6 +79,13 @@ workflows must also call `lexical-production` with complete candidate coverage,
 source-bound semantic review rows, and selection evidence.
 Batch modules may configure counts and IDs, but may not replace these shared
 stages with a batch-specific quality gate.
+
+The common lexical-quality audit also rejects malformed two-token topic
+fragments and mechanical sense pairs in every existing canonical record and
+every future prospective canonical dataset. For a post-admission correction,
+the correction manifest is an input artifact rather than a generated verdict;
+its authored decision rows are digest-bound before the canonical audit and
+derived M5 evidence are refreshed.
 
 The conjunction policy is intentionally semantic rather than an ID allowlist.
 Same-domain and narrowly justified common-domain coordination is recorded as a
