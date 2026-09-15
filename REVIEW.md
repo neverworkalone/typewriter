@@ -148,6 +148,22 @@ threads and review activity needed to understand the current state.
 If the current head has not materially changed outside the fixes, do not
 restart a full first-pass review.
 
+## Two-reviewer approval gate
+
+Every PR requires two independent reviews on the exact same HEAD.
+
+- Approval state is bound to the HEAD SHA. Any new commit resets it to `0`.
+- The first reviewer reviews normally. If no blocker remains and required
+  validation passes, record `+1` and do not merge.
+- The second reviewer reviews the same HEAD independently. If no blocker
+  remains and required validation passes, record `+2` and merge.
+- If either reviewer finds a blocker, do not approve or merge. After a fix
+  creates a new commit, review restarts from `0`.
+- Both reviewers use the same scope and standards. Do not divide review
+  responsibility or assume another reviewer already covered an area.
+
+Required sequence: `0 -> +1 -> +2 -> merge`.
+
 ## Stop condition
 
 Stop expanding review context once:
