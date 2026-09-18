@@ -22,6 +22,7 @@ import {
   canonicalRecordsSha256,
   readSemanticAuditArtifact,
   sha256Json,
+  serializeSemanticDecisionSource,
 } from './semantic-audit.mjs';
 import { validateLexicalAddition } from '../batch/lexical-admission.mjs';
 import {
@@ -914,7 +915,7 @@ export async function applyCorrections({
     });
     await writeFile(
       temporaryDecisionSourcePath,
-      `${JSON.stringify(prepared.decisionSource, null, 2)}\n`,
+      serializeSemanticDecisionSource(prepared.decisionSource),
       'utf8',
     );
     const generated = await rebuildSemanticEvidence({

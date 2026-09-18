@@ -341,6 +341,10 @@ export function serializeSemanticAuditArtifact(artifact) {
   return Buffer.from(`${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
 }
 
+export function serializeSemanticDecisionSource(decisionSource) {
+  return Buffer.from(`${JSON.stringify(decisionSource, null, 2)}\n`, 'utf8');
+}
+
 function assertExact(actual, expected, label, code = 'SEMANTIC_AUDIT_BINDING') {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     fail(`${label} does not match the canonical source`, code);

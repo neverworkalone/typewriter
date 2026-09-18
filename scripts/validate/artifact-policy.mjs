@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,7 +24,10 @@ function fail(message, code = 'ARTIFACT_POLICY_ERROR') {
 
 function patternRegExp(pattern) {
   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/gu, '\\$&');
-  return new RegExp(`^${escaped.replaceAll('*', '[^/]*')}$`, 'u');
+  return new RegExp(
+    `^${escaped.replaceAll('**', '__GLOBSTAR__').replaceAll('*', '[^/]*').replaceAll('__GLOBSTAR__', '.*')}$`,
+    'u',
+  );
 }
 
 function matchesPattern(filePath, pattern) {
@@ -50,28 +53,40 @@ function gitStatus(repositoryDirectory) {
   }).trim();
 }
 
-async function existingProjectionFiles(repositoryDirectory, patterns) {
+async function listFiles(directory, relativeDirectory = '') {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
   const files = [];
-  for (const pattern of patterns) {
-    const wildcardIndex = pattern.indexOf('*');
-    if (wildcardIndex < 0) {
-      try {
-        await stat(path.join(repositoryDirectory, pattern));
-        files.push(pattern);
-      } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
-      }
-      continue;
-    }
-
-    const directory = pattern.slice(0, wildcardIndex).replace(/\/$/u, '');
-    const entries = await readdir(path.join(repositoryDirectory, directory));
-    for (const entry of entries) {
-      const relativePath = path.posix.join(directory, entry);
-      if (matchesPattern(relativePath, pattern)) files.push(relativePath);
+  for (const entry of entries) {
+    const relativePath = path.posix.join(relativeDirectory, entry.name);
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await listFiles(absolutePath, relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
     }
   }
-  return files.sort();
+  return files;
+}
+
+async function existingProjectionFiles(
+  repositoryDirectory,
+  patterns,
+  excludedPatterns = [],
+  projectionRoles = {},
+) {
+  const files = await listFiles(path.join(repositoryDirectory, 'data'), 'data');
+  const artifactRoles = await artifactRolesForFiles(repositoryDirectory, files, projectionRoles);
+  return files
+    .filter((filePath) => patterns.some((pattern) => matchesPattern(filePath, pattern))
+      || artifactRoles.has(filePath))
+    .filter((filePath) => !excludedPatterns.some((pattern) => matchesPattern(filePath, pattern)))
+    .sort();
 }
 
 export async function readArtifactPolicy(policyPath = DEFAULT_POLICY_PATH) {
@@ -85,18 +100,62 @@ export async function readArtifactPolicy(policyPath = DEFAULT_POLICY_PATH) {
   }
 }
 
+export function detectProjectionRole(value, projectionRoles = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const contractVersion = value.contract_version;
+  if (projectionRoles.semanticAuditContractVersions?.includes(contractVersion)) {
+    return 'semantic-audit';
+  }
+  if (projectionRoles.semanticCoverageContractVersions?.includes(contractVersion)) {
+    return 'semantic-coverage';
+  }
+  if (projectionRoles.semanticReviewContractVersions?.includes(contractVersion)) {
+    return 'semantic-review';
+  }
+  if (projectionRoles.targetInventoryIds?.includes(value.inventory_id)
+    && value.canonical_snapshot
+    && Array.isArray(value.entries)) {
+    return 'target-inventory';
+  }
+  return undefined;
+}
+
+async function artifactRolesForFiles(repositoryDirectory, files, projectionRoles) {
+  const roles = new Map();
+  for (const filePath of files) {
+    if (!filePath.endsWith('.json')) continue;
+    try {
+      const value = JSON.parse(await readFile(path.join(repositoryDirectory, filePath), 'utf8'));
+      const role = detectProjectionRole(value, projectionRoles);
+      if (role) roles.set(filePath, role);
+    } catch (error) {
+      // JSON/schema validation owns malformed durable artifacts; path policy still applies.
+      if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
+    }
+  }
+  return roles;
+}
+
 export function classifyTrackedArtifacts(
   files,
   {
     deterministicProjectionPatterns,
+    relocatableProjectionPatterns = [],
+    durableProjectionPatterns = [],
     durableTrackedPatterns,
     protectedRoots,
+    artifactRoles = new Map(),
   },
 ) {
   const generated = [];
   const unclassified = [];
   for (const filePath of files) {
-    if (deterministicProjectionPatterns.some((pattern) => matchesPattern(filePath, pattern))) {
+    if (durableProjectionPatterns.some((pattern) => matchesPattern(filePath, pattern))) {
+      continue;
+    }
+    if (deterministicProjectionPatterns.some((pattern) => matchesPattern(filePath, pattern))
+      || relocatableProjectionPatterns.some((pattern) => matchesPattern(filePath, pattern))
+      || artifactRoles.has(filePath)) {
       generated.push(filePath);
       continue;
     }
@@ -118,6 +177,8 @@ export async function validateArtifactPolicy({
   const requiredKeys = [
     'protected_roots',
     'deterministic_projection_patterns',
+    'relocatable_projection_patterns',
+    'durable_projection_patterns',
     'durable_tracked_patterns',
   ];
   for (const key of requiredKeys) {
@@ -125,11 +186,39 @@ export async function validateArtifactPolicy({
       fail(`artifact policy ${key} must be a non-empty array`, 'POLICY_SHAPE');
     }
   }
+  if (!policy.projection_roles || typeof policy.projection_roles !== 'object') {
+    fail('artifact policy projection_roles must be an object', 'POLICY_SHAPE');
+  }
+  const projectionRoleKeys = [
+    'semantic_audit_contract_versions',
+    'semantic_coverage_contract_versions',
+    'semantic_review_contract_versions',
+    'target_inventory_ids',
+  ];
+  for (const key of projectionRoleKeys) {
+    if (!Array.isArray(policy.projection_roles[key]) || policy.projection_roles[key].length === 0) {
+      fail(`artifact policy projection_roles.${key} must be a non-empty array`, 'POLICY_SHAPE');
+    }
+  }
 
+  const projectionRoles = {
+    semanticAuditContractVersions: policy.projection_roles.semantic_audit_contract_versions,
+    semanticCoverageContractVersions: policy.projection_roles.semantic_coverage_contract_versions,
+    semanticReviewContractVersions: policy.projection_roles.semantic_review_contract_versions,
+    targetInventoryIds: policy.projection_roles.target_inventory_ids,
+  };
+  const artifactRoles = await artifactRolesForFiles(
+    repositoryDirectory,
+    tracked,
+    projectionRoles,
+  );
   const { generated, unclassified } = classifyTrackedArtifacts(tracked, {
     deterministicProjectionPatterns: policy.deterministic_projection_patterns,
+    relocatableProjectionPatterns: policy.relocatable_projection_patterns,
+    durableProjectionPatterns: policy.durable_projection_patterns,
     durableTrackedPatterns: policy.durable_tracked_patterns,
     protectedRoots: policy.protected_roots,
+    artifactRoles,
   });
   if (generated.length > 0) {
     fail(
@@ -146,7 +235,12 @@ export async function validateArtifactPolicy({
 
   const presentProjections = await existingProjectionFiles(
     repositoryDirectory,
-    policy.deterministic_projection_patterns,
+    [
+      ...policy.deterministic_projection_patterns,
+      ...policy.relocatable_projection_patterns,
+    ],
+    policy.durable_projection_patterns,
+    projectionRoles,
   );
   if (presentProjections.length > 0) {
     fail(

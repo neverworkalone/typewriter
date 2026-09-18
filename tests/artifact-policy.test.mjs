@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import test from 'node:test';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
   buildCanonicalSemanticAudit,
@@ -13,6 +16,7 @@ import {
 import {
   ArtifactPolicyError,
   classifyTrackedArtifacts,
+  detectProjectionRole,
   readArtifactPolicy,
   validateArtifactPolicy,
 } from '../scripts/validate/artifact-policy.mjs';
@@ -43,6 +47,8 @@ test('artifact policy classifies projections before they can become tracked data
   const policy = await readArtifactPolicy();
   const options = {
     deterministicProjectionPatterns: policy.deterministic_projection_patterns,
+    relocatableProjectionPatterns: policy.relocatable_projection_patterns,
+    durableProjectionPatterns: policy.durable_projection_patterns,
     durableTrackedPatterns: policy.durable_tracked_patterns,
     protectedRoots: policy.protected_roots,
   };
@@ -61,11 +67,61 @@ test('artifact policy classifies projections before they can become tracked data
   assert.deepEqual(unclassified.generated, []);
   assert.deepEqual(unclassified.unclassified, ['data/validation/future-derived-envelope.json']);
 
-  assert.doesNotThrow(() => validateArtifactPolicy());
+  const renamedProjection = {
+    contract_version: 'lexical-semantic-review-v2',
+    scope: 'complete-canonical',
+  };
+  assert.equal(
+    detectProjectionRole(renamedProjection, {
+      semanticReviewContractVersions: policy.projection_roles.semantic_review_contract_versions,
+    }),
+    'semantic-review',
+  );
+  const relocatedWithDifferentName = classifyTrackedArtifacts(
+    ['data/batches/editorial-judgments-20260915.json'],
+    {
+      ...options,
+      artifactRoles: new Map([
+        ['data/batches/editorial-judgments-20260915.json', 'semantic-review'],
+      ]),
+    },
+  );
+  assert.deepEqual(relocatedWithDifferentName.generated, ['data/batches/editorial-judgments-20260915.json']);
+  assert.deepEqual(relocatedWithDifferentName.unclassified, []);
+
+  await assert.doesNotReject(validateArtifactPolicy());
   await assert.rejects(
     validateArtifactPolicy({
       tracked: ['data/validation/future-semantic-review.json'],
     }),
     (error) => error instanceof ArtifactPolicyError && error.code === 'GENERATED_PROJECTION_TRACKED',
   );
+});
+
+test('artifact policy rejects role-shaped projections relocated into a future batch path', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-artifact-policy-'));
+  const cases = [
+    ['future-editorial-audit-envelope.json', { contract_version: 'lexical-semantic-audit-v3' }],
+    ['future-editorial-coverage-envelope.json', { contract_version: 'lexical-semantic-coverage-v1' }],
+    ['future-editorial-review-envelope.json', { contract_version: 'lexical-semantic-review-v2' }],
+  ];
+
+  try {
+    for (const [fileName, value] of cases) {
+      const relativePath = `data/batches/${fileName}`;
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'GENERATED_PROJECTION_TRACKED',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
 });

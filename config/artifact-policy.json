@@ -1,9 +1,8 @@
 {
   "schema_version": "1",
-  "description": "Typewriter tracks editorial inputs and historical evidence; deterministic projections are generated in memory or temporary workspaces.",
+  "description": "Typewriter tracks editorial inputs and historical evidence; deterministic projections are generated in memory or temporary workspaces across the complete data surface.",
   "protected_roots": [
-    "data/inventory",
-    "data/validation"
+    "data"
   ],
   "deterministic_projection_patterns": [
     "data/inventory/m5-target-inventory.json",
@@ -11,7 +10,43 @@
     "data/validation/*-semantic-coverage.json",
     "data/validation/*-semantic-review.json"
   ],
+  "relocatable_projection_patterns": [
+    "data/*-semantic-audit.json",
+    "data/*-semantic-coverage.json",
+    "data/*-semantic-review.json",
+    "data/*-target-inventory.json",
+    "data/**/*-semantic-audit.json",
+    "data/**/*-semantic-coverage.json",
+    "data/**/*-semantic-review.json",
+    "data/**/*-target-inventory.json"
+  ],
+  "projection_roles": {
+    "semantic_audit_contract_versions": [
+      "lexical-semantic-audit-v3"
+    ],
+    "semantic_coverage_contract_versions": [
+      "lexical-semantic-coverage-v1"
+    ],
+    "semantic_review_contract_versions": [
+      "lexical-semantic-review-v2"
+    ],
+    "target_inventory_ids": [
+      "m5-core-5k"
+    ]
+  },
+  "durable_projection_patterns": [
+    "data/batches/m5-10-wave-a-preimport-inventory.json",
+    "data/batches/m5-10-wave-b-preimport-inventory.json",
+    "data/batches/m5-10a-wave-a2-preimport-inventory.json",
+    "data/batches/m5-11-base-inventory.json",
+    "data/batches/m5-7-preimport-inventory.json",
+    "data/batches/m5-9-preimport-inventory.json",
+    "data/validation/m5-10-wave-b-semantic-audit.json",
+    "data/validation/m5-10a-wave-a2-semantic-audit.json"
+  ],
   "durable_tracked_patterns": [
+    "data/canonical/**",
+    "data/batches/**",
     "data/inventory/m5-target-seed.json",
     "data/validation/canonical-semantic-boundary-decisions.json",
     "data/validation/canonical-semantic-correction-manifest.json",

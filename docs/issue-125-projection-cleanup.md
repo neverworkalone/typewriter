@@ -24,15 +24,19 @@ explicit path or when a historical replay requires one.
 
 ## Machine-enforced policy
 
-`config/artifact-policy.json` classifies the protected inventory and validation
-surface into deterministic projections and durable inputs. The validator at
+`config/artifact-policy.json` classifies the complete `data/**` surface into
+deterministic projections and durable inputs. The validator at
 `scripts/validate/artifact-policy.mjs` fails when:
 
 - a classified deterministic projection is tracked;
-- an unclassified file is added under a protected root;
+- an equivalent projection is relocated under another data path or renamed;
+- an unclassified file is added under the protected data root;
 - a generated projection is materialized in the working tree; or
 - CI is asked to validate a dirty checkout with `--clean`.
 
+The policy recognizes both projection filenames and projection roles (semantic
+audit/coverage/review contracts and target-inventory shape). Historical
+projection envelopes are allowed only through explicit durable exceptions.
 The same check is available locally as `npm run validate:artifacts` and is run
 against a clean checkout in CI. The policy is intentionally pattern-based and
 does not impose a blanket line or byte limit on `data/batches/**` or
@@ -55,3 +59,16 @@ The eight removed tracked projections represented 26,692,742 bytes and
 current tree and future diff surface only; it does not rewrite or shrink Git
 history. Existing historical audit envelopes and canonical snapshot directories
 remain available for deterministic replay.
+
+## Retained decision-source diff locality
+
+`canonical-semantic-decision-source.json` remains the durable authored source;
+it is not regenerated from canonical data. Correction application clones that
+source, replaces only the addressed authored review records, updates the
+source digest, and serializes the result with the stable
+`serializeSemanticDecisionSource()` representation. The representative
+`semantic-decision-source-locality` test applies a one-record future-batch
+decision change and asserts that unaffected records remain identical and that
+only a bounded number of serialized lines change. This guards the retained
+authoritative source against whole-corpus rewrites while preserving its
+complete historical decisions.
