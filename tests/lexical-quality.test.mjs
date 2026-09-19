@@ -18,6 +18,7 @@ import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs'
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
 import {
   buildSemanticCoverageArtifact,
+  buildSemanticTopicEvidence,
   canonicalRecordsSha256,
   inspectSenseBoundaryPairs,
   validateSemanticAuditCoverage,
@@ -38,6 +39,23 @@ const MALFORMED_TOPIC_REGRESSIONS = JSON.parse(readFileSync(
 ));
 
 const FIXTURE_ROOT = path.resolve('tests/fixtures/lexical-quality');
+
+function topicEvidenceForGloss(gloss, analysis = {}) {
+  const record = {
+    id: 'w-topic-evidence',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-evidence',
+    lemma: '주제근거',
+    search_forms: ['주제근거'],
+    senses: [{ id: 'w-topic-evidence-s1', pos: 'noun', gloss }],
+  };
+  const recordInfos = [{ record, source: 'semantic-review-fixture' }];
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: { 'w-topic-evidence-s1': analysis },
+  });
+  return buildSemanticTopicEvidence(recordInfos, semanticAudit);
+}
 
 test('the shared audit covers the complete current canonical dictionary', async () => {
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
@@ -64,9 +82,20 @@ test('the shared lexical audit rejects malformed topic fragments without a recor
     search_forms: ['바닥'],
     senses: [{ id: 'w9999-s1', pos: 'noun', gloss: '바닥은 깔개' }],
   };
-  const audit = auditCanonicalLexicalQuality([{ record, source: 'synthetic' }], {
+  const recordInfos = [{ record, source: 'synthetic' }];
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w9999-s1': {
+        state: 'noun-topic',
+        topic: '바닥',
+        particle: '은',
+        predicate: '깔개',
+      },
+    },
+  });
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
     throwOnError: false,
-    nounTopicTerms: ['바닥'],
+    topicEvidence: buildSemanticTopicEvidence(recordInfos, semanticAudit),
   });
   assert.equal(audit.blocking_findings[0].code, 'LEXICAL_MALFORMED_GLOSS');
   assert.equal(audit.blocking_findings[0].sense_id, 'w9999-s1');
@@ -96,8 +125,12 @@ test('malformed gloss detection does not confuse productive adnominal forms with
   for (const gloss of ['바닥은 깔개', '걱정은 마음']) {
     const topic = gloss.split(/은|는/u)[0];
     const quality = inspectGlossQuality(gloss, {
-      nominalTerms: [topic],
-      nounTopicTerms: [topic],
+      topicEvidence: topicEvidenceForGloss(gloss, {
+        state: 'noun-topic',
+        topic,
+        particle: gloss.includes('은') ? '은' : '는',
+        predicate: gloss.slice(topic.length + 1).trim(),
+      }),
     });
     assert.equal(quality.topic_state, 'noun-topic', gloss);
     assert.equal(quality.malformed_structure, true, gloss);
@@ -108,8 +141,7 @@ test('malformed gloss detection does not confuse productive adnominal forms with
 test('historical malformed gloss examples remain covered by the generalized rule', () => {
   for (const fixture of MALFORMED_TOPIC_REGRESSIONS) {
     const quality = inspectGlossQuality(fixture.gloss, {
-      nominalTerms: fixture.nominal_terms,
-      nounTopicTerms: fixture.noun_topic_terms,
+      topicEvidence: topicEvidenceForGloss(fixture.gloss, fixture.topic_analysis),
     });
     assert.equal(quality.topic_state, 'noun-topic', fixture.name);
     assert.equal(quality.malformed_structure, true, fixture.name);
@@ -141,14 +173,24 @@ test('topic classifier keeps evidence states conservative for unseen forms and h
     {
       gloss: '걱정는 마음',
       nominalTerms: ['걱정'],
-      nounTopicTerms: ['걱정'],
+      topicEvidence: topicEvidenceForGloss('걱정는 마음', {
+        state: 'noun-topic',
+        topic: '걱정',
+        particle: '는',
+        predicate: '마음',
+      }),
       expectedState: 'noun-topic',
       expectedMalformed: true,
     },
     {
       gloss: '바닥은 깔개',
       nominalTerms: ['바닥'],
-      nounTopicTerms: ['바닥'],
+      topicEvidence: topicEvidenceForGloss('바닥은 깔개', {
+        state: 'noun-topic',
+        topic: '바닥',
+        particle: '은',
+        predicate: '깔개',
+      }),
       expectedState: 'noun-topic',
       expectedMalformed: true,
     },
@@ -156,7 +198,7 @@ test('topic classifier keeps evidence states conservative for unseen forms and h
   for (const item of cases) {
     const quality = inspectGlossQuality(item.gloss, {
       nominalTerms: item.nominalTerms,
-      nounTopicTerms: item.nounTopicTerms,
+      topicEvidence: item.topicEvidence,
     });
     assert.equal(quality.topic_state, item.expectedState, item.gloss);
     assert.equal(quality.malformed_structure, item.expectedMalformed, item.gloss);
@@ -181,7 +223,7 @@ test('topic classifier keeps evidence states conservative for unseen forms and h
   assert.equal(openWorldQuality.malformed_structure, false);
 });
 
-test('future records use the same generalized malformed-gloss invariant', () => {
+test('candidate preflight stays conservative before complete admission', () => {
   const valid = {
     id: 'w-future-gloss-valid',
     record_type: 'entry',
@@ -208,15 +250,11 @@ test('future records use the same generalized malformed-gloss invariant', () => 
     senses: [{ id: 'w-future-gloss-invalid-neun-s1', pos: 'noun', gloss: '걱정는 마음' }],
   };
   assert.doesNotThrow(() => validateLexicalRecord(valid, { mode: 'candidate' }));
-  for (const invalidRecord of [malformed, malformedNeun]) {
-    assert.throws(
-      () => validateLexicalRecord(invalidRecord, {
-        mode: 'candidate',
-        nominalTerms: [invalidRecord.lemma],
-        nounTopicTerms: [invalidRecord.lemma],
-      }),
-      (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
-    );
+  for (const candidate of [malformed, malformedNeun]) {
+    assert.doesNotThrow(() => validateLexicalRecord(candidate, {
+      mode: 'candidate',
+      nominalTerms: [candidate.lemma],
+    }));
   }
 });
 
@@ -331,7 +369,16 @@ test('prospective admission uses conservative lexical POS context', () => {
     ...baseRecords,
     { record: malformedCandidate, source: 'prospective' },
   ];
-  const malformedAudit = makeSemanticAudit(malformedBaseInfos);
+  const malformedAudit = makeSemanticAudit(malformedBaseInfos, {
+    topicAnalyses: {
+      'w780-s1': {
+        state: 'noun-topic',
+        topic: '걱정',
+        particle: '는',
+        predicate: '마음',
+      },
+    },
+  });
   const malformedProductionState = makeProductionState({
     batchId: 'future-batch-malformed-topic',
     candidateRecords: [malformedCandidate],
@@ -339,6 +386,14 @@ test('prospective admission uses conservative lexical POS context', () => {
     baseRecords,
     prospectiveRecords: malformedBaseInfos,
     semanticAudit: malformedAudit,
+    topicAnalyses: {
+      'w780-s1': {
+        state: 'noun-topic',
+        topic: '걱정',
+        particle: '는',
+        predicate: '마음',
+      },
+    },
   });
   assert.throws(
     () => validateLexicalAddition({
@@ -351,9 +406,8 @@ test('prospective admission uses conservative lexical POS context', () => {
       productionState: malformedProductionState.state,
       productionStateSources: malformedProductionState.sources,
       productionPayloads: malformedProductionState.payloads,
-      nounTopicTerms: [malformedCandidate.lemma],
     }),
-    (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
+    (error) => error.code === 'LEXICAL_MALFORMED_GLOSS',
   );
 });
 

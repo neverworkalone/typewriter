@@ -8,9 +8,13 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import {
+  LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
+  LEXICAL_TOPIC_EVIDENCE_KIND,
   LEXICAL_QUALITY_RULESET_VERSION,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
+  requiresTopicAnalysis,
+  validateAuthoredTopicAnalysis,
 } from './lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
@@ -828,6 +832,22 @@ function validateSemanticReviewSense(
       'SEMANTIC_AUDIT_GENERIC_EVIDENCE',
     );
   }
+  if (requiresTopicAnalysis(sense.gloss) && basis.topic_analysis === undefined) {
+    fail(
+      `${label}.review_basis.topic_analysis is required for a two-token topic/adnominal shape`,
+      'SEMANTIC_AUDIT_INCOMPLETE',
+    );
+  }
+  if (basis.topic_analysis !== undefined) {
+    validateAuthoredTopicAnalysis(
+      sense.gloss,
+      basis.topic_analysis,
+      {
+        decisionSourceId,
+        label: `${label}.review_basis.topic_analysis`,
+      },
+    );
+  }
 }
 
 function validateSemanticReviewPass(recordInfos, artifact, label) {
@@ -1194,6 +1214,93 @@ export function validateSemanticAuditCoverage(
     coverage_complete: coverageResult.coverage_complete,
     review_complete: reviewResult.review_complete,
     corrected_record_count: reviewResult.corrected_record_count,
+  };
+}
+
+/**
+ * Project the source-bound topic/adnominal decisions that were authored with
+ * the semantic review.  This is the only input that can establish a blocking
+ * noun-topic reading; lexical POS presence remains open-world evidence.
+ */
+export function buildSemanticTopicEvidence(
+  recordInfos,
+  artifact,
+  { label = 'semantic audit' } = {},
+) {
+  requireObject(artifact, label);
+  const review = requireObject(artifact.review, `${label}.review`);
+  const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
+  const source = requireObject(review.source, `${label}.review.source`);
+  requireDigest(source.canonical_records_sha256, `${label}.review.source.canonical_records_sha256`);
+  if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
+    fail(
+      `${label}.review.source.canonical_records_sha256 does not match the complete canonical input`,
+      'SEMANTIC_AUDIT_SOURCE_MISMATCH',
+    );
+  }
+  const decisionSource = artifact.decision_source ?? review.decision_source;
+  const decisionSourceId = decisionSource?.source_id;
+  if (decisionSourceId !== undefined) requireString(decisionSourceId, `${label}.decision_source.source_id`);
+  const reviewedRecords = requireArray(review.records, `${label}.review.records`);
+  const reviewedById = new Map(reviewedRecords.map((reviewed) => [reviewed.record_id, reviewed]));
+  const byTopic = new Map();
+
+  for (const [recordIndex, recordInfo] of recordInfos.entries()) {
+    const record = recordOf(recordInfo);
+    const reviewed = reviewedById.get(record.id);
+    if (!reviewed) fail(`${label}.review is missing record ${record.id}`, 'SEMANTIC_AUDIT_SCOPE');
+    const senseReviews = requireArray(reviewed.sense_reviews, `${label}.review.records[${recordIndex}].sense_reviews`);
+    for (const [senseIndex, sense] of record.senses.entries()) {
+      const senseReview = requireObject(
+        senseReviews[senseIndex],
+        `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}]`,
+      );
+      const analysis = senseReview.review_basis?.topic_analysis;
+      if (requiresTopicAnalysis(sense.gloss) && analysis === undefined) {
+        fail(
+          `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}].review_basis.topic_analysis is missing`,
+          'SEMANTIC_AUDIT_INCOMPLETE',
+        );
+      }
+      if (analysis === undefined) continue;
+      validateAuthoredTopicAnalysis(
+        sense.gloss,
+        analysis,
+        {
+          decisionSourceId,
+          label: `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}].review_basis.topic_analysis`,
+        },
+      );
+      if (analysis.state !== 'noun-topic') continue;
+      if (decisionSourceId === undefined) {
+        fail(
+          `${label}.review contains noun-topic evidence without an authored decision source`,
+          'SEMANTIC_AUDIT_PROVENANCE',
+        );
+      }
+      const entries = byTopic.get(analysis.topic) ?? [];
+      entries.push({
+        state: analysis.state,
+        topic: analysis.topic,
+        particle: analysis.particle,
+        predicate: analysis.predicate,
+        sense_id: sense.id,
+        gloss_sha256: analysis.gloss_sha256,
+        decision_source_id: decisionSourceId,
+      });
+      byTopic.set(analysis.topic, entries);
+    }
+  }
+
+  return {
+    kind: LEXICAL_TOPIC_EVIDENCE_KIND,
+    contract_version: LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
+    source: {
+      kind: 'semantic-review-topic-analysis',
+      canonical_records_sha256: expectedCanonicalDigest,
+      decision_source_id: decisionSourceId ?? null,
+    },
+    by_topic: byTopic,
   };
 }
 

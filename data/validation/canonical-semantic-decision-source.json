@@ -9,7 +9,7 @@
     "kind": "canonical-jsonl-record-values",
     "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f"
   },
-  "authored_review_sha256": "3f084f31a2f2f037d7b6f5e7d761e28311045ca1d343448afab423b93c1cb099",
+  "authored_review_sha256": "e91f8c40baef3969786459d16a98a9db1f09a901cacea6af267fb6270649ed24",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-v2",
@@ -68830,7 +68830,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w1149 w1149-s1: separately authored review basis cites gloss e7f6085d0e64, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "오",
+                "particle": "는",
+                "predicate": "사람이다",
+                "gloss_sha256": "e7f6085d0e64db69e5cd3ee3661bccb72370272e7e8abebaa216e610cefd73b6",
+                "rationale": "w1149 w1149-s1 reviewed 오는 사람이다 as an adnominal form rather than a noun-topic fragment.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "e7f6085d0e64db69e5cd3ee3661bccb72370272e7e8abebaa216e610cefd73b6"
           },
@@ -68885,7 +68895,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w1149 w1149-s2: separately authored review basis cites gloss 2dc55f60af99, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "오",
+                "particle": "는",
+                "predicate": "사람이다",
+                "gloss_sha256": "2dc55f60af99a1360d88dd39cd63c99fe853e72cc92480762ec48e9501b189b3",
+                "rationale": "w1149 w1149-s2 reviewed 오는 사람이다 as an adnominal form rather than a noun-topic fragment.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "2dc55f60af99a1360d88dd39cd63c99fe853e72cc92480762ec48e9501b189b3"
           }
@@ -78641,7 +78661,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w1244 w1244-s1: separately authored review basis cites gloss 38620870f3e7, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "나아가",
+                "particle": "는",
+                "predicate": "쪽",
+                "gloss_sha256": "38620870f3e745919042e3afd2d74a4c0f1454d26575389f1c5dfc9451f0160f",
+                "rationale": "w1244 w1244-s1 reviewed 나아가는 쪽 as an adnominal form rather than a noun-topic fragment.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "38620870f3e745919042e3afd2d74a4c0f1454d26575389f1c5dfc9451f0160f"
           }

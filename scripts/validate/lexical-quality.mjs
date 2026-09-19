@@ -17,6 +17,8 @@ import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
  */
 export const LEXICAL_QUALITY_RULESET_VERSION = 'lexical-quality-v1';
 export const BROAD_GLOSS_CONNECTOR_PATTERN = /(?:이나|또는|거나)/u;
+export const LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION = 'lexical-topic-evidence-v1';
+export const LEXICAL_TOPIC_EVIDENCE_KIND = 'semantic-review-topic-analysis';
 
 const RECORD_TYPES = Object.freeze(['entry', 'expression']);
 const ROLES = Object.freeze(['start', 'reference-only']);
@@ -119,23 +121,23 @@ function nominalTermPositions(nominalTerms, topic) {
   return undefined;
 }
 
-function hasExplicitNounTopicEvidence(nounTopicTerms, topic) {
-  if (nounTopicTerms instanceof Set) return nounTopicTerms.has(topic);
-  if (Array.isArray(nounTopicTerms)) return nounTopicTerms.includes(topic);
-  if (nounTopicTerms instanceof Map) {
-    const evidence = nounTopicTerms.get(topic);
-    return evidence === true
-      || evidence === 'noun-topic'
-      || evidence?.state === 'noun-topic';
+function hasExplicitNounTopicEvidence(topicEvidence, topic) {
+  if (!topicEvidence
+    || topicEvidence.kind !== LEXICAL_TOPIC_EVIDENCE_KIND
+    || topicEvidence.contract_version !== LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION
+    || !(topicEvidence.by_topic instanceof Map)) {
+    return false;
   }
-  return false;
+  const evidence = topicEvidence.by_topic.get(topic);
+  return Array.isArray(evidence)
+    && evidence.some((entry) => entry?.state === 'noun-topic');
 }
 
-function classifyTopicToken(topic, nominalTerms, nounTopicTerms) {
+function classifyTopicToken(topic, nominalTerms, topicEvidence) {
   const positions = nominalTermPositions(nominalTerms, topic);
   const hasNoun = positions?.has('noun') === true;
   const hasAdnominal = positions?.has('verb') || positions?.has('adjective');
-  const hasExplicitTopicEvidence = hasExplicitNounTopicEvidence(nounTopicTerms, topic);
+  const hasExplicitTopicEvidence = hasExplicitNounTopicEvidence(topicEvidence, topic);
   if (hasNoun && hasAdnominal) return { state: 'ambiguous' };
   if (hasExplicitTopicEvidence) return { state: 'noun-topic' };
   if (hasAdnominal) return { state: 'adnominal' };
@@ -143,16 +145,64 @@ function classifyTopicToken(topic, nominalTerms, nounTopicTerms) {
   return { state: 'unsupported' };
 }
 
-function inspectTopicFragment(gloss, { nominalTerms, nounTopicTerms } = {}) {
+function inspectTopicFragment(gloss, { nominalTerms, topicEvidence } = {}) {
   const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
   if (!fragment) return { state: 'unsupported', malformed: false };
   const { topic, predicate } = fragment.groups;
-  const topicAnalysis = classifyTopicToken(topic, nominalTerms, nounTopicTerms);
+  const topicAnalysis = classifyTopicToken(topic, nominalTerms, topicEvidence);
   const bareNominalPredicate = !VALID_PREDICATE_ENDING_PATTERN.test(predicate);
   return {
     ...topicAnalysis,
     malformed: topicAnalysis.state === 'noun-topic' && bareNominalPredicate,
   };
+}
+
+export function requiresTopicAnalysis(gloss) {
+  return typeof gloss === 'string'
+    && MALFORMED_TOPIC_FRAGMENT_PATTERN.test(gloss.trim());
+}
+
+export function validateAuthoredTopicAnalysis(
+  gloss,
+  analysis,
+  { decisionSourceId, label = 'topic_analysis' } = {},
+) {
+  requireObject(analysis, label);
+  if (analysis.status !== 'pass') {
+    fail(`${label}.status must be pass`, 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE');
+  }
+  requireEnum(analysis.state, TOPIC_ANALYSIS_STATES, `${label}.state`);
+  requireString(analysis.gloss_sha256, `${label}.gloss_sha256`);
+  if (analysis.gloss_sha256 !== sha256Json(gloss)) {
+    fail(`${label}.gloss_sha256 does not bind the reviewed gloss`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+  if (decisionSourceId !== undefined) {
+    requireString(analysis.decision_source_id, `${label}.decision_source_id`);
+    if (analysis.decision_source_id !== decisionSourceId) {
+      fail(`${label}.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
+  }
+  requireString(analysis.rationale, `${label}.rationale`);
+  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
+  if (!fragment) {
+    if (analysis.state === 'noun-topic') {
+      fail(`${label}.state noun-topic requires a two-token topic fragment`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+    return analysis;
+  }
+  const { topic, particle, predicate } = fragment.groups;
+  if (analysis.topic !== topic
+    || analysis.particle !== particle
+    || analysis.predicate !== predicate) {
+    fail(`${label} must bind the topic fragment surface`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+  if (analysis.state === 'noun-topic') {
+    if (analysis.topic_pos !== 'noun') {
+      fail(`${label}.topic_pos must explicitly establish a noun topic`, 'LEXICAL_SEMANTIC_PROVENANCE');
+    }
+    requireString(analysis.evidence_basis, `${label}.evidence_basis`);
+  }
+  return analysis;
 }
 
 export function buildNominalTermPositions(recordInfos) {
@@ -465,7 +515,7 @@ export function isPlaceholderGloss(gloss) {
   return typeof gloss !== 'string' || PLACEHOLDER_GLOSS_PATTERN.test(gloss.trim());
 }
 
-export function inspectGlossQuality(gloss, { nominalTerms, nounTopicTerms } = {}) {
+export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence } = {}) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) {
     return {
       token_count: 0,
@@ -476,7 +526,7 @@ export function inspectGlossQuality(gloss, { nominalTerms, nounTopicTerms } = {}
     };
   }
   const trimmed = gloss.trim();
-  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms, nounTopicTerms });
+  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms, topicEvidence });
   return {
     token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
@@ -493,7 +543,7 @@ function recordQualityFindings(record, {
   mode = 'canonical',
   rejectAnyBroadConnector = false,
   nominalTerms,
-  nounTopicTerms,
+  topicEvidence,
 } = {}) {
   const findings = [];
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
@@ -566,7 +616,7 @@ function recordQualityFindings(record, {
         message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
       });
     }
-    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms, nounTopicTerms });
+    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms, topicEvidence });
     if (glossQuality.token_count < 2) {
       findings.push({
         code: 'LEXICAL_GLOSS_TOO_SHORT',
@@ -616,7 +666,7 @@ export function validateLexicalRecord(record, options = {}) {
     expectedLemma,
     rejectAnyBroadConnector = false,
     nominalTerms,
-    nounTopicTerms,
+    topicEvidence,
   } = options;
   requireObject(record, label);
   requireString(record.id, `${label}.id`);
@@ -659,7 +709,7 @@ export function validateLexicalRecord(record, options = {}) {
     mode,
     rejectAnyBroadConnector,
     nominalTerms,
-    nounTopicTerms,
+    topicEvidence,
   });
   if (findings.length > 0) {
     const finding = findings[0];
@@ -679,7 +729,7 @@ export function findLexicalQualityFindings(record, options = {}) {
  */
 export function auditCanonicalLexicalQuality(
   recordInfos,
-  { scope = 'complete-canonical', throwOnError = true, nounTopicTerms } = {},
+  { scope = 'complete-canonical', throwOnError = true, topicEvidence } = {},
 ) {
   const normalized = recordInfos.map(recordOf);
   const nominalTerms = buildNominalTermPositions(recordInfos);
@@ -703,7 +753,7 @@ export function auditCanonicalLexicalQuality(
       label: sourceLabel(recordInfo, index),
       mode: 'canonical',
       nominalTerms,
-      nounTopicTerms,
+      topicEvidence,
     });
     for (const finding of qualityFindings) {
       const senseMatch = /\.senses\[(\d+)\]/u.exec(finding.message);
@@ -957,6 +1007,22 @@ export function validateLexicalSemanticReview(review, {
           );
         }
       }
+      if (requiresTopicAnalysis(sense.gloss) && semanticEvidence.topic_analysis === undefined) {
+        fail(
+          `${senseLabel}.semantic_evidence.topic_analysis is required for a two-token topic/adnominal shape`,
+          'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE',
+        );
+      }
+      if (semanticEvidence.topic_analysis !== undefined) {
+        validateAuthoredTopicAnalysis(
+          sense.gloss,
+          semanticEvidence.topic_analysis,
+          {
+            decisionSourceId,
+            label: `${senseLabel}.semantic_evidence.topic_analysis`,
+          },
+        );
+      }
     }
   }
 
@@ -1117,9 +1183,19 @@ export async function validateCanonicalLexicalQuality(
   directory = DEFAULT_CANONICAL_DIRECTORY,
 ) {
   const result = await readCanonicalRecords(directory);
+  let topicEvidence;
+  if (path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
+    const {
+      buildCanonicalSemanticAudit,
+      buildSemanticTopicEvidence,
+    } = await import('./semantic-audit.mjs');
+    const { artifact } = await buildCanonicalSemanticAudit({ canonicalDirectory: directory });
+    topicEvidence = buildSemanticTopicEvidence(result.records, artifact);
+  }
   return auditCanonicalLexicalQuality(result.records, {
     scope: 'complete-canonical',
     throwOnError: true,
+    topicEvidence,
   });
 }
 

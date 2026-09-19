@@ -49,8 +49,8 @@ The current canonical source digest is
 Rebuilding the current projections before removing their files produced the
 same serialized bytes as the tracked versions:
 
-- semantic audit: 8,973,687 bytes, SHA-256
-  `e2f13857053e932d6814fafa1eaa16ba329b863e219206c753cf03ad24d4db72`;
+- semantic audit: 8,975,334 bytes, SHA-256
+  `ade2a3feccaafb926929521747f83dcb283a758327b08fec5cb8bb959808e1d7`;
 - target inventory: 821,065 bytes, SHA-256
   `f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67`.
 

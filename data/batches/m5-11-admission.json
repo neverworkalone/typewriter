@@ -464,7 +464,7 @@
       {
         "id": "semantic-quality",
         "status": "pass",
-        "result_sha256": "c87887a33ff0b1853c535f98ddd03b76eaf31db2692f67fba4f9b788c05547da"
+        "result_sha256": "fd3007c32e67c57e150527770421209fd0fc249634833d7ecc8e09165f32ca90"
       }
     ],
     "machine_check_evidence": {
@@ -4163,7 +4163,7 @@
           "correction_count": 68,
           "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
           "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
-          "review_sha256": "3f084f31a2f2f037d7b6f5e7d761e28311045ca1d343448afab423b93c1cb099"
+          "review_sha256": "e91f8c40baef3969786459d16a98a9db1f09a901cacea6af267fb6270649ed24"
         },
         "summary": null,
         "coverage": null,
@@ -4632,7 +4632,7 @@
         {
           "id": "semantic-quality",
           "status": "pass",
-          "result_sha256": "c87887a33ff0b1853c535f98ddd03b76eaf31db2692f67fba4f9b788c05547da"
+          "result_sha256": "fd3007c32e67c57e150527770421209fd0fc249634833d7ecc8e09165f32ca90"
         }
       ],
       "machine_check_evidence": {
@@ -8331,7 +8331,7 @@
             "correction_count": 68,
             "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
             "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
-            "review_sha256": "3f084f31a2f2f037d7b6f5e7d761e28311045ca1d343448afab423b93c1cb099"
+            "review_sha256": "e91f8c40baef3969786459d16a98a9db1f09a901cacea6af267fb6270649ed24"
           },
           "summary": null,
           "coverage": null,
@@ -8714,7 +8714,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "09850cf7f8af4ab7d304d7033f8bc0a8994c6ad19b5f3829097ae4c66b0c814d",
+  "gate_evidence_sha256": "ae2882c2cd9149cba08a0dff3d985d56b6aa15f4adce84915af931fe67b70ae7",
   "sources": {
     "proposal": {
       "source_id": "proposal",
@@ -8754,7 +8754,7 @@
     "semantic_audit": {
       "source_id": "semantic_audit",
       "path": "external:semantic_audit",
-      "sha256": "e2f13857053e932d6814fafa1eaa16ba329b863e219206c753cf03ad24d4db72"
+      "sha256": "ade2a3feccaafb926929521747f83dcb283a758327b08fec5cb8bb959808e1d7"
     }
   },
   "promotion": {
