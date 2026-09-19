@@ -9,7 +9,7 @@
     "kind": "canonical-jsonl-record-values",
     "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f"
   },
-  "authored_review_sha256": "e91f8c40baef3969786459d16a98a9db1f09a901cacea6af267fb6270649ed24",
+  "authored_review_sha256": "2ff9f1d6cde215851da16028e720600cd9f8118c80cc64685b154105f5262b34",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-v2",
@@ -45860,7 +45860,9 @@
               "sense_id": "w942-s1",
               "lemma": "박하향",
               "gloss_sha256": "da7434d9aa301b9f1ee3f54acf9a0cf764f976cb6faf5511b4e06b32c957308c",
-              "observed_domain_axes": [],
+              "observed_domain_axes": [
+                "smell"
+              ],
               "pos": "noun",
               "record_type": "entry",
               "relation_count": 0,
@@ -46517,7 +46519,9 @@
               "sense_id": "w949-s1",
               "lemma": "비누향",
               "gloss_sha256": "816bb799a633a8e8691f338e044f401d25e8bd6a7544eaccbfcd38ff3e1b649d",
-              "observed_domain_axes": [],
+              "observed_domain_axes": [
+                "smell"
+              ],
               "pos": "noun",
               "record_type": "entry",
               "relation_count": 0,
@@ -46876,7 +46880,9 @@
               "sense_id": "w952-s2",
               "lemma": "상큼하다",
               "gloss_sha256": "daf0eade14a5f12141cf162d2425b8e0de2a5fe3d6c414dbdadf8e309e7781f7",
-              "observed_domain_axes": [],
+              "observed_domain_axes": [
+                "smell"
+              ],
               "pos": "adjective",
               "record_type": "entry",
               "relation_count": 0,
@@ -111482,8 +111488,7 @@
               "lemma": "목소리",
               "gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
               "observed_domain_axes": [
-                "sound",
-                "visual"
+                "sound"
               ],
               "pos": "noun",
               "record_type": "entry",
@@ -115363,9 +115368,7 @@
               "sense_id": "w191-s2",
               "lemma": "찾다",
               "gloss_sha256": "96954c8119532b3b633993a4fbc9f9584cc8b517cd4c9862fb66154ec3345a3e",
-              "observed_domain_axes": [
-                "visual"
-              ],
+              "observed_domain_axes": [],
               "pos": "verb",
               "record_type": "entry",
               "relation_count": 1,
@@ -120362,9 +120365,7 @@
               "sense_id": "r026-s1",
               "lemma": "서먹하다",
               "gloss_sha256": "5aeb5c20b37d8dc3cb492584dc04d469014cb58bf54215419c20e3a68ea6c5b7",
-              "observed_domain_axes": [
-                "visual"
-              ],
+              "observed_domain_axes": [],
               "pos": "adjective",
               "record_type": "entry",
               "relation_count": 0,
@@ -123422,7 +123423,9 @@
               "sense_id": "w062-s1",
               "lemma": "냄새",
               "gloss_sha256": "168e436515acb70a127b85167ab7fca9451b6f9bb5878227faca8e1d526abffc",
-              "observed_domain_axes": [],
+              "observed_domain_axes": [
+                "smell"
+              ],
               "pos": "noun",
               "record_type": "entry",
               "relation_count": 2,
@@ -138240,9 +138243,7 @@
               "sense_id": "w284-s3",
               "lemma": "틈",
               "gloss_sha256": "8fb0569d991329ea19f39068a81ea9c584d5b233bd0c10609bc4656fc82ebe95",
-              "observed_domain_axes": [
-                "visual"
-              ],
+              "observed_domain_axes": [],
               "pos": "noun",
               "record_type": "entry",
               "relation_count": 0,

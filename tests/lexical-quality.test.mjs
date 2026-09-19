@@ -671,6 +671,87 @@ test('the common-domain rule accepts coordinated senses without an ID exception'
   assert.equal(result.senseCount, 2);
 });
 
+test('writer-domain evidence respects lexical token boundaries and Korean inflections', () => {
+  for (const gloss of [
+    '향상시키는 성질',
+    '방향을 정하다',
+    '향후 계획',
+    '검색 결과를 찾다',
+    '탐색하다',
+    '어색하고 거리감이 있다',
+    '향하는 방향',
+  ]) {
+    assert.deepEqual(inspectWriterDomainEvidence(gloss).axes, [], gloss);
+  }
+
+  for (const [gloss, axis] of [
+    ['향이 은은하다', 'smell'],
+    ['향을 맡다', 'smell'],
+    ['향으로 퍼지다', 'smell'],
+    ['향기로운 냄새', 'smell'],
+    ['색이 선명하다', 'visual'],
+    ['색으로 물들다', 'visual'],
+    ['색깔이 선명하다', 'visual'],
+  ]) {
+    assert.deepEqual(inspectWriterDomainEvidence(gloss).axes, [axis], gloss);
+  }
+
+  const collisionGloss = '기분이나 집중력을 향상시키는 성질';
+  const observations = inspectGlossConnectors(collisionGloss);
+  assert.equal(observations.length, 1);
+  assert.equal(observations[0].classification, 'unclassified-coordination');
+  assert.equal(observations[0].right_axis, null);
+});
+
+test('the token-aware domain rule is reused by a future lexical admission', () => {
+  const candidateRecord = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '토큰경계말',
+    search_forms: ['토큰경계말'],
+    senses: [{
+      id: 'w779-s1',
+      pos: 'adjective',
+      gloss: '기분이나 집중력을 향상시키는 성질',
+    }],
+  };
+  const baseRecord = {
+    id: 'w778',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w778',
+    lemma: '기존경계말',
+    search_forms: ['기존경계말'],
+    senses: [{ id: 'w778-s1', pos: 'noun', gloss: '기존의 의미를 가리키는 말' }],
+  };
+  const baseRecords = [{ record: baseRecord, source: 'base' }];
+  const reviewedRecords = [{ record: candidateRecord, source: 'future-review' }];
+  const prospectiveRecords = [...baseRecords, ...reviewedRecords];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-token-aware-domain',
+    candidateRecords: [candidateRecord],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+
+  assert.doesNotThrow(() => validateLexicalAddition({
+    batchId: 'future-token-aware-domain',
+    candidateRecords: [candidateRecord],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+    productionState: productionState.state,
+    productionStateSources: productionState.sources,
+    productionPayloads: productionState.payloads,
+  }));
+});
+
 test('the complete-canonical audit rejects a merged sensory and affective sense', async () => {
   await assert.rejects(
     validateDatasetDirectory(path.join(FIXTURE_ROOT, 'invalid/merged-sense.jsonl')),

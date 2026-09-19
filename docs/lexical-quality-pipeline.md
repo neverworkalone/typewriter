@@ -115,3 +115,12 @@ conjunction spelling, so `과/와` and connector-free merged glosses cannot bypa
 the boundary check. The complete current canonical dataset is audited on every
 run, and the prospective canonical dataset is audited before any canonical,
 inventory, or seed mutation.
+
+Writer-domain extraction is token-aware. A domain term must begin a whitespace
+token (after surrounding punctuation is removed), and only controlled Korean
+particle sequences may follow a noun-like term. Productive derivational endings
+are accepted only for explicitly listed multi-syllable lexical terms. This
+keeps `향이` and `색으로` as evidence while preventing `향상`, `방향`, `검색`,
+and `탐색하다` from manufacturing smell or visual evidence. Legitimate compound
+lexemes such as `단맛`, `말소리`, `햇빛`, and `마음속` are listed as domain terms
+themselves; they are not recovered by arbitrary substring matching.

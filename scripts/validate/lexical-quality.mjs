@@ -54,16 +54,41 @@ const SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-sou
 // ("taste or smell") without pretending that every Korean conjunction is a
 // separate dictionary sense.
 const WRITER_DOMAIN_TERMS = Object.freeze({
-  taste: Object.freeze(['맛', '미각', '입맛']),
-  smell: Object.freeze(['냄새', '향기', '후각']),
-  sound: Object.freeze(['소리', '목소리', '음성', '울림', '청각']),
-  visual: Object.freeze(['빛', '빛깔', '색', '윤곽', '시각']),
+  taste: Object.freeze(['맛', '미각', '입맛', '단맛', '신맛', '쓴맛', '짠맛']),
+  smell: Object.freeze(['냄새', '향', '향기', '향긋', '향내', '향취', '후각']),
+  sound: Object.freeze(['소리', '목소리', '음성', '울림', '청각', '말소리', '숨소리', '음색']),
+  visual: Object.freeze([
+    '빛', '빛깔', '색', '색깔', '색감', '색조', '색채', '윤곽', '시각',
+    '살빛', '햇빛', '달빛', '푸른빛', '불빛', '낮빛',
+    '보라색', '분홍색', '붉은색', '하얀색', '빛나',
+  ]),
   tactile: Object.freeze(['표면', '감촉', '촉감', '질감']),
-  affective: Object.freeze(['분위기', '감정', '기분', '정서', '마음']),
-  body: Object.freeze(['목구멍', '몸', '신체', '피부']),
+  affective: Object.freeze(['분위기', '감정', '기분', '정서', '마음', '마음속', '마음가짐', '마음씨']),
+  body: Object.freeze(['목구멍', '몸', '몸통', '몸놀림', '신체', '피부']),
 });
 
 export const WRITER_DOMAIN_AXES = Object.freeze(Object.keys(WRITER_DOMAIN_TERMS));
+
+// A domain term is matched as a lexical token, not as an arbitrary sequence
+// of Hangul syllables.  These are productive Korean particles that may attach
+// directly to a noun-like domain term.  Derivational tails are only allowed
+// after an explicitly listed multi-syllable lexical term; this prevents the
+// one-syllable smell term `향` from matching directional words such as `향한`
+// or `향하는`.
+const WRITER_DOMAIN_PARTICLE_TAILS = new Set([
+  '으로부터', '에서부터', '으로서', '으로써', '에게서', '한테서',
+  '으로', '에서', '에게', '한테', '처럼', '만큼', '부터', '까지', '보다',
+  '이나', '이랑', '하고', '랑', '조차', '마저', '밖에', '뿐', '대로',
+  '은', '는', '이', '가', '을', '를', '에', '로', '과', '와', '도', '만', '의', '나',
+]);
+
+const WRITER_DOMAIN_DERIVATIONAL_TAILS = new Set([
+  '다', '고', '며', '면', '서', '지', '게', '도록', '던', '적', '적인',
+  '스럽다', '스러운', '스럽게', '스러움', '롭다', '로운', '롭게', '로움',
+  '하다', '한', '하고', '하게', '함', '이다',
+]);
+
+const WRITER_DOMAIN_EDGE_PUNCTUATION_PATTERN = /[()[\]{}"'“”‘’.,;:!?。！？…]/u;
 
 // A single gloss may legitimately state a property over a shared writer
 // domain.  This is a semantic rule, not a grandfathered record allowlist.
@@ -420,28 +445,63 @@ function sourceLabel(recordInfo, index) {
   return `${recordInfo.filePath}:${recordInfo.lineNumber ?? index + 1}`;
 }
 
-function nearestDomainAxis(text, direction) {
+function isAllowedDomainTail(term, tail) {
+  const canConsumeParticles = (remaining) => {
+    if (remaining.length === 0) return true;
+    return [...WRITER_DOMAIN_PARTICLE_TAILS].some((particle) => (
+      remaining.startsWith(particle)
+      && canConsumeParticles(remaining.slice(particle.length))
+    ));
+  };
+  if (canConsumeParticles(tail)) return true;
+  return term.length >= 2 && WRITER_DOMAIN_DERIVATIONAL_TAILS.has(tail);
+}
+
+function trimDomainToken(text, start, end) {
+  while (start < end && WRITER_DOMAIN_EDGE_PUNCTUATION_PATTERN.test(text[start])) start += 1;
+  while (end > start && WRITER_DOMAIN_EDGE_PUNCTUATION_PATTERN.test(text[end - 1])) end -= 1;
+  return { start, end };
+}
+
+function writerDomainTokenMatches(text) {
+  if (typeof text !== 'string' || text.length === 0) return [];
   const matches = [];
-  for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
-    for (const term of terms) {
-      let from = 0;
-      while (true) {
-        const index = text.indexOf(term, from);
-        if (index < 0) break;
-        matches.push({ axis, term, index, end: index + term.length });
-        from = index + term.length;
+  for (const tokenMatch of text.matchAll(/\S+/gu)) {
+    const tokenStart = tokenMatch.index;
+    const tokenEnd = tokenStart + tokenMatch[0].length;
+    const trimmed = trimDomainToken(text, tokenStart, tokenEnd);
+    const token = text.slice(trimmed.start, trimmed.end);
+    for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
+      for (const term of terms) {
+        if (!token.startsWith(term)) continue;
+        const tail = token.slice(term.length);
+        if (!isAllowedDomainTail(term, tail)) continue;
+        matches.push({
+          axis,
+          term,
+          index: trimmed.start,
+          end: trimmed.start + term.length,
+        });
       }
     }
   }
-  if (matches.length === 0) return undefined;
-  const longestMatches = matches.filter((candidate) => !matches.some((other) => (
+  return matches;
+}
+
+function longestDomainMatches(matches) {
+  return matches.filter((candidate) => !matches.some((other) => (
     other.term.length > candidate.term.length
       && other.index <= candidate.index
       && other.end >= candidate.end
   )));
+}
+
+function nearestDomainAxis(text, direction) {
+  const matches = longestDomainMatches(writerDomainTokenMatches(text));
+  if (matches.length === 0) return undefined;
   return direction === 'left'
-    ? longestMatches.sort((left, right) => right.index - left.index)[0]
-    : longestMatches.sort((left, right) => left.index - right.index)[0];
+    ? matches.sort((left, right) => right.index - left.index)[0]
+    : matches.sort((left, right) => left.index - right.index)[0];
 }
 
 function pairKey(leftAxis, rightAxis) {
@@ -507,23 +567,7 @@ export function hasBroadGlossConnector(gloss) {
  */
 export function inspectWriterDomainEvidence(gloss) {
   if (typeof gloss !== 'string') return { axes: [], matches: [] };
-  const matches = [];
-  for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
-    for (const term of terms) {
-      let from = 0;
-      while (true) {
-        const index = gloss.indexOf(term, from);
-        if (index < 0) break;
-        matches.push({ axis, term, index, end: index + term.length });
-        from = index + term.length;
-      }
-    }
-  }
-  const longestMatches = matches.filter((candidate) => !matches.some((other) => (
-    other.term.length > candidate.term.length
-      && other.index <= candidate.index
-      && other.end >= candidate.end
-  )));
+  const longestMatches = longestDomainMatches(writerDomainTokenMatches(gloss));
   const axes = [...new Set(
     longestMatches
       .sort((left, right) => left.index - right.index || right.term.length - left.term.length)
