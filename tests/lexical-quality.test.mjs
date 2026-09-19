@@ -81,6 +81,10 @@ test('malformed gloss detection does not confuse productive adnominal forms with
     '넓은 곳',
     '붙잡은 사람',
     '가로막은 벽',
+    '지은 집',
+    '그은 선',
+    '부은 얼굴',
+    '나은 결과',
   ]) {
     const quality = inspectGlossQuality(gloss);
     assert.equal(quality.malformed_structure, false, gloss);
@@ -134,10 +138,105 @@ test('future records use the same generalized malformed-gloss invariant', () => 
   assert.doesNotThrow(() => validateLexicalRecord(valid, { mode: 'candidate' }));
   for (const invalidRecord of [malformed, malformedNeun]) {
     assert.throws(
-      () => validateLexicalRecord(invalidRecord, { mode: 'candidate' }),
+      () => validateLexicalRecord(invalidRecord, {
+        mode: 'candidate',
+        nominalTerms: [invalidRecord.lemma],
+      }),
       (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
     );
   }
+});
+
+test('prospective admission uses inflection-aware lexical POS context', () => {
+  const nounCar = {
+    id: 'w001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w001',
+    lemma: '차',
+    search_forms: ['차'],
+    senses: [{ id: 'w001-s1', pos: 'noun', gloss: '사람이나 물건을 싣는 탈것' }],
+  };
+  const verbCar = {
+    id: 'w002',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w002',
+    lemma: '차다',
+    search_forms: ['차다'],
+    senses: [{ id: 'w002-s1', pos: 'verb', gloss: '발로 물건을 힘껏 내지르다' }],
+  };
+  const validCandidate = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '동형어검증',
+    search_forms: ['동형어검증'],
+    senses: [{ id: 'w779-s1', pos: 'noun', gloss: '차는 사람' }],
+  };
+  const baseRecords = [nounCar, verbCar].map((record) => ({ record, source: 'base' }));
+  const prospectiveRecords = [
+    ...baseRecords,
+    { record: validCandidate, source: 'prospective' },
+  ];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-batch-homograph',
+    candidateRecords: [validCandidate],
+    reviewedRecords: [validCandidate],
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+  const result = validateLexicalAddition({
+    batchId: 'future-batch-homograph',
+    candidateRecords: [validCandidate],
+    reviewedRecords: [validCandidate],
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+    productionState: productionState.state,
+    productionStateSources: productionState.sources,
+    productionPayloads: productionState.payloads,
+  });
+  assert.equal(result.audit.blocking_finding_count, 0);
+
+  const malformedCandidate = {
+    ...validCandidate,
+    id: 'w780',
+    candidate_id: 'w780',
+    lemma: '걱정',
+    search_forms: ['걱정'],
+    senses: [{ id: 'w780-s1', pos: 'noun', gloss: '걱정는 마음' }],
+  };
+  const malformedBaseInfos = [
+    ...baseRecords,
+    { record: malformedCandidate, source: 'prospective' },
+  ];
+  const malformedAudit = makeSemanticAudit(malformedBaseInfos);
+  const malformedProductionState = makeProductionState({
+    batchId: 'future-batch-malformed-topic',
+    candidateRecords: [malformedCandidate],
+    reviewedRecords: [malformedCandidate],
+    baseRecords,
+    prospectiveRecords: malformedBaseInfos,
+    semanticAudit: malformedAudit,
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-malformed-topic',
+      candidateRecords: [malformedCandidate],
+      reviewedRecords: [malformedCandidate],
+      baseRecords,
+      prospectiveRecords: malformedBaseInfos,
+      semanticAudit: malformedAudit,
+      productionState: malformedProductionState.state,
+      productionStateSources: malformedProductionState.sources,
+      productionPayloads: malformedProductionState.payloads,
+    }),
+    (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
+  );
 });
 
 test('authored distinct and retain cannot override high-confidence usage or paraphrase frames', () => {

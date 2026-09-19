@@ -1,6 +1,7 @@
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import {
   auditCanonicalLexicalQuality,
+  buildNominalTermPositions,
   validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
 import {
@@ -116,6 +117,12 @@ function validateLexicalAdditionInternal({
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
+  const nominalTerms = buildNominalTermPositions([
+    ...candidateInfos,
+    ...reviewedInfos,
+    ...baseInfos,
+    ...prospectiveInfos,
+  ]);
 
   const baseRecordsById = new Map(baseInfos.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   const prospectiveRecordsById = new Map(prospectiveInfos.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
@@ -151,12 +158,14 @@ function validateLexicalAdditionInternal({
     validateLexicalRecord(recordOf(recordInfo), {
       label: `${candidateLabel}[${index}]`,
       mode: 'candidate',
+      nominalTerms,
     });
   }
   for (const [index, recordInfo] of reviewedInfos.entries()) {
     validateLexicalRecord(recordOf(recordInfo), {
       label: `${reviewedLabel}[${index}]`,
       mode: 'canonical',
+      nominalTerms,
     });
   }
 

@@ -77,13 +77,16 @@ const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번�
 // being used as a noun topic and the second token is a bare nominal stub.  The
 // topic/adnominal forms are homographs, so the shared rule uses lexical POS
 // evidence from the canonical/prospective record set instead of a word list or
-// a surface-length heuristic.  The allomorph mismatch branch below remains
-// structural and does not need lexical evidence.
+// a surface-length heuristic.  The POS map includes inflectional stem
+// variants for verb/adjective lemmas so homographs remain ambiguous.
 const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
 const HANGUL_SYLLABLE_START = 0xac00;
 const HANGUL_SYLLABLE_END = 0xd7a3;
 const HANGUL_JONGSEONG_COUNT = 28;
+const HANGUL_JONGSEONG_S = 19;
+const HANGUL_JONGSEONG_D = 7;
+const HANGUL_JONGSEONG_R = 8;
 const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
   'duplicate',
   'nested',
@@ -108,14 +111,43 @@ function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
 
-function hasHangulCoda(value) {
-  const lastCodePoint = [...value].at(-1)?.codePointAt(0);
+function replaceLastHangulCoda(value, coda) {
+  const characters = [...value];
+  const lastCodePoint = characters.at(-1)?.codePointAt(0);
   if (lastCodePoint === undefined
     || lastCodePoint < HANGUL_SYLLABLE_START
     || lastCodePoint > HANGUL_SYLLABLE_END) {
     return undefined;
   }
-  return (lastCodePoint - HANGUL_SYLLABLE_START) % HANGUL_JONGSEONG_COUNT !== 0;
+  const syllableIndex = lastCodePoint - HANGUL_SYLLABLE_START;
+  const replacement = HANGUL_SYLLABLE_START
+    + (Math.floor(syllableIndex / HANGUL_JONGSEONG_COUNT) * HANGUL_JONGSEONG_COUNT)
+    + coda;
+  return `${characters.slice(0, -1).join('')}${String.fromCodePoint(replacement)}`;
+}
+
+function inflectionalStemVariants(term, positions) {
+  if ((!positions.has('verb') && !positions.has('adjective')) || !term.endsWith('다')) {
+    return [term];
+  }
+  const stem = term.slice(0, -1);
+  const variants = new Set([term, stem]);
+  const lastCodePoint = [...stem].at(-1)?.codePointAt(0);
+  if (lastCodePoint !== undefined
+    && lastCodePoint >= HANGUL_SYLLABLE_START
+    && lastCodePoint <= HANGUL_SYLLABLE_END) {
+    const syllableIndex = lastCodePoint - HANGUL_SYLLABLE_START;
+    const currentCoda = syllableIndex % HANGUL_JONGSEONG_COUNT;
+    // ㅅ-irregular stems surface without ㅅ before `-은`: 짓다→지은,
+    // 긋다→그은, 붓다→부은, 낫다→나은.  ㄷ-irregular stems surface with
+    // ㄹ in the same slot: 듣다→들은, 걷다→걸은.
+    if (currentCoda === HANGUL_JONGSEONG_S) {
+      variants.add(replaceLastHangulCoda(stem, 0));
+    } else if (currentCoda === HANGUL_JONGSEONG_D) {
+      variants.add(replaceLastHangulCoda(stem, HANGUL_JONGSEONG_R));
+    }
+  }
+  return [...variants].filter(Boolean);
 }
 
 function nominalTermPositions(nominalTerms, topic) {
@@ -137,18 +169,13 @@ function hasUnambiguousNominalTopic(topic, nominalTerms) {
 function isMalformedTopicFragment(gloss, { nominalTerms } = {}) {
   const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
   if (!fragment) return false;
-  const { topic, particle, predicate } = fragment.groups;
+  const { topic, predicate } = fragment.groups;
   if (VALID_PREDICATE_ENDING_PATTERN.test(predicate)) return false;
-
-  // `은` cannot be the Korean topic particle or the consonant-stem
-  // adnominal ending after a vowel-final stem.  This is a purely structural
-  // allomorph check and is safe without lexical context.
-  if (particle === '은' && hasHangulCoda(topic) === false) return true;
 
   return hasUnambiguousNominalTopic(topic, nominalTerms);
 }
 
-function buildNominalTermPositions(recordInfos) {
+export function buildNominalTermPositions(recordInfos) {
   const positions = new Map();
   for (const recordInfo of recordInfos) {
     const record = recordOf(recordInfo);
@@ -160,9 +187,11 @@ function buildNominalTermPositions(recordInfos) {
     );
     for (const term of [record.lemma, ...(record.search_forms ?? [])]) {
       if (typeof term !== 'string' || term.length === 0) continue;
-      const existing = positions.get(term) ?? new Set();
-      for (const pos of recordPositions) existing.add(pos);
-      positions.set(term, existing);
+      for (const variant of inflectionalStemVariants(term, recordPositions)) {
+        const existing = positions.get(variant) ?? new Set();
+        for (const pos of recordPositions) existing.add(pos);
+        positions.set(variant, existing);
+      }
     }
   }
   return positions;
@@ -484,7 +513,6 @@ function recordQualityFindings(record, {
   nominalTerms,
 } = {}) {
   const findings = [];
-  const effectiveNominalTerms = nominalTerms ?? buildNominalTermPositions([record]);
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
     findings.push({ code: 'LEXICAL_SHAPE_ERROR', message: `${label} must be an object` });
     return findings;
@@ -555,7 +583,7 @@ function recordQualityFindings(record, {
         message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
       });
     }
-    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms: effectiveNominalTerms });
+    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms });
     if (glossQuality.token_count < 2) {
       findings.push({
         code: 'LEXICAL_GLOSS_TOO_SHORT',
