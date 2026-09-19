@@ -65,6 +65,52 @@ test('the shared lexical audit rejects malformed topic fragments without a recor
   assert.equal(inspectGlossQuality('바다는 넓다').malformed_structure, false);
 });
 
+test('malformed gloss detection does not confuse productive adnominal forms with topic particles', () => {
+  for (const gloss of [
+    '달리는 사람',
+    '흐르는 물',
+    '빛나는 별',
+    '움직이는 물체',
+    '작은 사람',
+    '넓은 곳',
+  ]) {
+    const quality = inspectGlossQuality(gloss);
+    assert.equal(quality.malformed_structure, false, gloss);
+    assert.equal(quality.malformed_fragment, false, gloss);
+  }
+
+  for (const gloss of ['바닥은 깔개', '걱정은 마음']) {
+    const quality = inspectGlossQuality(gloss);
+    assert.equal(quality.malformed_structure, true, gloss);
+    assert.equal(quality.malformed_fragment, true, gloss);
+  }
+});
+
+test('future records use the same generalized malformed-gloss invariant', () => {
+  const valid = {
+    id: 'w-future-gloss-valid',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-future-gloss-valid',
+    lemma: '미래관형형',
+    search_forms: ['미래관형형'],
+    senses: [{ id: 'w-future-gloss-valid-s1', pos: 'noun', gloss: '빛나는 별' }],
+  };
+  const malformed = {
+    ...valid,
+    id: 'w-future-gloss-invalid',
+    candidate_id: 'w-future-gloss-invalid',
+    lemma: '미래불완성형',
+    search_forms: ['미래불완성형'],
+    senses: [{ id: 'w-future-gloss-invalid-s1', pos: 'noun', gloss: '바닥은 깔개' }],
+  };
+  assert.doesNotThrow(() => validateLexicalRecord(valid, { mode: 'candidate' }));
+  assert.throws(
+    () => validateLexicalRecord(malformed, { mode: 'candidate' }),
+    (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
+  );
+});
+
 test('authored distinct and retain cannot override high-confidence usage or paraphrase frames', () => {
   const cases = [
     {

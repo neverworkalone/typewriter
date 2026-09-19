@@ -73,13 +73,11 @@ const COMMON_DOMAIN_PAIRS = new Set([
 
 const PLACEHOLDER_GLOSS_PATTERN = /^(?:placeholder|tbd|todo|n\/a|na|미정|미작성|임시|예시|테스트)(?:[\s:.-]|$)/iu;
 const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번째|두 번째|세 번째|네 번째)\s+구체적 의미/u;
-// These fragments are high-confidence signs of an unfinished gloss: an
-// unattached Korean particle/compound or a one-token drafting stub.  The
-// rule is shared by canonical and future admissions; it is not tied to a
-// record ID or a milestone batch.
-const MALFORMED_GLOSS_FRAGMENT_PATTERN = /(?:일는|자신는|잘못로운|두근거림가|몸는|걱정는|자극를|느낌의 반응하지|기분가볍다|빛가|빛깔가|짐승는|김가볍게|맛가볍다|공간는|주변가운|물는|산이어진|밭은 쉼터|몸를|종도구|글는|국도구|건물로대|길도구|밥도구|풀는|흙는|사람이어진|창작는|말는|일이야기|거짓이 바르다)/u;
+// A two-token `X은 Y` fragment is not a definition when the first token is
+// being used as a noun topic and the second token is a bare nominal stub.  Do
+// not keep a list of historical bad strings here: the production invariant
+// must describe the shape of the defect and remain useful for future words.
 const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[^\s]+)(?<particle>은|는)\s+(?<predicate>[^\s]+)$/u;
-const VALID_NOMINAL_MODIFIER_PATTERN = /(?:가는|오는|하는|되는|있는|없는)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
 const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
   'duplicate',
@@ -103,6 +101,25 @@ function fail(message, code = 'LEXICAL_QUALITY_ERROR', finding = undefined) {
 
 function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+
+function isLikelyAdnominalModifier(token) {
+  if (typeof token !== 'string' || token.length < 2) return false;
+  if (token.endsWith('는')) {
+    // `-는` is the productive verbal adnominal ending.  A bare `X는 Y`
+    // shape cannot be rejected safely without a Korean POS lexicon: the same
+    // surface form can be a valid modifier (`달리는 사람`) or a topic.
+    return true;
+  }
+  if (!token.endsWith('은')) return false;
+
+  // `-은` is also an adjective/verb adnominal ending.  A one-syllable stem
+  // covers productive forms such as `작은`, `넓은`, and `먹은` without
+  // maintaining a finite list of known modifiers.  Longer `X은` tokens are
+  // conservatively treated as topic-shaped unless their predicate is a full
+  // verb/adjective form (`...다`), which keeps the invariant fail-closed for
+  // the malformed two-token fragments it is meant to catch.
+  return [...token.slice(0, -1)].length === 1;
 }
 
 function requireObject(value, label) {
@@ -406,15 +423,17 @@ export function inspectGlossQuality(gloss) {
   }
   const trimmed = gloss.trim();
   const topicFragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(trimmed);
-  const topicToken = trimmed.split(/\s+/u)[0];
+  const topicToken = topicFragment?.groups.topic
+    ? `${topicFragment.groups.topic}${topicFragment.groups.particle}`
+    : undefined;
   const malformedStructure = topicFragment !== null
-    && topicFragment.groups.topic.length >= 2
-    && !VALID_NOMINAL_MODIFIER_PATTERN.test(topicToken)
+    && topicFragment.groups.particle === '은'
+    && !isLikelyAdnominalModifier(topicToken)
     && !VALID_PREDICATE_ENDING_PATTERN.test(topicFragment.groups.predicate);
   return {
     token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
-    malformed_fragment: MALFORMED_GLOSS_FRAGMENT_PATTERN.test(gloss) || malformedStructure,
+    malformed_fragment: malformedStructure,
     malformed_structure: malformedStructure,
   };
 }

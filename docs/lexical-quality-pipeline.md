@@ -83,9 +83,12 @@ source-bound semantic review rows, and selection evidence.
 Batch modules may configure counts and IDs, but may not replace these shared
 stages with a batch-specific quality gate.
 
-The common lexical-quality audit also rejects malformed two-token topic
-fragments and mechanical sense pairs in every existing canonical record and
-every future prospective canonical dataset. For a post-admission correction,
+The common lexical-quality audit also rejects structurally malformed two-token
+topic fragments (while preserving productive Korean adnominal forms such as
+`달리는 사람` and `작은 사람`) and mechanical sense pairs in every existing
+canonical record and every future prospective canonical dataset. Historical
+bad-string examples remain regression inputs rather than a production
+allowlist. For a post-admission correction,
 the correction manifest is an input artifact rather than a generated verdict;
 its authored decision rows are digest-bound before the canonical audit and
 derived M5 evidence are refreshed.
