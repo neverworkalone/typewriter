@@ -115,6 +115,79 @@ export async function verifySemanticDecisionSource({
   };
 }
 
+export async function commitM511PromotionTransaction({
+  promotion,
+  prospective,
+  semanticAuditBytes,
+  currentCanonicalDirectory,
+  currentSeedPath,
+  canonicalImportPath,
+  promotionEvidencePath,
+  semanticDecisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+} = {}) {
+  const originalSeedBytes = await readFile(currentSeedPath);
+  let importWritten = false;
+  let seedWritten = false;
+  let evidenceWritten = false;
+  try {
+    const prospectiveSemanticAuthority = await verifySemanticDecisionSource({
+      canonicalDirectory: path.join(prospective.temporaryDirectory, 'canonical'),
+      decisionSourcePath: semanticDecisionSourcePath,
+      expectedSemanticAuditBytes: semanticAuditBytes,
+    });
+    promotion.outputs.semantic_decision_source = {
+      path: path.relative(REPOSITORY_DIRECTORY, semanticDecisionSourcePath),
+      sha256: prospectiveSemanticAuthority.sourceSha256,
+      source_id: prospectiveSemanticAuthority.sourceId,
+    };
+    await writeFile(canonicalImportPath, prospective.importBytes);
+    importWritten = true;
+    await writeFile(currentSeedPath, prospective.seedBytes);
+    seedWritten = true;
+    await writeFile(promotionEvidencePath, `${JSON.stringify(promotion, null, 2)}\n`, 'utf8');
+    evidenceWritten = true;
+
+    const finalCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
+    const finalSeedDigest = sha256(await readFile(currentSeedPath));
+    const finalInventoryDigest = sha256(serializeTargetInventory(await buildTargetInventory({
+      canonicalDirectory: currentCanonicalDirectory,
+      seedPath: currentSeedPath,
+    })));
+    const finalSemanticAuthority = await verifySemanticDecisionSource({
+      canonicalDirectory: currentCanonicalDirectory,
+      decisionSourcePath: semanticDecisionSourcePath,
+      expectedSemanticAuditBytes: semanticAuditBytes,
+    });
+    const finalSemanticAuditDigest = sha256(finalSemanticAuthority.semanticAuditBytes);
+    if (finalCanonicalDigest !== prospective.canonicalDigest
+      || finalSeedDigest !== prospective.seedSha256
+      || finalInventoryDigest !== prospective.inventorySha256
+      || finalSemanticAuditDigest !== sha256(semanticAuditBytes)
+      || finalSemanticAuthority.sourceSha256 !== promotion.outputs.semantic_decision_source.sha256) {
+      fail('promoted output digest does not match the prevalidated state', 'PROMOTION_DIGEST_MISMATCH');
+    }
+    promotion.outputs.canonical_directory_sha256 = finalCanonicalDigest;
+    promotion.outputs.seed.sha256 = finalSeedDigest;
+    promotion.outputs.inventory.sha256 = finalInventoryDigest;
+    promotion.outputs.semantic_audit.sha256 = finalSemanticAuditDigest;
+    await writeFile(promotionEvidencePath, `${JSON.stringify(promotion, null, 2)}\n`, 'utf8');
+
+    return {
+      promotion,
+      promotionEvidencePath,
+      canonicalImportPath,
+      canonicalDigest: finalCanonicalDigest,
+      seedDigest: finalSeedDigest,
+      inventoryDigest: finalInventoryDigest,
+    };
+  } catch (error) {
+    if (evidenceWritten) await rm(promotionEvidencePath, { force: true });
+    if (seedWritten) await writeFile(currentSeedPath, originalSeedBytes);
+    if (importWritten) await rm(canonicalImportPath, { force: true });
+    throw error;
+  }
+}
+
 function unique(values) {
   return [...new Set(values)];
 }
@@ -676,67 +749,21 @@ export async function promoteM511({
     },
   };
 
-  const originalSeedBytes = currentSeedBytes;
-  let importWritten = false;
-  let seedWritten = false;
-  let evidenceWritten = false;
   try {
-    const prospectiveSemanticAuthority = await verifySemanticDecisionSource({
-      canonicalDirectory: path.join(prospective.temporaryDirectory, 'canonical'),
-      decisionSourcePath: resolvedSemanticDecisionSourcePath,
-      expectedSemanticAuditBytes: semanticAuditBytes,
-    });
-    promotion.outputs.semantic_decision_source = {
-      path: path.relative(REPOSITORY_DIRECTORY, resolvedSemanticDecisionSourcePath),
-      sha256: prospectiveSemanticAuthority.sourceSha256,
-      source_id: prospectiveSemanticAuthority.sourceId,
-    };
-    await writeFile(resolvedCanonicalImportPath, prospective.importBytes);
-    importWritten = true;
-    await writeFile(resolvedCurrentSeedPath, prospective.seedBytes);
-    seedWritten = true;
-    await writeFile(resolvedEvidencePath, `${JSON.stringify(promotion, null, 2)}\n`, 'utf8');
-    evidenceWritten = true;
-
-    const finalCanonicalDigest = await hashCanonicalDirectory(resolvedCurrentCanonicalDirectory);
-    const finalSeedDigest = sha256(await readFile(resolvedCurrentSeedPath));
-    const finalInventoryDigest = sha256(serializeTargetInventory(await buildTargetInventory({
-      canonicalDirectory: resolvedCurrentCanonicalDirectory,
-      seedPath: resolvedCurrentSeedPath,
-    })));
-    const finalSemanticAuthority = await verifySemanticDecisionSource({
-      canonicalDirectory: resolvedCurrentCanonicalDirectory,
-      decisionSourcePath: resolvedSemanticDecisionSourcePath,
-      expectedSemanticAuditBytes: semanticAuditBytes,
-    });
-    const finalSemanticAuditDigest = sha256(finalSemanticAuthority.semanticAuditBytes);
-    if (finalCanonicalDigest !== prospective.canonicalDigest
-      || finalSeedDigest !== prospective.seedSha256
-      || finalInventoryDigest !== prospective.inventorySha256
-      || finalSemanticAuditDigest !== sha256(semanticAuditBytes)
-      || finalSemanticAuthority.sourceSha256 !== promotion.outputs.semantic_decision_source.sha256) {
-      fail('promoted output digest does not match the prevalidated state', 'PROMOTION_DIGEST_MISMATCH');
-    }
-    promotion.outputs.canonical_directory_sha256 = finalCanonicalDigest;
-    promotion.outputs.seed.sha256 = finalSeedDigest;
-    promotion.outputs.inventory.sha256 = finalInventoryDigest;
-    promotion.outputs.semantic_audit.sha256 = finalSemanticAuditDigest;
-    await writeFile(resolvedEvidencePath, `${JSON.stringify(promotion, null, 2)}\n`, 'utf8');
-
-    return {
+    const transaction = await commitM511PromotionTransaction({
       promotion,
-      manifestPath: resolvedManifestPath,
-      promotionEvidencePath: resolvedEvidencePath,
+      prospective,
+      semanticAuditBytes,
+      currentCanonicalDirectory: resolvedCurrentCanonicalDirectory,
+      currentSeedPath: resolvedCurrentSeedPath,
       canonicalImportPath: resolvedCanonicalImportPath,
-      canonicalDigest: finalCanonicalDigest,
-      seedDigest: finalSeedDigest,
-      inventoryDigest: finalInventoryDigest,
+      promotionEvidencePath: resolvedEvidencePath,
+      semanticDecisionSourcePath: resolvedSemanticDecisionSourcePath,
+    });
+    return {
+      ...transaction,
+      manifestPath: resolvedManifestPath,
     };
-  } catch (error) {
-    if (evidenceWritten) await rm(resolvedEvidencePath, { force: true });
-    if (seedWritten) await writeFile(resolvedCurrentSeedPath, originalSeedBytes);
-    if (importWritten) await rm(resolvedCanonicalImportPath, { force: true });
-    throw error;
   } finally {
     await rm(prospective.temporaryDirectory, { recursive: true, force: true });
   }

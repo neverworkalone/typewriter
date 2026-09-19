@@ -25,6 +25,7 @@ import {
 } from '../scripts/batch/validate-m5-11-admission.mjs';
 import {
   buildM511PromotionSeed,
+  commitM511PromotionTransaction,
   promoteM511,
   verifySemanticDecisionSource,
 } from '../scripts/batch/promote-m5-11.mjs';
@@ -55,6 +56,7 @@ import {
   buildTargetInventory,
   serializeTargetInventory,
 } from '../scripts/inventory/generate-target-inventory.mjs';
+import { hashCanonicalDirectory } from '../scripts/batch/validate-m5-8-process.mjs';
 import {
   makeProductionState,
   makeSemanticAudit,
@@ -69,6 +71,10 @@ function fileSource(path, value, bytes = Buffer.from(JSON.stringify(value), 'utf
     sha256: createHash('sha256').update(bytes).digest('hex'),
     value,
   };
+}
+
+function sha256(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
 }
 
 function makeCatalog() {
@@ -1222,24 +1228,77 @@ test('M5-11 gate rejects an audit session reused from editorial timing', () => {
   );
 });
 
-test('M5-11 successful promotion verifies the durable semantic source before returning', async () => {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-semantic-authority-'));
-  const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+test('M5-11 successful promotion transaction verifies the durable semantic source before returning', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(process.cwd(), '.m5-11-semantic-authority-'));
+  const currentCanonicalDirectory = path.join(temporaryDirectory, 'current-canonical');
+  const prospectiveDirectory = path.join(temporaryDirectory, 'prospective');
+  const prospectiveCanonicalDirectory = path.join(prospectiveDirectory, 'canonical');
+  const currentSeedPath = path.join(temporaryDirectory, 'current-seed.json');
+  const prospectiveSeedPath = path.join(prospectiveDirectory, 'seed.json');
+  const canonicalImportPath = path.join(currentCanonicalDirectory, 'm5-11-expansion.jsonl');
+  const promotionEvidencePath = path.join(temporaryDirectory, 'promotion.json');
   try {
-    await cp('data/batches/m5-11-base-canonical', canonicalDirectory, { recursive: true });
-    await cp(
-      'data/canonical/m5-11-expansion.jsonl',
-      path.join(canonicalDirectory, 'm5-11-expansion.jsonl'),
-    );
+    await cp('data/batches/m5-11-base-canonical', currentCanonicalDirectory, { recursive: true });
+    await cp('data/batches/m5-11-base-canonical', prospectiveCanonicalDirectory, { recursive: true });
+    const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
+    const seedBytes = await readFile('data/inventory/m5-target-seed.json');
+    await writeFile(path.join(prospectiveCanonicalDirectory, 'm5-11-expansion.jsonl'), importBytes);
+    await writeFile(prospectiveSeedPath, seedBytes);
+    await writeFile(currentSeedPath, 'base seed placeholder\n', 'utf8');
 
-    // This is the post-write canonical state that a successful promotion returns.
     const { artifact } = await buildCanonicalSemanticAudit({
-      canonicalDirectory,
+      canonicalDirectory: prospectiveCanonicalDirectory,
       decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     });
     const admittedSemanticAuditBytes = serializeSemanticAuditArtifact(artifact);
+    const prospectiveInventoryBytes = serializeTargetInventory(await buildTargetInventory({
+      canonicalDirectory: prospectiveCanonicalDirectory,
+      seedPath: prospectiveSeedPath,
+      generatedFromCanonicalDirectory: currentCanonicalDirectory,
+      generatedFromSeedPath: currentSeedPath,
+      canonicalScopeDirectory: currentCanonicalDirectory,
+    }));
+    const prospective = {
+      temporaryDirectory: prospectiveDirectory,
+      importBytes,
+      seedBytes,
+      canonicalDigest: await hashCanonicalDirectory(prospectiveCanonicalDirectory),
+      seedSha256: sha256(seedBytes),
+      inventorySha256: sha256(prospectiveInventoryBytes),
+    };
+    const transaction = await commitM511PromotionTransaction({
+      promotion: {
+        outputs: {
+          seed: { sha256: prospective.seedSha256 },
+          inventory: { sha256: prospective.inventorySha256 },
+          semantic_audit: { sha256: sha256(admittedSemanticAuditBytes) },
+        },
+      },
+      prospective,
+      semanticAuditBytes: admittedSemanticAuditBytes,
+      currentCanonicalDirectory,
+      currentSeedPath,
+      canonicalImportPath,
+      promotionEvidencePath,
+      semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+    });
+
+    assert.equal(transaction.canonicalDigest, prospective.canonicalDigest);
+    assert.equal(transaction.seedDigest, prospective.seedSha256);
+    assert.equal(transaction.inventoryDigest, prospective.inventorySha256);
+    assert.deepEqual(await readFile(canonicalImportPath), importBytes);
+    const promotionEvidence = JSON.parse(await readFile(promotionEvidencePath, 'utf8'));
+    assert.equal(
+      promotionEvidence.outputs.semantic_decision_source.path,
+      'data/validation/canonical-semantic-decision-source.json',
+    );
+    assert.equal(
+      promotionEvidence.outputs.semantic_audit.sha256,
+      sha256(admittedSemanticAuditBytes),
+    );
+
     const authority = await verifySemanticDecisionSource({
-      canonicalDirectory,
+      canonicalDirectory: currentCanonicalDirectory,
       decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
       expectedSemanticAuditBytes: admittedSemanticAuditBytes,
     });
@@ -1250,14 +1309,14 @@ test('M5-11 successful promotion verifies the durable semantic source before ret
     tamperedSemanticAuditBytes[0] ^= 1;
     await assert.rejects(
       verifySemanticDecisionSource({
-        canonicalDirectory,
+        canonicalDirectory: currentCanonicalDirectory,
         decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
         expectedSemanticAuditBytes: tamperedSemanticAuditBytes,
       }),
       (error) => error?.code === 'SEMANTIC_DECISION_SOURCE_MISMATCH',
     );
     await validateCanonicalSemanticAudit(
-      canonicalDirectory,
+      currentCanonicalDirectory,
       undefined,
       DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     );
