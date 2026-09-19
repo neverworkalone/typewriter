@@ -70,23 +70,45 @@ const WRITER_DOMAIN_TERMS = Object.freeze({
 export const WRITER_DOMAIN_AXES = Object.freeze(Object.keys(WRITER_DOMAIN_TERMS));
 
 // A domain term is matched as a lexical token, not as an arbitrary sequence
-// of Hangul syllables.  These are productive Korean particles that may attach
-// directly to a noun-like domain term.  Derivational tails are only allowed
-// after an explicitly listed multi-syllable lexical term; this prevents the
-// one-syllable smell term `향` from matching directional words such as `향한`
-// or `향하는`.
-const WRITER_DOMAIN_PARTICLE_TAILS = new Set([
+// of Hangul syllables.  `하고` is intentionally excluded: without a
+// morphological analyzer, a token such as `향하고` is ambiguous between the
+// noun `향` plus a particle and the inflected verb `향하다`.  Unsupported
+// ambiguity must not become writer-domain evidence.
+const WRITER_DOMAIN_NOMINAL_PARTICLE_TAILS = new Set([
   '으로부터', '에서부터', '으로서', '으로써', '에게서', '한테서',
   '으로', '에서', '에게', '한테', '처럼', '만큼', '부터', '까지', '보다',
-  '이나', '이랑', '하고', '랑', '조차', '마저', '밖에', '뿐', '대로',
+  '이나', '이랑', '랑', '조차', '마저', '밖에', '뿐', '대로', '에도',
   '은', '는', '이', '가', '을', '를', '에', '로', '과', '와', '도', '만', '의', '나',
 ]);
 
-const WRITER_DOMAIN_DERIVATIONAL_TAILS = new Set([
-  '다', '고', '며', '면', '서', '지', '게', '도록', '던', '적', '적인',
-  '스럽다', '스러운', '스럽게', '스러움', '롭다', '로운', '롭게', '로움',
-  '하다', '한', '하고', '하게', '함', '이다',
+// These forms visibly contain the copular stem `이`, so they are safer for a
+// token-only analyzer than homographic endings such as `인` or `일`.
+const WRITER_DOMAIN_COPULAR_TAILS = new Set([
+  '이다', '이었다', '이었던', '이면', '이므로', '이라', '이어서', '이지만',
 ]);
+
+// Most configured terms are nouns.  A small number are explicitly configured
+// as a lexical stem with the forms that preserve that reading.  Keeping this
+// metadata per term prevents one generic suffix table from treating every
+// one-syllable term as if it were a noun, adjective, and verb at once.
+const WRITER_DOMAIN_TERM_METADATA = Object.freeze({
+  정서: Object.freeze({
+    lexical_class: 'noun',
+    derived_tails: new Set(['적']),
+  }),
+  향기: Object.freeze({
+    lexical_class: 'noun',
+    derived_tails: new Set(['롭다', '로운', '롭게', '로움']),
+  }),
+  향긋: Object.freeze({
+    lexical_class: 'adjective-stem',
+    inflectional_tails: new Set(['하다', '한', '하게', '함']),
+  }),
+  빛나: Object.freeze({
+    lexical_class: 'verb-stem',
+    inflectional_tails: new Set(['다', '는', '며', '고', '서', '지', '게', '도록', '던']),
+  }),
+});
 
 const WRITER_DOMAIN_EDGE_PUNCTUATION_PATTERN = /[()[\]{}"'“”‘’.,;:!?。！？…]/u;
 
@@ -446,15 +468,14 @@ function sourceLabel(recordInfo, index) {
 }
 
 function isAllowedDomainTail(term, tail) {
-  const canConsumeParticles = (remaining) => {
-    if (remaining.length === 0) return true;
-    return [...WRITER_DOMAIN_PARTICLE_TAILS].some((particle) => (
-      remaining.startsWith(particle)
-      && canConsumeParticles(remaining.slice(particle.length))
-    ));
-  };
-  if (canConsumeParticles(tail)) return true;
-  return term.length >= 2 && WRITER_DOMAIN_DERIVATIONAL_TAILS.has(tail);
+  if (tail.length === 0) return true;
+  const metadata = WRITER_DOMAIN_TERM_METADATA[term] ?? { lexical_class: 'noun' };
+  if (metadata.lexical_class === 'noun') {
+    return WRITER_DOMAIN_NOMINAL_PARTICLE_TAILS.has(tail)
+      || WRITER_DOMAIN_COPULAR_TAILS.has(tail)
+      || metadata.derived_tails?.has(tail) === true;
+  }
+  return metadata.inflectional_tails?.has(tail) === true;
 }
 
 function trimDomainToken(text, start, end) {

@@ -676,6 +676,7 @@ test('writer-domain evidence respects lexical token boundaries and Korean inflec
     '향상시키는 성질',
     '방향을 정하다',
     '향후 계획',
+    '목표를 향하고 있다',
     '검색 결과를 찾다',
     '탐색하다',
     '어색하고 거리감이 있다',
@@ -688,19 +689,29 @@ test('writer-domain evidence respects lexical token boundaries and Korean inflec
     ['향이 은은하다', 'smell'],
     ['향을 맡다', 'smell'],
     ['향으로 퍼지다', 'smell'],
+    ['좋은 향이다', 'smell'],
     ['향기로운 냄새', 'smell'],
+    ['향긋한 냄새', 'smell'],
     ['색이 선명하다', 'visual'],
     ['색으로 물들다', 'visual'],
+    ['선명한 색이다', 'visual'],
     ['색깔이 선명하다', 'visual'],
+    ['빛나는 모습', 'visual'],
+    ['정서적 연결감', 'affective'],
+    ['소리에도 주의를 기울이다', 'sound'],
   ]) {
     assert.deepEqual(inspectWriterDomainEvidence(gloss).axes, [axis], gloss);
   }
 
-  const collisionGloss = '기분이나 집중력을 향상시키는 성질';
-  const observations = inspectGlossConnectors(collisionGloss);
-  assert.equal(observations.length, 1);
-  assert.equal(observations[0].classification, 'unclassified-coordination');
-  assert.equal(observations[0].right_axis, null);
+  for (const collisionGloss of [
+    '기분이나 집중력을 향상시키는 성질',
+    '기분이나 목표를 향하고 있는 상태',
+  ]) {
+    const observations = inspectGlossConnectors(collisionGloss);
+    assert.equal(observations.length, 1, collisionGloss);
+    assert.equal(observations[0].classification, 'unclassified-coordination', collisionGloss);
+    assert.equal(observations[0].right_axis, null, collisionGloss);
+  }
 });
 
 test('the token-aware domain rule is reused by a future lexical admission', () => {
