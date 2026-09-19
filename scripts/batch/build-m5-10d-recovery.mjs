@@ -36,6 +36,7 @@ import {
   validateM5DVerification,
   validateM5DWorkload,
   validateM5DWorkloadDecisionAlignment,
+  readInventorySource,
 } from './validate-m5-10d-recovery.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -124,7 +125,7 @@ export async function buildM5DRecovery({
     readJsonSource(failedMetricsPath, 'failed Wave B metrics'),
     readJsonSource(failedVerificationPath, 'failed Wave B verification'),
     readJsonSource(failedRelationDiffPath, 'failed Wave B relation diff'),
-    readJsonSource(inventoryPath, 'M5 target inventory'),
+    readInventorySource(inventoryPath, canonicalDirectory),
     readCanonicalRecords(canonicalDirectory),
   ]);
   const followUpSource = workloadSource.value.source.follow_up_sha256

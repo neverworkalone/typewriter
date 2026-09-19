@@ -5,12 +5,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  DEFAULT_INVENTORY_PATH,
   TargetInventoryError,
   validateTargetInventory,
 } from '../scripts/validate/target-inventory.mjs';
 import {
   DEFAULT_SEED_PATH,
+  buildTargetInventory,
   TargetInventoryGenerationError,
   generateTargetInventory,
 } from '../scripts/inventory/generate-target-inventory.mjs';
@@ -20,7 +20,7 @@ import {
 } from '../scripts/validate/canonical-jsonl.mjs';
 
 async function readInventory() {
-  return JSON.parse(await readFile(DEFAULT_INVENTORY_PATH, 'utf8'));
+  return buildTargetInventory();
 }
 
 async function validateModifiedInventory(mutator) {

@@ -6,10 +6,13 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import {
+  DEFAULT_SEED_PATH,
+  buildTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import { validateDatasetRecords } from './dataset-integrity.mjs';
 import {
-  DEFAULT_SEMANTIC_AUDIT_PATH,
-  readSemanticAuditArtifact,
+  buildCanonicalSemanticAudit,
 } from './semantic-audit.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -416,7 +419,22 @@ function validateActiveCollisions(entries) {
   }
 }
 
-export async function readTargetInventory(inventoryPath = DEFAULT_INVENTORY_PATH) {
+export async function readTargetInventory(
+  inventoryPath = DEFAULT_INVENTORY_PATH,
+  {
+    canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+    seedPath = DEFAULT_SEED_PATH,
+  } = {},
+) {
+  if (path.resolve(inventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)) {
+    return {
+      inventory: await buildTargetInventory({
+        canonicalDirectory,
+        seedPath,
+      }),
+      inventoryPath,
+    };
+  }
   let inventory;
   try {
     inventory = JSON.parse(await readFile(inventoryPath, 'utf8'));
@@ -434,10 +452,14 @@ export async function readTargetInventory(inventoryPath = DEFAULT_INVENTORY_PATH
 
 export async function validateTargetInventory({
   inventoryPath = DEFAULT_INVENTORY_PATH,
+  inventory: suppliedInventory,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  seedPath = DEFAULT_SEED_PATH,
   checkPilotCompleteness = true,
 } = {}) {
-  const { inventory } = await readTargetInventory(inventoryPath);
+  const inventory = suppliedInventory ?? (path.resolve(inventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)
+    ? await buildTargetInventory({ canonicalDirectory, seedPath })
+    : (await readTargetInventory(inventoryPath)).inventory);
   requireObject(inventory, 'inventory');
 
   if (inventory.schema_version !== '1') {
@@ -492,7 +514,7 @@ export async function validateTargetInventory({
   const canonicalResult = await readCanonicalRecords(canonicalDirectory);
   const requireSemanticAudit = path.resolve(canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   const semanticAudit = requireSemanticAudit
-    ? await readSemanticAuditArtifact(DEFAULT_SEMANTIC_AUDIT_PATH)
+    ? (await buildCanonicalSemanticAudit({ canonicalDirectory })).artifact
     : undefined;
   validateDatasetRecords(canonicalResult.records, {
     checkPilotCompleteness,

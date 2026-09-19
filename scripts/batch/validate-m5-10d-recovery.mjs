@@ -9,6 +9,11 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import {
+  DEFAULT_SEED_PATH,
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_10D_PRODUCER_VERSION } from './produce-m5-10d-work.mjs';
 
@@ -218,6 +223,18 @@ async function readSource(filePath, label) {
     fail(`${label} is not valid JSON: ${error.message}`, 'INVALID_SOURCE_JSON');
   }
   return { value, bytes, sha256: sha256Bytes(bytes), path: filePath };
+}
+
+export async function readInventorySource(filePath, canonicalDirectory) {
+  if (path.resolve(filePath) === path.resolve(DEFAULT_INVENTORY_PATH)) {
+    const value = await buildTargetInventory({
+      canonicalDirectory,
+      seedPath: DEFAULT_SEED_PATH,
+    });
+    const bytes = serializeTargetInventory(value);
+    return { value, bytes, sha256: sha256Bytes(bytes), path: filePath };
+  }
+  return readSource(filePath, 'M5 target inventory');
 }
 
 function readSyncBytes(filePath, label) {
@@ -1313,7 +1330,7 @@ export async function validateM5DRecovery({
     readSource(failedMetricsPath, 'failed Wave B metrics'),
     readSource(failedVerificationPath, 'failed Wave B verification'),
     readSource(failedRelationDiffPath, 'failed Wave B relation diff'),
-    readSource(inventoryPath, 'M5 target inventory'),
+    readInventorySource(inventoryPath, canonicalDirectory),
     readCanonicalRecords(canonicalDirectory),
   ]);
   const followUpSource = workloadSource.value.source.follow_up_sha256
@@ -1464,7 +1481,7 @@ export async function validateM5DAuthorization({
     readSource(options.failedStagePath ?? DEFAULT_FAILED_STAGE_PATH, 'failed Wave B stage'),
     readSource(options.workloadPath ?? DEFAULT_WORKLOAD_PATH, 'M5-10D workload'),
     readSource(options.repairRevisionPath ?? DEFAULT_REPAIR_REVISION_PATH, 'M5-10A process correction'),
-    readSource(options.inventoryPath ?? DEFAULT_INVENTORY_PATH, 'M5 target inventory'),
+    readInventorySource(options.inventoryPath ?? DEFAULT_INVENTORY_PATH, options.canonicalDirectory ?? DEFAULT_CANONICAL_DIRECTORY),
   ]);
   validateSchema(authorizationSource.value, authorizationValidator, 'authorization', 'M5-10D authorization', 'AUTHORIZATION_SCHEMA_ERROR');
   const authorization = authorizationSource.value;

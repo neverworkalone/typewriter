@@ -63,6 +63,10 @@ import {
   productionValueSha256,
 } from './lexical-production-state.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import {
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import { assertValidSearchRegressionCorpus } from '../validate/search-regressions.mjs';
 
 const require = createRequire(import.meta.url);
@@ -2403,7 +2407,7 @@ export async function validateM511Admission({
   baseCanonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-base-canonical'),
   currentCanonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data/canonical'),
   baseInventoryPath = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-base-inventory.json'),
-  currentInventoryPath = path.join(REPOSITORY_DIRECTORY, 'data/inventory/m5-target-inventory.json'),
+  currentInventoryPath,
   currentSeedPath = path.join(REPOSITORY_DIRECTORY, 'data/inventory/m5-target-seed.json'),
   authorizationPath = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-10d-m5-11-authorization-20260912.json'),
   checkPilotCompleteness = true,
@@ -2457,7 +2461,12 @@ export async function validateM511Admission({
   let currentSeedBytes;
   if (requirePrePromotionSnapshot) {
     [currentInventoryBytes, currentSeedBytes] = await Promise.all([
-      readFile(currentInventoryPath),
+      currentInventoryPath
+        ? readFile(currentInventoryPath)
+        : buildTargetInventory({
+          canonicalDirectory: currentCanonicalDirectory,
+          seedPath: currentSeedPath,
+        }).then(serializeTargetInventory),
       readFile(currentSeedPath),
     ]);
   }

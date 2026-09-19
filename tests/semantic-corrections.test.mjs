@@ -31,9 +31,6 @@ const BOUNDARY_DECISIONS_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/validation/canonical-semantic-boundary-decisions.json',
 );
-const REVIEW_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-review.json');
-const COVERAGE_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-coverage.json');
-const AUDIT_PATH = path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-audit.json');
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
@@ -50,9 +47,6 @@ async function copyEvidence(root) {
   await Promise.all([
     cp(DECISION_SOURCE_PATH, paths.decisionSourcePath),
     cp(BOUNDARY_DECISIONS_PATH, paths.boundaryDecisionsPath),
-    cp(REVIEW_PATH, paths.reviewOutputPath),
-    cp(COVERAGE_PATH, paths.coverageOutputPath),
-    cp(AUDIT_PATH, paths.auditOutputPath),
   ]);
   return paths;
 }
@@ -85,9 +79,6 @@ async function snapshotFiles(paths) {
   const targets = [
     paths.decisionSourcePath,
     paths.boundaryDecisionsPath,
-    paths.reviewOutputPath,
-    paths.coverageOutputPath,
-    paths.auditOutputPath,
   ];
   const canonical = await readCanonicalRecords(paths.canonicalDirectory);
   targets.push(...new Set(canonical.records.map(({ filePath }) => filePath)));

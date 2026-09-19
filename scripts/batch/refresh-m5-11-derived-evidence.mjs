@@ -14,10 +14,16 @@ import { fileURLToPath } from 'node:url';
 import { buildDictionary } from '../build/dictionary.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
 import {
+  buildCanonicalSemanticAudit,
   canonicalRecordsSha256,
   readSemanticAuditArtifact,
+  serializeSemanticAuditArtifact,
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
+import {
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import {
@@ -36,6 +42,7 @@ const ADMISSION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-admis
 const PROMOTION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-11-promotion.json');
 const CANONICAL_IMPORT_PATH = path.join(REPOSITORY_DIRECTORY, 'data/canonical/m5-11-expansion.jsonl');
 const INVENTORY_PATH = path.join(REPOSITORY_DIRECTORY, 'data/inventory/m5-target-inventory.json');
+const SEED_PATH = path.join(REPOSITORY_DIRECTORY, 'data/inventory/m5-target-seed.json');
 const SEMANTIC_AUDIT_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/validation/canonical-semantic-audit.json',
@@ -368,16 +375,38 @@ export async function refreshM511DerivedEvidence({
   inventoryPath = INVENTORY_PATH,
   semanticAuditPath = SEMANTIC_AUDIT_PATH,
 } = {}) {
-  const [correctionManifest, manifest, promotion, canonicalImportBytes, inventoryBytes, semanticAudit] = await Promise.all([
+  const [correctionManifest, manifest, promotion, canonicalImportBytes] = await Promise.all([
     readJson(correctionManifestPath, 'correction manifest'),
     readJson(admissionPath, 'M5-11 admission evidence'),
     readJson(promotionPath, 'M5-11 promotion evidence'),
     readFile(canonicalImportPath),
-    readFile(inventoryPath),
-    readSemanticAuditArtifact(semanticAuditPath),
   ]);
   const bindingState = assertOutputBindings(manifest, promotion, correctionManifest);
-  const canonical = await readCanonicalRecords(path.join(REPOSITORY_DIRECTORY, 'data/canonical'));
+  const canonicalDirectory = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
+  const canonical = await readCanonicalRecords(canonicalDirectory);
+  let inventory;
+  let inventoryBytes;
+  if (path.resolve(inventoryPath) === path.resolve(INVENTORY_PATH)) {
+    inventory = await buildTargetInventory({
+      canonicalDirectory,
+      seedPath: SEED_PATH,
+    });
+    inventoryBytes = serializeTargetInventory(inventory);
+  } else {
+    inventoryBytes = await readFile(inventoryPath);
+    inventory = JSON.parse(inventoryBytes.toString('utf8'));
+  }
+  let semanticAudit;
+  let semanticAuditBytes;
+  if (path.resolve(semanticAuditPath) === path.resolve(SEMANTIC_AUDIT_PATH)) {
+    semanticAudit = (await buildCanonicalSemanticAudit({
+      canonicalDirectory,
+    })).artifact;
+    semanticAuditBytes = serializeSemanticAuditArtifact(semanticAudit);
+  } else {
+    semanticAudit = await readSemanticAuditArtifact(semanticAuditPath);
+    semanticAuditBytes = await readFile(semanticAuditPath);
+  }
   const canonicalRecordsDigest = canonicalRecordsSha256(canonical.records);
   if (canonicalRecordsDigest !== correctionManifest.prospective_canonical_records_sha256) {
     fail('complete canonical input does not match the correction manifest prospective digest', 'SOURCE_BINDING_MISMATCH');
@@ -385,7 +414,7 @@ export async function refreshM511DerivedEvidence({
   const outputDigests = {
     canonical_import_sha256: sha256(canonicalImportBytes),
     inventory_sha256: sha256(inventoryBytes),
-    semantic_audit_sha256: sha256(await readFile(semanticAuditPath)),
+    semantic_audit_sha256: sha256(semanticAuditBytes),
     canonical_directory_sha256: await hashCanonicalDirectory(path.join(REPOSITORY_DIRECTORY, 'data/canonical')),
     canonical_records_sha256: canonicalRecordsDigest,
   };
@@ -401,8 +430,8 @@ export async function refreshM511DerivedEvidence({
   });
   const canonicalReview = completeCanonicalReview(semanticAudit);
   const inventoryValidation = await validateTargetInventory({
-    inventoryPath,
-    canonicalDirectory: path.join(REPOSITORY_DIRECTORY, 'data/canonical'),
+    inventory,
+    canonicalDirectory,
     checkPilotCompleteness: true,
   });
   const sqliteObservation = await buildSqliteObservation();

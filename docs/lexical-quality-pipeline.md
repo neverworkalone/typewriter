@@ -32,16 +32,15 @@ The shared implementation is:
 - `scripts/validate/semantic-audit.mjs` — the v3 contract that keeps
   deterministic content coverage separate from explicitly authored semantic
   decisions. `buildSemanticCoverageArtifact()` may collect facts, but it never
-  creates pass/boundary/relation decisions;
-- `data/validation/canonical-semantic-review.json` — the separately authored
-  complete decision artifact;
+  creates pass/boundary/relation decisions. The current audit envelope is
+  rebuilt in memory from the canonical dataset and the authored decision source;
 - `data/validation/canonical-semantic-decision-source.json` — the separately
-  authored source consumed by the rebuild step; it binds the review artifact by
+  authored source consumed by the rebuild step; it binds the review decisions by
   source ID and digest, so canonical facts alone cannot manufacture a pass;
-- `data/validation/canonical-semantic-coverage.json` — deterministic facts and
-  digests derived from canonical values;
-- `data/validation/canonical-semantic-audit.json` — the validated envelope that
-  binds both artifacts to one canonical snapshot;
+- `data/validation/canonical-semantic-boundary-decisions.json` — the durable
+  correction/review input for explicit lexical boundary decisions;
+- historical `data/validation/m5-*-semantic-audit.json` envelopes — durable
+  replay evidence for immutable historical canonical snapshots;
 - `scripts/validate/rebuild-semantic-evidence.mjs` — rebuilds deterministic
   coverage from that decision source only and fails when the authored source is
   missing or replaced by a legacy/replay review;
@@ -60,8 +59,11 @@ separately authored review rows are retained as scoped durable evidence; each
 historical manifest binds the exact envelope bytes by `review.semantic_audit_sha256`.
 CI copies these committed sources to its external runner staging directory and
 passes them through the A2/Wave B CLI, preserving the repository-local staging
-boundary while keeping replay deterministic. Replay is an explicit historical
-verification mode; generic and future admissions must use a live
+boundary while keeping replay deterministic. Current coverage, review, audit,
+and target-inventory files are deterministic projections and are not tracked;
+`config/artifact-policy.json` and `scripts/validate/artifact-policy.mjs`
+enforce that boundary. Replay is an explicit historical verification mode;
+generic and future admissions must use a live
 `lexical-production` run with typed stage payloads. A live stage envelope
 preserves the exact typed input, output, and operation details. Generic batch
 validation extracts those values, executes a fresh shared producer run through
@@ -72,9 +74,10 @@ used as an active/future admission shortcut.
 
 M5-11 adds its 550-row scope, +500 arithmetic, reserve, source digests, timing,
 and authorization rules around this boundary. Every registration must provide
-the complete current base, the complete prospective canonical dataset, and a
-pre-written matching semantic-audit envelope; a batch delta or a validator call
-that regenerates its own decisions is not admissible. New candidate-producing
+the complete current base, the complete prospective canonical dataset, and the
+matching authored decision source; validation rebuilds the deterministic audit
+bytes from those inputs. A batch delta or a validator call that regenerates its
+own decisions is not admissible. New candidate-producing
 workflows must also call `lexical-production` with complete candidate coverage,
 source-bound semantic review rows, and selection evidence.
 Batch modules may configure counts and IDs, but may not replace these shared

@@ -1287,7 +1287,7 @@ async function validateBatchInternal({
   }
 
   await validateTargetInventory({ inventoryPath, canonicalDirectory });
-  const { inventory } = await readTargetInventory(inventoryPath);
+  const { inventory } = await readTargetInventory(inventoryPath, { canonicalDirectory });
   if (manifest.inventory_id !== inventory.inventory_id) {
     fail('batch manifest inventory_id does not match target inventory', 'INVENTORY_ID_DRIFT');
   }

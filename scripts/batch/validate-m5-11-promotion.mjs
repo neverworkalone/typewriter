@@ -11,8 +11,14 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import {
   DEFAULT_SEMANTIC_AUDIT_PATH,
+  buildCanonicalSemanticAudit,
   readSemanticAuditArtifact,
+  serializeSemanticAuditArtifact,
 } from '../validate/semantic-audit.mjs';
+import {
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import { validateHistoricalLexicalAddition } from './lexical-admission.mjs';
 import {
   produceLexicalProductionState,
@@ -627,8 +633,58 @@ export async function validateM511Promotion({
   const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
-  const semanticAudit = await readSemanticAuditArtifact(resolvedSemanticAuditPath);
-  const semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
+  const semanticDecisionSourceOutput = evidence.outputs?.semantic_decision_source;
+  if (!semanticDecisionSourceOutput
+    || typeof semanticDecisionSourceOutput.path !== 'string'
+    || typeof semanticDecisionSourceOutput.sha256 !== 'string'
+    || typeof semanticDecisionSourceOutput.source_id !== 'string') {
+    fail('promotion evidence is missing the durable semantic decision source binding', 'OUTPUT_BINDING_MISMATCH');
+  }
+  const resolvedSemanticDecisionSourcePath = repositoryPath(
+    semanticDecisionSourceOutput.path,
+    'semantic decision source output',
+  );
+  const semanticDecisionSourceBytes = await readFile(resolvedSemanticDecisionSourcePath);
+  if (sha256(semanticDecisionSourceBytes) !== semanticDecisionSourceOutput.sha256) {
+    fail('durable semantic decision source digest drifted', 'OUTPUT_DIGEST_MISMATCH');
+  }
+  const reconstructedSemanticAudit = await buildCanonicalSemanticAudit({
+    canonicalDirectory: resolvedCanonicalDirectory,
+    decisionSourcePath: resolvedSemanticDecisionSourcePath,
+  });
+  if (reconstructedSemanticAudit.decisionSource.source_id !== semanticDecisionSourceOutput.source_id) {
+    fail('durable semantic decision source identity drifted', 'OUTPUT_BINDING_MISMATCH');
+  }
+  const reconstructedSemanticAuditBytes = serializeSemanticAuditArtifact(
+    reconstructedSemanticAudit.artifact,
+  );
+  let semanticAudit;
+  let semanticAuditBytes;
+  if (path.resolve(semanticAuditPath) === path.resolve(DEFAULT_SEMANTIC_AUDIT_PATH)) {
+    semanticAudit = reconstructedSemanticAudit.artifact;
+    semanticAuditBytes = reconstructedSemanticAuditBytes;
+  } else {
+    semanticAudit = await readSemanticAuditArtifact(resolvedSemanticAuditPath);
+    semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
+  }
+  if (Buffer.compare(semanticAuditBytes, reconstructedSemanticAuditBytes) !== 0) {
+    fail(
+      'validated semantic audit is not reconstructed from the durable decision source',
+      'SEMANTIC_AUDIT_SOURCE_MISMATCH',
+    );
+  }
+  let inventory;
+  let inventoryBytes;
+  if (path.resolve(currentInventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)) {
+    inventory = await buildTargetInventory({
+      canonicalDirectory: resolvedCanonicalDirectory,
+      seedPath: resolvedSeedPath,
+    });
+    inventoryBytes = serializeTargetInventory(inventory);
+  } else {
+    inventoryBytes = await readFile(resolvedInventoryPath);
+    inventory = JSON.parse(inventoryBytes.toString('utf8'));
+  }
   const finalRecords = canonical.records.map(({ record }) => record);
   const semanticAuditSource = manifest.sources?.semantic_audit;
   if (semanticAuditSource) {
@@ -792,26 +848,25 @@ export async function validateM511Promotion({
     || seedStatusCounts.held + seedStatusCounts.rejected + seedStatusCounts.deferred !== 50) {
     fail('promoted seed decision arithmetic drifted', 'OUTPUT_COUNT_MISMATCH');
   }
-  const inventoryBytes = await readFile(resolvedInventoryPath);
   if (sha256(inventoryBytes) !== evidence.outputs.inventory?.sha256) {
     fail('promoted inventory digest drifted', 'OUTPUT_DIGEST_MISMATCH');
   }
-  const inventory = await validateTargetInventory({
-    inventoryPath: resolvedInventoryPath,
+  const inventoryValidation = await validateTargetInventory({
+    inventory,
     canonicalDirectory: resolvedCanonicalDirectory,
     checkPilotCompleteness: true,
   });
   assertSummary({
-    record_count: inventory.canonicalRecordCount,
-    start_count: inventory.currentStartCount,
-    reference_only_count: inventory.currentReferenceOnlyCount,
+    record_count: inventoryValidation.canonicalRecordCount,
+    start_count: inventoryValidation.currentStartCount,
+    reference_only_count: inventoryValidation.currentReferenceOnlyCount,
   }, {
     record_count: durable.summary.record_count,
     start_count: durable.summary.start_count,
     reference_only_count: durable.summary.reference_only_count,
   }, 'promoted inventory snapshot');
-  if (inventory.inventoryEntryCount !== evidence.outputs.inventory?.entry_count
-    || inventory.canonicalRecordCount !== evidence.outputs.inventory?.canonical_record_count) {
+  if (inventoryValidation.inventoryEntryCount !== evidence.outputs.inventory?.entry_count
+    || inventoryValidation.canonicalRecordCount !== evidence.outputs.inventory?.canonical_record_count) {
     fail('promoted inventory output counts drifted', 'OUTPUT_COUNT_MISMATCH');
   }
 
@@ -819,7 +874,7 @@ export async function validateM511Promotion({
     batch_id: M5_11_BATCH_ID,
     gate: durable.gate,
     summary: finalSummary,
-    inventory,
+    inventory: inventoryValidation,
     outputs: evidence.outputs,
     sources: evidence.sources,
   };

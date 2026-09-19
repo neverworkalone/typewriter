@@ -149,8 +149,10 @@ measured post-freeze pass cannot support a verified completion claim.
   — deterministically derived decisions, counts, timing, and audit metrics.
 - [`data/batches/m5-10a-wave-a2.json`](../data/batches/m5-10a-wave-a2.json) —
   final stage report with the passing gate, readiness flag, and uncreated/un-authorized next-stage flags.
-- [`data/inventory/m5-target-inventory.json`](../data/inventory/m5-target-inventory.json)
-  — regenerated inventory with 628 current starts and the remaining candidates.
+- The target-inventory projection — regenerated from the canonical snapshot and
+  [`data/inventory/m5-target-seed.json`](../data/inventory/m5-target-seed.json)
+  with 628 current starts and the remaining candidates; it is reconstructed on
+  demand rather than tracked as a generated file.
 - `data/batches/m5-10a-wave-a-base-canonical/` — immutable 578-start source
   snapshot used to keep historical Wave A inputs reproducible.
 

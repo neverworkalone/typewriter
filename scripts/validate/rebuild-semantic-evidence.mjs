@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,10 +8,7 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import {
-  DEFAULT_SEMANTIC_AUDIT_PATH,
-  DEFAULT_SEMANTIC_COVERAGE_PATH,
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-  DEFAULT_SEMANTIC_REVIEW_PATH,
   assembleSemanticAuditArtifact,
   canonicalRecordsSha256,
   validateSemanticAuditCoverage,
@@ -73,17 +71,26 @@ async function rebuildOne({
 export async function rebuildSemanticEvidence({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   decisionSourceInputPath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-  reviewOutputPath = DEFAULT_SEMANTIC_REVIEW_PATH,
-  coverageOutputPath = DEFAULT_SEMANTIC_COVERAGE_PATH,
-  auditOutputPath = DEFAULT_SEMANTIC_AUDIT_PATH,
+  reviewOutputPath,
+  coverageOutputPath,
+  auditOutputPath,
 } = {}) {
   const decisionSource = await readJson(decisionSourceInputPath);
+  const temporaryRoot = !reviewOutputPath || !coverageOutputPath || !auditOutputPath
+    ? await mkdtemp(path.join(os.tmpdir(), 'typewriter-semantic-evidence-'))
+    : undefined;
+  const resolvedReviewOutputPath = reviewOutputPath
+    ?? path.join(temporaryRoot, 'canonical-semantic-review.json');
+  const resolvedCoverageOutputPath = coverageOutputPath
+    ?? path.join(temporaryRoot, 'canonical-semantic-coverage.json');
+  const resolvedAuditOutputPath = auditOutputPath
+    ?? path.join(temporaryRoot, 'canonical-semantic-audit.json');
   return rebuildOne({
     canonicalDirectory,
     decisionSource,
-    auditOutputPath,
-    reviewOutputPath,
-    coverageOutputPath,
+    auditOutputPath: resolvedAuditOutputPath,
+    reviewOutputPath: resolvedReviewOutputPath,
+    coverageOutputPath: resolvedCoverageOutputPath,
   });
 }
 
@@ -107,9 +114,9 @@ if (isMainModule) {
   rebuildSemanticEvidence({
     canonicalDirectory: args.canonical ?? DEFAULT_CANONICAL_DIRECTORY,
     decisionSourceInputPath: args['decision-source'] ?? DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-    reviewOutputPath: args.review ?? DEFAULT_SEMANTIC_REVIEW_PATH,
-    coverageOutputPath: args.coverage ?? DEFAULT_SEMANTIC_COVERAGE_PATH,
-    auditOutputPath: args.audit ?? DEFAULT_SEMANTIC_AUDIT_PATH,
+    reviewOutputPath: args.review,
+    coverageOutputPath: args.coverage,
+    auditOutputPath: args.audit,
   })
     .then((result) => console.log(JSON.stringify(result, null, 2)))
     .catch((error) => {

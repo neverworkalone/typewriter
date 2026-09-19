@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -7,8 +8,6 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import {
-  DEFAULT_SEMANTIC_AUDIT_PATH,
-  DEFAULT_SEMANTIC_COVERAGE_PATH,
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   assembleSemanticAuditArtifact,
   readSemanticDecisionSourceArtifact,
@@ -31,9 +30,16 @@ function parseArguments(argv) {
 export async function buildSemanticAudit({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-  coveragePath = DEFAULT_SEMANTIC_COVERAGE_PATH,
-  outputPath = DEFAULT_SEMANTIC_AUDIT_PATH,
+  coveragePath,
+  outputPath,
 } = {}) {
+  const temporaryRoot = !coveragePath || !outputPath
+    ? await mkdtemp(path.join(os.tmpdir(), 'typewriter-semantic-audit-'))
+    : undefined;
+  const resolvedCoveragePath = coveragePath
+    ?? path.join(temporaryRoot, 'canonical-semantic-coverage.json');
+  const resolvedOutputPath = outputPath
+    ?? path.join(temporaryRoot, 'canonical-semantic-audit.json');
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
   const semanticReview = validateSemanticDecisionSource(canonical.records, decisionSource, {
@@ -44,14 +50,15 @@ export async function buildSemanticAudit({
   validateSemanticAuditCoverage(canonical.records, artifact, {
     baseRecords: canonical.records,
   });
-  await mkdir(path.dirname(outputPath), { recursive: true });
-  await mkdir(path.dirname(coveragePath), { recursive: true });
-  await writeFile(coveragePath, `${JSON.stringify(artifact.coverage, null, 2)}\n`, 'utf8');
-  await writeFile(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
+  await mkdir(path.dirname(resolvedOutputPath), { recursive: true });
+  await mkdir(path.dirname(resolvedCoveragePath), { recursive: true });
+  await writeFile(resolvedCoveragePath, `${JSON.stringify(artifact.coverage, null, 2)}\n`, 'utf8');
+  await writeFile(resolvedOutputPath, `${JSON.stringify(artifact, null, 2)}\n`, 'utf8');
   return {
     decisionSourcePath,
-    coveragePath,
-    outputPath,
+    coveragePath: resolvedCoveragePath,
+    outputPath: resolvedOutputPath,
+    temporaryRoot,
     recordCount: artifact.record_count,
     senseCount: artifact.sense_count,
     canonicalRecordsSha256: artifact.source.canonical_records_sha256,
@@ -66,8 +73,8 @@ if (isMainModule) {
   buildSemanticAudit({
     canonicalDirectory: args.canonical ?? DEFAULT_CANONICAL_DIRECTORY,
     decisionSourcePath: args['decision-source'] ?? DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-    coveragePath: args.coverage ?? DEFAULT_SEMANTIC_COVERAGE_PATH,
-    outputPath: args.output ?? DEFAULT_SEMANTIC_AUDIT_PATH,
+    coveragePath: args.coverage,
+    outputPath: args.output,
   })
     .then((result) => console.log(JSON.stringify(result, null, 2)))
     .catch((error) => {

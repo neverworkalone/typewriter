@@ -153,3 +153,6 @@ jobs:
       # remains available for manual runs and future release automation.
       - name: Build product extension
         run: npm run build
+
+      - name: Enforce generated-artifact policy and clean checkout
+        run: node scripts/validate/artifact-policy.mjs --clean

@@ -19,7 +19,6 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   DEFAULT_EDITORIAL_DECISIONS_PATH,
   DEFAULT_EDITORIAL_TIMING_PATH,
-  DEFAULT_INVENTORY_PATH,
   M5_10C_AUDIT_PASS_IDS,
   M5_10C_BATCH_ID,
   M5_10C_CASE_COUNT,
@@ -32,6 +31,11 @@ import {
 } from './validate-m5-10c-recovery.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
+import {
+  DEFAULT_SEED_PATH,
+  buildTargetInventory,
+  serializeTargetInventory,
+} from '../inventory/generate-target-inventory.mjs';
 import {
   M5_10C_PRODUCER_VERSION,
   produce,
@@ -129,6 +133,15 @@ async function readJson(filePath, label) {
   }
 }
 
+async function readCurrentInventory() {
+  const value = await buildTargetInventory({
+    canonicalDirectory: DEFAULT_CANONICAL_DIRECTORY,
+    seedPath: DEFAULT_SEED_PATH,
+  });
+  const bytes = serializeTargetInventory(value);
+  return { value, bytes, sha256: sha256Bytes(bytes) };
+}
+
 async function writeJson(filePath, value) {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -169,7 +182,7 @@ function workLogPath(kind, passId) {
 
 async function assertCanonicalAndInventoryUnchanged(session, label) {
   const canonicalSha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
-  const inventory = await readJson(DEFAULT_INVENTORY_PATH, 'M5 target inventory');
+  const inventory = await readCurrentInventory();
   if (canonicalSha256 !== session.canonical_directory_sha256) fail(`${label} changed canonical data`, 'CALIBRATION_CANONICAL_MUTATION');
   if (inventory.sha256 !== session.inventory_sha256) fail(`${label} changed target inventory`, 'CALIBRATION_INVENTORY_MUTATION');
 }
@@ -214,7 +227,7 @@ function parseInputJson(inputJson) {
 async function createTimingSession(kind, args) {
   const proposal = await proposalSource(resolvePath(args.proposal, '/private/tmp/typewriter-m5-10c-calibration-proposal.json'));
   const canonicalDirectorySha256 = await hashCanonicalDirectory(DEFAULT_CANONICAL_DIRECTORY);
-  const inventory = await readJson(DEFAULT_INVENTORY_PATH, 'M5 target inventory');
+  const inventory = await readCurrentInventory();
   const session = {
     schema_version: '1',
     artifact_id: timingArtifactId(kind),
