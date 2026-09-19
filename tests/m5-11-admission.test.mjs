@@ -77,6 +77,67 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+async function createM511PromotionTransactionFixture() {
+  const temporaryDirectory = await mkdtemp(path.join(process.cwd(), '.m5-11-semantic-authority-'));
+  const currentCanonicalDirectory = path.join(temporaryDirectory, 'current-canonical');
+  const prospectiveDirectory = path.join(temporaryDirectory, 'prospective');
+  const prospectiveCanonicalDirectory = path.join(prospectiveDirectory, 'canonical');
+  const currentSeedPath = path.join(temporaryDirectory, 'current-seed.json');
+  const prospectiveSeedPath = path.join(prospectiveDirectory, 'seed.json');
+  const canonicalImportPath = path.join(currentCanonicalDirectory, 'm5-11-expansion.jsonl');
+  const promotionEvidencePath = path.join(temporaryDirectory, 'promotion.json');
+  const initialSeedBytes = Buffer.from('base seed placeholder\n', 'utf8');
+
+  await cp('data/batches/m5-11-base-canonical', currentCanonicalDirectory, { recursive: true });
+  await cp('data/batches/m5-11-base-canonical', prospectiveCanonicalDirectory, { recursive: true });
+  const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
+  const seedBytes = await readFile('data/inventory/m5-target-seed.json');
+  await writeFile(path.join(prospectiveCanonicalDirectory, 'm5-11-expansion.jsonl'), importBytes);
+  await writeFile(prospectiveSeedPath, seedBytes);
+  await writeFile(currentSeedPath, initialSeedBytes);
+
+  const { artifact } = await buildCanonicalSemanticAudit({
+    canonicalDirectory: prospectiveCanonicalDirectory,
+    decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  });
+  const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
+  const prospectiveInventoryBytes = serializeTargetInventory(await buildTargetInventory({
+    canonicalDirectory: prospectiveCanonicalDirectory,
+    seedPath: prospectiveSeedPath,
+    generatedFromCanonicalDirectory: currentCanonicalDirectory,
+    generatedFromSeedPath: currentSeedPath,
+    canonicalScopeDirectory: currentCanonicalDirectory,
+  }));
+
+  return {
+    temporaryDirectory,
+    currentCanonicalDirectory,
+    currentSeedPath,
+    canonicalImportPath,
+    promotionEvidencePath,
+    initialSeedBytes,
+    semanticAuditBytes,
+    prospective: {
+      temporaryDirectory: prospectiveDirectory,
+      importBytes,
+      seedBytes,
+      canonicalDigest: await hashCanonicalDirectory(prospectiveCanonicalDirectory),
+      seedSha256: sha256(seedBytes),
+      inventorySha256: sha256(prospectiveInventoryBytes),
+    },
+  };
+}
+
+function promotionForTransactionFixture({ prospective, semanticAuditBytes }) {
+  return {
+    outputs: {
+      seed: { sha256: prospective.seedSha256 },
+      inventory: { sha256: prospective.inventorySha256 },
+      semantic_audit: { sha256: sha256(semanticAuditBytes) },
+    },
+  };
+}
+
 function makeCatalog() {
   return [0, 1, 2, 3].map((index) => ({
     catalog_index: index,
@@ -1229,99 +1290,80 @@ test('M5-11 gate rejects an audit session reused from editorial timing', () => {
 });
 
 test('M5-11 successful promotion transaction verifies the durable semantic source before returning', async () => {
-  const temporaryDirectory = await mkdtemp(path.join(process.cwd(), '.m5-11-semantic-authority-'));
-  const currentCanonicalDirectory = path.join(temporaryDirectory, 'current-canonical');
-  const prospectiveDirectory = path.join(temporaryDirectory, 'prospective');
-  const prospectiveCanonicalDirectory = path.join(prospectiveDirectory, 'canonical');
-  const currentSeedPath = path.join(temporaryDirectory, 'current-seed.json');
-  const prospectiveSeedPath = path.join(prospectiveDirectory, 'seed.json');
-  const canonicalImportPath = path.join(currentCanonicalDirectory, 'm5-11-expansion.jsonl');
-  const promotionEvidencePath = path.join(temporaryDirectory, 'promotion.json');
+  const fixture = await createM511PromotionTransactionFixture();
   try {
-    await cp('data/batches/m5-11-base-canonical', currentCanonicalDirectory, { recursive: true });
-    await cp('data/batches/m5-11-base-canonical', prospectiveCanonicalDirectory, { recursive: true });
-    const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
-    const seedBytes = await readFile('data/inventory/m5-target-seed.json');
-    await writeFile(path.join(prospectiveCanonicalDirectory, 'm5-11-expansion.jsonl'), importBytes);
-    await writeFile(prospectiveSeedPath, seedBytes);
-    await writeFile(currentSeedPath, 'base seed placeholder\n', 'utf8');
-
-    const { artifact } = await buildCanonicalSemanticAudit({
-      canonicalDirectory: prospectiveCanonicalDirectory,
-      decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-    });
-    const admittedSemanticAuditBytes = serializeSemanticAuditArtifact(artifact);
-    const prospectiveInventoryBytes = serializeTargetInventory(await buildTargetInventory({
-      canonicalDirectory: prospectiveCanonicalDirectory,
-      seedPath: prospectiveSeedPath,
-      generatedFromCanonicalDirectory: currentCanonicalDirectory,
-      generatedFromSeedPath: currentSeedPath,
-      canonicalScopeDirectory: currentCanonicalDirectory,
-    }));
-    const prospective = {
-      temporaryDirectory: prospectiveDirectory,
-      importBytes,
-      seedBytes,
-      canonicalDigest: await hashCanonicalDirectory(prospectiveCanonicalDirectory),
-      seedSha256: sha256(seedBytes),
-      inventorySha256: sha256(prospectiveInventoryBytes),
-    };
+    const { prospective, semanticAuditBytes } = fixture;
     const transaction = await commitM511PromotionTransaction({
-      promotion: {
-        outputs: {
-          seed: { sha256: prospective.seedSha256 },
-          inventory: { sha256: prospective.inventorySha256 },
-          semantic_audit: { sha256: sha256(admittedSemanticAuditBytes) },
-        },
-      },
+      promotion: promotionForTransactionFixture(fixture),
       prospective,
-      semanticAuditBytes: admittedSemanticAuditBytes,
-      currentCanonicalDirectory,
-      currentSeedPath,
-      canonicalImportPath,
-      promotionEvidencePath,
+      semanticAuditBytes,
+      currentCanonicalDirectory: fixture.currentCanonicalDirectory,
+      currentSeedPath: fixture.currentSeedPath,
+      canonicalImportPath: fixture.canonicalImportPath,
+      promotionEvidencePath: fixture.promotionEvidencePath,
       semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     });
 
     assert.equal(transaction.canonicalDigest, prospective.canonicalDigest);
     assert.equal(transaction.seedDigest, prospective.seedSha256);
     assert.equal(transaction.inventoryDigest, prospective.inventorySha256);
-    assert.deepEqual(await readFile(canonicalImportPath), importBytes);
-    const promotionEvidence = JSON.parse(await readFile(promotionEvidencePath, 'utf8'));
+    assert.deepEqual(await readFile(fixture.canonicalImportPath), prospective.importBytes);
+    const promotionEvidence = JSON.parse(await readFile(fixture.promotionEvidencePath, 'utf8'));
     assert.equal(
       promotionEvidence.outputs.semantic_decision_source.path,
       'data/validation/canonical-semantic-decision-source.json',
     );
     assert.equal(
       promotionEvidence.outputs.semantic_audit.sha256,
-      sha256(admittedSemanticAuditBytes),
+      sha256(semanticAuditBytes),
     );
 
     const authority = await verifySemanticDecisionSource({
-      canonicalDirectory: currentCanonicalDirectory,
+      canonicalDirectory: fixture.currentCanonicalDirectory,
       decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-      expectedSemanticAuditBytes: admittedSemanticAuditBytes,
+      expectedSemanticAuditBytes: semanticAuditBytes,
     });
 
     assert.equal(authority.sourceId, 'canonical-semantic-decision-source-20260914');
-    assert.deepEqual(authority.semanticAuditBytes, admittedSemanticAuditBytes);
-    const tamperedSemanticAuditBytes = Buffer.from(admittedSemanticAuditBytes);
-    tamperedSemanticAuditBytes[0] ^= 1;
-    await assert.rejects(
-      verifySemanticDecisionSource({
-        canonicalDirectory: currentCanonicalDirectory,
-        decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
-        expectedSemanticAuditBytes: tamperedSemanticAuditBytes,
-      }),
-      (error) => error?.code === 'SEMANTIC_DECISION_SOURCE_MISMATCH',
-    );
+    assert.deepEqual(authority.semanticAuditBytes, semanticAuditBytes);
     await validateCanonicalSemanticAudit(
-      currentCanonicalDirectory,
+      fixture.currentCanonicalDirectory,
       undefined,
       DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     );
   } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await rm(fixture.temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('M5-11 promotion transaction rejects a mismatched semantic authority without mutation', async () => {
+  const fixture = await createM511PromotionTransactionFixture();
+  const beforeCanonicalDigest = await hashCanonicalDirectory(fixture.currentCanonicalDirectory);
+  const mismatchedSemanticAuditBytes = Buffer.from(fixture.semanticAuditBytes);
+  mismatchedSemanticAuditBytes[0] ^= 1;
+  try {
+    await assert.rejects(
+      commitM511PromotionTransaction({
+        promotion: promotionForTransactionFixture(fixture),
+        prospective: fixture.prospective,
+        semanticAuditBytes: mismatchedSemanticAuditBytes,
+        currentCanonicalDirectory: fixture.currentCanonicalDirectory,
+        currentSeedPath: fixture.currentSeedPath,
+        canonicalImportPath: fixture.canonicalImportPath,
+        promotionEvidencePath: fixture.promotionEvidencePath,
+        semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      }),
+      (error) => error?.code === 'SEMANTIC_DECISION_SOURCE_MISMATCH',
+    );
+    assert.equal(
+      await hashCanonicalDirectory(fixture.currentCanonicalDirectory),
+      beforeCanonicalDigest,
+    );
+    assert.deepEqual(await readFile(fixture.currentSeedPath), fixture.initialSeedBytes);
+    await assert.rejects(readFile(fixture.canonicalImportPath), { code: 'ENOENT' });
+    await assert.rejects(readFile(fixture.promotionEvidencePath), { code: 'ENOENT' });
+  } finally {
+    await rm(fixture.temporaryDirectory, { recursive: true, force: true });
   }
 });
 
