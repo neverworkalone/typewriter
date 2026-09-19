@@ -409,6 +409,25 @@ test('prospective admission uses conservative lexical POS context', () => {
     }),
     (error) => error.code === 'LEXICAL_MALFORMED_GLOSS',
   );
+
+  const disconnectedSemanticAudit = structuredClone(malformedAudit);
+  delete disconnectedSemanticAudit.review.records
+    .find(({ record_id: recordId }) => recordId === malformedCandidate.id)
+    .sense_reviews[0].review_basis.topic_analysis;
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-malformed-topic',
+      candidateRecords: [malformedCandidate],
+      reviewedRecords: [malformedCandidate],
+      baseRecords,
+      prospectiveRecords: malformedBaseInfos,
+      semanticAudit: disconnectedSemanticAudit,
+      productionState: malformedProductionState.state,
+      productionStateSources: malformedProductionState.sources,
+      productionPayloads: malformedProductionState.payloads,
+    }),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+  );
 });
 
 test('authored distinct and retain cannot override high-confidence usage or paraphrase frames', () => {
