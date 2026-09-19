@@ -83,19 +83,21 @@ source-bound semantic review rows, and selection evidence.
 Batch modules may configure counts and IDs, but may not replace these shared
 stages with a batch-specific quality gate.
 
-The common lexical-quality audit also rejects structurally malformed two-token
+The common lexical-quality audit can reject structurally malformed two-token
 topic fragments in every existing canonical record and every future
 prospective canonical dataset. Because Korean topic particles and adnominal
-endings are homographic, the shared check uses noun-only POS evidence from the
-typed lexical record set and inflection-aware verb/adjective stem variants; it
-does not use a finite modifier whitelist or a surface-length/allomorph
-heuristic. The classifier records `noun-topic`, `adnominal`, `ambiguous`, or
-`unsupported` evidence and blocks only the first state with a bare nominal
-predicate; the other states remain conservative. This preserves productive
-forms such as `달리는 사람`, `붙잡은 사람`, and `가로막은 벽` while keeping
-positively established malformed `-는/-은` topic fragments in the shared
-gate. Historical bad-string examples remain regression inputs rather than a
-production allowlist. For a post-admission correction,
+endings are homographic, the typed lexical POS map is treated as open-world
+evidence: noun-only presence is `ambiguous`, not proof that an adnominal
+reading is impossible. A blocking `noun-topic` result therefore requires
+separate explicit noun-topic evidence supplied by a source that can establish
+that reading; callers pass it as `nounTopicTerms`. The classifier records
+`noun-topic`, `adnominal`, `ambiguous`, or `unsupported` evidence and blocks
+only the first state with a bare nominal predicate. This preserves productive
+forms such as `달리는 사람`, `붙잡은 사람`, and `가로막은 벽`, including when
+the corresponding predicate is not yet present in the project lexicon, while
+keeping positively established malformed `-는/-은` topic fragments in the
+shared gate. Historical bad-string examples remain regression inputs rather
+than a production allowlist. For a post-admission correction,
 the correction manifest is an input artifact rather than a generated verdict;
 its authored decision rows are digest-bound before the canonical audit and
 derived M5 evidence are refreshed.

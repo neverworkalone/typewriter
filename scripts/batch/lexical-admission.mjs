@@ -67,6 +67,7 @@ function validateLexicalAdditionInternal({
   productionPayloads,
   allowReplay = false,
   checkPilotCompleteness = false,
+  nounTopicTerms,
   candidateLabel = 'candidate records',
   reviewedLabel = 'reviewed canonical records',
   prospectiveLabel = 'prospective canonical dataset',
@@ -159,6 +160,7 @@ function validateLexicalAdditionInternal({
       label: `${candidateLabel}[${index}]`,
       mode: 'candidate',
       nominalTerms,
+      nounTopicTerms,
     });
   }
   for (const [index, recordInfo] of reviewedInfos.entries()) {
@@ -166,6 +168,7 @@ function validateLexicalAdditionInternal({
       label: `${reviewedLabel}[${index}]`,
       mode: 'canonical',
       nominalTerms,
+      nounTopicTerms,
     });
   }
 
@@ -180,6 +183,7 @@ function validateLexicalAdditionInternal({
     requireSemanticAudit: true,
     semanticAuditBaseRecords: baseInfos,
     requireDecisionSource: !allowReplay,
+    nounTopicTerms,
   });
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset
@@ -187,6 +191,7 @@ function validateLexicalAdditionInternal({
   const audit = auditCanonicalLexicalQuality(prospectiveInfos, {
     scope: `${batchId}:prospective-canonical`,
     throwOnError: true,
+    nounTopicTerms,
   });
 
   if (productionRun !== undefined) {

@@ -274,6 +274,7 @@ export function validateDatasetRecords(
     requireSemanticAudit = false,
     semanticAuditBaseRecords,
     requireDecisionSource = true,
+    nounTopicTerms,
   } = {},
 ) {
   const indexes = indexRecords(recordInfos);
@@ -302,6 +303,7 @@ export function validateDatasetRecords(
   const lexicalQuality = auditCanonicalLexicalQuality(recordInfos, {
     scope: 'complete-canonical',
     throwOnError: false,
+    nounTopicTerms,
   });
   if (lexicalQuality.blocking_finding_count > 0) {
     const finding = lexicalQuality.blocking_findings[0];

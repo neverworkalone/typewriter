@@ -75,18 +75,13 @@ const PLACEHOLDER_GLOSS_PATTERN = /^(?:placeholder|tbd|todo|n\/a|na|미정|미�
 const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번째|두 번째|세 번째|네 번째)\s+구체적 의미/u;
 // A two-token `X은 Y` fragment is not a definition when the first token is
 // being used as a noun topic and the second token is a bare nominal stub.  The
-// topic/adnominal forms are homographs, so the shared rule uses lexical POS
-// evidence from the canonical/prospective record set instead of a word list or
-// a surface-length heuristic.  The POS map includes inflectional stem
-// variants for verb/adjective lemmas so homographs remain ambiguous.
+// topic/adnominal forms are homographs.  The shared rule therefore treats the
+// lexical POS map as open-world evidence: noun-only presence is not proof that
+// an adnominal reading is impossible.  A blocking noun-topic result requires
+// separate, explicit topic evidence from a caller that can establish that
+// reading.
 const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
-const HANGUL_SYLLABLE_START = 0xac00;
-const HANGUL_SYLLABLE_END = 0xd7a3;
-const HANGUL_JONGSEONG_COUNT = 28;
-const HANGUL_JONGSEONG_S = 19;
-const HANGUL_JONGSEONG_D = 7;
-const HANGUL_JONGSEONG_R = 8;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
   'noun-topic',
   'adnominal',
@@ -117,45 +112,6 @@ function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
 
-function replaceLastHangulCoda(value, coda) {
-  const characters = [...value];
-  const lastCodePoint = characters.at(-1)?.codePointAt(0);
-  if (lastCodePoint === undefined
-    || lastCodePoint < HANGUL_SYLLABLE_START
-    || lastCodePoint > HANGUL_SYLLABLE_END) {
-    return undefined;
-  }
-  const syllableIndex = lastCodePoint - HANGUL_SYLLABLE_START;
-  const replacement = HANGUL_SYLLABLE_START
-    + (Math.floor(syllableIndex / HANGUL_JONGSEONG_COUNT) * HANGUL_JONGSEONG_COUNT)
-    + coda;
-  return `${characters.slice(0, -1).join('')}${String.fromCodePoint(replacement)}`;
-}
-
-function inflectionalStemVariants(term, positions) {
-  if ((!positions.has('verb') && !positions.has('adjective')) || !term.endsWith('다')) {
-    return [term];
-  }
-  const stem = term.slice(0, -1);
-  const variants = new Set([term, stem]);
-  const lastCodePoint = [...stem].at(-1)?.codePointAt(0);
-  if (lastCodePoint !== undefined
-    && lastCodePoint >= HANGUL_SYLLABLE_START
-    && lastCodePoint <= HANGUL_SYLLABLE_END) {
-    const syllableIndex = lastCodePoint - HANGUL_SYLLABLE_START;
-    const currentCoda = syllableIndex % HANGUL_JONGSEONG_COUNT;
-    // ㅅ-irregular stems surface without ㅅ before `-은`: 짓다→지은,
-    // 긋다→그은, 붓다→부은, 낫다→나은.  ㄷ-irregular stems surface with
-    // ㄹ in the same slot: 듣다→들은, 걷다→걸은.
-    if (currentCoda === HANGUL_JONGSEONG_S) {
-      variants.add(replaceLastHangulCoda(stem, 0));
-    } else if (currentCoda === HANGUL_JONGSEONG_D) {
-      variants.add(replaceLastHangulCoda(stem, HANGUL_JONGSEONG_R));
-    }
-  }
-  return [...variants].filter(Boolean);
-}
-
 function nominalTermPositions(nominalTerms, topic) {
   if (nominalTerms instanceof Map) return nominalTerms.get(topic);
   if (nominalTerms instanceof Set && nominalTerms.has(topic)) return new Set(['noun']);
@@ -163,22 +119,35 @@ function nominalTermPositions(nominalTerms, topic) {
   return undefined;
 }
 
-function classifyTopicToken(topic, nominalTerms) {
+function hasExplicitNounTopicEvidence(nounTopicTerms, topic) {
+  if (nounTopicTerms instanceof Set) return nounTopicTerms.has(topic);
+  if (Array.isArray(nounTopicTerms)) return nounTopicTerms.includes(topic);
+  if (nounTopicTerms instanceof Map) {
+    const evidence = nounTopicTerms.get(topic);
+    return evidence === true
+      || evidence === 'noun-topic'
+      || evidence?.state === 'noun-topic';
+  }
+  return false;
+}
+
+function classifyTopicToken(topic, nominalTerms, nounTopicTerms) {
   const positions = nominalTermPositions(nominalTerms, topic);
-  if (!positions || positions.size === 0) return { state: 'unsupported' };
-  const hasNoun = positions.has('noun');
-  const hasAdnominal = positions.has('verb') || positions.has('adjective');
+  const hasNoun = positions?.has('noun') === true;
+  const hasAdnominal = positions?.has('verb') || positions?.has('adjective');
+  const hasExplicitTopicEvidence = hasExplicitNounTopicEvidence(nounTopicTerms, topic);
   if (hasNoun && hasAdnominal) return { state: 'ambiguous' };
+  if (hasExplicitTopicEvidence) return { state: 'noun-topic' };
   if (hasAdnominal) return { state: 'adnominal' };
-  if (hasNoun) return { state: 'noun-topic' };
+  if (hasNoun) return { state: 'ambiguous' };
   return { state: 'unsupported' };
 }
 
-function inspectTopicFragment(gloss, { nominalTerms } = {}) {
+function inspectTopicFragment(gloss, { nominalTerms, nounTopicTerms } = {}) {
   const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
   if (!fragment) return { state: 'unsupported', malformed: false };
   const { topic, predicate } = fragment.groups;
-  const topicAnalysis = classifyTopicToken(topic, nominalTerms);
+  const topicAnalysis = classifyTopicToken(topic, nominalTerms, nounTopicTerms);
   const bareNominalPredicate = !VALID_PREDICATE_ENDING_PATTERN.test(predicate);
   return {
     ...topicAnalysis,
@@ -198,11 +167,9 @@ export function buildNominalTermPositions(recordInfos) {
     );
     for (const term of [record.lemma, ...(record.search_forms ?? [])]) {
       if (typeof term !== 'string' || term.length === 0) continue;
-      for (const variant of inflectionalStemVariants(term, recordPositions)) {
-        const existing = positions.get(variant) ?? new Set();
-        for (const pos of recordPositions) existing.add(pos);
-        positions.set(variant, existing);
-      }
+      const existing = positions.get(term) ?? new Set();
+      for (const pos of recordPositions) existing.add(pos);
+      positions.set(term, existing);
     }
   }
   return positions;
@@ -498,7 +465,7 @@ export function isPlaceholderGloss(gloss) {
   return typeof gloss !== 'string' || PLACEHOLDER_GLOSS_PATTERN.test(gloss.trim());
 }
 
-export function inspectGlossQuality(gloss, { nominalTerms } = {}) {
+export function inspectGlossQuality(gloss, { nominalTerms, nounTopicTerms } = {}) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) {
     return {
       token_count: 0,
@@ -509,7 +476,7 @@ export function inspectGlossQuality(gloss, { nominalTerms } = {}) {
     };
   }
   const trimmed = gloss.trim();
-  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms });
+  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms, nounTopicTerms });
   return {
     token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
@@ -526,6 +493,7 @@ function recordQualityFindings(record, {
   mode = 'canonical',
   rejectAnyBroadConnector = false,
   nominalTerms,
+  nounTopicTerms,
 } = {}) {
   const findings = [];
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
@@ -598,7 +566,7 @@ function recordQualityFindings(record, {
         message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
       });
     }
-    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms });
+    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms, nounTopicTerms });
     if (glossQuality.token_count < 2) {
       findings.push({
         code: 'LEXICAL_GLOSS_TOO_SHORT',
@@ -648,6 +616,7 @@ export function validateLexicalRecord(record, options = {}) {
     expectedLemma,
     rejectAnyBroadConnector = false,
     nominalTerms,
+    nounTopicTerms,
   } = options;
   requireObject(record, label);
   requireString(record.id, `${label}.id`);
@@ -690,6 +659,7 @@ export function validateLexicalRecord(record, options = {}) {
     mode,
     rejectAnyBroadConnector,
     nominalTerms,
+    nounTopicTerms,
   });
   if (findings.length > 0) {
     const finding = findings[0];
@@ -709,7 +679,7 @@ export function findLexicalQualityFindings(record, options = {}) {
  */
 export function auditCanonicalLexicalQuality(
   recordInfos,
-  { scope = 'complete-canonical', throwOnError = true } = {},
+  { scope = 'complete-canonical', throwOnError = true, nounTopicTerms } = {},
 ) {
   const normalized = recordInfos.map(recordOf);
   const nominalTerms = buildNominalTermPositions(recordInfos);
@@ -733,6 +703,7 @@ export function auditCanonicalLexicalQuality(
       label: sourceLabel(recordInfo, index),
       mode: 'canonical',
       nominalTerms,
+      nounTopicTerms,
     });
     for (const finding of qualityFindings) {
       const senseMatch = /\.senses\[(\d+)\]/u.exec(finding.message);

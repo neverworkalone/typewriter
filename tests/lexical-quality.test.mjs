@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   auditCanonicalLexicalQuality,
+  buildNominalTermPositions,
   LexicalQualityError,
   inspectWriterDomainEvidence,
   inspectGlossQuality,
@@ -65,6 +66,7 @@ test('the shared lexical audit rejects malformed topic fragments without a recor
   };
   const audit = auditCanonicalLexicalQuality([{ record, source: 'synthetic' }], {
     throwOnError: false,
+    nounTopicTerms: ['바닥'],
   });
   assert.equal(audit.blocking_findings[0].code, 'LEXICAL_MALFORMED_GLOSS');
   assert.equal(audit.blocking_findings[0].sense_id, 'w9999-s1');
@@ -93,7 +95,10 @@ test('malformed gloss detection does not confuse productive adnominal forms with
 
   for (const gloss of ['바닥은 깔개', '걱정은 마음']) {
     const topic = gloss.split(/은|는/u)[0];
-    const quality = inspectGlossQuality(gloss, { nominalTerms: [topic] });
+    const quality = inspectGlossQuality(gloss, {
+      nominalTerms: [topic],
+      nounTopicTerms: [topic],
+    });
     assert.equal(quality.topic_state, 'noun-topic', gloss);
     assert.equal(quality.malformed_structure, true, gloss);
     assert.equal(quality.malformed_fragment, true, gloss);
@@ -104,6 +109,7 @@ test('historical malformed gloss examples remain covered by the generalized rule
   for (const fixture of MALFORMED_TOPIC_REGRESSIONS) {
     const quality = inspectGlossQuality(fixture.gloss, {
       nominalTerms: fixture.nominal_terms,
+      nounTopicTerms: fixture.noun_topic_terms,
     });
     assert.equal(quality.topic_state, 'noun-topic', fixture.name);
     assert.equal(quality.malformed_structure, true, fixture.name);
@@ -135,21 +141,44 @@ test('topic classifier keeps evidence states conservative for unseen forms and h
     {
       gloss: '걱정는 마음',
       nominalTerms: ['걱정'],
+      nounTopicTerms: ['걱정'],
       expectedState: 'noun-topic',
       expectedMalformed: true,
     },
     {
       gloss: '바닥은 깔개',
       nominalTerms: ['바닥'],
+      nounTopicTerms: ['바닥'],
       expectedState: 'noun-topic',
       expectedMalformed: true,
     },
   ];
   for (const item of cases) {
-    const quality = inspectGlossQuality(item.gloss, { nominalTerms: item.nominalTerms });
+    const quality = inspectGlossQuality(item.gloss, {
+      nominalTerms: item.nominalTerms,
+      nounTopicTerms: item.nounTopicTerms,
+    });
     assert.equal(quality.topic_state, item.expectedState, item.gloss);
     assert.equal(quality.malformed_structure, item.expectedMalformed, item.gloss);
   }
+
+  const openWorldRecords = [{
+    record: {
+      id: 'w-open-world',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w-open-world',
+      lemma: '사',
+      search_forms: ['사'],
+      senses: [{ id: 'w-open-world-s1', pos: 'noun', gloss: '사람을 세는 단위' }],
+    },
+    source: 'synthetic-open-world',
+  }];
+  const openWorldQuality = inspectGlossQuality('사는 사람', {
+    nominalTerms: buildNominalTermPositions(openWorldRecords),
+  });
+  assert.equal(openWorldQuality.topic_state, 'ambiguous');
+  assert.equal(openWorldQuality.malformed_structure, false);
 });
 
 test('future records use the same generalized malformed-gloss invariant', () => {
@@ -184,13 +213,14 @@ test('future records use the same generalized malformed-gloss invariant', () => 
       () => validateLexicalRecord(invalidRecord, {
         mode: 'candidate',
         nominalTerms: [invalidRecord.lemma],
+        nounTopicTerms: [invalidRecord.lemma],
       }),
       (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
     );
   }
 });
 
-test('prospective admission uses inflection-aware lexical POS context', () => {
+test('prospective admission uses conservative lexical POS context', () => {
   const nounCar = {
     id: 'w001',
     record_type: 'entry',
@@ -245,6 +275,50 @@ test('prospective admission uses inflection-aware lexical POS context', () => {
   });
   assert.equal(result.audit.blocking_finding_count, 0);
 
+  const openWorldNoun = {
+    id: 'w003',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w003',
+    lemma: '사',
+    search_forms: ['사'],
+    senses: [{ id: 'w003-s1', pos: 'noun', gloss: '사람을 세는 단위' }],
+  };
+  const openWorldCandidate = {
+    id: 'w781',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w781',
+    lemma: '오픈월드관형형',
+    search_forms: ['오픈월드관형형'],
+    senses: [{ id: 'w781-s1', pos: 'noun', gloss: '사는 사람' }],
+  };
+  const openWorldBaseRecords = [{ record: openWorldNoun, source: 'base' }];
+  const openWorldProspectiveRecords = [
+    ...openWorldBaseRecords,
+    { record: openWorldCandidate, source: 'prospective' },
+  ];
+  const openWorldSemanticAudit = makeSemanticAudit(openWorldProspectiveRecords);
+  const openWorldProductionState = makeProductionState({
+    batchId: 'future-batch-open-world',
+    candidateRecords: [openWorldCandidate],
+    reviewedRecords: [openWorldCandidate],
+    baseRecords: openWorldBaseRecords,
+    prospectiveRecords: openWorldProspectiveRecords,
+    semanticAudit: openWorldSemanticAudit,
+  });
+  assert.doesNotThrow(() => validateLexicalAddition({
+    batchId: 'future-batch-open-world',
+    candidateRecords: [openWorldCandidate],
+    reviewedRecords: [openWorldCandidate],
+    baseRecords: openWorldBaseRecords,
+    prospectiveRecords: openWorldProspectiveRecords,
+    semanticAudit: openWorldSemanticAudit,
+    productionState: openWorldProductionState.state,
+    productionStateSources: openWorldProductionState.sources,
+    productionPayloads: openWorldProductionState.payloads,
+  }));
+
   const malformedCandidate = {
     ...validCandidate,
     id: 'w780',
@@ -277,6 +351,7 @@ test('prospective admission uses inflection-aware lexical POS context', () => {
       productionState: malformedProductionState.state,
       productionStateSources: malformedProductionState.sources,
       productionPayloads: malformedProductionState.payloads,
+      nounTopicTerms: [malformedCandidate.lemma],
     }),
     (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
   );
