@@ -121,35 +121,64 @@ function nominalTermPositions(nominalTerms, topic) {
   return undefined;
 }
 
-function hasExplicitNounTopicEvidence(topicEvidence, topic) {
+function topicAnalysisForSense(
+  topicEvidence,
+  { senseId, gloss, topic, particle, predicate } = {},
+) {
   if (!topicEvidence
     || topicEvidence.kind !== LEXICAL_TOPIC_EVIDENCE_KIND
     || topicEvidence.contract_version !== LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION
-    || !(topicEvidence.by_topic instanceof Map)) {
-    return false;
+    || !(topicEvidence.by_sense instanceof Map)
+    || typeof senseId !== 'string') {
+    return undefined;
   }
-  const evidence = topicEvidence.by_topic.get(topic);
-  return Array.isArray(evidence)
-    && evidence.some((entry) => entry?.state === 'noun-topic');
+  const evidence = topicEvidence.by_sense.get(senseId);
+  if (!evidence
+    || evidence.sense_id !== senseId
+    || evidence.gloss_sha256 !== sha256Json(gloss)
+    || evidence.topic !== topic
+    || evidence.particle !== particle
+    || evidence.predicate !== predicate) {
+    return undefined;
+  }
+  return evidence;
 }
 
-function classifyTopicToken(topic, nominalTerms, topicEvidence) {
+function classifyTopicToken(
+  topic,
+  nominalTerms,
+  topicEvidence,
+  { senseId, gloss, particle, predicate } = {},
+) {
+  const authoredTopicAnalysis = topicAnalysisForSense(topicEvidence, {
+    senseId,
+    gloss,
+    topic,
+    particle,
+    predicate,
+  });
+  if (authoredTopicAnalysis !== undefined) {
+    return { state: authoredTopicAnalysis.state };
+  }
   const positions = nominalTermPositions(nominalTerms, topic);
   const hasNoun = positions?.has('noun') === true;
   const hasAdnominal = positions?.has('verb') || positions?.has('adjective');
-  const hasExplicitTopicEvidence = hasExplicitNounTopicEvidence(topicEvidence, topic);
   if (hasNoun && hasAdnominal) return { state: 'ambiguous' };
-  if (hasExplicitTopicEvidence) return { state: 'noun-topic' };
   if (hasAdnominal) return { state: 'adnominal' };
   if (hasNoun) return { state: 'ambiguous' };
   return { state: 'unsupported' };
 }
 
-function inspectTopicFragment(gloss, { nominalTerms, topicEvidence } = {}) {
+function inspectTopicFragment(gloss, { nominalTerms, topicEvidence, senseId } = {}) {
   const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
   if (!fragment) return { state: 'unsupported', malformed: false };
-  const { topic, predicate } = fragment.groups;
-  const topicAnalysis = classifyTopicToken(topic, nominalTerms, topicEvidence);
+  const { topic, particle, predicate } = fragment.groups;
+  const topicAnalysis = classifyTopicToken(topic, nominalTerms, topicEvidence, {
+    senseId,
+    gloss,
+    particle,
+    predicate,
+  });
   const bareNominalPredicate = !VALID_PREDICATE_ENDING_PATTERN.test(predicate);
   return {
     ...topicAnalysis,
@@ -515,7 +544,7 @@ export function isPlaceholderGloss(gloss) {
   return typeof gloss !== 'string' || PLACEHOLDER_GLOSS_PATTERN.test(gloss.trim());
 }
 
-export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence } = {}) {
+export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseId } = {}) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) {
     return {
       token_count: 0,
@@ -526,7 +555,7 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence } = {})
     };
   }
   const trimmed = gloss.trim();
-  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms, topicEvidence });
+  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms, topicEvidence, senseId });
   return {
     token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
@@ -616,7 +645,11 @@ function recordQualityFindings(record, {
         message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
       });
     }
-    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms, topicEvidence });
+    const glossQuality = inspectGlossQuality(sense.gloss, {
+      nominalTerms,
+      topicEvidence,
+      senseId: sense.id,
+    });
     if (glossQuality.token_count < 2) {
       findings.push({
         code: 'LEXICAL_GLOSS_TOO_SHORT',

@@ -39,6 +39,7 @@ const MALFORMED_TOPIC_REGRESSIONS = JSON.parse(readFileSync(
 ));
 
 const FIXTURE_ROOT = path.resolve('tests/fixtures/lexical-quality');
+const TOPIC_EVIDENCE_SENSE_ID = 'w-topic-evidence-s1';
 
 function topicEvidenceForGloss(gloss, analysis = {}) {
   const record = {
@@ -131,6 +132,7 @@ test('malformed gloss detection does not confuse productive adnominal forms with
         particle: gloss.includes('은') ? '은' : '는',
         predicate: gloss.slice(topic.length + 1).trim(),
       }),
+      senseId: TOPIC_EVIDENCE_SENSE_ID,
     });
     assert.equal(quality.topic_state, 'noun-topic', gloss);
     assert.equal(quality.malformed_structure, true, gloss);
@@ -142,6 +144,7 @@ test('historical malformed gloss examples remain covered by the generalized rule
   for (const fixture of MALFORMED_TOPIC_REGRESSIONS) {
     const quality = inspectGlossQuality(fixture.gloss, {
       topicEvidence: topicEvidenceForGloss(fixture.gloss, fixture.topic_analysis),
+      senseId: TOPIC_EVIDENCE_SENSE_ID,
     });
     assert.equal(quality.topic_state, 'noun-topic', fixture.name);
     assert.equal(quality.malformed_structure, true, fixture.name);
@@ -199,6 +202,7 @@ test('topic classifier keeps evidence states conservative for unseen forms and h
     const quality = inspectGlossQuality(item.gloss, {
       nominalTerms: item.nominalTerms,
       topicEvidence: item.topicEvidence,
+      senseId: item.topicEvidence ? TOPIC_EVIDENCE_SENSE_ID : undefined,
     });
     assert.equal(quality.topic_state, item.expectedState, item.gloss);
     assert.equal(quality.malformed_structure, item.expectedMalformed, item.gloss);
@@ -426,6 +430,75 @@ test('prospective admission uses conservative lexical POS context', () => {
       productionStateSources: malformedProductionState.sources,
       productionPayloads: malformedProductionState.payloads,
     }),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+  );
+});
+
+test('topic evidence remains bound to the reviewed sense', () => {
+  const malformedRecord = {
+    id: 'w-topic-malformed',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-malformed',
+    lemma: '차',
+    search_forms: ['차'],
+    senses: [{ id: 'w-topic-malformed-s1', pos: 'noun', gloss: '차는 차량' }],
+  };
+  const adnominalRecord = {
+    id: 'w-topic-adnominal',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-adnominal',
+    lemma: '차형태',
+    search_forms: ['차형태'],
+    senses: [{ id: 'w-topic-adnominal-s1', pos: 'noun', gloss: '차는 사람' }],
+  };
+  const recordInfos = [malformedRecord, adnominalRecord].map((record) => ({
+    record,
+    source: 'topic-projection-fixture',
+  }));
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-malformed-s1': {
+        state: 'noun-topic',
+        topic: '차',
+        particle: '는',
+        predicate: '차량',
+      },
+      'w-topic-adnominal-s1': {
+        state: 'adnominal',
+        topic: '차',
+        particle: '는',
+        predicate: '사람',
+      },
+    },
+  });
+  const topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit);
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    throwOnError: false,
+    topicEvidence,
+  });
+
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_GLOSS')
+      .map(({ sense_id }) => sense_id),
+    ['w-topic-malformed-s1'],
+  );
+  const adnominalQuality = inspectGlossQuality('차는 사람', {
+    nominalTerms: buildNominalTermPositions(recordInfos),
+    topicEvidence,
+    senseId: 'w-topic-adnominal-s1',
+  });
+  assert.equal(adnominalQuality.topic_state, 'adnominal');
+  assert.equal(adnominalQuality.malformed_structure, false);
+
+  const disconnectedSemanticAudit = structuredClone(semanticAudit);
+  delete disconnectedSemanticAudit.review.records
+    .find(({ record_id: recordId }) => recordId === adnominalRecord.id)
+    .sense_reviews[0].review_basis.topic_analysis;
+  assert.throws(
+    () => buildSemanticTopicEvidence(recordInfos, disconnectedSemanticAudit),
     (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
   );
 });

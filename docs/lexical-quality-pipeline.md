@@ -92,9 +92,11 @@ reading is impossible. A blocking `noun-topic` result therefore requires a
 source-bound `topic_analysis` from the separately authored semantic review.
 The review binds the gloss digest, topic surface, and decision-source ID; the
 shared canonical/admission gate derives its evidence from that review
-automatically. The classifier records `noun-topic`, `adnominal`, `ambiguous`,
-or `unsupported` evidence and blocks only the first state with a bare nominal
-predicate. This preserves productive
+automatically at the reviewed sense identity. The projection retains every
+reviewed state instead of collapsing evidence by surface topic, so one sense
+cannot contaminate another sense with the same token. The classifier records
+`noun-topic`, `adnominal`, `ambiguous`, or `unsupported` evidence and blocks
+only the first state with a bare nominal predicate. This preserves productive
 forms such as `달리는 사람`, `붙잡은 사람`, and `가로막은 벽`, including when
 the corresponding predicate is not yet present in the project lexicon, while
 keeping positively established malformed `-는/-은` topic fragments in the

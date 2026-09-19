@@ -1243,7 +1243,7 @@ export function buildSemanticTopicEvidence(
   if (decisionSourceId !== undefined) requireString(decisionSourceId, `${label}.decision_source.source_id`);
   const reviewedRecords = requireArray(review.records, `${label}.review.records`);
   const reviewedById = new Map(reviewedRecords.map((reviewed) => [reviewed.record_id, reviewed]));
-  const byTopic = new Map();
+  const bySense = new Map();
 
   for (const [recordIndex, recordInfo] of recordInfos.entries()) {
     const record = recordOf(recordInfo);
@@ -1271,24 +1271,19 @@ export function buildSemanticTopicEvidence(
           label: `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}].review_basis.topic_analysis`,
         },
       );
-      if (analysis.state !== 'noun-topic') continue;
-      if (decisionSourceId === undefined) {
+      if (analysis.state === 'noun-topic' && decisionSourceId === undefined) {
         fail(
           `${label}.review contains noun-topic evidence without an authored decision source`,
           'SEMANTIC_AUDIT_PROVENANCE',
         );
       }
-      const entries = byTopic.get(analysis.topic) ?? [];
-      entries.push({
-        state: analysis.state,
-        topic: analysis.topic,
-        particle: analysis.particle,
-        predicate: analysis.predicate,
+      if (bySense.has(sense.id)) {
+        fail(`${label}.review contains duplicate topic analysis for ${sense.id}`, 'SEMANTIC_AUDIT_SCOPE');
+      }
+      bySense.set(sense.id, {
+        ...analysis,
         sense_id: sense.id,
-        gloss_sha256: analysis.gloss_sha256,
-        decision_source_id: decisionSourceId,
       });
-      byTopic.set(analysis.topic, entries);
     }
   }
 
@@ -1300,7 +1295,7 @@ export function buildSemanticTopicEvidence(
       canonical_records_sha256: expectedCanonicalDigest,
       decision_source_id: decisionSourceId ?? null,
     },
-    by_topic: byTopic,
+    by_sense: bySense,
   };
 }
 
