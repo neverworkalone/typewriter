@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -23,7 +23,11 @@ import {
   validateM511Admission,
   validateM511VerificationArtifact,
 } from '../scripts/batch/validate-m5-11-admission.mjs';
-import { buildM511PromotionSeed, promoteM511 } from '../scripts/batch/promote-m5-11.mjs';
+import {
+  buildM511PromotionSeed,
+  promoteM511,
+  verifySemanticDecisionSource,
+} from '../scripts/batch/promote-m5-11.mjs';
 import { main as recordM511Timing } from '../scripts/batch/record-m5-11-timing.mjs';
 import { validateM511DurableEvidence } from '../scripts/batch/validate-m5-11-promotion.mjs';
 import {
@@ -41,6 +45,12 @@ import {
 } from '../scripts/validate/lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from '../scripts/validate/sense-boundary.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
+import {
+  DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  buildCanonicalSemanticAudit,
+  serializeSemanticAuditArtifact,
+  validateCanonicalSemanticAudit,
+} from '../scripts/validate/semantic-audit.mjs';
 import {
   buildTargetInventory,
   serializeTargetInventory,
@@ -1210,6 +1220,50 @@ test('M5-11 gate rejects an audit session reused from editorial timing', () => {
     }),
     /distinct session/u,
   );
+});
+
+test('M5-11 successful promotion verifies the durable semantic source before returning', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-11-semantic-authority-'));
+  const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  try {
+    await cp('data/batches/m5-11-base-canonical', canonicalDirectory, { recursive: true });
+    await cp(
+      'data/canonical/m5-11-expansion.jsonl',
+      path.join(canonicalDirectory, 'm5-11-expansion.jsonl'),
+    );
+
+    // This is the post-write canonical state that a successful promotion returns.
+    const { artifact } = await buildCanonicalSemanticAudit({
+      canonicalDirectory,
+      decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+    });
+    const admittedSemanticAuditBytes = serializeSemanticAuditArtifact(artifact);
+    const authority = await verifySemanticDecisionSource({
+      canonicalDirectory,
+      decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      expectedSemanticAuditBytes: admittedSemanticAuditBytes,
+    });
+
+    assert.equal(authority.sourceId, 'canonical-semantic-decision-source-20260914');
+    assert.deepEqual(authority.semanticAuditBytes, admittedSemanticAuditBytes);
+    const tamperedSemanticAuditBytes = Buffer.from(admittedSemanticAuditBytes);
+    tamperedSemanticAuditBytes[0] ^= 1;
+    await assert.rejects(
+      verifySemanticDecisionSource({
+        canonicalDirectory,
+        decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+        expectedSemanticAuditBytes: tamperedSemanticAuditBytes,
+      }),
+      (error) => error?.code === 'SEMANTIC_DECISION_SOURCE_MISMATCH',
+    );
+    await validateCanonicalSemanticAudit(
+      canonicalDirectory,
+      undefined,
+      DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+    );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });
 
 test('M5-11 promotion failure leaves canonical, seed, and inventory untouched', async () => {

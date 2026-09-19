@@ -72,3 +72,10 @@ decision change and asserts that unaffected records remain identical and that
 only a bounded number of serialized lines change. This guards the retained
 authoritative source against whole-corpus rewrites while preserving its
 complete historical decisions.
+
+M5-11 promotion follows the same authority boundary: it binds the promotion
+evidence to the durable decision-source path, digest, and source ID, then
+reconstructs the semantic audit from the prospective canonical directory both
+before and after the writes. Promotion succeeds only when that reconstruction
+matches the admitted audit byte-for-byte; the ordinary post-promotion
+validator repeats the source-bound reconstruction.

@@ -30,6 +30,11 @@ import {
   hashCanonicalDirectory,
 } from './validate-m5-8-process.mjs';
 import {
+  DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  buildCanonicalSemanticAudit,
+  serializeSemanticAuditArtifact,
+} from '../validate/semantic-audit.mjs';
+import {
   M5_11_CATALOG,
 } from './m5-11-catalog.mjs';
 import {
@@ -85,6 +90,29 @@ function fail(message, code = 'M5_11_PROMOTION_ERROR') {
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+export async function verifySemanticDecisionSource({
+  canonicalDirectory,
+  decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  expectedSemanticAuditBytes,
+} = {}) {
+  const { artifact, decisionSource } = await buildCanonicalSemanticAudit({
+    canonicalDirectory,
+    decisionSourcePath,
+  });
+  const reconstructedSemanticAuditBytes = serializeSemanticAuditArtifact(artifact);
+  if (Buffer.compare(reconstructedSemanticAuditBytes, expectedSemanticAuditBytes) !== 0) {
+    fail(
+      'durable semantic decision source does not reconstruct the admitted prospective audit',
+      'SEMANTIC_DECISION_SOURCE_MISMATCH',
+    );
+  }
+  return {
+    sourceId: decisionSource.source_id,
+    sourceSha256: sha256(await readFile(decisionSourcePath)),
+    semanticAuditBytes: reconstructedSemanticAuditBytes,
+  };
 }
 
 function unique(values) {
@@ -433,6 +461,7 @@ export async function promoteM511({
   relationDiffPath,
   verificationPath,
   semanticAuditPath,
+  semanticDecisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   reviewedImportPath,
 } = {}) {
   const resolvedManifestPath = repositoryPath(manifestPath, 'manifest path');
@@ -442,6 +471,10 @@ export async function promoteM511({
   );
   const resolvedCurrentSeedPath = repositoryPath(currentSeedPath, 'current seed path');
   const resolvedCurrentInventoryPath = repositoryPath(currentInventoryPath, 'current inventory path');
+  const resolvedSemanticDecisionSourcePath = repositoryPath(
+    semanticDecisionSourcePath,
+    'semantic decision source path',
+  );
   const manifestSource = await readJson(resolvedManifestPath, 'M5-11 admission manifest');
   const manifest = manifestSource.value;
   assertNoMutationManifest(manifest);
@@ -648,6 +681,16 @@ export async function promoteM511({
   let seedWritten = false;
   let evidenceWritten = false;
   try {
+    const prospectiveSemanticAuthority = await verifySemanticDecisionSource({
+      canonicalDirectory: path.join(prospective.temporaryDirectory, 'canonical'),
+      decisionSourcePath: resolvedSemanticDecisionSourcePath,
+      expectedSemanticAuditBytes: semanticAuditBytes,
+    });
+    promotion.outputs.semantic_decision_source = {
+      path: path.relative(REPOSITORY_DIRECTORY, resolvedSemanticDecisionSourcePath),
+      sha256: prospectiveSemanticAuthority.sourceSha256,
+      source_id: prospectiveSemanticAuthority.sourceId,
+    };
     await writeFile(resolvedCanonicalImportPath, prospective.importBytes);
     importWritten = true;
     await writeFile(resolvedCurrentSeedPath, prospective.seedBytes);
@@ -661,11 +704,17 @@ export async function promoteM511({
       canonicalDirectory: resolvedCurrentCanonicalDirectory,
       seedPath: resolvedCurrentSeedPath,
     })));
-    const finalSemanticAuditDigest = sha256(semanticAuditBytes);
+    const finalSemanticAuthority = await verifySemanticDecisionSource({
+      canonicalDirectory: resolvedCurrentCanonicalDirectory,
+      decisionSourcePath: resolvedSemanticDecisionSourcePath,
+      expectedSemanticAuditBytes: semanticAuditBytes,
+    });
+    const finalSemanticAuditDigest = sha256(finalSemanticAuthority.semanticAuditBytes);
     if (finalCanonicalDigest !== prospective.canonicalDigest
       || finalSeedDigest !== prospective.seedSha256
       || finalInventoryDigest !== prospective.inventorySha256
-      || finalSemanticAuditDigest !== sha256(semanticAuditBytes)) {
+      || finalSemanticAuditDigest !== sha256(semanticAuditBytes)
+      || finalSemanticAuthority.sourceSha256 !== promotion.outputs.semantic_decision_source.sha256) {
       fail('promoted output digest does not match the prevalidated state', 'PROMOTION_DIGEST_MISMATCH');
     }
     promotion.outputs.canonical_directory_sha256 = finalCanonicalDigest;
@@ -722,6 +771,7 @@ if (isMainModule) {
     relationDiffPath: args['relation-diff'],
     verificationPath: args.verification,
     semanticAuditPath: args['semantic-audit'],
+    semanticDecisionSourcePath: args['semantic-decision-source'] ?? DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     reviewedImportPath: args.output,
   })
     .then(({ promotion, promotionEvidencePath }) => {

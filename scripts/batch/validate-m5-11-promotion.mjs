@@ -633,16 +633,45 @@ export async function validateM511Promotion({
   const durable = validateM511DurableEvidence({ manifest, evidence });
 
   const canonical = await readCanonicalRecords(resolvedCanonicalDirectory);
+  const semanticDecisionSourceOutput = evidence.outputs?.semantic_decision_source;
+  if (!semanticDecisionSourceOutput
+    || typeof semanticDecisionSourceOutput.path !== 'string'
+    || typeof semanticDecisionSourceOutput.sha256 !== 'string'
+    || typeof semanticDecisionSourceOutput.source_id !== 'string') {
+    fail('promotion evidence is missing the durable semantic decision source binding', 'OUTPUT_BINDING_MISMATCH');
+  }
+  const resolvedSemanticDecisionSourcePath = repositoryPath(
+    semanticDecisionSourceOutput.path,
+    'semantic decision source output',
+  );
+  const semanticDecisionSourceBytes = await readFile(resolvedSemanticDecisionSourcePath);
+  if (sha256(semanticDecisionSourceBytes) !== semanticDecisionSourceOutput.sha256) {
+    fail('durable semantic decision source digest drifted', 'OUTPUT_DIGEST_MISMATCH');
+  }
+  const reconstructedSemanticAudit = await buildCanonicalSemanticAudit({
+    canonicalDirectory: resolvedCanonicalDirectory,
+    decisionSourcePath: resolvedSemanticDecisionSourcePath,
+  });
+  if (reconstructedSemanticAudit.decisionSource.source_id !== semanticDecisionSourceOutput.source_id) {
+    fail('durable semantic decision source identity drifted', 'OUTPUT_BINDING_MISMATCH');
+  }
+  const reconstructedSemanticAuditBytes = serializeSemanticAuditArtifact(
+    reconstructedSemanticAudit.artifact,
+  );
   let semanticAudit;
   let semanticAuditBytes;
   if (path.resolve(semanticAuditPath) === path.resolve(DEFAULT_SEMANTIC_AUDIT_PATH)) {
-    semanticAudit = (await buildCanonicalSemanticAudit({
-      canonicalDirectory: resolvedCanonicalDirectory,
-    })).artifact;
-    semanticAuditBytes = serializeSemanticAuditArtifact(semanticAudit);
+    semanticAudit = reconstructedSemanticAudit.artifact;
+    semanticAuditBytes = reconstructedSemanticAuditBytes;
   } else {
     semanticAudit = await readSemanticAuditArtifact(resolvedSemanticAuditPath);
     semanticAuditBytes = await readFile(resolvedSemanticAuditPath);
+  }
+  if (Buffer.compare(semanticAuditBytes, reconstructedSemanticAuditBytes) !== 0) {
+    fail(
+      'validated semantic audit is not reconstructed from the durable decision source',
+      'SEMANTIC_AUDIT_SOURCE_MISMATCH',
+    );
   }
   let inventory;
   let inventoryBytes;
