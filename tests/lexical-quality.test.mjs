@@ -850,7 +850,7 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
       productionStateSources: partialProductionState.sources,
       productionPayloads: partialProductionState.payloads,
     }),
-    /missing base record w001|does not preserve base record w001/u,
+    /missing base record w001|does not preserve base record w001|producer-owned prospective output/u,
   );
   assert.throws(
     () => validateDatasetRecords(baseRecordInfos, { requireSemanticAudit: true }),
@@ -908,7 +908,55 @@ test('common admission rejects prospective values that are not derived from revi
       productionStateSources: productionState.sources,
       productionPayloads: productionState.payloads,
     }),
-    /base dataset transformed only by selected\/reviewed records/u,
+    /base dataset transformed only by selected\/reviewed records|producer-owned prospective output/u,
+  );
+
+  const producerSelectedRecord = {
+    ...reviewedRecord,
+    id: 'w780',
+    candidate_id: 'w780',
+    lemma: '생산검수말',
+    search_forms: ['생산검수말'],
+    senses: [{ id: 'w780-s1', pos: 'noun', gloss: '생산 검수 의미' }],
+  };
+  const producerProspective = [
+    ...baseInfos,
+    { record: producerSelectedRecord, source: 'prospective' },
+  ];
+  const producerSemanticAudit = makeSemanticAudit(producerProspective);
+  const producerState = makeProductionState({
+    batchId: 'future-batch-cross-wired',
+    candidateRecords: [producerSelectedRecord],
+    reviewedRecords: [producerSelectedRecord],
+    baseRecords: baseInfos,
+    prospectiveRecords: producerProspective,
+    semanticAudit: producerSemanticAudit,
+  });
+  const substitutedRecord = {
+    ...reviewedRecord,
+    id: 'w781',
+    candidate_id: 'w781',
+    lemma: '대체검수말',
+    search_forms: ['대체검수말'],
+    senses: [{ id: 'w781-s1', pos: 'noun', gloss: '대체 검수 의미' }],
+  };
+  const substitutedProspective = [
+    ...baseInfos,
+    { record: substitutedRecord, source: 'prospective' },
+  ];
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-cross-wired',
+      candidateRecords: [producerSelectedRecord],
+      reviewedRecords: [substitutedRecord],
+      baseRecords: baseInfos,
+      prospectiveRecords: substitutedProspective,
+      semanticAudit: makeSemanticAudit(substitutedProspective),
+      productionState: producerState.state,
+      productionStateSources: producerState.sources,
+      productionPayloads: producerState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
 });
 
@@ -1339,6 +1387,6 @@ test('reviewed existing-record correction passes while an unreviewed replacement
       productionStateSources: correctionProductionState.sources,
       productionPayloads: correctionProductionState.payloads,
     }),
-    /does not preserve base record w903|corrected/u,
+    /does not preserve base record w903|corrected|producer-owned selection output/u,
   );
 });

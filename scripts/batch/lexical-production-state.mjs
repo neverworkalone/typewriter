@@ -321,6 +321,12 @@ function assertUniqueTypedRecordIds(records, label) {
 }
 
 function assertSelectedRecordsDerivedFromReviewedRecords(reviewedRecords, selectedRecords, label) {
+  if (selectedRecords.length !== reviewedRecords.length) {
+    fail(
+      `${label} must preserve every reviewed record; silent selection omission is not authorized`,
+      'LEXICAL_PRODUCTION_STATE_SCOPE',
+    );
+  }
   const reviewedById = new Map(
     reviewedRecords.map((record) => [record.id, record]),
   );
@@ -342,6 +348,14 @@ function assertSelectedRecordsDerivedFromReviewedRecords(reviewedRecords, select
       fail(
         `${selectedLabel} does not preserve the exact reviewed record value`,
         'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  for (const reviewedRecord of reviewedRecords) {
+    if (!selectedIds.has(reviewedRecord.id)) {
+      fail(
+        `${label} must preserve reviewed record ${reviewedRecord.id}; silent selection omission is not authorized`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
       );
     }
   }
@@ -399,6 +413,36 @@ export function assertProspectiveRecordsDerivedFromBaseRecords(
     }
   }
   return prospectiveRecords;
+}
+
+export function assertAdmissionInputsBoundToProducer(
+  productionPayloads,
+  reviewedRecords,
+  prospectiveRecords,
+  label = 'lexical admission',
+) {
+  const selectionOutput = productionPayloads?.selection?.output;
+  const prospectiveOutput = productionPayloads?.prospective_canonical?.output;
+  if (!selectionOutput
+    || !Array.isArray(selectionOutput.selected_records)
+    || !Array.isArray(prospectiveOutput)) {
+    fail(
+      `${label} requires the producer-owned selection and prospective outputs`,
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+  if (JSON.stringify(reviewedRecords) !== JSON.stringify(selectionOutput.selected_records)) {
+    fail(
+      `${label}.reviewed_records must equal the producer-owned selection output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  if (JSON.stringify(prospectiveRecords) !== JSON.stringify(prospectiveOutput)) {
+    fail(
+      `${label}.prospective_records must equal the producer-owned prospective output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
 }
 
 function assertTypedReviewRows(value, label) {

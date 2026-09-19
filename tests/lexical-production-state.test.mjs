@@ -255,6 +255,23 @@ test('shared producer binds selected and prospective values to their exact prede
     }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
+  const secondReviewedRecord = typedRecord(`${batchId}:reviewed-2`, 'reviewed-2');
+  assert.throws(
+    () => createLexicalProductionPayload({
+      stageId: 'selection',
+      batchId,
+      input: { reviewed_records: [reviewedRecord, secondReviewedRecord] },
+      output: { selected_records: [reviewedRecord], selection_ranks: [0] },
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+        reviewed_records_sha256: productionValueSha256([reviewedRecord, secondReviewedRecord]),
+        selected_records_sha256: productionValueSha256([reviewedRecord]),
+        selection_ranks_sha256: productionValueSha256([0]),
+      },
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_SCOPE',
+  );
 
   const baseA = typedRecord(`${batchId}:base-a`, 'base-a');
   const baseB = typedRecord(`${batchId}:base-b`, 'base-b');

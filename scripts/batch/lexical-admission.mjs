@@ -14,6 +14,7 @@ import {
   productionBytesSha256,
   productionValueSha256,
   productionSourceBytes,
+  assertAdmissionInputsBoundToProducer,
   assertProspectiveRecordsDerivedFromBaseRecords,
   isLexicalProductionRun,
   validateLexicalProductionPreAuditState,
@@ -119,6 +120,16 @@ function validateLexicalAdditionInternal({
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
+  if (validatedProductionState?.producer_mode === 'live'
+    || productionRun !== undefined
+    || validatedProductionPayloads !== undefined) {
+    assertAdmissionInputsBoundToProducer(
+      validatedProductionPayloads,
+      reviewedInfos.map(recordOf),
+      prospectiveInfos.map(recordOf),
+      `${batchId} lexical admission`,
+    );
+  }
   const nominalTerms = buildNominalTermPositions([
     ...candidateInfos,
     ...reviewedInfos,
