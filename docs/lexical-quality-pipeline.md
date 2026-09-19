@@ -84,11 +84,15 @@ Batch modules may configure counts and IDs, but may not replace these shared
 stages with a batch-specific quality gate.
 
 The common lexical-quality audit also rejects structurally malformed two-token
-topic fragments (while preserving productive Korean adnominal forms such as
-`달리는 사람` and `작은 사람`) and mechanical sense pairs in every existing
-canonical record and every future prospective canonical dataset. Historical
-bad-string examples remain regression inputs rather than a production
-allowlist. For a post-admission correction,
+topic fragments in every existing canonical record and every future
+prospective canonical dataset. Because Korean topic particles and adnominal
+endings are homographic, the shared check uses noun-only POS evidence from the
+typed lexical record set plus unambiguous particle-allomorph mismatches; it
+does not use a finite modifier whitelist or a surface-length heuristic. This
+preserves productive forms such as `달리는 사람`, `붙잡은 사람`, and
+`가로막은 벽` while keeping malformed `-는/-은` topic fragments in the
+shared gate. Historical bad-string examples remain regression inputs rather
+than a production allowlist. For a post-admission correction,
 the correction manifest is an input artifact rather than a generated verdict;
 its authored decision rows are digest-bound before the canonical audit and
 derived M5 evidence are refreshed.

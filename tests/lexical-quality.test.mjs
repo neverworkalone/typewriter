@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -21,14 +22,19 @@ import {
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
-  makeProductionState,
-  makeSemanticAudit,
-} from './helpers/semantic-audit-fixture.mjs';
-import {
   DatasetIntegrityError,
   validateDatasetRecords,
   validateDatasetDirectory,
 } from '../scripts/validate/dataset-integrity.mjs';
+import {
+  makeProductionState,
+  makeSemanticAudit,
+} from './helpers/semantic-audit-fixture.mjs';
+
+const MALFORMED_TOPIC_REGRESSIONS = JSON.parse(readFileSync(
+  path.resolve('tests/fixtures/lexical-quality/malformed-topic-regressions.json'),
+  'utf8',
+));
 
 const FIXTURE_ROOT = path.resolve('tests/fixtures/lexical-quality');
 
@@ -53,8 +59,8 @@ test('the shared lexical audit rejects malformed topic fragments without a recor
     record_type: 'entry',
     role: 'start',
     candidate_id: 'w9999',
-    lemma: '형태오류',
-    search_forms: ['형태오류'],
+    lemma: '바닥',
+    search_forms: ['바닥'],
     senses: [{ id: 'w9999-s1', pos: 'noun', gloss: '바닥은 깔개' }],
   };
   const audit = auditCanonicalLexicalQuality([{ record, source: 'synthetic' }], {
@@ -73,6 +79,8 @@ test('malformed gloss detection does not confuse productive adnominal forms with
     '움직이는 물체',
     '작은 사람',
     '넓은 곳',
+    '붙잡은 사람',
+    '가로막은 벽',
   ]) {
     const quality = inspectGlossQuality(gloss);
     assert.equal(quality.malformed_structure, false, gloss);
@@ -80,9 +88,20 @@ test('malformed gloss detection does not confuse productive adnominal forms with
   }
 
   for (const gloss of ['바닥은 깔개', '걱정은 마음']) {
-    const quality = inspectGlossQuality(gloss);
+    const topic = gloss.split(/은|는/u)[0];
+    const quality = inspectGlossQuality(gloss, { nominalTerms: [topic] });
     assert.equal(quality.malformed_structure, true, gloss);
     assert.equal(quality.malformed_fragment, true, gloss);
+  }
+});
+
+test('historical malformed gloss examples remain covered by the generalized rule', () => {
+  for (const fixture of MALFORMED_TOPIC_REGRESSIONS) {
+    const quality = inspectGlossQuality(fixture.gloss, {
+      nominalTerms: fixture.nominal_terms,
+    });
+    assert.equal(quality.malformed_structure, true, fixture.name);
+    assert.equal(quality.malformed_fragment, true, fixture.name);
   }
 });
 
@@ -100,15 +119,25 @@ test('future records use the same generalized malformed-gloss invariant', () => 
     ...valid,
     id: 'w-future-gloss-invalid',
     candidate_id: 'w-future-gloss-invalid',
-    lemma: '미래불완성형',
-    search_forms: ['미래불완성형'],
+    lemma: '바닥',
+    search_forms: ['바닥'],
     senses: [{ id: 'w-future-gloss-invalid-s1', pos: 'noun', gloss: '바닥은 깔개' }],
   };
+  const malformedNeun = {
+    ...valid,
+    id: 'w-future-gloss-invalid-neun',
+    candidate_id: 'w-future-gloss-invalid-neun',
+    lemma: '걱정',
+    search_forms: ['걱정'],
+    senses: [{ id: 'w-future-gloss-invalid-neun-s1', pos: 'noun', gloss: '걱정는 마음' }],
+  };
   assert.doesNotThrow(() => validateLexicalRecord(valid, { mode: 'candidate' }));
-  assert.throws(
-    () => validateLexicalRecord(malformed, { mode: 'candidate' }),
-    (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
-  );
+  for (const invalidRecord of [malformed, malformedNeun]) {
+    assert.throws(
+      () => validateLexicalRecord(invalidRecord, { mode: 'candidate' }),
+      (error) => error instanceof LexicalQualityError && error.code === 'LEXICAL_MALFORMED_GLOSS',
+    );
+  }
 });
 
 test('authored distinct and retain cannot override high-confidence usage or paraphrase frames', () => {

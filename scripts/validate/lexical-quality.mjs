@@ -74,11 +74,16 @@ const COMMON_DOMAIN_PAIRS = new Set([
 const PLACEHOLDER_GLOSS_PATTERN = /^(?:placeholder|tbd|todo|n\/a|na|미정|미작성|임시|예시|테스트)(?:[\s:.-]|$)/iu;
 const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번째|두 번째|세 번째|네 번째)\s+구체적 의미/u;
 // A two-token `X은 Y` fragment is not a definition when the first token is
-// being used as a noun topic and the second token is a bare nominal stub.  Do
-// not keep a list of historical bad strings here: the production invariant
-// must describe the shape of the defect and remain useful for future words.
-const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[^\s]+)(?<particle>은|는)\s+(?<predicate>[^\s]+)$/u;
+// being used as a noun topic and the second token is a bare nominal stub.  The
+// topic/adnominal forms are homographs, so the shared rule uses lexical POS
+// evidence from the canonical/prospective record set instead of a word list or
+// a surface-length heuristic.  The allomorph mismatch branch below remains
+// structural and does not need lexical evidence.
+const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
+const HANGUL_SYLLABLE_START = 0xac00;
+const HANGUL_SYLLABLE_END = 0xd7a3;
+const HANGUL_JONGSEONG_COUNT = 28;
 const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
   'duplicate',
   'nested',
@@ -103,23 +108,64 @@ function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
 
-function isLikelyAdnominalModifier(token) {
-  if (typeof token !== 'string' || token.length < 2) return false;
-  if (token.endsWith('는')) {
-    // `-는` is the productive verbal adnominal ending.  A bare `X는 Y`
-    // shape cannot be rejected safely without a Korean POS lexicon: the same
-    // surface form can be a valid modifier (`달리는 사람`) or a topic.
-    return true;
+function hasHangulCoda(value) {
+  const lastCodePoint = [...value].at(-1)?.codePointAt(0);
+  if (lastCodePoint === undefined
+    || lastCodePoint < HANGUL_SYLLABLE_START
+    || lastCodePoint > HANGUL_SYLLABLE_END) {
+    return undefined;
   }
-  if (!token.endsWith('은')) return false;
+  return (lastCodePoint - HANGUL_SYLLABLE_START) % HANGUL_JONGSEONG_COUNT !== 0;
+}
 
-  // `-은` is also an adjective/verb adnominal ending.  A one-syllable stem
-  // covers productive forms such as `작은`, `넓은`, and `먹은` without
-  // maintaining a finite list of known modifiers.  Longer `X은` tokens are
-  // conservatively treated as topic-shaped unless their predicate is a full
-  // verb/adjective form (`...다`), which keeps the invariant fail-closed for
-  // the malformed two-token fragments it is meant to catch.
-  return [...token.slice(0, -1)].length === 1;
+function nominalTermPositions(nominalTerms, topic) {
+  if (nominalTerms instanceof Map) return nominalTerms.get(topic);
+  if (nominalTerms instanceof Set && nominalTerms.has(topic)) return new Set(['noun']);
+  if (Array.isArray(nominalTerms) && nominalTerms.includes(topic)) return new Set(['noun']);
+  return undefined;
+}
+
+function hasUnambiguousNominalTopic(topic, nominalTerms) {
+  const positions = nominalTermPositions(nominalTerms, topic);
+  if (!positions?.has('noun')) return false;
+  // A homographic verb/adjective must remain ambiguous.  A noun-only lexical
+  // form is the stronger token/POS signal that distinguishes `걱정은` from
+  // `붙잡은` without maintaining a finite modifier allowlist.
+  return !positions.has('verb') && !positions.has('adjective');
+}
+
+function isMalformedTopicFragment(gloss, { nominalTerms } = {}) {
+  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
+  if (!fragment) return false;
+  const { topic, particle, predicate } = fragment.groups;
+  if (VALID_PREDICATE_ENDING_PATTERN.test(predicate)) return false;
+
+  // `은` cannot be the Korean topic particle or the consonant-stem
+  // adnominal ending after a vowel-final stem.  This is a purely structural
+  // allomorph check and is safe without lexical context.
+  if (particle === '은' && hasHangulCoda(topic) === false) return true;
+
+  return hasUnambiguousNominalTopic(topic, nominalTerms);
+}
+
+function buildNominalTermPositions(recordInfos) {
+  const positions = new Map();
+  for (const recordInfo of recordInfos) {
+    const record = recordOf(recordInfo);
+    if (!record || typeof record !== 'object' || !Array.isArray(record.senses)) continue;
+    const recordPositions = new Set(
+      record.senses
+        .map((sense) => sense?.pos)
+        .filter((pos) => typeof pos === 'string'),
+    );
+    for (const term of [record.lemma, ...(record.search_forms ?? [])]) {
+      if (typeof term !== 'string' || term.length === 0) continue;
+      const existing = positions.get(term) ?? new Set();
+      for (const pos of recordPositions) existing.add(pos);
+      positions.set(term, existing);
+    }
+  }
+  return positions;
 }
 
 function requireObject(value, label) {
@@ -412,7 +458,7 @@ export function isPlaceholderGloss(gloss) {
   return typeof gloss !== 'string' || PLACEHOLDER_GLOSS_PATTERN.test(gloss.trim());
 }
 
-export function inspectGlossQuality(gloss) {
+export function inspectGlossQuality(gloss, { nominalTerms } = {}) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) {
     return {
       token_count: 0,
@@ -422,14 +468,7 @@ export function inspectGlossQuality(gloss) {
     };
   }
   const trimmed = gloss.trim();
-  const topicFragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(trimmed);
-  const topicToken = topicFragment?.groups.topic
-    ? `${topicFragment.groups.topic}${topicFragment.groups.particle}`
-    : undefined;
-  const malformedStructure = topicFragment !== null
-    && topicFragment.groups.particle === '은'
-    && !isLikelyAdnominalModifier(topicToken)
-    && !VALID_PREDICATE_ENDING_PATTERN.test(topicFragment.groups.predicate);
+  const malformedStructure = isMalformedTopicFragment(trimmed, { nominalTerms });
   return {
     token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
@@ -442,8 +481,10 @@ function recordQualityFindings(record, {
   label = 'record',
   mode = 'canonical',
   rejectAnyBroadConnector = false,
+  nominalTerms,
 } = {}) {
   const findings = [];
+  const effectiveNominalTerms = nominalTerms ?? buildNominalTermPositions([record]);
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
     findings.push({ code: 'LEXICAL_SHAPE_ERROR', message: `${label} must be an object` });
     return findings;
@@ -514,7 +555,7 @@ function recordQualityFindings(record, {
         message: `${senseLabel}.gloss is a placeholder and cannot enter canonical data`,
       });
     }
-    const glossQuality = inspectGlossQuality(sense.gloss);
+    const glossQuality = inspectGlossQuality(sense.gloss, { nominalTerms: effectiveNominalTerms });
     if (glossQuality.token_count < 2) {
       findings.push({
         code: 'LEXICAL_GLOSS_TOO_SHORT',
@@ -563,6 +604,7 @@ export function validateLexicalRecord(record, options = {}) {
     expectedId,
     expectedLemma,
     rejectAnyBroadConnector = false,
+    nominalTerms,
   } = options;
   requireObject(record, label);
   requireString(record.id, `${label}.id`);
@@ -600,7 +642,12 @@ export function validateLexicalRecord(record, options = {}) {
     && senses.some(({ pos }) => pos !== 'expression')) {
     fail(`${label} expression record must use expression POS for every sense`, 'LEXICAL_EXPRESSION_POS');
   }
-  const findings = recordQualityFindings(record, { label, mode, rejectAnyBroadConnector });
+  const findings = recordQualityFindings(record, {
+    label,
+    mode,
+    rejectAnyBroadConnector,
+    nominalTerms,
+  });
   if (findings.length > 0) {
     const finding = findings[0];
     fail(finding.message, finding.code, finding);
@@ -622,6 +669,7 @@ export function auditCanonicalLexicalQuality(
   { scope = 'complete-canonical', throwOnError = true } = {},
 ) {
   const normalized = recordInfos.map(recordOf);
+  const nominalTerms = buildNominalTermPositions(recordInfos);
   const findings = [];
   const connectorCounts = Object.fromEntries(CONNECTORS.map((connector) => [connector, 0]));
   const classificationCounts = {};
@@ -641,6 +689,7 @@ export function auditCanonicalLexicalQuality(
     const qualityFindings = recordQualityFindings(record, {
       label: sourceLabel(recordInfo, index),
       mode: 'canonical',
+      nominalTerms,
     });
     for (const finding of qualityFindings) {
       const senseMatch = /\.senses\[(\d+)\]/u.exec(finding.message);
