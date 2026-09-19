@@ -1667,7 +1667,7 @@ test('M5-11 prospective verification runs the complete M4 baseline contract', as
       },
       checkPilotCompleteness: true,
     }),
-    /M4 baseline .* result IDs|owned by multiple records/u,
+    /M4 baseline .* result IDs|owned by multiple records|producer-owned prospective output/u,
   );
 });
 

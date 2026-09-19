@@ -184,24 +184,30 @@ export function makeProductionState({
   semanticAudit = {},
   artifactId = 'test-production-state',
   topicAnalyses = {},
+  producerLexicalAudit,
+  producerGateDigest,
 } = {}) {
   const reviewedValues = reviewedRecords.map(recordOf);
+  const reviewedDecisions = reviewedRecords.map((recordInfo) => recordInfo?.decision ?? 'included');
   const candidateValues = (candidateRecords.length > 0 ? candidateRecords : reviewedRecords).map(recordOf);
   const baseValues = baseRecords.map(recordOf);
   const prospectiveValues = prospectiveRecords.length > 0
     ? prospectiveRecords.map(recordOf)
     : [...baseValues, ...reviewedValues];
-  const reviewRows = candidateValues.map((candidate, index) => ({
-    candidate_id: candidate.id,
-    decision: reviewedValues[index] ? 'included' : 'held',
-    semantic_review: makeProductionSemanticReview(reviewedValues[index] ?? candidate, {
-      decision: reviewedValues[index] ? 'included' : 'held',
-      artifactId,
-      rank: index + 1,
-      topicAnalyses,
-    }),
-    ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
-  }));
+  const reviewRows = candidateValues.map((candidate, index) => {
+    const decision = reviewedValues[index] ? reviewedDecisions[index] : 'held';
+    return {
+      candidate_id: candidate.id,
+      decision,
+      semantic_review: makeProductionSemanticReview(reviewedValues[index] ?? candidate, {
+        decision,
+        artifactId,
+        rank: index + 1,
+        topicAnalyses,
+      }),
+      ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
+    };
+  });
   const selectedRanks = reviewedValues.map((_, index) => index + 1);
   const candidateOutput = candidateValues;
   const reviewOutput = { review_rows: reviewRows, reviewed_records: reviewedValues };
@@ -238,6 +244,7 @@ export function makeProductionState({
     throwOnError: false,
     topicEvidence,
   });
+  const producerLexicalAuditValue = producerLexicalAudit ?? lexicalAudit;
   const specs = {
     candidate_intake: {
       input: null,
@@ -278,6 +285,7 @@ export function makeProductionState({
       outputKind: 'prospective-canonical',
       details: {
         base_records_sha256: productionValueSha256(baseValues),
+        base_records: baseValues,
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
     },
@@ -285,7 +293,7 @@ export function makeProductionState({
   const auditOutput = {
     prospective_records_sha256: productionValueSha256(prospectiveOutput),
     semantic_audit_sha256: productionValueSha256(semanticAudit),
-    lexical_audit_sha256: productionValueSha256(lexicalAudit),
+    lexical_audit_sha256: productionValueSha256(producerLexicalAuditValue),
   };
   specs.audit = {
     input: prospectiveOutput,
@@ -306,11 +314,11 @@ export function makeProductionState({
     reviewed_count: reviewedValues.length,
     prospective_record_count: prospectiveValues.length,
     semantic_audit: semanticAuditCoverage,
-    lexical_audit: lexicalAudit,
+    lexical_audit: producerLexicalAuditValue,
   });
   const admissionOutput = {
     status: 'admitted',
-    gate_digest: productionBytesSha256(gateBytes),
+    gate_digest: producerGateDigest ?? productionBytesSha256(gateBytes),
   };
   specs.admission = {
     input: auditOutput,
@@ -373,6 +381,7 @@ export function makeProductionState({
     state: run.getState(),
     sources: sourceBytes,
     payloads,
+    lexicalAudit,
   };
 }
 

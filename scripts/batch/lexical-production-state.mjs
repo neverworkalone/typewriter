@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 export const LEXICAL_PRODUCTION_STATE_CONTRACT_VERSION = 'lexical-production-state-v2';
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_STAGE_SOURCE_CONTRACT_VERSION = 'lexical-production-stage-source-v1';
-export const LEXICAL_PRODUCTION_PAYLOAD_CONTRACT_VERSION = 'lexical-production-payload-v1';
+export const LEXICAL_PRODUCTION_PAYLOAD_CONTRACT_VERSION = 'lexical-production-payload-v2';
 const LEXICAL_PRODUCTION_REPLAY_PAYLOAD_CONTRACT_VERSION = 'lexical-production-replay-payload-v1';
 
 /**
@@ -320,6 +320,264 @@ function assertUniqueTypedRecordIds(records, label) {
   return ids;
 }
 
+function assertSelectedRecordsDerivedFromReviewedRecords(reviewedRecords, selectedRecords, label) {
+  if (selectedRecords.length !== reviewedRecords.length) {
+    fail(
+      `${label} must preserve every reviewed record; silent selection omission is not authorized`,
+      'LEXICAL_PRODUCTION_STATE_SCOPE',
+    );
+  }
+  const reviewedById = new Map(
+    reviewedRecords.map((record) => [record.id, record]),
+  );
+  const selectedIds = new Set();
+  for (const [index, selectedRecord] of selectedRecords.entries()) {
+    const selectedLabel = `${label}[${index}]`;
+    if (selectedIds.has(selectedRecord.id)) {
+      fail(`${selectedLabel}.id duplicates an earlier selected record`, 'LEXICAL_PRODUCTION_STATE_SCOPE');
+    }
+    selectedIds.add(selectedRecord.id);
+    const reviewedRecord = reviewedById.get(selectedRecord.id);
+    if (!reviewedRecord) {
+      fail(
+        `${selectedLabel} is not emitted by the preceding semantic review output`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    if (JSON.stringify(selectedRecord) !== JSON.stringify(reviewedRecord)) {
+      fail(
+        `${selectedLabel} does not preserve the exact reviewed record value`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  for (const reviewedRecord of reviewedRecords) {
+    if (!selectedIds.has(reviewedRecord.id)) {
+      fail(
+        `${label} must preserve reviewed record ${reviewedRecord.id}; silent selection omission is not authorized`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+  }
+}
+
+function deriveProspectiveRecords(baseRecords, selectedRecords, label) {
+  const selectedById = new Map();
+  for (const [index, selectedRecord] of selectedRecords.entries()) {
+    if (selectedById.has(selectedRecord.id)) {
+      fail(
+        `${label}.selected_records[${index}].id duplicates an earlier selected record`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    selectedById.set(selectedRecord.id, selectedRecord);
+  }
+  const baseIds = new Set(baseRecords.map(({ id }) => id));
+  const prospective = baseRecords.map((baseRecord) => selectedById.get(baseRecord.id) ?? baseRecord);
+  for (const selectedRecord of selectedRecords) {
+    if (!baseIds.has(selectedRecord.id)) prospective.push(selectedRecord);
+  }
+  return prospective;
+}
+
+export function assertProspectiveRecordsDerivedFromBaseRecords(
+  baseRecords,
+  selectedRecords,
+  prospectiveRecords,
+  label,
+) {
+  const expectedProspectiveRecords = deriveProspectiveRecords(baseRecords, selectedRecords, label);
+  const prospectiveById = new Map();
+  for (const [index, prospectiveRecord] of prospectiveRecords.entries()) {
+    if (prospectiveById.has(prospectiveRecord.id)) {
+      fail(
+        `${label}.prospective_records[${index}].id duplicates an earlier prospective record`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    prospectiveById.set(prospectiveRecord.id, prospectiveRecord);
+  }
+  if (prospectiveById.size !== expectedProspectiveRecords.length) {
+    fail(
+      `${label}.output must equal the base dataset transformed only by selected/reviewed records; the exact record IDs drifted`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  for (const expectedRecord of expectedProspectiveRecords) {
+    const prospectiveRecord = prospectiveById.get(expectedRecord.id);
+    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(expectedRecord)) {
+      fail(
+        `${label}.output must equal the base dataset transformed only by selected/reviewed records; record ${expectedRecord.id} drifted`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  return prospectiveRecords;
+}
+
+export function assertAdmissionInputsBoundToProducer(
+  productionPayloads,
+  {
+    candidateRecords = [],
+    baseRecords,
+    reviewedRecordInfos,
+    prospectiveRecords,
+    semanticAudit,
+    requireAudit = false,
+  } = {},
+  label = 'lexical admission',
+) {
+  const semanticReviewOutput = productionPayloads?.semantic_review?.output;
+  const selectionOutput = productionPayloads?.selection?.output;
+  const prospectivePayload = productionPayloads?.prospective_canonical;
+  const prospectiveOutput = prospectivePayload?.output;
+  const producerBaseRecords = prospectivePayload?.details?.base_records;
+  const producerCandidateRecords = productionPayloads?.candidate_intake?.output;
+  if (!semanticReviewOutput
+    || !Array.isArray(semanticReviewOutput.review_rows)
+    || !selectionOutput
+    || !Array.isArray(selectionOutput.selected_records)
+    || !Array.isArray(prospectiveOutput)
+    || !Array.isArray(producerBaseRecords)
+    || !Array.isArray(producerCandidateRecords)) {
+    fail(
+      `${label} requires the producer-owned candidate, semantic review, base, selection, and prospective outputs`,
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+  if (candidateRecords.length > 0
+    && JSON.stringify(candidateRecords) !== JSON.stringify(producerCandidateRecords)) {
+    fail(
+      `${label}.candidate_records must equal the producer-owned candidate intake output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  if (JSON.stringify(baseRecords) !== JSON.stringify(producerBaseRecords)) {
+    fail(
+      `${label}.base_records must equal the producer-owned prospective base snapshot`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  const auditOutput = productionPayloads?.audit?.output;
+  if (requireAudit && auditOutput === undefined) {
+    fail(
+      `${label} requires the producer-owned complete audit output`,
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+  if (auditOutput !== undefined) {
+    const producerSemanticAuditSha256 = auditOutput?.semantic_audit_sha256;
+    if (typeof producerSemanticAuditSha256 !== 'string'
+      || productionValueSha256(semanticAudit) !== producerSemanticAuditSha256) {
+      fail(
+        `${label}.semantic_audit must equal the producer-owned audit input`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  const reviewedRecords = reviewedRecordInfos.map((recordInfo) => recordInfo?.record ?? recordInfo);
+  if (JSON.stringify(reviewedRecords) !== JSON.stringify(selectionOutput.selected_records)) {
+    fail(
+      `${label}.reviewed_records must equal the producer-owned selection output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  if (JSON.stringify(prospectiveRecords) !== JSON.stringify(prospectiveOutput)) {
+    fail(
+      `${label}.prospective_records must equal the producer-owned prospective output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  const producerDecisionsByRecordId = new Map();
+  for (const [index, reviewRow] of semanticReviewOutput.review_rows.entries()) {
+    if (!['included', 'corrected'].includes(reviewRow?.decision)) continue;
+    const reviewedRecord = reviewRow.reviewed_record;
+    const recordId = reviewedRecord?.id;
+    if (typeof recordId !== 'string' || recordId.trim().length === 0) {
+      fail(
+        `${label}.semantic_review.review_rows[${index}] must provide a selected reviewed_record`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    if (producerDecisionsByRecordId.has(recordId)) {
+      fail(
+        `${label}.semantic_review.review_rows[${index}] duplicates a selected record decision`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    producerDecisionsByRecordId.set(recordId, reviewRow.decision);
+  }
+  for (const [index, selectedRecord] of selectionOutput.selected_records.entries()) {
+    const producerDecision = producerDecisionsByRecordId.get(selectedRecord.id);
+    if (producerDecision === undefined) {
+      fail(
+        `${label}.selection.selected_records[${index}] has no producer-owned semantic review decision`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    const recordInfo = reviewedRecordInfos[index];
+    if (recordInfo?.record !== undefined
+      && recordInfo.decision !== undefined
+      && recordInfo.decision !== producerDecision) {
+      fail(
+        `${label}.reviewed_records[${index}].decision must equal the producer-owned ${producerDecision} decision`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  return producerDecisionsByRecordId;
+}
+
+export function assertCompletedAdmissionTailBoundToProducer(
+  productionPayloads,
+  {
+    batchId,
+    pipelineVersion,
+    candidateCount,
+    reviewedCount,
+    prospectiveRecordCount,
+    semanticAuditCoverage,
+    lexicalAudit,
+  } = {},
+  label = 'lexical admission',
+) {
+  const auditOutput = productionPayloads?.audit?.output;
+  const admissionOutput = productionPayloads?.admission?.output;
+  if (!auditOutput || !admissionOutput) {
+    fail(
+      `${label} requires the producer-owned complete audit and admission outputs`,
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+  const expectedLexicalAuditSha256 = productionValueSha256(lexicalAudit);
+  if (auditOutput.lexical_audit_sha256 !== expectedLexicalAuditSha256) {
+    fail(
+      `${label}.audit.lexical_audit_sha256 must equal the recomputed common lexical audit`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  const gateBytes = productionSourceBytes({
+    batch_id: batchId,
+    pipeline_version: pipelineVersion,
+    candidate_count: candidateCount,
+    reviewed_count: reviewedCount,
+    prospective_record_count: prospectiveRecordCount,
+    semantic_audit: semanticAuditCoverage,
+    lexical_audit: lexicalAudit,
+  });
+  const expectedGateDigest = productionBytesSha256(gateBytes);
+  if (admissionOutput.gate_digest !== expectedGateDigest) {
+    fail(
+      `${label}.admission.gate_digest must equal the recomputed common admission gate`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  return {
+    lexicalAuditSha256: expectedLexicalAuditSha256,
+    gateDigest: expectedGateDigest,
+  };
+}
+
 function assertTypedReviewRows(value, label) {
   const rows = assertPayloadArray(value, label);
   rows.forEach((row, index) => {
@@ -429,8 +687,14 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
   if (stageId === 'selection') {
     const inputObject = assertPayloadObject(input, `${label}.input`);
     const outputObject = assertPayloadObject(output, `${label}.output`);
-    assertTypedRecordArray(inputObject.reviewed_records, `${label}.input.reviewed_records`);
-    assertTypedRecordArray(outputObject.selected_records, `${label}.output.selected_records`);
+    const reviewedRecords = assertTypedRecordArray(inputObject.reviewed_records, `${label}.input.reviewed_records`);
+    assertUniqueTypedRecordIds(reviewedRecords, `${label}.input.reviewed_records`);
+    const selectedRecords = assertTypedRecordArray(outputObject.selected_records, `${label}.output.selected_records`);
+    assertSelectedRecordsDerivedFromReviewedRecords(
+      reviewedRecords,
+      selectedRecords,
+      `${label}.output.selected_records`,
+    );
     assertPayloadArray(outputObject.selection_ranks, `${label}.output.selection_ranks`);
     if (outputObject.selection_ranks.length !== outputObject.selected_records.length
       || outputObject.selection_ranks.some((rank) => !Number.isInteger(rank) || rank < 0)) {
@@ -460,14 +724,27 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
 
   if (stageId === 'prospective_canonical') {
     const inputObject = assertPayloadObject(input, `${label}.input`);
-    assertTypedRecordArray(inputObject.selected_records, `${label}.input.selected_records`);
-    assertTypedRecordArray(output, `${label}.output`);
+    const selectedRecords = assertTypedRecordArray(inputObject.selected_records, `${label}.input.selected_records`);
+    assertUniqueTypedRecordIds(selectedRecords, `${label}.input.selected_records`);
+    const baseRecords = assertTypedRecordArray(details.base_records, `${label}.details.base_records`);
+    assertUniqueTypedRecordIds(baseRecords, `${label}.details.base_records`);
+    assertPayloadDigest(
+      details.base_records_sha256,
+      productionValueSha256(baseRecords),
+      `${label}.details.base_records_sha256`,
+    );
+    const prospectiveRecords = assertTypedRecordArray(output, `${label}.output`);
+    assertProspectiveRecordsDerivedFromBaseRecords(
+      baseRecords,
+      selectedRecords,
+      prospectiveRecords,
+      label,
+    );
     assertPayloadDigest(
       details.prospective_records_sha256,
-      productionValueSha256(output),
+      productionValueSha256(prospectiveRecords),
       `${label}.details.prospective_records_sha256`,
     );
-    requirePayloadDigest(details.base_records_sha256, `${label}.details.base_records_sha256`);
     return;
   }
 

@@ -16,6 +16,7 @@ import {
 } from '../scripts/validate/lexical-quality.mjs';
 import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs';
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
+import { productionValueSha256 } from '../scripts/batch/lexical-production-state.mjs';
 import {
   buildSemanticCoverageArtifact,
   buildSemanticTopicEvidence,
@@ -430,7 +431,7 @@ test('prospective admission uses conservative lexical POS context', () => {
       productionStateSources: malformedProductionState.sources,
       productionPayloads: malformedProductionState.payloads,
     }),
-    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
 });
 
@@ -828,12 +829,16 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
     senses: [{ id: 'w779-s1', pos: 'noun', gloss: '새 의미' }],
   };
   const partial = [{ record: newRecord, source: 'partial' }];
+  const completeProspective = [
+    ...baseRecordInfos,
+    { record: newRecord, source: 'prospective' },
+  ];
   const partialProductionState = makeProductionState({
     batchId: 'future-batch-2041',
     reviewedRecords: [newRecord],
     baseRecords: baseRecordInfos,
-    prospectiveRecords: partial,
-    semanticAudit: makeSemanticAudit(partial),
+    prospectiveRecords: completeProspective,
+    semanticAudit: makeSemanticAudit(completeProspective),
   });
   assert.throws(
     () => validateLexicalAddition({
@@ -846,11 +851,127 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
       productionStateSources: partialProductionState.sources,
       productionPayloads: partialProductionState.payloads,
     }),
-    /missing base record w001|does not preserve base record w001/u,
+    /missing base record w001|does not preserve base record w001|producer-owned prospective output|producer-owned audit input/u,
   );
   assert.throws(
     () => validateDatasetRecords(baseRecordInfos, { requireSemanticAudit: true }),
     /semantic-audit coverage/u,
+  );
+});
+
+test('common admission rejects prospective values that are not derived from reviewed values', () => {
+  const baseRecord = {
+    id: 'w001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w001',
+    lemma: '기존말',
+    search_forms: ['기존말'],
+    senses: [{ id: 'w001-s1', pos: 'noun', gloss: '기존 의미' }],
+  };
+  const reviewedRecord = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '검수말',
+    search_forms: ['검수말'],
+    senses: [{ id: 'w779-s1', pos: 'noun', gloss: '검수된 의미' }],
+  };
+  const driftedRecord = {
+    ...reviewedRecord,
+    lemma: '검수말변조',
+    search_forms: ['검수말변조'],
+  };
+  const baseInfos = [{ record: baseRecord, source: 'base' }];
+  const completeProspective = [
+    ...baseInfos,
+    { record: reviewedRecord, source: 'prospective' },
+  ];
+  const productionState = makeProductionState({
+    batchId: 'future-batch-lineage',
+    reviewedRecords: [reviewedRecord],
+    baseRecords: baseInfos,
+    prospectiveRecords: completeProspective,
+    semanticAudit: makeSemanticAudit(completeProspective),
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-lineage',
+      reviewedRecords: [reviewedRecord],
+      baseRecords: [baseRecord],
+      prospectiveRecords: [baseRecord, driftedRecord],
+      semanticAudit: makeSemanticAudit([
+        { record: baseRecord, source: 'base' },
+        { record: driftedRecord, source: 'prospective' },
+      ]),
+      productionState: productionState.state,
+      productionStateSources: productionState.sources,
+      productionPayloads: productionState.payloads,
+    }),
+    /base dataset transformed only by selected\/reviewed records|producer-owned prospective output|producer-owned audit input/u,
+  );
+
+  const producerSelectedRecord = {
+    ...reviewedRecord,
+    id: 'w780',
+    candidate_id: 'w780',
+    lemma: '생산검수말',
+    search_forms: ['생산검수말'],
+    senses: [{ id: 'w780-s1', pos: 'noun', gloss: '생산 검수 의미' }],
+  };
+  const producerProspective = [
+    ...baseInfos,
+    { record: producerSelectedRecord, source: 'prospective' },
+  ];
+  const producerSemanticAudit = makeSemanticAudit(producerProspective);
+  const producerState = makeProductionState({
+    batchId: 'future-batch-cross-wired',
+    candidateRecords: [producerSelectedRecord],
+    reviewedRecords: [producerSelectedRecord],
+    baseRecords: baseInfos,
+    prospectiveRecords: producerProspective,
+    semanticAudit: producerSemanticAudit,
+  });
+  const substitutedRecord = {
+    ...reviewedRecord,
+    id: 'w781',
+    candidate_id: 'w781',
+    lemma: '대체검수말',
+    search_forms: ['대체검수말'],
+    senses: [{ id: 'w781-s1', pos: 'noun', gloss: '대체 검수 의미' }],
+  };
+  const substitutedProspective = [
+    ...baseInfos,
+    { record: substitutedRecord, source: 'prospective' },
+  ];
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-cross-wired',
+      candidateRecords: [producerSelectedRecord],
+      reviewedRecords: [substitutedRecord],
+      baseRecords: baseInfos,
+      prospectiveRecords: substitutedProspective,
+      semanticAudit: makeSemanticAudit(substitutedProspective),
+      productionState: producerState.state,
+      productionStateSources: producerState.sources,
+      productionPayloads: producerState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-cross-wired',
+      candidateRecords: [substitutedRecord],
+      reviewedRecords: [producerSelectedRecord],
+      baseRecords: baseInfos,
+      prospectiveRecords: producerProspective,
+      semanticAudit: producerSemanticAudit,
+      productionState: producerState.state,
+      productionStateSources: producerState.sources,
+      productionPayloads: producerState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
 });
 
@@ -1270,6 +1391,109 @@ test('reviewed existing-record correction passes while an unreviewed replacement
     productionPayloads: correctionProductionState.payloads,
   });
   assert.equal(admitted.reviewed_count, 1);
+  assert.equal(
+    correctionProductionState.payloads.semantic_review.output.review_rows[0].decision,
+    'corrected',
+  );
+  const includedProductionState = makeProductionState({
+    batchId: 'future-batch-correction-decision-lineage',
+    reviewedRecords: [{ record: corrected, decision: 'included' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction-decision-lineage',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: includedProductionState.state,
+      productionStateSources: includedProductionState.sources,
+      productionPayloads: includedProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const substitutedBase = {
+    ...base,
+    senses: [{ id: 'w903-s1', pos: 'noun', gloss: '검수와 무관한 다른 기존 의미.' }],
+  };
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: [{ record: substitutedBase, source: 'base' }],
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: correctionProductionState.state,
+      productionStateSources: correctionProductionState.sources,
+      productionPayloads: correctionProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const substitutedSemanticAudit = makeSemanticAudit(prospectiveInfos, {
+    artifactId: 'future-batch-correction-substituted-audit',
+    changes,
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: substitutedSemanticAudit,
+      productionState: correctionProductionState.state,
+      productionStateSources: correctionProductionState.sources,
+      productionPayloads: correctionProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const staleLexicalAuditProductionState = makeProductionState({
+    batchId: 'future-batch-correction',
+    reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+    producerLexicalAudit: {
+      ...correctionProductionState.lexicalAudit,
+      scope: 'future-batch-correction:stale-producer-audit',
+    },
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: staleLexicalAuditProductionState.state,
+      productionStateSources: staleLexicalAuditProductionState.sources,
+      productionPayloads: staleLexicalAuditProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const staleGateProductionState = makeProductionState({
+    batchId: 'future-batch-correction',
+    reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+    producerGateDigest: productionValueSha256({ status: 'admitted', gate: 'stale' }),
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: staleGateProductionState.state,
+      productionStateSources: staleGateProductionState.sources,
+      productionPayloads: staleGateProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
   assert.throws(
     () => validateLexicalAddition({
       batchId: 'future-batch-correction',
@@ -1281,6 +1505,6 @@ test('reviewed existing-record correction passes while an unreviewed replacement
       productionStateSources: correctionProductionState.sources,
       productionPayloads: correctionProductionState.payloads,
     }),
-    /does not preserve base record w903|corrected/u,
+    /does not preserve base record w903|corrected|producer-owned selection output/u,
   );
 });

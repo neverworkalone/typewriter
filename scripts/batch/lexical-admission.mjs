@@ -14,6 +14,9 @@ import {
   productionBytesSha256,
   productionValueSha256,
   productionSourceBytes,
+  assertAdmissionInputsBoundToProducer,
+  assertCompletedAdmissionTailBoundToProducer,
+  assertProspectiveRecordsDerivedFromBaseRecords,
   isLexicalProductionRun,
   validateLexicalProductionPreAuditState,
   validateLexicalProductionState,
@@ -114,10 +117,32 @@ function validateLexicalAdditionInternal({
       allowReplay,
     });
   }
-  const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
+  const hasProducerBinding = validatedProductionState?.producer_mode === 'live'
+    || productionRun !== undefined
+    || validatedProductionPayloads !== undefined;
+  const producerCandidateRecords = validatedProductionPayloads?.candidate_intake?.output;
+  const boundCandidateRecords = hasProducerBinding && candidateRecords.length === 0
+    ? producerCandidateRecords ?? []
+    : candidateRecords;
+  const candidateInfos = asRecordInfos(boundCandidateRecords, 'candidate', candidateLabel);
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
+  let producerDecisionsByRecordId;
+  if (hasProducerBinding) {
+    producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
+      validatedProductionPayloads,
+      {
+        candidateRecords: candidateInfos.map(recordOf),
+        baseRecords: baseInfos.map(recordOf),
+        reviewedRecordInfos: reviewedInfos,
+        prospectiveRecords: prospectiveInfos.map(recordOf),
+        semanticAudit,
+        requireAudit: validatedProductionState?.producer_mode === 'live',
+      },
+      `${batchId} lexical admission`,
+    );
+  }
   const nominalTerms = buildNominalTermPositions([
     ...candidateInfos,
     ...reviewedInfos,
@@ -136,12 +161,14 @@ function validateLexicalAdditionInternal({
   const reviewedInfosById = new Map();
   for (const recordInfo of reviewedInfos) {
     const record = recordOf(recordInfo);
+    const producerDecision = producerDecisionsByRecordId?.get(record.id);
+    const decision = producerDecision ?? recordInfo.decision;
     if (reviewedInfosById.has(record.id)) {
       throw new Error(`lexical admission reviewed records contains duplicate record ID ${record.id}`);
     }
     reviewedInfosById.set(record.id, recordInfo);
-    if (baseRecordsById.has(record.id) && recordInfo.decision !== 'corrected') {
-      throw new Error(`lexical admission replacement of base record ${record.id} requires an explicit corrected decision`);
+    if (baseRecordsById.has(record.id) && decision !== 'corrected') {
+      throw new Error(`lexical admission replacement of base record ${record.id} requires a producer-owned corrected decision`);
     }
   }
   for (const [recordId, baseRecord] of baseRecordsById) {
@@ -150,10 +177,16 @@ function validateLexicalAdditionInternal({
       throw new Error(`lexical admission prospective_records is missing base record ${recordId}`);
     }
     if (JSON.stringify(prospectiveRecord) !== JSON.stringify(baseRecord)
-      && reviewedInfosById.get(recordId)?.decision !== 'corrected') {
-      throw new Error(`lexical admission prospective_records does not preserve base record ${recordId}`);
+      && (producerDecisionsByRecordId?.get(recordId) ?? reviewedInfosById.get(recordId)?.decision) !== 'corrected') {
+      throw new Error(`lexical admission prospective_records does not preserve base record ${recordId} without a producer-owned corrected decision`);
     }
   }
+  assertProspectiveRecordsDerivedFromBaseRecords(
+    baseInfos.map(recordOf),
+    reviewedInfos.map(recordOf),
+    prospectiveInfos.map(recordOf),
+    `${batchId} lexical admission`,
+  );
 
   for (const [index, recordInfo] of candidateInfos.entries()) {
     validateLexicalRecord(recordOf(recordInfo), {
@@ -281,6 +314,34 @@ function validateLexicalAdditionInternal({
       audit: auditPayload,
       admission: admissionPayload,
     };
+    producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
+      validatedProductionPayloads,
+      {
+        candidateRecords: candidateInfos.map(recordOf),
+        baseRecords: baseInfos.map(recordOf),
+        reviewedRecordInfos: reviewedInfos,
+        prospectiveRecords: prospectiveInfos.map(recordOf),
+        semanticAudit,
+        requireAudit: true,
+      },
+      `${batchId} lexical admission`,
+    );
+  }
+
+  if (validatedProductionState?.producer_mode === 'live') {
+    assertCompletedAdmissionTailBoundToProducer(
+      validatedProductionPayloads,
+      {
+        batchId,
+        pipelineVersion: LEXICAL_ADMISSION_PIPELINE_VERSION,
+        candidateCount: candidateInfos.length,
+        reviewedCount: reviewedInfos.length,
+        prospectiveRecordCount: prospectiveInfos.length,
+        semanticAuditCoverage,
+        lexicalAudit: audit,
+      },
+      `${batchId} lexical admission`,
+    );
   }
 
   return {

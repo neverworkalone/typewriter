@@ -139,6 +139,7 @@ function createPreAuditPayloads({
       outputKind: 'prospective-canonical',
       details: {
         base_records_sha256: productionValueSha256(valuesOf(baseRecords)),
+        base_records: valuesOf(baseRecords),
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
     },
@@ -370,6 +371,12 @@ export function validateLexicalProduction({
     const reviewedRecord = entry.reviewed_record ? recordOf(entry.reviewed_record) : undefined;
     if (['included', 'corrected'].includes(entry.decision)) {
       if (!reviewedRecord) fail(`production.reviews[${index}] selected decision is missing reviewed_record`, 'LEXICAL_PRODUCTION_REVIEW_MISSING');
+      if (reviewedRecord.id !== candidate.id) {
+        fail(
+          `production.reviews[${index}].reviewed_record.id must equal the reviewed candidate ${candidate.id}`,
+          'LEXICAL_PRODUCTION_BINDING',
+        );
+      }
       const duplicateSelectedId = selectedRecords.some((recordInfo) => recordOf(recordInfo).id === reviewedRecord.id);
       if (duplicateSelectedId) {
         fail(`production.reviews selects duplicate reviewed record ${reviewedRecord.id}`, 'LEXICAL_PRODUCTION_SCOPE');
