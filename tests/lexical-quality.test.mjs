@@ -690,10 +690,12 @@ test('writer-domain evidence respects lexical token boundaries and Korean inflec
     ['향을 맡다', 'smell'],
     ['향으로 퍼지다', 'smell'],
     ['좋은 향이다', 'smell'],
+    ['향에서는 은은하다', 'smell'],
     ['향기로운 냄새', 'smell'],
     ['향긋한 냄새', 'smell'],
     ['색이 선명하다', 'visual'],
     ['색으로 물들다', 'visual'],
+    ['색으로는 선명하다', 'visual'],
     ['선명한 색이다', 'visual'],
     ['색깔이 선명하다', 'visual'],
     ['빛나는 모습', 'visual'],
@@ -761,6 +763,58 @@ test('the token-aware domain rule is reused by a future lexical admission', () =
     productionStateSources: productionState.sources,
     productionPayloads: productionState.payloads,
   }));
+});
+
+test('composed nominal particles still block a merged domain in future admission', () => {
+  const candidateRecord = {
+    id: 'w781',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w781',
+    lemma: '복합조사말',
+    search_forms: ['복합조사말'],
+    senses: [{
+      id: 'w781-s1',
+      pos: 'adjective',
+      gloss: '기분이나 향에서는 느낌이 달라진다',
+    }],
+  };
+  const baseRecord = {
+    id: 'w780',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w780',
+    lemma: '복합조사기존말',
+    search_forms: ['복합조사기존말'],
+    senses: [{ id: 'w780-s1', pos: 'noun', gloss: '기존의 의미를 가리키는 말' }],
+  };
+  const baseRecords = [{ record: baseRecord, source: 'base' }];
+  const reviewedRecords = [{ record: candidateRecord, source: 'future-review' }];
+  const prospectiveRecords = [...baseRecords, ...reviewedRecords];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-composed-particle-domain',
+    candidateRecords: [candidateRecord],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-composed-particle-domain',
+      candidateRecords: [candidateRecord],
+      reviewedRecords,
+      baseRecords,
+      prospectiveRecords,
+      semanticAudit,
+      productionState: productionState.state,
+      productionStateSources: productionState.sources,
+      productionPayloads: productionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_MERGED_SENSE_GLOSS',
+  );
 });
 
 test('the complete-canonical audit rejects a merged sensory and affective sense', async () => {

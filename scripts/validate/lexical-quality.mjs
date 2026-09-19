@@ -74,12 +74,25 @@ export const WRITER_DOMAIN_AXES = Object.freeze(Object.keys(WRITER_DOMAIN_TERMS)
 // morphological analyzer, a token such as `향하고` is ambiguous between the
 // noun `향` plus a particle and the inflected verb `향하다`.  Unsupported
 // ambiguity must not become writer-domain evidence.
-const WRITER_DOMAIN_NOMINAL_PARTICLE_TAILS = new Set([
-  '으로부터', '에서부터', '으로서', '으로써', '에게서', '한테서',
+//
+// These are safe first-position nominal particles.  Their composition rules
+// live below instead of being enumerated as complete surface tails, so forms
+// such as `에서는` and `으로는` remain covered without opening the grammar to
+// arbitrary suffix recursion.
+const WRITER_DOMAIN_NOMINAL_PARTICLE_ATOMS = Object.freeze([
   '으로', '에서', '에게', '한테', '처럼', '만큼', '부터', '까지', '보다',
-  '이나', '이랑', '랑', '조차', '마저', '밖에', '뿐', '대로', '에도',
+  '이나', '이랑', '랑', '조차', '마저', '밖에', '뿐', '대로',
   '은', '는', '이', '가', '을', '를', '에', '로', '과', '와', '도', '만', '의', '나',
-]);
+].sort((left, right) => right.length - left.length));
+
+const WRITER_DOMAIN_NOMINAL_COMPOSITION = Object.freeze({
+  으로: Object.freeze(['부터', '서', '써']),
+  에서: Object.freeze(['부터']),
+  에게: Object.freeze(['서']),
+  한테: Object.freeze(['서']),
+});
+
+const WRITER_DOMAIN_NOMINAL_ENCLITIC_ATOMS = Object.freeze(['까지', '은', '는', '도', '만']);
 
 // These forms visibly contain the copular stem `이`, so they are safer for a
 // token-only analyzer than homographic endings such as `인` or `일`.
@@ -467,11 +480,41 @@ function sourceLabel(recordInfo, index) {
   return `${recordInfo.filePath}:${recordInfo.lineNumber ?? index + 1}`;
 }
 
+function consumesNominalEnclitics(tail) {
+  let remaining = tail;
+  while (remaining.length > 0) {
+    const enclitic = WRITER_DOMAIN_NOMINAL_ENCLITIC_ATOMS.find((candidate) => (
+      remaining.startsWith(candidate)
+    ));
+    if (!enclitic) return false;
+    remaining = remaining.slice(enclitic.length);
+  }
+  return true;
+}
+
+function consumesNominalParticleTail(tail) {
+  if (tail.length === 0) return true;
+  const firstParticle = WRITER_DOMAIN_NOMINAL_PARTICLE_ATOMS.find((candidate) => (
+    tail.startsWith(candidate)
+  ));
+  if (!firstParticle) return false;
+
+  let remaining = tail.slice(firstParticle.length);
+  if (remaining.length === 0) return true;
+
+  const compositions = WRITER_DOMAIN_NOMINAL_COMPOSITION[firstParticle] ?? [];
+  const composedParticle = compositions.find((candidate) => (
+    remaining.startsWith(candidate)
+  ));
+  if (composedParticle) remaining = remaining.slice(composedParticle.length);
+  return remaining.length === 0 || consumesNominalEnclitics(remaining);
+}
+
 function isAllowedDomainTail(term, tail) {
   if (tail.length === 0) return true;
   const metadata = WRITER_DOMAIN_TERM_METADATA[term] ?? { lexical_class: 'noun' };
   if (metadata.lexical_class === 'noun') {
-    return WRITER_DOMAIN_NOMINAL_PARTICLE_TAILS.has(tail)
+    return consumesNominalParticleTail(tail)
       || WRITER_DOMAIN_COPULAR_TAILS.has(tail)
       || metadata.derived_tails?.has(tail) === true;
   }
