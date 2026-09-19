@@ -89,10 +89,13 @@ prospective canonical dataset. Because Korean topic particles and adnominal
 endings are homographic, the shared check uses noun-only POS evidence from the
 typed lexical record set and inflection-aware verb/adjective stem variants; it
 does not use a finite modifier whitelist or a surface-length/allomorph
-heuristic. This preserves productive forms such as `달리는 사람`,
-`붙잡은 사람`, and `가로막은 벽` while keeping malformed `-는/-은` topic
-fragments in the shared gate. Historical bad-string examples remain
-regression inputs rather than a production allowlist. For a post-admission correction,
+heuristic. The classifier records `noun-topic`, `adnominal`, `ambiguous`, or
+`unsupported` evidence and blocks only the first state with a bare nominal
+predicate; the other states remain conservative. This preserves productive
+forms such as `달리는 사람`, `붙잡은 사람`, and `가로막은 벽` while keeping
+positively established malformed `-는/-은` topic fragments in the shared
+gate. Historical bad-string examples remain regression inputs rather than a
+production allowlist. For a post-admission correction,
 the correction manifest is an input artifact rather than a generated verdict;
 its authored decision rows are digest-bound before the canonical audit and
 derived M5 evidence are refreshed.

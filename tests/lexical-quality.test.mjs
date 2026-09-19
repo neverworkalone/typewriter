@@ -94,6 +94,7 @@ test('malformed gloss detection does not confuse productive adnominal forms with
   for (const gloss of ['바닥은 깔개', '걱정은 마음']) {
     const topic = gloss.split(/은|는/u)[0];
     const quality = inspectGlossQuality(gloss, { nominalTerms: [topic] });
+    assert.equal(quality.topic_state, 'noun-topic', gloss);
     assert.equal(quality.malformed_structure, true, gloss);
     assert.equal(quality.malformed_fragment, true, gloss);
   }
@@ -104,8 +105,50 @@ test('historical malformed gloss examples remain covered by the generalized rule
     const quality = inspectGlossQuality(fixture.gloss, {
       nominalTerms: fixture.nominal_terms,
     });
+    assert.equal(quality.topic_state, 'noun-topic', fixture.name);
     assert.equal(quality.malformed_structure, true, fixture.name);
     assert.equal(quality.malformed_fragment, true, fixture.name);
+  }
+});
+
+test('topic classifier keeps evidence states conservative for unseen forms and homographs', () => {
+  const nounVerbHomograph = new Map([
+    ['차', new Set(['noun', 'verb'])],
+  ]);
+  const cases = [
+    {
+      gloss: '붙잡은 사람',
+      expectedState: 'unsupported',
+      expectedMalformed: false,
+    },
+    {
+      gloss: '지은 집',
+      expectedState: 'unsupported',
+      expectedMalformed: false,
+    },
+    {
+      gloss: '차는 사람',
+      nominalTerms: nounVerbHomograph,
+      expectedState: 'ambiguous',
+      expectedMalformed: false,
+    },
+    {
+      gloss: '걱정는 마음',
+      nominalTerms: ['걱정'],
+      expectedState: 'noun-topic',
+      expectedMalformed: true,
+    },
+    {
+      gloss: '바닥은 깔개',
+      nominalTerms: ['바닥'],
+      expectedState: 'noun-topic',
+      expectedMalformed: true,
+    },
+  ];
+  for (const item of cases) {
+    const quality = inspectGlossQuality(item.gloss, { nominalTerms: item.nominalTerms });
+    assert.equal(quality.topic_state, item.expectedState, item.gloss);
+    assert.equal(quality.malformed_structure, item.expectedMalformed, item.gloss);
   }
 });
 

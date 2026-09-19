@@ -87,6 +87,12 @@ const HANGUL_JONGSEONG_COUNT = 28;
 const HANGUL_JONGSEONG_S = 19;
 const HANGUL_JONGSEONG_D = 7;
 const HANGUL_JONGSEONG_R = 8;
+const TOPIC_ANALYSIS_STATES = Object.freeze([
+  'noun-topic',
+  'adnominal',
+  'ambiguous',
+  'unsupported',
+]);
 const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
   'duplicate',
   'nested',
@@ -157,22 +163,27 @@ function nominalTermPositions(nominalTerms, topic) {
   return undefined;
 }
 
-function hasUnambiguousNominalTopic(topic, nominalTerms) {
+function classifyTopicToken(topic, nominalTerms) {
   const positions = nominalTermPositions(nominalTerms, topic);
-  if (!positions?.has('noun')) return false;
-  // A homographic verb/adjective must remain ambiguous.  A noun-only lexical
-  // form is the stronger token/POS signal that distinguishes `걱정은` from
-  // `붙잡은` without maintaining a finite modifier allowlist.
-  return !positions.has('verb') && !positions.has('adjective');
+  if (!positions || positions.size === 0) return { state: 'unsupported' };
+  const hasNoun = positions.has('noun');
+  const hasAdnominal = positions.has('verb') || positions.has('adjective');
+  if (hasNoun && hasAdnominal) return { state: 'ambiguous' };
+  if (hasAdnominal) return { state: 'adnominal' };
+  if (hasNoun) return { state: 'noun-topic' };
+  return { state: 'unsupported' };
 }
 
-function isMalformedTopicFragment(gloss, { nominalTerms } = {}) {
+function inspectTopicFragment(gloss, { nominalTerms } = {}) {
   const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
-  if (!fragment) return false;
+  if (!fragment) return { state: 'unsupported', malformed: false };
   const { topic, predicate } = fragment.groups;
-  if (VALID_PREDICATE_ENDING_PATTERN.test(predicate)) return false;
-
-  return hasUnambiguousNominalTopic(topic, nominalTerms);
+  const topicAnalysis = classifyTopicToken(topic, nominalTerms);
+  const bareNominalPredicate = !VALID_PREDICATE_ENDING_PATTERN.test(predicate);
+  return {
+    ...topicAnalysis,
+    malformed: topicAnalysis.state === 'noun-topic' && bareNominalPredicate,
+  };
 }
 
 export function buildNominalTermPositions(recordInfos) {
@@ -494,15 +505,19 @@ export function inspectGlossQuality(gloss, { nominalTerms } = {}) {
       generic_template: false,
       malformed_fragment: false,
       malformed_structure: false,
+      topic_state: 'unsupported',
     };
   }
   const trimmed = gloss.trim();
-  const malformedStructure = isMalformedTopicFragment(trimmed, { nominalTerms });
+  const topicAnalysis = inspectTopicFragment(trimmed, { nominalTerms });
   return {
     token_count: trimmed.split(/\s+/u).length,
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
-    malformed_fragment: malformedStructure,
-    malformed_structure: malformedStructure,
+    malformed_fragment: topicAnalysis.malformed,
+    malformed_structure: topicAnalysis.malformed,
+    topic_state: TOPIC_ANALYSIS_STATES.includes(topicAnalysis.state)
+      ? topicAnalysis.state
+      : 'unsupported',
   };
 }
 
