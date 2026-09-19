@@ -8,6 +8,7 @@ import {
 import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
 import {
   buildCanonicalSemanticAudit,
+  buildSemanticTopicEvidence,
   readSemanticAuditArtifact,
   validateSemanticAuditCoverage,
 } from './semantic-audit.mjs';
@@ -32,7 +33,9 @@ function displayPath(filePath) {
 }
 
 function sourceLocation(recordInfo, suffix = '') {
-  return `${displayPath(recordInfo.filePath)}:${recordInfo.lineNumber}${suffix}`;
+  const filePath = recordInfo.filePath ?? recordInfo.source ?? '<record>';
+  const lineNumber = recordInfo.lineNumber ?? '?';
+  return `${displayPath(filePath)}:${lineNumber}${suffix}`;
 }
 
 function failAt(recordInfo, message, code = 'DATASET_INTEGRITY_ERROR') {
@@ -280,6 +283,7 @@ export function validateDatasetRecords(
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
 
+  let topicEvidence;
   if (requireSemanticAudit) {
     if (semanticAudit === undefined) {
       fail('complete canonical validation requires semantic-audit coverage', 'SEMANTIC_AUDIT_REQUIRED');
@@ -293,6 +297,21 @@ export function validateDatasetRecords(
     } catch (error) {
       fail(error.message, error.code);
     }
+    try {
+      topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
+        label: 'complete canonical semantic audit',
+      });
+    } catch (error) {
+      fail(error.message, error.code);
+    }
+  } else if (semanticAudit !== undefined) {
+    try {
+      topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
+        label: 'semantic audit',
+      });
+    } catch (error) {
+      fail(error.message, error.code);
+    }
   }
 
   // The canonical directory is the product boundary.  Every record already
@@ -302,6 +321,7 @@ export function validateDatasetRecords(
   const lexicalQuality = auditCanonicalLexicalQuality(recordInfos, {
     scope: 'complete-canonical',
     throwOnError: false,
+    topicEvidence,
   });
   if (lexicalQuality.blocking_finding_count > 0) {
     const finding = lexicalQuality.blocking_findings[0];

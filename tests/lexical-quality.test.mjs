@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import {
   auditCanonicalLexicalQuality,
+  buildNominalTermPositions,
   LexicalQualityError,
   inspectWriterDomainEvidence,
   inspectGlossQuality,
@@ -16,21 +18,45 @@ import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs'
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
 import {
   buildSemanticCoverageArtifact,
+  buildSemanticTopicEvidence,
   canonicalRecordsSha256,
   inspectSenseBoundaryPairs,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
-  makeProductionState,
-  makeSemanticAudit,
-} from './helpers/semantic-audit-fixture.mjs';
-import {
   DatasetIntegrityError,
   validateDatasetRecords,
   validateDatasetDirectory,
 } from '../scripts/validate/dataset-integrity.mjs';
+import {
+  makeProductionState,
+  makeSemanticAudit,
+} from './helpers/semantic-audit-fixture.mjs';
+
+const MALFORMED_TOPIC_REGRESSIONS = JSON.parse(readFileSync(
+  path.resolve('tests/fixtures/lexical-quality/malformed-topic-regressions.json'),
+  'utf8',
+));
 
 const FIXTURE_ROOT = path.resolve('tests/fixtures/lexical-quality');
+const TOPIC_EVIDENCE_SENSE_ID = 'w-topic-evidence-s1';
+
+function topicEvidenceForGloss(gloss, analysis = {}) {
+  const record = {
+    id: 'w-topic-evidence',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-evidence',
+    lemma: '주제근거',
+    search_forms: ['주제근거'],
+    senses: [{ id: 'w-topic-evidence-s1', pos: 'noun', gloss }],
+  };
+  const recordInfos = [{ record, source: 'semantic-review-fixture' }];
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: { 'w-topic-evidence-s1': analysis },
+  });
+  return buildSemanticTopicEvidence(recordInfos, semanticAudit);
+}
 
 test('the shared audit covers the complete current canonical dictionary', async () => {
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
@@ -53,16 +79,428 @@ test('the shared lexical audit rejects malformed topic fragments without a recor
     record_type: 'entry',
     role: 'start',
     candidate_id: 'w9999',
-    lemma: '형태오류',
-    search_forms: ['형태오류'],
+    lemma: '바닥',
+    search_forms: ['바닥'],
     senses: [{ id: 'w9999-s1', pos: 'noun', gloss: '바닥은 깔개' }],
   };
-  const audit = auditCanonicalLexicalQuality([{ record, source: 'synthetic' }], {
+  const recordInfos = [{ record, source: 'synthetic' }];
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w9999-s1': {
+        state: 'noun-topic',
+        topic: '바닥',
+        particle: '은',
+        predicate: '깔개',
+      },
+    },
+  });
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
     throwOnError: false,
+    topicEvidence: buildSemanticTopicEvidence(recordInfos, semanticAudit),
   });
   assert.equal(audit.blocking_findings[0].code, 'LEXICAL_MALFORMED_GLOSS');
   assert.equal(audit.blocking_findings[0].sense_id, 'w9999-s1');
   assert.equal(inspectGlossQuality('바다는 넓다').malformed_structure, false);
+});
+
+test('malformed gloss detection does not confuse productive adnominal forms with topic particles', () => {
+  for (const gloss of [
+    '달리는 사람',
+    '흐르는 물',
+    '빛나는 별',
+    '움직이는 물체',
+    '작은 사람',
+    '넓은 곳',
+    '붙잡은 사람',
+    '가로막은 벽',
+    '지은 집',
+    '그은 선',
+    '부은 얼굴',
+    '나은 결과',
+  ]) {
+    const quality = inspectGlossQuality(gloss);
+    assert.equal(quality.malformed_structure, false, gloss);
+    assert.equal(quality.malformed_fragment, false, gloss);
+  }
+
+  for (const gloss of ['바닥은 깔개', '걱정은 마음']) {
+    const topic = gloss.split(/은|는/u)[0];
+    const quality = inspectGlossQuality(gloss, {
+      topicEvidence: topicEvidenceForGloss(gloss, {
+        state: 'noun-topic',
+        topic,
+        particle: gloss.includes('은') ? '은' : '는',
+        predicate: gloss.slice(topic.length + 1).trim(),
+      }),
+      senseId: TOPIC_EVIDENCE_SENSE_ID,
+    });
+    assert.equal(quality.topic_state, 'noun-topic', gloss);
+    assert.equal(quality.malformed_structure, true, gloss);
+    assert.equal(quality.malformed_fragment, true, gloss);
+  }
+});
+
+test('historical malformed gloss examples remain covered by the generalized rule', () => {
+  for (const fixture of MALFORMED_TOPIC_REGRESSIONS) {
+    const quality = inspectGlossQuality(fixture.gloss, {
+      topicEvidence: topicEvidenceForGloss(fixture.gloss, fixture.topic_analysis),
+      senseId: TOPIC_EVIDENCE_SENSE_ID,
+    });
+    assert.equal(quality.topic_state, 'noun-topic', fixture.name);
+    assert.equal(quality.malformed_structure, true, fixture.name);
+    assert.equal(quality.malformed_fragment, true, fixture.name);
+  }
+});
+
+test('topic classifier keeps evidence states conservative for unseen forms and homographs', () => {
+  const nounVerbHomograph = new Map([
+    ['차', new Set(['noun', 'verb'])],
+  ]);
+  const cases = [
+    {
+      gloss: '붙잡은 사람',
+      expectedState: 'unsupported',
+      expectedMalformed: false,
+    },
+    {
+      gloss: '지은 집',
+      expectedState: 'unsupported',
+      expectedMalformed: false,
+    },
+    {
+      gloss: '차는 사람',
+      nominalTerms: nounVerbHomograph,
+      expectedState: 'ambiguous',
+      expectedMalformed: false,
+    },
+    {
+      gloss: '걱정는 마음',
+      nominalTerms: ['걱정'],
+      topicEvidence: topicEvidenceForGloss('걱정는 마음', {
+        state: 'noun-topic',
+        topic: '걱정',
+        particle: '는',
+        predicate: '마음',
+      }),
+      expectedState: 'noun-topic',
+      expectedMalformed: true,
+    },
+    {
+      gloss: '바닥은 깔개',
+      nominalTerms: ['바닥'],
+      topicEvidence: topicEvidenceForGloss('바닥은 깔개', {
+        state: 'noun-topic',
+        topic: '바닥',
+        particle: '은',
+        predicate: '깔개',
+      }),
+      expectedState: 'noun-topic',
+      expectedMalformed: true,
+    },
+  ];
+  for (const item of cases) {
+    const quality = inspectGlossQuality(item.gloss, {
+      nominalTerms: item.nominalTerms,
+      topicEvidence: item.topicEvidence,
+      senseId: item.topicEvidence ? TOPIC_EVIDENCE_SENSE_ID : undefined,
+    });
+    assert.equal(quality.topic_state, item.expectedState, item.gloss);
+    assert.equal(quality.malformed_structure, item.expectedMalformed, item.gloss);
+  }
+
+  const openWorldRecords = [{
+    record: {
+      id: 'w-open-world',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w-open-world',
+      lemma: '사',
+      search_forms: ['사'],
+      senses: [{ id: 'w-open-world-s1', pos: 'noun', gloss: '사람을 세는 단위' }],
+    },
+    source: 'synthetic-open-world',
+  }];
+  const openWorldQuality = inspectGlossQuality('사는 사람', {
+    nominalTerms: buildNominalTermPositions(openWorldRecords),
+  });
+  assert.equal(openWorldQuality.topic_state, 'ambiguous');
+  assert.equal(openWorldQuality.malformed_structure, false);
+});
+
+test('candidate preflight stays conservative before complete admission', () => {
+  const valid = {
+    id: 'w-future-gloss-valid',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-future-gloss-valid',
+    lemma: '미래관형형',
+    search_forms: ['미래관형형'],
+    senses: [{ id: 'w-future-gloss-valid-s1', pos: 'noun', gloss: '빛나는 별' }],
+  };
+  const malformed = {
+    ...valid,
+    id: 'w-future-gloss-invalid',
+    candidate_id: 'w-future-gloss-invalid',
+    lemma: '바닥',
+    search_forms: ['바닥'],
+    senses: [{ id: 'w-future-gloss-invalid-s1', pos: 'noun', gloss: '바닥은 깔개' }],
+  };
+  const malformedNeun = {
+    ...valid,
+    id: 'w-future-gloss-invalid-neun',
+    candidate_id: 'w-future-gloss-invalid-neun',
+    lemma: '걱정',
+    search_forms: ['걱정'],
+    senses: [{ id: 'w-future-gloss-invalid-neun-s1', pos: 'noun', gloss: '걱정는 마음' }],
+  };
+  assert.doesNotThrow(() => validateLexicalRecord(valid, { mode: 'candidate' }));
+  for (const candidate of [malformed, malformedNeun]) {
+    assert.doesNotThrow(() => validateLexicalRecord(candidate, {
+      mode: 'candidate',
+      nominalTerms: [candidate.lemma],
+    }));
+  }
+});
+
+test('prospective admission uses conservative lexical POS context', () => {
+  const nounCar = {
+    id: 'w001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w001',
+    lemma: '차',
+    search_forms: ['차'],
+    senses: [{ id: 'w001-s1', pos: 'noun', gloss: '사람이나 물건을 싣는 탈것' }],
+  };
+  const verbCar = {
+    id: 'w002',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w002',
+    lemma: '차다',
+    search_forms: ['차다'],
+    senses: [{ id: 'w002-s1', pos: 'verb', gloss: '발로 물건을 힘껏 내지르다' }],
+  };
+  const validCandidate = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '동형어검증',
+    search_forms: ['동형어검증'],
+    senses: [{ id: 'w779-s1', pos: 'noun', gloss: '차는 사람' }],
+  };
+  const baseRecords = [nounCar, verbCar].map((record) => ({ record, source: 'base' }));
+  const prospectiveRecords = [
+    ...baseRecords,
+    { record: validCandidate, source: 'prospective' },
+  ];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-batch-homograph',
+    candidateRecords: [validCandidate],
+    reviewedRecords: [validCandidate],
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+  const result = validateLexicalAddition({
+    batchId: 'future-batch-homograph',
+    candidateRecords: [validCandidate],
+    reviewedRecords: [validCandidate],
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+    productionState: productionState.state,
+    productionStateSources: productionState.sources,
+    productionPayloads: productionState.payloads,
+  });
+  assert.equal(result.audit.blocking_finding_count, 0);
+
+  const openWorldNoun = {
+    id: 'w003',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w003',
+    lemma: '사',
+    search_forms: ['사'],
+    senses: [{ id: 'w003-s1', pos: 'noun', gloss: '사람을 세는 단위' }],
+  };
+  const openWorldCandidate = {
+    id: 'w781',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w781',
+    lemma: '오픈월드관형형',
+    search_forms: ['오픈월드관형형'],
+    senses: [{ id: 'w781-s1', pos: 'noun', gloss: '사는 사람' }],
+  };
+  const openWorldBaseRecords = [{ record: openWorldNoun, source: 'base' }];
+  const openWorldProspectiveRecords = [
+    ...openWorldBaseRecords,
+    { record: openWorldCandidate, source: 'prospective' },
+  ];
+  const openWorldSemanticAudit = makeSemanticAudit(openWorldProspectiveRecords);
+  const openWorldProductionState = makeProductionState({
+    batchId: 'future-batch-open-world',
+    candidateRecords: [openWorldCandidate],
+    reviewedRecords: [openWorldCandidate],
+    baseRecords: openWorldBaseRecords,
+    prospectiveRecords: openWorldProspectiveRecords,
+    semanticAudit: openWorldSemanticAudit,
+  });
+  assert.doesNotThrow(() => validateLexicalAddition({
+    batchId: 'future-batch-open-world',
+    candidateRecords: [openWorldCandidate],
+    reviewedRecords: [openWorldCandidate],
+    baseRecords: openWorldBaseRecords,
+    prospectiveRecords: openWorldProspectiveRecords,
+    semanticAudit: openWorldSemanticAudit,
+    productionState: openWorldProductionState.state,
+    productionStateSources: openWorldProductionState.sources,
+    productionPayloads: openWorldProductionState.payloads,
+  }));
+
+  const malformedCandidate = {
+    ...validCandidate,
+    id: 'w780',
+    candidate_id: 'w780',
+    lemma: '걱정',
+    search_forms: ['걱정'],
+    senses: [{ id: 'w780-s1', pos: 'noun', gloss: '걱정는 마음' }],
+  };
+  const malformedBaseInfos = [
+    ...baseRecords,
+    { record: malformedCandidate, source: 'prospective' },
+  ];
+  const malformedAudit = makeSemanticAudit(malformedBaseInfos, {
+    topicAnalyses: {
+      'w780-s1': {
+        state: 'noun-topic',
+        topic: '걱정',
+        particle: '는',
+        predicate: '마음',
+      },
+    },
+  });
+  const malformedProductionState = makeProductionState({
+    batchId: 'future-batch-malformed-topic',
+    candidateRecords: [malformedCandidate],
+    reviewedRecords: [malformedCandidate],
+    baseRecords,
+    prospectiveRecords: malformedBaseInfos,
+    semanticAudit: malformedAudit,
+    topicAnalyses: {
+      'w780-s1': {
+        state: 'noun-topic',
+        topic: '걱정',
+        particle: '는',
+        predicate: '마음',
+      },
+    },
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-malformed-topic',
+      candidateRecords: [malformedCandidate],
+      reviewedRecords: [malformedCandidate],
+      baseRecords,
+      prospectiveRecords: malformedBaseInfos,
+      semanticAudit: malformedAudit,
+      productionState: malformedProductionState.state,
+      productionStateSources: malformedProductionState.sources,
+      productionPayloads: malformedProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_MALFORMED_GLOSS',
+  );
+
+  const disconnectedSemanticAudit = structuredClone(malformedAudit);
+  delete disconnectedSemanticAudit.review.records
+    .find(({ record_id: recordId }) => recordId === malformedCandidate.id)
+    .sense_reviews[0].review_basis.topic_analysis;
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-malformed-topic',
+      candidateRecords: [malformedCandidate],
+      reviewedRecords: [malformedCandidate],
+      baseRecords,
+      prospectiveRecords: malformedBaseInfos,
+      semanticAudit: disconnectedSemanticAudit,
+      productionState: malformedProductionState.state,
+      productionStateSources: malformedProductionState.sources,
+      productionPayloads: malformedProductionState.payloads,
+    }),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+  );
+});
+
+test('topic evidence remains bound to the reviewed sense', () => {
+  const malformedRecord = {
+    id: 'w-topic-malformed',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-malformed',
+    lemma: '차',
+    search_forms: ['차'],
+    senses: [{ id: 'w-topic-malformed-s1', pos: 'noun', gloss: '차는 차량' }],
+  };
+  const adnominalRecord = {
+    id: 'w-topic-adnominal',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-adnominal',
+    lemma: '차형태',
+    search_forms: ['차형태'],
+    senses: [{ id: 'w-topic-adnominal-s1', pos: 'noun', gloss: '차는 사람' }],
+  };
+  const recordInfos = [malformedRecord, adnominalRecord].map((record) => ({
+    record,
+    source: 'topic-projection-fixture',
+  }));
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-malformed-s1': {
+        state: 'noun-topic',
+        topic: '차',
+        particle: '는',
+        predicate: '차량',
+      },
+      'w-topic-adnominal-s1': {
+        state: 'adnominal',
+        topic: '차',
+        particle: '는',
+        predicate: '사람',
+      },
+    },
+  });
+  const topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit);
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    throwOnError: false,
+    topicEvidence,
+  });
+
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_GLOSS')
+      .map(({ sense_id }) => sense_id),
+    ['w-topic-malformed-s1'],
+  );
+  const adnominalQuality = inspectGlossQuality('차는 사람', {
+    nominalTerms: buildNominalTermPositions(recordInfos),
+    topicEvidence,
+    senseId: 'w-topic-adnominal-s1',
+  });
+  assert.equal(adnominalQuality.topic_state, 'adnominal');
+  assert.equal(adnominalQuality.malformed_structure, false);
+
+  const disconnectedSemanticAudit = structuredClone(semanticAudit);
+  delete disconnectedSemanticAudit.review.records
+    .find(({ record_id: recordId }) => recordId === adnominalRecord.id)
+    .sense_reviews[0].review_basis.topic_analysis;
+  assert.throws(
+    () => buildSemanticTopicEvidence(recordInfos, disconnectedSemanticAudit),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+  );
 });
 
 test('authored distinct and retain cannot override high-confidence usage or paraphrase frames', () => {

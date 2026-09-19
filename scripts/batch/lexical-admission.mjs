@@ -1,9 +1,11 @@
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import {
   auditCanonicalLexicalQuality,
+  buildNominalTermPositions,
   validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
 import {
+  buildSemanticTopicEvidence,
   canonicalRecordsSha256,
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
@@ -116,6 +118,12 @@ function validateLexicalAdditionInternal({
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
+  const nominalTerms = buildNominalTermPositions([
+    ...candidateInfos,
+    ...reviewedInfos,
+    ...baseInfos,
+    ...prospectiveInfos,
+  ]);
 
   const baseRecordsById = new Map(baseInfos.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
   const prospectiveRecordsById = new Map(prospectiveInfos.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]));
@@ -151,12 +159,14 @@ function validateLexicalAdditionInternal({
     validateLexicalRecord(recordOf(recordInfo), {
       label: `${candidateLabel}[${index}]`,
       mode: 'candidate',
+      nominalTerms,
     });
   }
   for (const [index, recordInfo] of reviewedInfos.entries()) {
     validateLexicalRecord(recordOf(recordInfo), {
       label: `${reviewedLabel}[${index}]`,
       mode: 'canonical',
+      nominalTerms,
     });
   }
 
@@ -164,6 +174,9 @@ function validateLexicalAdditionInternal({
     baseRecords: baseInfos,
     label: `${batchId} semantic audit`,
     requireDecisionSource: !allowReplay,
+  });
+  const topicEvidence = buildSemanticTopicEvidence(prospectiveInfos, semanticAudit, {
+    label: `${batchId} semantic audit`,
   });
   const indexes = validateDatasetRecords(prospectiveInfos, {
     checkPilotCompleteness,
@@ -178,6 +191,7 @@ function validateLexicalAdditionInternal({
   const audit = auditCanonicalLexicalQuality(prospectiveInfos, {
     scope: `${batchId}:prospective-canonical`,
     throwOnError: true,
+    topicEvidence,
   });
 
   if (productionRun !== undefined) {
