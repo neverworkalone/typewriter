@@ -120,12 +120,13 @@ function validateLexicalAdditionInternal({
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
+  let producerDecisionsByRecordId;
   if (validatedProductionState?.producer_mode === 'live'
     || productionRun !== undefined
     || validatedProductionPayloads !== undefined) {
-    assertAdmissionInputsBoundToProducer(
+    producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
       validatedProductionPayloads,
-      reviewedInfos.map(recordOf),
+      reviewedInfos,
       prospectiveInfos.map(recordOf),
       `${batchId} lexical admission`,
     );
@@ -148,12 +149,14 @@ function validateLexicalAdditionInternal({
   const reviewedInfosById = new Map();
   for (const recordInfo of reviewedInfos) {
     const record = recordOf(recordInfo);
+    const producerDecision = producerDecisionsByRecordId?.get(record.id);
+    const decision = producerDecision ?? recordInfo.decision;
     if (reviewedInfosById.has(record.id)) {
       throw new Error(`lexical admission reviewed records contains duplicate record ID ${record.id}`);
     }
     reviewedInfosById.set(record.id, recordInfo);
-    if (baseRecordsById.has(record.id) && recordInfo.decision !== 'corrected') {
-      throw new Error(`lexical admission replacement of base record ${record.id} requires an explicit corrected decision`);
+    if (baseRecordsById.has(record.id) && decision !== 'corrected') {
+      throw new Error(`lexical admission replacement of base record ${record.id} requires a producer-owned corrected decision`);
     }
   }
   for (const [recordId, baseRecord] of baseRecordsById) {
@@ -162,8 +165,8 @@ function validateLexicalAdditionInternal({
       throw new Error(`lexical admission prospective_records is missing base record ${recordId}`);
     }
     if (JSON.stringify(prospectiveRecord) !== JSON.stringify(baseRecord)
-      && reviewedInfosById.get(recordId)?.decision !== 'corrected') {
-      throw new Error(`lexical admission prospective_records does not preserve base record ${recordId}`);
+      && (producerDecisionsByRecordId?.get(recordId) ?? reviewedInfosById.get(recordId)?.decision) !== 'corrected') {
+      throw new Error(`lexical admission prospective_records does not preserve base record ${recordId} without a producer-owned corrected decision`);
     }
   }
   assertProspectiveRecordsDerivedFromBaseRecords(

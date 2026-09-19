@@ -417,20 +417,24 @@ export function assertProspectiveRecordsDerivedFromBaseRecords(
 
 export function assertAdmissionInputsBoundToProducer(
   productionPayloads,
-  reviewedRecords,
+  reviewedRecordInfos,
   prospectiveRecords,
   label = 'lexical admission',
 ) {
+  const semanticReviewOutput = productionPayloads?.semantic_review?.output;
   const selectionOutput = productionPayloads?.selection?.output;
   const prospectiveOutput = productionPayloads?.prospective_canonical?.output;
-  if (!selectionOutput
+  if (!semanticReviewOutput
+    || !Array.isArray(semanticReviewOutput.review_rows)
+    || !selectionOutput
     || !Array.isArray(selectionOutput.selected_records)
     || !Array.isArray(prospectiveOutput)) {
     fail(
-      `${label} requires the producer-owned selection and prospective outputs`,
+      `${label} requires the producer-owned semantic review, selection, and prospective outputs`,
       'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
     );
   }
+  const reviewedRecords = reviewedRecordInfos.map((recordInfo) => recordInfo?.record ?? recordInfo);
   if (JSON.stringify(reviewedRecords) !== JSON.stringify(selectionOutput.selected_records)) {
     fail(
       `${label}.reviewed_records must equal the producer-owned selection output`,
@@ -443,6 +447,44 @@ export function assertAdmissionInputsBoundToProducer(
       'LEXICAL_PRODUCTION_STATE_BINDING',
     );
   }
+  const producerDecisionsByRecordId = new Map();
+  for (const [index, reviewRow] of semanticReviewOutput.review_rows.entries()) {
+    if (!['included', 'corrected'].includes(reviewRow?.decision)) continue;
+    const reviewedRecord = reviewRow.reviewed_record;
+    const recordId = reviewedRecord?.id;
+    if (typeof recordId !== 'string' || recordId.trim().length === 0) {
+      fail(
+        `${label}.semantic_review.review_rows[${index}] must provide a selected reviewed_record`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    if (producerDecisionsByRecordId.has(recordId)) {
+      fail(
+        `${label}.semantic_review.review_rows[${index}] duplicates a selected record decision`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    producerDecisionsByRecordId.set(recordId, reviewRow.decision);
+  }
+  for (const [index, selectedRecord] of selectionOutput.selected_records.entries()) {
+    const producerDecision = producerDecisionsByRecordId.get(selectedRecord.id);
+    if (producerDecision === undefined) {
+      fail(
+        `${label}.selection.selected_records[${index}] has no producer-owned semantic review decision`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    const recordInfo = reviewedRecordInfos[index];
+    if (recordInfo?.record !== undefined
+      && recordInfo.decision !== undefined
+      && recordInfo.decision !== producerDecision) {
+      fail(
+        `${label}.reviewed_records[${index}].decision must equal the producer-owned ${producerDecision} decision`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  return producerDecisionsByRecordId;
 }
 
 function assertTypedReviewRows(value, label) {

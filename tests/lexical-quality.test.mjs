@@ -1376,6 +1376,30 @@ test('reviewed existing-record correction passes while an unreviewed replacement
     productionPayloads: correctionProductionState.payloads,
   });
   assert.equal(admitted.reviewed_count, 1);
+  assert.equal(
+    correctionProductionState.payloads.semantic_review.output.review_rows[0].decision,
+    'corrected',
+  );
+  const includedProductionState = makeProductionState({
+    batchId: 'future-batch-correction-decision-lineage',
+    reviewedRecords: [{ record: corrected, decision: 'included' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction-decision-lineage',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: includedProductionState.state,
+      productionStateSources: includedProductionState.sources,
+      productionPayloads: includedProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
   assert.throws(
     () => validateLexicalAddition({
       batchId: 'future-batch-correction',

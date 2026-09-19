@@ -186,22 +186,26 @@ export function makeProductionState({
   topicAnalyses = {},
 } = {}) {
   const reviewedValues = reviewedRecords.map(recordOf);
+  const reviewedDecisions = reviewedRecords.map((recordInfo) => recordInfo?.decision ?? 'included');
   const candidateValues = (candidateRecords.length > 0 ? candidateRecords : reviewedRecords).map(recordOf);
   const baseValues = baseRecords.map(recordOf);
   const prospectiveValues = prospectiveRecords.length > 0
     ? prospectiveRecords.map(recordOf)
     : [...baseValues, ...reviewedValues];
-  const reviewRows = candidateValues.map((candidate, index) => ({
-    candidate_id: candidate.id,
-    decision: reviewedValues[index] ? 'included' : 'held',
-    semantic_review: makeProductionSemanticReview(reviewedValues[index] ?? candidate, {
-      decision: reviewedValues[index] ? 'included' : 'held',
-      artifactId,
-      rank: index + 1,
-      topicAnalyses,
-    }),
-    ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
-  }));
+  const reviewRows = candidateValues.map((candidate, index) => {
+    const decision = reviewedValues[index] ? reviewedDecisions[index] : 'held';
+    return {
+      candidate_id: candidate.id,
+      decision,
+      semantic_review: makeProductionSemanticReview(reviewedValues[index] ?? candidate, {
+        decision,
+        artifactId,
+        rank: index + 1,
+        topicAnalyses,
+      }),
+      ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
+    };
+  });
   const selectedRanks = reviewedValues.map((_, index) => index + 1);
   const candidateOutput = candidateValues;
   const reviewOutput = { review_rows: reviewRows, reviewed_records: reviewedValues };
