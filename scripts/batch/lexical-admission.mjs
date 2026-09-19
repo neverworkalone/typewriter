@@ -15,6 +15,7 @@ import {
   productionValueSha256,
   productionSourceBytes,
   assertAdmissionInputsBoundToProducer,
+  assertCompletedAdmissionTailBoundToProducer,
   assertProspectiveRecordsDerivedFromBaseRecords,
   isLexicalProductionRun,
   validateLexicalProductionPreAuditState,
@@ -116,14 +117,19 @@ function validateLexicalAdditionInternal({
       allowReplay,
     });
   }
-  const candidateInfos = asRecordInfos(candidateRecords, 'candidate', candidateLabel);
+  const hasProducerBinding = validatedProductionState?.producer_mode === 'live'
+    || productionRun !== undefined
+    || validatedProductionPayloads !== undefined;
+  const producerCandidateRecords = validatedProductionPayloads?.candidate_intake?.output;
+  const boundCandidateRecords = hasProducerBinding && candidateRecords.length === 0
+    ? producerCandidateRecords ?? []
+    : candidateRecords;
+  const candidateInfos = asRecordInfos(boundCandidateRecords, 'candidate', candidateLabel);
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
   let producerDecisionsByRecordId;
-  if (validatedProductionState?.producer_mode === 'live'
-    || productionRun !== undefined
-    || validatedProductionPayloads !== undefined) {
+  if (hasProducerBinding) {
     producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
       validatedProductionPayloads,
       {
@@ -317,6 +323,22 @@ function validateLexicalAdditionInternal({
         prospectiveRecords: prospectiveInfos.map(recordOf),
         semanticAudit,
         requireAudit: true,
+      },
+      `${batchId} lexical admission`,
+    );
+  }
+
+  if (validatedProductionState?.producer_mode === 'live') {
+    assertCompletedAdmissionTailBoundToProducer(
+      validatedProductionPayloads,
+      {
+        batchId,
+        pipelineVersion: LEXICAL_ADMISSION_PIPELINE_VERSION,
+        candidateCount: candidateInfos.length,
+        reviewedCount: reviewedInfos.length,
+        prospectiveRecordCount: prospectiveInfos.length,
+        semanticAuditCoverage,
+        lexicalAudit: audit,
       },
       `${batchId} lexical admission`,
     );

@@ -16,6 +16,7 @@ import {
 } from '../scripts/validate/lexical-quality.mjs';
 import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs';
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
+import { productionValueSha256 } from '../scripts/batch/lexical-production-state.mjs';
 import {
   buildSemanticCoverageArtifact,
   buildSemanticTopicEvidence,
@@ -1445,6 +1446,51 @@ test('reviewed existing-record correction passes while an unreviewed replacement
       productionState: correctionProductionState.state,
       productionStateSources: correctionProductionState.sources,
       productionPayloads: correctionProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const staleLexicalAuditProductionState = makeProductionState({
+    batchId: 'future-batch-correction',
+    reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+    producerLexicalAudit: {
+      ...correctionProductionState.lexicalAudit,
+      scope: 'future-batch-correction:stale-producer-audit',
+    },
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: staleLexicalAuditProductionState.state,
+      productionStateSources: staleLexicalAuditProductionState.sources,
+      productionPayloads: staleLexicalAuditProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const staleGateProductionState = makeProductionState({
+    batchId: 'future-batch-correction',
+    reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+    baseRecords: baseInfos,
+    prospectiveRecords: prospectiveInfos,
+    semanticAudit: audit,
+    producerGateDigest: productionValueSha256({ status: 'admitted', gate: 'stale' }),
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: staleGateProductionState.state,
+      productionStateSources: staleGateProductionState.sources,
+      productionPayloads: staleGateProductionState.payloads,
     }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );

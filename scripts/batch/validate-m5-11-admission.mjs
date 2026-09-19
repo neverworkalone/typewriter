@@ -57,8 +57,16 @@ import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs
 import { validateLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import {
+  auditCanonicalLexicalQuality,
+} from '../validate/lexical-quality.mjs';
+import {
+  buildSemanticTopicEvidence,
+  validateSemanticAuditCoverage,
+} from '../validate/semantic-audit.mjs';
+import {
   createLexicalProductionRun,
   produceLexicalProductionState,
+  productionBytesSha256,
   productionSourceBytes,
   productionValueSha256,
 } from './lexical-production-state.mjs';
@@ -241,13 +249,34 @@ function createM511ProductionEvidence({
     ...baseRecords.map(recordValue),
     ...importedRecords.map(recordValue),
   ];
+  const baseRecordInfos = recordInfos(baseRecords, 'm5-11-base-canonical');
+  const prospectiveRecordInfos = [
+    ...baseRecordInfos,
+    ...recordInfos(importedRecords, 'm5-11-reviewed-import'),
+  ];
+  const semanticAuditCoverage = validateSemanticAuditCoverage(
+    prospectiveRecordInfos,
+    semanticAuditSource.value,
+    {
+      baseRecords: baseRecordInfos,
+      label: `${batchId} semantic audit`,
+      requireDecisionSource: true,
+    },
+  );
+  const topicEvidence = buildSemanticTopicEvidence(
+    prospectiveRecordInfos,
+    semanticAuditSource.value,
+    { label: `${batchId} semantic audit` },
+  );
+  const lexicalAudit = auditCanonicalLexicalQuality(prospectiveRecordInfos, {
+    scope: `${batchId}:prospective-canonical`,
+    throwOnError: true,
+    topicEvidence,
+  });
   const auditOutput = {
     prospective_records_sha256: productionValueSha256(prospectiveOutput),
     semantic_audit_sha256: productionValueSha256(semanticAuditSource.value),
-    lexical_audit_sha256: productionValueSha256({
-      artifact_id: `${batchId}:lexical-audit`,
-      blocking_finding_count: 0,
-    }),
+    lexical_audit_sha256: productionValueSha256(lexicalAudit),
   };
   const run = createLexicalProductionRun({ batchId });
   const candidateToken = run.completeCandidateIntake({
@@ -325,16 +354,18 @@ function createM511ProductionEvidence({
     authorizationRef: finalSource.path,
     authorizationBytes: finalSource.bytes,
   });
+  const gateBytes = productionSourceBytes({
+    batch_id: batchId,
+    pipeline_version: 'lexical-admission-v1',
+    candidate_count: candidateRecords.length,
+    reviewed_count: reviewedRecords.length,
+    prospective_record_count: prospectiveOutput.length,
+    semantic_audit: semanticAuditCoverage,
+    lexical_audit: lexicalAudit,
+  });
   const admissionOutput = {
     status: 'admitted',
-    gate_digest: productionValueSha256({
-      batch_id: batchId,
-      candidate_count: candidateRecords.length,
-      reviewed_count: reviewedRecords.length,
-      prospective_record_count: prospectiveOutput.length,
-      semantic_audit_sha256: auditOutput.semantic_audit_sha256,
-      authorization_sha256: authorization.authorization_sha256,
-    }),
+    gate_digest: productionBytesSha256(gateBytes),
   };
   run.completeAdmission({
     authorization,

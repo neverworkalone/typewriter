@@ -528,6 +528,56 @@ export function assertAdmissionInputsBoundToProducer(
   return producerDecisionsByRecordId;
 }
 
+export function assertCompletedAdmissionTailBoundToProducer(
+  productionPayloads,
+  {
+    batchId,
+    pipelineVersion,
+    candidateCount,
+    reviewedCount,
+    prospectiveRecordCount,
+    semanticAuditCoverage,
+    lexicalAudit,
+  } = {},
+  label = 'lexical admission',
+) {
+  const auditOutput = productionPayloads?.audit?.output;
+  const admissionOutput = productionPayloads?.admission?.output;
+  if (!auditOutput || !admissionOutput) {
+    fail(
+      `${label} requires the producer-owned complete audit and admission outputs`,
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+  const expectedLexicalAuditSha256 = productionValueSha256(lexicalAudit);
+  if (auditOutput.lexical_audit_sha256 !== expectedLexicalAuditSha256) {
+    fail(
+      `${label}.audit.lexical_audit_sha256 must equal the recomputed common lexical audit`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  const gateBytes = productionSourceBytes({
+    batch_id: batchId,
+    pipeline_version: pipelineVersion,
+    candidate_count: candidateCount,
+    reviewed_count: reviewedCount,
+    prospective_record_count: prospectiveRecordCount,
+    semantic_audit: semanticAuditCoverage,
+    lexical_audit: lexicalAudit,
+  });
+  const expectedGateDigest = productionBytesSha256(gateBytes);
+  if (admissionOutput.gate_digest !== expectedGateDigest) {
+    fail(
+      `${label}.admission.gate_digest must equal the recomputed common admission gate`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  return {
+    lexicalAuditSha256: expectedLexicalAuditSha256,
+    gateDigest: expectedGateDigest,
+  };
+}
+
 function assertTypedReviewRows(value, label) {
   const rows = assertPayloadArray(value, label);
   rows.forEach((row, index) => {
