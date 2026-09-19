@@ -682,12 +682,16 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
     senses: [{ id: 'w779-s1', pos: 'noun', gloss: '새 의미' }],
   };
   const partial = [{ record: newRecord, source: 'partial' }];
+  const completeProspective = [
+    ...baseRecordInfos,
+    { record: newRecord, source: 'prospective' },
+  ];
   const partialProductionState = makeProductionState({
     batchId: 'future-batch-2041',
     reviewedRecords: [newRecord],
     baseRecords: baseRecordInfos,
-    prospectiveRecords: partial,
-    semanticAudit: makeSemanticAudit(partial),
+    prospectiveRecords: completeProspective,
+    semanticAudit: makeSemanticAudit(completeProspective),
   });
   assert.throws(
     () => validateLexicalAddition({
@@ -705,6 +709,60 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
   assert.throws(
     () => validateDatasetRecords(baseRecordInfos, { requireSemanticAudit: true }),
     /semantic-audit coverage/u,
+  );
+});
+
+test('common admission rejects prospective values that are not derived from reviewed values', () => {
+  const baseRecord = {
+    id: 'w001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w001',
+    lemma: '기존말',
+    search_forms: ['기존말'],
+    senses: [{ id: 'w001-s1', pos: 'noun', gloss: '기존 의미' }],
+  };
+  const reviewedRecord = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '검수말',
+    search_forms: ['검수말'],
+    senses: [{ id: 'w779-s1', pos: 'noun', gloss: '검수된 의미' }],
+  };
+  const driftedRecord = {
+    ...reviewedRecord,
+    lemma: '검수말변조',
+    search_forms: ['검수말변조'],
+  };
+  const baseInfos = [{ record: baseRecord, source: 'base' }];
+  const completeProspective = [
+    ...baseInfos,
+    { record: reviewedRecord, source: 'prospective' },
+  ];
+  const productionState = makeProductionState({
+    batchId: 'future-batch-lineage',
+    reviewedRecords: [reviewedRecord],
+    baseRecords: baseInfos,
+    prospectiveRecords: completeProspective,
+    semanticAudit: makeSemanticAudit(completeProspective),
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-lineage',
+      reviewedRecords: [reviewedRecord],
+      baseRecords: [baseRecord],
+      prospectiveRecords: [baseRecord, driftedRecord],
+      semanticAudit: makeSemanticAudit([
+        { record: baseRecord, source: 'base' },
+        { record: driftedRecord, source: 'prospective' },
+      ]),
+      productionState: productionState.state,
+      productionStateSources: productionState.sources,
+      productionPayloads: productionState.payloads,
+    }),
+    /base dataset transformed only by selected\/reviewed records/u,
   );
 });
 

@@ -13,6 +13,7 @@ import {
   productionBytesSha256,
   productionValueSha256,
   productionSourceBytes,
+  assertProspectiveRecordsDerivedFromBaseRecords,
   isLexicalProductionRun,
   validateLexicalProductionPreAuditState,
   validateLexicalProductionState,
@@ -154,6 +155,12 @@ function validateLexicalAdditionInternal({
       throw new Error(`lexical admission prospective_records does not preserve base record ${recordId}`);
     }
   }
+  assertProspectiveRecordsDerivedFromBaseRecords(
+    baseInfos.map(recordOf),
+    reviewedInfos.map(recordOf),
+    prospectiveInfos.map(recordOf),
+    `${batchId} lexical admission`,
+  );
 
   for (const [index, recordInfo] of candidateInfos.entries()) {
     validateLexicalRecord(recordOf(recordInfo), {

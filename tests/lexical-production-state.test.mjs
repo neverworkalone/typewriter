@@ -54,7 +54,7 @@ function emitThroughAudit(batchId) {
   const reviewedValues = [reviewedRecord];
   const reviewOutput = { review_rows: reviewRows, reviewed_records: reviewedValues };
   const selectionOutput = { selected_records: reviewedValues, selection_ranks: [1] };
-  const prospectiveOutput = [typedRecord(`${batchId}:prospective`, 'prospective')];
+  const prospectiveOutput = [reviewedRecord];
   const auditOutput = {
     prospective_records_sha256: productionValueSha256(prospectiveOutput),
     semantic_audit_sha256: productionValueSha256({ semantic_audit: batchId }),
@@ -88,6 +88,7 @@ function emitThroughAudit(batchId) {
       'prospective_canonical', batchId, selectionOutput, prospectiveOutput,
       'selected-records', 'prospective-canonical', {
         base_records_sha256: productionValueSha256([]),
+        base_records: [],
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
     ),
@@ -215,6 +216,79 @@ test('shared producer rejects a reviewed record whose identity does not match it
     }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
+});
+
+test('shared producer binds selected and prospective values to their exact predecessors', () => {
+  const batchId = 'future-batch-value-lineage';
+  const reviewedRecord = typedRecord(`${batchId}:reviewed`, 'reviewed');
+  const changedSelection = typedRecord(`${batchId}:reviewed`, 'changed-selection');
+  const unrelatedSelection = typedRecord(`${batchId}:unrelated`, 'unrelated-selection');
+  assert.throws(
+    () => createLexicalProductionPayload({
+      stageId: 'selection',
+      batchId,
+      input: { reviewed_records: [reviewedRecord] },
+      output: { selected_records: [changedSelection], selection_ranks: [0] },
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+        reviewed_records_sha256: productionValueSha256([reviewedRecord]),
+        selected_records_sha256: productionValueSha256([changedSelection]),
+        selection_ranks_sha256: productionValueSha256([0]),
+      },
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  assert.throws(
+    () => createLexicalProductionPayload({
+      stageId: 'selection',
+      batchId,
+      input: { reviewed_records: [reviewedRecord] },
+      output: { selected_records: [unrelatedSelection], selection_ranks: [0] },
+      inputKind: 'reviewed-records',
+      outputKind: 'selected-records',
+      details: {
+        reviewed_records_sha256: productionValueSha256([reviewedRecord]),
+        selected_records_sha256: productionValueSha256([unrelatedSelection]),
+        selection_ranks_sha256: productionValueSha256([0]),
+      },
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+
+  const baseA = typedRecord(`${batchId}:base-a`, 'base-a');
+  const baseB = typedRecord(`${batchId}:base-b`, 'base-b');
+  const selected = typedRecord(`${batchId}:selected`, 'selected');
+  const changedSelected = typedRecord(`${batchId}:selected`, 'changed-selected');
+  const changedBaseB = typedRecord(`${batchId}:base-b`, 'changed-base-b');
+  const unselectedExtra = typedRecord(`${batchId}:extra`, 'unselected-extra');
+  const prospectiveSpec = (output) => ({
+    stageId: 'prospective_canonical',
+    batchId,
+    input: { selected_records: [selected] },
+    output,
+    inputKind: 'selected-records',
+    outputKind: 'prospective-canonical',
+    details: {
+      base_records: [baseA, baseB],
+      base_records_sha256: productionValueSha256([baseA, baseB]),
+      prospective_records_sha256: productionValueSha256(output),
+    },
+  });
+  for (const output of [
+    [baseA, changedSelected],
+    [baseA, baseB],
+    [baseA, baseB, selected, unselectedExtra],
+    [baseA, changedBaseB, selected],
+  ]) {
+    assert.throws(
+      () => createLexicalProductionPayload(prospectiveSpec(output)),
+      (error) => [
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      ].includes(error.code),
+    );
+  }
 });
 
 test('post-hoc descriptors and fabricated pre-admission admission fail closed', () => {

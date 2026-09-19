@@ -236,6 +236,7 @@ export function makeProductionState({
       outputKind: 'prospective-canonical',
       details: {
         base_records_sha256: productionValueSha256(baseValues),
+        base_records: baseValues,
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
     },

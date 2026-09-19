@@ -510,6 +510,7 @@ function createCorrectionProductionInputs({ manifest, baseRecords, prospectiveRe
       outputKind: 'prospective-canonical',
       details: {
         base_records_sha256: productionValueSha256(baseRecords.map(({ record }) => record)),
+        base_records: baseRecords.map(({ record }) => record),
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
     },

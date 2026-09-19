@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 export const LEXICAL_PRODUCTION_STATE_CONTRACT_VERSION = 'lexical-production-state-v2';
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_STAGE_SOURCE_CONTRACT_VERSION = 'lexical-production-stage-source-v1';
-export const LEXICAL_PRODUCTION_PAYLOAD_CONTRACT_VERSION = 'lexical-production-payload-v1';
+export const LEXICAL_PRODUCTION_PAYLOAD_CONTRACT_VERSION = 'lexical-production-payload-v2';
 const LEXICAL_PRODUCTION_REPLAY_PAYLOAD_CONTRACT_VERSION = 'lexical-production-replay-payload-v1';
 
 /**
@@ -320,6 +320,87 @@ function assertUniqueTypedRecordIds(records, label) {
   return ids;
 }
 
+function assertSelectedRecordsDerivedFromReviewedRecords(reviewedRecords, selectedRecords, label) {
+  const reviewedById = new Map(
+    reviewedRecords.map((record) => [record.id, record]),
+  );
+  const selectedIds = new Set();
+  for (const [index, selectedRecord] of selectedRecords.entries()) {
+    const selectedLabel = `${label}[${index}]`;
+    if (selectedIds.has(selectedRecord.id)) {
+      fail(`${selectedLabel}.id duplicates an earlier selected record`, 'LEXICAL_PRODUCTION_STATE_SCOPE');
+    }
+    selectedIds.add(selectedRecord.id);
+    const reviewedRecord = reviewedById.get(selectedRecord.id);
+    if (!reviewedRecord) {
+      fail(
+        `${selectedLabel} is not emitted by the preceding semantic review output`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+    if (JSON.stringify(selectedRecord) !== JSON.stringify(reviewedRecord)) {
+      fail(
+        `${selectedLabel} does not preserve the exact reviewed record value`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+}
+
+function deriveProspectiveRecords(baseRecords, selectedRecords, label) {
+  const selectedById = new Map();
+  for (const [index, selectedRecord] of selectedRecords.entries()) {
+    if (selectedById.has(selectedRecord.id)) {
+      fail(
+        `${label}.selected_records[${index}].id duplicates an earlier selected record`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    selectedById.set(selectedRecord.id, selectedRecord);
+  }
+  const baseIds = new Set(baseRecords.map(({ id }) => id));
+  const prospective = baseRecords.map((baseRecord) => selectedById.get(baseRecord.id) ?? baseRecord);
+  for (const selectedRecord of selectedRecords) {
+    if (!baseIds.has(selectedRecord.id)) prospective.push(selectedRecord);
+  }
+  return prospective;
+}
+
+export function assertProspectiveRecordsDerivedFromBaseRecords(
+  baseRecords,
+  selectedRecords,
+  prospectiveRecords,
+  label,
+) {
+  const expectedProspectiveRecords = deriveProspectiveRecords(baseRecords, selectedRecords, label);
+  const prospectiveById = new Map();
+  for (const [index, prospectiveRecord] of prospectiveRecords.entries()) {
+    if (prospectiveById.has(prospectiveRecord.id)) {
+      fail(
+        `${label}.prospective_records[${index}].id duplicates an earlier prospective record`,
+        'LEXICAL_PRODUCTION_STATE_SCOPE',
+      );
+    }
+    prospectiveById.set(prospectiveRecord.id, prospectiveRecord);
+  }
+  if (prospectiveById.size !== expectedProspectiveRecords.length) {
+    fail(
+      `${label}.output must equal the base dataset transformed only by selected/reviewed records; the exact record IDs drifted`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  for (const expectedRecord of expectedProspectiveRecords) {
+    const prospectiveRecord = prospectiveById.get(expectedRecord.id);
+    if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(expectedRecord)) {
+      fail(
+        `${label}.output must equal the base dataset transformed only by selected/reviewed records; record ${expectedRecord.id} drifted`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
+  }
+  return prospectiveRecords;
+}
+
 function assertTypedReviewRows(value, label) {
   const rows = assertPayloadArray(value, label);
   rows.forEach((row, index) => {
@@ -429,8 +510,14 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
   if (stageId === 'selection') {
     const inputObject = assertPayloadObject(input, `${label}.input`);
     const outputObject = assertPayloadObject(output, `${label}.output`);
-    assertTypedRecordArray(inputObject.reviewed_records, `${label}.input.reviewed_records`);
-    assertTypedRecordArray(outputObject.selected_records, `${label}.output.selected_records`);
+    const reviewedRecords = assertTypedRecordArray(inputObject.reviewed_records, `${label}.input.reviewed_records`);
+    assertUniqueTypedRecordIds(reviewedRecords, `${label}.input.reviewed_records`);
+    const selectedRecords = assertTypedRecordArray(outputObject.selected_records, `${label}.output.selected_records`);
+    assertSelectedRecordsDerivedFromReviewedRecords(
+      reviewedRecords,
+      selectedRecords,
+      `${label}.output.selected_records`,
+    );
     assertPayloadArray(outputObject.selection_ranks, `${label}.output.selection_ranks`);
     if (outputObject.selection_ranks.length !== outputObject.selected_records.length
       || outputObject.selection_ranks.some((rank) => !Number.isInteger(rank) || rank < 0)) {
@@ -460,14 +547,27 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
 
   if (stageId === 'prospective_canonical') {
     const inputObject = assertPayloadObject(input, `${label}.input`);
-    assertTypedRecordArray(inputObject.selected_records, `${label}.input.selected_records`);
-    assertTypedRecordArray(output, `${label}.output`);
+    const selectedRecords = assertTypedRecordArray(inputObject.selected_records, `${label}.input.selected_records`);
+    assertUniqueTypedRecordIds(selectedRecords, `${label}.input.selected_records`);
+    const baseRecords = assertTypedRecordArray(details.base_records, `${label}.details.base_records`);
+    assertUniqueTypedRecordIds(baseRecords, `${label}.details.base_records`);
+    assertPayloadDigest(
+      details.base_records_sha256,
+      productionValueSha256(baseRecords),
+      `${label}.details.base_records_sha256`,
+    );
+    const prospectiveRecords = assertTypedRecordArray(output, `${label}.output`);
+    assertProspectiveRecordsDerivedFromBaseRecords(
+      baseRecords,
+      selectedRecords,
+      prospectiveRecords,
+      label,
+    );
     assertPayloadDigest(
       details.prospective_records_sha256,
-      productionValueSha256(output),
+      productionValueSha256(prospectiveRecords),
       `${label}.details.prospective_records_sha256`,
     );
-    requirePayloadDigest(details.base_records_sha256, `${label}.details.base_records_sha256`);
     return;
   }
 

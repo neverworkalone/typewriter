@@ -304,6 +304,7 @@ function createM511ProductionEvidence({
       outputKind: 'prospective-canonical',
       details: {
         base_records_sha256: productionValueSha256(baseRecords.map(recordValue)),
+        base_records: baseRecords.map(recordValue),
         prospective_records_sha256: productionValueSha256(prospectiveOutput),
       },
     },
@@ -1797,6 +1798,7 @@ export async function runM511ProspectiveVerification({
     const lexicalAdmission = validateLexicalAddition({
       batchId: M5_11_BATCH_ID,
       baseRecords: baseRecordInfos,
+      reviewedRecords: importedRecords,
       prospectiveRecords: canonical.records,
       semanticAudit,
       productionState,
