@@ -430,7 +430,7 @@ test('prospective admission uses conservative lexical POS context', () => {
       productionStateSources: malformedProductionState.sources,
       productionPayloads: malformedProductionState.payloads,
     }),
-    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );
 });
 
@@ -850,7 +850,7 @@ test('a partial prospective dataset cannot bypass the complete-base contract', (
       productionStateSources: partialProductionState.sources,
       productionPayloads: partialProductionState.payloads,
     }),
-    /missing base record w001|does not preserve base record w001|producer-owned prospective output/u,
+    /missing base record w001|does not preserve base record w001|producer-owned prospective output|producer-owned audit input/u,
   );
   assert.throws(
     () => validateDatasetRecords(baseRecordInfos, { requireSemanticAudit: true }),
@@ -908,7 +908,7 @@ test('common admission rejects prospective values that are not derived from revi
       productionStateSources: productionState.sources,
       productionPayloads: productionState.payloads,
     }),
-    /base dataset transformed only by selected\/reviewed records|producer-owned prospective output/u,
+    /base dataset transformed only by selected\/reviewed records|producer-owned prospective output|producer-owned audit input/u,
   );
 
   const producerSelectedRecord = {
@@ -952,6 +952,20 @@ test('common admission rejects prospective values that are not derived from revi
       baseRecords: baseInfos,
       prospectiveRecords: substitutedProspective,
       semanticAudit: makeSemanticAudit(substitutedProspective),
+      productionState: producerState.state,
+      productionStateSources: producerState.sources,
+      productionPayloads: producerState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-cross-wired',
+      candidateRecords: [substitutedRecord],
+      reviewedRecords: [producerSelectedRecord],
+      baseRecords: baseInfos,
+      prospectiveRecords: producerProspective,
+      semanticAudit: producerSemanticAudit,
       productionState: producerState.state,
       productionStateSources: producerState.sources,
       productionPayloads: producerState.payloads,
@@ -1397,6 +1411,40 @@ test('reviewed existing-record correction passes while an unreviewed replacement
       productionState: includedProductionState.state,
       productionStateSources: includedProductionState.sources,
       productionPayloads: includedProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const substitutedBase = {
+    ...base,
+    senses: [{ id: 'w903-s1', pos: 'noun', gloss: '검수와 무관한 다른 기존 의미.' }],
+  };
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: [{ record: substitutedBase, source: 'base' }],
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: audit,
+      productionState: correctionProductionState.state,
+      productionStateSources: correctionProductionState.sources,
+      productionPayloads: correctionProductionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
+  );
+  const substitutedSemanticAudit = makeSemanticAudit(prospectiveInfos, {
+    artifactId: 'future-batch-correction-substituted-audit',
+    changes,
+  });
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-batch-correction',
+      baseRecords: baseInfos,
+      reviewedRecords: [{ record: corrected, decision: 'corrected' }],
+      prospectiveRecords: prospectiveInfos,
+      semanticAudit: substitutedSemanticAudit,
+      productionState: correctionProductionState.state,
+      productionStateSources: correctionProductionState.sources,
+      productionPayloads: correctionProductionState.payloads,
     }),
     (error) => error.code === 'LEXICAL_PRODUCTION_STATE_BINDING',
   );

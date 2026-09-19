@@ -126,8 +126,14 @@ function validateLexicalAdditionInternal({
     || validatedProductionPayloads !== undefined) {
     producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
       validatedProductionPayloads,
-      reviewedInfos,
-      prospectiveInfos.map(recordOf),
+      {
+        candidateRecords: candidateInfos.map(recordOf),
+        baseRecords: baseInfos.map(recordOf),
+        reviewedRecordInfos: reviewedInfos,
+        prospectiveRecords: prospectiveInfos.map(recordOf),
+        semanticAudit,
+        requireAudit: validatedProductionState?.producer_mode === 'live',
+      },
       `${batchId} lexical admission`,
     );
   }
@@ -302,6 +308,18 @@ function validateLexicalAdditionInternal({
       audit: auditPayload,
       admission: admissionPayload,
     };
+    producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
+      validatedProductionPayloads,
+      {
+        candidateRecords: candidateInfos.map(recordOf),
+        baseRecords: baseInfos.map(recordOf),
+        reviewedRecordInfos: reviewedInfos,
+        prospectiveRecords: prospectiveInfos.map(recordOf),
+        semanticAudit,
+        requireAudit: true,
+      },
+      `${batchId} lexical admission`,
+    );
   }
 
   return {

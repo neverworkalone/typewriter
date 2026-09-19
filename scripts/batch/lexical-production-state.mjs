@@ -417,22 +417,63 @@ export function assertProspectiveRecordsDerivedFromBaseRecords(
 
 export function assertAdmissionInputsBoundToProducer(
   productionPayloads,
-  reviewedRecordInfos,
-  prospectiveRecords,
+  {
+    candidateRecords = [],
+    baseRecords,
+    reviewedRecordInfos,
+    prospectiveRecords,
+    semanticAudit,
+    requireAudit = false,
+  } = {},
   label = 'lexical admission',
 ) {
   const semanticReviewOutput = productionPayloads?.semantic_review?.output;
   const selectionOutput = productionPayloads?.selection?.output;
-  const prospectiveOutput = productionPayloads?.prospective_canonical?.output;
+  const prospectivePayload = productionPayloads?.prospective_canonical;
+  const prospectiveOutput = prospectivePayload?.output;
+  const producerBaseRecords = prospectivePayload?.details?.base_records;
+  const producerCandidateRecords = productionPayloads?.candidate_intake?.output;
   if (!semanticReviewOutput
     || !Array.isArray(semanticReviewOutput.review_rows)
     || !selectionOutput
     || !Array.isArray(selectionOutput.selected_records)
-    || !Array.isArray(prospectiveOutput)) {
+    || !Array.isArray(prospectiveOutput)
+    || !Array.isArray(producerBaseRecords)
+    || !Array.isArray(producerCandidateRecords)) {
     fail(
-      `${label} requires the producer-owned semantic review, selection, and prospective outputs`,
+      `${label} requires the producer-owned candidate, semantic review, base, selection, and prospective outputs`,
       'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
     );
+  }
+  if (candidateRecords.length > 0
+    && JSON.stringify(candidateRecords) !== JSON.stringify(producerCandidateRecords)) {
+    fail(
+      `${label}.candidate_records must equal the producer-owned candidate intake output`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  if (JSON.stringify(baseRecords) !== JSON.stringify(producerBaseRecords)) {
+    fail(
+      `${label}.base_records must equal the producer-owned prospective base snapshot`,
+      'LEXICAL_PRODUCTION_STATE_BINDING',
+    );
+  }
+  const auditOutput = productionPayloads?.audit?.output;
+  if (requireAudit && auditOutput === undefined) {
+    fail(
+      `${label} requires the producer-owned complete audit output`,
+      'LEXICAL_PRODUCTION_STATE_PRODUCER_REQUIRED',
+    );
+  }
+  if (auditOutput !== undefined) {
+    const producerSemanticAuditSha256 = auditOutput?.semantic_audit_sha256;
+    if (typeof producerSemanticAuditSha256 !== 'string'
+      || productionValueSha256(semanticAudit) !== producerSemanticAuditSha256) {
+      fail(
+        `${label}.semantic_audit must equal the producer-owned audit input`,
+        'LEXICAL_PRODUCTION_STATE_BINDING',
+      );
+    }
   }
   const reviewedRecords = reviewedRecordInfos.map((recordInfo) => recordInfo?.record ?? recordInfo);
   if (JSON.stringify(reviewedRecords) !== JSON.stringify(selectionOutput.selected_records)) {
