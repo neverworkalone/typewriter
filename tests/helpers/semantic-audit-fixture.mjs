@@ -4,6 +4,7 @@ import { writeFile } from 'node:fs/promises';
 import {
   assembleSemanticAuditArtifact,
   buildSemanticCoverageArtifact,
+  buildSemanticTopicEvidence,
   canonicalRecordsSha256,
   SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
   SEMANTIC_BOUNDARY_METHOD,
@@ -16,6 +17,7 @@ import {
   auditCanonicalLexicalQuality,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
+  requiresTopicAnalysis,
 } from '../../scripts/validate/lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from '../../scripts/validate/sense-boundary.mjs';
 import {
@@ -29,10 +31,40 @@ function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
 }
 
+function makeTopicAnalysis(sense, decisionSourceId, topicAnalyses = {}) {
+  const configured = topicAnalyses[sense.id];
+  const fragment = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u.exec(sense.gloss.trim());
+  if (!fragment && configured === undefined) return undefined;
+  const configuredValue = typeof configured === 'string'
+    ? { state: configured }
+    : (configured ?? {});
+  const state = configuredValue.state ?? (fragment ? 'ambiguous' : 'unsupported');
+  return {
+    status: 'pass',
+    state,
+    ...(fragment ? fragment.groups : {}),
+    ...(configuredValue.topic ? { topic: configuredValue.topic } : {}),
+    ...(configuredValue.particle ? { particle: configuredValue.particle } : {}),
+    ...(configuredValue.predicate ? { predicate: configuredValue.predicate } : {}),
+    gloss_sha256: sha256Json(sense.gloss),
+    rationale: configuredValue.rationale
+      ?? `${sense.id} topic/adnominal reading was explicitly reviewed from the authored fixture evidence.`,
+    decision_source_id: decisionSourceId,
+    ...(state === 'noun-topic'
+      ? {
+        topic_pos: configuredValue.topic_pos ?? 'noun',
+        evidence_basis: configuredValue.evidence_basis
+          ?? `${sense.id} explicitly establishes a noun topic before the particle.`,
+      }
+      : {}),
+  };
+}
+
 function makeProductionSemanticReview(record, {
   decision,
   artifactId,
   rank,
+  topicAnalyses = {},
 } = {}) {
   const decisionSourceId = `${artifactId}:decision-source`;
   const multiSense = record.senses.length > 1;
@@ -75,24 +107,28 @@ function makeProductionSemanticReview(record, {
         decision_source_id: decisionSourceId,
         decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
       },
-      findings: record.senses.map((sense) => ({
-        sense_id: sense.id,
-        action,
-        classification,
-        rationale: `${record.id} ${sense.id} boundary was independently reviewed from the authored decision source`,
-        semantic_evidence: {
-          status: 'pass',
-          gloss_sha256: sha256Json(sense.gloss),
-          observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
-          domain_evidence: inspectWriterDomainEvidence(sense.gloss).matches,
-          connector_observations: inspectGlossConnectors(sense.gloss),
-          rationale: `${record.id} ${sense.id} gloss domains were authored and reviewed`,
-          boundary_decision: inspectWriterDomainEvidence(sense.gloss).axes.length > 1
-            ? 'coordinated'
-            : multiSense ? 'split' : 'atomic',
-          decision_source_id: decisionSourceId,
-        },
-      })),
+      findings: record.senses.map((sense) => {
+        const topicAnalysis = makeTopicAnalysis(sense, decisionSourceId, topicAnalyses);
+        return {
+          sense_id: sense.id,
+          action,
+          classification,
+          rationale: `${record.id} ${sense.id} boundary was independently reviewed from the authored decision source`,
+          semantic_evidence: {
+            status: 'pass',
+            gloss_sha256: sha256Json(sense.gloss),
+            observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+            domain_evidence: inspectWriterDomainEvidence(sense.gloss).matches,
+            connector_observations: inspectGlossConnectors(sense.gloss),
+            rationale: `${record.id} ${sense.id} gloss domains were authored and reviewed`,
+            boundary_decision: inspectWriterDomainEvidence(sense.gloss).axes.length > 1
+              ? 'coordinated'
+              : multiSense ? 'split' : 'atomic',
+            decision_source_id: decisionSourceId,
+            ...(topicAnalysis ? { topic_analysis: topicAnalysis } : {}),
+          },
+        };
+      }),
       pairwise: pairs,
       rationale: `${record.id} boundary was explicitly authored independently of the current sense count`,
     },
@@ -147,6 +183,7 @@ export function makeProductionState({
   prospectiveRecords = [],
   semanticAudit = {},
   artifactId = 'test-production-state',
+  topicAnalyses = {},
 } = {}) {
   const reviewedValues = reviewedRecords.map(recordOf);
   const candidateValues = (candidateRecords.length > 0 ? candidateRecords : reviewedRecords).map(recordOf);
@@ -161,6 +198,7 @@ export function makeProductionState({
       decision: reviewedValues[index] ? 'included' : 'held',
       artifactId,
       rank: index + 1,
+      topicAnalyses,
     }),
     ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
   }));
@@ -192,9 +230,13 @@ export function makeProductionState({
     label: `${batchId} semantic audit`,
     requireDecisionSource: true,
   });
+  const topicEvidence = buildSemanticTopicEvidence(prospectiveInfos, semanticAudit, {
+    label: `${batchId} semantic audit`,
+  });
   const lexicalAudit = auditCanonicalLexicalQuality(prospectiveInfos, {
     scope: `${batchId}:prospective-canonical`,
     throwOnError: false,
+    topicEvidence,
   });
   const specs = {
     candidate_intake: {
@@ -341,6 +383,7 @@ export function makeSemanticReview(
     changes = [],
     artifactId = 'test-semantic-review',
     boundaryDecisions = {},
+    topicAnalyses = {},
   } = {},
 ) {
   const records = recordInfos.map(recordOf);
@@ -519,6 +562,9 @@ export function makeSemanticReview(
             relation_count: relationCount,
             decision_source_id: decisionSourceId,
             rationale: `${record.id} ${sense.id} reviewed gloss ${sha256Json(sense.gloss).slice(0, 12)} with its POS, type, boundary, and relation outcome.`,
+            ...(requiresTopicAnalysis(sense.gloss) || topicAnalyses[sense.id] !== undefined
+              ? { topic_analysis: makeTopicAnalysis(sense, decisionSourceId, topicAnalyses) }
+              : {}),
           },
         };
       }),
@@ -532,11 +578,13 @@ export function makeSemanticAudit(recordInfos, options = {}) {
     changes = [],
     artifactId = 'test-semantic-audit',
     boundaryDecisions = {},
+    topicAnalyses = {},
   } = options;
   const review = makeSemanticReview(recordInfos, {
     changes,
     artifactId: `${artifactId}-review`,
     boundaryDecisions,
+    topicAnalyses,
   });
   return assembleSemanticAuditArtifact(recordInfos, review, { artifactId });
 }

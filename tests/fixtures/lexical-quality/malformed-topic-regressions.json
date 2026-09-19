@@ -2,19 +2,31 @@
   {
     "name": "historical -는 topic fragment",
     "gloss": "걱정는 마음",
-    "nominal_terms": ["걱정"],
-    "noun_topic_terms": ["걱정"]
+    "topic_analysis": {
+      "state": "noun-topic",
+      "topic": "걱정",
+      "particle": "는",
+      "predicate": "마음"
+    }
   },
   {
     "name": "historical -은 nominal stub",
     "gloss": "밭은 쉼터",
-    "nominal_terms": ["밭"],
-    "noun_topic_terms": ["밭"]
+    "topic_analysis": {
+      "state": "noun-topic",
+      "topic": "밭",
+      "particle": "은",
+      "predicate": "쉼터"
+    }
   },
   {
     "name": "vowel-final noun topic with -은",
     "gloss": "바나나은 과일",
-    "nominal_terms": ["바나나"],
-    "noun_topic_terms": ["바나나"]
+    "topic_analysis": {
+      "state": "noun-topic",
+      "topic": "바나나",
+      "particle": "은",
+      "predicate": "과일"
+    }
   }
 ]
