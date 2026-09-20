@@ -809,7 +809,7 @@ function buildSeed(baseSeed, identities, reviewRows) {
     const identity = identities[index];
     if (existing.has(identity.inventory_id)) fail(`seed already contains ${identity.inventory_id}`, 'SEED_COLLISION');
     existing.add(identity.inventory_id);
-    const record = row.reviewed_record ?? row.semantic_review?.candidate_record ?? makeCandidateRecord(identity);
+    const record = row.reviewed_record ?? row.semantic_review?.candidate_record ?? makeM512ACandidateRecord(identity);
     return makeSeedEntry(identity, record, row.decision);
   });
   return {
