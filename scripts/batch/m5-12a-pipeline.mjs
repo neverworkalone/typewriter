@@ -1705,8 +1705,7 @@ export async function refreshM512APromotionEvidence({
     || currentDecisionSourceDigest !== sha256(result.decisionSourceBytes)) {
     fail('post-promotion evidence refresh found output drift', 'PROMOTION_DIGEST_MISMATCH');
   }
-  const admission = (await readJson(admissionPath, 'M5-12A admission evidence')).value;
-  if (admission.gate?.gate_status !== 'pass') fail('post-promotion evidence requires a passing admission gate', 'M5_12A_GATE_HOLD');
+  if (result.admission.gate?.gate_status !== 'pass') fail('post-promotion evidence requires a passing admission gate', 'M5_12A_GATE_HOLD');
   const promotionFile = await readJson(promotionPath, 'M5-12A promotion evidence');
   const promotion = {
     ...promotionFile.value,
@@ -1722,6 +1721,12 @@ export async function refreshM512APromotionEvidence({
   };
   const transactionDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-audit-'));
   try {
+    await writeTempAndRename(
+      admissionPath,
+      jsonBytes(result.admission),
+      transactionDirectory,
+      'admission-post-audit',
+    );
     await writeTempAndRename(
       promotionPath,
       jsonBytes(promotion),
