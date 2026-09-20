@@ -62,6 +62,7 @@ import {
   M5_12A_VERIFICATION_PASS_ID,
 } from './m5-12a-candidate-source.mjs';
 import {
+  applyM512ADecisionCorrection,
   M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
   readM512ADecisionSource,
   validateM512ADecisionSource,
@@ -109,14 +110,11 @@ export const M5_12A_TARGET = Object.freeze({
   selection_slot_count: 802,
   candidate_identity_count: 802,
 });
-export const M5_12A_DECISION_COUNTS = Object.freeze({
-  included: 700,
-  corrected: 22,
-  held: 30,
-  rejected: 20,
-  deferred: 30,
-  processed_start_count: 772,
-  imported_start_count: 722,
+export const M5_12A_DECISION_CONTRACT = Object.freeze({
+  candidate_count: M5_12A_SELECTION_COUNT,
+  imported_start_count: M5_12A_IMPORT_COUNT,
+  reserve_count: M5_12A_RESERVE_COUNT,
+  max_correction_rate: 0.5,
 });
 
 export const M5_12A_BASE_CANONICAL_SHA256 =
@@ -290,16 +288,6 @@ export function makeM512ACandidateRecord(identity) {
   };
 }
 
-function makeCorrectedRecord(record) {
-  const normalized = record.lemma.replaceAll(' ', '');
-  return normalized === record.lemma
-    ? structuredClone(record)
-    : {
-      ...structuredClone(record),
-      search_forms: unique([...record.search_forms, normalized]),
-    };
-}
-
 function makeProductionSemanticReview(record, {
   decision,
   identity,
@@ -326,11 +314,14 @@ function makeProductionSemanticReview(record, {
     decision_source_id: verificationSourceId,
     candidate_record_id: identity.candidate_record_id,
     candidate_record_sha256: decisionRow.candidate_record_sha256,
-    reviewed_record_sha256: sha256Json(record),
+    reviewed_record_sha256: decision === 'corrected'
+      ? decisionRow.correction.output_record_sha256
+      : sha256Json(record),
     decision,
     selection_rank: rank,
     selection_score: decisionRow.score,
     rationale: decisionRow.decision_rationale,
+    ...(decision === 'corrected' ? { correction: structuredClone(decisionRow.correction) } : {}),
     sense_evidence: [{
       sense_id: sense.id,
       gloss_sha256: glossSha256,
@@ -644,7 +635,9 @@ function makeReviewRows(identities, candidateRecords, semanticDecisionSource) {
     if (!decisionRow) fail(`M5-12A semantic decision is missing for ${candidate.id}`, 'M5_12A_DECISION_SOURCE_SCOPE');
     const decision = decisionRow.decision;
     const reviewedRecord = IMPORTABLE_DECISIONS.has(decision)
-      ? (decision === 'corrected' ? makeCorrectedRecord(candidate) : structuredClone(candidate))
+      ? (decision === 'corrected'
+        ? applyM512ADecisionCorrection(candidate, decisionRow.correction)
+        : structuredClone(candidate))
       : undefined;
     const semanticRecord = reviewedRecord ?? candidate;
     return {
@@ -934,11 +927,11 @@ function buildGate({
     candidate_pool: identities.length === M5_12A_SELECTION_COUNT,
     imported_start_count: imported === M5_12A_IMPORT_COUNT,
     reserve_count: identities.length - imported === M5_12A_RESERVE_COUNT,
-    processed_denominator: processed === M5_12A_DECISION_COUNTS.processed_start_count,
-    deferred_excluded_from_denominator: decisions.deferred === M5_12A_DECISION_COUNTS.deferred,
+    processed_denominator: processed === decisions.included + decisions.corrected + decisions.held + decisions.rejected,
+    deferred_excluded_from_denominator: decisions.deferred === identities.length - processed,
     canonical_lexical_collisions: canonicalCollisionCount === 0,
     candidate_lexical_collisions: candidateCollisionCount === 0,
-    correction_rate: correctionRate <= 0.5,
+    correction_rate: processed > 0 && correctionRate <= M5_12A_DECISION_CONTRACT.max_correction_rate,
     relation_noise_rate: relation.noise_event_count === 0,
     relation_noise_below_baseline: relation.noise_rate_of_candidates <= 0.25,
     lexical_semantic_blockers: semanticAuditCoverage.review_complete && production.admission.audit.blocking_finding_count === 0,
@@ -1106,7 +1099,7 @@ function buildAdmissionEvidence({
     candidate_pool_count: artifacts.candidateRecords.length,
     imported_start_count: importedRecords.length,
     reserve_count: M5_12A_RESERVE_COUNT,
-    processed_start_count: M5_12A_DECISION_COUNTS.processed_start_count,
+    processed_start_count: decisions.included + decisions.corrected + decisions.held + decisions.rejected,
     deferred_start_count: decisions.deferred,
     final_start_count: finalSummary.start_count,
     canonical_collision_count: 0,
@@ -1114,7 +1107,7 @@ function buildAdmissionEvidence({
     placeholder_gloss_count: 0,
     schema_integrity_blocker_count: 0,
     relation_target_blocker_count: 0,
-    correction_rate_of_processed: decisions.corrected / M5_12A_DECISION_COUNTS.processed_start_count,
+    correction_rate_of_processed: decisions.corrected / (decisions.included + decisions.corrected + decisions.held + decisions.rejected),
     relation_noise_rate_of_candidates: 0,
     editor_seconds_per_selected_start: null,
     editor_seconds_per_processed_start: null,
@@ -1186,7 +1179,7 @@ function buildAdmissionEvidence({
     actual: finalSummary,
     decisions: {
       ...decisions,
-      processed_start_count: M5_12A_DECISION_COUNTS.processed_start_count,
+      processed_start_count: decisions.included + decisions.corrected + decisions.held + decisions.rejected,
       imported_start_count: importedRecords.length,
       deferred_denominator_excluded: true,
     },
@@ -1844,7 +1837,15 @@ export async function validateM512AFinal({
     prospective: result.prospective,
   });
   if (admission.decisions?.included + admission.decisions?.corrected !== M5_12A_IMPORT_COUNT) fail('admission imported count drifted', 'DECISION_COUNT_MISMATCH');
-  if (admission.decisions?.deferred !== 30 || admission.decisions?.processed_start_count !== 772) fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
+  const processedDecisionCount = admission.decisions?.included
+    + admission.decisions?.corrected
+    + admission.decisions?.held
+    + admission.decisions?.rejected;
+  if (admission.decisions?.processed_start_count !== processedDecisionCount
+    || admission.decisions?.deferred !== M5_12A_SELECTION_COUNT - processedDecisionCount
+    || admission.decisions?.held + admission.decisions?.rejected > M5_12A_RESERVE_COUNT) {
+    fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
+  }
   if (promotion.outputs?.canonical_directory_sha256 !== currentDigest) fail('promotion canonical digest drifted', 'PROMOTION_DIGEST_MISMATCH');
   if (promotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)) fail('promotion semantic authority digest drifted', 'PROMOTION_DIGEST_MISMATCH');
   const postPromotionAudit = promotion.post_promotion_audit;

@@ -36,6 +36,8 @@ export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
+const CORRECTION_ACTIONS = new Set(['append-normalized-search-form']);
+const MAX_CORRECTION_RATE = 0.5;
 
 export class M512ADecisionSourceError extends Error {
   constructor(message, code = 'M5_12A_DECISION_SOURCE_ERROR') {
@@ -90,6 +92,64 @@ function expectedDecisionCounts(rows) {
   ]));
 }
 
+function sourceForArtifactDigest(source) {
+  const withoutDigest = structuredClone(source);
+  delete withoutDigest.artifact_sha256;
+  withoutDigest.decisions = withoutDigest.decisions.map((row) => {
+    const normalized = { ...row };
+    normalized.source_sha256 = null;
+    return normalized;
+  });
+  return withoutDigest;
+}
+
+export function serializeM512ADecisionSource(source) {
+  const withoutDigest = sourceForArtifactDigest(source);
+  const artifactSha256 = sha256Json(withoutDigest);
+  const serialized = {
+    ...withoutDigest,
+    decisions: source.decisions.map((row) => ({
+      ...row,
+      source_sha256: artifactSha256,
+    })),
+    artifact_sha256: artifactSha256,
+  };
+  return {
+    source: serialized,
+    artifactSha256,
+    bytes: Buffer.from(`${JSON.stringify(serialized, null, 2)}\n`, 'utf8'),
+  };
+}
+
+export function applyM512ADecisionCorrection(candidate, correction) {
+  const label = `correction for ${candidate.id}`;
+  requireObject(correction, label);
+  if (!CORRECTION_ACTIONS.has(correction.action)) {
+    fail(`${label}.action is unsupported`, 'M5_12A_DECISION_SOURCE_VALUE');
+  }
+  if (!Array.isArray(correction.output_search_forms)
+    || correction.output_search_forms.length === 0
+    || correction.output_search_forms.some((form) => typeof form !== 'string' || form.trim().length === 0)) {
+    fail(`${label}.output_search_forms must contain non-empty strings`, 'M5_12A_DECISION_SOURCE_VALUE');
+  }
+  const normalizedLemma = candidate.lemma.replaceAll(' ', '');
+  if (normalizedLemma === candidate.lemma) {
+    fail(`${label} must change a spaced lemma`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  const expectedSearchForms = [...new Set([...candidate.search_forms, normalizedLemma])];
+  if (JSON.stringify(correction.output_search_forms) !== JSON.stringify(expectedSearchForms)) {
+    fail(`${label}.output_search_forms does not bind the authored correction`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  const correctedRecord = {
+    ...structuredClone(candidate),
+    search_forms: [...correction.output_search_forms],
+  };
+  if (correction.output_record_sha256 !== sha256Json(correctedRecord)) {
+    fail(`${label}.output_record_sha256 does not bind the corrected record`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  return correctedRecord;
+}
+
 function validateDecisionRow(row, {
   identity,
   candidate,
@@ -127,6 +187,11 @@ function validateDecisionRow(row, {
   if (row.sense_gloss_sha256 !== sha256Json(sense.gloss)) fail(`${label}.sense_gloss_sha256 does not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
   if (row.pos !== sense.pos || row.record_type !== candidate.record_type) {
     fail(`${label} POS or record type is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  if (row.decision === 'corrected') {
+    applyM512ADecisionCorrection(candidate, row.correction);
+  } else if (Object.hasOwn(row, 'correction')) {
+    fail(`${label}.correction is only allowed for corrected decisions`, 'M5_12A_DECISION_SOURCE_VALUE');
   }
 
   const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
@@ -203,6 +268,9 @@ export function validateM512ADecisionSource({
   if (!Buffer.isBuffer(sourceBytes)) fail('M5-12A semantic decision source bytes are required', 'M5_12A_DECISION_SOURCE_BINDING');
   const sourceBytesSha256 = sha256(sourceBytes);
   const artifactSha256 = requireDigest(source.artifact_sha256, 'M5-12A semantic decision source.artifact_sha256');
+  if (artifactSha256 !== sha256Json(sourceForArtifactDigest(source))) {
+    fail('M5-12A semantic decision source artifact digest is not reproducible', 'M5_12A_DECISION_SOURCE_BINDING');
+  }
   const rows = source.decisions;
   if (!Array.isArray(rows) || rows.length !== identities.length) {
     fail(`M5-12A semantic decision source must contain ${identities.length} decisions`, 'M5_12A_DECISION_SOURCE_SCOPE');
@@ -223,13 +291,23 @@ export function validateM512ADecisionSource({
   }
   if (seenRanks.size !== M5_12A_SELECTION_COUNT) fail('M5-12A semantic decision ranks are incomplete', 'M5_12A_DECISION_SOURCE_SCOPE');
   const counts = expectedDecisionCounts(rows);
-  if (counts.included !== 700
-    || counts.corrected !== 22
-    || counts.held !== 30
-    || counts.rejected !== 20
-    || counts.deferred !== 30
-    || counts.included + counts.corrected !== M5_12A_IMPORT_COUNT) {
-    fail(`M5-12A semantic decision counts drifted: ${JSON.stringify(counts)}`, 'M5_12A_DECISION_SOURCE_SCOPE');
+  const imported = counts.included + counts.corrected;
+  const heldOrRejected = counts.held + counts.rejected;
+  const processed = rows.length - counts.deferred;
+  const expectedDeferred = identities.length - imported - heldOrRejected;
+  if (imported !== M5_12A_IMPORT_COUNT
+    || heldOrRejected > M5_12A_RESERVE_COUNT
+    || counts.deferred !== expectedDeferred
+    || processed !== imported + heldOrRejected
+    || processed <= 0
+    || counts.corrected / processed > MAX_CORRECTION_RATE) {
+    fail(`M5-12A semantic decision contract is invalid: ${JSON.stringify({
+      ...counts,
+      imported,
+      held_or_rejected: heldOrRejected,
+      processed,
+      expected_deferred: expectedDeferred,
+    })}`, 'M5_12A_DECISION_SOURCE_SCOPE');
   }
   return {
     source,

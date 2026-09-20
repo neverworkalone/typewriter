@@ -144,9 +144,11 @@ Issue #138's M5-12A promotion is recorded by
 `data/canonical/m5-12a-expansion.jsonl`, the current target seed, and the
 current semantic decision source. `scripts/batch/m5-12a-pipeline.mjs` binds 802
 Typewriter-authored candidate identities to deterministic slots, runs the
-shared live lexical producer and complete semantic audit, and commits exactly
-700 included plus 22 corrected starts. The 30 held, 20 rejected, and 30
-deferred rows remain visible in the seed; only the first 722 are canonical.
+shared live lexical producer and complete semantic audit, and admits exactly
+722 imported starts. The current authored source records 700 included plus 22
+corrected starts; its held, rejected, and deferred rows remain visible in the
+seed. Admission enforces the 722-import, 80-row reserve, deferred-denominator,
+and correction-rate contracts without requiring those current sub-counts.
 The artifacts truthfully identify the work as `agent-generated`, keep
 generation and verification pass IDs separate, make no human-review claim,
 and record issue #7's 2,000-start checkpoint. Candidate bodies and temporary
