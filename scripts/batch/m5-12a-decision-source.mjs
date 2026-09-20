@@ -26,14 +26,14 @@ import {
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_12A_SEMANTIC_DECISION_SOURCE_ID = 'm5-12a-authored-semantic-decisions-20260920-r3';
+export const M5_12A_SEMANTIC_DECISION_SOURCE_ID = 'm5-12a-authored-semantic-decisions-20260920-r4';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-12a-semantic-decisions.json',
 );
 export const M5_12A_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v1';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_POLICY = 'source-authored-quality-coverage-v1';
-export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic-review-v3';
+export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic-review-v4';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);

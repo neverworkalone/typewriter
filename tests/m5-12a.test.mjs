@@ -58,7 +58,7 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
   assert.equal(result.admission.gate.gate_status, 'pass');
   assert.equal(result.admission.verification.human_editorial_review_complete, false);
   assert.equal(result.admission.verification.generation_pass_id, 'm5-12a-generation-20260920');
-  assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-agent-semantic-review-20260920-r3');
+  assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-agent-semantic-review-20260920-r4');
   assert.equal(result.admission.provenance.batch_local_quality_fork, false);
   assert.equal(result.relation.events.length, 0);
 });
@@ -85,9 +85,9 @@ test('M5-12A decision scaffolding cannot manufacture or overwrite semantic autho
     '7c655a342a23223b8a4039e126abd2b789edfb21',
     'the durable source must not remain the artifact produced by the removed generator',
   );
-  assert.equal(source.review.review_pass_id, 'm5-12a-agent-semantic-review-20260920-r3');
+  assert.equal(source.review.review_pass_id, 'm5-12a-agent-semantic-review-20260920-r4');
   assert.equal(source.review.reviewed_candidate_count, M5_12A_SELECTION_COUNT);
-  assert.equal(source.provenance.generator_version, 'm5-12a-authored-semantic-review-v3');
+  assert.equal(source.provenance.generator_version, 'm5-12a-authored-semantic-review-v4');
   assert.equal(source.provenance.human_reviewed, false);
   const identityByCandidateId = new Map(M5_12A_CANDIDATE_IDENTITIES.map((identity) => [identity.candidate_record_id, identity]));
   const admittedExpressionCount = source.decisions.filter((row) => (

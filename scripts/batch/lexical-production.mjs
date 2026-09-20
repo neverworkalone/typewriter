@@ -363,6 +363,16 @@ export function validateLexicalProduction({
   } catch (error) {
     fail(`production candidate semantic content failed shared diversity validation: ${error.message}`, error.code);
   }
+  // `prospectiveRecords` is the complete base-plus-import dictionary by
+  // contract.  Apply the same invariant at this producer boundary so a
+  // candidate cannot evade the guard merely by splitting a repeated template
+  // across batches; the admission audit repeats the check after all evidence
+  // and bindings have been validated.
+  try {
+    validateBulkGlossProjection(prospectiveRecords, { maxOccurrences: 3 });
+  } catch (error) {
+    fail(`production prospective canonical content failed shared diversity validation: ${error.message}`, error.code);
+  }
   const selectedRecords = [];
   const ranks = [];
   const selectedRanks = [];

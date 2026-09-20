@@ -11,6 +11,7 @@ import {
   inspectWriterDomainEvidence,
   inspectGlossQuality,
   inspectGlossConnectors,
+  inspectMalformedParticles,
   findBulkGlossProjectionFindings,
   validateBulkGlossProjection,
   validateLexicalSemanticReview,
@@ -128,6 +129,67 @@ test('the shared production boundary rejects parameterized gloss templates with 
     () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
     (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
   );
+});
+
+test('the shared production boundary compares definition cores before appended examples', () => {
+  const records = ['푸름의 결', '붉음의 결', '고요의 결', '긴장의 결'].map((lemma, index) => {
+    const root = lemma.split('의')[0];
+    return {
+      id: `w-definition-core-${index}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-definition-core-${index}`,
+      lemma,
+      search_forms: [lemma],
+      senses: [{
+        id: `w-definition-core-${index}-s1`,
+        pos: 'noun',
+        gloss: `‘${lemma}’은 표면과 분위기에 드러나는 미세한 차이를 가리키며, ${root}을 문장의 인상으로 포착한다. ${root}이 놓이는 장면은 후보마다 다르다.`,
+      }],
+    };
+  });
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION');
+  assert.equal(findings[0].owners.length, 4);
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+  );
+});
+
+test('the shared lexical quality rule rejects incompatible nominal particles', () => {
+  const malformed = '감정의 결으로 묘사할 때, 젖은 운동화과 맞물리는 장면을 포착한다.';
+  const findings = inspectMalformedParticles(malformed);
+  assert.deepEqual(
+    findings.map(({ token, expected_particle }) => [token, expected_particle]),
+    [['결으로', '로'], ['운동화과', '와']],
+  );
+  assert.deepEqual(inspectMalformedParticles('감정의 결로 묘사할 때, 젖은 운동화와 맞물린다.'), []);
+  assert.deepEqual(inspectMalformedParticles('가까이 보이는 곳과 미리 정한 약속'), []);
+  assert.deepEqual(inspectGlossQuality(malformed).malformed_particles, findings);
+});
+
+test('the complete canonical audit catches a repeated template completed by a later batch', () => {
+  const recordInfos = ['기존의 결', '새로운 결', '또 다른 결', '마지막 결'].map((lemma, index) => ({
+    source: index === 0 ? 'base' : 'prospective-batch',
+    record: {
+      id: `w-cross-batch-${index}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-cross-batch-${index}`,
+      lemma,
+      search_forms: [lemma],
+      senses: [{
+        id: `w-cross-batch-${index}-s1`,
+        pos: 'noun',
+        gloss: `‘${lemma}’은 표면과 분위기에 드러나는 미세한 차이를 가리키며, ${lemma.split('의')[0]}을 문장의 인상으로 포착한다. 서로 다른 장면 예시를 붙인 후보 의미다.`,
+      }],
+    },
+  }));
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.ok(audit.blocking_findings.some(({ code }) => code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION'));
 });
 
 test('the shared production boundary keeps genuinely distinct gloss definitions', () => {

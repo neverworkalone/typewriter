@@ -144,6 +144,23 @@ const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번�
 // reading.
 const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
+const PARTICLE_COMPATIBILITY = Object.freeze({
+  은: (finalIndex) => (finalIndex === 0 ? '는' : '은'),
+  는: (finalIndex) => (finalIndex === 0 ? '는' : '은'),
+  이: (finalIndex) => (finalIndex === 0 ? '가' : '이'),
+  가: (finalIndex) => (finalIndex === 0 ? '가' : '이'),
+  을: (finalIndex) => (finalIndex === 0 ? '를' : '을'),
+  를: (finalIndex) => (finalIndex === 0 ? '를' : '을'),
+  과: (finalIndex) => (finalIndex === 0 ? '와' : '과'),
+  와: (finalIndex) => (finalIndex === 0 ? '와' : '과'),
+  으로: (finalIndex) => (finalIndex === 0 || finalIndex === 8 ? '로' : '으로'),
+  로: (finalIndex) => (finalIndex === 0 || finalIndex === 8 ? '로' : '으로'),
+  이라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
+  라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
+});
+const LEXICAL_ADVERB_I_FORMS = new Set(['가까이', '거의', '미리', '새로이', '쉬이']);
+const PARTICLE_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
+const PARTICLE_SURFACE_PATTERN = /^(?<stem>[\p{L}\p{M}\p{N}]{1,}?)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)$/u;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
   'noun-topic',
   'adnominal',
@@ -244,6 +261,51 @@ function inspectTopicFragment(gloss, { nominalTerms, topicEvidence, senseId } = 
     ...topicAnalysis,
     malformed: topicAnalysis.state === 'noun-topic' && bareNominalPredicate,
   };
+}
+
+function hangulFinalIndex(text) {
+  const codePoint = text.codePointAt(text.length - 1);
+  if (codePoint === undefined || codePoint < 0xac00 || codePoint > 0xd7a3) return undefined;
+  return (codePoint - 0xac00) % 28;
+}
+
+function stripGlossTokenPunctuation(token) {
+  return token.replace(/^[()[\]{}"“”‘’'.,;:!?。！？…]+|[()[\]{}"“”‘’'.,;:!?。！？…]+$/gu, '');
+}
+
+/**
+ * Detect the compatibility errors that arise when an attached Korean nominal
+ * particle is selected without considering the preceding syllable's final
+ * consonant.  The rule is intentionally context-bound: words such as
+ * `가까이` and `높이` are lexical adverbs, not malformed uses of `이`, while
+ * a noun-shaped token before a predicate cue is a grammatical particle use.
+ */
+export function inspectMalformedParticles(gloss) {
+  if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
+  const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
+  const findings = [];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const token = tokens[index];
+    const nextToken = tokens[index + 1];
+    if (!token || !nextToken || !PARTICLE_CONTEXT_CUE_PATTERN.test(nextToken)) continue;
+    const match = PARTICLE_SURFACE_PATTERN.exec(token);
+    if (!match) continue;
+    const { stem, particle } = match.groups;
+    if (particle === '이' && LEXICAL_ADVERB_I_FORMS.has(token)) continue;
+    const finalIndex = hangulFinalIndex(stem);
+    if (finalIndex === undefined) continue;
+    const expectedParticle = PARTICLE_COMPATIBILITY[particle]?.(finalIndex);
+    if (expectedParticle === undefined || expectedParticle === particle) continue;
+    findings.push({
+      token,
+      stem,
+      particle,
+      expected_particle: expectedParticle,
+      next_token: nextToken,
+      token_index: index,
+    });
+  }
+  return findings;
 }
 
 export function requiresTopicAnalysis(gloss) {
@@ -760,6 +822,7 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
       generic_template: false,
       malformed_fragment: false,
       malformed_structure: false,
+      malformed_particles: [],
       topic_state: 'unsupported',
     };
   }
@@ -770,6 +833,7 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
     malformed_fragment: topicAnalysis.malformed,
     malformed_structure: topicAnalysis.malformed,
+    malformed_particles: inspectMalformedParticles(trimmed),
     topic_state: TOPIC_ANALYSIS_STATES.includes(topicAnalysis.state)
       ? topicAnalysis.state
       : 'unsupported',
@@ -873,6 +937,14 @@ function recordQualityFindings(record, {
       findings.push({
         code: 'LEXICAL_MALFORMED_GLOSS',
         message: `${senseLabel}.gloss contains an unfinished or malformed lexical fragment`,
+      });
+    }
+    if (glossQuality.malformed_particles.length > 0) {
+      const particleFinding = glossQuality.malformed_particles[0];
+      findings.push({
+        code: 'LEXICAL_MALFORMED_PARTICLE',
+        message: `${senseLabel}.gloss attaches ${particleFinding.particle} to ${particleFinding.stem}, but the compatible particle is ${particleFinding.expected_particle} before ${particleFinding.next_token}`,
+        observation: particleFinding,
       });
     }
     const observations = inspectGlossConnectors(sense.gloss);
@@ -982,16 +1054,19 @@ export function findBulkGlossProjectionFindings(
     const terms = new Set([lemma, lemma.replace(/\s+/gu, '')]);
     for (const token of lemma.split(/\s+/gu)) {
       terms.add(token);
+      for (const component of token.split(/(?=의|에)|(?<=의|에)/u)) {
+        if (component !== '의' && component !== '에') terms.add(component);
+      }
       const stem = token.replace(/(?:으로|에서|에게|한테|처럼|까지|부터|보다|의|은|는|이|가|을|를|에|로|와|과|도|만)$/u, '');
-      if (stem.length >= 2) terms.add(stem);
+      if (stem.length >= 1) terms.add(stem);
     }
     return [...terms]
-      .filter((term) => term.length >= 2)
+      .filter((term) => term.length >= 1 && term !== '의' && term !== '에')
       .sort((left, right) => right.length - left.length);
   };
 
   const templateFingerprint = (record, gloss) => {
-    let fingerprint = gloss.normalize('NFC');
+    let fingerprint = gloss.normalize('NFC').split(/[.!?。！？]/u)[0];
     for (const term of lemmaTerms(record.lemma)) {
       fingerprint = fingerprint.replaceAll(term, '{lexeme}');
     }
@@ -1032,7 +1107,7 @@ export function findBulkGlossProjectionFindings(
       kind: 'parameterized-template',
       fingerprint,
       owners,
-      message: `gloss template ${JSON.stringify(fingerprint)} is reused by ${owners.length} candidate senses after lemma substitution; author candidate-specific semantic content before admission`,
+      message: `gloss definition template ${JSON.stringify(fingerprint)} is reused by ${owners.length} candidate senses after lemma substitution; author candidate-specific semantic content before admission`,
     }))
     .filter(({ owners }) => owners.some(({ record_id: recordId, sense_id: senseId }) => !exactFindingKeys.has(`${recordId}:${senseId}`)));
   return [...exactFindings, ...templateFindings];
@@ -1062,6 +1137,16 @@ export function auditCanonicalLexicalQuality(
   const connectorCounts = Object.fromEntries(CONNECTORS.map((connector) => [connector, 0]));
   const classificationCounts = {};
   let senseCount = 0;
+  for (const finding of findBulkGlossProjectionFindings(recordInfos)) {
+    const owner = finding.owners[0];
+    findings.push({
+      ...finding,
+      record_id: owner?.record_id ?? null,
+      sense_id: owner?.sense_id ?? null,
+      location: scope,
+      message: `${scope}: ${finding.message.replace(/candidate senses/gu, 'canonical senses')}`,
+    });
+  }
   for (const [index, recordInfo] of recordInfos.entries()) {
     const record = normalized[index];
     if (!record || typeof record !== 'object') {
