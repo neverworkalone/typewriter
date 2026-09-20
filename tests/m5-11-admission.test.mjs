@@ -184,13 +184,16 @@ function makeCatalog() {
   }));
 }
 
+function authoredFixtureGloss(lemma) {
+  return {
+    보류말: '보류말은 비 갠 골목에 남은 느린 여운을 가리킨다.',
+    거절말: '거절말은 낮은 계단 앞에서 멈춘 단호한 태도를 가리킨다.',
+    포함말: '포함말은 열린 우편함에서 발견되는 뜻밖의 안도를 가리킨다.',
+    수정말: '수정말은 비어 있는 정류장에 남은 오래된 다짐을 가리킨다.',
+  }[lemma] ?? `${lemma}의 검수된 의미`;
+}
+
 function makeProposal(catalog) {
-  const authoredGlosses = [
-    '보류말은 비 갠 골목에 남은 느린 여운을 가리킨다.',
-    '거절말은 낮은 계단 앞에서 멈춘 단호한 태도를 가리킨다.',
-    '포함말은 열린 우편함에서 발견되는 뜻밖의 안도를 가리킨다.',
-    '수정말은 비어 있는 정류장에 남은 오래된 다짐을 가리킨다.',
-  ];
   const proposals = catalog.map((entry, index) => {
     const candidateLemma = ['보류말', '거절말', '포함말', '수정말'][index];
     const candidateId = `proposal-${entry.inventory_id}`;
@@ -204,7 +207,7 @@ function makeProposal(catalog) {
       senses: [{
         id: `${candidateId}-s1`,
         pos: 'noun',
-        gloss: authoredGlosses[index],
+        gloss: authoredFixtureGloss(candidateLemma),
       }],
     };
     const row = {
@@ -256,7 +259,11 @@ function admittedDecision(inventoryId, candidateLemma, canonicalId, correctedLem
       candidate_id: canonicalId,
       lemma,
       search_forms: [lemma],
-      senses: [{ id: senseId, pos: 'noun', gloss: `${lemma}의 검수된 의미` }],
+      senses: [{
+        id: senseId,
+        pos: 'noun',
+        gloss: correctedLemma === undefined ? authoredFixtureGloss(candidateLemma) : `${lemma}의 검수된 의미`,
+      }],
     },
       sense_review: {
       status: 'complete',
