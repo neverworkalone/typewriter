@@ -134,8 +134,9 @@ Issue #98's M5-12 pre-admission boundary is represented by
 `data/batches/m5-12-stage.json`, `data/batches/m5-12-review.json`, the immutable
 `data/batches/m5-12-base-canonical/` snapshot, and the metadata-only
 `scripts/batch/m5-12-catalog.mjs`. The catalog declares 802 selection slots for
-the +722 target and 80-row reserve, but contains no lemma, POS, gloss, relation,
-or candidate record body. The stage is intentionally `HOLD PROCESS` until a
+the +722 target and 80-row reserve; it does not claim 802 selected inventory
+targets. It contains no candidate identity, lemma, POS, gloss, relation, or
+candidate record body. The stage is intentionally `HOLD PROCESS` until a
 separately supplied human editorial decision artifact, measured timing, and
 independent final audit pass through the shared lexical producer, semantic
 audit, and admission path. No M5-12 canonical import or seed mutation is

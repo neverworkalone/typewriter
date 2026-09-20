@@ -10,19 +10,21 @@ its fixed gate.
 | --- | ---: |
 | base canonical | 1,278 starts / 1,320 records |
 | target net increase | +722 starts |
-| candidate pool | 802 |
+| selection capacity | 802 slots |
 | reserve buffer | 80 |
 | target canonical | 2,000 starts |
 
-The metadata-only catalog contains selection axes and inventory IDs only. Raw
-candidate bodies, external reference material, and unreviewed drafts remain
-outside the repository.
+The metadata-only catalog contains selection axes and slot IDs only. It does
+not claim that 802 authoritative candidate identities have been selected; the
+current M5-11 inventory remains unchanged. Raw candidate bodies, external
+reference material, and unreviewed drafts remain outside the repository.
 
 ## Current gate
 
 The source-bound stage result is `HOLD PROCESS`:
 
 - human editorial decision artifact: not supplied;
+- authoritative candidate identities: not selected;
 - human editorial review: incomplete;
 - editor timing: not started;
 - independent final audit: not started;

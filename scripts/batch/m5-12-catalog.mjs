@@ -16,7 +16,7 @@ const CATALOG_GROUPS = Object.freeze([
 ]);
 
 const FIRST_CATALOG_INDEX = 0;
-const FIRST_INVENTORY_NUMBER = 1085;
+const FIRST_SLOT_NUMBER = 1;
 const EXPECTED_CATALOG_COUNT = 802;
 
 let catalogIndex = FIRST_CATALOG_INDEX;
@@ -25,7 +25,7 @@ for (const group of CATALOG_GROUPS) {
   for (let offset = 0; offset < group.count; offset += 1) {
     catalogRows.push(Object.freeze({
       catalog_index: catalogIndex,
-      inventory_id: `m5-${String(FIRST_INVENTORY_NUMBER + catalogIndex).padStart(4, '0')}`,
+      slot_id: `m5-12-slot-${String(FIRST_SLOT_NUMBER + catalogIndex).padStart(4, '0')}`,
       axis: group.axis,
       flags: Object.freeze([...group.flags]),
     }));
@@ -35,12 +35,12 @@ for (const group of CATALOG_GROUPS) {
 
 export const M5_12_CATALOG = Object.freeze(catalogRows);
 
-const seenInventoryIds = new Set();
+const seenSlotIds = new Set();
 for (const entry of M5_12_CATALOG) {
-  if (seenInventoryIds.has(entry.inventory_id)) {
-    throw new Error(`duplicate M5-12 catalog inventory_id: ${entry.inventory_id}`);
+  if (seenSlotIds.has(entry.slot_id)) {
+    throw new Error(`duplicate M5-12 catalog slot_id: ${entry.slot_id}`);
   }
-  seenInventoryIds.add(entry.inventory_id);
+  seenSlotIds.add(entry.slot_id);
 }
 
 if (M5_12_CATALOG.length !== EXPECTED_CATALOG_COUNT) {

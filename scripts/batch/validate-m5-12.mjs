@@ -23,6 +23,7 @@ const CURRENT_SEED_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
 const REVIEW_PATH = path.join(BATCH_DIRECTORY, 'm5-12-review.json');
 const STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-12-stage.json');
 const CATALOG_PATH = path.join(SCRIPT_DIRECTORY, 'm5-12-catalog.mjs');
+const PREDECESSOR_PROMOTION_PATH = path.join(BATCH_DIRECTORY, 'm5-11-promotion.json');
 const CANONICAL_IMPORT_PATH = path.join(CURRENT_CANONICAL_DIRECTORY, 'm5-12-expansion.jsonl');
 
 export const M5_12_BATCH_ID = 'm5-12-expansion-20260920';
@@ -41,14 +42,17 @@ export const M5_12_BASE_INVENTORY_SHA256 =
 export const M5_12_BASE_SEED_SHA256 =
   '1b93e772f400ad81e6b7f0a91efdad8972516395d0445554689224c0cb65b3db';
 export const M5_12_CATALOG_SHA256 =
-  '5ba48712e2f5e800f23d05186d8c4e8883ac150d942b2a43a0dfaa500723a838';
+  '7447e447b93c06b87060514012472436443458016b7d0bccca110d5c9c40ab15';
 export const M5_12_REVIEW_SHA256 =
-  'cf3f4ae938c039b9bf4ad57bd03b7c05349b1dd2c84edfbe18c1733450ef921e';
+  'b2e9697be48b0d3fe7c4dd8b1041a30f8d5cca19e321f55cfc279a677efb2afc';
+export const M5_12_PREDECESSOR_PROMOTION_SHA256 =
+  '15fedcabc50a631fee3680a33f268c694e3985d319282eb837d8e73e4794ce0a';
 export const M5_12_TARGET = Object.freeze({
   net_start_increase: 722,
   cumulative_start_target: 2000,
   candidate_buffer: 80,
-  selected_start_count: 802,
+  selection_slot_count: 802,
+  candidate_identity_count: 0,
 });
 
 export class M512ValidationError extends Error {
@@ -152,6 +156,45 @@ function canonicalSummary(recordInfos) {
   };
 }
 
+const M5_12_AXES = new Set(['E', 'Q', 'S', 'C', 'A', 'O', 'X']);
+const M5_12_CATALOG_KEYS = Object.freeze(['axis', 'catalog_index', 'flags', 'slot_id']);
+
+export function validateM512Catalog(catalog = M5_12_CATALOG) {
+  if (!Array.isArray(catalog) || catalog.length !== M5_12_TARGET.selection_slot_count) {
+    fail(
+      `M5-12 catalog must contain ${M5_12_TARGET.selection_slot_count} capacity slots`,
+      'CATALOG_SHAPE_ERROR',
+    );
+  }
+  const slotIds = new Set();
+  for (const [index, entry] of catalog.entries()) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      fail(`M5-12 catalog row ${index} must be an object`, 'CATALOG_SHAPE_ERROR');
+    }
+    assertEqual(
+      Object.keys(entry).sort(),
+      M5_12_CATALOG_KEYS,
+      `M5-12 catalog row ${index} keys`,
+      'CATALOG_SHAPE_ERROR',
+    );
+    assertEqual(entry.catalog_index, index, `M5-12 catalog row ${index} index`, 'CATALOG_SHAPE_ERROR');
+    if (!/^m5-12-slot-[0-9]{4}$/u.test(entry.slot_id)) {
+      fail(`M5-12 catalog row ${index} must use a slot_id`, 'CATALOG_SHAPE_ERROR');
+    }
+    if (slotIds.has(entry.slot_id)) {
+      fail(`M5-12 catalog has duplicate slot_id ${entry.slot_id}`, 'CATALOG_SHAPE_ERROR');
+    }
+    slotIds.add(entry.slot_id);
+    if (!M5_12_AXES.has(entry.axis)) {
+      fail(`M5-12 catalog row ${index} has an invalid axis`, 'CATALOG_SHAPE_ERROR');
+    }
+    if (!Array.isArray(entry.flags) || entry.flags.length === 0) {
+      fail(`M5-12 catalog row ${index} must declare flags`, 'CATALOG_SHAPE_ERROR');
+    }
+  }
+  return catalog;
+}
+
 function validateDecisionCounts(review, stage) {
   assertEqual(review.decisions, {
     included: 0,
@@ -160,7 +203,8 @@ function validateDecisionCounts(review, stage) {
     rejected: 0,
     deferred: 0,
     processed_start_count: 0,
-    unreviewed_start_count: 802,
+    unreviewed_start_count: 0,
+    unresolved_slot_count: 802,
     imported_start_count: 0,
   }, 'pre-admission decision counts');
   assertEqual(stage.decisions, {
@@ -170,7 +214,8 @@ function validateDecisionCounts(review, stage) {
     rejected_start_count: 0,
     deferred_start_count: 0,
     processed_start_count: 0,
-    unreviewed_start_count: 802,
+    unreviewed_start_count: 0,
+    unresolved_slot_count: 802,
   }, 'pre-admission stage decision counts');
 }
 
@@ -198,6 +243,8 @@ export async function validateM512({
   const currentCanonical = await readCanonicalRecords(currentCanonicalDirectory);
   const baseCanonical = await readCanonicalRecords(baseCanonicalDirectory);
 
+  validateM512Catalog();
+
   assertEqual(stage.stage_id, 'm5-12-plus-722', 'stage ID');
   assertEqual(stage.issue, 98, 'stage issue');
   assertEqual(stage.parent_issue, 7, 'parent issue');
@@ -222,6 +269,22 @@ export async function validateM512({
   assertEqual(currentSeed.revision, 'm5-11', 'current seed revision');
   assertEqual(sha256(await readFile(currentSeedPath)), M5_12_BASE_SEED_SHA256, 'current seed must remain unchanged', 'UNAUTHORIZED_PROMOTION');
 
+  const predecessorPromotion = await readBoundFile({
+    path: stage.source.predecessor_promotion,
+    sha256: stage.source.predecessor_promotion_sha256,
+  }, 'stage.source.predecessor_promotion');
+  assertEqual(stage.source.predecessor_promotion, repositoryRelativePath(PREDECESSOR_PROMOTION_PATH), 'predecessor promotion path binding', 'SOURCE_PATH_MISMATCH');
+  assertEqual(sha256(predecessorPromotion.bytes), M5_12_PREDECESSOR_PROMOTION_SHA256, 'predecessor promotion digest', 'DIGEST_MISMATCH');
+  assertEqual(predecessorPromotion.value.issue, 97, 'predecessor promotion issue');
+  assertEqual(predecessorPromotion.value.gate.gate_status, 'pass', 'predecessor promotion gate status', 'PREDECESSOR_GATE_MISMATCH');
+  assertEqual(predecessorPromotion.value.gate.decision, 'APPROVE AUTOMATED BOUNDED', 'predecessor promotion decision', 'PREDECESSOR_GATE_MISMATCH');
+  assertEqual(predecessorPromotion.value.actual, M5_12_BASE_SUMMARY, 'predecessor output summary', 'PREDECESSOR_OUTPUT_MISMATCH');
+  assertEqual(stage.predecessor_expansion.artifact, repositoryRelativePath(PREDECESSOR_PROMOTION_PATH), 'stage predecessor artifact path', 'SOURCE_PATH_MISMATCH');
+  assertEqual(stage.predecessor_expansion.artifact_sha256, M5_12_PREDECESSOR_PROMOTION_SHA256, 'stage predecessor artifact digest', 'DIGEST_MISMATCH');
+  assertEqual(stage.predecessor_expansion.gate_status, predecessorPromotion.value.gate.gate_status, 'stage predecessor gate status', 'PREDECESSOR_GATE_MISMATCH');
+  assertEqual(stage.predecessor_expansion.decision, predecessorPromotion.value.gate.decision, 'stage predecessor decision', 'PREDECESSOR_GATE_MISMATCH');
+  assertEqual(stage.predecessor_expansion.actual, predecessorPromotion.value.actual, 'stage predecessor output summary', 'PREDECESSOR_OUTPUT_MISMATCH');
+
   const reviewSource = await readBoundFile({
     path: stage.source.review,
     sha256: stage.source.review_sha256,
@@ -234,11 +297,13 @@ export async function validateM512({
   assertEqual(review.review_mode, 'human-required', 'review mode');
   assertEqual(review.editorial_review_complete, false, 'editorial review status');
   assertEqual(review.human_editorial_review_complete, false, 'human editorial review status');
-  assertEqual(review.candidate_pool.declared_count, M5_12_TARGET.selected_start_count, 'candidate pool count');
+  assertEqual(review.candidate_pool.selection_slot_count, M5_12_TARGET.selection_slot_count, 'selection slot count');
+  assertEqual(review.candidate_pool.candidate_identity_count, M5_12_TARGET.candidate_identity_count, 'candidate identity count');
   assertEqual(review.candidate_pool.import_target, M5_12_TARGET.net_start_increase, 'candidate import target');
   assertEqual(review.candidate_pool.reserve_count, M5_12_TARGET.candidate_buffer, 'candidate reserve count');
   assertEqual(review.candidate_pool.catalog_count, M5_12_CATALOG.length, 'catalog count');
   assertEqual(review.candidate_pool.catalog_sha256, M5_12_CATALOG_SHA256, 'catalog digest', 'DIGEST_MISMATCH');
+  assertEqual(review.candidate_pool.selection_status, 'capacity-only', 'selection status');
   assertEqual(review.decision_artifact, null, 'decision artifact must be absent until human review');
   validateDecisionCounts(review, stage);
 
@@ -255,10 +320,14 @@ export async function validateM512({
     next_stage_authorized: false,
   }, 'promotion guard');
   assertEqual(stage.pipeline.batch_local_quality_fork, false, 'shared lexical pipeline guard');
+  assertEqual(stage.previous_stage.status, 'complete', 'previous checkpoint status');
   assertEqual(stage.previous_stage.checkpoint_commit, '7e5893475929bc03f5397c011dce6796b9fed8d7', 'previous checkpoint commit');
+  assertEqual(stage.previous_stage.checkpoint_tree, '0a58f217049089a1857ab30aedc755750449f389', 'previous checkpoint tree');
   assertEqual(stage.source.catalog, repositoryRelativePath(CATALOG_PATH), 'catalog path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.catalog_count, M5_12_CATALOG.length, 'catalog count binding');
   assertEqual(stage.source.catalog_sha256, sha256Json(M5_12_CATALOG), 'catalog source digest', 'DIGEST_MISMATCH');
+  assertEqual(stage.source.predecessor_promotion, repositoryRelativePath(PREDECESSOR_PROMOTION_PATH), 'predecessor source path binding', 'SOURCE_PATH_MISMATCH');
+  assertEqual(stage.source.predecessor_promotion_sha256, M5_12_PREDECESSOR_PROMOTION_SHA256, 'predecessor source digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.canonical_directory, repositoryRelativePath(baseCanonicalDirectory), 'source canonical path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.canonical_directory_sha256, M5_12_BASE_CANONICAL_SHA256, 'source canonical digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.seed, repositoryRelativePath(currentSeedPath), 'seed path binding', 'SOURCE_PATH_MISMATCH');
