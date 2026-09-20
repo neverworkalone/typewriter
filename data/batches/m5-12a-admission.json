@@ -200,7 +200,7 @@
       "sense_count": 2301,
       "open_finding_count": 0,
       "canonical_records_sha256": "9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8",
-      "review_sha256": "c5e59c9df352c98a4d6fbf176e1fc6876ad5ddd91e26629db25f282e73a738f3"
+      "review_sha256": "7841fd89c0fe3c9d2c5203f40ff9ebfb08403f2713101c62908b6600d801967f"
     }
   },
   "gate": {
@@ -228,10 +228,10 @@
         "deterministic_sqlite": {
           "status": "pass",
           "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "product_dictionary_sha256": "01525518f7448b7b15d4539ea7e9d665dcbdda0cee361e2e2e194a2fdd627906",
+          "product_dictionary_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-UUAWSD/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-g05gbu/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2298,
             "senseCount": 2301,
@@ -250,7 +250,7 @@
               "schema_version": "1",
               "search_form_count": "2298",
               "sense_count": "2301",
-              "source_revision": "5b0fe841af16b1a4cf64a21e73cff98418b701c7",
+              "source_revision": "3d1aa05ca230d521f8e554cb36b35c8218a7c341",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -270,7 +270,7 @@
             "Run product unit tests",
             "Build product extension"
           ],
-          "database_sha256": "01525518f7448b7b15d4539ea7e9d665dcbdda0cee361e2e2e194a2fdd627906"
+          "database_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a"
         },
         "extension_build": {
           "status": "pass",
@@ -353,10 +353,10 @@
       "package_validation": true,
       "artifact_policy_clean_checkout": true
     },
-    "production_state_sha256": "6b13cb32ed68835730cd62a827aa8975fc033bb0f6ae5821946f8aef6aeccede",
-    "production_payloads_sha256": "e60d063cfd7fd6015128f38dc05b8d4ca699bee089cb0f25ee61709dab5d2576",
-    "semantic_audit_sha256": "0d836b9e3129abeaad4566f0e4626d6cf3c67588c41d9ce78570e0f4da7117c2",
-    "decision_source_sha256": "e0ed3d82c5ebc437e0a5d0067f68431e7222eba2e6b23a28d2ddb3d2e2efc9bb",
+    "production_state_sha256": "4e0223e2e8a05d8001b96c47c5b622ee4b5cbde88ce508d8e4a30f03dc45f23a",
+    "production_payloads_sha256": "973a958d1d8c5e667501a79b499b6929740ed1d97567bcbe68662e32a971640c",
+    "semantic_audit_sha256": "6c5a42b76174eddceabca0175dbf7598ad0cbfd3a4a236591a064ca9b25abe91",
+    "decision_source_sha256": "7d358c895398bad0355d8daed523294566d9ffe08d20ddfca61612748e8213e1",
     "preflight": {
       "status": "complete",
       "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
@@ -380,10 +380,10 @@
         "deterministic_sqlite": {
           "status": "pass",
           "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "product_dictionary_sha256": "01525518f7448b7b15d4539ea7e9d665dcbdda0cee361e2e2e194a2fdd627906",
+          "product_dictionary_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-UUAWSD/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-g05gbu/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2298,
             "senseCount": 2301,
@@ -402,7 +402,7 @@
               "schema_version": "1",
               "search_form_count": "2298",
               "sense_count": "2301",
-              "source_revision": "5b0fe841af16b1a4cf64a21e73cff98418b701c7",
+              "source_revision": "3d1aa05ca230d521f8e554cb36b35c8218a7c341",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -422,7 +422,7 @@
             "Run product unit tests",
             "Build product extension"
           ],
-          "database_sha256": "01525518f7448b7b15d4539ea7e9d665dcbdda0cee361e2e2e194a2fdd627906"
+          "database_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a"
         },
         "extension_build": {
           "status": "pass",
@@ -458,7 +458,7 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "7d93bce73c55c8318d6cc2999ae0eec88e243333caa18aabceb15e06a995752a",
+  "gate_evidence_sha256": "2ef726f62542bb358248a07933564668666d3602dc6573bb8fc933ba876d78f0",
   "sources": {
     "candidate_identities": {
       "source_id": "m5-12a-typewriter-authored-identities-20260920",
@@ -474,17 +474,17 @@
     "verification": {
       "source_id": "verification",
       "path": "data/batches/m5-12a-semantic-decisions.json",
-      "sha256": "6d253f564e8068bf3becd08376e15e18dff989a874514d8b83be7b08500abce9"
+      "sha256": "81cec28734df38a29cd2f00b4ef8a76158838b6064276c56f5001a5fedf9e137"
     },
     "verification_artifact": {
       "source_id": "verification-artifact",
       "path": "external:m5-12a-verification",
-      "sha256": "bf8bec6541459970179150f5f7199e5318caf2d0c777eefb92d26cf3ec6d7d50"
+      "sha256": "6a5abc4e41d723c4df542aaa75da2126839fdc6b14553fceede3b85bc4b956e9"
     },
     "semantic_audit": {
       "source_id": "semantic_audit",
       "path": "external:m5-12a-semantic-audit",
-      "sha256": "0d836b9e3129abeaad4566f0e4626d6cf3c67588c41d9ce78570e0f4da7117c2"
+      "sha256": "6c5a42b76174eddceabca0175dbf7598ad0cbfd3a4a236591a064ca9b25abe91"
     },
     "relation_diff": {
       "source_id": "relation_diff",
