@@ -224,16 +224,35 @@ test('the shared particle rule keeps unverified terminal 이 surfaces open-world
         candidate_id: 'w991',
         lemma: 'positive-topic-fixture',
         search_forms: ['positive-topic-fixture'],
-        senses: [{ id: 'w991-s1', pos: 'noun', gloss: '바다이 보인다' }],
+        senses: [{ id: 'w991-s1', pos: 'noun', gloss: '바다이 보인다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w992',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w992',
+        lemma: 'mid-sentence-topic-fixture',
+        search_forms: ['mid-sentence-topic-fixture'],
+        senses: [{ id: 'w992-s1', pos: 'noun', gloss: '문장에서는 바다이 보인다.' }],
       },
     },
   ];
   assert.deepEqual(inspectMalformedParticles('가벼이 바라본다.'), []);
-  assert.deepEqual(inspectMalformedParticles('바다이 보인다'), []);
+  assert.deepEqual(inspectMalformedParticles('바다이 보인다.'), []);
+  assert.deepEqual(inspectMalformedParticles('문장에서는 바다이 보인다.'), []);
 
   const semanticAudit = makeSemanticAudit(recordInfos, {
     topicAnalyses: {
       'w991-s1': {
+        state: 'noun-topic',
+        topic: '바다',
+        particle: '이',
+        predicate: '보인다',
+      },
+      'w992-s1': {
         state: 'noun-topic',
         topic: '바다',
         particle: '이',
@@ -249,7 +268,10 @@ test('the shared particle rule keeps unverified terminal 이 surfaces open-world
     audit.blocking_findings
       .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
       .map(({ record_id, observation }) => [record_id, observation.token, observation.expected_particle]),
-    [['w991', '바다이', '가']],
+    [
+      ['w991', '바다이', '가'],
+      ['w992', '바다이', '가'],
+    ],
   );
 });
 
