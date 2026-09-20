@@ -28,9 +28,11 @@ function formatCommand({ executable, args }) {
 
 async function runCommand({ executable, args }) {
   return new Promise((resolve, reject) => {
+    const childEnvironment = { ...process.env };
+    delete childEnvironment.NODE_TEST_CONTEXT;
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
-      env: process.env,
+      env: childEnvironment,
       stdio: 'inherit',
       shell: false,
     });

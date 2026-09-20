@@ -1709,6 +1709,7 @@ export async function refreshM512APromotionEvidence({
   const promotionFile = await readJson(promotionPath, 'M5-12A promotion evidence');
   const promotion = {
     ...promotionFile.value,
+    ...structuredClone(result.promotion),
     status: 'promoted',
     preflight: result.preflight,
     post_promotion_audit: buildPostPromotionAudit({
