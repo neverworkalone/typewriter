@@ -1324,6 +1324,7 @@ export async function buildM512A({
   currentSeedPath = CURRENT_SEED_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
   semanticDecisionSourcePath = M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
+  preflightRunner = runM512APreflight,
 } = {}) {
   const inputs = await loadBaseInputs({ currentSeedPath });
   const baseRecords = inputs.baseCanonical.records.map(recordOf);
@@ -1403,12 +1404,10 @@ export async function buildM512A({
     after: relationSnapshot(prospective.canonical.records),
     sourceNote: 'M5-12A agent-generated candidate set admitted no new relation tuples; every no-relation decision is source-bound in the semantic review.',
   });
-  const preflight = await runM512APreflight({
+  const preflight = await preflightRunner({
     prospectiveCanonicalDirectory: prospective.canonicalDirectory,
     prospectiveCanonicalDigest: prospective.canonicalDigest,
     expectedSummary: M5_12A_FINAL_SUMMARY,
-    representativeExistingLemma: baseRecords[0].lemma,
-    representativeNewRecord: importedRecords[0],
     candidateSourceDigest: semanticDecisionSource.source.candidate_source.identity_sha256,
     expectedCandidateSourceDigest: candidateIdentityDigest(),
     generationPassId: semanticDecisionSource.source.provenance.generation_pass_id,

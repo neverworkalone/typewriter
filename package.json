@@ -67,7 +67,7 @@
     "batch:m5-11:evidence:refresh": "node scripts/batch/refresh-m5-11-derived-evidence.mjs",
     "batch:m5-12:check": "node scripts/batch/validate-m5-12.mjs",
     "batch:m5-12a:check": "node scripts/batch/m5-12a-pipeline.mjs",
-    "batch:m5-12a:decision-source:build": "node scripts/batch/generate-m5-12a-decision-source.mjs",
+    "batch:m5-12a:decision-scaffold:build": "node scripts/batch/build-m5-12a-decision-scaffold.mjs",
     "batch:m5-12a:promote": "node scripts/batch/m5-12a-pipeline.mjs --promote",
     "batch:m5-12a:evidence:refresh": "node scripts/batch/m5-12a-pipeline.mjs --refresh-post-audit",
     "batch:timing:feedback": "node scripts/batch/timing.mjs --action=feedback",

@@ -10,10 +10,11 @@ import {
   buildDictionary,
 } from '../build/dictionary.mjs';
 import {
-  findRecordsByExactTerm,
   getMetadata,
   readLogicalDatabaseSnapshot,
 } from '../build/query.mjs';
+import { CI_CATEGORIES } from '../ci/registry.mjs';
+import { runChecks } from '../ci/run-category.mjs';
 import {
   validatePackage,
 } from '../validate-package.mjs';
@@ -63,12 +64,30 @@ function compareLogicalDatabaseSnapshots(first, second) {
   return JSON.stringify(first) === JSON.stringify(second);
 }
 
+async function runProspectiveProductChecks({ canonicalDirectory, outputDirectory, databasePath }) {
+  const environment = {
+    TYPEWRITER_ALLOW_DIRTY: 'true',
+    TYPEWRITER_BUILD_MINIFY: 'false',
+    TYPEWRITER_CANONICAL_DIRECTORY: canonicalDirectory,
+    TYPEWRITER_BUILD_OUTPUT_DIRECTORY: outputDirectory,
+    TYPEWRITER_SEARCH_REGRESSION_DATABASE: databasePath,
+  };
+  const previous = new Map(Object.keys(environment).map((key) => [key, process.env[key]]));
+  Object.assign(process.env, environment);
+  try {
+    await runChecks(CI_CATEGORIES.product.checks, {});
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}
+
 export async function runM512APreflight({
   prospectiveCanonicalDirectory,
   prospectiveCanonicalDigest,
   expectedSummary,
-  representativeExistingLemma,
-  representativeNewRecord,
   candidateSourceDigest,
   expectedCandidateSourceDigest,
   generationPassId,
@@ -107,6 +126,12 @@ export async function runM512APreflight({
       maxBuffer: 20 * 1024 * 1024,
     });
 
+    const productDatabasePath = path.join(outputDirectory, 'dictionary.sqlite');
+    await runProspectiveProductChecks({
+      canonicalDirectory: prospectiveCanonicalDirectory,
+      outputDirectory,
+      databasePath: productDatabasePath,
+    });
     for (const fileName of ['favicon.ico', 'icon.png']) {
       await rm(path.join(outputDirectory, fileName), { force: true });
     }
@@ -126,7 +151,6 @@ export async function runM512APreflight({
       fail(`prospective package validation failed: ${packageResult.errors.join('; ')}`, 'M5_12A_PREFLIGHT_PACKAGE_FAILED');
     }
 
-    const productDatabasePath = path.join(outputDirectory, 'dictionary.sqlite');
     firstDatabase = new DatabaseSync(productDatabasePath, { readOnly: true });
     const firstSnapshot = readLogicalDatabaseSnapshot(firstDatabase);
     const firstMetadata = getMetadata(firstDatabase);
@@ -137,14 +161,6 @@ export async function runM512APreflight({
       || firstMetadata.relation_count !== String(expectedSummary.relation_count)
       || firstMetadata.expression_count !== String(expectedSummary.expression_count)) {
       fail('prospective SQLite metadata does not match the fixed M5-12A canonical summary', 'M5_12A_PREFLIGHT_SQLITE_FAILED');
-    }
-    const newTermMatches = findRecordsByExactTerm(firstDatabase, representativeNewRecord.lemma);
-    if (!newTermMatches.some(({ id }) => id === representativeNewRecord.id)) {
-      fail(`prospective product search did not find ${representativeNewRecord.id}`, 'M5_12A_PREFLIGHT_SEARCH_FAILED');
-    }
-    const existingTermMatches = findRecordsByExactTerm(firstDatabase, representativeExistingLemma);
-    if (existingTermMatches.length === 0) {
-      fail(`prospective product search lost the existing term ${representativeExistingLemma}`, 'M5_12A_PREFLIGHT_SEARCH_FAILED');
     }
     const productDatabaseBytes = await readFile(productDatabasePath);
 
@@ -200,9 +216,9 @@ export async function runM512APreflight({
         search_product_regression: {
           status: 'pass',
           input_canonical_directory_sha256: prospectiveCanonicalDigest,
-          existing_term: representativeExistingLemma,
-          new_record_id: representativeNewRecord.id,
-          new_term: representativeNewRecord.lemma,
+          ci_category: 'product',
+          check_labels: CI_CATEGORIES.product.checks.map(({ label }) => label),
+          database_sha256: sha256(productDatabaseBytes),
         },
         extension_build: {
           status: 'pass',

@@ -28,6 +28,9 @@ import {
 } from '../scripts/batch/m5-12a-candidate-source.mjs';
 import { hashCanonicalDirectory } from '../scripts/batch/validate-m5-8-process.mjs';
 import { makeM512ACandidateRecord } from '../scripts/batch/m5-12a-pipeline.mjs';
+import {
+  buildM512ASemanticDecisionScaffold,
+} from '../scripts/batch/build-m5-12a-decision-scaffold.mjs';
 
 test('M5-12A binds all 802 identities and admits exactly 722 through the shared producer', async () => {
   const result = await buildM512A();
@@ -46,6 +49,25 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
   assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-verification-20260920');
   assert.equal(result.admission.provenance.batch_local_quality_fork, false);
   assert.equal(result.relation.events.length, 0);
+});
+
+test('M5-12A decision scaffolding cannot manufacture or overwrite semantic authority', async () => {
+  const sourcePath = path.resolve('data/batches/m5-12a-semantic-decisions.json');
+  const sourceBefore = await readFile(sourcePath);
+  const scaffold = buildM512ASemanticDecisionScaffold();
+
+  assert.equal(scaffold.candidates.length, M5_12A_SELECTION_COUNT);
+  assert.equal(scaffold.candidate_source.identity_count, M5_12A_SELECTION_COUNT);
+  assert.ok(scaffold.candidates.every((candidate) => (
+    Object.keys(candidate).sort().join(',')
+    === 'candidate_record_id,candidate_record_sha256,inventory_id,sense_id'
+  )));
+  assert.ok(scaffold.candidates.every((candidate) => (
+    !Object.prototype.hasOwnProperty.call(candidate, 'decision')
+    && !Object.prototype.hasOwnProperty.call(candidate, 'rank')
+    && !Object.prototype.hasOwnProperty.call(candidate, 'score')
+  )));
+  assert.deepEqual(await readFile(sourcePath), sourceBefore);
 });
 
 test('M5-12A rejects identity drift and canonical collisions before admission', async () => {
@@ -193,7 +215,7 @@ test('M5-12A promotion rolls back every output when the committed canonical dige
   }
 });
 
-test('M5-12A rejects a failed preflight without mutating promotion outputs', async () => {
+test('M5-12A rejects a failed shared product preflight without mutating promotion outputs', async () => {
   const result = await buildM512A();
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-preflight-rollback-'));
   const currentCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
@@ -216,8 +238,8 @@ test('M5-12A rejects a failed preflight without mutating promotion outputs', asy
         ...result.preflight,
         checks: {
           ...result.preflight.checks,
-          package_validation: {
-            ...result.preflight.checks.package_validation,
+          search_product_regression: {
+            ...result.preflight.checks.search_product_regression,
             status: 'fail',
           },
         },
