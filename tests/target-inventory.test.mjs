@@ -51,16 +51,16 @@ test('validates the M5 inventory and keeps independent start counts', async () =
   assert.equal(summary.inflectedFormCount, 2);
   assert.deepEqual(summary.reasonCodeCounts, {
     A: 375,
-    C: 324,
-    E: 299,
-    O: 253,
-    Q: 301,
-    S: 323,
-    X: 144,
+    C: 309,
+    E: 289,
+    O: 233,
+    Q: 281,
+    S: 318,
+    X: 214,
   });
   assert.deepEqual(summary.recordTypeCounts, {
-    entry: 1939,
-    expression: 80,
+    entry: 1869,
+    expression: 150,
   });
 });
 
