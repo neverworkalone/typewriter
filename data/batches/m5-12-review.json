@@ -1,0 +1,51 @@
+{
+  "schema_version": "1",
+  "artifact_id": "m5-12-review-20260920",
+  "issue": 98,
+  "batch_id": "m5-12-expansion-20260920",
+  "status": "pending-human-editorial-decision",
+  "review_mode": "human-required",
+  "editorial_review_complete": false,
+  "human_editorial_review_complete": false,
+  "candidate_pool": {
+    "declared_count": 802,
+    "import_target": 722,
+    "reserve_count": 80,
+    "catalog_count": 802,
+    "catalog_sha256": "5ba48712e2f5e800f23d05186d8c4e8883ac150d942b2a43a0dfaa500723a838"
+  },
+  "decisions": {
+    "included": 0,
+    "corrected": 0,
+    "held": 0,
+    "rejected": 0,
+    "deferred": 0,
+    "processed_start_count": 0,
+    "unreviewed_start_count": 802,
+    "imported_start_count": 0
+  },
+  "decision_artifact": null,
+  "timing": {
+    "status": "not-started",
+    "editor_seconds": null,
+    "processed_start_count": 0,
+    "unmeasured_pass_count": null
+  },
+  "audit": {
+    "status": "not-started",
+    "independent": null,
+    "open_blocker_count": null
+  },
+  "source_policy": {
+    "candidate_bodies": "external-only-until-human-review",
+    "raw_external_material": "external-only",
+    "canonical_mutation": "blocked-until-admission-gate"
+  },
+  "admission_path": {
+    "producer": "shared lexical producer",
+    "semantic_audit": "shared semantic audit",
+    "admission": "shared lexical admission",
+    "batch_local_quality_fork": false
+  },
+  "note": "M5-12 declares the bounded pool and target only. No candidate body, draft, or automatic editorial verdict is stored in the repository."
+}
