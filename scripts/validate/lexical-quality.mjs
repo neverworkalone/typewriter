@@ -143,6 +143,7 @@ const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번�
 // separate, explicit topic evidence from a caller that can establish that
 // reading.
 const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
+const AUTHORED_PARTICLE_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
 const PARTICLE_COMPATIBILITY = Object.freeze({
   은: (finalIndex) => (finalIndex === 0 ? '는' : '은'),
@@ -158,7 +159,6 @@ const PARTICLE_COMPATIBILITY = Object.freeze({
   이라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
   라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
 });
-const LEXICAL_ADVERB_I_FORMS = new Set(['가까이', '거의', '미리', '새로이', '쉬이']);
 const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|보인|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
 // These are surface-grammar patterns rather than word or batch allowlists:
 // conjugated `려` connective endings cover forms such as `맞물려`, while a
@@ -297,7 +297,7 @@ function hasAuthoredNounTopicEvidence(
   gloss,
   { stem, particle, nextToken, topicEvidence, senseId } = {},
 ) {
-  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
+  const fragment = AUTHORED_PARTICLE_FRAGMENT_PATTERN.exec(gloss.trim());
   if (!fragment
     || fragment.groups.topic !== stem
     || fragment.groups.particle !== particle
@@ -337,12 +337,27 @@ function isProductiveAdnominalAmbiguity(
   return true;
 }
 
+function hasUnresolvedLexicalAdverbAmbiguity(
+  gloss,
+  { stem, particle, nextToken, topicEvidence, senseId } = {},
+) {
+  if (particle !== '이' || hangulFinalIndex(stem) !== 0) return false;
+  return !hasAuthoredNounTopicEvidence(gloss, {
+    stem,
+    particle,
+    nextToken,
+    topicEvidence,
+    senseId,
+  });
+}
+
 /**
  * Detect the compatibility errors that arise when an attached Korean nominal
  * particle is selected without considering the preceding syllable's final
- * consonant.  The rule is intentionally context-bound: words such as
- * `가까이` and `높이` are lexical adverbs, not malformed uses of `이`, while
- * a noun-shaped token before a predicate cue is a grammatical particle use.
+ * consonant.  The rule is intentionally context-bound: terminal `이` is
+ * ambiguous with productive lexical adverbial `-이`, so a surface with no
+ * final consonant remains open unless bound authored noun-topic evidence
+ * establishes a grammatical particle reading.
  */
 export function inspectMalformedParticles(
   gloss,
@@ -365,7 +380,13 @@ export function inspectMalformedParticles(
       topicEvidence,
       senseId,
     })) continue;
-    if (particle === '이' && LEXICAL_ADVERB_I_FORMS.has(token)) continue;
+    if (hasUnresolvedLexicalAdverbAmbiguity(gloss, {
+      stem,
+      particle,
+      nextToken,
+      topicEvidence,
+      senseId,
+    })) continue;
     const finalIndex = hangulFinalIndex(stem);
     if (finalIndex === undefined) continue;
     const expectedParticle = PARTICLE_COMPATIBILITY[particle]?.(finalIndex);
@@ -408,7 +429,8 @@ export function validateAuthoredTopicAnalysis(
     }
   }
   requireString(analysis.rationale, `${label}.rationale`);
-  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
+  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
+    ?? (analysis.particle === '이' ? AUTHORED_PARTICLE_FRAGMENT_PATTERN.exec(gloss.trim()) : undefined);
   if (!fragment) {
     if (analysis.state === 'noun-topic') {
       fail(`${label}.state noun-topic requires a two-token topic fragment`, 'LEXICAL_SEMANTIC_BINDING');

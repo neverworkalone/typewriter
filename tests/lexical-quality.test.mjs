@@ -201,6 +201,58 @@ test('the shared particle rule preserves productive adnominal endings before com
   }
 });
 
+test('the shared particle rule keeps unverified terminal 이 surfaces open-world', () => {
+  const recordInfos = [
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w990',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w990',
+        lemma: 'lexical-adverb-fixture',
+        search_forms: ['lexical-adverb-fixture'],
+        senses: [{ id: 'w990-s1', pos: 'adverb', gloss: '가벼이 바라본다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w991',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w991',
+        lemma: 'positive-topic-fixture',
+        search_forms: ['positive-topic-fixture'],
+        senses: [{ id: 'w991-s1', pos: 'noun', gloss: '바다이 보인다' }],
+      },
+    },
+  ];
+  assert.deepEqual(inspectMalformedParticles('가벼이 바라본다.'), []);
+  assert.deepEqual(inspectMalformedParticles('바다이 보인다'), []);
+
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w991-s1': {
+        state: 'noun-topic',
+        topic: '바다',
+        particle: '이',
+        predicate: '보인다',
+      },
+    },
+  });
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    throwOnError: false,
+    topicEvidence: buildSemanticTopicEvidence(recordInfos, semanticAudit),
+  });
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
+      .map(({ record_id, observation }) => [record_id, observation.token, observation.expected_particle]),
+    [['w991', '바다이', '가']],
+  );
+});
+
 test('the shared particle rule still rejects nominal 은/는 outside adnominal ambiguity', () => {
   for (const [gloss, token, expectedParticle] of [
     ['운동화은 보인다.', '운동화은', '는'],
