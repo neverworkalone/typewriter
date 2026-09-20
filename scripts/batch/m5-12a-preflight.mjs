@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { chmod, cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
+import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -86,7 +87,7 @@ export async function runM512APreflight({
   if (humanReviewClaimed !== false) {
     fail('M5-12A preflight cannot claim human review for agent-authored decisions', 'M5_12A_PREFLIGHT_PROVENANCE_FAILED');
   }
-  const temporaryDirectory = await mkdtemp(path.join('/private/tmp', 'typewriter-m5-12a-preflight-'));
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-preflight-'));
   const outputDirectory = path.join(temporaryDirectory, 'dist');
   const secondDatabasePath = path.join(temporaryDirectory, 'dictionary-second.sqlite');
   const zipPath = path.join(temporaryDirectory, `${path.basename(temporaryDirectory)}_1.0.zip`);
