@@ -1,0 +1,115 @@
+{
+  "schema_version": "1",
+  "stage_id": "m5-12-plus-722",
+  "issue": 98,
+  "parent_issue": 7,
+  "status": "pre-admission",
+  "predecessor_expansion": {
+    "issue": 97,
+    "artifact": "data/batches/m5-11-promotion.json",
+    "artifact_sha256": "15fedcabc50a631fee3680a33f268c694e3985d319282eb837d8e73e4794ce0a",
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED",
+    "actual": {
+      "record_count": 1320,
+      "start_count": 1278,
+      "reference_only_count": 42,
+      "sense_count": 1579,
+      "relation_count": 487,
+      "expression_count": 73
+    }
+  },
+  "previous_stage": {
+    "issue": 121,
+    "status": "complete",
+    "checkpoint_commit": "7e5893475929bc03f5397c011dce6796b9fed8d7",
+    "checkpoint_tree": "6303451f5ca720c722858bbe8722cac1964c4fc1",
+    "checkpoint_pr_head": "0a58f217049089a1857ab30aedc755750449f389",
+    "canonical_records": 1320,
+    "canonical_starts": 1278
+  },
+  "input": {
+    "inventory_revision": "m5-11",
+    "base_inventory_path": "data/batches/m5-12-base-inventory.json",
+    "base_inventory_sha256": "f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67",
+    "canonical_directory": "data/batches/m5-12-base-canonical",
+    "canonical_directory_sha256": "122af925cac03ac2782346a534a44602d713986c34924d8a439786a4591cb3e3",
+    "canonical_snapshot": {
+      "record_count": 1320,
+      "start_count": 1278,
+      "reference_only_count": 42,
+      "sense_count": 1579,
+      "relation_count": 487,
+      "expression_count": 73
+    }
+  },
+  "target": {
+    "net_start_increase": 722,
+    "cumulative_start_target": 2000,
+    "candidate_buffer": 80,
+    "selection_slot_count": 802,
+    "candidate_identity_count": 0
+  },
+  "decisions": {
+    "included_start_count": 0,
+    "corrected_start_count": 0,
+    "held_start_count": 0,
+    "rejected_start_count": 0,
+    "deferred_start_count": 0,
+    "processed_start_count": 0,
+    "unreviewed_start_count": 0,
+    "unresolved_slot_count": 802
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 1320,
+      "start_count": 1278,
+      "reference_only_count": 42,
+      "sense_count": 1579,
+      "relation_count": 487,
+      "expression_count": 73
+    },
+    "imported_start_count": 0
+  },
+  "gate": {
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "failures": [
+      "editorial_decision_artifact",
+      "human_editorial_review",
+      "timing_complete",
+      "audit",
+      "canonical_promotion"
+    ]
+  },
+  "promotion": {
+    "canonical_mutation": false,
+    "seed_mutation": false,
+    "inventory_mutation": false,
+    "next_stage_created": false,
+    "next_stage_authorized": false
+  },
+  "source": {
+    "review": "data/batches/m5-12-review.json",
+    "review_sha256": "b2e9697be48b0d3fe7c4dd8b1041a30f8d5cca19e321f55cfc279a677efb2afc",
+    "catalog": "scripts/batch/m5-12-catalog.mjs",
+    "catalog_count": 802,
+    "catalog_sha256": "7447e447b93c06b87060514012472436443458016b7d0bccca110d5c9c40ab15",
+    "predecessor_promotion": "data/batches/m5-11-promotion.json",
+    "predecessor_promotion_sha256": "15fedcabc50a631fee3680a33f268c694e3985d319282eb837d8e73e4794ce0a",
+    "canonical_directory": "data/batches/m5-12-base-canonical",
+    "canonical_directory_sha256": "122af925cac03ac2782346a534a44602d713986c34924d8a439786a4591cb3e3",
+    "seed": "data/inventory/m5-target-seed.json",
+    "seed_sha256": "1b93e772f400ad81e6b7f0a91efdad8972516395d0445554689224c0cb65b3db",
+    "previous_stage_commit": "7e5893475929bc03f5397c011dce6796b9fed8d7"
+  },
+  "pipeline": {
+    "candidate_intake": "shared lexical producer",
+    "semantic_review": "shared semantic audit",
+    "selection": "shared lexical admission",
+    "prospective_canonical": "blocked until human-reviewed admission",
+    "audit": "independent final audit required",
+    "batch_local_quality_fork": false
+  },
+  "note": "This is the digest-bound pre-admission boundary. The catalog declares capacity slots rather than selected candidates; candidate identities remain unresolved. Candidate bodies remain outside the repository; canonical, seed, and generated inventory are unchanged."
+}
