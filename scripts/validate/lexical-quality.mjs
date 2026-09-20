@@ -171,8 +171,8 @@ const PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN = /^[\p{L}\p{M}\p{N}]{2,}�
 // `은/는` are also productive adnominal endings (`먹는 방식으로`).  Without
 // a morphological analyzer, a following noun-like complement is the only
 // conservative context in which the surface can remain ambiguous.  Ordinary
-// predicate contexts and explicit noun evidence must still run the particle
-// compatibility check.
+// predicate contexts and bound authored noun-topic evidence still run the
+// particle compatibility check.
 const AMBIGUOUS_ADNOMINAL_PARTICLES = new Set(['은', '는']);
 const PARTICLE_SURFACE_PATTERN = /^(?<stem>[\p{L}\p{M}\p{N}]{1,}?)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)$/u;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
@@ -315,7 +315,7 @@ function hasAuthoredNounTopicEvidence(
 
 function isProductiveAdnominalAmbiguity(
   gloss,
-  { stem, particle, nextToken, nominalTerms, topicEvidence, senseId } = {},
+  { stem, particle, nextToken, topicEvidence, senseId } = {},
 ) {
   if (!AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)
     || !PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(nextToken)) {
@@ -330,11 +330,11 @@ function isProductiveAdnominalAmbiguity(
   })) {
     return false;
   }
-  const positions = nominalTermPositions(nominalTerms, stem);
-  const nounOnly = positions?.has('noun') === true
-    && positions.has('verb') !== true
-    && positions.has('adjective') !== true;
-  return !nounOnly;
+  // The canonical lexicon is intentionally incomplete: a missing verb or
+  // adjective entry is not evidence that the surface cannot be adnominal.
+  // Without positive authored noun-topic evidence, leave this homograph
+  // ambiguous rather than guessing from the current term inventory.
+  return true;
 }
 
 /**
@@ -346,7 +346,7 @@ function isProductiveAdnominalAmbiguity(
  */
 export function inspectMalformedParticles(
   gloss,
-  { nominalTerms, topicEvidence, senseId } = {},
+  { topicEvidence, senseId } = {},
 ) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
   const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
@@ -362,7 +362,6 @@ export function inspectMalformedParticles(
       stem,
       particle,
       nextToken,
-      nominalTerms,
       topicEvidence,
       senseId,
     })) continue;
@@ -921,7 +920,6 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
     malformed_fragment: topicAnalysis.malformed,
     malformed_structure: topicAnalysis.malformed,
     malformed_particles: inspectMalformedParticles(trimmed, {
-      nominalTerms,
       topicEvidence,
       senseId,
     }),

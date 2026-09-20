@@ -216,13 +216,11 @@ test('the shared particle rule still rejects nominal 은/는 outside adnominal a
     );
   }
 
-  const nounTerms = new Map([
-    ['운동화', new Set(['noun'])],
-  ]);
   assert.deepEqual(
-    inspectMalformedParticles('운동화은 배경으로 장면을 그린다.', { nominalTerms: nounTerms })
-      .map(({ token, expected_particle }) => [token, expected_particle]),
-    [['운동화은', '는']],
+    inspectMalformedParticles('먹는 방식으로 묘사한다.', {
+      nominalTerms: new Map([['먹', new Set(['noun'])]]),
+    }),
+    [],
   );
 });
 
@@ -306,6 +304,57 @@ test('the complete canonical audit preserves adnominal homographs with inflectio
   assert.deepEqual(
     [...buildNominalTermPositions(recordInfos).get('먹')].sort(),
     ['noun', 'verb'],
+  );
+});
+
+test('the complete canonical audit stays open-world when a competing stem is not admitted', () => {
+  const recordInfos = [
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w988',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w988',
+        lemma: '먹',
+        search_forms: ['먹'],
+        senses: [{ id: 'w988-s1', pos: 'noun', gloss: '먹은 흔적을 남긴다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w989',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w989',
+        lemma: 'open-world-particle',
+        search_forms: ['open-world-particle'],
+        senses: [{ id: 'w989-s1', pos: 'noun', gloss: '먹는 방식으로 묘사한다.' }],
+      },
+    },
+  ];
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings.filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE'),
+    [],
+  );
+});
+
+test('bound noun-topic evidence resolves an ambiguous 은/는 before a noun-like complement', () => {
+  const gloss = '운동화은 배경으로';
+  const quality = inspectGlossQuality(gloss, {
+    topicEvidence: topicEvidenceForGloss(gloss, {
+      state: 'noun-topic',
+      topic: '운동화',
+      particle: '은',
+      predicate: '배경으로',
+    }),
+    senseId: TOPIC_EVIDENCE_SENSE_ID,
+  });
+  assert.deepEqual(
+    quality.malformed_particles.map(({ token, expected_particle }) => [token, expected_particle]),
+    [['운동화은', '는']],
   );
 });
 
