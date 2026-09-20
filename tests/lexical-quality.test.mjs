@@ -416,7 +416,7 @@ test('the complete canonical audit stays open-world when a competing stem is not
 });
 
 test('bound noun-topic evidence resolves an ambiguous 은/는 before a noun-like complement', () => {
-  const gloss = '운동화은 배경으로';
+  const gloss = '문장에서는 운동화은 배경으로 장면을 그린다.';
   const quality = inspectGlossQuality(gloss, {
     topicEvidence: topicEvidenceForGloss(gloss, {
       state: 'noun-topic',

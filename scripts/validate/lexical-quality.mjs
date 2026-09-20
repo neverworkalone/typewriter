@@ -445,7 +445,7 @@ export function validateAuthoredTopicAnalysis(
   }
   requireString(analysis.rationale, `${label}.rationale`);
   const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
-    ?? (analysis.particle === '이' ? findAuthoredParticleFragment(gloss, analysis) : undefined);
+    ?? findAuthoredParticleFragment(gloss, analysis);
   if (!fragment) {
     if (analysis.state === 'noun-topic') {
       fail(`${label}.state noun-topic requires a two-token topic fragment`, 'LEXICAL_SEMANTIC_BINDING');
