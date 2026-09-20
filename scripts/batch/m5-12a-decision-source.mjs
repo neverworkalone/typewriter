@@ -174,6 +174,9 @@ function validateDecisionRow(row, {
   if (row.source_sha256 !== sourceSha256) fail(`${label}.source_sha256 is not bound to the decision artifact`, 'M5_12A_DECISION_SOURCE_BINDING');
   if (row.review_pass_id !== M5_12A_VERIFICATION_PASS_ID) fail(`${label}.review_pass_id is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_PROVENANCE');
   if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'M5_12A_DECISION_SOURCE_VALUE');
+  if (IMPORTABLE.has(row.decision) && row.gloss_judgment !== 'fit') {
+    fail(`${label} importable decision requires a fit gloss judgment`, 'M5_12A_DECISION_SOURCE_COHERENCE');
+  }
   const reviewBasis = requireObject(row.review_basis, `${label}.review_basis`);
   if (reviewBasis.lexical_unit !== candidate.lemma
     || reviewBasis.gloss_sha256 !== sha256Json(candidate.senses[0].gloss)
@@ -308,6 +311,16 @@ export function validateM512ADecisionSource({
       processed,
       expected_deferred: expectedDeferred,
     })}`, 'M5_12A_DECISION_SOURCE_SCOPE');
+  }
+  for (const row of rows) {
+    const decisionIsImportable = IMPORTABLE.has(row.decision);
+    const rankIsWithinImportBoundary = row.rank <= imported;
+    if (decisionIsImportable !== rankIsWithinImportBoundary) {
+      fail(
+        `decision ${row.candidate_record_id} decision/rank selection evidence contradicts the authored import boundary`,
+        'M5_12A_DECISION_SOURCE_COHERENCE',
+      );
+    }
   }
   return {
     source,

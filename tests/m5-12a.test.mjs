@@ -102,16 +102,31 @@ test('M5-12A decision scaffolding cannot manufacture or overwrite semantic autho
 test('M5-12A decision contract accepts a different legal outcome distribution', async () => {
   const result = await buildM512A();
   const source = structuredClone(result.semanticDecisionSource.source);
-  let movedToHeld = 0;
-  let movedToIncluded = 0;
-  for (const row of source.decisions) {
-    if (row.decision === 'included' && movedToHeld < 10) {
-      row.decision = 'held';
-      movedToHeld += 1;
-    } else if (row.decision === 'deferred' && movedToIncluded < 10) {
-      row.decision = 'included';
-      movedToIncluded += 1;
-    }
+  const movedToHeld = source.decisions.filter(({ decision }) => decision === 'included').slice(0, 10);
+  const movedToIncluded = source.decisions.filter(({ decision }) => decision === 'deferred').slice(0, 10);
+  for (const [index, heldRow] of movedToHeld.entries()) {
+    const includedRow = movedToIncluded[index];
+    const heldRank = heldRow.rank;
+    const heldScore = heldRow.score;
+    const includedRank = includedRow.rank;
+    const includedScore = includedRow.score;
+
+    heldRow.decision = 'held';
+    heldRow.rank = includedRank;
+    heldRow.score = includedScore;
+    heldRow.decision_rationale = heldRow.decision_rationale.replace('Decision included', 'Decision held');
+    heldRow.selection_rationale = heldRow.selection_rationale.replace(`rank ${heldRank}`, `rank ${includedRank}`);
+
+    includedRow.decision = 'included';
+    includedRow.rank = heldRank;
+    includedRow.score = heldScore;
+    includedRow.gloss_judgment = 'fit';
+    includedRow.decision_rationale = includedRow.decision_rationale
+      .replace('the lexical unit is plausible, but the generated gloss needs a more specific usage context before admission', 'the lexical unit and gloss form a usable writer-facing lookup for this axis')
+      .replace('Decision deferred', 'Decision included');
+    includedRow.semantic_rationale = includedRow.semantic_rationale
+      .replace('the lexical unit is plausible, but the generated gloss needs a more specific usage context before admission', 'the lexical unit and gloss form a usable writer-facing lookup for this axis');
+    includedRow.selection_rationale = includedRow.selection_rationale.replace(`rank ${includedRank}`, `rank ${heldRank}`);
   }
   const alternate = serializeM512ADecisionSource(source);
   const validated = validateM512ADecisionSource({
@@ -126,6 +141,34 @@ test('M5-12A decision contract accepts a different legal outcome distribution', 
   assert.equal(validated.counts.held, 40);
   assert.equal(validated.counts.rejected, 20);
   assert.equal(validated.counts.deferred, 20);
+
+  const invalidJudgment = structuredClone(result.semanticDecisionSource.source);
+  invalidJudgment.decisions.find(({ decision }) => decision === 'included').gloss_judgment = 'needs-context';
+  const invalidJudgmentSerialized = serializeM512ADecisionSource(invalidJudgment);
+  assert.throws(
+    () => validateM512ADecisionSource({
+      source: invalidJudgmentSerialized.source,
+      sourceBytes: invalidJudgmentSerialized.bytes,
+      identities: result.identities,
+      candidateRecords: result.artifacts.candidateRecords,
+    }),
+    (error) => error.code === 'M5_12A_DECISION_SOURCE_COHERENCE',
+  );
+
+  const invalidRank = structuredClone(result.semanticDecisionSource.source);
+  const invalidSelected = invalidRank.decisions.find(({ decision }) => decision === 'included');
+  const invalidDeferred = invalidRank.decisions.find(({ decision }) => decision === 'deferred');
+  [invalidSelected.rank, invalidDeferred.rank] = [invalidDeferred.rank, invalidSelected.rank];
+  const invalidRankSerialized = serializeM512ADecisionSource(invalidRank);
+  assert.throws(
+    () => validateM512ADecisionSource({
+      source: invalidRankSerialized.source,
+      sourceBytes: invalidRankSerialized.bytes,
+      identities: result.identities,
+      candidateRecords: result.artifacts.candidateRecords,
+    }),
+    (error) => error.code === 'M5_12A_DECISION_SOURCE_COHERENCE',
+  );
 
   const invalid = structuredClone(result.semanticDecisionSource.source);
   invalid.decisions.find(({ decision }) => decision === 'included').decision = 'held';
