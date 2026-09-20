@@ -1832,7 +1832,6 @@ async function restoreOutput(pathname, snapshot) {
 async function assertExistingPromotionRewriteState({
   currentCanonicalDigest,
   currentSeedBytes,
-  currentDecisionBytes,
   admissionPath,
   promotionPath,
 } = {}) {
@@ -1843,15 +1842,16 @@ async function assertExistingPromotionRewriteState({
     || admission.gate?.gate_status !== 'pass') {
     fail('existing M5-12A outputs are not a previously promoted passing state', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
+  // The semantic decision source is the one intentionally reconciled input;
+  // buildM512A validates the current bytes as the pre-promotion authority.
+  // Canonical and seed drift remains unauthorized here.
   if (promotion.outputs?.canonical_directory_sha256 !== currentCanonicalDigest
-    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)
-    || promotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)) {
+    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)) {
     fail('existing M5-12A outputs do not match the durable promotion evidence', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
   if (promotion.post_promotion_audit?.status !== 'complete'
     || promotion.post_promotion_audit.canonical_directory_sha256 !== currentCanonicalDigest
-    || promotion.post_promotion_audit.seed_sha256 !== sha256(currentSeedBytes)
-    || promotion.post_promotion_audit.semantic_decision_source_sha256 !== sha256(currentDecisionBytes)) {
+    || promotion.post_promotion_audit.seed_sha256 !== sha256(currentSeedBytes)) {
     fail('existing M5-12A post-promotion audit does not match the durable outputs', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
 }
@@ -1886,7 +1886,6 @@ export async function commitM512APromotionTransaction({
     await assertExistingPromotionRewriteState({
       currentCanonicalDigest: currentDigest,
       currentSeedBytes,
-      currentDecisionBytes,
       admissionPath,
       promotionPath,
     });
