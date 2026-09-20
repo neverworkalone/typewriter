@@ -7,7 +7,10 @@ import {
   validateLexicalProductionPreAuditState,
   validateLexicalProductionState,
 } from './lexical-production-state.mjs';
-import { validateLexicalSemanticReview } from '../validate/lexical-quality.mjs';
+import {
+  validateBulkGlossProjection,
+  validateLexicalSemanticReview,
+} from '../validate/lexical-quality.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_DECISIONS = Object.freeze([
@@ -354,6 +357,11 @@ export function validateLexicalProduction({
       fail(`production.candidate_records contains duplicate candidate ${candidate.id}`, 'LEXICAL_PRODUCTION_SCOPE');
     }
     candidateRecordsById.set(candidate.id, candidate);
+  }
+  try {
+    validateBulkGlossProjection(candidates, { maxOccurrences: 3 });
+  } catch (error) {
+    fail(`production candidate semantic content failed shared diversity validation: ${error.message}`, error.code);
   }
   const selectedRecords = [];
   const ranks = [];

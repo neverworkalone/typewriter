@@ -18,6 +18,7 @@ import {
   buildM512A,
   buildM512AReviewRows,
   commitM512APromotionTransaction,
+  validateM512AAuthoredCanonicalAuthority,
   validateCandidateIdentityBinding,
   validateM512AFinal,
 } from '../scripts/batch/m5-12a-pipeline.mjs';
@@ -32,7 +33,6 @@ import {
   validateM512ADecisionSource,
 } from '../scripts/batch/m5-12a-decision-source.mjs';
 import { hashCanonicalDirectory } from '../scripts/batch/validate-m5-8-process.mjs';
-import { makeM512ACandidateRecord } from '../scripts/batch/m5-12a-pipeline.mjs';
 import {
   buildM512ASemanticDecisionScaffold,
 } from '../scripts/batch/build-m5-12a-decision-scaffold.mjs';
@@ -136,8 +136,8 @@ test('M5-12A decision contract accepts a different legal outcome distribution', 
     candidateRecords: result.artifacts.candidateRecords,
   });
 
-  assert.equal(validated.counts.included, 700);
-  assert.equal(validated.counts.corrected, 22);
+  assert.equal(validated.counts.included, 722);
+  assert.equal(validated.counts.corrected, 0);
   assert.equal(validated.counts.held, 40);
   assert.equal(validated.counts.rejected, 20);
   assert.equal(validated.counts.deferred, 20);
@@ -225,9 +225,10 @@ test('M5-12A keeps authored decisions bound to candidate identity under permutat
     score: row.semantic_review.selection.score,
   }]));
   const permutedIdentities = [...M5_12A_CANDIDATE_IDENTITIES].reverse();
+  const candidateById = new Map(result.artifacts.candidateRecords.map((candidate) => [candidate.id, candidate]));
   const permutedRows = buildM512AReviewRows({
     identities: permutedIdentities,
-    candidateRecords: permutedIdentities.map(makeM512ACandidateRecord),
+    candidateRecords: permutedIdentities.map(({ candidate_record_id: candidateId }) => candidateById.get(candidateId)),
     semanticDecisionSource: result.semanticDecisionSource,
   });
 
@@ -270,11 +271,13 @@ test('M5-12A shared production rejects copied semantic evidence before admission
   );
 });
 
-test('M5-12A shared production rejects an altered authored correction output', async () => {
+test('M5-12A shared production rejects a batch-local whitespace alias', async () => {
   const result = await buildM512A();
   const reviews = structuredClone(result.reviewRows);
-  const corrected = reviews.find(({ decision }) => decision === 'corrected');
-  corrected.reviewed_record.search_forms.push('unauthorized-correction');
+  const included = reviews.find(({ decision, candidate_lemma: lemma }) => (
+    decision === 'included' && lemma.includes(' ')
+  ));
+  included.reviewed_record.search_forms.push(included.candidate_lemma.replaceAll(' ', ''));
 
   await assert.rejects(
     () => import('../scripts/batch/lexical-production.mjs').then(({ validateLexicalProduction }) => (
@@ -294,6 +297,56 @@ test('M5-12A shared production rejects an altered authored correction output', a
       })
     )),
     (error) => error.code === 'LEXICAL_SEMANTIC_BINDING',
+  );
+});
+
+test('M5-12A canonical semantic authority retains immutable authored batch bindings', async () => {
+  const result = await buildM512A();
+  const promoted = result.importedRecords;
+  assert.equal(validateM512AAuthoredCanonicalAuthority({
+    decisionSource: result.decisionSource,
+    m512aDecisionSource: result.semanticDecisionSource,
+    records: promoted,
+  }), true);
+
+  const sourceReview = result.decisionSource.authored_review.records
+    .find(({ record_id: recordId }) => recordId === promoted[0].id);
+  assert.equal(
+    sourceReview.authored_batch_decision.source_id,
+    result.semanticDecisionSource.source.source_id,
+  );
+  assert.equal(
+    sourceReview.authored_batch_decision.source_sha256,
+    result.semanticDecisionSource.sourceSha256,
+  );
+
+  const missingEvidence = structuredClone(result.decisionSource);
+  delete missingEvidence.authored_review.records
+    .find(({ record_id: recordId }) => recordId === promoted[0].id)
+    .authored_batch_decision;
+  assert.throws(
+    () => validateM512AAuthoredCanonicalAuthority({
+      decisionSource: missingEvidence,
+      m512aDecisionSource: result.semanticDecisionSource,
+      records: promoted,
+    }),
+    (error) => error.code === 'M5_12A_CANONICAL_AUTHORITY_BINDING',
+  );
+
+  const changedRows = new Map(result.semanticDecisionSource.rows.map((row) => [row.candidate_record_id, row]));
+  const changedRow = structuredClone(changedRows.get(promoted[0].id));
+  changedRow.semantic_rationale += ' changed after authoring';
+  changedRows.set(changedRow.candidate_record_id, changedRow);
+  assert.throws(
+    () => validateM512AAuthoredCanonicalAuthority({
+      decisionSource: result.decisionSource,
+      m512aDecisionSource: {
+        ...result.semanticDecisionSource,
+        byCandidateId: changedRows,
+      },
+      records: promoted,
+    }),
+    (error) => error.code === 'M5_12A_CANONICAL_AUTHORITY_BINDING',
   );
 });
 

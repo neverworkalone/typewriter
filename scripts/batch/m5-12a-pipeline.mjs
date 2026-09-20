@@ -63,6 +63,7 @@ import {
 } from './m5-12a-candidate-source.mjs';
 import {
   applyM512ADecisionCorrection,
+  candidateRecordsFromM512ADecisionSource,
   M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
   readM512ADecisionSource,
   validateM512ADecisionSource,
@@ -229,63 +230,28 @@ function identityForIndex(index) {
   return identity;
 }
 
-function glossFor(identity) {
-  const glosses = {
-    E: [
-      '마음의 결을 오래 붙잡는 정서적 표현',
-      '내면의 잔향을 문장 안에서 선명하게 살피는 표현',
-      '감정의 방향을 섬세하게 드러내는 writer-facing 표현',
-    ],
-    Q: [
-      '대상의 차이를 섬세하게 가늠하는 질감의 표현',
-      '문장 속 미세한 정도를 구체적으로 조절하는 표현',
-      '대상의 인상을 또렷하게 조율하는 writer-facing 표현',
-    ],
-    S: [
-      '감각에 남은 자극을 장면 속에서 선명하게 되살리는 표현',
-      '몸에 스친 순간의 감촉을 구체적으로 붙잡는 표현',
-      '감각의 잔향을 문장 안에서 오래 남기는 writer-facing 표현',
-    ],
-    C: [
-      '시간과 공간의 분위기를 구체적으로 떠올리는 장면 표현',
-      '한 장면의 가장자리를 선명하게 보여 주는 writer-facing 표현',
-      '장면에 남은 기척을 문장 속에서 오래 살피는 표현',
-    ],
-    A: [
-      '몸의 움직임을 문장 속에서 선명하게 보여 주는 행동 표현',
-      '시선과 동작의 방향을 구체적으로 붙잡는 표현',
-      '행동의 속도와 여운을 writer-facing 문장으로 드러내는 표현',
-    ],
-    O: [
-      '사물의 표면과 무게를 손끝에 그려 주는 물성 표현',
-      '작은 물건의 윤곽을 장면 속에서 선명하게 붙잡는 표현',
-      '사물에 남은 사용의 흔적을 구체적으로 보여 주는 표현',
-    ],
-    X: [
-      '움직임의 방향을 한 동작으로 보여 주는 표현',
-      '몸짓의 순간을 장면 안에서 선명하게 붙잡는 표현',
-      '행동과 감정의 여운을 writer-facing 동작으로 드러내는 표현',
-    ],
-  };
-  const options = glosses[identity.axis];
-  return options[identity.catalog_index % options.length];
-}
-
-export function makeM512ACandidateRecord(identity) {
-  const recordId = identity.candidate_record_id;
-  return {
-    id: recordId,
-    record_type: identity.record_type,
-    role: 'start',
-    candidate_id: recordId,
-    lemma: identity.lemma,
-    search_forms: [identity.lemma],
-    senses: [{
-      id: `${recordId}-s1`,
-      pos: identity.pos,
-      gloss: glossFor(identity),
-    }],
-  };
+export function makeM512ACandidateRecord(identity, authoredRecord) {
+  if (!authoredRecord) {
+    fail(
+      `M5-12A candidate ${identity.candidate_record_id} requires an authored candidate record`,
+      'M5_12A_CANDIDATE_SOURCE_REQUIRED',
+    );
+  }
+  const record = structuredClone(authoredRecord);
+  if (record.id !== identity.candidate_record_id
+    || record.record_type !== identity.record_type
+    || record.role !== 'start'
+    || record.candidate_id !== record.id
+    || record.lemma !== identity.lemma
+    || record.senses?.length !== 1
+    || record.senses[0]?.id !== `${record.id}-s1`
+    || record.senses[0]?.pos !== identity.pos) {
+    fail(
+      `M5-12A authored candidate ${identity.candidate_record_id} is not bound to its identity`,
+      'M5_12A_CANDIDATE_IDENTITY_BINDING',
+    );
+  }
+  return record;
 }
 
 function makeProductionSemanticReview(record, {
@@ -446,16 +412,165 @@ function makeSeedEntry(identity, record, decision) {
   };
 }
 
-function makeSemanticRecordReview(record, decisionSourceId, coverageById) {
+function decisionRowDigest(decisionRow) {
+  const withoutSourceDigest = structuredClone(decisionRow);
+  withoutSourceDigest.source_sha256 = null;
+  return sha256Json(withoutSourceDigest);
+}
+
+/**
+ * The canonical semantic audit is a durable projection of the authored M5
+ * decision source, not a replacement for it.  Every promoted M5 record must
+ * retain an immutable source id, source digest, row digest, and reviewed-record
+ * digest so an identical canonical payload cannot silently acquire new
+ * semantic authority when the batch evidence changes.
+ */
+export function validateM512AAuthoredCanonicalAuthority({
+  decisionSource,
+  m512aDecisionSource,
+  records = [],
+} = {}) {
+  const reviewRecords = decisionSource?.authored_review?.records;
+  if (!Array.isArray(reviewRecords)) {
+    fail(
+      'canonical semantic authority must contain authored review records',
+      'M5_12A_CANONICAL_AUTHORITY_MISSING',
+    );
+  }
+  if (!m512aDecisionSource?.source || !m512aDecisionSource.byCandidateId) {
+    fail(
+      'M5-12A canonical authority validation requires the authored batch decision source',
+      'M5_12A_DECISION_SOURCE_REQUIRED',
+    );
+  }
+  const reviewById = new Map(reviewRecords.map((review) => [review.record_id, review]));
+  const batchSourceId = m512aDecisionSource.source.source_id;
+  const batchSourceSha256 = m512aDecisionSource.sourceSha256;
+  const batchArtifactSha256 = m512aDecisionSource.artifactSha256;
+  for (const record of records) {
+    const row = m512aDecisionSource.byCandidateId.get(record.id);
+    if (!row) {
+      fail(
+        `M5-12A authored decision is missing for canonical record ${record.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_SCOPE',
+      );
+    }
+    const review = reviewById.get(record.id);
+    if (!review) {
+      fail(
+        `canonical semantic authority is missing the M5-12A review for ${record.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_MISSING',
+      );
+    }
+    if (review.record_sha256 !== sha256Json(record)) {
+      fail(
+        `canonical semantic authority record digest drifted for ${record.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_BINDING',
+      );
+    }
+    const binding = review.authored_batch_decision;
+    if (!binding
+      || binding.source_id !== batchSourceId
+      || binding.source_sha256 !== batchSourceSha256
+      || binding.artifact_sha256 !== batchArtifactSha256
+      || binding.decision_row_sha256 !== decisionRowDigest(row)
+      || binding.candidate_record_id !== row.candidate_record_id
+      || binding.candidate_record_sha256 !== row.candidate_record_sha256
+      || binding.decision !== row.decision
+      || binding.selection_rank !== row.rank
+      || binding.selection_score !== row.score) {
+      fail(
+        `canonical semantic authority is not immutably bound to the M5-12A decision for ${record.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_BINDING',
+      );
+    }
+    const expectedReviewedRecordSha256 = row.decision === 'corrected'
+      ? row.correction.output_record_sha256
+      : sha256Json(record);
+    if (binding.reviewed_record_sha256 !== expectedReviewedRecordSha256) {
+      fail(
+        `canonical semantic authority reviewed-record digest drifted for ${record.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_BINDING',
+      );
+    }
+    const relationReview = binding.relation_review;
+    const relationCount = record.senses.reduce(
+      (sum, sense) => sum + (sense.relations?.length ?? 0),
+      0,
+    );
+    if (!relationReview
+      || relationReview.relation_count !== relationCount
+      || JSON.stringify(relationReview.relation_ids ?? [])
+        !== JSON.stringify(row.relation_ids ?? [])) {
+      fail(
+        `canonical semantic authority relation evidence drifted for ${record.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_BINDING',
+      );
+    }
+  }
+  return true;
+}
+
+function makeSemanticRecordReview(
+  record,
+  decisionSourceId,
+  coverageById,
+  {
+    decisionRow,
+    batchDecisionSourceId,
+    batchDecisionSourceSha256,
+    batchDecisionSourceArtifactSha256,
+  } = {},
+) {
   const sense = record.senses[0];
+  if (!decisionRow || decisionRow.candidate_record_id !== record.id) {
+    fail(
+      `M5-12A authored decision does not bind canonical record ${record.id}`,
+      'M5_12A_CANONICAL_AUTHORITY_BINDING',
+    );
+  }
   const coverageRecord = coverageById.get(record.id);
   const coverageSense = coverageRecord.sense_coverage[0];
-  const glossSha256 = sha256Json(sense.gloss);
-  const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
-  const boundaryReviewId = `${M5_12A_VERIFICATION_PASS_ID}:canonical:${record.id}:boundary`;
+  const glossSha256 = decisionRow.sense_gloss_sha256;
+  const relationCount = sense.relations?.length ?? 0;
+  const relationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
+  const canonicalReviewBasisRationale = `${record.id} ${sense.id} reviewed gloss ${glossSha256.slice(0, 12)} from the authored M5-12A decision source; ${decisionRow.semantic_rationale}`;
+  const reviewedRecordSha256 = decisionRow.decision === 'corrected'
+    ? decisionRow.correction.output_record_sha256
+    : sha256Json(record);
+  if (reviewedRecordSha256 !== sha256Json(record)) {
+    fail(
+      `M5-12A authored reviewed record digest does not bind canonical record ${record.id}`,
+      'M5_12A_CANONICAL_AUTHORITY_BINDING',
+    );
+  }
+  const boundaryReviewId = `${decisionRow.review_pass_id}:canonical:${record.id}:boundary`;
+  const authoredBatchDecision = {
+    source_id: batchDecisionSourceId,
+    path: 'data/batches/m5-12a-semantic-decisions.json',
+    source_sha256: batchDecisionSourceSha256,
+    decision_row_sha256: decisionRowDigest(decisionRow),
+    candidate_record_id: decisionRow.candidate_record_id,
+    candidate_record_sha256: decisionRow.candidate_record_sha256,
+    decision: decisionRow.decision,
+    selection_rank: decisionRow.rank,
+    selection_score: decisionRow.score,
+    reviewed_record_sha256: reviewedRecordSha256,
+    gloss_judgment: decisionRow.gloss_judgment,
+    review_pass_id: decisionRow.review_pass_id,
+    semantic_rationale: decisionRow.semantic_rationale,
+      relation_review: {
+        decision: relationDecision,
+        relation_count: relationCount,
+      relation_ids: [...(decisionRow.relation_ids ?? [])],
+      ...(relationCount === 0 ? { no_relation_rationale: decisionRow.no_relation_rationale } : {}),
+      },
+    artifact_sha256: batchDecisionSourceArtifactSha256,
+  };
   return {
     record_id: record.id,
     record_sha256: sha256Json(record),
+    authored_batch_decision: authoredBatchDecision,
     boundary_review: {
       status: 'pass',
       review_id: boundaryReviewId,
@@ -472,12 +587,12 @@ function makeSemanticRecordReview(record, decisionSourceId, coverageById) {
       evidence: [{
         sense_id: sense.id,
         gloss_sha256: glossSha256,
-        evidence_basis: 'gloss and writer-facing usage were reviewed in a separate verification pass',
-        rationale: `${record.id} ${sense.id} was reviewed against gloss ${glossSha256.slice(0, 12)}.`,
+        evidence_basis: decisionRow.semantic_rationale,
+        rationale: decisionRow.boundary_rationale,
         decision_source_id: decisionSourceId,
       }],
       pairwise: [],
-      rationale: `${record.id} boundary was decided from authored gloss and writer-facing usage, independently of current sense count.`,
+      rationale: decisionRow.boundary_rationale,
     },
     sense_reviews: [{
       sense_id: sense.id,
@@ -489,13 +604,13 @@ function makeSemanticRecordReview(record, decisionSourceId, coverageById) {
         boundary_decision: 'atomic',
         boundary_review_id: boundaryReviewId,
         reviewed_sense_ids: [sense.id],
-        rationale: `${record.id} ${sense.id} was reviewed against the independent boundary evidence.`,
+        rationale: decisionRow.boundary_rationale,
         decision_source_id: decisionSourceId,
       },
       pos: {
         status: 'pass',
         observed_pos: sense.pos,
-        rationale: `${record.id} ${sense.id} POS was separately verified as ${sense.pos}.`,
+        rationale: `${decisionRow.inventory_id} ${record.id} ${sense.id} POS ${sense.pos} was verified in ${decisionRow.review_pass_id}.`,
         decision: 'verified',
         decision_source_id: decisionSourceId,
       },
@@ -503,18 +618,20 @@ function makeSemanticRecordReview(record, decisionSourceId, coverageById) {
         status: 'pass',
         expected_record_type: record.record_type,
         observed_record_type: record.record_type,
-        rationale: `${record.id} ${sense.id} record type was separately verified.`,
+        rationale: `${decisionRow.inventory_id} ${record.id} ${sense.id} record type ${record.record_type} was verified in ${decisionRow.review_pass_id}.`,
         decision: 'verified',
         decision_source_id: decisionSourceId,
       },
       relation: {
         status: 'pass',
-        decision: 'no-relations',
-        relation_count: 0,
+        decision: relationDecision,
+        relation_count: relationCount,
         relation_sha256: coverageSense.content.relation_sha256,
         relation_fingerprints: coverageSense.content.relation_fingerprints,
-        rationale: `${record.id} ${sense.id} relation screening found no writer-useful relation tuple.`,
-        no_relation_rationale: `${record.id} ${sense.id} has explicit no-relation evidence from the separate verification pass.`,
+        rationale: relationCount === 0
+          ? decisionRow.no_relation_rationale
+          : `${decisionRow.inventory_id} ${record.id} ${sense.id} relation tuples were reviewed in ${decisionRow.review_pass_id}.`,
+        ...(relationCount === 0 ? { no_relation_rationale: decisionRow.no_relation_rationale } : {}),
         decision_source_id: decisionSourceId,
       },
       review_basis: {
@@ -522,11 +639,11 @@ function makeSemanticRecordReview(record, decisionSourceId, coverageById) {
         sense_id: sense.id,
         lemma: record.lemma,
         gloss_sha256: glossSha256,
-        observed_domain_axes: domainEvidence.axes,
+        observed_domain_axes: decisionRow.observed_domain_axes,
         pos: sense.pos,
         record_type: record.record_type,
-        relation_count: 0,
-        rationale: `${record.id} ${sense.id} review basis binds gloss ${glossSha256.slice(0, 12)}, POS, record type, boundary, and no-relation outcome.`,
+        relation_count: relationCount,
+        rationale: canonicalReviewBasisRationale,
         decision_source_id: decisionSourceId,
       },
       coverage_gloss_sha256: glossSha256,
@@ -567,6 +684,7 @@ function buildProspectiveDecisionSource({
   baseRecords,
   prospectiveRecords,
   prospectiveInfos,
+  m512aDecisionSource,
 } = {}) {
   const decisionSourceId = baseDecisionSource.source_id;
   const coverage = buildSemanticCoverageArtifact(prospectiveInfos, {
@@ -577,9 +695,23 @@ function buildProspectiveDecisionSource({
   const baseReviewRecords = baseDecisionSource.authored_review.records.filter(
     ({ record_id: recordId }) => baseIds.has(recordId),
   );
+  if (!m512aDecisionSource) {
+    fail('M5-12A prospective semantic authority requires the authored batch decision source', 'M5_12A_DECISION_SOURCE_REQUIRED');
+  }
   const newReviewRecords = prospectiveRecords
     .filter((record) => !baseIds.has(record.id))
-    .map((record) => makeSemanticRecordReview(record, decisionSourceId, coverageById));
+    .map((record) => {
+      const decisionRow = m512aDecisionSource.byCandidateId.get(record.id);
+      if (!decisionRow) {
+        fail(`M5-12A authored semantic decision is missing for promoted record ${record.id}`, 'M5_12A_DECISION_SOURCE_SCOPE');
+      }
+      return makeSemanticRecordReview(record, decisionSourceId, coverageById, {
+        decisionRow,
+        batchDecisionSourceId: m512aDecisionSource.source.source_id,
+        batchDecisionSourceSha256: m512aDecisionSource.sourceSha256,
+        batchDecisionSourceArtifactSha256: m512aDecisionSource.artifactSha256,
+      });
+    });
   const review = {
     ...structuredClone(baseDecisionSource.authored_review),
     artifact_id: 'canonical-semantic-review-m5-12a',
@@ -612,6 +744,11 @@ function buildProspectiveDecisionSource({
     authored_review_sha256: sha256Json(review),
     authored_review: review,
   };
+  validateM512AAuthoredCanonicalAuthority({
+    decisionSource,
+    m512aDecisionSource,
+    records: prospectiveRecords.filter((record) => !baseIds.has(record.id)),
+  });
   const semanticAudit = buildSemanticAuditFromDecisionSource(
     prospectiveInfos,
     decisionSource,
@@ -796,13 +933,14 @@ export function validateCandidateIdentityBinding({ identities, candidateRecords,
   }
 }
 
-function buildSeed(baseSeed, identities, reviewRows) {
+function buildSeed(baseSeed, identities, reviewRows, candidateRecords) {
   const existing = new Set(baseSeed.targets.map(({ inventory_id: inventoryId }) => inventoryId));
   const additions = reviewRows.map((row, index) => {
     const identity = identities[index];
     if (existing.has(identity.inventory_id)) fail(`seed already contains ${identity.inventory_id}`, 'SEED_COLLISION');
     existing.add(identity.inventory_id);
-    const record = row.reviewed_record ?? row.semantic_review?.candidate_record ?? makeM512ACandidateRecord(identity);
+    const record = row.reviewed_record ?? candidateRecords[index];
+    if (!record) fail(`seed record is missing for ${identity.candidate_record_id}`, 'CANDIDATE_SOURCE_REQUIRED');
     return makeSeedEntry(identity, record, row.decision);
   });
   return {
@@ -1323,7 +1461,13 @@ export async function buildM512A({
   const baseRecords = inputs.baseCanonical.records.map(recordOf);
   const identities = M5_12A_CANDIDATE_IDENTITIES;
   const semanticDecisionSourceFile = await readM512ADecisionSource(semanticDecisionSourcePath);
-  const candidateRecords = identities.map(makeM512ACandidateRecord);
+  const candidateRecords = candidateRecordsFromM512ADecisionSource(
+    semanticDecisionSourceFile.source,
+    identities,
+  ).map((candidate) => makeM512ACandidateRecord(
+    identities.find(({ candidate_record_id: candidateId }) => candidateId === candidate.id),
+    candidate,
+  ));
   const semanticDecisionSource = validateM512ADecisionSource({
     source: semanticDecisionSourceFile.source,
     sourceBytes: semanticDecisionSourceFile.sourceBytes,
@@ -1358,6 +1502,7 @@ export async function buildM512A({
     baseRecords,
     prospectiveRecords,
     prospectiveInfos,
+    m512aDecisionSource: semanticDecisionSource,
   });
   const semanticAuditBytes = serializeSemanticAuditArtifact(semanticAudit);
   const productionStageEvidence = buildProductionStageEvidence({
@@ -1380,7 +1525,7 @@ export async function buildM512A({
     reviewedLabel: 'M5-12A shared production reviewed records',
     prospectiveLabel: 'M5-12A shared production prospective canonical records',
   });
-  const seed = buildSeed(inputs.baseSeed, identities, reviewRows);
+  const seed = buildSeed(inputs.baseSeed, identities, reviewRows, artifacts.candidateRecords);
   const prospective = await buildProspectiveWorkspace({
     baseCanonicalDirectory: BASE_CANONICAL_DIRECTORY,
     baseSeed: seed,
@@ -1395,7 +1540,7 @@ export async function buildM512A({
     batchId: M5_12A_BATCH_ID,
     before: relationSnapshot(baseRecords.map((record, index) => asRecordInfo(record, 'base-canonical', index + 1))),
     after: relationSnapshot(prospective.canonical.records),
-    sourceNote: 'M5-12A agent-generated candidate set admitted no new relation tuples; every no-relation decision is source-bound in the semantic review.',
+    sourceNote: 'M5-12A authored relation review admitted no new relation tuples; every no-relation decision is source-bound to the durable batch decision source.',
   });
   const preflight = await preflightRunner({
     prospectiveCanonicalDirectory: prospective.canonicalDirectory,

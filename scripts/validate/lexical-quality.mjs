@@ -965,6 +965,46 @@ export function findLexicalQualityFindings(record, options = {}) {
 }
 
 /**
+ * A batch must not manufacture a large lexical set by copying one gloss over
+ * unrelated records.  A repeated gloss can be legitimate in a small semantic
+ * cluster, so the shared boundary only rejects bulk reuse; callers that need a
+ * broader equivalence class must author separate evidence instead of silently
+ * bypassing this invariant.
+ */
+export function findBulkGlossProjectionFindings(
+  recordInfos,
+  { maxOccurrences = 3 } = {},
+) {
+  const ownersByGloss = new Map();
+  for (const recordInfo of recordInfos) {
+    const record = recordOf(recordInfo);
+    for (const sense of record?.senses ?? []) {
+      if (typeof sense.gloss !== 'string') continue;
+      const owners = ownersByGloss.get(sense.gloss) ?? [];
+      owners.push({ record_id: record.id, sense_id: sense.id });
+      ownersByGloss.set(sense.gloss, owners);
+    }
+  }
+  return [...ownersByGloss.entries()]
+    .filter(([, owners]) => owners.length > maxOccurrences)
+    .map(([gloss, owners]) => ({
+      code: 'LEXICAL_BULK_GLOSS_PROJECTION',
+      gloss,
+      owners,
+      message: `gloss ${JSON.stringify(gloss)} is reused by ${owners.length} candidate senses; author lemma-specific semantic content before admission`,
+    }));
+}
+
+export function validateBulkGlossProjection(recordInfos, options = {}) {
+  const findings = findBulkGlossProjectionFindings(recordInfos, options);
+  if (findings.length > 0) {
+    const finding = findings[0];
+    fail(finding.message, finding.code, finding);
+  }
+  return findings;
+}
+
+/**
  * Run the complete canonical audit.  The returned report is deterministic and
  * can be embedded in a batch verification artifact.  No batch ID, record ID,
  * or historical allowlist can suppress a finding.

@@ -8,6 +8,7 @@ import {
 import {
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
+  validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
 import {
   M5_12A_BATCH_ID,
@@ -101,6 +102,68 @@ function sourceForArtifactDigest(source) {
     return normalized;
   });
   return withoutDigest;
+}
+
+function validateAuthoredCandidateRecord(candidate, identity, label) {
+  requireObject(candidate, label);
+  validateLexicalRecord(candidate, {
+    label,
+    mode: 'candidate',
+    expectedId: identity.candidate_record_id,
+    expectedLemma: identity.lemma,
+  });
+  if (candidate.record_type !== identity.record_type
+    || candidate.role !== 'start'
+    || candidate.candidate_id !== identity.candidate_record_id
+    || candidate.senses.length !== 1
+    || candidate.senses[0].id !== `${identity.candidate_record_id}-s1`
+    || candidate.senses[0].pos !== identity.pos) {
+    fail(`${label} is not bound to the authored candidate identity`, 'M5_12A_CANDIDATE_SOURCE_BINDING');
+  }
+  return candidate;
+}
+
+/**
+ * Candidate bodies are authored input, not a projection of the identity
+ * catalogue.  Keep this boundary explicit so a future pipeline cannot fall
+ * back to a gloss/template factory when the durable source is incomplete.
+ */
+export function candidateRecordsFromM512ADecisionSource(
+  source,
+  identities = M5_12A_CANDIDATE_IDENTITIES,
+) {
+  requireObject(source, 'M5-12A semantic decision source');
+  const candidates = source.candidate_records;
+  if (!Array.isArray(candidates) || candidates.length !== identities.length) {
+    fail(
+      `M5-12A semantic decision source must contain ${identities.length} authored candidate records`,
+      'M5_12A_CANDIDATE_SOURCE_SCOPE',
+    );
+  }
+  const candidateDigest = requireDigest(
+    source.candidate_records_sha256,
+    'M5-12A semantic decision source.candidate_records_sha256',
+  );
+  if (candidateDigest !== sha256Json(candidates)) {
+    fail('M5-12A authored candidate record digest is not reproducible', 'M5_12A_CANDIDATE_SOURCE_BINDING');
+  }
+  const identityById = new Map(identities.map((identity) => [identity.candidate_record_id, identity]));
+  const byId = new Map();
+  for (const [index, candidate] of candidates.entries()) {
+    const identity = identityById.get(candidate?.id);
+    if (!identity) fail(`authored candidate ${candidate?.id ?? index} is outside the identity source`, 'M5_12A_CANDIDATE_SOURCE_SCOPE');
+    if (byId.has(candidate.id)) fail(`duplicate authored candidate ${candidate.id}`, 'M5_12A_CANDIDATE_SOURCE_SCOPE');
+    byId.set(candidate.id, validateAuthoredCandidateRecord(
+      candidate,
+      identity,
+      `M5-12A authored candidate ${candidate.id}`,
+    ));
+  }
+  return identities.map((identity) => {
+    const candidate = byId.get(identity.candidate_record_id);
+    if (!candidate) fail(`authored candidate ${identity.candidate_record_id} is missing`, 'M5_12A_CANDIDATE_SOURCE_SCOPE');
+    return structuredClone(candidate);
+  });
 }
 
 export function serializeM512ADecisionSource(source) {
@@ -210,13 +273,25 @@ function validateDecisionRow(row, {
     || row.boundary_decision !== expectedBoundaryDecision) {
     fail(`${label} boundary decision is not a source-bound atomic review`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  if (row.relation_decision !== 'no-relations' || row.relation_count !== 0) {
-    fail(`${label} relation decision is not explicit no-relation evidence`, 'M5_12A_DECISION_SOURCE_BINDING');
+  const relationCount = sense.relations?.length ?? 0;
+  if (row.relation_count !== relationCount) {
+    fail(`${label}.relation_count does not bind the authored candidate`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  requireString(row.no_relation_rationale, `${label}.no_relation_rationale`);
-  if (!row.no_relation_rationale.includes(identity.inventory_id)
-    || !row.no_relation_rationale.includes(sense.id)) {
-    fail(`${label}.no_relation_rationale must cite the source-bound sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (!Array.isArray(row.relation_ids) || row.relation_ids.length !== relationCount) {
+    fail(`${label}.relation_ids must bind every authored relation tuple`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  const expectedRelationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
+  if (row.relation_decision !== expectedRelationDecision) {
+    fail(`${label}.relation_decision must be ${expectedRelationDecision}`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  if (relationCount === 0) {
+    requireString(row.no_relation_rationale, `${label}.no_relation_rationale`);
+    if (!row.no_relation_rationale.includes(identity.inventory_id)
+      || !row.no_relation_rationale.includes(sense.id)) {
+      fail(`${label}.no_relation_rationale must cite the source-bound sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+  } else if (row.no_relation_rationale !== undefined) {
+    fail(`${label}.no_relation_rationale cannot accompany authored relations`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
   return row;
 }
@@ -273,6 +348,15 @@ export function validateM512ADecisionSource({
   const artifactSha256 = requireDigest(source.artifact_sha256, 'M5-12A semantic decision source.artifact_sha256');
   if (artifactSha256 !== sha256Json(sourceForArtifactDigest(source))) {
     fail('M5-12A semantic decision source artifact digest is not reproducible', 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  const authoredCandidateRecords = candidateRecordsFromM512ADecisionSource(source, identities);
+  if (!Array.isArray(candidateRecords) || candidateRecords.length !== authoredCandidateRecords.length) {
+    fail('M5-12A validation requires the complete authored candidate record set', 'M5_12A_CANDIDATE_SOURCE_SCOPE');
+  }
+  for (const [index, candidate] of candidateRecords.entries()) {
+    if (JSON.stringify(candidate) !== JSON.stringify(authoredCandidateRecords[index])) {
+      fail(`candidate ${candidate?.id ?? index} does not match the durable authored candidate source`, 'M5_12A_CANDIDATE_SOURCE_BINDING');
+    }
   }
   const rows = source.decisions;
   if (!Array.isArray(rows) || rows.length !== identities.length) {

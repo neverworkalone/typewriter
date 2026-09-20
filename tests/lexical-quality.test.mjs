@@ -11,6 +11,8 @@ import {
   inspectWriterDomainEvidence,
   inspectGlossQuality,
   inspectGlossConnectors,
+  findBulkGlossProjectionFindings,
+  validateBulkGlossProjection,
   validateLexicalSemanticReview,
   validateLexicalRecord,
 } from '../scripts/validate/lexical-quality.mjs';
@@ -73,6 +75,31 @@ test('the shared audit covers the complete current canonical dictionary', async 
   assert.equal(audit.blocking_finding_count, 0);
   assert.equal(audit.record_count, 2042);
   assert.equal(audit.sense_count, 2301);
+});
+
+test('the shared production boundary rejects bulk gloss projection without a batch allowlist', () => {
+  const records = Array.from({ length: 4 }, (_, index) => ({
+    id: `w-bulk-${index}`,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: `w-bulk-${index}`,
+    lemma: `후보${index}`,
+    search_forms: [`후보${index}`],
+    senses: [{
+      id: `w-bulk-${index}-s1`,
+      pos: 'noun',
+      gloss: '같은 뜻풀이를 반복한 후보 의미',
+    }],
+  }));
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_BULK_GLOSS_PROJECTION');
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_BULK_GLOSS_PROJECTION',
+  );
+  assert.doesNotThrow(() => validateBulkGlossProjection(records.slice(0, 3), { maxOccurrences: 3 }));
 });
 
 test('the shared lexical audit rejects malformed topic fragments without a record allowlist', () => {

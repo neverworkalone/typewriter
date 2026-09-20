@@ -1,10 +1,16 @@
+import { readFileSync } from 'node:fs';
+
 import { sha256Json } from '../validate/semantic-audit.mjs';
 import {
   M5_12A_CANDIDATE_IDENTITIES,
   M5_12A_CANDIDATE_SOURCE_ID,
 } from './m5-12a-candidate-source.mjs';
 import { makeM512ACandidateRecord } from './m5-12a-pipeline.mjs';
-import { M5_12A_SEMANTIC_DECISION_SOURCE_ID } from './m5-12a-decision-source.mjs';
+import {
+  candidateRecordsFromM512ADecisionSource,
+  M5_12A_SEMANTIC_DECISION_SOURCE_ID,
+  M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
+} from './m5-12a-decision-source.mjs';
 
 // This command is intentionally scaffold-only. The durable decision source is
 // an authored input and must not be regenerated from candidate data. A
@@ -12,6 +18,10 @@ import { M5_12A_SEMANTIC_DECISION_SOURCE_ID } from './m5-12a-decision-source.mjs
 // decisions, ranks, scores, pass evidence, or admission outcomes.
 export function buildM512ASemanticDecisionScaffold(
   identities = M5_12A_CANDIDATE_IDENTITIES,
+  authoredCandidateRecords = candidateRecordsFromM512ADecisionSource(
+    JSON.parse(readFileSync(M5_12A_SEMANTIC_DECISION_SOURCE_PATH, 'utf8')),
+    identities,
+  ),
 ) {
   return {
     schema_version: '1',
@@ -22,8 +32,8 @@ export function buildM512ASemanticDecisionScaffold(
       identity_sha256: sha256Json(identities),
       identity_count: identities.length,
     },
-    candidates: identities.map((identity) => {
-      const candidate = makeM512ACandidateRecord(identity);
+    candidates: identities.map((identity, index) => {
+      const candidate = makeM512ACandidateRecord(identity, authoredCandidateRecords[index]);
       return {
         candidate_record_id: candidate.id,
         candidate_record_sha256: sha256Json(candidate),
