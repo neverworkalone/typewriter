@@ -401,6 +401,26 @@ test('M5-12A producer admits multi-sense authored evidence and rejects missing p
     semanticDecisionSource: validated,
   });
   const production = await import('../scripts/batch/lexical-production.mjs');
+  const syntheticStage = (sourcePath) => ({
+    status: 'complete',
+    source_path: sourcePath,
+    source_bytes: Buffer.from('{}\n', 'utf8'),
+  });
+  const stageEvidence = {
+    candidate_intake: syntheticStage('synthetic:m5-12a-candidate-intake'),
+    semantic_review: syntheticStage('synthetic:m5-12a-semantic-review'),
+    selection: {
+      ...syntheticStage('synthetic:m5-12a-selection'),
+      policy: 'shared-quality-coverage-selection',
+    },
+    prospective_canonical: syntheticStage('synthetic:m5-12a-prospective-canonical'),
+    audit: syntheticStage('synthetic:m5-12a-audit'),
+    admission: {
+      ...syntheticStage('synthetic:m5-12a-admission'),
+      authorization_ref: 'synthetic:m5-12a-authorization',
+      authorization_bytes: Buffer.from('synthetic authorization\n', 'utf8'),
+    },
+  };
   assert.doesNotThrow(() => production.validateLexicalProduction({
     batchId: 'm5-12a-expansion-20260920',
     candidateRecords,
@@ -408,9 +428,7 @@ test('M5-12A producer admits multi-sense authored evidence and rejects missing p
     baseRecords: result.inputs.baseCanonical.records,
     prospectiveRecords: result.prospective.canonical.records,
     semanticAudit: result.semanticAudit,
-    productionState: result.production.production_state,
-    productionStateSources: result.production.production_state_sources,
-    productionPayloads: result.production.production_payloads,
+    stageEvidence,
     catalogCount: M5_12A_SELECTION_COUNT,
     expectedSelectedCount: M5_12A_IMPORT_COUNT,
     checkPilotCompleteness: true,
