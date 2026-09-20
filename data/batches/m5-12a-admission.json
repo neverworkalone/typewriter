@@ -11,7 +11,7 @@
     "decision": "APPROVE AUTOMATED BOUNDED",
     "human_editorial_review_complete": false,
     "generation_pass_id": "m5-12a-generation-20260920",
-    "verification_pass_id": "m5-12a-verification-20260920"
+    "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r2"
   },
   "target": {
     "net_start_increase": 722,
@@ -39,7 +39,7 @@
     "reference_only_count": 42,
     "sense_count": 2301,
     "relation_count": 487,
-    "expression_count": 75
+    "expression_count": 145
   },
   "decisions": {
     "included": 700,
@@ -129,7 +129,7 @@
     "semantic_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",
-      "canonical_records_sha256": "f8fce7f95615dd00dfbe60915fdc5287d419e9fd7d6f4ab51845dbbfe3b44158",
+      "canonical_records_sha256": "5fb48ed6e9ffb5780bf1cd499b06fe879860f2f9de8af90e10d49cb89ef0c8ec",
       "record_count": 2042,
       "sense_count": 2301,
       "covered_record_count": 2042,
@@ -147,7 +147,7 @@
     "agent_generated_provenance": true,
     "generation_verification_separated": true,
     "generation_pass_id": "m5-12a-generation-20260920",
-    "verification_pass_id": "m5-12a-verification-20260920",
+    "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r2",
     "candidate_source_id": "m5-12a-typewriter-authored-identities-20260920",
     "candidate_identity_count": 802,
     "canonical_integrity": true,
@@ -167,13 +167,13 @@
       "split_record_count": 0,
       "split_sense_count": 0,
       "selected_axis_counts": {
-        "E": 120,
-        "Q": 120,
-        "S": 120,
-        "C": 120,
+        "E": 110,
+        "Q": 100,
+        "S": 115,
+        "C": 105,
         "A": 140,
-        "O": 100,
-        "X": 2
+        "O": 80,
+        "X": 72
       },
       "candidate_axis_counts": {
         "E": 120,
@@ -184,7 +184,7 @@
         "O": 100,
         "X": 82
       },
-      "selected_expression_unit_count": 2,
+      "selected_expression_unit_count": 72,
       "relation_candidate_count": 0,
       "no_relation_rationale_count": 722,
       "selection_rank_valid": true,
@@ -199,39 +199,39 @@
       "record_count": 2042,
       "sense_count": 2301,
       "open_finding_count": 0,
-      "canonical_records_sha256": "f8fce7f95615dd00dfbe60915fdc5287d419e9fd7d6f4ab51845dbbfe3b44158",
-      "review_sha256": "b848fbcfb97eddf481d70557f1340183c62a3fd538126dc427b952153d0e6dc4"
+      "canonical_records_sha256": "5fb48ed6e9ffb5780bf1cd499b06fe879860f2f9de8af90e10d49cb89ef0c8ec",
+      "review_sha256": "f19d3a1ce1118d639988952bfbf03160dca96ae7a34cb823b0f2b3b100c53718"
     }
   },
   "gate": {
     "policy": "agent-generated",
     "preflight": {
       "status": "complete",
-      "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+      "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
       "checks": {
         "candidate_source_digest": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "candidate_source_sha256": "f4f71c90a6abb2f495a25961eb5d225f8d03174f3d1f4632e4a4d5c6037a74da"
         },
         "generation_verification_separated": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "generation_pass_id": "m5-12a-generation-20260920",
-          "verification_pass_id": "m5-12a-verification-20260920"
+          "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r2"
         },
         "truthful_agent_provenance": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "human_review_claimed": false
         },
         "deterministic_sqlite": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
-          "product_dictionary_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
+          "product_dictionary_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-t8v7DW/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-ozjJPy/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2320,
             "senseCount": 2301,
@@ -241,7 +241,7 @@
               "build_tool_version": "1",
               "candidate_count": "2000",
               "dictionary_version": "m2-pilot-1",
-              "expression_count": "75",
+              "expression_count": "145",
               "node_version": "v24.19.0",
               "normalization_version": "1",
               "record_count": "2042",
@@ -250,7 +250,7 @@
               "schema_version": "1",
               "search_form_count": "2320",
               "sense_count": "2301",
-              "source_revision": "1dcf405734cac4ae84b60c6ca651e1c5e34dfb2c",
+              "source_revision": "e89fd8c253da9d21af332b4e596db57934b1e6e3",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -262,7 +262,7 @@
         },
         "search_product_regression": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "ci_category": "product",
           "check_labels": [
             "Test shared search query contract",
@@ -270,22 +270,22 @@
             "Run product unit tests",
             "Build product extension"
           ],
-          "database_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c"
+          "database_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490"
         },
         "extension_build": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "package_file_count": 23
         },
         "package_validation": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "package_file_count": 23,
           "zip_file_count": 23
         },
         "artifact_policy_clean_checkout": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "tracked_artifact_count": 168,
           "generated_projection_count": 0,
           "unclassified_artifact_count": 0,
@@ -353,37 +353,37 @@
       "package_validation": true,
       "artifact_policy_clean_checkout": true
     },
-    "production_state_sha256": "62f80062ea95562a8384d986eaaadeb21c7cfee53467f8ca780d34451d0a942a",
-    "production_payloads_sha256": "ee11c64bb7a7d2019d680e48b08f904277ccfe96507a3375a8826c09f665a23d",
-    "semantic_audit_sha256": "799065288ed66ad2b81e34ba2d19388ee370127743ac90f990241eb433e2cbec",
-    "decision_source_sha256": "c171d3d9f9da52b121efd886d39e8ca3eecfc306d0ece1a33c8dca0233894055",
+    "production_state_sha256": "20646056c9d2d38d4e3460f50405ea09bd8cdb306a82e839ca7493c458cd7da2",
+    "production_payloads_sha256": "0a25876ece956379b56be7b41ac3b0a7e64b95cc2820a98ee2ea1e0a0b6ddd3d",
+    "semantic_audit_sha256": "dc32d95eb4da226f9b42defb43438ff3e4f6b14ca3fae1cab00f04bc80f114e9",
+    "decision_source_sha256": "2661e99426271c4fc498191507204a3e5c71647964831b2d22ba7153f64abec1",
     "preflight": {
       "status": "complete",
-      "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+      "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
       "checks": {
         "candidate_source_digest": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "candidate_source_sha256": "f4f71c90a6abb2f495a25961eb5d225f8d03174f3d1f4632e4a4d5c6037a74da"
         },
         "generation_verification_separated": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "generation_pass_id": "m5-12a-generation-20260920",
-          "verification_pass_id": "m5-12a-verification-20260920"
+          "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r2"
         },
         "truthful_agent_provenance": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "human_review_claimed": false
         },
         "deterministic_sqlite": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
-          "product_dictionary_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
+          "product_dictionary_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-t8v7DW/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-ozjJPy/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2320,
             "senseCount": 2301,
@@ -393,7 +393,7 @@
               "build_tool_version": "1",
               "candidate_count": "2000",
               "dictionary_version": "m2-pilot-1",
-              "expression_count": "75",
+              "expression_count": "145",
               "node_version": "v24.19.0",
               "normalization_version": "1",
               "record_count": "2042",
@@ -402,7 +402,7 @@
               "schema_version": "1",
               "search_form_count": "2320",
               "sense_count": "2301",
-              "source_revision": "1dcf405734cac4ae84b60c6ca651e1c5e34dfb2c",
+              "source_revision": "e89fd8c253da9d21af332b4e596db57934b1e6e3",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -414,7 +414,7 @@
         },
         "search_product_regression": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "ci_category": "product",
           "check_labels": [
             "Test shared search query contract",
@@ -422,22 +422,22 @@
             "Run product unit tests",
             "Build product extension"
           ],
-          "database_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c"
+          "database_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490"
         },
         "extension_build": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "package_file_count": 23
         },
         "package_validation": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "package_file_count": 23,
           "zip_file_count": 23
         },
         "artifact_policy_clean_checkout": {
           "status": "pass",
-          "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
+          "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
           "tracked_artifact_count": 168,
           "generated_projection_count": 0,
           "unclassified_artifact_count": 0,
@@ -448,7 +448,7 @@
     "complete_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",
-      "canonical_records_sha256": "f8fce7f95615dd00dfbe60915fdc5287d419e9fd7d6f4ab51845dbbfe3b44158",
+      "canonical_records_sha256": "5fb48ed6e9ffb5780bf1cd499b06fe879860f2f9de8af90e10d49cb89ef0c8ec",
       "record_count": 2042,
       "sense_count": 2301,
       "covered_record_count": 2042,
@@ -458,7 +458,7 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "43c0bfd4c1d1d1d71c28d24c3d3df7886468cf899ca92d6850e2d62a7a6dbd58",
+  "gate_evidence_sha256": "39324c0501378178b0e66440225c632f6ab9e4c2695d3ffb1183b1b8e17d4c7e",
   "sources": {
     "candidate_identities": {
       "source_id": "m5-12a-typewriter-authored-identities-20260920",
@@ -474,17 +474,17 @@
     "verification": {
       "source_id": "verification",
       "path": "data/batches/m5-12a-semantic-decisions.json",
-      "sha256": "b0384246e4d87e5d469d2bcb597754b8df90a6e55c6f88485f7e425c1b70be31"
+      "sha256": "63897bf9335bb314afe75ee0ef558cf002fdef099020ee1000dc289e2b4ac973"
     },
     "verification_artifact": {
       "source_id": "verification-artifact",
       "path": "external:m5-12a-verification",
-      "sha256": "5d316b857e736ad0d02af3e75765acb7a36c2229d559fc8a9b3c37b169dc2394"
+      "sha256": "2206d1d6aa86fcff8bc78d0ccd1e18dba5079709ad228a036911f8dbc19842c0"
     },
     "semantic_audit": {
       "source_id": "semantic_audit",
       "path": "external:m5-12a-semantic-audit",
-      "sha256": "799065288ed66ad2b81e34ba2d19388ee370127743ac90f990241eb433e2cbec"
+      "sha256": "dc32d95eb4da226f9b42defb43438ff3e4f6b14ca3fae1cab00f04bc80f114e9"
     },
     "relation_diff": {
       "source_id": "relation_diff",
@@ -494,7 +494,7 @@
     "reviewed_import": {
       "source_id": "reviewed_import",
       "path": "external:m5-12a-reviewed-import",
-      "sha256": "2c53220151d6d4b328eeb88d0281483c0bc1e9e1def45ea160410895f9e76d6e"
+      "sha256": "cf0d66f2f4b6645f4cda78ac3682205722ae3ac99863fba375db57f1533a6bb6"
     },
     "base_inventory": {
       "source_id": "base_inventory",
@@ -516,7 +516,7 @@
   },
   "provenance": {
     "generation_pass_id": "m5-12a-generation-20260920",
-    "verification_pass_id": "m5-12a-verification-20260920",
+    "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r2",
     "raw_material_excluded": true,
     "batch_local_quality_fork": false,
     "shared_pipeline": [
