@@ -491,7 +491,7 @@
       {
         "id": "semantic-quality",
         "status": "pass",
-        "result_sha256": "fd3007c32e67c57e150527770421209fd0fc249634833d7ecc8e09165f32ca90"
+        "result_sha256": "04014d0ea674fd3785cfd3f47e74223fe3a3679911d8979334e5f9df83678c0a"
       }
     ],
     "machine_check_evidence": {
@@ -4190,7 +4190,7 @@
           "correction_count": 68,
           "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
           "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
-          "review_sha256": "e91f8c40baef3969786459d16a98a9db1f09a901cacea6af267fb6270649ed24"
+          "review_sha256": "2ff9f1d6cde215851da16028e720600cd9f8118c80cc64685b154105f5262b34"
         },
         "summary": null,
         "coverage": null,
@@ -4628,7 +4628,7 @@
         {
           "id": "semantic-quality",
           "status": "pass",
-          "result_sha256": "fd3007c32e67c57e150527770421209fd0fc249634833d7ecc8e09165f32ca90"
+          "result_sha256": "04014d0ea674fd3785cfd3f47e74223fe3a3679911d8979334e5f9df83678c0a"
         }
       ],
       "machine_check_evidence": {
@@ -8327,7 +8327,7 @@
             "correction_count": 68,
             "boundary_decision_source_version": "lexical-semantic-boundary-decisions-v1",
             "canonical_records_sha256": "334210c4739b3007980da17d1b76ee9baa7e093076afac24ec70701128686e2f",
-            "review_sha256": "e91f8c40baef3969786459d16a98a9db1f09a901cacea6af267fb6270649ed24"
+            "review_sha256": "2ff9f1d6cde215851da16028e720600cd9f8118c80cc64685b154105f5262b34"
           },
           "summary": null,
           "coverage": null,
@@ -8710,7 +8710,7 @@
       "decision": "APPROVE AUTOMATED BOUNDED"
     }
   },
-  "gate_evidence_sha256": "ae2882c2cd9149cba08a0dff3d985d56b6aa15f4adce84915af931fe67b70ae7",
+  "gate_evidence_sha256": "a998ac82ff80e1a2fcdfbef03b8a768367d1da01b196cfee076a07f6629a4847",
   "authorization": "AUTHORIZE M5-11 +500 VALIDATION",
   "decisions": {
     "included": 488,
@@ -8760,7 +8760,7 @@
     "semantic_audit": {
       "source_id": "semantic_audit",
       "path": "external:semantic_audit",
-      "sha256": "ade2a3feccaafb926929521747f83dcb283a758327b08fec5cb8bb959808e1d7"
+      "sha256": "2564a391135f94557f12751b612e68c023ea7afb501c3a7fd239ef548a48302b"
     }
   },
   "outputs": {
@@ -8787,13 +8787,13 @@
     "canonical_directory_sha256": "122af925cac03ac2782346a534a44602d713986c34924d8a439786a4591cb3e3",
     "semantic_audit": {
       "path": "data/validation/canonical-semantic-audit.json",
-      "sha256": "ade2a3feccaafb926929521747f83dcb283a758327b08fec5cb8bb959808e1d7",
+      "sha256": "2564a391135f94557f12751b612e68c023ea7afb501c3a7fd239ef548a48302b",
       "record_count": 1320,
       "sense_count": 1579
     },
     "semantic_decision_source": {
       "path": "data/validation/canonical-semantic-decision-source.json",
-      "sha256": "01e4280c34522e65ac02ccd5594c89b7c62690b3b8d90d06a421e904efa207de",
+      "sha256": "67eb6c967fdd709b39661763785b0372f2a6fa5baf5986d686b79dfaf4c2c042",
       "source_id": "canonical-semantic-decision-source-20260914"
     }
   },

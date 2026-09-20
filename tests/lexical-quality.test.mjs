@@ -672,6 +672,152 @@ test('the common-domain rule accepts coordinated senses without an ID exception'
   assert.equal(result.senseCount, 2);
 });
 
+test('writer-domain evidence respects lexical token boundaries and Korean inflections', () => {
+  for (const gloss of [
+    '향상시키는 성질',
+    '방향을 정하다',
+    '향후 계획',
+    '목표를 향하고 있다',
+    '검색 결과를 찾다',
+    '탐색하다',
+    '어색하고 거리감이 있다',
+    '향하는 방향',
+  ]) {
+    assert.deepEqual(inspectWriterDomainEvidence(gloss).axes, [], gloss);
+  }
+
+  for (const [gloss, axis] of [
+    ['향이 은은하다', 'smell'],
+    ['향을 맡다', 'smell'],
+    ['향으로 퍼지다', 'smell'],
+    ['좋은 향이다', 'smell'],
+    ['향에서는 은은하다', 'smell'],
+    ['향기로운 냄새', 'smell'],
+    ['향긋한 냄새', 'smell'],
+    ['색이 선명하다', 'visual'],
+    ['색으로 물들다', 'visual'],
+    ['색으로는 선명하다', 'visual'],
+    ['선명한 색이다', 'visual'],
+    ['색깔이 선명하다', 'visual'],
+    ['빛나는 모습', 'visual'],
+    ['정서적 연결감', 'affective'],
+    ['소리에도 주의를 기울이다', 'sound'],
+  ]) {
+    assert.deepEqual(inspectWriterDomainEvidence(gloss).axes, [axis], gloss);
+  }
+
+  for (const collisionGloss of [
+    '기분이나 집중력을 향상시키는 성질',
+    '기분이나 목표를 향하고 있는 상태',
+  ]) {
+    const observations = inspectGlossConnectors(collisionGloss);
+    assert.equal(observations.length, 1, collisionGloss);
+    assert.equal(observations[0].classification, 'unclassified-coordination', collisionGloss);
+    assert.equal(observations[0].right_axis, null, collisionGloss);
+  }
+});
+
+test('the token-aware domain rule is reused by a future lexical admission', () => {
+  const candidateRecord = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '토큰경계말',
+    search_forms: ['토큰경계말'],
+    senses: [{
+      id: 'w779-s1',
+      pos: 'adjective',
+      gloss: '기분이나 집중력을 향상시키는 성질',
+    }],
+  };
+  const baseRecord = {
+    id: 'w778',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w778',
+    lemma: '기존경계말',
+    search_forms: ['기존경계말'],
+    senses: [{ id: 'w778-s1', pos: 'noun', gloss: '기존의 의미를 가리키는 말' }],
+  };
+  const baseRecords = [{ record: baseRecord, source: 'base' }];
+  const reviewedRecords = [{ record: candidateRecord, source: 'future-review' }];
+  const prospectiveRecords = [...baseRecords, ...reviewedRecords];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-token-aware-domain',
+    candidateRecords: [candidateRecord],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+
+  assert.doesNotThrow(() => validateLexicalAddition({
+    batchId: 'future-token-aware-domain',
+    candidateRecords: [candidateRecord],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+    productionState: productionState.state,
+    productionStateSources: productionState.sources,
+    productionPayloads: productionState.payloads,
+  }));
+});
+
+test('composed nominal particles still block a merged domain in future admission', () => {
+  const candidateRecord = {
+    id: 'w781',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w781',
+    lemma: '복합조사말',
+    search_forms: ['복합조사말'],
+    senses: [{
+      id: 'w781-s1',
+      pos: 'adjective',
+      gloss: '기분이나 향에서는 느낌이 달라진다',
+    }],
+  };
+  const baseRecord = {
+    id: 'w780',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w780',
+    lemma: '복합조사기존말',
+    search_forms: ['복합조사기존말'],
+    senses: [{ id: 'w780-s1', pos: 'noun', gloss: '기존의 의미를 가리키는 말' }],
+  };
+  const baseRecords = [{ record: baseRecord, source: 'base' }];
+  const reviewedRecords = [{ record: candidateRecord, source: 'future-review' }];
+  const prospectiveRecords = [...baseRecords, ...reviewedRecords];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-composed-particle-domain',
+    candidateRecords: [candidateRecord],
+    reviewedRecords,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+
+  assert.throws(
+    () => validateLexicalAddition({
+      batchId: 'future-composed-particle-domain',
+      candidateRecords: [candidateRecord],
+      reviewedRecords,
+      baseRecords,
+      prospectiveRecords,
+      semanticAudit,
+      productionState: productionState.state,
+      productionStateSources: productionState.sources,
+      productionPayloads: productionState.payloads,
+    }),
+    (error) => error.code === 'LEXICAL_MERGED_SENSE_GLOSS',
+  );
+});
+
 test('the complete-canonical audit rejects a merged sensory and affective sense', async () => {
   await assert.rejects(
     validateDatasetDirectory(path.join(FIXTURE_ROOT, 'invalid/merged-sense.jsonl')),

@@ -607,17 +607,8 @@
             "sense_sha256": "fa451dd284b3446da779376fe1c71e1e3282d5181ea1522fbc00b6c794b6bf30",
             "content": {
               "gloss_sha256": "5aeb5c20b37d8dc3cb492584dc04d469014cb58bf54215419c20e3a68ea6c5b7",
-              "observed_domain_axes": [
-                "visual"
-              ],
-              "domain_evidence": [
-                {
-                  "axis": "visual",
-                  "term": "색",
-                  "index": 12,
-                  "excerpt": "사이가 가깝지 않아 어색하고 거리감이 있다"
-                }
-              ],
+              "observed_domain_axes": [],
+              "domain_evidence": [],
               "connector_observations": [],
               "pos": "adjective",
               "record_type": "entry",
@@ -4244,16 +4235,25 @@
             "sense_sha256": "49a16f0533f18f49046ffe59c054707ee95d5257f142c0f7913436a7a4921508",
             "content": {
               "gloss_sha256": "168e436515acb70a127b85167ab7fca9451b6f9bb5878227faca8e1d526abffc",
-              "observed_domain_axes": [],
-              "domain_evidence": [],
+              "observed_domain_axes": [
+                "smell"
+              ],
+              "domain_evidence": [
+                {
+                  "axis": "smell",
+                  "term": "향",
+                  "index": 15,
+                  "excerpt": "로 맡아 느끼는 기운이나 향의 성질"
+                }
+              ],
               "connector_observations": [
                 {
                   "connector": "이나",
                   "index": 12,
                   "left_axis": null,
                   "left_term": null,
-                  "right_axis": null,
-                  "right_term": null,
+                  "right_axis": "smell",
+                  "right_term": "향",
                   "classification": "unclassified-coordination",
                   "excerpt": "코로 맡아 느끼는 기운이나 향의 성질"
                 }
@@ -4448,7 +4448,7 @@
                 },
                 {
                   "axis": "visual",
-                  "term": "색",
+                  "term": "색조",
                   "index": 17,
                   "excerpt": "나 색이 드러내는 밝기와 색조"
                 }
@@ -4609,7 +4609,7 @@
                 },
                 {
                   "axis": "visual",
-                  "term": "빛",
+                  "term": "빛나",
                   "index": 15,
                   "excerpt": "은 빛이 순간적으로 밝게 빛나는 모습"
                 }
@@ -5597,9 +5597,9 @@
               "domain_evidence": [
                 {
                   "axis": "sound",
-                  "term": "소리",
-                  "index": 22,
-                  "excerpt": "만큼만 아주 낮게 내는 말소리"
+                  "term": "말소리",
+                  "index": 21,
+                  "excerpt": " 만큼만 아주 낮게 내는 말소리"
                 }
               ],
               "connector_observations": [],
@@ -6746,7 +6746,7 @@
                 },
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 14,
                   "excerpt": "감정이나 생각이 일어나는 마음속"
                 }
@@ -6758,7 +6758,7 @@
                   "left_axis": "affective",
                   "left_term": "감정",
                   "right_axis": "affective",
-                  "right_term": "마음",
+                  "right_term": "마음속",
                   "classification": "same-domain-coordination",
                   "excerpt": "감정이나 생각이 일어나는 마음속"
                 }
@@ -6844,21 +6844,20 @@
             "content": {
               "gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
               "observed_domain_axes": [
-                "sound",
-                "visual"
+                "sound"
               ],
               "domain_evidence": [
                 {
                   "axis": "sound",
-                  "term": "소리",
-                  "index": 13,
+                  "term": "말소리",
+                  "index": 12,
                   "excerpt": "사람의 목에서 나오는 말소리와 그 음색"
                 },
                 {
-                  "axis": "visual",
-                  "term": "색",
-                  "index": 20,
-                  "excerpt": "서 나오는 말소리와 그 음색"
+                  "axis": "sound",
+                  "term": "음색",
+                  "index": 19,
+                  "excerpt": "에서 나오는 말소리와 그 음색"
                 }
               ],
               "connector_observations": [],
@@ -7406,8 +7405,8 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 1,
+                  "term": "햇빛",
+                  "index": 0,
                   "excerpt": "햇빛이 비추어 오는 밝은 기운"
                 }
               ],
@@ -9265,17 +9264,8 @@
             "sense_sha256": "d7faeef26ea27980e75397b6770199c77131268434ec0185187372c8560e3492",
             "content": {
               "gloss_sha256": "96954c8119532b3b633993a4fbc9f9584cc8b517cd4c9862fb66154ec3345a3e",
-              "observed_domain_axes": [
-                "visual"
-              ],
-              "domain_evidence": [
-                {
-                  "axis": "visual",
-                  "term": "색",
-                  "index": 17,
-                  "excerpt": " 정보나 답을 얻으려고 탐색하다"
-                }
-              ],
+              "observed_domain_axes": [],
+              "domain_evidence": [],
               "connector_observations": [],
               "pos": "verb",
               "record_type": "entry",
@@ -9637,8 +9627,8 @@
               "domain_evidence": [
                 {
                   "axis": "sound",
-                  "term": "소리",
-                  "index": 10,
+                  "term": "말소리",
+                  "index": 9,
                   "excerpt": "생각이나 느낌을 말소리로 표현하다"
                 }
               ],
@@ -9649,7 +9639,7 @@
                   "left_axis": null,
                   "left_term": null,
                   "right_axis": "sound",
-                  "right_term": "소리",
+                  "right_term": "말소리",
                   "classification": "unclassified-coordination",
                   "excerpt": "생각이나 느낌을 말소리로 표현하다"
                 }
@@ -10346,7 +10336,7 @@
                 },
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 9,
                   "excerpt": "감정이나 생각을 마음속에 품다"
                 }
@@ -10358,7 +10348,7 @@
                   "left_axis": "affective",
                   "left_term": "감정",
                   "right_axis": "affective",
-                  "right_term": "마음",
+                  "right_term": "마음속",
                   "classification": "same-domain-coordination",
                   "excerpt": "감정이나 생각을 마음속에 품다"
                 }
@@ -10502,7 +10492,7 @@
               "domain_evidence": [
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 13,
                   "excerpt": "어떤 일이 이루어지기를 마음속으로 원하다"
                 }
@@ -11332,7 +11322,7 @@
               "domain_evidence": [
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 11,
                   "excerpt": "지난 일이나 사람을 마음속에 간직하고 떠올리다"
                 }
@@ -11344,7 +11334,7 @@
                   "left_axis": null,
                   "left_term": null,
                   "right_axis": "affective",
-                  "right_term": "마음",
+                  "right_term": "마음속",
                   "classification": "unclassified-coordination",
                   "excerpt": "지난 일이나 사람을 마음속에 간직하고 떠올리다"
                 }
@@ -11959,7 +11949,7 @@
               "domain_evidence": [
                 {
                   "axis": "body",
-                  "term": "몸",
+                  "term": "몸통",
                   "index": 3,
                   "excerpt": "팔과 몸통이 이어지는 몸의 윗부분"
                 },
@@ -12028,9 +12018,9 @@
               "domain_evidence": [
                 {
                   "axis": "body",
-                  "term": "몸",
+                  "term": "몸통",
                   "index": 0,
-                  "excerpt": "몸통의 뒤쪽에서 허리와 목 사이에 있는"
+                  "excerpt": "몸통의 뒤쪽에서 허리와 목 사이에 있는 "
                 }
               ],
               "connector_observations": [],
@@ -12090,9 +12080,9 @@
               "domain_evidence": [
                 {
                   "axis": "body",
-                  "term": "몸",
+                  "term": "몸통",
                   "index": 4,
-                  "excerpt": "머리와 몸통을 잇고 숨과 소리가 지나는 몸의 "
+                  "excerpt": "머리와 몸통을 잇고 숨과 소리가 지나는 몸의 부"
                 },
                 {
                   "axis": "sound",
@@ -12253,8 +12243,8 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 4,
+                  "term": "햇빛",
+                  "index": 3,
                   "excerpt": "비나 햇빛을 막기 위해 펼쳐 드는 도구"
                 }
               ],
@@ -12688,7 +12678,7 @@
               "domain_evidence": [
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 9,
                   "excerpt": "어떤 일에 대해 마음속으로 내린 의견이나 판단"
                 }
@@ -12698,7 +12688,7 @@
                   "connector": "이나",
                   "index": 20,
                   "left_axis": "affective",
-                  "left_term": "마음",
+                  "left_term": "마음속",
                   "right_axis": null,
                   "right_term": null,
                   "classification": "unclassified-coordination",
@@ -13218,25 +13208,16 @@
             "sense_sha256": "44d928fe502edf22da9697cb2f194378b481692359b2cfb87f41f4174a873a42",
             "content": {
               "gloss_sha256": "8fb0569d991329ea19f39068a81ea9c584d5b233bd0c10609bc4656fc82ebe95",
-              "observed_domain_axes": [
-                "visual"
-              ],
-              "domain_evidence": [
-                {
-                  "axis": "visual",
-                  "term": "색",
-                  "index": 20,
-                  "excerpt": "계 사이에 생긴 거리나 어색한 간격"
-                }
-              ],
+              "observed_domain_axes": [],
+              "domain_evidence": [],
               "connector_observations": [
                 {
                   "connector": "이나",
                   "index": 2,
                   "left_axis": null,
                   "left_term": null,
-                  "right_axis": "visual",
-                  "right_term": "색",
+                  "right_axis": null,
+                  "right_term": null,
                   "classification": "unclassified-coordination",
                   "excerpt": "사람이나 관계 사이에 생긴 거리나 어색한 간격"
                 }
@@ -15165,8 +15146,8 @@
               "domain_evidence": [
                 {
                   "axis": "taste",
-                  "term": "맛",
-                  "index": 1,
+                  "term": "쓴맛",
+                  "index": 0,
                   "excerpt": "쓴맛이 조금 남으면서도 부드럽고 은근하다"
                 }
               ],
@@ -15327,9 +15308,9 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 18,
-                  "excerpt": "벽 밖으로 내밀어 비와 햇빛을 가리는 부분"
+                  "term": "햇빛",
+                  "index": 17,
+                  "excerpt": " 벽 밖으로 내밀어 비와 햇빛을 가리는 부분"
                 }
               ],
               "connector_observations": [],
@@ -15635,7 +15616,7 @@
                 },
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 9,
                   "excerpt": "감정이나 생각이 마음속에 서서히 퍼지다"
                 }
@@ -15647,7 +15628,7 @@
                   "left_axis": "affective",
                   "left_term": "감정",
                   "right_axis": "affective",
-                  "right_term": "마음",
+                  "right_term": "마음속",
                   "classification": "same-domain-coordination",
                   "excerpt": "감정이나 생각이 마음속에 서서히 퍼지다"
                 }
@@ -16377,7 +16358,7 @@
               "domain_evidence": [
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 18,
                   "excerpt": "말을 입 밖에 내지 않고 마음속에 거두다"
                 }
@@ -17030,8 +17011,8 @@
               "domain_evidence": [
                 {
                   "axis": "taste",
-                  "term": "맛",
-                  "index": 9,
+                  "term": "신맛",
+                  "index": 8,
                   "excerpt": "가볍고 선명한 신맛이 느껴진다"
                 }
               ],
@@ -17111,7 +17092,7 @@
                 },
                 {
                   "axis": "visual",
-                  "term": "빛",
+                  "term": "빛나",
                   "index": 19,
                   "excerpt": "면이 빛을 받아 번들번들 빛나다"
                 }
@@ -19098,9 +19079,9 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 19,
-                  "excerpt": " 안에서 흔들리며 타는 불빛"
+                  "term": "불빛",
+                  "index": 18,
+                  "excerpt": "잔 안에서 흔들리며 타는 불빛"
                 }
               ],
               "connector_observations": [],
@@ -20573,8 +20554,8 @@
               "domain_evidence": [
                 {
                   "axis": "taste",
-                  "term": "맛",
-                  "index": 5,
+                  "term": "쓴맛",
+                  "index": 4,
                   "excerpt": "입안에 쓴맛이 느껴져 맛이 쓰다"
                 },
                 {
@@ -20778,8 +20759,8 @@
                 },
                 {
                   "axis": "taste",
-                  "term": "맛",
-                  "index": 12,
+                  "term": "신맛",
+                  "index": 11,
                   "excerpt": "맛이나 냄새가 강한 신맛을 띠다"
                 }
               ],
@@ -21193,8 +21174,8 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 7,
+                  "term": "낮빛",
+                  "index": 6,
                   "excerpt": "해가 지며 낮빛이 어둠으로 넘어가는 때"
                 }
               ],
@@ -22229,7 +22210,7 @@
               "domain_evidence": [
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 13,
                   "excerpt": "걱정하며 일이 잘되기를 마음속으로 애태우다"
                 }
@@ -23078,7 +23059,7 @@
                 },
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 9,
                   "excerpt": "감정이나 기운이 마음속에 가득해지다"
                 }
@@ -23090,7 +23071,7 @@
                   "left_axis": "affective",
                   "left_term": "감정",
                   "right_axis": "affective",
-                  "right_term": "마음",
+                  "right_term": "마음속",
                   "classification": "same-domain-coordination",
                   "excerpt": "감정이나 기운이 마음속에 가득해지다"
                 }
@@ -25722,9 +25703,9 @@
               "domain_evidence": [
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음가짐",
                   "index": 0,
-                  "excerpt": "마음가짐이나 집중력이 한곳에 모이지 못하"
+                  "excerpt": "마음가짐이나 집중력이 한곳에 모이지 못하다"
                 }
               ],
               "connector_observations": [
@@ -25732,7 +25713,7 @@
                   "connector": "이나",
                   "index": 4,
                   "left_axis": "affective",
-                  "left_term": "마음",
+                  "left_term": "마음가짐",
                   "right_axis": null,
                   "right_term": null,
                   "classification": "unclassified-coordination",
@@ -25871,8 +25852,8 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 1,
+                  "term": "살빛",
+                  "index": 0,
                   "excerpt": "살빛이 검으면서도 윤기가 도는 듯하다"
                 }
               ],
@@ -26114,14 +26095,14 @@
               "domain_evidence": [
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 1,
+                  "term": "햇빛",
+                  "index": 0,
                   "excerpt": "햇빛이나 달빛이 물결에 비쳐 반짝이는 잔"
                 },
                 {
                   "axis": "visual",
-                  "term": "빛",
-                  "index": 6,
+                  "term": "달빛",
+                  "index": 5,
                   "excerpt": "햇빛이나 달빛이 물결에 비쳐 반짝이는 잔물결의 빛"
                 },
                 {
@@ -26136,9 +26117,9 @@
                   "connector": "이나",
                   "index": 2,
                   "left_axis": "visual",
-                  "left_term": "빛",
+                  "left_term": "햇빛",
                   "right_axis": "visual",
-                  "right_term": "빛",
+                  "right_term": "달빛",
                   "classification": "same-domain-coordination",
                   "excerpt": "햇빛이나 달빛이 물결에 비쳐 반짝이는 잔물결의 빛"
                 }
@@ -26497,7 +26478,7 @@
                 },
                 {
                   "axis": "affective",
-                  "term": "마음",
+                  "term": "마음속",
                   "index": 9,
                   "excerpt": "생각이나 감정이 마음속을 빠르게 스쳐 지나가다"
                 }
@@ -63408,8 +63389,7 @@
               "lemma": "목소리",
               "gloss_sha256": "fe23d7975273bd27dca0dbe2dc3239451525b1044f7f762c25b6b4aec66a5e0b",
               "observed_domain_axes": [
-                "sound",
-                "visual"
+                "sound"
               ],
               "pos": "noun",
               "record_type": "entry",
@@ -66866,9 +66846,7 @@
               "sense_id": "w191-s2",
               "lemma": "찾다",
               "gloss_sha256": "96954c8119532b3b633993a4fbc9f9584cc8b517cd4c9862fb66154ec3345a3e",
-              "observed_domain_axes": [
-                "visual"
-              ],
+              "observed_domain_axes": [],
               "pos": "verb",
               "record_type": "entry",
               "relation_count": 1,
@@ -71313,9 +71291,7 @@
               "sense_id": "r026-s1",
               "lemma": "서먹하다",
               "gloss_sha256": "5aeb5c20b37d8dc3cb492584dc04d469014cb58bf54215419c20e3a68ea6c5b7",
-              "observed_domain_axes": [
-                "visual"
-              ],
+              "observed_domain_axes": [],
               "pos": "adjective",
               "record_type": "entry",
               "relation_count": 0,
@@ -74043,7 +74019,9 @@
               "sense_id": "w062-s1",
               "lemma": "냄새",
               "gloss_sha256": "168e436515acb70a127b85167ab7fca9451b6f9bb5878227faca8e1d526abffc",
-              "observed_domain_axes": [],
+              "observed_domain_axes": [
+                "smell"
+              ],
               "pos": "noun",
               "record_type": "entry",
               "relation_count": 2,
@@ -87240,9 +87218,7 @@
               "sense_id": "w284-s3",
               "lemma": "틈",
               "gloss_sha256": "8fb0569d991329ea19f39068a81ea9c584d5b233bd0c10609bc4656fc82ebe95",
-              "observed_domain_axes": [
-                "visual"
-              ],
+              "observed_domain_axes": [],
               "pos": "noun",
               "record_type": "entry",
               "relation_count": 0,
