@@ -44,7 +44,7 @@ const EXPECTED_METADATA = Object.freeze({
   search_form_count: '2320',
   sense_count: '2301',
   relation_count: '487',
-  expression_count: '75',
+  expression_count: '145',
 });
 
 const CODE_FILE_PATTERN = /\.(?:css|html|js|json|mjs)$/i;

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import {
   cp,
@@ -46,7 +47,7 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
   assert.equal(result.admission.gate.gate_status, 'pass');
   assert.equal(result.admission.verification.human_editorial_review_complete, false);
   assert.equal(result.admission.verification.generation_pass_id, 'm5-12a-generation-20260920');
-  assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-verification-20260920');
+  assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-agent-semantic-review-20260920-r2');
   assert.equal(result.admission.provenance.batch_local_quality_fork, false);
   assert.equal(result.relation.events.length, 0);
 });
@@ -54,6 +55,7 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
 test('M5-12A decision scaffolding cannot manufacture or overwrite semantic authority', async () => {
   const sourcePath = path.resolve('data/batches/m5-12a-semantic-decisions.json');
   const sourceBefore = await readFile(sourcePath);
+  const source = JSON.parse(sourceBefore);
   const scaffold = buildM512ASemanticDecisionScaffold();
 
   assert.equal(scaffold.candidates.length, M5_12A_SELECTION_COUNT);
@@ -67,6 +69,26 @@ test('M5-12A decision scaffolding cannot manufacture or overwrite semantic autho
     && !Object.prototype.hasOwnProperty.call(candidate, 'rank')
     && !Object.prototype.hasOwnProperty.call(candidate, 'score')
   )));
+  assert.notEqual(
+    createHash('sha256').update(sourceBefore).digest('hex'),
+    '7c655a342a23223b8a4039e126abd2b789edfb21',
+    'the durable source must not remain the artifact produced by the removed generator',
+  );
+  assert.equal(source.review.review_pass_id, 'm5-12a-agent-semantic-review-20260920-r2');
+  assert.equal(source.review.reviewed_candidate_count, M5_12A_SELECTION_COUNT);
+  assert.equal(source.provenance.generator_version, 'm5-12a-authored-semantic-review-v2');
+  assert.equal(source.provenance.human_reviewed, false);
+  const identityByCandidateId = new Map(M5_12A_CANDIDATE_IDENTITIES.map((identity) => [identity.candidate_record_id, identity]));
+  const admittedExpressionCount = source.decisions.filter((row) => (
+    identityByCandidateId.get(row.candidate_record_id).axis === 'X'
+      && ['included', 'corrected'].includes(row.decision)
+  )).length;
+  const nonExpressionReserveCount = source.decisions.filter((row) => (
+    identityByCandidateId.get(row.candidate_record_id).axis !== 'X'
+      && ['held', 'rejected', 'deferred'].includes(row.decision)
+  )).length;
+  assert.ok(admittedExpressionCount > 2, 'the authored review must not retain the old non-expression cutoff');
+  assert.ok(nonExpressionReserveCount > 0, 'the authored review must record semantic holds outside the expression axis');
   assert.deepEqual(await readFile(sourcePath), sourceBefore);
 });
 

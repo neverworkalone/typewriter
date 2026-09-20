@@ -100,7 +100,7 @@ export const M5_12A_FINAL_SUMMARY = Object.freeze({
   reference_only_count: 42,
   sense_count: 2301,
   relation_count: 487,
-  expression_count: 75,
+  expression_count: 145,
 });
 export const M5_12A_TARGET = Object.freeze({
   net_start_increase: 722,

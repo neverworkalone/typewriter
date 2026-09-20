@@ -81,7 +81,7 @@ export const M5_12A_RESERVE_COUNT = 80;
 export const M5_12A_FIRST_INVENTORY_NUMBER = 1085;
 export const M5_12A_FIRST_CANONICAL_NUMBER = 1279;
 export const M5_12A_GENERATION_PASS_ID = 'm5-12a-generation-20260920';
-export const M5_12A_VERIFICATION_PASS_ID = 'm5-12a-verification-20260920';
+export const M5_12A_VERIFICATION_PASS_ID = 'm5-12a-agent-semantic-review-20260920-r2';
 export const M5_12A_CANDIDATE_SOURCE_ID = 'm5-12a-typewriter-authored-identities-20260920';
 
 function splitValues(value) {

@@ -24,16 +24,18 @@ import {
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_12A_SEMANTIC_DECISION_SOURCE_ID = 'm5-12a-authored-semantic-decisions-20260920';
+export const M5_12A_SEMANTIC_DECISION_SOURCE_ID = 'm5-12a-authored-semantic-decisions-20260920-r2';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-12a-semantic-decisions.json',
 );
 export const M5_12A_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v1';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_POLICY = 'source-authored-quality-coverage-v1';
+export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic-review-v2';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);
+const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
 
 export class M512ADecisionSourceError extends Error {
   constructor(message, code = 'M5_12A_DECISION_SOURCE_ERROR') {
@@ -110,6 +112,15 @@ function validateDecisionRow(row, {
     fail(`${label}.decision_rationale must cite the inventory and candidate identity`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
   if (row.source_sha256 !== sourceSha256) fail(`${label}.source_sha256 is not bound to the decision artifact`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (row.review_pass_id !== M5_12A_VERIFICATION_PASS_ID) fail(`${label}.review_pass_id is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_PROVENANCE');
+  if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'M5_12A_DECISION_SOURCE_VALUE');
+  const reviewBasis = requireObject(row.review_basis, `${label}.review_basis`);
+  if (reviewBasis.lexical_unit !== candidate.lemma
+    || reviewBasis.gloss_sha256 !== sha256Json(candidate.senses[0].gloss)
+    || reviewBasis.review_pass_id !== M5_12A_VERIFICATION_PASS_ID
+    || reviewBasis.reviewer !== 'codex-agent') {
+    fail(`${label}.review_basis is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
 
   const sense = candidate.senses[0];
   if (row.sense_id !== sense.id) fail(`${label}.sense_id is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
@@ -161,10 +172,20 @@ export function validateM512ADecisionSource({
   if (source.authoring_mode !== 'agent-authored-decision') fail('M5-12A decision source must record agent authoring truthfully', 'M5_12A_DECISION_SOURCE_PROVENANCE');
   const provenance = requireObject(source.provenance, 'M5-12A semantic decision source.provenance');
   if (provenance.human_reviewed !== false
+    || provenance.generator_version !== M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION
     || provenance.generation_pass_id !== M5_12A_GENERATION_PASS_ID
     || provenance.verification_pass_id !== M5_12A_VERIFICATION_PASS_ID
     || provenance.generation_pass_id === provenance.verification_pass_id) {
     fail('M5-12A decision source provenance is not truthful or separated', 'M5_12A_DECISION_SOURCE_PROVENANCE');
+  }
+  const review = requireObject(source.review, 'M5-12A semantic decision source.review');
+  if (review.review_pass_id !== M5_12A_VERIFICATION_PASS_ID
+    || review.reviewer !== 'codex-agent'
+    || review.status !== 'complete'
+    || review.candidate_count !== identities.length
+    || review.reviewed_candidate_count !== identities.length
+    || review.prior_generator_replaced !== true) {
+    fail('M5-12A authored semantic review is incomplete or not independent of the prior generator', 'M5_12A_DECISION_SOURCE_PROVENANCE');
   }
   const candidateSource = requireObject(source.candidate_source, 'M5-12A semantic decision source.candidate_source');
   if (candidateSource.source_id !== M5_12A_CANDIDATE_SOURCE_ID

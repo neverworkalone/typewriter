@@ -19,6 +19,7 @@ admission transaction; it does not introduce a batch-local quality policy.
 | deferred | 30 |
 | processed denominator | 772 |
 | final canonical starts | 2,000 |
+| final expression records | 145 |
 
 The 802 identities are Typewriter-authored and deterministically bound to
 `m5-12-slot-0001` through `m5-12-slot-0802`, inventory IDs `m5-1085` through
@@ -30,12 +31,15 @@ material.
 
 ## Provenance and gate
 
-The promotion is explicitly `agent-generated`. Generation and verification use
-separate pass IDs, and the artifacts set `human_editorial_review_complete` to
-`false`; no human timing or human-review claim is made. Every selected sense
-has source-bound POS, expression, boundary, relation, and explicit no-relation
-evidence. The prospective semantic decision source covers all 2,042 records and
-2,301 senses with zero open findings.
+The promotion is explicitly `agent-generated`. The durable M5-12A semantic
+decision source is an independently authored, candidate-by-candidate Codex
+verification pass (`m5-12a-agent-semantic-review-20260920-r2`), not a
+deterministic projection of the candidate generator. Generation and
+verification use separate pass IDs, and the artifacts set
+`human_editorial_review_complete` to `false`; no human timing or human-review
+claim is made. Every selected sense has source-bound POS, expression, boundary,
+relation, and explicit no-relation evidence. The prospective semantic decision
+source covers all 2,042 records and 2,301 senses with zero open findings.
 
 The fixed gate passed with zero candidate/canonical lexical collisions, a
 2.85% correction rate over the 772 processed rows, zero admitted relation
