@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import {
   cp,
   mkdtemp,
@@ -16,9 +17,11 @@ import {
   readSemanticAuditArtifact,
 } from '../scripts/validate/semantic-audit.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
-import { deriveBaseDecisionSource } from '../scripts/batch/m5-12a-pipeline.mjs';
+import { promisify } from 'node:util';
 
 const REPOSITORY_DIRECTORY = path.resolve('.');
+const execFileAsync = promisify(execFile);
+const BASE_DECISION_SOURCE_COMMIT = '1b1b50d2d5f10a55ddd416b54d45732dabd3fe89';
 // The correction manifest is bound to the pre-M5-12A 1,320-record snapshot;
 // keep this regression on that immutable historical input after promotion.
 const CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-12-base-canonical');
@@ -46,12 +49,11 @@ async function copyEvidence(root) {
     coverageOutputPath: path.join(root, 'coverage.json'),
     auditOutputPath: path.join(root, 'audit.json'),
   };
-  const currentDecisionSource = await readJson(DECISION_SOURCE_PATH);
-  const baseCanonical = await readCanonicalRecords(CANONICAL_DIRECTORY);
-  const historicalDecisionSource = `${JSON.stringify(
-    deriveBaseDecisionSource(currentDecisionSource, baseCanonical.records),
-    null,
-  2)}\n`;
+  const { stdout: historicalDecisionSource } = await execFileAsync(
+    'git',
+    ['show', `${BASE_DECISION_SOURCE_COMMIT}:${path.relative(REPOSITORY_DIRECTORY, DECISION_SOURCE_PATH)}`],
+    { cwd: REPOSITORY_DIRECTORY, maxBuffer: 10 * 1024 * 1024 },
+  );
   await Promise.all([
     writeFile(paths.decisionSourcePath, historicalDecisionSource, 'utf8'),
     cp(BOUNDARY_DECISIONS_PATH, paths.boundaryDecisionsPath),
