@@ -130,17 +130,27 @@ deferred rows in the seed; `data/canonical/*.jsonl` remains the only editable
 dictionary source. The historical stage snapshot may remain as process
 evidence for the pre-admission 778-start boundary.
 
-Issue #98's M5-12 pre-admission boundary is represented by
+Issue #98's historical M5-12 pre-admission boundary is represented by
 `data/batches/m5-12-stage.json`, `data/batches/m5-12-review.json`, the immutable
 `data/batches/m5-12-base-canonical/` snapshot, and the metadata-only
 `scripts/batch/m5-12-catalog.mjs`. The catalog declares 802 selection slots for
 the +722 target and 80-row reserve; it does not claim 802 selected inventory
 targets. It contains no candidate identity, lemma, POS, gloss, relation, or
-candidate record body. The stage is intentionally `HOLD PROCESS` until a
-separately supplied human editorial decision artifact, measured timing, and
-independent final audit pass through the shared lexical producer, semantic
-audit, and admission path. No M5-12 canonical import or seed mutation is
-allowed at this boundary.
+candidate record body. The stage remains a retained historical `HOLD PROCESS`
+artifact; it is not the current canonical gate after issue #138.
+
+Issue #138's M5-12A promotion is recorded by
+`data/batches/m5-12a-admission.json`, `data/batches/m5-12a-promotion.json`,
+`data/canonical/m5-12a-expansion.jsonl`, the current target seed, and the
+current semantic decision source. `scripts/batch/m5-12a-pipeline.mjs` binds 802
+Typewriter-authored candidate identities to deterministic slots, runs the
+shared live lexical producer and complete semantic audit, and commits exactly
+700 included plus 22 corrected starts. The 30 held, 20 rejected, and 30
+deferred rows remain visible in the seed; only the first 722 are canonical.
+The artifacts truthfully identify the work as `agent-generated`, keep
+generation and verification pass IDs separate, make no human-review claim,
+and record issue #7's 2,000-start checkpoint. Candidate bodies and temporary
+proposal/review projections remain outside the repository.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event

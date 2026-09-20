@@ -49,6 +49,7 @@ import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   buildCanonicalSemanticAudit,
+  canonicalRecordsSha256,
   serializeSemanticAuditArtifact,
   validateCanonicalSemanticAudit,
 } from '../scripts/validate/semantic-audit.mjs';
@@ -91,14 +92,48 @@ async function createM511PromotionTransactionFixture() {
   await cp('data/batches/m5-11-base-canonical', currentCanonicalDirectory, { recursive: true });
   await cp('data/batches/m5-11-base-canonical', prospectiveCanonicalDirectory, { recursive: true });
   const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
-  const seedBytes = await readFile('data/inventory/m5-target-seed.json');
+  const currentSeed = JSON.parse(await readFile('data/inventory/m5-target-seed.json', 'utf8'));
+  currentSeed.revision = 'm5-11';
+  currentSeed.targets = currentSeed.targets.filter(({ inventory_id: inventoryId }) => {
+    const number = Number(inventoryId.slice(3));
+    return !(inventoryId.startsWith('m5-') && number >= 1085 && number <= 1886);
+  });
+  const seedBytes = Buffer.from(`${JSON.stringify(currentSeed, null, 2)}\n`, 'utf8');
   await writeFile(path.join(prospectiveCanonicalDirectory, 'm5-11-expansion.jsonl'), importBytes);
   await writeFile(prospectiveSeedPath, seedBytes);
   await writeFile(currentSeedPath, initialSeedBytes);
 
+  // M5-11 is a historical 1,320-record boundary. The live decision source
+  // now includes the promoted M5-12A rows, so derive the exact historical
+  // source in this isolated fixture instead of binding an older snapshot to
+  // a newer canonical authority.
+  const historicalDecisionSourcePath = path.join(temporaryDirectory, 'm5-11-decision-source.json');
+  const historicalCanonical = await readCanonicalRecords(prospectiveCanonicalDirectory);
+  const historicalIds = new Set(historicalCanonical.records.map(({ record }) => record.id));
+  const historicalDecisionSource = JSON.parse(
+    await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
+  );
+  const historicalReview = historicalDecisionSource.authored_review;
+  const historicalRecords = historicalCanonical.records.map(({ record }) => record);
+  const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);
+  const historicalDigest = canonicalRecordsSha256(historicalCanonical.records);
+  historicalReview.records = historicalReview.records.filter(({ record_id: recordId }) => historicalIds.has(recordId));
+  historicalReview.record_count = historicalRecords.length;
+  historicalReview.sense_count = historicalSenseCount;
+  historicalReview.source.canonical_records_sha256 = historicalDigest;
+  historicalReview.review_pass.record_count = historicalRecords.length;
+  historicalReview.review_pass.sense_count = historicalSenseCount;
+  historicalDecisionSource.source.canonical_records_sha256 = historicalDigest;
+  historicalDecisionSource.authored_review_sha256 = sha256Json(historicalReview);
+  await writeFile(
+    historicalDecisionSourcePath,
+    `${JSON.stringify(historicalDecisionSource, null, 2)}\n`,
+    'utf8',
+  );
+
   const { artifact } = await buildCanonicalSemanticAudit({
     canonicalDirectory: prospectiveCanonicalDirectory,
-    decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+    decisionSourcePath: historicalDecisionSourcePath,
   });
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const prospectiveInventoryBytes = serializeTargetInventory(await buildTargetInventory({
@@ -115,6 +150,7 @@ async function createM511PromotionTransactionFixture() {
     currentSeedPath,
     canonicalImportPath,
     promotionEvidencePath,
+    historicalDecisionSourcePath,
     initialSeedBytes,
     semanticAuditBytes,
     prospective: {
@@ -1301,7 +1337,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
       currentSeedPath: fixture.currentSeedPath,
       canonicalImportPath: fixture.canonicalImportPath,
       promotionEvidencePath: fixture.promotionEvidencePath,
-      semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      semanticDecisionSourcePath: fixture.historicalDecisionSourcePath,
     });
 
     assert.equal(transaction.canonicalDigest, prospective.canonicalDigest);
@@ -1311,7 +1347,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
     const promotionEvidence = JSON.parse(await readFile(fixture.promotionEvidencePath, 'utf8'));
     assert.equal(
       promotionEvidence.outputs.semantic_decision_source.path,
-      'data/validation/canonical-semantic-decision-source.json',
+      path.relative(process.cwd(), fixture.historicalDecisionSourcePath),
     );
     assert.equal(
       promotionEvidence.outputs.semantic_audit.sha256,
@@ -1320,7 +1356,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
 
     const authority = await verifySemanticDecisionSource({
       canonicalDirectory: fixture.currentCanonicalDirectory,
-      decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      decisionSourcePath: fixture.historicalDecisionSourcePath,
       expectedSemanticAuditBytes: semanticAuditBytes,
     });
 
@@ -1329,7 +1365,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
     await validateCanonicalSemanticAudit(
       fixture.currentCanonicalDirectory,
       undefined,
-      DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      fixture.historicalDecisionSourcePath,
     );
   } finally {
     await rm(fixture.temporaryDirectory, { recursive: true, force: true });
@@ -1351,7 +1387,7 @@ test('M5-11 promotion transaction rejects a mismatched semantic authority withou
         currentSeedPath: fixture.currentSeedPath,
         canonicalImportPath: fixture.canonicalImportPath,
         promotionEvidencePath: fixture.promotionEvidencePath,
-        semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+        semanticDecisionSourcePath: fixture.historicalDecisionSourcePath,
       }),
       (error) => error?.code === 'SEMANTIC_DECISION_SOURCE_MISMATCH',
     );

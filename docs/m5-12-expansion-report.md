@@ -1,4 +1,9 @@
-# M5-12 +722 pre-admission report
+# M5-12 +722 pre-admission report (historical boundary)
+
+This document records the original issue #98 capacity-only boundary. The
+actual agent-generated candidate intake, shared validation, and exact +722
+promotion were completed by issue #138; see
+[`m5-12a-expansion-report.md`](m5-12a-expansion-report.md).
 
 Issue #98 is prepared from the completed #121 checkpoint and the exact M5-11
 canonical boundary. This change does not claim that the +722 expansion passed

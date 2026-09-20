@@ -63,15 +63,15 @@ test('the shared audit covers the complete current canonical dictionary', async 
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
     checkPilotCompleteness: true,
   });
-  assert.equal(result.recordCount, 1320);
+  assert.equal(result.recordCount, 2042);
 
   const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
   const canonical = await readCanonicalRecords(path.resolve('data/canonical'));
   const audit = auditCanonicalLexicalQuality(canonical.records, { throwOnError: false });
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
-  assert.equal(audit.record_count, 1320);
-  assert.equal(audit.sense_count, 1579);
+  assert.equal(audit.record_count, 2042);
+  assert.equal(audit.sense_count, 2301);
 });
 
 test('the shared lexical audit rejects malformed topic fragments without a record allowlist', () => {

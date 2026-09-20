@@ -122,8 +122,9 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/lexical-production-state.test.mjs', 'Test lexical production state'),
       testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
-      npmCheck('Validate M5-12 pre-admission gate', 'batch:m5-12:check'),
-      testCheck('tests/m5-12.test.mjs', 'Test M5-12 pre-admission gate'),
+      testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
+      npmCheck('Validate M5-12A exact +722 promotion', 'batch:m5-12a:check'),
+      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A candidate and promotion contract'),
     ],
   },
 
