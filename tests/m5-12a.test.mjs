@@ -37,6 +37,10 @@ import {
   buildM512ASemanticDecisionScaffold,
 } from '../scripts/batch/build-m5-12a-decision-scaffold.mjs';
 
+function jsonSha256(value) {
+  return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+
 test('M5-12A binds all 802 identities and admits exactly 722 through the shared producer', async () => {
   const result = await buildM512A();
 
@@ -54,7 +58,7 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
   assert.equal(result.admission.gate.gate_status, 'pass');
   assert.equal(result.admission.verification.human_editorial_review_complete, false);
   assert.equal(result.admission.verification.generation_pass_id, 'm5-12a-generation-20260920');
-  assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-agent-semantic-review-20260920-r2');
+  assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-agent-semantic-review-20260920-r3');
   assert.equal(result.admission.provenance.batch_local_quality_fork, false);
   assert.equal(result.relation.events.length, 0);
 });
@@ -81,9 +85,9 @@ test('M5-12A decision scaffolding cannot manufacture or overwrite semantic autho
     '7c655a342a23223b8a4039e126abd2b789edfb21',
     'the durable source must not remain the artifact produced by the removed generator',
   );
-  assert.equal(source.review.review_pass_id, 'm5-12a-agent-semantic-review-20260920-r2');
+  assert.equal(source.review.review_pass_id, 'm5-12a-agent-semantic-review-20260920-r3');
   assert.equal(source.review.reviewed_candidate_count, M5_12A_SELECTION_COUNT);
-  assert.equal(source.provenance.generator_version, 'm5-12a-authored-semantic-review-v2');
+  assert.equal(source.provenance.generator_version, 'm5-12a-authored-semantic-review-v3');
   assert.equal(source.provenance.human_reviewed, false);
   const identityByCandidateId = new Map(M5_12A_CANDIDATE_IDENTITIES.map((identity) => [identity.candidate_record_id, identity]));
   const admittedExpressionCount = source.decisions.filter((row) => (
@@ -297,6 +301,132 @@ test('M5-12A shared production rejects a batch-local whitespace alias', async ()
       })
     )),
     (error) => error.code === 'LEXICAL_SEMANTIC_BINDING',
+  );
+});
+
+test('M5-12A admission rejects a whitespace alias requested by authored correction evidence', async () => {
+  const result = await buildM512A();
+  const source = structuredClone(result.semanticDecisionSource.source);
+  const candidateById = new Map(result.artifacts.candidateRecords.map((candidate) => [candidate.id, candidate]));
+  const row = source.decisions.find(({ decision, candidate_record_id: candidateId }) => (
+    decision === 'included' && candidateById.get(candidateId).lemma.includes(' ')
+  ));
+  const candidate = candidateById.get(row.candidate_record_id);
+  const correctedRecord = structuredClone(candidate);
+  correctedRecord.search_forms.push(candidate.lemma.replaceAll(' ', ''));
+  row.decision = 'corrected';
+  row.correction = {
+    action: 'replace-authored-record',
+    record: correctedRecord,
+    output_record_sha256: jsonSha256(correctedRecord),
+  };
+  const serialized = serializeM512ADecisionSource(source);
+
+  assert.throws(
+    () => validateM512ADecisionSource({
+      source: serialized.source,
+      sourceBytes: serialized.bytes,
+      identities: result.identities,
+      candidateRecords: result.artifacts.candidateRecords,
+    }),
+    (error) => error.code === 'M5_12A_CORRECTION_SEARCH_POLICY',
+  );
+});
+
+test('M5-12A producer admits multi-sense authored evidence and rejects missing per-sense coverage', async () => {
+  const result = await buildM512A();
+  const source = structuredClone(result.semanticDecisionSource.source);
+  const candidateRecords = structuredClone(result.artifacts.candidateRecords);
+  const decisionIndex = source.decisions.findIndex(({ decision }) => decision === 'deferred');
+  const row = source.decisions[decisionIndex];
+  const candidateIndex = candidateRecords.findIndex(({ id }) => id === row.candidate_record_id);
+  const candidate = candidateRecords[candidateIndex];
+  const secondSense = {
+    id: `${candidate.id}-s2`,
+    pos: candidate.senses[0].pos,
+    gloss: '서로 다른 사물의 쓰임을 가르는 별도의 의미를 글 속에서 구체화한다.',
+  };
+  candidate.senses.push(secondSense);
+  source.candidate_records[candidateIndex] = candidate;
+  source.candidate_records_sha256 = jsonSha256(source.candidate_records);
+  row.candidate_record_sha256 = jsonSha256(candidate);
+  const secondGlossSha256 = jsonSha256(secondSense.gloss);
+  const secondReview = {
+    sense_id: secondSense.id,
+    sense_gloss_sha256: secondGlossSha256,
+    pos: secondSense.pos,
+    record_type: candidate.record_type,
+    observed_domain_axes: [],
+    domain_evidence: [],
+    connector_observations: [],
+    boundary_action: 'retain',
+    boundary_classification: 'atomic',
+    boundary_decision: 'atomic',
+    boundary_rationale: `${row.inventory_id} ${candidate.id} ${secondSense.id} was independently reviewed as a distinct atomic writer-facing sense.`,
+    semantic_rationale: `${candidate.id} ${secondSense.id} has separately authored meaning evidence.`,
+    relation_decision: 'no-relations',
+    relation_count: 0,
+    relation_ids: [],
+    no_relation_rationale: `${row.inventory_id} ${candidate.id} ${secondSense.id} has no independently supported relation tuple after review.`,
+    review_basis: {
+      ...row.review_basis,
+      gloss_sha256: secondGlossSha256,
+      review_pass_id: row.review_pass_id,
+    },
+  };
+  row.sense_reviews = [row.sense_reviews[0], secondReview];
+  row.no_relation_rationale = `${row.inventory_id} ${candidate.id} ${candidate.senses.map(({ id }) => id).join(' ')} have no independently supported relation tuple after review.`;
+  row.boundary_pairs = [{
+    left_sense_id: candidate.senses[0].id,
+    right_sense_id: secondSense.id,
+    relationship: 'distinct',
+    decision: 'retain',
+    left_gloss_sha256: row.sense_reviews[0].sense_gloss_sha256,
+    right_gloss_sha256: secondGlossSha256,
+    evidence_basis: `${candidate.id} senses were compared directly.`,
+    distinguishing_feature: 'the authored glosses describe separate writer-facing meanings',
+    decision_source_id: source.source_id,
+    rationale: `${candidate.id} ${candidate.senses[0].id} ${secondSense.id} pair cites ${row.sense_reviews[0].sense_gloss_sha256.slice(0, 12)} and ${secondGlossSha256.slice(0, 12)}.`,
+  }];
+  const serialized = serializeM512ADecisionSource(source);
+  const validated = validateM512ADecisionSource({
+    source: serialized.source,
+    sourceBytes: serialized.bytes,
+    identities: result.identities,
+    candidateRecords,
+  });
+  const reviews = buildM512AReviewRows({
+    identities: result.identities,
+    candidateRecords,
+    semanticDecisionSource: validated,
+  });
+  const production = await import('../scripts/batch/lexical-production.mjs');
+  assert.doesNotThrow(() => production.validateLexicalProduction({
+    batchId: 'm5-12a-expansion-20260920',
+    candidateRecords,
+    reviews,
+    baseRecords: result.inputs.baseCanonical.records,
+    prospectiveRecords: result.prospective.canonical.records,
+    semanticAudit: result.semanticAudit,
+    productionState: result.production.production_state,
+    productionStateSources: result.production.production_state_sources,
+    productionPayloads: result.production.production_payloads,
+    catalogCount: M5_12A_SELECTION_COUNT,
+    expectedSelectedCount: M5_12A_IMPORT_COUNT,
+    checkPilotCompleteness: true,
+  }));
+
+  const missingEvidence = structuredClone(source);
+  missingEvidence.decisions[decisionIndex].sense_reviews.splice(1, 1);
+  const missingSerialized = serializeM512ADecisionSource(missingEvidence);
+  assert.throws(
+    () => validateM512ADecisionSource({
+      source: missingSerialized.source,
+      sourceBytes: missingSerialized.bytes,
+      identities: result.identities,
+      candidateRecords,
+    }),
+    (error) => error.code === 'M5_12A_DECISION_SOURCE_SCOPE',
   );
 });
 

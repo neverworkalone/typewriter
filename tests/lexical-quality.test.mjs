@@ -102,6 +102,53 @@ test('the shared production boundary rejects bulk gloss projection without a bat
   assert.doesNotThrow(() => validateBulkGlossProjection(records.slice(0, 3), { maxOccurrences: 3 }));
 });
 
+test('the shared production boundary rejects parameterized gloss templates with unique surfaces', () => {
+  const records = ['푸름의 결', '붉음의 결', '고요의 결', '긴장의 결'].map((lemma, index) => {
+    const root = lemma.split('의')[0];
+    return {
+      id: `w-parameterized-${index}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-parameterized-${index}`,
+      lemma,
+      search_forms: [lemma],
+      senses: [{
+        id: `w-parameterized-${index}-s1`,
+        pos: 'noun',
+        gloss: `‘${lemma}’은 표면과 분위기에 드러나는 미세한 차이를 가리키며, ${root}을 정도나 인상의 변화로 묘사할 때 쓴다.`,
+      }],
+    };
+  });
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION');
+  assert.equal(findings[0].kind, 'parameterized-template');
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+  );
+});
+
+test('the shared production boundary keeps genuinely distinct gloss definitions', () => {
+  const records = [
+    ['푸름의 결', '색이 옅고 짙어지는 정도가 시야에 남는 인상을 가리킨다.'],
+    ['붉음의 결', '붉은 기운이 피부와 천에 번지는 속도를 묘사할 때 쓴다.'],
+    ['고요의 결', '소리가 끊긴 뒤 공간에 남은 안정된 상태를 드러낸다.'],
+    ['긴장의 결', '말을 고르기 전 몸이 먼저 굳는 반응을 포착한다.'],
+  ].map(([lemma, gloss], index) => ({
+    id: `w-distinct-${index}`,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: `w-distinct-${index}`,
+    lemma,
+    search_forms: [lemma],
+    senses: [{ id: `w-distinct-${index}-s1`, pos: 'noun', gloss }],
+  }));
+
+  assert.doesNotThrow(() => validateBulkGlossProjection(records, { maxOccurrences: 3 }));
+});
+
 test('the shared lexical audit rejects malformed topic fragments without a record allowlist', () => {
   const record = {
     id: 'w9999',

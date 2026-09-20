@@ -10,6 +10,7 @@ import {
   inspectWriterDomainEvidence,
   validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
+import { inspectSenseBoundaryPairs } from '../validate/sense-boundary.mjs';
 import {
   M5_12A_BATCH_ID,
   M5_12A_CANDIDATE_IDENTITIES,
@@ -25,19 +26,18 @@ import {
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_12A_SEMANTIC_DECISION_SOURCE_ID = 'm5-12a-authored-semantic-decisions-20260920-r2';
+export const M5_12A_SEMANTIC_DECISION_SOURCE_ID = 'm5-12a-authored-semantic-decisions-20260920-r3';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-12a-semantic-decisions.json',
 );
 export const M5_12A_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v1';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_POLICY = 'source-authored-quality-coverage-v1';
-export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic-review-v2';
+export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic-review-v3';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
-const CORRECTION_ACTIONS = new Set(['append-normalized-search-form']);
 const MAX_CORRECTION_RATE = 0.5;
 
 export class M512ADecisionSourceError extends Error {
@@ -115,12 +115,96 @@ function validateAuthoredCandidateRecord(candidate, identity, label) {
   if (candidate.record_type !== identity.record_type
     || candidate.role !== 'start'
     || candidate.candidate_id !== identity.candidate_record_id
-    || candidate.senses.length !== 1
-    || candidate.senses[0].id !== `${identity.candidate_record_id}-s1`
-    || candidate.senses[0].pos !== identity.pos) {
+    || candidate.senses.some((sense, index) => sense.id !== `${identity.candidate_record_id}-s${index + 1}`)
+    || !candidate.senses.some((sense) => sense.pos === identity.pos)) {
     fail(`${label} is not bound to the authored candidate identity`, 'M5_12A_CANDIDATE_SOURCE_BINDING');
   }
   return candidate;
+}
+
+/**
+ * Return the authored evidence for every candidate sense.  The legacy
+ * one-sense row shape remains readable for old authored rows, but a
+ * multi-sense candidate must carry an explicit per-sense review instead of
+ * silently inheriting the first sense's evidence.
+ */
+export function decisionSenseReviews(candidate, row, label = 'decision') {
+  if (row.sense_reviews === undefined) {
+    if (candidate.senses.length !== 1) {
+      fail(
+        `${label}.sense_reviews must explicitly cover every authored sense`,
+        'M5_12A_DECISION_SOURCE_SCOPE',
+      );
+    }
+    return [{ ...row, sense_id: candidate.senses[0].id }];
+  }
+  if (!Array.isArray(row.sense_reviews) || row.sense_reviews.length !== candidate.senses.length) {
+    fail(
+      `${label}.sense_reviews must contain one review for every authored sense`,
+      'M5_12A_DECISION_SOURCE_SCOPE',
+    );
+  }
+  const expectedIds = candidate.senses.map(({ id }) => id);
+  const actualIds = row.sense_reviews.map(({ sense_id: senseId }) => senseId);
+  if (JSON.stringify(actualIds) !== JSON.stringify(expectedIds)
+    || new Set(actualIds).size !== actualIds.length) {
+    fail(
+      `${label}.sense_reviews must cover authored senses in source order`,
+      'M5_12A_DECISION_SOURCE_BINDING',
+    );
+  }
+  return row.sense_reviews;
+}
+
+function validateAuthoredBoundaryPairs(candidate, row, label) {
+  const expectedPairs = inspectSenseBoundaryPairs(candidate);
+  const pairs = row.boundary_pairs;
+  if (!Array.isArray(pairs) || pairs.length !== expectedPairs.length) {
+    fail(
+      `${label}.boundary_pairs must review every authored sense pair`,
+      'M5_12A_DECISION_SOURCE_SCOPE',
+    );
+  }
+  const expectedByKey = new Map(expectedPairs.map((pair) => [
+    `${pair.left_sense_id}:${pair.right_sense_id}`,
+    pair,
+  ]));
+  const seen = new Set();
+  for (const [index, pair] of pairs.entries()) {
+    const pairLabel = `${label}.boundary_pairs[${index}]`;
+    requireObject(pair, pairLabel);
+    const key = `${pair.left_sense_id}:${pair.right_sense_id}`;
+    if (seen.has(key)) fail(`${pairLabel} is duplicated`, 'M5_12A_DECISION_SOURCE_SCOPE');
+    seen.add(key);
+    const expected = expectedByKey.get(key);
+    if (!expected) fail(`${pairLabel} is not bound to an authored sense pair`, 'M5_12A_DECISION_SOURCE_BINDING');
+    if (!['distinct', 'duplicate', 'nested', 'usage-variant', 'overlapping'].includes(pair.relationship)
+      || !['retain', 'merge', 'rewrite', 'fail'].includes(pair.decision)) {
+      fail(`${pairLabel} contains an unsupported boundary outcome`, 'M5_12A_DECISION_SOURCE_VALUE');
+    }
+    const leftSense = candidate.senses.find(({ id }) => id === pair.left_sense_id);
+    const rightSense = candidate.senses.find(({ id }) => id === pair.right_sense_id);
+    const leftGlossSha256 = sha256Json(leftSense.gloss);
+    const rightGlossSha256 = sha256Json(rightSense.gloss);
+    if (pair.left_gloss_sha256 !== leftGlossSha256 || pair.right_gloss_sha256 !== rightGlossSha256) {
+      fail(`${pairLabel} gloss evidence does not bind the authored sense pair`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    requireString(pair.evidence_basis, `${pairLabel}.evidence_basis`);
+    requireString(pair.distinguishing_feature, `${pairLabel}.distinguishing_feature`);
+    requireString(pair.decision_source_id, `${pairLabel}.decision_source_id`);
+    requireString(pair.rationale, `${pairLabel}.rationale`);
+    if (!pair.rationale.includes(candidate.id)
+      || !pair.rationale.includes(pair.left_sense_id)
+      || !pair.rationale.includes(pair.right_sense_id)
+      || !pair.rationale.includes(leftGlossSha256.slice(0, 12))
+      || !pair.rationale.includes(rightGlossSha256.slice(0, 12))) {
+      fail(`${pairLabel}.rationale must cite the authored pair and gloss evidence`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+  }
+  if (seen.size !== expectedPairs.length) {
+    fail(`${label}.boundary_pairs must cover every authored sense pair`, 'M5_12A_DECISION_SOURCE_SCOPE');
+  }
+  return pairs;
 }
 
 /**
@@ -187,30 +271,29 @@ export function serializeM512ADecisionSource(source) {
 export function applyM512ADecisionCorrection(candidate, correction) {
   const label = `correction for ${candidate.id}`;
   requireObject(correction, label);
-  if (!CORRECTION_ACTIONS.has(correction.action)) {
-    fail(`${label}.action is unsupported`, 'M5_12A_DECISION_SOURCE_VALUE');
+  if (correction.action !== 'replace-authored-record') {
+    fail(`${label}.action must be replace-authored-record; batch-local search aliases are not supported`, 'M5_12A_CORRECTION_POLICY');
   }
-  if (!Array.isArray(correction.output_search_forms)
-    || correction.output_search_forms.length === 0
-    || correction.output_search_forms.some((form) => typeof form !== 'string' || form.trim().length === 0)) {
-    fail(`${label}.output_search_forms must contain non-empty strings`, 'M5_12A_DECISION_SOURCE_VALUE');
+  const correctedRecord = requireObject(correction.record, `${label}.record`);
+  validateLexicalRecord(correctedRecord, {
+    label: `${label}.record`,
+    mode: 'candidate',
+    expectedId: candidate.id,
+    expectedLemma: candidate.lemma,
+  });
+  if (correctedRecord.record_type !== candidate.record_type
+    || correctedRecord.role !== candidate.role
+    || correctedRecord.candidate_id !== candidate.candidate_id) {
+    fail(`${label}.record must preserve the candidate identity`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  const normalizedLemma = candidate.lemma.replaceAll(' ', '');
-  if (normalizedLemma === candidate.lemma) {
-    fail(`${label} must change a spaced lemma`, 'M5_12A_DECISION_SOURCE_BINDING');
+  const collapsedLemma = candidate.lemma.replace(/\s+/gu, '');
+  if (collapsedLemma !== candidate.lemma && correctedRecord.search_forms.includes(collapsedLemma)) {
+    fail(`${label}.record cannot add a collapsed internal-whitespace alias; use the shared search policy`, 'M5_12A_CORRECTION_SEARCH_POLICY');
   }
-  const expectedSearchForms = [...new Set([...candidate.search_forms, normalizedLemma])];
-  if (JSON.stringify(correction.output_search_forms) !== JSON.stringify(expectedSearchForms)) {
-    fail(`${label}.output_search_forms does not bind the authored correction`, 'M5_12A_DECISION_SOURCE_BINDING');
-  }
-  const correctedRecord = {
-    ...structuredClone(candidate),
-    search_forms: [...correction.output_search_forms],
-  };
   if (correction.output_record_sha256 !== sha256Json(correctedRecord)) {
     fail(`${label}.output_record_sha256 does not bind the corrected record`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  return correctedRecord;
+  return structuredClone(correctedRecord);
 }
 
 function validateDecisionRow(row, {
@@ -240,19 +323,8 @@ function validateDecisionRow(row, {
   if (IMPORTABLE.has(row.decision) && row.gloss_judgment !== 'fit') {
     fail(`${label} importable decision requires a fit gloss judgment`, 'M5_12A_DECISION_SOURCE_COHERENCE');
   }
-  const reviewBasis = requireObject(row.review_basis, `${label}.review_basis`);
-  if (reviewBasis.lexical_unit !== candidate.lemma
-    || reviewBasis.gloss_sha256 !== sha256Json(candidate.senses[0].gloss)
-    || reviewBasis.review_pass_id !== M5_12A_VERIFICATION_PASS_ID
-    || reviewBasis.reviewer !== 'codex-agent') {
-    fail(`${label}.review_basis is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_BINDING');
-  }
-
-  const sense = candidate.senses[0];
-  if (row.sense_id !== sense.id) fail(`${label}.sense_id is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
-  if (row.sense_gloss_sha256 !== sha256Json(sense.gloss)) fail(`${label}.sense_gloss_sha256 does not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
-  if (row.pos !== sense.pos || row.record_type !== candidate.record_type) {
-    fail(`${label} POS or record type is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (row.record_type !== candidate.record_type) {
+    fail(`${label}.record_type is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
   if (row.decision === 'corrected') {
     applyM512ADecisionCorrection(candidate, row.correction);
@@ -260,35 +332,96 @@ function validateDecisionRow(row, {
     fail(`${label}.correction is only allowed for corrected decisions`, 'M5_12A_DECISION_SOURCE_VALUE');
   }
 
-  const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
-  const connectorObservations = inspectGlossConnectors(sense.gloss);
-  if (JSON.stringify(row.observed_domain_axes) !== JSON.stringify(domainEvidence.axes)
-    || JSON.stringify(row.domain_evidence) !== JSON.stringify(domainEvidence.matches)
-    || JSON.stringify(row.connector_observations) !== JSON.stringify(connectorObservations)) {
-    fail(`${label} semantic observations do not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
+  const senseReviews = decisionSenseReviews(candidate, row, label);
+  for (const [senseIndex, senseReview] of senseReviews.entries()) {
+    const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
+    const sense = candidate.senses[senseIndex];
+    requireObject(senseReview, senseLabel);
+    if (senseReview.sense_id !== sense.id
+      || senseReview.sense_gloss_sha256 !== sha256Json(sense.gloss)
+      || senseReview.pos !== sense.pos
+      || senseReview.record_type !== candidate.record_type) {
+      fail(`${senseLabel} is not source-bound to the authored sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    requireString(senseReview.semantic_rationale, `${senseLabel}.semantic_rationale`);
+    const reviewBasis = requireObject(
+      senseReview.review_basis ?? (senseIndex === 0 ? row.review_basis : undefined),
+      `${senseLabel}.review_basis`,
+    );
+    if (reviewBasis.lexical_unit !== candidate.lemma
+      || reviewBasis.gloss_sha256 !== sha256Json(sense.gloss)
+      || reviewBasis.review_pass_id !== M5_12A_VERIFICATION_PASS_ID
+      || reviewBasis.reviewer !== 'codex-agent') {
+      fail(`${senseLabel}.review_basis is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
+    const connectorObservations = inspectGlossConnectors(sense.gloss);
+    if (JSON.stringify(senseReview.observed_domain_axes) !== JSON.stringify(domainEvidence.axes)
+      || JSON.stringify(senseReview.domain_evidence) !== JSON.stringify(domainEvidence.matches)
+      || JSON.stringify(senseReview.connector_observations) !== JSON.stringify(connectorObservations)) {
+      fail(`${senseLabel} semantic observations do not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    const expectedBoundaryDecision = domainEvidence.axes.length > 1 ? 'coordinated' : 'atomic';
+    if (senseReview.boundary_action !== 'retain'
+      || senseReview.boundary_classification !== 'atomic'
+      || senseReview.boundary_decision !== expectedBoundaryDecision) {
+      fail(`${senseLabel} boundary decision is not a source-bound atomic review`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    const relationCount = sense.relations?.length ?? 0;
+    if (senseReview.relation_count !== relationCount) {
+      fail(`${senseLabel}.relation_count does not bind the authored candidate`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    if (!Array.isArray(senseReview.relation_ids) || senseReview.relation_ids.length !== relationCount) {
+      fail(`${senseLabel}.relation_ids must bind every authored relation tuple`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    const expectedRelationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
+    if (senseReview.relation_decision !== expectedRelationDecision) {
+      fail(`${senseLabel}.relation_decision must be ${expectedRelationDecision}`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    if (relationCount === 0) {
+      requireString(senseReview.no_relation_rationale, `${senseLabel}.no_relation_rationale`);
+      if (!senseReview.no_relation_rationale.includes(identity.inventory_id)
+        || !senseReview.no_relation_rationale.includes(sense.id)) {
+        fail(`${senseLabel}.no_relation_rationale must cite the source-bound sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+      }
+    } else if (senseReview.no_relation_rationale !== undefined) {
+      fail(`${senseLabel}.no_relation_rationale cannot accompany authored relations`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
   }
-  const expectedBoundaryDecision = domainEvidence.axes.length > 1 ? 'coordinated' : 'atomic';
-  if (row.boundary_action !== 'retain'
-    || row.boundary_classification !== 'atomic'
-    || row.boundary_decision !== expectedBoundaryDecision) {
-    fail(`${label} boundary decision is not a source-bound atomic review`, 'M5_12A_DECISION_SOURCE_BINDING');
+
+  if (candidate.senses.length > 1 || row.boundary_pairs !== undefined) {
+    validateAuthoredBoundaryPairs(candidate, row, label);
   }
-  const relationCount = sense.relations?.length ?? 0;
-  if (row.relation_count !== relationCount) {
-    fail(`${label}.relation_count does not bind the authored candidate`, 'M5_12A_DECISION_SOURCE_BINDING');
+
+  const firstSense = candidate.senses[0];
+  const firstReview = senseReviews[0];
+  if (row.sense_id !== undefined && row.sense_id !== firstSense.id) {
+    fail(`${label}.sense_id is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  if (!Array.isArray(row.relation_ids) || row.relation_ids.length !== relationCount) {
-    fail(`${label}.relation_ids must bind every authored relation tuple`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (row.sense_gloss_sha256 !== undefined
+    && row.sense_gloss_sha256 !== sha256Json(firstSense.gloss)) {
+    fail(`${label}.sense_gloss_sha256 does not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  const expectedRelationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
-  if (row.relation_decision !== expectedRelationDecision) {
-    fail(`${label}.relation_decision must be ${expectedRelationDecision}`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (row.pos !== undefined && row.pos !== firstSense.pos) {
+    fail(`${label}.pos is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  if (row.observed_domain_axes !== undefined
+    && JSON.stringify(row.observed_domain_axes) !== JSON.stringify(firstReview.observed_domain_axes)) {
+    fail(`${label}.observed_domain_axes must bind the first authored sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+  }
+  const relationCount = senseReviews.reduce((sum, senseReview) => sum + senseReview.relation_count, 0);
+  const relationIds = senseReviews.flatMap((senseReview) => senseReview.relation_ids);
+  const relationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
+  if (row.relation_count !== relationCount
+    || JSON.stringify(row.relation_ids ?? []) !== JSON.stringify(relationIds)
+    || row.relation_decision !== relationDecision) {
+    fail(`${label} aggregate relation evidence does not bind every authored sense`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
   if (relationCount === 0) {
     requireString(row.no_relation_rationale, `${label}.no_relation_rationale`);
     if (!row.no_relation_rationale.includes(identity.inventory_id)
-      || !row.no_relation_rationale.includes(sense.id)) {
-      fail(`${label}.no_relation_rationale must cite the source-bound sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+      || candidate.senses.some(({ id }) => !row.no_relation_rationale.includes(id))) {
+      fail(`${label}.no_relation_rationale must cite every source-bound sense`, 'M5_12A_DECISION_SOURCE_BINDING');
     }
   } else if (row.no_relation_rationale !== undefined) {
     fail(`${label}.no_relation_rationale cannot accompany authored relations`, 'M5_12A_DECISION_SOURCE_BINDING');

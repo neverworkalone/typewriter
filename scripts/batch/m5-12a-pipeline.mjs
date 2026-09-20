@@ -64,6 +64,7 @@ import {
 import {
   applyM512ADecisionCorrection,
   candidateRecordsFromM512ADecisionSource,
+  decisionSenseReviews,
   M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
   readM512ADecisionSource,
   validateM512ADecisionSource,
@@ -213,7 +214,8 @@ function unique(values) {
 }
 
 function senseProfile(record) {
-  return record.record_type === 'expression' ? 'expression' : 'single';
+  if (record.record_type === 'expression') return 'expression';
+  return record.senses.length > 1 ? 'polysemy' : 'single';
 }
 
 function sourcePath(filePath) {
@@ -243,9 +245,10 @@ export function makeM512ACandidateRecord(identity, authoredRecord) {
     || record.role !== 'start'
     || record.candidate_id !== record.id
     || record.lemma !== identity.lemma
-    || record.senses?.length !== 1
-    || record.senses[0]?.id !== `${record.id}-s1`
-    || record.senses[0]?.pos !== identity.pos) {
+    || !Array.isArray(record.senses)
+    || record.senses.length === 0
+    || record.senses.some((sense, index) => sense.id !== `${record.id}-s${index + 1}`)
+    || !record.senses.some(({ pos }) => pos === identity.pos)) {
     fail(
       `M5-12A authored candidate ${identity.candidate_record_id} is not bound to its identity`,
       'M5_12A_CANDIDATE_IDENTITY_BINDING',
@@ -263,17 +266,30 @@ function makeProductionSemanticReview(record, {
   decisionSourceSha256,
   decisionSourceArtifactSha256,
 } = {}) {
-  const sense = record.senses[0];
-  const glossSha256 = decisionRow.sense_gloss_sha256;
-  const semanticEvidence = {
-    status: 'pass',
-    gloss_sha256: glossSha256,
-    observed_domain_axes: decisionRow.observed_domain_axes,
-    domain_evidence: decisionRow.domain_evidence,
-    connector_observations: decisionRow.connector_observations,
-    rationale: decisionRow.semantic_rationale,
-    boundary_decision: decisionRow.boundary_decision,
-    decision_source_id: verificationSourceId,
+  const senseReviews = decisionSenseReviews(record, decisionRow, `decision ${identity.inventory_id}`);
+  const senseReviewById = new Map(senseReviews.map((senseReview) => [senseReview.sense_id, senseReview]));
+  const reviewForSense = (sense) => {
+    const senseReview = senseReviewById.get(sense.id);
+    if (!senseReview) {
+      fail(
+        `M5-12A authored sense review is missing for ${record.id} ${sense.id}`,
+        'M5_12A_DECISION_SOURCE_SCOPE',
+      );
+    }
+    return senseReview;
+  };
+  const semanticEvidenceForSense = (sense) => {
+    const senseReview = reviewForSense(sense);
+    return {
+      status: 'pass',
+      gloss_sha256: senseReview.sense_gloss_sha256,
+      observed_domain_axes: senseReview.observed_domain_axes,
+      domain_evidence: senseReview.domain_evidence,
+      connector_observations: senseReview.connector_observations,
+      rationale: senseReview.semantic_rationale,
+      boundary_decision: senseReview.boundary_decision,
+      decision_source_id: verificationSourceId,
+    };
   };
   const authoredDecision = {
     source_sha256: decisionSourceSha256,
@@ -288,17 +304,24 @@ function makeProductionSemanticReview(record, {
     selection_score: decisionRow.score,
     rationale: decisionRow.decision_rationale,
     ...(decision === 'corrected' ? { correction: structuredClone(decisionRow.correction) } : {}),
-    sense_evidence: [{
-      sense_id: sense.id,
-      gloss_sha256: glossSha256,
-      basis: decisionRow.semantic_rationale,
-    }],
-    relation_evidence: [{
-      sense_id: sense.id,
-      relation_count: decisionRow.relation_count,
-      decision: decisionRow.relation_decision,
-      basis: decisionRow.no_relation_rationale,
-    }],
+    sense_evidence: record.senses.map((sense) => {
+      const senseReview = reviewForSense(sense);
+      return {
+        sense_id: sense.id,
+        gloss_sha256: senseReview.sense_gloss_sha256,
+        basis: senseReview.semantic_rationale,
+      };
+    }),
+    relation_evidence: record.senses.map((sense) => {
+      const senseReview = reviewForSense(sense);
+      return {
+        sense_id: sense.id,
+        relation_count: senseReview.relation_count,
+        relation_ids: [...senseReview.relation_ids],
+        decision: senseReview.relation_decision,
+        basis: senseReview.no_relation_rationale ?? senseReview.semantic_rationale,
+      };
+    }),
   };
   return {
     status: 'complete',
@@ -323,20 +346,23 @@ function makeProductionSemanticReview(record, {
         decision_source_id: verificationSourceId,
         decision_source_version: 'lexical-semantic-boundary-decisions-v1',
       },
-      findings: [{
-        sense_id: sense.id,
-        action: decisionRow.boundary_action,
-        classification: decisionRow.boundary_classification,
-        rationale: decisionRow.boundary_rationale,
-        semantic_evidence: semanticEvidence,
-      }],
-      pairwise: [],
+      findings: record.senses.map((sense) => {
+        const senseReview = reviewForSense(sense);
+        return {
+          sense_id: sense.id,
+          action: senseReview.boundary_action,
+          classification: senseReview.boundary_classification,
+          rationale: senseReview.boundary_rationale,
+          semantic_evidence: semanticEvidenceForSense(sense),
+        };
+      }),
+      pairwise: structuredClone(decisionRow.boundary_pairs ?? []),
       rationale: decisionRow.boundary_rationale,
     },
     pos: {
       status: 'pass',
       decision: 'verified',
-      observed_pos: [sense.pos],
+      observed_pos: record.senses.map(({ pos }) => pos),
       decision_source_id: verificationSourceId,
       rationale: `${identity.inventory_id} POS was verified in the separate ${M5_12A_VERIFICATION_PASS_ID} pass.`,
     },
@@ -351,14 +377,19 @@ function makeProductionSemanticReview(record, {
     relation: {
       status: 'pass',
       decision_source_id: verificationSourceId,
-      per_sense: [{
-        sense_id: sense.id,
-        decision: decisionRow.relation_decision,
-        decision_source_id: verificationSourceId,
-        relation_count: decisionRow.relation_count,
-        relation_ids: decisionRow.relation_ids,
-        no_relation_rationale: decisionRow.no_relation_rationale,
-      }],
+      per_sense: record.senses.map((sense) => {
+        const senseReview = reviewForSense(sense);
+        return {
+          sense_id: sense.id,
+          decision: senseReview.relation_decision,
+          decision_source_id: verificationSourceId,
+          relation_count: senseReview.relation_count,
+          relation_ids: [...senseReview.relation_ids],
+          ...(senseReview.no_relation_rationale !== undefined
+            ? { no_relation_rationale: senseReview.no_relation_rationale }
+            : {}),
+        };
+      }),
     },
     selection: {
       status: IMPORTABLE_DECISIONS.has(decision) ? 'selected' : decision,
@@ -378,8 +409,8 @@ function makeCandidateProposal(identity, record) {
     candidate_record: record,
     classification: {
       record_type: identity.record_type,
-      pos: [identity.pos],
-      homonym_status: 'single-sense-reviewed',
+      pos: unique(record.senses.map(({ pos }) => pos)),
+      homonym_status: record.senses.length > 1 ? 'multi-sense-reviewed' : 'single-sense-reviewed',
       expression_unit: identity.record_type === 'expression',
     },
   };
@@ -522,7 +553,6 @@ function makeSemanticRecordReview(
     batchDecisionSourceArtifactSha256,
   } = {},
 ) {
-  const sense = record.senses[0];
   if (!decisionRow || decisionRow.candidate_record_id !== record.id) {
     fail(
       `M5-12A authored decision does not bind canonical record ${record.id}`,
@@ -530,11 +560,41 @@ function makeSemanticRecordReview(
     );
   }
   const coverageRecord = coverageById.get(record.id);
-  const coverageSense = coverageRecord.sense_coverage[0];
-  const glossSha256 = decisionRow.sense_gloss_sha256;
-  const relationCount = sense.relations?.length ?? 0;
+  if (!coverageRecord || !Array.isArray(coverageRecord.sense_coverage)) {
+    fail(
+      `canonical semantic coverage is missing for ${record.id}`,
+      'M5_12A_CANONICAL_AUTHORITY_MISSING',
+    );
+  }
+  const coverageBySenseId = new Map(coverageRecord.sense_coverage.map((coverageSense) => [
+    coverageSense.sense_id,
+    coverageSense,
+  ]));
+  const senseReviews = decisionSenseReviews(record, decisionRow, `decision ${decisionRow.inventory_id}`);
+  const senseReviewById = new Map(senseReviews.map((senseReview) => [senseReview.sense_id, senseReview]));
+  const reviewForSense = (sense) => {
+    const senseReview = senseReviewById.get(sense.id);
+    const coverageSense = coverageBySenseId.get(sense.id);
+    if (!senseReview || !coverageSense) {
+      fail(
+        `canonical semantic authority is missing per-sense evidence for ${record.id} ${sense.id}`,
+        'M5_12A_CANONICAL_AUTHORITY_SCOPE',
+      );
+    }
+    return { senseReview, coverageSense };
+  };
+  const relationCount = record.senses.reduce(
+    (sum, sense) => sum + (sense.relations?.length ?? 0),
+    0,
+  );
   const relationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
-  const canonicalReviewBasisRationale = `${record.id} ${sense.id} reviewed gloss ${glossSha256.slice(0, 12)} from the authored M5-12A decision source; ${decisionRow.semantic_rationale}`;
+  const relationIds = senseReviews.flatMap((senseReview) => senseReview.relation_ids);
+  const recordBoundaryAction = decisionRow.boundary_action ?? senseReviews[0].boundary_action;
+  const recordBoundaryClassification = decisionRow.boundary_classification
+    ?? senseReviews[0].boundary_classification;
+  const recordBoundaryDecision = recordBoundaryAction === 'retain'
+    ? (recordBoundaryClassification === 'coordinated' ? 'coordinated' : 'atomic')
+    : recordBoundaryAction;
   const reviewedRecordSha256 = decisionRow.decision === 'corrected'
     ? decisionRow.correction.output_record_sha256
     : sha256Json(record);
@@ -559,12 +619,12 @@ function makeSemanticRecordReview(
     gloss_judgment: decisionRow.gloss_judgment,
     review_pass_id: decisionRow.review_pass_id,
     semantic_rationale: decisionRow.semantic_rationale,
-      relation_review: {
-        decision: relationDecision,
-        relation_count: relationCount,
-      relation_ids: [...(decisionRow.relation_ids ?? [])],
+    relation_review: {
+      decision: relationDecision,
+      relation_count: relationCount,
+      relation_ids: relationIds,
       ...(relationCount === 0 ? { no_relation_rationale: decisionRow.no_relation_rationale } : {}),
-      },
+    },
     artifact_sha256: batchDecisionSourceArtifactSha256,
   };
   return {
@@ -581,73 +641,82 @@ function makeSemanticRecordReview(
         decision_source_version: 'lexical-semantic-boundary-decisions-v1',
         decision_source_id: decisionSourceId,
       },
-      decision: 'retain',
-      classification: 'atomic',
-      reviewed_sense_ids: [sense.id],
-      evidence: [{
-        sense_id: sense.id,
-        gloss_sha256: glossSha256,
-        evidence_basis: decisionRow.semantic_rationale,
-        rationale: decisionRow.boundary_rationale,
-        decision_source_id: decisionSourceId,
-      }],
-      pairwise: [],
+      decision: recordBoundaryAction,
+      classification: recordBoundaryClassification,
+      reviewed_sense_ids: record.senses.map(({ id }) => id),
+      evidence: record.senses.map((sense) => {
+        const { senseReview } = reviewForSense(sense);
+        return {
+          sense_id: sense.id,
+          gloss_sha256: senseReview.sense_gloss_sha256,
+          evidence_basis: senseReview.semantic_rationale,
+          rationale: senseReview.boundary_rationale,
+          decision_source_id: decisionSourceId,
+        };
+      }),
+      pairwise: structuredClone(decisionRow.boundary_pairs ?? []),
       rationale: decisionRow.boundary_rationale,
     },
-    sense_reviews: [{
-      sense_id: sense.id,
-      sense_sha256: sha256Json(sense),
-      sense_boundary: {
-        status: 'pass',
-        action: 'retain',
-        classification: 'atomic',
-        boundary_decision: 'atomic',
-        boundary_review_id: boundaryReviewId,
-        reviewed_sense_ids: [sense.id],
-        rationale: decisionRow.boundary_rationale,
-        decision_source_id: decisionSourceId,
-      },
-      pos: {
-        status: 'pass',
-        observed_pos: sense.pos,
-        rationale: `${decisionRow.inventory_id} ${record.id} ${sense.id} POS ${sense.pos} was verified in ${decisionRow.review_pass_id}.`,
-        decision: 'verified',
-        decision_source_id: decisionSourceId,
-      },
-      expression: {
-        status: 'pass',
-        expected_record_type: record.record_type,
-        observed_record_type: record.record_type,
-        rationale: `${decisionRow.inventory_id} ${record.id} ${sense.id} record type ${record.record_type} was verified in ${decisionRow.review_pass_id}.`,
-        decision: 'verified',
-        decision_source_id: decisionSourceId,
-      },
-      relation: {
-        status: 'pass',
-        decision: relationDecision,
-        relation_count: relationCount,
-        relation_sha256: coverageSense.content.relation_sha256,
-        relation_fingerprints: coverageSense.content.relation_fingerprints,
-        rationale: relationCount === 0
-          ? decisionRow.no_relation_rationale
-          : `${decisionRow.inventory_id} ${record.id} ${sense.id} relation tuples were reviewed in ${decisionRow.review_pass_id}.`,
-        ...(relationCount === 0 ? { no_relation_rationale: decisionRow.no_relation_rationale } : {}),
-        decision_source_id: decisionSourceId,
-      },
-      review_basis: {
-        record_id: record.id,
+    sense_reviews: record.senses.map((sense) => {
+      const { senseReview, coverageSense } = reviewForSense(sense);
+      const senseRelationCount = sense.relations?.length ?? 0;
+      const senseRelationDecision = senseRelationCount === 0 ? 'no-relations' : 'relations-reviewed';
+      const canonicalReviewBasisRationale = `${record.id} ${sense.id} reviewed gloss ${senseReview.sense_gloss_sha256.slice(0, 12)} from the authored M5-12A decision source; ${senseReview.semantic_rationale}`;
+      return {
         sense_id: sense.id,
-        lemma: record.lemma,
-        gloss_sha256: glossSha256,
-        observed_domain_axes: decisionRow.observed_domain_axes,
-        pos: sense.pos,
-        record_type: record.record_type,
-        relation_count: relationCount,
-        rationale: canonicalReviewBasisRationale,
-        decision_source_id: decisionSourceId,
-      },
-      coverage_gloss_sha256: glossSha256,
-    }],
+        sense_sha256: sha256Json(sense),
+        sense_boundary: {
+          status: 'pass',
+          action: recordBoundaryAction,
+          classification: recordBoundaryClassification,
+          boundary_decision: recordBoundaryDecision,
+          boundary_review_id: boundaryReviewId,
+          reviewed_sense_ids: [sense.id],
+          rationale: senseReview.boundary_rationale,
+          decision_source_id: decisionSourceId,
+        },
+        pos: {
+          status: 'pass',
+          observed_pos: sense.pos,
+          rationale: `${decisionRow.inventory_id} ${record.id} ${sense.id} POS ${sense.pos} was verified in ${decisionRow.review_pass_id}.`,
+          decision: 'verified',
+          decision_source_id: decisionSourceId,
+        },
+        expression: {
+          status: 'pass',
+          expected_record_type: record.record_type,
+          observed_record_type: record.record_type,
+          rationale: `${decisionRow.inventory_id} ${record.id} ${sense.id} record type ${record.record_type} was verified in ${decisionRow.review_pass_id}.`,
+          decision: 'verified',
+          decision_source_id: decisionSourceId,
+        },
+        relation: {
+          status: 'pass',
+          decision: senseRelationDecision,
+          relation_count: senseRelationCount,
+          relation_sha256: coverageSense.content.relation_sha256,
+          relation_fingerprints: coverageSense.content.relation_fingerprints,
+          rationale: senseRelationCount === 0
+            ? senseReview.no_relation_rationale
+            : `${decisionRow.inventory_id} ${record.id} ${sense.id} relation tuples were reviewed in ${decisionRow.review_pass_id}.`,
+          ...(senseRelationCount === 0 ? { no_relation_rationale: senseReview.no_relation_rationale } : {}),
+          decision_source_id: decisionSourceId,
+        },
+        review_basis: {
+          record_id: record.id,
+          sense_id: sense.id,
+          lemma: record.lemma,
+          gloss_sha256: senseReview.sense_gloss_sha256,
+          observed_domain_axes: senseReview.observed_domain_axes,
+          pos: sense.pos,
+          record_type: record.record_type,
+          relation_count: senseRelationCount,
+          rationale: canonicalReviewBasisRationale,
+          decision_source_id: decisionSourceId,
+        },
+        coverage_gloss_sha256: senseReview.sense_gloss_sha256,
+      };
+    }),
   };
 }
 
@@ -926,7 +995,10 @@ export function validateCandidateIdentityBinding({ identities, candidateRecords,
       || candidate.candidate_id !== candidate.id
       || candidate.lemma !== identity.lemma
       || candidate.record_type !== identity.record_type
-      || candidate.senses[0].pos !== identity.pos) {
+      || !Array.isArray(candidate.senses)
+      || candidate.senses.length === 0
+      || candidate.senses.some((sense, senseIndex) => sense.id !== `${candidate.id}-s${senseIndex + 1}`)
+      || !candidate.senses.some(({ pos }) => pos === identity.pos)) {
       fail(`${identity.inventory_id} candidate body is not bound to its identity`, 'CANDIDATE_IDENTITY_BINDING');
     }
     if (baseRecordIds.has(candidate.id)) fail(`${candidate.id} collides with base canonical`, 'CANDIDATE_CANONICAL_COLLISION');
@@ -1158,6 +1230,7 @@ function buildAdmissionEvidence({
     .filter(({ decision }) => IMPORTABLE_DECISIONS.has(decision))
     .map(({ reviewed_record: record }) => record);
   const finalSummary = canonicalSummary(prospective.canonical.records);
+  const splitRecords = importedRecords.filter((record) => record.senses.length > 1);
   const preflightPassed = (name) => preflight?.checks?.[name]?.status === 'pass'
     && preflight.checks[name].input_canonical_directory_sha256 === preflight.input_canonical_directory_sha256;
   const relationCounts = {
@@ -1204,8 +1277,11 @@ function buildAdmissionEvidence({
       candidate_count: artifacts.candidateRecords.length,
       selected_count: importedRecords.length,
       broad_gloss_count: 0,
-      split_record_count: 0,
-      split_sense_count: 0,
+      split_record_count: splitRecords.length,
+      split_sense_count: splitRecords.reduce(
+        (sum, record) => sum + record.senses.length - 1,
+        0,
+      ),
       selected_axis_counts: Object.fromEntries(
         unique(inputs.identities.map(({ axis }) => axis)).map((axis) => [axis, artifacts.reviewRows
           .filter((row, index) => IMPORTABLE_DECISIONS.has(row.decision) && inputs.identities[index].axis === axis).length]),

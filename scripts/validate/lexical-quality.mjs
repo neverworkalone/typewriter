@@ -976,23 +976,66 @@ export function findBulkGlossProjectionFindings(
   { maxOccurrences = 3 } = {},
 ) {
   const ownersByGloss = new Map();
+  const ownersByTemplate = new Map();
+
+  const lemmaTerms = (lemma) => {
+    const terms = new Set([lemma, lemma.replace(/\s+/gu, '')]);
+    for (const token of lemma.split(/\s+/gu)) {
+      terms.add(token);
+      const stem = token.replace(/(?:으로|에서|에게|한테|처럼|까지|부터|보다|의|은|는|이|가|을|를|에|로|와|과|도|만)$/u, '');
+      if (stem.length >= 2) terms.add(stem);
+    }
+    return [...terms]
+      .filter((term) => term.length >= 2)
+      .sort((left, right) => right.length - left.length);
+  };
+
+  const templateFingerprint = (record, gloss) => {
+    let fingerprint = gloss.normalize('NFC');
+    for (const term of lemmaTerms(record.lemma)) {
+      fingerprint = fingerprint.replaceAll(term, '{lexeme}');
+    }
+    return fingerprint
+      .replace(/[‘’“”"']/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim();
+  };
+
   for (const recordInfo of recordInfos) {
     const record = recordOf(recordInfo);
     for (const sense of record?.senses ?? []) {
       if (typeof sense.gloss !== 'string') continue;
-      const owners = ownersByGloss.get(sense.gloss) ?? [];
-      owners.push({ record_id: record.id, sense_id: sense.id });
-      ownersByGloss.set(sense.gloss, owners);
+      const owner = { record_id: record.id, sense_id: sense.id };
+      const glossOwners = ownersByGloss.get(sense.gloss) ?? [];
+      glossOwners.push(owner);
+      ownersByGloss.set(sense.gloss, glossOwners);
+      const fingerprint = templateFingerprint(record, sense.gloss);
+      const templateOwners = ownersByTemplate.get(fingerprint) ?? [];
+      templateOwners.push(owner);
+      ownersByTemplate.set(fingerprint, templateOwners);
     }
   }
-  return [...ownersByGloss.entries()]
+  const exactFindings = [...ownersByGloss.entries()]
     .filter(([, owners]) => owners.length > maxOccurrences)
     .map(([gloss, owners]) => ({
       code: 'LEXICAL_BULK_GLOSS_PROJECTION',
+      kind: 'exact-gloss',
       gloss,
       owners,
       message: `gloss ${JSON.stringify(gloss)} is reused by ${owners.length} candidate senses; author lemma-specific semantic content before admission`,
     }));
+  const exactFindingKeys = new Set(exactFindings.flatMap(({ owners }) => owners.map(({ record_id: recordId, sense_id: senseId }) => `${recordId}:${senseId}`)));
+  const templateFindings = [...ownersByTemplate.entries()]
+    .filter(([, owners]) => owners.length > maxOccurrences)
+    .map(([fingerprint, owners]) => ({
+      code: 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+      kind: 'parameterized-template',
+      fingerprint,
+      owners,
+      message: `gloss template ${JSON.stringify(fingerprint)} is reused by ${owners.length} candidate senses after lemma substitution; author candidate-specific semantic content before admission`,
+    }))
+    .filter(({ owners }) => owners.some(({ record_id: recordId, sense_id: senseId }) => !exactFindingKeys.has(`${recordId}:${senseId}`)));
+  return [...exactFindings, ...templateFindings];
 }
 
 export function validateBulkGlossProjection(recordInfos, options = {}) {
