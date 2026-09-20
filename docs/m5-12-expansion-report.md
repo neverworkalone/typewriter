@@ -4,6 +4,10 @@ Issue #98 is prepared from the completed #121 checkpoint and the exact M5-11
 canonical boundary. This change does not claim that the +722 expansion passed
 its fixed gate.
 
+The #121 provenance records the merged checkpoint commit, its Git-derived tree,
+and the PR head separately; the validator resolves both commit-to-tree edges
+from local repository history before accepting the pre-admission artifact.
+
 ## Declared scope
 
 | 항목 | 값 |

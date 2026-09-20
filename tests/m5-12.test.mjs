@@ -106,3 +106,20 @@ test('M5-12 rejects a stale predecessor promotion digest before candidate work',
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
 });
+
+test('M5-12 rejects a checkpoint tree that is not derived from the bound Git commit', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12-checkpoint-'));
+  const stagePath = path.join(temporaryDirectory, 'stage.json');
+  try {
+    const stage = JSON.parse(await readFile('data/batches/m5-12-stage.json', 'utf8'));
+    stage.previous_stage.checkpoint_tree = stage.previous_stage.checkpoint_pr_head;
+    await writeFile(stagePath, `${JSON.stringify(stage)}\n`, 'utf8');
+
+    await assert.rejects(
+      validateM512({ stagePath }),
+      (error) => error.code === 'CHECKPOINT_PROVENANCE_MISMATCH',
+    );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});

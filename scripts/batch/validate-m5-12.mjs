@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { readCanonicalRecords } from '../validate/canonical-jsonl.mjs';
@@ -14,6 +16,7 @@ import { M5_12_CATALOG } from './m5-12-catalog.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+const execFileAsync = promisify(execFile);
 const BATCH_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches');
 const INVENTORY_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/inventory');
 const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
@@ -47,6 +50,10 @@ export const M5_12_REVIEW_SHA256 =
   'b2e9697be48b0d3fe7c4dd8b1041a30f8d5cca19e321f55cfc279a677efb2afc';
 export const M5_12_PREDECESSOR_PROMOTION_SHA256 =
   '15fedcabc50a631fee3680a33f268c694e3985d319282eb837d8e73e4794ce0a';
+export const M5_12_CHECKPOINT_COMMIT =
+  '7e5893475929bc03f5397c011dce6796b9fed8d7';
+export const M5_12_CHECKPOINT_PR_HEAD =
+  '0a58f217049089a1857ab30aedc755750449f389';
 export const M5_12_TARGET = Object.freeze({
   net_start_increase: 722,
   cumulative_start_target: 2000,
@@ -85,6 +92,35 @@ export function sha256Json(value) {
 
 function repositoryRelativePath(filePath) {
   return path.relative(REPOSITORY_DIRECTORY, path.resolve(filePath));
+}
+
+const FULL_GIT_SHA = /^[0-9a-f]{40}$/u;
+
+async function resolveGitRevision(expression, label) {
+  try {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['-C', REPOSITORY_DIRECTORY, 'rev-parse', '--verify', expression],
+      { encoding: 'utf8' },
+    );
+    const revision = stdout.trim();
+    if (!FULL_GIT_SHA.test(revision)) {
+      fail(`${label} did not resolve to a full Git SHA`, 'CHECKPOINT_PROVENANCE_MISMATCH');
+    }
+    return revision;
+  } catch (error) {
+    if (error instanceof M512ValidationError) throw error;
+    fail(`${label} cannot be resolved from repository history`, 'CHECKPOINT_PROVENANCE_MISMATCH');
+  }
+}
+
+async function resolveGitTreeForCommit(commit, label) {
+  if (!FULL_GIT_SHA.test(commit)) {
+    fail(`${label} must be a full commit SHA`, 'CHECKPOINT_PROVENANCE_MISMATCH');
+  }
+  const resolvedCommit = await resolveGitRevision(`${commit}^{commit}`, `${label} commit`);
+  assertEqual(resolvedCommit, commit, `${label} commit resolution`, 'CHECKPOINT_PROVENANCE_MISMATCH');
+  return resolveGitRevision(`${commit}^{tree}`, `${label} tree`);
 }
 
 export function resolveRepositoryPath(value, label) {
@@ -321,8 +357,28 @@ export async function validateM512({
   }, 'promotion guard');
   assertEqual(stage.pipeline.batch_local_quality_fork, false, 'shared lexical pipeline guard');
   assertEqual(stage.previous_stage.status, 'complete', 'previous checkpoint status');
-  assertEqual(stage.previous_stage.checkpoint_commit, '7e5893475929bc03f5397c011dce6796b9fed8d7', 'previous checkpoint commit');
-  assertEqual(stage.previous_stage.checkpoint_tree, '0a58f217049089a1857ab30aedc755750449f389', 'previous checkpoint tree');
+  assertEqual(stage.previous_stage.checkpoint_commit, M5_12_CHECKPOINT_COMMIT, 'previous checkpoint commit');
+  assertEqual(stage.previous_stage.checkpoint_pr_head, M5_12_CHECKPOINT_PR_HEAD, 'previous checkpoint PR head');
+  const checkpointTree = await resolveGitTreeForCommit(
+    stage.previous_stage.checkpoint_commit,
+    'previous checkpoint',
+  );
+  assertEqual(
+    stage.previous_stage.checkpoint_tree,
+    checkpointTree,
+    'previous checkpoint tree provenance',
+    'CHECKPOINT_PROVENANCE_MISMATCH',
+  );
+  const checkpointPrHeadTree = await resolveGitTreeForCommit(
+    stage.previous_stage.checkpoint_pr_head,
+    'previous checkpoint PR head',
+  );
+  assertEqual(
+    checkpointPrHeadTree,
+    checkpointTree,
+    'previous checkpoint PR head tree',
+    'CHECKPOINT_PROVENANCE_MISMATCH',
+  );
   assertEqual(stage.source.catalog, repositoryRelativePath(CATALOG_PATH), 'catalog path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.catalog_count, M5_12_CATALOG.length, 'catalog count binding');
   assertEqual(stage.source.catalog_sha256, sha256Json(M5_12_CATALOG), 'catalog source digest', 'DIGEST_MISMATCH');
