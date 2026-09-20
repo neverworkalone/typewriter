@@ -168,6 +168,11 @@ const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|읽
 // nominal particle.
 const PARTICLE_CONNECTIVE_CONTEXT_CUE_PATTERN = /려(?:고|서|면|야)?$/u;
 const PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN = /^[\p{L}\p{M}\p{N}]{2,}으로$/u;
+// `은/는` are also productive adnominal endings (`먹는 방식으로`).  Without
+// a morphological analyzer, treating every such surface as a nominal topic
+// particle would reject valid writer-facing glosses.  Topic-fragment checks
+// remain responsible for explicit, separately evidenced noun-topic forms.
+const AMBIGUOUS_ADNOMINAL_PARTICLES = new Set(['은', '는']);
 const PARTICLE_SURFACE_PATTERN = /^(?<stem>[\p{L}\p{M}\p{N}]{1,}?)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)$/u;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
   'noun-topic',
@@ -305,6 +310,7 @@ export function inspectMalformedParticles(gloss) {
     const match = PARTICLE_SURFACE_PATTERN.exec(token);
     if (!match) continue;
     const { stem, particle } = match.groups;
+    if (AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)) continue;
     if (particle === '이' && LEXICAL_ADVERB_I_FORMS.has(token)) continue;
     const finalIndex = hangulFinalIndex(stem);
     if (finalIndex === undefined) continue;

@@ -191,6 +191,16 @@ test('the shared particle rule covers conjugated and nominal-complement contexts
   );
 });
 
+test('the shared particle rule preserves productive adnominal endings before complements', () => {
+  for (const gloss of [
+    '먹는 방식으로 묘사한다.',
+    '읽는 방식으로 설명한다.',
+    '있는 방향으로 시선이 움직인다.',
+  ]) {
+    assert.deepEqual(inspectMalformedParticles(gloss), [], gloss);
+  }
+});
+
 test('the complete canonical audit catches missed particle surface contexts', () => {
   const recordInfos = [
     ['w980', '멈춘 엘리베이터과 맞물려 장면을 그린다.'],
