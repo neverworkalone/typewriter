@@ -31,10 +31,10 @@
         "deterministic_sqlite": {
           "status": "pass",
           "input_canonical_directory_sha256": "2a30bb2c423efc0b760c023e3d156d85db788d29900258bc9f246b0451f8a9df",
-          "product_dictionary_sha256": "2208ec08f8ff58bee74713022bfd0c5fedff31e2ecca6cd2aac6bcc5d032386a",
+          "product_dictionary_sha256": "77ebf34263a516124a99311ea2f1dc372277e6727b21d11988b833ebce318302",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-bAwXr5/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-daV4Mm/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2298,
             "senseCount": 2301,
@@ -53,7 +53,7 @@
               "schema_version": "1",
               "search_form_count": "2298",
               "sense_count": "2301",
-              "source_revision": "cf5f72c6af11b6c624f1d066105836117232261b",
+              "source_revision": "1b875d7b05ca0966def71fe6244939cf8db7da2f",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -73,7 +73,7 @@
             "Run product unit tests",
             "Build product extension"
           ],
-          "database_sha256": "2208ec08f8ff58bee74713022bfd0c5fedff31e2ecca6cd2aac6bcc5d032386a"
+          "database_sha256": "77ebf34263a516124a99311ea2f1dc372277e6727b21d11988b833ebce318302"
         },
         "extension_build": {
           "status": "pass",
@@ -262,10 +262,10 @@
       "deterministic_sqlite": {
         "status": "pass",
         "input_canonical_directory_sha256": "2a30bb2c423efc0b760c023e3d156d85db788d29900258bc9f246b0451f8a9df",
-        "product_dictionary_sha256": "2208ec08f8ff58bee74713022bfd0c5fedff31e2ecca6cd2aac6bcc5d032386a",
+        "product_dictionary_sha256": "77ebf34263a516124a99311ea2f1dc372277e6727b21d11988b833ebce318302",
         "rebuilt_logical_snapshot": true,
         "summary": {
-          "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-bAwXr5/dictionary-second.sqlite",
+          "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-daV4Mm/dictionary-second.sqlite",
           "recordCount": 2042,
           "searchFormCount": 2298,
           "senseCount": 2301,
@@ -284,7 +284,7 @@
             "schema_version": "1",
             "search_form_count": "2298",
             "sense_count": "2301",
-            "source_revision": "cf5f72c6af11b6c624f1d066105836117232261b",
+            "source_revision": "1b875d7b05ca0966def71fe6244939cf8db7da2f",
             "source_revision_source": "git-head",
             "source_revision_verified": "true",
             "sqlite_module": "node:sqlite",
@@ -304,7 +304,7 @@
           "Run product unit tests",
           "Build product extension"
         ],
-        "database_sha256": "2208ec08f8ff58bee74713022bfd0c5fedff31e2ecca6cd2aac6bcc5d032386a"
+        "database_sha256": "77ebf34263a516124a99311ea2f1dc372277e6727b21d11988b833ebce318302"
       },
       "extension_build": {
         "status": "pass",
@@ -391,7 +391,7 @@
       "review_sha256": "42c0d1e248fb5f8f1033cea7ceee3cb1769f1c09466e3b0f73112abce662e396"
     }
   },
-  "gate_evidence_sha256": "7c04313652d61c8642acb9caff6484a4dfb92f13c0b11b8d7ab6a4ad7e3b7fff",
+  "gate_evidence_sha256": "3a9fd561f36c94887a0bf35194e0613e19a9e6099fd511ecd901d50b6e7c7e13",
   "sources": {
     "candidate_identities": {
       "source_id": "m5-12a-typewriter-authored-identities-20260920",
@@ -456,7 +456,7 @@
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
       "materialization": "on-demand",
-      "sha256": "48638e209b377cd076ac043e84ca5773467d1f06898af0019e45d8b29e56d6a9",
+      "sha256": "42fdad34860a9f326b8cbe3e5c96132bc515fad19bafc3d8b67e2fabd2899514",
       "entry_count": 2235
     },
     "semantic_decision_source": {
