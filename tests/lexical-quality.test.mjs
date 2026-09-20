@@ -201,11 +201,38 @@ test('the shared particle rule preserves productive adnominal endings before com
   }
 });
 
+test('the shared particle rule still rejects nominal 은/는 outside adnominal ambiguity', () => {
+  for (const [gloss, token, expectedParticle] of [
+    ['운동화은 보인다.', '운동화은', '는'],
+    ['책는 보인다.', '책는', '은'],
+  ]) {
+    assert.deepEqual(
+      inspectMalformedParticles(gloss).map(({ token: findingToken, expected_particle }) => [
+        findingToken,
+        expected_particle,
+      ]),
+      [[token, expectedParticle]],
+      gloss,
+    );
+  }
+
+  const nounTerms = new Map([
+    ['운동화', new Set(['noun'])],
+  ]);
+  assert.deepEqual(
+    inspectMalformedParticles('운동화은 배경으로 장면을 그린다.', { nominalTerms: nounTerms })
+      .map(({ token, expected_particle }) => [token, expected_particle]),
+    [['운동화은', '는']],
+  );
+});
+
 test('the complete canonical audit catches missed particle surface contexts', () => {
   const recordInfos = [
     ['w980', '멈춘 엘리베이터과 맞물려 장면을 그린다.'],
     ['w981', '젖은 운동화을 배경으로 장면을 그린다.'],
     ['w982', '느린 횡단보도과 맞물려 장면을 그린다.'],
+    ['w983', '운동화은 보인다.'],
+    ['w984', '먹는 방식으로 묘사한다.'],
   ].map(([id, gloss]) => ({
     source: 'complete-canonical',
     record: {
@@ -227,6 +254,7 @@ test('the complete canonical audit catches missed particle surface contexts', ()
       ['w980', '엘리베이터과', '와'],
       ['w981', '운동화을', '를'],
       ['w982', '횡단보도과', '와'],
+      ['w983', '운동화은', '는'],
     ],
   );
 });

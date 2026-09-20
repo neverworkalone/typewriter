@@ -159,7 +159,7 @@ const PARTICLE_COMPATIBILITY = Object.freeze({
   라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
 });
 const LEXICAL_ADVERB_I_FORMS = new Set(['가까이', '거의', '미리', '새로이', '쉬이']);
-const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
+const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|보인|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
 // These are surface-grammar patterns rather than word or batch allowlists:
 // conjugated `려` connective endings cover forms such as `맞물려`, while a
 // noun-like complement ending in `으로` covers contexts such as `배경으로`.
@@ -169,9 +169,10 @@ const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|읽
 const PARTICLE_CONNECTIVE_CONTEXT_CUE_PATTERN = /려(?:고|서|면|야)?$/u;
 const PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN = /^[\p{L}\p{M}\p{N}]{2,}으로$/u;
 // `은/는` are also productive adnominal endings (`먹는 방식으로`).  Without
-// a morphological analyzer, treating every such surface as a nominal topic
-// particle would reject valid writer-facing glosses.  Topic-fragment checks
-// remain responsible for explicit, separately evidenced noun-topic forms.
+// a morphological analyzer, a following noun-like complement is the only
+// conservative context in which the surface can remain ambiguous.  Ordinary
+// predicate contexts and explicit noun evidence must still run the particle
+// compatibility check.
 const AMBIGUOUS_ADNOMINAL_PARTICLES = new Set(['은', '는']);
 const PARTICLE_SURFACE_PATTERN = /^(?<stem>[\p{L}\p{M}\p{N}]{1,}?)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)$/u;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
@@ -292,6 +293,50 @@ function isParticleContextCue(token) {
     || PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(token);
 }
 
+function hasAuthoredNounTopicEvidence(
+  gloss,
+  { stem, particle, nextToken, topicEvidence, senseId } = {},
+) {
+  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
+  if (!fragment
+    || fragment.groups.topic !== stem
+    || fragment.groups.particle !== particle
+    || fragment.groups.predicate !== nextToken) {
+    return false;
+  }
+  return topicAnalysisForSense(topicEvidence, {
+    senseId,
+    gloss,
+    topic: stem,
+    particle,
+    predicate: nextToken,
+  })?.state === 'noun-topic';
+}
+
+function isProductiveAdnominalAmbiguity(
+  gloss,
+  { stem, particle, nextToken, nominalTerms, topicEvidence, senseId } = {},
+) {
+  if (!AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)
+    || !PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(nextToken)) {
+    return false;
+  }
+  if (hasAuthoredNounTopicEvidence(gloss, {
+    stem,
+    particle,
+    nextToken,
+    topicEvidence,
+    senseId,
+  })) {
+    return false;
+  }
+  const positions = nominalTermPositions(nominalTerms, stem);
+  const nounOnly = positions?.has('noun') === true
+    && positions.has('verb') !== true
+    && positions.has('adjective') !== true;
+  return !nounOnly;
+}
+
 /**
  * Detect the compatibility errors that arise when an attached Korean nominal
  * particle is selected without considering the preceding syllable's final
@@ -299,7 +344,10 @@ function isParticleContextCue(token) {
  * `가까이` and `높이` are lexical adverbs, not malformed uses of `이`, while
  * a noun-shaped token before a predicate cue is a grammatical particle use.
  */
-export function inspectMalformedParticles(gloss) {
+export function inspectMalformedParticles(
+  gloss,
+  { nominalTerms, topicEvidence, senseId } = {},
+) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
   const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
   const findings = [];
@@ -310,7 +358,14 @@ export function inspectMalformedParticles(gloss) {
     const match = PARTICLE_SURFACE_PATTERN.exec(token);
     if (!match) continue;
     const { stem, particle } = match.groups;
-    if (AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)) continue;
+    if (isProductiveAdnominalAmbiguity(gloss, {
+      stem,
+      particle,
+      nextToken,
+      nominalTerms,
+      topicEvidence,
+      senseId,
+    })) continue;
     if (particle === '이' && LEXICAL_ADVERB_I_FORMS.has(token)) continue;
     const finalIndex = hangulFinalIndex(stem);
     if (finalIndex === undefined) continue;
@@ -853,7 +908,11 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
     malformed_fragment: topicAnalysis.malformed,
     malformed_structure: topicAnalysis.malformed,
-    malformed_particles: inspectMalformedParticles(trimmed),
+    malformed_particles: inspectMalformedParticles(trimmed, {
+      nominalTerms,
+      topicEvidence,
+      senseId,
+    }),
     topic_state: TOPIC_ANALYSIS_STATES.includes(topicAnalysis.state)
       ? topicAnalysis.state
       : 'unsupported',
