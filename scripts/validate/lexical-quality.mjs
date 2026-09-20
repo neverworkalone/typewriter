@@ -159,7 +159,15 @@ const PARTICLE_COMPATIBILITY = Object.freeze({
   라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
 });
 const LEXICAL_ADVERB_I_FORMS = new Set(['가까이', '거의', '미리', '새로이', '쉬이']);
-const PARTICLE_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
+const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
+// These are surface-grammar patterns rather than word or batch allowlists:
+// conjugated `려` connective endings cover forms such as `맞물려`, while a
+// noun-like complement ending in `으로` covers contexts such as `배경으로`.
+// Narrowing this to an unambiguous connective family avoids treating a
+// productive adnominal such as `있는` before a token ending in `고` as a
+// nominal particle.
+const PARTICLE_CONNECTIVE_CONTEXT_CUE_PATTERN = /려(?:고|서|면|야)?$/u;
+const PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN = /^[\p{L}\p{M}\p{N}]{2,}으로$/u;
 const PARTICLE_SURFACE_PATTERN = /^(?<stem>[\p{L}\p{M}\p{N}]{1,}?)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)$/u;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
   'noun-topic',
@@ -273,6 +281,12 @@ function stripGlossTokenPunctuation(token) {
   return token.replace(/^[()[\]{}"“”‘’'.,;:!?。！？…]+|[()[\]{}"“”‘’'.,;:!?。！？…]+$/gu, '');
 }
 
+function isParticleContextCue(token) {
+  return PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN.test(token)
+    || PARTICLE_CONNECTIVE_CONTEXT_CUE_PATTERN.test(token)
+    || PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(token);
+}
+
 /**
  * Detect the compatibility errors that arise when an attached Korean nominal
  * particle is selected without considering the preceding syllable's final
@@ -287,7 +301,7 @@ export function inspectMalformedParticles(gloss) {
   for (let index = 0; index < tokens.length - 1; index += 1) {
     const token = tokens[index];
     const nextToken = tokens[index + 1];
-    if (!token || !nextToken || !PARTICLE_CONTEXT_CUE_PATTERN.test(nextToken)) continue;
+    if (!token || !nextToken || !isParticleContextCue(nextToken)) continue;
     const match = PARTICLE_SURFACE_PATTERN.exec(token);
     if (!match) continue;
     const { stem, particle } = match.groups;

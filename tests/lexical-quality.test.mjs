@@ -171,6 +171,56 @@ test('the shared lexical quality rule rejects incompatible nominal particles', (
   assert.deepEqual(inspectGlossQuality(malformed).malformed_particles, findings);
 });
 
+test('the shared particle rule covers conjugated and nominal-complement contexts', () => {
+  const malformed = '멈춘 엘리베이터과 맞물려 짧은 환기를 남긴다. 젖은 운동화을 배경으로 후회가 번진다. 느린 횡단보도과 맞물려 생각을 가다듬는다.';
+  assert.deepEqual(
+    inspectMalformedParticles(malformed).map(({ token, expected_particle, next_token }) => [
+      token,
+      expected_particle,
+      next_token,
+    ]),
+    [
+      ['엘리베이터과', '와', '맞물려'],
+      ['운동화을', '를', '배경으로'],
+      ['횡단보도과', '와', '맞물려'],
+    ],
+  );
+  assert.deepEqual(
+    inspectMalformedParticles('멈춘 엘리베이터와 맞물려 젖은 운동화를 배경으로 느린 횡단보도와 맞물려'),
+    [],
+  );
+});
+
+test('the complete canonical audit catches missed particle surface contexts', () => {
+  const recordInfos = [
+    ['w980', '멈춘 엘리베이터과 맞물려 장면을 그린다.'],
+    ['w981', '젖은 운동화을 배경으로 장면을 그린다.'],
+    ['w982', '느린 횡단보도과 맞물려 장면을 그린다.'],
+  ].map(([id, gloss]) => ({
+    source: 'complete-canonical',
+    record: {
+      id,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: id,
+      lemma: `particle-${id}`,
+      search_forms: [`particle-${id}`],
+      senses: [{ id: `${id}-s1`, pos: 'noun', gloss }],
+    },
+  }));
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
+      .map(({ record_id, observation }) => [record_id, observation.token, observation.expected_particle]),
+    [
+      ['w980', '엘리베이터과', '와'],
+      ['w981', '운동화을', '를'],
+      ['w982', '횡단보도과', '와'],
+    ],
+  );
+});
+
 test('the complete canonical audit catches a repeated template completed by a later batch', () => {
   const recordInfos = ['기존의 결', '새로운 결', '또 다른 결', '마지막 결'].map((lemma, index) => ({
     source: index === 0 ? 'base' : 'prospective-batch',
