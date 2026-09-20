@@ -14576,19 +14576,19 @@
           "to": "semantic-review-complete"
         },
         "source_path": "data/validation/m5-10-wave-b-semantic-audit.json",
-        "payload_sha256": "8e4f8d36c6651ddd8e04552aca76f127db7449458444f18b5db24bbb6ea6e4d2",
+        "payload_sha256": "84ec709ceb173bd5abd4b32286ac891242817c2eade65c38acab4726d23a611a",
         "payload_mode": "replay",
         "payload_input_sha256": "3610a1e8fe94ccce8c73153ba2abfcabbea1625b6950256676f04959d0c1356e",
-        "payload_output_sha256": "8e4f8d36c6651ddd8e04552aca76f127db7449458444f18b5db24bbb6ea6e4d2",
-        "source_sha256": "a9a59b7916a5930c61f3de55ce653f78a8939295a24faf8f8dc0745ad6c1d05f",
+        "payload_output_sha256": "84ec709ceb173bd5abd4b32286ac891242817c2eade65c38acab4726d23a611a",
+        "source_sha256": "b665c162606a20a7b8fe3c845fb8de521f2adc3ab79f44a2a1145e73387ee3f0",
         "input_sha256": "b08d2eed863083d099e20c927a1da1df9b7353a422233aa13da1ff94b2da4734",
-        "output_sha256": "a9a59b7916a5930c61f3de55ce653f78a8939295a24faf8f8dc0745ad6c1d05f",
+        "output_sha256": "b665c162606a20a7b8fe3c845fb8de521f2adc3ab79f44a2a1145e73387ee3f0",
         "predecessor": {
           "stage_id": "candidate_intake",
           "output_sha256": "b08d2eed863083d099e20c927a1da1df9b7353a422233aa13da1ff94b2da4734"
         },
         "operation": "validate-semantic-review-output",
-        "transition_sha256": "9e9da2e08da75efcd3b849bc6bcfd9c6eef3a29417135dc51b5029bfae780708"
+        "transition_sha256": "d0305c8d040edf2538473c54445c9973ea5b6857e10a14aba0eaecc750d95b3c"
       },
       {
         "id": "selection",
@@ -14600,18 +14600,18 @@
         "source_path": "data/canonical/m5-10-wave-b.jsonl",
         "payload_sha256": "4034521608c5b33ff682ffc9cfff3f6898706b0f7c7444829333fef00db24cd9",
         "payload_mode": "replay",
-        "payload_input_sha256": "8e4f8d36c6651ddd8e04552aca76f127db7449458444f18b5db24bbb6ea6e4d2",
+        "payload_input_sha256": "84ec709ceb173bd5abd4b32286ac891242817c2eade65c38acab4726d23a611a",
         "payload_output_sha256": "4034521608c5b33ff682ffc9cfff3f6898706b0f7c7444829333fef00db24cd9",
         "source_sha256": "1d582d745258bb95d34b0c3a40ab41a88cdfb3b54717a38daa4cbe1ba3e42dd5",
-        "input_sha256": "a9a59b7916a5930c61f3de55ce653f78a8939295a24faf8f8dc0745ad6c1d05f",
+        "input_sha256": "b665c162606a20a7b8fe3c845fb8de521f2adc3ab79f44a2a1145e73387ee3f0",
         "output_sha256": "1d582d745258bb95d34b0c3a40ab41a88cdfb3b54717a38daa4cbe1ba3e42dd5",
         "predecessor": {
           "stage_id": "semantic_review",
-          "output_sha256": "a9a59b7916a5930c61f3de55ce653f78a8939295a24faf8f8dc0745ad6c1d05f"
+          "output_sha256": "b665c162606a20a7b8fe3c845fb8de521f2adc3ab79f44a2a1145e73387ee3f0"
         },
         "operation": "validate-selection-output",
         "policy": "wave-b-reviewed-selection",
-        "transition_sha256": "cb0981347ed5fba3c21a1d0b6d89171c3fe3edcfa63f667eea374358e5951ddb"
+        "transition_sha256": "a435ecc959cb48ae8907f046d20b2642ad988fea72d4ad887d6ff4c47e746835"
       },
       {
         "id": "prospective_canonical",
@@ -14643,19 +14643,19 @@
           "to": "audit-complete"
         },
         "source_path": "data/validation/m5-10-wave-b-semantic-audit.json",
-        "payload_sha256": "2c76f562676a0d73363fae537d2eb91067bc7bec956a9daff7c2c97a95200fc3",
+        "payload_sha256": "b05a66c6d7b125ed4e7fd303511b80d7e3a838867d551de4501bce6e434514af",
         "payload_mode": "replay",
         "payload_input_sha256": "c6b4e09cbfc770af92d4ded96fc6545c2fcaadbdcd6a9551c13a600517c99d9f",
-        "payload_output_sha256": "2c76f562676a0d73363fae537d2eb91067bc7bec956a9daff7c2c97a95200fc3",
-        "source_sha256": "9f3e3100ba1a008a62aeca766c6563deb6ee4ddd00053b53068cdce71ecbc522",
+        "payload_output_sha256": "b05a66c6d7b125ed4e7fd303511b80d7e3a838867d551de4501bce6e434514af",
+        "source_sha256": "41dc1ad3d07cf08db0fe8ed8bbb65c48eba1b965d90cb80aa3087ca53d90b4bd",
         "input_sha256": "330f0b6bf1f369189327243543f0b9ebce517d1f8270086338f0683a5b145d7a",
-        "output_sha256": "9f3e3100ba1a008a62aeca766c6563deb6ee4ddd00053b53068cdce71ecbc522",
+        "output_sha256": "41dc1ad3d07cf08db0fe8ed8bbb65c48eba1b965d90cb80aa3087ca53d90b4bd",
         "predecessor": {
           "stage_id": "prospective_canonical",
           "output_sha256": "330f0b6bf1f369189327243543f0b9ebce517d1f8270086338f0683a5b145d7a"
         },
         "operation": "validate-complete-canonical-audit-output",
-        "transition_sha256": "d52adbce6df48c4c1cea5450be5649e90969f2bc8352895c737f46b05b788cf7"
+        "transition_sha256": "3917f1ba7e263f94d31940e38fb06fe09501b54f69c04b03a3ab23ab94633762"
       },
       {
         "id": "admission",
@@ -14667,22 +14667,22 @@
         "source_path": "data/batches/m5-10-wave-b-authorization.json",
         "payload_sha256": "11d0c56988734291e205136440bac8b5c9d0797c9a2658728c44cff6c2f6bc18",
         "payload_mode": "replay",
-        "payload_input_sha256": "2c76f562676a0d73363fae537d2eb91067bc7bec956a9daff7c2c97a95200fc3",
+        "payload_input_sha256": "b05a66c6d7b125ed4e7fd303511b80d7e3a838867d551de4501bce6e434514af",
         "payload_output_sha256": "11d0c56988734291e205136440bac8b5c9d0797c9a2658728c44cff6c2f6bc18",
         "source_sha256": "f37a35729025a81d10694db29deb5238b955178968dd2a183e46866766fe6fb4",
-        "input_sha256": "9f3e3100ba1a008a62aeca766c6563deb6ee4ddd00053b53068cdce71ecbc522",
+        "input_sha256": "41dc1ad3d07cf08db0fe8ed8bbb65c48eba1b965d90cb80aa3087ca53d90b4bd",
         "output_sha256": "f37a35729025a81d10694db29deb5238b955178968dd2a183e46866766fe6fb4",
         "predecessor": {
           "stage_id": "audit",
-          "output_sha256": "9f3e3100ba1a008a62aeca766c6563deb6ee4ddd00053b53068cdce71ecbc522"
+          "output_sha256": "41dc1ad3d07cf08db0fe8ed8bbb65c48eba1b965d90cb80aa3087ca53d90b4bd"
         },
         "operation": "commit-authorized-admission-output",
         "decision": "admit",
         "authorization_ref": "data/batches/m5-10-wave-b-authorization.json",
-        "authorization_sha256": "802012b5b2e712a34d70ed0c2274488890ee748304f8200d43dfa2a3f2a31c4d",
+        "authorization_sha256": "4c5a846773bfcbf4d049100030b97c0fdd778de15f042bf6db106139ab7bfe52",
         "admission_status": "admitted",
         "admission_result_sha256": "c4881ca288818d4eeabf94dfd67b610df4bcdfed1978501537fc70d3cd2f7d2a",
-        "transition_sha256": "afe88ff074fa4297d0edd099a0bf864adbf866f554713e36e3113c79040e8508"
+        "transition_sha256": "9657ebc98c65ee6722f4a78cf6bd482e64895d55cea38a3def113008ceb33a4d"
       }
     ]
   }
