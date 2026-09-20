@@ -14,6 +14,8 @@ const canonicalDirectory = path.resolve(
 const outputDirectory = path.resolve(
   process.env.TYPEWRITER_BUILD_OUTPUT_DIRECTORY ?? path.join(projectRoot, 'dist'),
 );
+const defaultOutputDirectory = path.join(projectRoot, 'dist');
+const defaultDictionaryPath = path.join(projectRoot, 'dist/dictionary.sqlite');
 const sqliteWasmDirectory = path.join(
   projectRoot,
   'node_modules/@sqlite.org/sqlite-wasm/dist',
@@ -54,7 +56,9 @@ async function copyRuntimeAssets() {
 
   const summary = await buildDictionary({
     inputDirectory: canonicalDirectory,
-    outputPath: path.join(outputDirectory, 'dictionary.sqlite'),
+    outputPath: outputDirectory === defaultOutputDirectory
+      ? defaultDictionaryPath
+      : path.join(outputDirectory, 'dictionary.sqlite'),
     checkPilotCompleteness: true,
     repositoryDirectory: projectRoot,
     allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
