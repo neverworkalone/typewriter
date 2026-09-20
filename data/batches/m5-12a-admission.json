@@ -228,10 +228,10 @@
         "deterministic_sqlite": {
           "status": "pass",
           "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
-          "product_dictionary_sha256": "c2a0420c0596cd24f4a4e2917d94f86ad48bc938c7c29609ef5ae867014a755b",
+          "product_dictionary_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/private/tmp/typewriter-m5-12a-preflight-0TO7KI/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-t8v7DW/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2320,
             "senseCount": 2301,
@@ -250,7 +250,7 @@
               "schema_version": "1",
               "search_form_count": "2320",
               "sense_count": "2301",
-              "source_revision": "a495c205f62c71292f97fd1d70d8c6ba9a1361db",
+              "source_revision": "1dcf405734cac4ae84b60c6ca651e1c5e34dfb2c",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -263,9 +263,14 @@
         "search_product_regression": {
           "status": "pass",
           "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
-          "existing_term": "감탄스럽다",
-          "new_record_id": "w1279",
-          "new_term": "설렘의 결"
+          "ci_category": "product",
+          "check_labels": [
+            "Test shared search query contract",
+            "Test search regressions",
+            "Run product unit tests",
+            "Build product extension"
+          ],
+          "database_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c"
         },
         "extension_build": {
           "status": "pass",
@@ -375,10 +380,10 @@
         "deterministic_sqlite": {
           "status": "pass",
           "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
-          "product_dictionary_sha256": "c2a0420c0596cd24f4a4e2917d94f86ad48bc938c7c29609ef5ae867014a755b",
+          "product_dictionary_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/private/tmp/typewriter-m5-12a-preflight-0TO7KI/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-t8v7DW/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2320,
             "senseCount": 2301,
@@ -397,7 +402,7 @@
               "schema_version": "1",
               "search_form_count": "2320",
               "sense_count": "2301",
-              "source_revision": "a495c205f62c71292f97fd1d70d8c6ba9a1361db",
+              "source_revision": "1dcf405734cac4ae84b60c6ca651e1c5e34dfb2c",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -410,9 +415,14 @@
         "search_product_regression": {
           "status": "pass",
           "input_canonical_directory_sha256": "f35b8c86f8b423147c81d9e71c3542b3b94882173d3c1473d8eb93b828202b5f",
-          "existing_term": "감탄스럽다",
-          "new_record_id": "w1279",
-          "new_term": "설렘의 결"
+          "ci_category": "product",
+          "check_labels": [
+            "Test shared search query contract",
+            "Test search regressions",
+            "Run product unit tests",
+            "Build product extension"
+          ],
+          "database_sha256": "a57f29aaa0a09842e4180adcf71a9d49f6132bca62fa68945f2150a74716bc2c"
         },
         "extension_build": {
           "status": "pass",
@@ -448,7 +458,7 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "fd3b1765d2a772a3a9002508b4b99dbea54a91c07e26933287cb36f6d6b2e2e4",
+  "gate_evidence_sha256": "43c0bfd4c1d1d1d71c28d24c3d3df7886468cf899ca92d6850e2d62a7a6dbd58",
   "sources": {
     "candidate_identities": {
       "source_id": "m5-12a-typewriter-authored-identities-20260920",
