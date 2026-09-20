@@ -366,6 +366,107 @@ function validateSemanticDecisionSource(review, label) {
   return source.source_id;
 }
 
+function validateIndependentDecisionEvidence(review, {
+  decision,
+  candidateRecord,
+  reviewedRecord,
+  inventoryId,
+  label,
+  decisionSourceId,
+} = {}) {
+  const source = review.decision_source;
+  if (!['agent-authored-decision', 'human-authored-decision'].includes(source.authoring_mode)) {
+    fail(
+      `${label}.decision_source.authoring_mode must identify the authored decision path`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  if (!/^[0-9a-f]{64}$/u.test(source.source_sha256 ?? '')) {
+    fail(
+      `${label}.decision_source.source_sha256 must bind a separately supplied decision artifact`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  const authored = requireObject(review.authored_decision, `${label}.authored_decision`);
+  if (authored.source_sha256 !== source.source_sha256
+    || authored.decision_source_id !== decisionSourceId) {
+    fail(
+      `${label}.authored_decision must bind the exact authored decision source`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  if (authored.candidate_record_id !== candidateRecord.id
+    || authored.candidate_record_sha256 !== sha256Json(candidateRecord)) {
+    fail(
+      `${label}.authored_decision must bind the exact candidate record`,
+      'LEXICAL_SEMANTIC_BINDING',
+    );
+  }
+  const reviewed = reviewedRecord ?? candidateRecord;
+  if (authored.reviewed_record_sha256 !== sha256Json(reviewed)) {
+    fail(
+      `${label}.authored_decision.reviewed_record_sha256 must bind the exact reviewed record`,
+      'LEXICAL_SEMANTIC_BINDING',
+    );
+  }
+  if (authored.decision !== decision
+    || authored.selection_rank !== review.selection.rank
+    || authored.selection_score !== review.selection.score) {
+    fail(
+      `${label}.authored_decision must bind the decision and selection output`,
+      'LEXICAL_SELECTION_BINDING',
+    );
+  }
+  requireString(authored.rationale, `${label}.authored_decision.rationale`);
+  if (inventoryId !== undefined && !authored.rationale.includes(inventoryId)) {
+    fail(
+      `${label}.authored_decision.rationale must bind ${inventoryId}`,
+      'LEXICAL_SEMANTIC_BINDING',
+    );
+  }
+  const senseEvidence = requireArray(
+    authored.sense_evidence,
+    `${label}.authored_decision.sense_evidence`,
+    { minItems: 1 },
+  );
+  assert.deepEqual(
+    senseEvidence.map(({ sense_id: senseId }) => senseId),
+    reviewed.senses.map(({ id }) => id),
+    `${label}.authored_decision.sense_evidence must cover every reviewed sense`,
+  );
+  for (const [index, evidence] of senseEvidence.entries()) {
+    const evidenceLabel = `${label}.authored_decision.sense_evidence[${index}]`;
+    requireObject(evidence, evidenceLabel);
+    const sense = reviewed.senses[index];
+    if (evidence.sense_id !== sense.id || evidence.gloss_sha256 !== sha256Json(sense.gloss)) {
+      fail(`${evidenceLabel} does not bind the reviewed sense`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+    requireString(evidence.basis, `${evidenceLabel}.basis`);
+  }
+  const relationEvidence = requireArray(
+    authored.relation_evidence,
+    `${label}.authored_decision.relation_evidence`,
+    { minItems: 1 },
+  );
+  assert.deepEqual(
+    relationEvidence.map(({ sense_id: senseId }) => senseId),
+    reviewed.senses.map(({ id }) => id),
+    `${label}.authored_decision.relation_evidence must cover every reviewed sense`,
+  );
+  for (const [index, evidence] of relationEvidence.entries()) {
+    const evidenceLabel = `${label}.authored_decision.relation_evidence[${index}]`;
+    requireObject(evidence, evidenceLabel);
+    const sense = reviewed.senses[index];
+    const relationCount = sense.relations?.length ?? 0;
+    if (evidence.sense_id !== sense.id
+      || evidence.relation_count !== relationCount
+      || evidence.decision !== (relationCount === 0 ? 'no-relations' : 'relations-reviewed')) {
+      fail(`${evidenceLabel} does not bind the reviewed relation outcome`, 'LEXICAL_RELATION_BINDING');
+    }
+    requireString(evidence.basis, `${evidenceLabel}.basis`);
+  }
+}
+
 function boundaryDecisionForFinding(action, classification) {
   if (action === 'retain') return classification === 'coordinated' ? 'coordinated' : 'atomic';
   if (action === 'split') return classification === 'coordinated' ? 'coordinated' : 'split';
@@ -1014,6 +1115,7 @@ export function validateLexicalSemanticReview(review, {
   catalogCount = 550,
   rejectAnyBroadConnector = false,
   requireSemanticEvidence = false,
+  requireIndependentDecisionEvidence = false,
   selectionRationaleTokens = ['verification', 'coverage'],
 } = {}) {
   requireObject(review, label);
@@ -1297,6 +1399,16 @@ export function validateLexicalSemanticReview(review, {
   if (selectionRationaleTokens.length > 0
     && !selectionRationaleTokens.some((token) => selection.rationale.includes(token))) {
     fail(`${label}.selection.rationale must bind ${selectionRationaleTokens.join(' or ')}`, 'LEXICAL_SELECTION_BINDING');
+  }
+  if (requireIndependentDecisionEvidence) {
+    validateIndependentDecisionEvidence(review, {
+      decision,
+      candidateRecord,
+      reviewedRecord,
+      inventoryId,
+      label,
+      decisionSourceId,
+    });
   }
 
   return {

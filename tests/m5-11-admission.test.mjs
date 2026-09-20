@@ -35,6 +35,7 @@ import {
   M5_11_BATCH_ID,
   M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
   evaluateM511SemanticCoverage,
+  rebaseM511CandidateRecord,
   sha256Json,
   sha256ProposalRow,
   validateM511EditorialDecisions,
@@ -612,9 +613,20 @@ function makeAgentSources(catalog) {
     const proposalRecord = fixture.proposal.proposals[index].candidate_record;
     const record = decision.canonical_record ?? proposalRecord;
     const imported = decision.canonical_record !== undefined;
+    const producerCandidate = imported
+      ? rebaseM511CandidateRecord(proposalRecord, record.id)
+      : proposalRecord;
     const decisionSourceId = `${catalogEntry.inventory_id}:decision-source`;
     const boundaryAction = record.senses.length > 1 ? 'split' : 'retain';
     const boundaryClassification = record.senses.length > 1 ? 'separated' : 'atomic';
+    const selectionScore = scores[index];
+    const sourceSha256 = sha256Json({
+      candidate_record_sha256: sha256Json(producerCandidate),
+      reviewed_record_sha256: sha256Json(record),
+      decision: decision.decision,
+      selection_rank: ranks[index],
+      selection_score: selectionScore,
+    });
     const pairwise = inspectSenseBoundaryPairs(record).map((pair) => {
       const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
       const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
@@ -641,6 +653,33 @@ function makeAgentSources(catalog) {
         contract_version: 'lexical-semantic-decision-source-v1',
         source_id: decisionSourceId,
         path: `tests/fixtures/${catalogEntry.inventory_id}-decision-source.json`,
+        authoring_mode: 'agent-authored-decision',
+        source_sha256: sourceSha256,
+      },
+      authored_decision: {
+        source_sha256: sourceSha256,
+        decision_source_id: decisionSourceId,
+        candidate_record_id: producerCandidate.id,
+        candidate_record_sha256: sha256Json(producerCandidate),
+        reviewed_record_sha256: sha256Json(record),
+        decision: decision.decision,
+        selection_rank: ranks[index],
+        selection_score: selectionScore,
+        rationale: `${catalogEntry.inventory_id} was selected from the separately authored M5-11 fixture decision source.`,
+        sense_evidence: record.senses.map((sense) => ({
+          sense_id: sense.id,
+          gloss_sha256: sha256Json(sense.gloss),
+          basis: `${catalogEntry.inventory_id} ${sense.id} gloss and writer-facing use were explicitly reviewed.`,
+        })),
+        relation_evidence: record.senses.map((sense) => {
+          const relationCount = sense.relations?.length ?? 0;
+          return {
+            sense_id: sense.id,
+            relation_count: relationCount,
+            decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+            basis: `${catalogEntry.inventory_id} ${sense.id} relation outcome was explicitly reviewed.`,
+          };
+        }),
       },
       axis: catalogEntry.axis,
       flags: [...catalogEntry.flags],
@@ -708,7 +747,7 @@ function makeAgentSources(catalog) {
       selection: {
         status: imported ? 'selected' : decision.decision,
         rank: ranks[index],
-        score: scores[index],
+        score: selectionScore,
         rationale: `${catalogEntry.inventory_id} selected by verification and coverage outcome`,
       },
     };

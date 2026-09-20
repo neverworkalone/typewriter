@@ -64,12 +64,24 @@ function makeProductionSemanticReview(record, {
   decision,
   artifactId,
   rank,
+  candidateRecord = record,
+  reviewedRecord = record,
   topicAnalyses = {},
 } = {}) {
   const decisionSourceId = `${artifactId}:decision-source`;
   const multiSense = record.senses.length > 1;
   const action = multiSense ? 'split' : 'retain';
   const classification = multiSense ? 'separated' : 'atomic';
+  const score = 1;
+  const sourceSha256 = sha256Json({
+    artifact_id: artifactId,
+    decision_source_id: decisionSourceId,
+    candidate_record_sha256: sha256Json(candidateRecord),
+    reviewed_record_sha256: sha256Json(reviewedRecord),
+    decision,
+    rank,
+    score,
+  });
   const pairs = inspectSenseBoundaryPairs(record).map((pair) => {
     const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
     const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
@@ -95,6 +107,33 @@ function makeProductionSemanticReview(record, {
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: decisionSourceId,
       path: `tests/fixtures/${artifactId}-decision-source.json`,
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: sourceSha256,
+    },
+    authored_decision: {
+      source_sha256: sourceSha256,
+      decision_source_id: decisionSourceId,
+      candidate_record_id: candidateRecord.id,
+      candidate_record_sha256: sha256Json(candidateRecord),
+      reviewed_record_sha256: sha256Json(reviewedRecord),
+      decision,
+      selection_rank: rank,
+      selection_score: score,
+      rationale: `${candidateRecord.id} was selected from the separately authored fixture decision source.`,
+      sense_evidence: reviewedRecord.senses.map((sense) => ({
+        sense_id: sense.id,
+        gloss_sha256: sha256Json(sense.gloss),
+        basis: `${reviewedRecord.id} ${sense.id} gloss and writer-facing use were explicitly reviewed.`,
+      })),
+      relation_evidence: reviewedRecord.senses.map((sense) => {
+        const relationCount = sense.relations?.length ?? 0;
+        return {
+          sense_id: sense.id,
+          relation_count: relationCount,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          basis: `${reviewedRecord.id} ${sense.id} relation outcome was explicitly reviewed.`,
+        };
+      }),
     },
     sense_boundary: {
       status: 'pass',
@@ -169,7 +208,7 @@ function makeProductionSemanticReview(record, {
     selection: {
       status: ['included', 'corrected'].includes(decision) ? 'selected' : decision,
       rank,
-      score: 1,
+      score,
       rationale: `${record.id} was selected by authored verification and coverage evidence`,
     },
   };
@@ -203,6 +242,8 @@ export function makeProductionState({
         decision,
         artifactId,
         rank: index + 1,
+        candidateRecord: candidate,
+        reviewedRecord: reviewedValues[index] ?? candidate,
         topicAnalyses,
       }),
       ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),

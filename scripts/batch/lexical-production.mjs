@@ -311,6 +311,7 @@ export function validateLexicalProduction({
   candidateLabel = 'production candidate records',
   reviewedLabel = 'production reviewed records',
   prospectiveLabel = 'production prospective canonical records',
+  requireIndependentDecisionEvidence = true,
 } = {}) {
   if (allowReplay === true) {
     fail(
@@ -399,6 +400,7 @@ export function validateLexicalProduction({
         expectedRecordType: entry.expected_record_type,
         catalogCount: catalogCount ?? candidates.length,
         requireSemanticEvidence: true,
+        requireIndependentDecisionEvidence,
         selectionRationaleTokens: ['verification', 'coverage'],
       });
     } catch (error) {
@@ -445,6 +447,7 @@ export function validateLexicalProduction({
         expectedRecordType: entry.expected_record_type,
         catalogCount: catalogCount ?? Math.max(candidates.length, 1),
         requireSemanticEvidence: true,
+        requireIndependentDecisionEvidence,
         selectionRationaleTokens: ['verification', 'coverage'],
       });
     } catch (error) {

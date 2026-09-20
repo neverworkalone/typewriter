@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
 import {
   cp,
   mkdtemp,
@@ -10,7 +9,6 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { promisify } from 'node:util';
 
 import { applyCorrections } from '../scripts/validate/apply-semantic-corrections.mjs';
 import {
@@ -18,6 +16,7 @@ import {
   readSemanticAuditArtifact,
 } from '../scripts/validate/semantic-audit.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
+import { deriveBaseDecisionSource } from '../scripts/batch/m5-12a-pipeline.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve('.');
 // The correction manifest is bound to the pre-M5-12A 1,320-record snapshot;
@@ -35,8 +34,6 @@ const BOUNDARY_DECISIONS_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/validation/canonical-semantic-boundary-decisions.json',
 );
-const execFileAsync = promisify(execFile);
-
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
 }
@@ -49,11 +46,12 @@ async function copyEvidence(root) {
     coverageOutputPath: path.join(root, 'coverage.json'),
     auditOutputPath: path.join(root, 'audit.json'),
   };
-  const { stdout: historicalDecisionSource } = await execFileAsync(
-    'git',
-    ['show', 'origin/master:data/validation/canonical-semantic-decision-source.json'],
-    { cwd: REPOSITORY_DIRECTORY, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 },
-  );
+  const currentDecisionSource = await readJson(DECISION_SOURCE_PATH);
+  const baseCanonical = await readCanonicalRecords(CANONICAL_DIRECTORY);
+  const historicalDecisionSource = `${JSON.stringify(
+    deriveBaseDecisionSource(currentDecisionSource, baseCanonical.records),
+    null,
+  2)}\n`;
   await Promise.all([
     writeFile(paths.decisionSourcePath, historicalDecisionSource, 'utf8'),
     cp(BOUNDARY_DECISIONS_PATH, paths.boundaryDecisionsPath),

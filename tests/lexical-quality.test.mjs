@@ -22,6 +22,7 @@ import {
   buildSemanticTopicEvidence,
   canonicalRecordsSha256,
   inspectSenseBoundaryPairs,
+  sha256Json,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
@@ -1126,6 +1127,13 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
   const sense = record.senses[0];
   const evidence = inspectWriterDomainEvidence(gloss);
   const decisionSourceId = `future-batch:${record.id}:decision-source`;
+  const sourceSha256 = sha256Json({
+    candidate_record_sha256: sha256Json(candidateRecord),
+    reviewed_record_sha256: sha256Json(record),
+    decision: 'included',
+    selection_rank: 1,
+    selection_score: 1,
+  });
   return {
     status: 'complete',
     decision_source: {
@@ -1133,6 +1141,33 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: decisionSourceId,
       path: `tests/fixtures/${record.id}-decision-source.json`,
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: sourceSha256,
+    },
+    authored_decision: {
+      source_sha256: sourceSha256,
+      decision_source_id: decisionSourceId,
+      candidate_record_id: candidateRecord.id,
+      candidate_record_sha256: sha256Json(candidateRecord),
+      reviewed_record_sha256: sha256Json(record),
+      decision: 'included',
+      selection_rank: 1,
+      selection_score: 1,
+      rationale: `${candidateRecord.id} was selected from the separately authored fixture decision source.`,
+      sense_evidence: record.senses.map((reviewedSense) => ({
+        sense_id: reviewedSense.id,
+        gloss_sha256: sha256Json(reviewedSense.gloss),
+        basis: `${record.id} ${reviewedSense.id} gloss and writer-facing use were explicitly reviewed.`,
+      })),
+      relation_evidence: record.senses.map((reviewedSense) => {
+        const relationCount = reviewedSense.relations?.length ?? 0;
+        return {
+          sense_id: reviewedSense.id,
+          relation_count: relationCount,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          basis: `${record.id} ${reviewedSense.id} relation outcome was explicitly reviewed.`,
+        };
+      }),
     },
     sense_boundary: {
       status: 'pass',
@@ -1207,6 +1242,13 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
   const right = record.senses[1];
   const leftGlossSha256 = createHash('sha256').update(JSON.stringify(left.gloss), 'utf8').digest('hex');
   const rightGlossSha256 = createHash('sha256').update(JSON.stringify(right.gloss), 'utf8').digest('hex');
+  const sourceSha256 = sha256Json({
+    candidate_record_sha256: sha256Json(record),
+    reviewed_record_sha256: sha256Json(record),
+    decision: 'included',
+    selection_rank: 1,
+    selection_score: 1,
+  });
   return {
     status: 'complete',
     decision_source: {
@@ -1214,6 +1256,33 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: decisionSourceId,
       path: `tests/fixtures/${record.id}-decision-source.json`,
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: sourceSha256,
+    },
+    authored_decision: {
+      source_sha256: sourceSha256,
+      decision_source_id: decisionSourceId,
+      candidate_record_id: record.id,
+      candidate_record_sha256: sha256Json(record),
+      reviewed_record_sha256: sha256Json(record),
+      decision: 'included',
+      selection_rank: 1,
+      selection_score: 1,
+      rationale: `${record.id} was selected from the separately authored fixture decision source.`,
+      sense_evidence: record.senses.map((reviewedSense) => ({
+        sense_id: reviewedSense.id,
+        gloss_sha256: sha256Json(reviewedSense.gloss),
+        basis: `${record.id} ${reviewedSense.id} gloss and writer-facing use were explicitly reviewed.`,
+      })),
+      relation_evidence: record.senses.map((reviewedSense) => {
+        const relationCount = reviewedSense.relations?.length ?? 0;
+        return {
+          sense_id: reviewedSense.id,
+          relation_count: relationCount,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          basis: `${record.id} ${reviewedSense.id} relation outcome was explicitly reviewed.`,
+        };
+      }),
     },
     sense_boundary: {
       status: 'pass',

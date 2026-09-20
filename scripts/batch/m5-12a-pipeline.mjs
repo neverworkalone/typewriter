@@ -61,6 +61,14 @@ import {
   M5_12A_SELECTION_COUNT,
   M5_12A_VERIFICATION_PASS_ID,
 } from './m5-12a-candidate-source.mjs';
+import {
+  M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
+  readM512ADecisionSource,
+  validateM512ADecisionSource,
+} from './m5-12a-decision-source.mjs';
+import {
+  runM512APreflight,
+} from './m5-12a-preflight.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -265,7 +273,7 @@ function glossFor(identity) {
   return options[identity.catalog_index % options.length];
 }
 
-function makeCandidateRecord(identity) {
+export function makeM512ACandidateRecord(identity) {
   const recordId = identity.candidate_record_id;
   return {
     id: recordId,
@@ -292,33 +300,48 @@ function makeCorrectedRecord(record) {
     };
 }
 
-function decisionForIndex(index) {
-  if (index < M5_12A_DECISION_COUNTS.included) return 'included';
-  if (index < M5_12A_DECISION_COUNTS.included + M5_12A_DECISION_COUNTS.corrected) return 'corrected';
-  if (index < M5_12A_DECISION_COUNTS.included + M5_12A_DECISION_COUNTS.corrected + M5_12A_DECISION_COUNTS.held) return 'held';
-  if (index < M5_12A_DECISION_COUNTS.included + M5_12A_DECISION_COUNTS.corrected + M5_12A_DECISION_COUNTS.held + M5_12A_DECISION_COUNTS.rejected) return 'rejected';
-  return 'deferred';
-}
-
 function makeProductionSemanticReview(record, {
   decision,
   identity,
   rank,
   verificationSourceId,
+  decisionRow,
+  decisionSourceSha256,
+  decisionSourceArtifactSha256,
 } = {}) {
   const sense = record.senses[0];
-  const glossSha256 = sha256Json(sense.gloss);
-  const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
-  const connectorObservations = inspectGlossConnectors(sense.gloss);
+  const glossSha256 = decisionRow.sense_gloss_sha256;
   const semanticEvidence = {
     status: 'pass',
     gloss_sha256: glossSha256,
-    observed_domain_axes: domainEvidence.axes,
-    domain_evidence: domainEvidence.matches,
-    connector_observations: connectorObservations,
-    rationale: `${identity.inventory_id} ${sense.id} verification pass bound the authored gloss and writer domain evidence.`,
-    boundary_decision: domainEvidence.axes.length > 1 ? 'coordinated' : 'atomic',
+    observed_domain_axes: decisionRow.observed_domain_axes,
+    domain_evidence: decisionRow.domain_evidence,
+    connector_observations: decisionRow.connector_observations,
+    rationale: decisionRow.semantic_rationale,
+    boundary_decision: decisionRow.boundary_decision,
     decision_source_id: verificationSourceId,
+  };
+  const authoredDecision = {
+    source_sha256: decisionSourceSha256,
+    decision_source_id: verificationSourceId,
+    candidate_record_id: identity.candidate_record_id,
+    candidate_record_sha256: decisionRow.candidate_record_sha256,
+    reviewed_record_sha256: sha256Json(record),
+    decision,
+    selection_rank: rank,
+    selection_score: decisionRow.score,
+    rationale: decisionRow.decision_rationale,
+    sense_evidence: [{
+      sense_id: sense.id,
+      gloss_sha256: glossSha256,
+      basis: decisionRow.semantic_rationale,
+    }],
+    relation_evidence: [{
+      sense_id: sense.id,
+      relation_count: decisionRow.relation_count,
+      decision: decisionRow.relation_decision,
+      basis: decisionRow.no_relation_rationale,
+    }],
   };
   return {
     status: 'complete',
@@ -326,8 +349,12 @@ function makeProductionSemanticReview(record, {
       kind: 'separately-authored-semantic-decision-source',
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: verificationSourceId,
-      path: `external:${M5_12A_VERIFICATION_PASS_ID}`,
+      path: 'data/batches/m5-12a-semantic-decisions.json',
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: decisionSourceSha256,
+      artifact_sha256: decisionSourceArtifactSha256,
     },
+    authored_decision: authoredDecision,
     sense_boundary: {
       status: 'pass',
       decision_source_id: verificationSourceId,
@@ -341,13 +368,13 @@ function makeProductionSemanticReview(record, {
       },
       findings: [{
         sense_id: sense.id,
-        action: 'retain',
-        classification: 'atomic',
-        rationale: `${identity.inventory_id} ${sense.id} was independently classified as one atomic writer-facing sense.`,
+        action: decisionRow.boundary_action,
+        classification: decisionRow.boundary_classification,
+        rationale: decisionRow.boundary_rationale,
         semantic_evidence: semanticEvidence,
       }],
       pairwise: [],
-      rationale: `${identity.inventory_id} boundary was reviewed independently of the current sense count.`,
+      rationale: decisionRow.boundary_rationale,
     },
     pos: {
       status: 'pass',
@@ -369,18 +396,18 @@ function makeProductionSemanticReview(record, {
       decision_source_id: verificationSourceId,
       per_sense: [{
         sense_id: sense.id,
-        decision: 'no-relations',
+        decision: decisionRow.relation_decision,
         decision_source_id: verificationSourceId,
-        relation_count: 0,
-        relation_ids: [],
-        no_relation_rationale: `${identity.inventory_id} ${sense.id} verification found no writer-useful relation tuple to retain.`,
+        relation_count: decisionRow.relation_count,
+        relation_ids: decisionRow.relation_ids,
+        no_relation_rationale: decisionRow.no_relation_rationale,
       }],
     },
     selection: {
       status: IMPORTABLE_DECISIONS.has(decision) ? 'selected' : decision,
       rank,
-      score: 1 - (rank / (M5_12A_SELECTION_COUNT + 1)),
-      rationale: `${identity.inventory_id} verification and coverage evidence produced the ${decision} selection decision.`,
+      score: decisionRow.score,
+      rationale: decisionRow.selection_rationale,
     },
   };
 }
@@ -516,7 +543,7 @@ function makeSemanticRecordReview(record, decisionSourceId, coverageById) {
   };
 }
 
-function deriveBaseDecisionSource(currentDecisionSource, baseRecords) {
+export function deriveBaseDecisionSource(currentDecisionSource, baseRecords) {
   const baseValues = baseRecords.map(recordOf);
   const baseIds = new Set(baseValues.map(({ id }) => id));
   const source = structuredClone(currentDecisionSource);
@@ -609,11 +636,13 @@ function buildProspectiveDecisionSource({
   return { decisionSource, semanticAudit };
 }
 
-function makeReviewRows(identities, candidateRecords) {
-  const verificationSourceId = `${M5_12A_VERIFICATION_PASS_ID}:decision-source`;
+function makeReviewRows(identities, candidateRecords, semanticDecisionSource) {
+  const verificationSourceId = semanticDecisionSource.source.source_id;
   return identities.map((identity, index) => {
-    const decision = decisionForIndex(index);
     const candidate = candidateRecords[index];
+    const decisionRow = semanticDecisionSource.byCandidateId.get(candidate.id);
+    if (!decisionRow) fail(`M5-12A semantic decision is missing for ${candidate.id}`, 'M5_12A_DECISION_SOURCE_SCOPE');
+    const decision = decisionRow.decision;
     const reviewedRecord = IMPORTABLE_DECISIONS.has(decision)
       ? (decision === 'corrected' ? makeCorrectedRecord(candidate) : structuredClone(candidate))
       : undefined;
@@ -632,16 +661,26 @@ function makeReviewRows(identities, candidateRecords) {
       semantic_review: makeProductionSemanticReview(semanticRecord, {
         decision,
         identity,
-        rank: index + 1,
+        rank: decisionRow.rank,
         verificationSourceId,
+        decisionRow,
+        decisionSourceSha256: semanticDecisionSource.sourceSha256,
+        decisionSourceArtifactSha256: semanticDecisionSource.artifactSha256,
       }),
       ...(reviewedRecord ? { reviewed_record: reviewedRecord } : {}),
     };
   });
 }
 
-function buildCandidateArtifacts(identities) {
-  const candidateRecords = identities.map(makeCandidateRecord);
+export function buildM512AReviewRows({
+  identities,
+  candidateRecords,
+  semanticDecisionSource,
+} = {}) {
+  return makeReviewRows(identities, candidateRecords, semanticDecisionSource);
+}
+
+function buildCandidateArtifacts(identities, candidateRecords, semanticDecisionSource) {
   const proposals = identities.map((identity, index) => makeCandidateProposal(identity, candidateRecords[index]));
   const proposalArtifact = {
     schema_version: '1',
@@ -671,7 +710,7 @@ function buildCandidateArtifacts(identities) {
     },
     proposals,
   };
-  const reviewRows = makeReviewRows(identities, candidateRecords);
+  const reviewRows = makeReviewRows(identities, candidateRecords, semanticDecisionSource);
   for (const [index, row] of reviewRows.entries()) {
     row.candidate_proposal_sha256 = proposals[index].proposal_sha256;
   }
@@ -692,6 +731,13 @@ function buildCandidateArtifacts(identities) {
       semantic_verification_separate: true,
     },
     candidate_source: proposalArtifact.candidate_source,
+    semantic_decision_source: {
+      source_id: semanticDecisionSource.source.source_id,
+      path: 'data/batches/m5-12a-semantic-decisions.json',
+      sha256: semanticDecisionSource.sourceSha256,
+      artifact_sha256: semanticDecisionSource.artifactSha256,
+      decision_count: semanticDecisionSource.rows.length,
+    },
     proposal_artifact_sha256: sha256(jsonBytes(proposalArtifact)),
     candidate_count: candidateRecords.length,
     decisions: reviewRows,
@@ -704,6 +750,8 @@ function buildCandidateArtifacts(identities) {
     reviewRows,
     reviewArtifact,
     reviewBytes: jsonBytes(reviewArtifact),
+    semanticDecisionSourceBytes: semanticDecisionSource.sourceBytes,
+    semanticDecisionSourceSha256: semanticDecisionSource.sourceSha256,
   };
 }
 
@@ -862,6 +910,11 @@ function buildGate({
   semanticAuditCoverage,
   finalSummary,
   relation,
+  preflight,
+  candidateSourceDigest,
+  generationPassId,
+  verificationPassId,
+  humanReviewClaimed = false,
   candidateCollisionCount = 0,
   canonicalCollisionCount = 0,
 } = {}) {
@@ -872,10 +925,12 @@ function buildGate({
   const processed = identities.length - decisions.deferred;
   const imported = decisions.included + decisions.corrected;
   const correctionRate = decisions.corrected / processed;
+  const preflightPassed = (name) => preflight?.checks?.[name]?.status === 'pass'
+    && preflight.checks[name].input_canonical_directory_sha256 === preflight.input_canonical_directory_sha256;
   const qualityPasses = {
     candidate_identity_binding: identities.length === M5_12A_SELECTION_COUNT,
     candidate_source_count: identities.length === M5_12A_SELECTION_COUNT,
-    candidate_source_digest: true,
+    candidate_source_digest: candidateSourceDigest === candidateIdentityDigest(),
     candidate_pool: identities.length === M5_12A_SELECTION_COUNT,
     imported_start_count: imported === M5_12A_IMPORT_COUNT,
     reserve_count: identities.length - imported === M5_12A_RESERVE_COUNT,
@@ -888,18 +943,19 @@ function buildGate({
     relation_noise_below_baseline: relation.noise_rate_of_candidates <= 0.25,
     lexical_semantic_blockers: semanticAuditCoverage.review_complete && production.admission.audit.blocking_finding_count === 0,
     complete_audit: semanticAuditCoverage.coverage_complete && semanticAuditCoverage.review_complete,
-    generation_verification_separated: true,
-    truthful_agent_provenance: true,
-    human_review_not_claimed: true,
+    generation_verification_separated: generationPassId !== verificationPassId,
+    truthful_agent_provenance: humanReviewClaimed === false,
+    human_review_not_claimed: humanReviewClaimed === false,
     canonical_integrity: JSON.stringify(finalSummary) === JSON.stringify(M5_12A_FINAL_SUMMARY),
-    deterministic_sqlite: true,
-    search_product_regression: true,
-    extension_build: true,
-    package_validation: true,
-    artifact_policy_clean_checkout: true,
+    deterministic_sqlite: preflightPassed('deterministic_sqlite'),
+    search_product_regression: preflightPassed('search_product_regression'),
+    extension_build: preflightPassed('extension_build'),
+    package_validation: preflightPassed('package_validation'),
+    artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
   };
   return {
     policy: 'agent-generated',
+    preflight,
     quality_passes: qualityPasses,
     gate_status: Object.values(qualityPasses).every(Boolean) ? 'pass' : 'fail',
     decision: Object.values(qualityPasses).every(Boolean) ? M5_12A_GATE_DECISION : 'HOLD PROCESS',
@@ -958,6 +1014,7 @@ function buildAdmissionEvidence({
   semanticAuditCoverage,
   production,
   relation,
+  preflight,
   gate,
   decisionSourceBytes,
   baseDecisionSource,
@@ -970,6 +1027,8 @@ function buildAdmissionEvidence({
     .filter(({ decision }) => IMPORTABLE_DECISIONS.has(decision))
     .map(({ reviewed_record: record }) => record);
   const finalSummary = canonicalSummary(prospective.canonical.records);
+  const preflightPassed = (name) => preflight?.checks?.[name]?.status === 'pass'
+    && preflight.checks[name].input_canonical_directory_sha256 === preflight.input_canonical_directory_sha256;
   const relationCounts = {
     before_count: relation.before_count,
     after_count: relation.after_count,
@@ -995,14 +1054,17 @@ function buildAdmissionEvidence({
     automated_editorial_review_complete: true,
     human_editorial_review_complete: false,
     agent_generated_provenance: true,
-    generation_verification_separated: true,
+    generation_verification_separated: preflightPassed('generation_verification_separated'),
     generation_pass_id: M5_12A_GENERATION_PASS_ID,
     verification_pass_id: M5_12A_VERIFICATION_PASS_ID,
     candidate_source_id: M5_12A_CANDIDATE_SOURCE_ID,
     candidate_identity_count: artifacts.candidateRecords.length,
-    canonical_integrity: true,
-    deterministic_sqlite: true,
-    search_product_regression: true,
+    canonical_integrity: preflightPassed('deterministic_sqlite'),
+    deterministic_sqlite: preflightPassed('deterministic_sqlite'),
+    search_product_regression: preflightPassed('search_product_regression'),
+    extension_build: preflightPassed('extension_build'),
+    package_validation: preflightPassed('package_validation'),
+    artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
     raw_material_excluded: true,
     semantic_quality_complete: semanticAuditCoverage.review_complete,
     semantic_summary: {
@@ -1064,11 +1126,14 @@ function buildAdmissionEvidence({
     editorial_review_complete: true,
     automated_editorial_review_complete: true,
     agent_generated_provenance: true,
-    generation_verification_separated: true,
+    generation_verification_separated: preflightPassed('generation_verification_separated'),
     human_editorial_review_complete: false,
-    canonical_integrity: true,
-    deterministic_sqlite: true,
-    search_product_regression: true,
+    canonical_integrity: preflightPassed('deterministic_sqlite'),
+    deterministic_sqlite: preflightPassed('deterministic_sqlite'),
+    search_product_regression: preflightPassed('search_product_regression'),
+    extension_build: preflightPassed('extension_build'),
+    package_validation: preflightPassed('package_validation'),
+    artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
     semantic_review_complete: semanticAuditCoverage.review_complete,
     semantic_quality_blocker_count: 0,
     semantic_selection_rank_valid: verification.semantic_summary.selection_rank_valid,
@@ -1093,6 +1158,7 @@ function buildAdmissionEvidence({
     production_payloads_sha256: sha256Json(production.production_payloads),
     semantic_audit_sha256: sha256(serializeSemanticAuditArtifact(semanticAudit)),
     decision_source_sha256: sha256(decisionSourceBytes),
+    preflight,
     complete_audit: semanticAuditCoverage,
   };
   return {
@@ -1143,7 +1209,12 @@ function buildAdmissionEvidence({
         identity_count: inputs.identities.length,
       },
       proposal: sourceRef('proposal', 'external:m5-12a-generation', artifacts.proposalBytes),
-      verification: sourceRef('verification', 'external:m5-12a-verification', artifacts.reviewBytes),
+      verification: sourceRef(
+        'verification',
+        'data/batches/m5-12a-semantic-decisions.json',
+        artifacts.semanticDecisionSourceBytes,
+      ),
+      verification_artifact: sourceRef('verification-artifact', 'external:m5-12a-verification', artifacts.reviewBytes),
       semantic_audit: sourceRef('semantic_audit', 'external:m5-12a-semantic-audit', serializeSemanticAuditArtifact(semanticAudit)),
       relation_diff: sourceRef('relation_diff', 'external:m5-12a-relation-diff', jsonBytes(relation)),
       reviewed_import: sourceRef('reviewed_import', 'external:m5-12a-reviewed-import', prospective.importBytes),
@@ -1214,15 +1285,15 @@ function buildProductionStageEvidence({
     },
     semantic_review: {
       status: 'complete',
-      source_path: 'external:m5-12a-verification',
-      source_bytes: artifacts.reviewBytes,
-      source_sha256: sha256(artifacts.reviewBytes),
+      source_path: 'data/batches/m5-12a-semantic-decisions.json',
+      source_bytes: artifacts.semanticDecisionSourceBytes,
+      source_sha256: artifacts.semanticDecisionSourceSha256,
     },
     selection: {
       status: 'complete',
-      source_path: 'external:m5-12a-verification',
-      source_bytes: artifacts.reviewBytes,
-      source_sha256: sha256(artifacts.reviewBytes),
+      source_path: 'data/batches/m5-12a-semantic-decisions.json',
+      source_bytes: artifacts.semanticDecisionSourceBytes,
+      source_sha256: artifacts.semanticDecisionSourceSha256,
       policy: 'shared-quality-coverage-selection',
     },
     prospective_canonical: {
@@ -1252,11 +1323,20 @@ function buildProductionStageEvidence({
 export async function buildM512A({
   currentSeedPath = CURRENT_SEED_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
+  semanticDecisionSourcePath = M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
 } = {}) {
   const inputs = await loadBaseInputs({ currentSeedPath });
   const baseRecords = inputs.baseCanonical.records.map(recordOf);
   const identities = M5_12A_CANDIDATE_IDENTITIES;
-  const artifacts = buildCandidateArtifacts(identities);
+  const semanticDecisionSourceFile = await readM512ADecisionSource(semanticDecisionSourcePath);
+  const candidateRecords = identities.map(makeM512ACandidateRecord);
+  const semanticDecisionSource = validateM512ADecisionSource({
+    source: semanticDecisionSourceFile.source,
+    sourceBytes: semanticDecisionSourceFile.sourceBytes,
+    identities,
+    candidateRecords,
+  });
+  const artifacts = buildCandidateArtifacts(identities, candidateRecords, semanticDecisionSource);
   validateCandidateIdentityBinding({
     identities,
     candidateRecords: artifacts.candidateRecords,
@@ -1323,6 +1403,18 @@ export async function buildM512A({
     after: relationSnapshot(prospective.canonical.records),
     sourceNote: 'M5-12A agent-generated candidate set admitted no new relation tuples; every no-relation decision is source-bound in the semantic review.',
   });
+  const preflight = await runM512APreflight({
+    prospectiveCanonicalDirectory: prospective.canonicalDirectory,
+    prospectiveCanonicalDigest: prospective.canonicalDigest,
+    expectedSummary: M5_12A_FINAL_SUMMARY,
+    representativeExistingLemma: baseRecords[0].lemma,
+    representativeNewRecord: importedRecords[0],
+    candidateSourceDigest: semanticDecisionSource.source.candidate_source.identity_sha256,
+    expectedCandidateSourceDigest: candidateIdentityDigest(),
+    generationPassId: semanticDecisionSource.source.provenance.generation_pass_id,
+    verificationPassId: semanticDecisionSource.source.provenance.verification_pass_id,
+    humanReviewClaimed: semanticDecisionSource.source.provenance.human_reviewed,
+  });
   const gate = buildGate({
     identities,
     reviewRows,
@@ -1334,6 +1426,11 @@ export async function buildM512A({
       noise_event_count: 0,
       noise_rate_of_candidates: 0,
     },
+    preflight,
+    candidateSourceDigest: semanticDecisionSource.source.candidate_source.identity_sha256,
+    generationPassId: semanticDecisionSource.source.provenance.generation_pass_id,
+    verificationPassId: semanticDecisionSource.source.provenance.verification_pass_id,
+    humanReviewClaimed: semanticDecisionSource.source.provenance.human_reviewed,
   });
   if (gate.gate_status !== 'pass') fail('M5-12A fixed gate did not pass', 'M5_12A_GATE_HOLD');
   const decisionSourceBytes = Buffer.from(`${JSON.stringify(decisionSource, null, 2)}\n`, 'utf8');
@@ -1348,6 +1445,7 @@ export async function buildM512A({
     semanticAuditCoverage,
     production,
     relation,
+    preflight,
     gate,
     decisionSourceBytes,
     baseDecisionSource,
@@ -1368,6 +1466,7 @@ export async function buildM512A({
     metrics: admission.metrics,
     relation: admission.relation,
     audit: admission.audit,
+    preflight,
     verification: admission.verification,
     gate_evidence_sha256: admission.gate_evidence_sha256,
     sources: admission.sources,
@@ -1417,8 +1516,11 @@ export async function buildM512A({
     inputs: {
       ...inputs,
       currentDecisionSourceBytes: currentDecisionSourceFile.bytes,
+      semanticDecisionSourceBytes: semanticDecisionSourceFile.sourceBytes,
+      semanticDecisionSourceSha256: semanticDecisionSource.sourceSha256,
     },
     identities,
+    semanticDecisionSource,
     artifacts,
     reviewRows,
     importedRecords,
@@ -1434,6 +1536,7 @@ export async function buildM512A({
     prospective,
     relation,
     semanticAuditCoverage,
+    preflight,
     admission,
     promotion,
   };
@@ -1447,6 +1550,30 @@ async function assertMissing(filePath, label) {
     throw error;
   }
   fail(`${label} already exists; M5-12A promotion is not replayable`, 'PROMOTION_ALREADY_APPLIED');
+}
+
+function assertPreflightEvidence(result) {
+  const preflight = result.preflight ?? result.promotion?.preflight ?? result.admission?.gate?.preflight;
+  const requiredChecks = [
+    'deterministic_sqlite',
+    'search_product_regression',
+    'extension_build',
+    'package_validation',
+    'artifact_policy_clean_checkout',
+  ];
+  if (!preflight || preflight.status !== 'complete' || typeof preflight.input_canonical_directory_sha256 !== 'string') {
+    fail('M5-12A promotion requires complete prospective preflight evidence', 'PROMOTION_PREFLIGHT_REQUIRED');
+  }
+  if (preflight.input_canonical_directory_sha256 !== result.prospective.canonicalDigest) {
+    fail('M5-12A preflight evidence is stale for the prospective canonical', 'PROMOTION_PREFLIGHT_STALE');
+  }
+  for (const check of requiredChecks) {
+    const evidence = preflight.checks?.[check];
+    if (!evidence || evidence.status !== 'pass'
+      || evidence.input_canonical_directory_sha256 !== result.prospective.canonicalDigest) {
+      fail(`M5-12A preflight check ${check} is missing, stale, or failed`, 'PROMOTION_PREFLIGHT_REQUIRED');
+    }
+  }
 }
 
 async function writeTempAndRename(targetPath, bytes, temporaryDirectory, label) {
@@ -1467,6 +1594,7 @@ export async function commitM512APromotionTransaction({
 } = {}) {
   if (!result?.admission || !result?.promotion) fail('M5-12A transaction requires a prevalidated result', 'PROMOTION_INPUT_REQUIRED');
   if (result.admission.gate.gate_status !== 'pass') fail('M5-12A promotion requires a passing admission gate', 'PROMOTION_GATE_REQUIRED');
+  assertPreflightEvidence(result);
   const currentDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   if (currentDigest !== M5_12A_BASE_CANONICAL_SHA256) fail('current canonical is not the retained M5-12A base snapshot', 'UNAUTHORIZED_PROMOTION');
   const currentSeedBytes = await readFile(currentSeedPath);
@@ -1584,6 +1712,7 @@ export async function refreshM512APromotionEvidence({
   const promotion = {
     ...promotionFile.value,
     status: 'promoted',
+    preflight: result.preflight,
     post_promotion_audit: buildPostPromotionAudit({
       canonicalDigest: currentCanonicalDigest,
       seedDigest: currentSeedDigest,
@@ -1627,6 +1756,10 @@ export async function validateM512AFinal({
   if (sha256(currentDecisionBytes) !== sha256(result.decisionSourceBytes)) fail('final semantic decision source drifted', 'SEMANTIC_DECISION_SOURCE_MISMATCH');
   if (admission.gate?.gate_status !== 'pass' || promotion.gate?.gate_status !== 'pass') fail('M5-12A durable gate is not passing', 'M5_12A_GATE_HOLD');
   if (promotion.status !== 'promoted') fail('M5-12A promotion status is not durable', 'PROMOTION_STATE_MISMATCH');
+  assertPreflightEvidence({
+    preflight: promotion.preflight,
+    prospective: result.prospective,
+  });
   if (admission.decisions?.included + admission.decisions?.corrected !== M5_12A_IMPORT_COUNT) fail('admission imported count drifted', 'DECISION_COUNT_MISMATCH');
   if (admission.decisions?.deferred !== 30 || admission.decisions?.processed_start_count !== 772) fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
   if (promotion.outputs?.canonical_directory_sha256 !== currentDigest) fail('promotion canonical digest drifted', 'PROMOTION_DIGEST_MISMATCH');
