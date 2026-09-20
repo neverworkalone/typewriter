@@ -31,10 +31,10 @@
         "deterministic_sqlite": {
           "status": "pass",
           "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
-          "product_dictionary_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490",
+          "product_dictionary_sha256": "d0e1b7712f54de90025581fad81688921f6ebaebd4f61cd56c9d98f3f54017ae",
           "rebuilt_logical_snapshot": true,
           "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-ozjJPy/dictionary-second.sqlite",
+            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-x1PN5Q/dictionary-second.sqlite",
             "recordCount": 2042,
             "searchFormCount": 2320,
             "senseCount": 2301,
@@ -53,7 +53,7 @@
               "schema_version": "1",
               "search_form_count": "2320",
               "sense_count": "2301",
-              "source_revision": "e89fd8c253da9d21af332b4e596db57934b1e6e3",
+              "source_revision": "d9a4aee4ad617f09ea4fc92e80849db26ed33e64",
               "source_revision_source": "git-head",
               "source_revision_verified": "true",
               "sqlite_module": "node:sqlite",
@@ -73,7 +73,7 @@
             "Run product unit tests",
             "Build product extension"
           ],
-          "database_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490"
+          "database_sha256": "d0e1b7712f54de90025581fad81688921f6ebaebd4f61cd56c9d98f3f54017ae"
         },
         "extension_build": {
           "status": "pass",
@@ -262,10 +262,10 @@
       "deterministic_sqlite": {
         "status": "pass",
         "input_canonical_directory_sha256": "95e89d84016a4914a33b47ab8a200b3c1e2b6cfdf85df84fb672a807b3ea9680",
-        "product_dictionary_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490",
+        "product_dictionary_sha256": "d0e1b7712f54de90025581fad81688921f6ebaebd4f61cd56c9d98f3f54017ae",
         "rebuilt_logical_snapshot": true,
         "summary": {
-          "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-ozjJPy/dictionary-second.sqlite",
+          "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-x1PN5Q/dictionary-second.sqlite",
           "recordCount": 2042,
           "searchFormCount": 2320,
           "senseCount": 2301,
@@ -284,7 +284,7 @@
             "schema_version": "1",
             "search_form_count": "2320",
             "sense_count": "2301",
-            "source_revision": "e89fd8c253da9d21af332b4e596db57934b1e6e3",
+            "source_revision": "d9a4aee4ad617f09ea4fc92e80849db26ed33e64",
             "source_revision_source": "git-head",
             "source_revision_verified": "true",
             "sqlite_module": "node:sqlite",
@@ -304,7 +304,7 @@
           "Run product unit tests",
           "Build product extension"
         ],
-        "database_sha256": "6062a6493810011bac974930e205e840424c26f4e21714bd31ff7dbbd3d05490"
+        "database_sha256": "d0e1b7712f54de90025581fad81688921f6ebaebd4f61cd56c9d98f3f54017ae"
       },
       "extension_build": {
         "status": "pass",
@@ -391,7 +391,7 @@
       "review_sha256": "f19d3a1ce1118d639988952bfbf03160dca96ae7a34cb823b0f2b3b100c53718"
     }
   },
-  "gate_evidence_sha256": "39324c0501378178b0e66440225c632f6ab9e4c2695d3ffb1183b1b8e17d4c7e",
+  "gate_evidence_sha256": "a57361cfc4d9558685f1d05e9aac73142d71da7d0dcb8f7fe977fefaad0e7b97",
   "sources": {
     "candidate_identities": {
       "source_id": "m5-12a-typewriter-authored-identities-20260920",
@@ -407,12 +407,12 @@
     "verification": {
       "source_id": "verification",
       "path": "data/batches/m5-12a-semantic-decisions.json",
-      "sha256": "63897bf9335bb314afe75ee0ef558cf002fdef099020ee1000dc289e2b4ac973"
+      "sha256": "968cbd0a2e53a454f7c26811b1c7ff6d548778662eaba2950be9dd2f618fe7fb"
     },
     "verification_artifact": {
       "source_id": "verification-artifact",
       "path": "external:m5-12a-verification",
-      "sha256": "2206d1d6aa86fcff8bc78d0ccd1e18dba5079709ad228a036911f8dbc19842c0"
+      "sha256": "634daa1a514eaa404702e7a7db54a9c7ee85dc93acce3c129f867125ef6f7225"
     },
     "semantic_audit": {
       "source_id": "semantic_audit",
@@ -456,7 +456,7 @@
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
       "materialization": "on-demand",
-      "sha256": "c4dd86d80df313525e39305aae70ed74618165bd98877484a7d75af36c3064a6",
+      "sha256": "0213bf4f49231c41d6a88e3737550d45363f1c5e72d346d6941ff8e22781fa99",
       "entry_count": 2235
     },
     "semantic_decision_source": {
