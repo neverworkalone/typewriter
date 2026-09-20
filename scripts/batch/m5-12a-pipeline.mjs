@@ -1582,6 +1582,50 @@ async function writeTempAndRename(targetPath, bytes, temporaryDirectory, label) 
   return targetPath;
 }
 
+async function snapshotOutput(pathname) {
+  try {
+    return { exists: true, bytes: await readFile(pathname) };
+  } catch (error) {
+    if (error.code === 'ENOENT') return { exists: false, bytes: null };
+    throw error;
+  }
+}
+
+async function restoreOutput(pathname, snapshot) {
+  if (snapshot.exists) {
+    await writeFile(pathname, snapshot.bytes);
+  } else {
+    await rm(pathname, { force: true });
+  }
+}
+
+async function assertExistingPromotionRewriteState({
+  currentCanonicalDigest,
+  currentSeedBytes,
+  currentDecisionBytes,
+  admissionPath,
+  promotionPath,
+} = {}) {
+  const promotion = (await readJson(promotionPath, 'existing M5-12A promotion evidence')).value;
+  const admission = (await readJson(admissionPath, 'existing M5-12A admission evidence')).value;
+  if (promotion.status !== 'promoted'
+    || promotion.gate?.gate_status !== 'pass'
+    || admission.gate?.gate_status !== 'pass') {
+    fail('existing M5-12A outputs are not a previously promoted passing state', 'UNAUTHORIZED_PROMOTION_REWRITE');
+  }
+  if (promotion.outputs?.canonical_directory_sha256 !== currentCanonicalDigest
+    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)
+    || promotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)) {
+    fail('existing M5-12A outputs do not match the durable promotion evidence', 'UNAUTHORIZED_PROMOTION_REWRITE');
+  }
+  if (promotion.post_promotion_audit?.status !== 'complete'
+    || promotion.post_promotion_audit.canonical_directory_sha256 !== currentCanonicalDigest
+    || promotion.post_promotion_audit.seed_sha256 !== sha256(currentSeedBytes)
+    || promotion.post_promotion_audit.semantic_decision_source_sha256 !== sha256(currentDecisionBytes)) {
+    fail('existing M5-12A post-promotion audit does not match the durable outputs', 'UNAUTHORIZED_PROMOTION_REWRITE');
+  }
+}
+
 export async function commitM512APromotionTransaction({
   result,
   currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
@@ -1590,22 +1634,37 @@ export async function commitM512APromotionTransaction({
   canonicalImportPath = CANONICAL_IMPORT_PATH,
   admissionPath = ADMISSION_PATH,
   promotionPath = PROMOTION_PATH,
+  allowExistingPromotionRewrite = false,
 } = {}) {
   if (!result?.admission || !result?.promotion) fail('M5-12A transaction requires a prevalidated result', 'PROMOTION_INPUT_REQUIRED');
   if (result.admission.gate.gate_status !== 'pass') fail('M5-12A promotion requires a passing admission gate', 'PROMOTION_GATE_REQUIRED');
   assertPreflightEvidence(result);
   const currentDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
-  if (currentDigest !== M5_12A_BASE_CANONICAL_SHA256) fail('current canonical is not the retained M5-12A base snapshot', 'UNAUTHORIZED_PROMOTION');
   const currentSeedBytes = await readFile(currentSeedPath);
-  if (sha256(currentSeedBytes) !== M5_12A_BASE_SEED_SHA256) fail('current seed is not the retained M5-12A base snapshot', 'UNAUTHORIZED_PROMOTION');
   const currentDecisionBytes = await readFile(decisionSourcePath);
   if (!result.inputs?.currentDecisionSourceBytes
     || sha256(currentDecisionBytes) !== sha256(result.inputs.currentDecisionSourceBytes)) {
     fail('current semantic decision source is not the pre-promotion authority', 'UNAUTHORIZED_PROMOTION');
   }
-  await assertMissing(canonicalImportPath, 'canonical import');
-  await assertMissing(admissionPath, 'admission evidence');
-  await assertMissing(promotionPath, 'promotion evidence');
+  const isBaseState = currentDigest === M5_12A_BASE_CANONICAL_SHA256
+    && sha256(currentSeedBytes) === M5_12A_BASE_SEED_SHA256;
+  const isExistingPromotionRewrite = !isBaseState && allowExistingPromotionRewrite;
+  if (!isBaseState && !isExistingPromotionRewrite) {
+    fail('current canonical is not the retained M5-12A base snapshot', 'UNAUTHORIZED_PROMOTION');
+  }
+  if (isExistingPromotionRewrite) {
+    await assertExistingPromotionRewriteState({
+      currentCanonicalDigest: currentDigest,
+      currentSeedBytes,
+      currentDecisionBytes,
+      admissionPath,
+      promotionPath,
+    });
+  } else {
+    await assertMissing(canonicalImportPath, 'canonical import');
+    await assertMissing(admissionPath, 'admission evidence');
+    await assertMissing(promotionPath, 'promotion evidence');
+  }
 
   const promotion = structuredClone(result.promotion);
   promotion.outputs = {
@@ -1625,6 +1684,12 @@ export async function commitM512APromotionTransaction({
     },
   };
   const transactionDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-commit-'));
+  const snapshots = isExistingPromotionRewrite
+    ? new Map(await Promise.all(
+      [canonicalImportPath, currentSeedPath, decisionSourcePath, admissionPath, promotionPath]
+        .map(async (pathname) => [pathname, await snapshotOutput(pathname)]),
+    ))
+    : null;
   const created = [];
   try {
     await writeTempAndRename(
@@ -1673,11 +1738,15 @@ export async function commitM512APromotionTransaction({
       decisionSourceDigest: finalDecisionDigest,
     };
   } catch (error) {
-    for (const createdPath of created.reverse()) {
-      await rm(createdPath, { force: true });
+    if (snapshots) {
+      for (const [pathname, snapshot] of snapshots) await restoreOutput(pathname, snapshot);
+    } else {
+      for (const createdPath of created.reverse()) {
+        await rm(createdPath, { force: true });
+      }
+      await writeFile(currentSeedPath, currentSeedBytes);
+      await writeFile(decisionSourcePath, currentDecisionBytes);
     }
-    await writeFile(currentSeedPath, currentSeedBytes);
-    await writeFile(decisionSourcePath, currentDecisionBytes);
     throw error;
   } finally {
     await rm(transactionDirectory, { recursive: true, force: true });
@@ -1687,6 +1756,15 @@ export async function commitM512APromotionTransaction({
 export async function promoteM512A(options = {}) {
   const result = await buildM512A(options);
   return commitM512APromotionTransaction({ result, ...options });
+}
+
+export async function reconcileM512APromotion(options = {}) {
+  const result = await buildM512A(options);
+  return commitM512APromotionTransaction({
+    result,
+    ...options,
+    allowExistingPromotionRewrite: true,
+  });
 }
 
 export async function refreshM512APromotionEvidence({
@@ -1807,6 +1885,11 @@ export async function main(argv = process.argv.slice(2)) {
   }
   if (argv.includes('--promote')) {
     const result = await promoteM512A();
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  if (argv.includes('--reconcile')) {
+    const result = await reconcileM512APromotion();
     console.log(JSON.stringify(result, null, 2));
     return;
   }
