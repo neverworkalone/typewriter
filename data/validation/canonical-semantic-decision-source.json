@@ -9,7 +9,7 @@
     "kind": "canonical-jsonl-record-values",
     "canonical_records_sha256": "9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8"
   },
-  "authored_review_sha256": "c5e59c9df352c98a4d6fbf176e1fc6876ad5ddd91e26629db25f282e73a738f3",
+  "authored_review_sha256": "23834467d794c168b2f8cf822961e3645c5373ccba970b4b3f1608d93aebb57a",
   "authored_review": {
     "schema_version": "2",
     "contract_version": "lexical-semantic-review-v2",
@@ -5654,7 +5654,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w563 w563-s2: separately authored review basis cites gloss 82c06f962401, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "존경하",
+                "particle": "는",
+                "predicate": "마음으로",
+                "gloss_sha256": "82c06f962401e9c24c80833b5a755b15d2465fd783b732da194151af34872cd4",
+                "rationale": "canonical w563 w563-s2 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "82c06f962401e9c24c80833b5a755b15d2465fd783b732da194151af34872cd4"
           }
@@ -23444,7 +23454,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w593 w593-s1: separately authored review basis cites gloss f68e0ce465cb, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "넓",
+                "particle": "은",
+                "predicate": "마음으로",
+                "gloss_sha256": "f68e0ce465cba599aff98575fe6780119d42326fc62b22d3521ce62275783e25",
+                "rationale": "canonical w593 w593-s1 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "f68e0ce465cba599aff98575fe6780119d42326fc62b22d3521ce62275783e25"
           }
@@ -86202,7 +86222,17 @@
               "record_type": "entry",
               "relation_count": 1,
               "rationale": "w318 w318-s2: separately authored review basis cites gloss 60cfb1d9d4ef, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "않",
+                "particle": "은",
+                "predicate": "방향으로",
+                "gloss_sha256": "60cfb1d9d4ef5e684969e0cdf27838c116c377767387c6c5181e7cc41b74eeab",
+                "rationale": "canonical w318 w318-s2 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "60cfb1d9d4ef5e684969e0cdf27838c116c377767387c6c5181e7cc41b74eeab"
           }
@@ -94291,7 +94321,17 @@
               "record_type": "expression",
               "relation_count": 0,
               "rationale": "w390 w390-s1: separately authored review basis cites gloss 8b99611ff5e5, POS, type, boundary, and relation outcome.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "깨무",
+                "particle": "는",
+                "predicate": "동작으로",
+                "gloss_sha256": "8b99611ff5e5b38ff14a5cf53dc2c0eff9d161a58cd0e935d56832576e53fa4b",
+                "rationale": "canonical w390 w390-s1 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "8b99611ff5e5b38ff14a5cf53dc2c0eff9d161a58cd0e935d56832576e53fa4b"
           }
@@ -188496,7 +188536,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w1719 w1719-s1 reviewed gloss 30716226cb2b from the authored M5-12A decision source; 별의 가장자리 (C) was re-reviewed against its re-authored candidate-specific meaning; the meaning remains a usable writer-facing lookup with explicit lexical, domain, and relation boundaries. Gloss hash 30716226cb2b97635a2ccab13e96c722a6d367b8a480f735f15d698acd2559d2 was checked during m5-12a-agent-semantic-review-20260920-r4.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "작",
+                "particle": "은",
+                "predicate": "빛점으로",
+                "gloss_sha256": "30716226cb2b97635a2ccab13e96c722a6d367b8a480f735f15d698acd2559d2",
+                "rationale": "canonical w1719 w1719-s1 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "30716226cb2b97635a2ccab13e96c722a6d367b8a480f735f15d698acd2559d2"
           }
@@ -188609,7 +188659,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w1720 w1720-s1 reviewed gloss dc72db2f42a3 from the authored M5-12A decision source; 별의 기척 (C) was re-reviewed against its re-authored candidate-specific meaning; the meaning remains a usable writer-facing lookup with explicit lexical, domain, and relation boundaries. Gloss hash dc72db2f42a39327e699b3966e59cc842538e9f3b424650e6a305d07a3df536b was checked during m5-12a-agent-semantic-review-20260920-r4.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "작",
+                "particle": "은",
+                "predicate": "빛점으로",
+                "gloss_sha256": "dc72db2f42a39327e699b3966e59cc842538e9f3b424650e6a305d07a3df536b",
+                "rationale": "canonical w1720 w1720-s1 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "dc72db2f42a39327e699b3966e59cc842538e9f3b424650e6a305d07a3df536b"
           }
@@ -188718,7 +188778,17 @@
               "record_type": "entry",
               "relation_count": 0,
               "rationale": "w1722 w1722-s1 reviewed gloss 8a14a52bc520 from the authored M5-12A decision source; 별에 남은 시간 (C) was re-reviewed against its re-authored candidate-specific meaning; the meaning remains a usable writer-facing lookup with explicit lexical, domain, and relation boundaries. Gloss hash 8a14a52bc52098d94d44c166a2d89cc743e30780892f18325e6df039dc6dbaa5 was checked during m5-12a-agent-semantic-review-20260920-r4.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "작",
+                "particle": "은",
+                "predicate": "빛점으로",
+                "gloss_sha256": "8a14a52bc52098d94d44c166a2d89cc743e30780892f18325e6df039dc6dbaa5",
+                "rationale": "canonical w1722 w1722-s1 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "8a14a52bc52098d94d44c166a2d89cc743e30780892f18325e6df039dc6dbaa5"
           }
@@ -220009,7 +220079,17 @@
               "record_type": "expression",
               "relation_count": 0,
               "rationale": "w2037 w2037-s1 reviewed gloss 824925a743da from the authored M5-12A decision source; 생각을 가다듬다 (X) was re-reviewed against its re-authored candidate-specific meaning; the meaning remains a usable writer-facing lookup with explicit lexical, domain, and relation boundaries. Gloss hash 824925a743da50cc8e2dd7e0d60f81628d3538c07ffd2dd71917bbb0a6bd1dd4 was checked during m5-12a-agent-semantic-review-20260920-r4.",
-              "decision_source_id": "canonical-semantic-decision-source-20260914"
+              "decision_source_id": "canonical-semantic-decision-source-20260914",
+              "topic_analysis": {
+                "status": "pass",
+                "state": "adnominal",
+                "topic": "정리하",
+                "particle": "는",
+                "predicate": "움직임으로",
+                "gloss_sha256": "824925a743da50cc8e2dd7e0d60f81628d3538c07ffd2dd71917bbb0a6bd1dd4",
+                "rationale": "canonical w2037 w2037-s1 was separately reviewed as a productive adnominal form rather than a noun-topic particle reading.",
+                "decision_source_id": "canonical-semantic-decision-source-20260914"
+              }
             },
             "coverage_gloss_sha256": "824925a743da50cc8e2dd7e0d60f81628d3538c07ffd2dd71917bbb0a6bd1dd4"
           }

@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   auditCanonicalLexicalQuality,
   buildNominalTermPositions,
+  requiresTopicAnalysis,
   LexicalQualityError,
   inspectWriterDomainEvidence,
   inspectGlossQuality,
@@ -429,6 +430,59 @@ test('bound noun-topic evidence resolves an ambiguous 은/는 before a noun-like
   assert.deepEqual(
     quality.malformed_particles.map(({ token, expected_particle }) => [token, expected_particle]),
     [['운동화은', '는']],
+  );
+});
+
+test('token-span ambiguity drives semantic-audit topic evidence requirements', () => {
+  const records = [
+    ['w-topic-span-adnominal', '문장에서는 운동화은 배경으로 장면을 그린다.'],
+    ['w-topic-span-terminal-i', '문장에서는 바다이 보인다.'],
+    ['w-topic-span-valid-adnominal', '먹는 방식으로 묘사한다.'],
+  ].map(([id, gloss]) => ({
+    id,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: id,
+    lemma: id,
+    search_forms: [id],
+    senses: [{ id: `${id}-s1`, pos: 'noun', gloss }],
+  }));
+  const recordInfos = records.map((record) => ({ record, source: 'topic-span-regression' }));
+  assert.equal(requiresTopicAnalysis(records[0].senses[0].gloss), true);
+  assert.equal(requiresTopicAnalysis(records[1].senses[0].gloss), true);
+  assert.equal(requiresTopicAnalysis(records[2].senses[0].gloss), true);
+
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-span-adnominal-s1': {
+        state: 'noun-topic',
+        topic: '운동화',
+        particle: '은',
+        predicate: '배경으로',
+      },
+      'w-topic-span-terminal-i-s1': {
+        state: 'noun-topic',
+        topic: '바다',
+        particle: '이',
+        predicate: '보인다',
+      },
+      'w-topic-span-valid-adnominal-s1': {
+        state: 'adnominal',
+        topic: '먹',
+        particle: '는',
+        predicate: '방식으로',
+      },
+    },
+  });
+  assert.doesNotThrow(() => buildSemanticTopicEvidence(recordInfos, semanticAudit));
+
+  const missingEvidence = structuredClone(semanticAudit);
+  delete missingEvidence.review.records
+    .find(({ record_id: recordId }) => recordId === 'w-topic-span-adnominal')
+    .sense_reviews[0].review_basis.topic_analysis;
+  assert.throws(
+    () => buildSemanticTopicEvidence(recordInfos, missingEvidence),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
   );
 });
 

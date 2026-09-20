@@ -289,6 +289,14 @@ function makeProductionSemanticReview(record, {
       rationale: senseReview.semantic_rationale,
       boundary_decision: senseReview.boundary_decision,
       decision_source_id: verificationSourceId,
+      ...(senseReview.review_basis?.topic_analysis
+        ? {
+          topic_analysis: {
+            ...structuredClone(senseReview.review_basis.topic_analysis),
+            decision_source_id: verificationSourceId,
+          },
+        }
+        : {}),
     };
   };
   const authoredDecision = {
@@ -713,6 +721,14 @@ function makeSemanticRecordReview(
           relation_count: senseRelationCount,
           rationale: canonicalReviewBasisRationale,
           decision_source_id: decisionSourceId,
+          ...(senseReview.review_basis?.topic_analysis
+            ? {
+              topic_analysis: {
+                ...structuredClone(senseReview.review_basis.topic_analysis),
+                decision_source_id: decisionSourceId,
+              },
+            }
+            : {}),
         },
         coverage_gloss_sha256: senseReview.sense_gloss_sha256,
       };

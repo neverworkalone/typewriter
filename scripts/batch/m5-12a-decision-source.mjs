@@ -6,8 +6,11 @@ import {
   sha256Json,
 } from '../validate/semantic-audit.mjs';
 import {
+  findAmbiguousParticleFragments,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
+  requiresTopicAnalysis,
+  validateAuthoredTopicAnalysis,
   validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from '../validate/sense-boundary.mjs';
@@ -300,6 +303,7 @@ function validateDecisionRow(row, {
   identity,
   candidate,
   sourceSha256,
+  decisionSourceId,
 } = {}) {
   const label = `decision ${identity.inventory_id}`;
   requireObject(row, label);
@@ -353,6 +357,22 @@ function validateDecisionRow(row, {
       || reviewBasis.review_pass_id !== M5_12A_VERIFICATION_PASS_ID
       || reviewBasis.reviewer !== 'codex-agent') {
       fail(`${senseLabel}.review_basis is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_BINDING');
+    }
+    if (requiresTopicAnalysis(sense.gloss) && reviewBasis.topic_analysis === undefined) {
+      fail(
+        `${senseLabel}.review_basis.topic_analysis is required for ambiguous particle spans ${JSON.stringify(findAmbiguousParticleFragments(sense.gloss))}`,
+        'M5_12A_DECISION_SOURCE_SCOPE',
+      );
+    }
+    if (reviewBasis.topic_analysis !== undefined) {
+      validateAuthoredTopicAnalysis(
+        sense.gloss,
+        reviewBasis.topic_analysis,
+        {
+          decisionSourceId,
+          label: `${senseLabel}.review_basis.topic_analysis`,
+        },
+      );
     }
     const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
     const connectorObservations = inspectGlossConnectors(sense.gloss);
@@ -507,7 +527,12 @@ export function validateM512ADecisionSource({
     if (seenRanks.has(row.rank)) fail(`duplicate selection rank ${row.rank}`, 'M5_12A_DECISION_SOURCE_SCOPE');
     seenIds.add(row.candidate_record_id);
     seenRanks.add(row.rank);
-    validateDecisionRow(row, { identity, candidate, sourceSha256: artifactSha256 });
+    validateDecisionRow(row, {
+      identity,
+      candidate,
+      sourceSha256: artifactSha256,
+      decisionSourceId: source.source_id,
+    });
   }
   if (seenRanks.size !== M5_12A_SELECTION_COUNT) fail('M5-12A semantic decision ranks are incomplete', 'M5_12A_DECISION_SOURCE_SCOPE');
   const counts = expectedDecisionCounts(rows);

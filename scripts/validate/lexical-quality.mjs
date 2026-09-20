@@ -309,6 +309,73 @@ function isParticleContextCue(token) {
     || PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(token);
 }
 
+function findContextualParticleFragments(gloss) {
+  if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
+  const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
+  const fragments = [];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const token = tokens[index];
+    const nextToken = tokens[index + 1];
+    if (!token || !nextToken || !isParticleContextCue(nextToken)) continue;
+    const match = PARTICLE_SURFACE_PATTERN.exec(token);
+    if (!match) continue;
+    fragments.push({
+      token,
+      stem: match.groups.stem,
+      particle: match.groups.particle,
+      nextToken,
+      token_index: index,
+    });
+  }
+  return fragments;
+}
+
+/**
+ * Return the token spans whose particle reading is ambiguous without
+ * authored grammatical evidence.  The detector deliberately covers both
+ * productive adnominal `은/는` before a noun-like `으로` complement and
+ * vowel-final terminal `이`, in addition to the historical two-token topic
+ * shape.  Callers can bind an authored analysis to the returned topic,
+ * particle, predicate, and full gloss digest.
+ */
+export function findAmbiguousParticleFragments(gloss) {
+  const fragments = [];
+  const seen = new Set();
+  const add = (fragment, kind) => {
+    const key = `${fragment.topic}:${fragment.particle}:${fragment.predicate}:${fragment.token_index}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    fragments.push({ ...fragment, kind });
+  };
+
+  const wholeGlossFragment = typeof gloss === 'string'
+    ? MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
+    : undefined;
+  if (wholeGlossFragment) {
+    add({
+      topic: wholeGlossFragment.groups.topic,
+      particle: wholeGlossFragment.groups.particle,
+      predicate: wholeGlossFragment.groups.predicate,
+      token_index: 0,
+    }, 'topic-fragment');
+  }
+
+  for (const fragment of findContextualParticleFragments(gloss)) {
+    const { stem, particle, nextToken } = fragment;
+    if ((AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)
+      && PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(nextToken))
+      || (particle === '이' && hangulFinalIndex(stem) === 0)) {
+      add({
+        topic: stem,
+        particle,
+        predicate: nextToken,
+        token_index: fragment.token_index,
+      }, particle === '이' ? 'terminal-i' : 'adnominal');
+    }
+  }
+  return fragments;
+}
+
 function hasAuthoredNounTopicEvidence(
   gloss,
   { stem, particle, nextToken, topicEvidence, senseId } = {},
@@ -379,15 +446,8 @@ export function inspectMalformedParticles(
   { topicEvidence, senseId } = {},
 ) {
   if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
-  const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
   const findings = [];
-  for (let index = 0; index < tokens.length - 1; index += 1) {
-    const token = tokens[index];
-    const nextToken = tokens[index + 1];
-    if (!token || !nextToken || !isParticleContextCue(nextToken)) continue;
-    const match = PARTICLE_SURFACE_PATTERN.exec(token);
-    if (!match) continue;
-    const { stem, particle } = match.groups;
+  for (const { token, stem, particle, nextToken, token_index: tokenIndex } of findContextualParticleFragments(gloss)) {
     if (isProductiveAdnominalAmbiguity(gloss, {
       stem,
       particle,
@@ -412,15 +472,14 @@ export function inspectMalformedParticles(
       particle,
       expected_particle: expectedParticle,
       next_token: nextToken,
-      token_index: index,
+      token_index: tokenIndex,
     });
   }
   return findings;
 }
 
 export function requiresTopicAnalysis(gloss) {
-  return typeof gloss === 'string'
-    && MALFORMED_TOPIC_FRAGMENT_PATTERN.test(gloss.trim());
+  return findAmbiguousParticleFragments(gloss).length > 0;
 }
 
 export function validateAuthoredTopicAnalysis(

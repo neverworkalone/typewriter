@@ -15,6 +15,7 @@ import {
 } from '../../scripts/validate/semantic-audit.mjs';
 import {
   auditCanonicalLexicalQuality,
+  findAmbiguousParticleFragments,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
   requiresTopicAnalysis,
@@ -33,7 +34,7 @@ function recordOf(recordInfo) {
 
 function makeTopicAnalysis(sense, decisionSourceId, topicAnalyses = {}) {
   const configured = topicAnalyses[sense.id];
-  const fragment = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u.exec(sense.gloss.trim());
+  const fragment = findAmbiguousParticleFragments(sense.gloss)[0];
   if (!fragment && configured === undefined) return undefined;
   const configuredValue = typeof configured === 'string'
     ? { state: configured }
@@ -42,7 +43,11 @@ function makeTopicAnalysis(sense, decisionSourceId, topicAnalyses = {}) {
   return {
     status: 'pass',
     state,
-    ...(fragment ? fragment.groups : {}),
+    ...(fragment ? {
+      topic: fragment.topic,
+      particle: fragment.particle,
+      predicate: fragment.predicate,
+    } : {}),
     ...(configuredValue.topic ? { topic: configuredValue.topic } : {}),
     ...(configuredValue.particle ? { particle: configuredValue.particle } : {}),
     ...(configuredValue.predicate ? { predicate: configuredValue.predicate } : {}),
