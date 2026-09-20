@@ -26,7 +26,7 @@ function formatCommand({ executable, args }) {
     .join(' ');
 }
 
-function runCommand({ executable, args }) {
+async function runCommand({ executable, args }) {
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
@@ -46,6 +46,19 @@ function runCommand({ executable, args }) {
       ));
     });
   });
+}
+
+export async function runChecks(
+  checks,
+  context,
+  { execute = runCommand, log = console.log } = {},
+) {
+  for (const [index, check] of checks.entries()) {
+    const command = check.command(context);
+    log(`\n--- ${index + 1}/${checks.length}: ${check.label} ---`);
+    log(`$ ${formatCommand(command)}`);
+    await execute(command);
+  }
 }
 
 async function createTemporaryDirectory() {
@@ -82,45 +95,7 @@ async function runCategory(categoryName) {
 
   try {
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
-    let index = 0;
-    while (index < category.checks.length) {
-      const check = category.checks[index];
-      const isNodeTestGroup = check.kind === 'node-test';
-      const groupStart = index;
-      const group = [];
-
-      if (isNodeTestGroup) {
-        while (index < category.checks.length && category.checks[index].kind === 'node-test') {
-          group.push(category.checks[index]);
-          index += 1;
-        }
-      } else {
-        group.push(check);
-        index += 1;
-      }
-
-      const command = group.length === 1
-        ? group[0].command(context)
-        : {
-          executable: process.execPath,
-          args: ['--test', ...group.flatMap(({ testFiles }) => testFiles)],
-        };
-      const groupEnd = index;
-      const groupLabel = group.length === 1
-        ? group[0].label
-        : `Node test group (${group.length} checks)`;
-      const checkRange = group.length === 1
-        ? `${groupStart + 1}/${category.checks.length}`
-        : `${groupStart + 1}-${groupEnd}/${category.checks.length}`;
-      console.log(`\n--- ${checkRange}: ${groupLabel} ---`);
-      if (group.length > 1) {
-        for (const groupedCheck of group) {
-          console.log(`  • ${groupedCheck.label}: ${groupedCheck.testFiles.join(', ')}`);
-        }
-      }
-      console.log(`$ ${formatCommand(command)}`);
-      await runCommand(command);
-    }
+    await runChecks(category.checks, context);
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
     if (context.temporaryDirectory) {

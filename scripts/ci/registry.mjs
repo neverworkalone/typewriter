@@ -42,10 +42,7 @@ function allowDirtyArguments() {
 }
 
 function testCheck(file, label = `Run ${file}`) {
-  return {
-    ...commandCheck(label, ['--test', file], [file]),
-    kind: 'node-test',
-  };
+  return commandCheck(label, ['--test', file], [file]);
 }
 
 function contractCheck(label, script, testFile) {
@@ -75,6 +72,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
       npmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
+      testCheck('tests/ci-runner.test.mjs', 'Test CI category runner fail-fast behavior'),
       testCheck('tests/ci-registry.test.mjs', 'Test CI check ownership registry'),
     ],
   },

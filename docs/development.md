@@ -224,10 +224,9 @@ Node.js 22.13.x, and runs the pre-1.0 checks through the shared category runner:
 7. `npm run ci:category -- artifacts` — package/artifact tests and the final clean-checkout policy.
 
 The registry in `scripts/ci/registry.mjs` owns every root `tests/*.test.mjs` file
-exactly once. Each check is logged by name; command checks run sequentially and
-adjacent independent Node test checks are grouped without a second full-suite pass.
-A failure stops the category at the failing command or test group. Historical runner
-inputs are copied to an external temporary directory by
+exactly once. Each declared check is logged by name and has its own execution
+boundary; checks run sequentially and a failure stops the category before any later
+check starts. Historical runner inputs are copied to an external temporary directory by
 `scripts/ci/run-category.mjs`; the workflow does not need one YAML step per
 materialization. To run the complete sequence locally, use `npm run ci:all`. A
 representative future batch check should be added to the appropriate registry
