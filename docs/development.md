@@ -99,8 +99,12 @@ node --test tests/normalize-canonical.test.mjs
 node scripts/build/dictionary.mjs
 node --test tests/build-dictionary.test.mjs
 node --test tests/reproducibility.test.mjs
-node --test tests/*.test.mjs
 ```
+
+For the complete CI-equivalent sequence, use `npm run ci:all` from a clean
+checkout. Focused work can run one responsibility at a time with
+`npm run ci:category -- <category>`; the category runner replaces the old full
+CI test glob and keeps each test file in one declared ownership group.
 
 The one-command M2 audit runs the schema and dataset checks, normalization, two
 logical reproducibility builds, representative queries, and metadata comparisons.
@@ -209,25 +213,24 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.13.x, and runs the validator, normalization, SQLite build, integrated
-audit, regression, unit-test, and product-build checks required for pre-1.0
-development:
+Node.js 22.13.x, and runs the pre-1.0 checks through the shared category runner:
 
-1. `node scripts/validate/canonical-jsonl.mjs`
-2. `node --test tests/validate-canonical-jsonl.test.mjs`
-3. `node scripts/validate/dataset-integrity.mjs`
-4. `node --test tests/validate-dataset-integrity.test.mjs`
-5. `node scripts/normalize/canonical.mjs`
-6. `node --test tests/normalize-canonical.test.mjs`
-7. `node scripts/build/dictionary.mjs`
-8. `node scripts/verify/m2-pipeline.mjs`
-9. `node --test tests/*.test.mjs`
-10. `node --test tests/batch-workflow.test.mjs`
-11. `npm run batch:m5-10a:calibration:check`
-12. `npm run batch:m5-10a:process:check`
-13. `npm run batch:m5-10a:repair:check`
-14. `npm run test:unit`
-15. `npm run build`
+1. `npm run ci:category -- canonical` — manifest, canonical, dataset, inventory, and rule checks;
+2. `npm run ci:category -- lexical` — shared lexical and semantic validation;
+3. `npm run ci:category -- batch` — batch process, contract, recovery, and authorization checks;
+4. `npm run ci:category -- historical` — Wave A2/Wave B materialization and historical replay;
+5. `npm run ci:category -- toolchain` — normalization, SQLite, and integrated M2 checks;
+6. `npm run ci:category -- product` — shared search, unit tests, and extension build;
+7. `npm run ci:category -- artifacts` — package/artifact tests and the final clean-checkout policy.
+
+The registry in `scripts/ci/registry.mjs` owns every root `tests/*.test.mjs` file
+exactly once. Each declared check is logged by name and has its own execution
+boundary; checks run sequentially and a failure stops the category before any later
+check starts. Historical runner inputs are copied to an external temporary directory by
+`scripts/ci/run-category.mjs`; the workflow does not need one YAML step per
+materialization. To run the complete sequence locally, use `npm run ci:all`. A
+representative future batch check should be added to the appropriate registry
+category rather than to this workflow.
 
 Release ZIP creation (`npm run package` and `npm run package:minify`) and Chrome for
 Testing package verification (`npm run test:mv3:package`) are intentionally deferred
