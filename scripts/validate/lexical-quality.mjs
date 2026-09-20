@@ -443,9 +443,21 @@ export function buildNominalTermPositions(recordInfos) {
     );
     for (const term of [record.lemma, ...(record.search_forms ?? [])]) {
       if (typeof term !== 'string' || term.length === 0) continue;
-      const existing = positions.get(term) ?? new Set();
-      for (const pos of recordPositions) existing.add(pos);
-      positions.set(term, existing);
+      const indexedTerms = [term];
+      const inflectionalStem = /^(?<stem>[\p{L}\p{M}\p{N}]+)다$/u.exec(term)?.groups.stem;
+      // A verb/adjective lemma is stored with its dictionary ending, while
+      // productive adnominal forms attach directly to the stem (`먹다` ->
+      // `먹는`).  Index that stem as well so an exact noun homograph does not
+      // override the available verb/adjective evidence.
+      if (inflectionalStem
+        && (recordPositions.has('verb') || recordPositions.has('adjective'))) {
+        indexedTerms.push(inflectionalStem);
+      }
+      for (const indexedTerm of indexedTerms) {
+        const existing = positions.get(indexedTerm) ?? new Set();
+        for (const pos of recordPositions) existing.add(pos);
+        positions.set(indexedTerm, existing);
+      }
     }
   }
   return positions;

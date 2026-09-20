@@ -259,6 +259,56 @@ test('the complete canonical audit catches missed particle surface contexts', ()
   );
 });
 
+test('the complete canonical audit preserves adnominal homographs with inflectional evidence', () => {
+  const recordInfos = [
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w985',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w985',
+        lemma: '먹',
+        search_forms: ['먹'],
+        senses: [{ id: 'w985-s1', pos: 'noun', gloss: '먹은 흔적을 남긴다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w986',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w986',
+        lemma: '먹다',
+        search_forms: ['먹다'],
+        senses: [{ id: 'w986-s1', pos: 'verb', gloss: '음식을 삼키는 행위다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w987',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w987',
+        lemma: 'homograph-particle',
+        search_forms: ['homograph-particle'],
+        senses: [{ id: 'w987-s1', pos: 'noun', gloss: '먹는 방식으로 묘사한다.' }],
+      },
+    },
+  ];
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings.filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE'),
+    [],
+  );
+  assert.deepEqual(
+    [...buildNominalTermPositions(recordInfos).get('먹')].sort(),
+    ['noun', 'verb'],
+  );
+});
+
 test('the complete canonical audit catches a repeated template completed by a later batch', () => {
   const recordInfos = ['기존의 결', '새로운 결', '또 다른 결', '마지막 결'].map((lemma, index) => ({
     source: index === 0 ? 'base' : 'prospective-batch',
