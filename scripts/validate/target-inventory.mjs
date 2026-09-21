@@ -424,6 +424,7 @@ export async function readTargetInventory(
   {
     canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
     seedPath = DEFAULT_SEED_PATH,
+    promotionPath,
   } = {},
 ) {
   if (path.resolve(inventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)) {
@@ -431,6 +432,7 @@ export async function readTargetInventory(
       inventory: await buildTargetInventory({
         canonicalDirectory,
         seedPath,
+        ...(promotionPath ? { promotionPath } : {}),
       }),
       inventoryPath,
     };
@@ -455,10 +457,15 @@ export async function validateTargetInventory({
   inventory: suppliedInventory,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
+  promotionPath,
   checkPilotCompleteness = true,
 } = {}) {
   const inventory = suppliedInventory ?? (path.resolve(inventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)
-    ? await buildTargetInventory({ canonicalDirectory, seedPath })
+    ? await buildTargetInventory({
+      canonicalDirectory,
+      seedPath,
+      ...(promotionPath ? { promotionPath } : {}),
+    })
     : (await readTargetInventory(inventoryPath)).inventory);
   requireObject(inventory, 'inventory');
 

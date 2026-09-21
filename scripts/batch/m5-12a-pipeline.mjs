@@ -18,6 +18,8 @@ import {
 } from '../validate/canonical-jsonl.mjs';
 import {
   generateTargetInventory,
+  readPromotionLedger,
+  serializePromotionLedger,
 } from '../inventory/generate-target-inventory.mjs';
 import {
   validateTargetInventory,
@@ -64,6 +66,7 @@ import {
 import {
   applyM512ADecisionCorrection,
   candidateRecordsFromM512ADecisionSource,
+  compactM512ADecisionRow,
   decisionSenseReviews,
   M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
   readM512ADecisionSource,
@@ -81,6 +84,7 @@ const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canoni
 const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-12-base-canonical');
 const BASE_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-12-base-inventory.json');
 const CURRENT_SEED_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
+const CURRENT_PROMOTION_LEDGER_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-promotions.jsonl');
 const DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/validation/canonical-semantic-decision-source.json',
@@ -280,12 +284,14 @@ function makeProductionSemanticReview(record, {
   };
   const semanticEvidenceForSense = (sense) => {
     const senseReview = reviewForSense(sense);
+    const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
+    const connectorObservations = inspectGlossConnectors(sense.gloss);
     return {
       status: 'pass',
-      gloss_sha256: senseReview.sense_gloss_sha256,
-      observed_domain_axes: senseReview.observed_domain_axes,
-      domain_evidence: senseReview.domain_evidence,
-      connector_observations: senseReview.connector_observations,
+      gloss_sha256: sha256Json(sense.gloss),
+      observed_domain_axes: domainEvidence.axes,
+      domain_evidence: domainEvidence.matches,
+      connector_observations: connectorObservations,
       rationale: senseReview.semantic_rationale,
       boundary_decision: senseReview.boundary_decision,
       decision_source_id: verificationSourceId,
@@ -324,7 +330,7 @@ function makeProductionSemanticReview(record, {
       const senseReview = reviewForSense(sense);
       return {
         sense_id: sense.id,
-        gloss_sha256: senseReview.sense_gloss_sha256,
+        gloss_sha256: sha256Json(sense.gloss),
         basis: senseReview.semantic_rationale,
       };
     }),
@@ -373,7 +379,7 @@ function makeProductionSemanticReview(record, {
         };
       }),
       pairwise: structuredClone(decisionRow.boundary_pairs ?? []),
-      rationale: decisionRow.boundary_rationale,
+      rationale: senseReviews[0].boundary_rationale,
     },
     pos: {
       status: 'pass',
@@ -459,10 +465,28 @@ function makeSeedEntry(identity, record, decision) {
   };
 }
 
+function makePromotionLedgerEntry(identity, record, decisionRow, semanticDecisionSource) {
+  return {
+    schema_version: '1',
+    batch_id: M5_12A_BATCH_ID,
+    inventory_id: identity.inventory_id,
+    canonical_id: record.id,
+    decision: decisionRow.decision,
+    record_sha256: sha256Json(record),
+    decision_source_id: semanticDecisionSource.source.source_id,
+    decision_source_sha256: semanticDecisionSource.artifactSha256,
+    decision_row_sha256: decisionRowDigest(decisionRow),
+    reason_codes: [identity.axis],
+    flags: unique([
+      ...identity.flags,
+      ...(record.record_type === 'expression' ? ['expression-unit'] : []),
+    ]),
+    decision_note: `${identity.inventory_id} ${decisionRow.decision} after separate generation ${M5_12A_GENERATION_PASS_ID} and verification ${M5_12A_VERIFICATION_PASS_ID}.`,
+  };
+}
+
 function decisionRowDigest(decisionRow) {
-  const withoutSourceDigest = structuredClone(decisionRow);
-  withoutSourceDigest.source_sha256 = null;
-  return sha256Json(withoutSourceDigest);
+  return sha256Json(compactM512ADecisionRow(decisionRow));
 }
 
 /**
@@ -540,20 +564,6 @@ export function validateM512AAuthoredCanonicalAuthority({
         'M5_12A_CANONICAL_AUTHORITY_BINDING',
       );
     }
-    const relationReview = binding.relation_review;
-    const relationCount = record.senses.reduce(
-      (sum, sense) => sum + (sense.relations?.length ?? 0),
-      0,
-    );
-    if (!relationReview
-      || relationReview.relation_count !== relationCount
-      || JSON.stringify(relationReview.relation_ids ?? [])
-        !== JSON.stringify(row.relation_ids ?? [])) {
-      fail(
-        `canonical semantic authority relation evidence drifted for ${record.id}`,
-        'M5_12A_CANONICAL_AUTHORITY_BINDING',
-      );
-    }
   }
   return true;
 }
@@ -599,12 +609,6 @@ function makeSemanticRecordReview(
     }
     return { senseReview, coverageSense };
   };
-  const relationCount = record.senses.reduce(
-    (sum, sense) => sum + (sense.relations?.length ?? 0),
-    0,
-  );
-  const relationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
-  const relationIds = senseReviews.flatMap((senseReview) => senseReview.relation_ids);
   const recordBoundaryAction = decisionRow.boundary_action ?? senseReviews[0].boundary_action;
   const recordBoundaryClassification = decisionRow.boundary_classification
     ?? senseReviews[0].boundary_classification;
@@ -623,8 +627,8 @@ function makeSemanticRecordReview(
   const boundaryReviewId = `${decisionRow.review_pass_id}:canonical:${record.id}:boundary`;
   const authoredBatchDecision = {
     source_id: batchDecisionSourceId,
-    path: 'data/batches/m5-12a-semantic-decisions.json',
     source_sha256: batchDecisionSourceSha256,
+    artifact_sha256: batchDecisionSourceArtifactSha256,
     decision_row_sha256: decisionRowDigest(decisionRow),
     candidate_record_id: decisionRow.candidate_record_id,
     candidate_record_sha256: decisionRow.candidate_record_sha256,
@@ -632,16 +636,6 @@ function makeSemanticRecordReview(
     selection_rank: decisionRow.rank,
     selection_score: decisionRow.score,
     reviewed_record_sha256: reviewedRecordSha256,
-    gloss_judgment: decisionRow.gloss_judgment,
-    review_pass_id: decisionRow.review_pass_id,
-    semantic_rationale: decisionRow.semantic_rationale,
-    relation_review: {
-      decision: relationDecision,
-      relation_count: relationCount,
-      relation_ids: relationIds,
-      ...(relationCount === 0 ? { no_relation_rationale: decisionRow.no_relation_rationale } : {}),
-    },
-    artifact_sha256: batchDecisionSourceArtifactSha256,
   };
   return {
     record_id: record.id,
@@ -664,20 +658,22 @@ function makeSemanticRecordReview(
         const { senseReview } = reviewForSense(sense);
         return {
           sense_id: sense.id,
-          gloss_sha256: senseReview.sense_gloss_sha256,
+          gloss_sha256: sha256Json(sense.gloss),
           evidence_basis: senseReview.semantic_rationale,
           rationale: senseReview.boundary_rationale,
           decision_source_id: decisionSourceId,
         };
       }),
       pairwise: structuredClone(decisionRow.boundary_pairs ?? []),
-      rationale: decisionRow.boundary_rationale,
+      rationale: senseReviews[0].boundary_rationale,
     },
     sense_reviews: record.senses.map((sense) => {
       const { senseReview, coverageSense } = reviewForSense(sense);
       const senseRelationCount = sense.relations?.length ?? 0;
       const senseRelationDecision = senseRelationCount === 0 ? 'no-relations' : 'relations-reviewed';
-      const canonicalReviewBasisRationale = `${record.id} ${sense.id} reviewed gloss ${senseReview.sense_gloss_sha256.slice(0, 12)} from the authored M5-12A decision source; ${senseReview.semantic_rationale}`;
+      const senseGlossSha256 = sha256Json(sense.gloss);
+      const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
+      const canonicalReviewBasisRationale = `${record.id} ${sense.id} reviewed gloss ${senseGlossSha256.slice(0, 12)} from the authored M5-12A decision source; ${senseReview.semantic_rationale}`;
       return {
         sense_id: sense.id,
         sense_sha256: sha256Json(sense),
@@ -722,8 +718,8 @@ function makeSemanticRecordReview(
           record_id: record.id,
           sense_id: sense.id,
           lemma: record.lemma,
-          gloss_sha256: senseReview.sense_gloss_sha256,
-          observed_domain_axes: senseReview.observed_domain_axes,
+          gloss_sha256: senseGlossSha256,
+          observed_domain_axes: domainEvidence.axes,
           pos: sense.pos,
           record_type: record.record_type,
           relation_count: senseRelationCount,
@@ -746,7 +742,7 @@ function makeSemanticRecordReview(
             }
             : {}),
         },
-        coverage_gloss_sha256: senseReview.sense_gloss_sha256,
+        coverage_gloss_sha256: senseGlossSha256,
       };
     }),
   };
@@ -1039,19 +1035,50 @@ export function validateCandidateIdentityBinding({ identities, candidateRecords,
 
 function buildSeed(baseSeed, identities, reviewRows, candidateRecords) {
   const existing = new Set(baseSeed.targets.map(({ inventory_id: inventoryId }) => inventoryId));
-  const additions = reviewRows.map((row, index) => {
+  const additions = reviewRows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => !IMPORTABLE_DECISIONS.has(row.decision))
+    .map(({ row, index }) => {
     const identity = identities[index];
     if (existing.has(identity.inventory_id)) fail(`seed already contains ${identity.inventory_id}`, 'SEED_COLLISION');
     existing.add(identity.inventory_id);
     const record = row.reviewed_record ?? candidateRecords[index];
     if (!record) fail(`seed record is missing for ${identity.candidate_record_id}`, 'CANDIDATE_SOURCE_REQUIRED');
     return makeSeedEntry(identity, record, row.decision);
-  });
+    });
   return {
     ...structuredClone(baseSeed),
     revision: 'm5-12',
     targets: [...baseSeed.targets, ...additions],
   };
+}
+
+function buildPromotionLedger(
+  basePromotionLedger,
+  identities,
+  reviewRows,
+  candidateRecords,
+  semanticDecisionSource,
+) {
+  const existingInventoryIds = new Set(basePromotionLedger.map(({ inventory_id: id }) => id));
+  const additions = reviewRows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => IMPORTABLE_DECISIONS.has(row.decision))
+    .map(({ row, index }) => {
+      const identity = identities[index];
+      if (existingInventoryIds.has(identity.inventory_id)) {
+        fail(`promotion ledger already contains ${identity.inventory_id}`, 'PROMOTION_LEDGER_COLLISION');
+      }
+      existingInventoryIds.add(identity.inventory_id);
+      const record = row.reviewed_record ?? candidateRecords[index];
+      if (!record) fail(`promotion record is missing for ${identity.candidate_record_id}`, 'CANDIDATE_SOURCE_REQUIRED');
+      const decisionSourceRow = semanticDecisionSource.byCandidateId.get(row.candidate_id);
+      if (!decisionSourceRow) {
+        fail(`promotion decision source row is missing for ${identity.candidate_record_id}`, 'M5_12A_DECISION_SOURCE_SCOPE');
+      }
+      return makePromotionLedgerEntry(identity, record, decisionSourceRow, semanticDecisionSource);
+    });
+  return [...structuredClone(basePromotionLedger), ...additions];
 }
 
 async function readJson(filePath, label) {
@@ -1083,7 +1110,10 @@ async function reconstructBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
   return { current, baseSeed, baseSeedBytes };
 }
 
-async function loadBaseInputs({ currentSeedPath = CURRENT_SEED_PATH } = {}) {
+async function loadBaseInputs({
+  currentSeedPath = CURRENT_SEED_PATH,
+  currentPromotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
+} = {}) {
   const baseCanonical = await readCanonicalRecords(BASE_CANONICAL_DIRECTORY);
   const baseSummary = canonicalSummary(baseCanonical.records);
   if (JSON.stringify(baseSummary) !== JSON.stringify(M5_12A_BASE_SUMMARY)) {
@@ -1099,6 +1129,11 @@ async function loadBaseInputs({ currentSeedPath = CURRENT_SEED_PATH } = {}) {
     fail('M5-12A base inventory digest drifted', 'BASE_INVENTORY_MISMATCH');
   }
   if (baseInventory.value.revision !== 'm5-11') fail('M5-12A base inventory revision drifted', 'BASE_INVENTORY_MISMATCH');
+  const currentPromotionLedger = await readPromotionLedger(currentPromotionLedgerPath);
+  const candidateInventoryIds = new Set(M5_12A_CANDIDATE_IDENTITIES.map(({ inventory_id: id }) => id));
+  const basePromotionLedger = currentPromotionLedger.filter(
+    ({ inventory_id: inventoryId }) => !candidateInventoryIds.has(inventoryId),
+  );
   return {
     baseCanonical,
     baseSummary,
@@ -1107,6 +1142,10 @@ async function loadBaseInputs({ currentSeedPath = CURRENT_SEED_PATH } = {}) {
     baseSeed,
     baseSeedBytes,
     baseInventory,
+    currentPromotionLedger,
+    currentPromotionLedgerBytes: serializePromotionLedger(currentPromotionLedger),
+    basePromotionLedger,
+    basePromotionLedgerBytes: serializePromotionLedger(basePromotionLedger),
   };
 }
 
@@ -1122,6 +1161,7 @@ function sourceRef(sourceId, filePath, bytes, extra = {}) {
 function buildPostPromotionAudit({
   canonicalDigest,
   seedDigest,
+  promotionLedgerDigest,
   decisionSourceDigest,
   semanticAuditBytes,
   semanticAuditCoverage,
@@ -1132,9 +1172,10 @@ function buildPostPromotionAudit({
     transaction: 'm5-12a-post-promotion-digest-and-audit-check',
     canonical_directory_sha256: canonicalDigest,
     seed_sha256: seedDigest,
+    promotion_ledger_sha256: promotionLedgerDigest,
     semantic_decision_source_sha256: decisionSourceDigest,
     semantic_audit_sha256: sha256(semanticAuditBytes),
-    semantic_audit: semanticAuditCoverage,
+    semantic_audit: compactSemanticAuditCoverage(semanticAuditCoverage),
   };
 }
 
@@ -1197,23 +1238,67 @@ function buildGate({
   };
 }
 
+function compactPreflightEvidence(preflight) {
+  if (!preflight || typeof preflight !== 'object') {
+    fail('M5-12A preflight evidence is required before durable gate serialization', 'PROMOTION_PREFLIGHT_REQUIRED');
+  }
+  return {
+    contract_version: 'lexical-batch-preflight-v1',
+    status: preflight.status,
+    input_canonical_directory_sha256: preflight.input_canonical_directory_sha256,
+    checks: Object.fromEntries(Object.entries(preflight.checks ?? {}).map(([name, check]) => [name, {
+      status: check.status,
+      input_canonical_directory_sha256: check.input_canonical_directory_sha256,
+    }])),
+  };
+}
+
+function compactSemanticAuditCoverage(coverage) {
+  return {
+    contract_version: coverage.contract_version,
+    scope: coverage.scope,
+    canonical_records_sha256: coverage.canonical_records_sha256,
+    record_count: coverage.record_count,
+    sense_count: coverage.sense_count,
+    covered_record_count: coverage.covered_record_count,
+    covered_sense_count: coverage.covered_sense_count,
+    coverage_complete: coverage.coverage_complete,
+    review_complete: coverage.review_complete,
+    corrected_record_count: coverage.corrected_record_count,
+  };
+}
+
+function compactGateEvidence(gate) {
+  return {
+    contract_version: 'lexical-batch-gate-v2',
+    policy: gate.policy,
+    gate_status: gate.gate_status,
+    decision: gate.decision,
+  };
+}
+
 async function buildProspectiveWorkspace({
   baseCanonicalDirectory,
   baseSeed,
+  promotionLedger,
   importedRecords,
 } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-'));
   const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
   const seedPath = path.join(temporaryDirectory, 'm5-target-seed.json');
+  const promotionPath = path.join(temporaryDirectory, 'm5-target-promotions.jsonl');
   const inventoryPath = path.join(temporaryDirectory, 'm5-target-inventory.json');
   await cp(baseCanonicalDirectory, canonicalDirectory, { recursive: true });
   const importBytes = jsonlBytes(importedRecords);
   await writeFile(path.join(canonicalDirectory, path.basename(CANONICAL_IMPORT_PATH)), importBytes);
   const seedBytes = jsonBytes(baseSeed);
   await writeFile(seedPath, seedBytes);
+  const promotionLedgerBytes = serializePromotionLedger(promotionLedger);
+  await writeFile(promotionPath, promotionLedgerBytes);
   const inventory = await generateTargetInventory({
     canonicalDirectory,
     seedPath,
+    promotionPath,
     generatedFromCanonicalDirectory: baseCanonicalDirectory,
     generatedFromSeedPath: seedPath,
     canonicalScopeDirectory: canonicalDirectory,
@@ -1223,6 +1308,7 @@ async function buildProspectiveWorkspace({
     inventoryPath,
     canonicalDirectory,
     seedPath,
+    promotionPath,
     checkPilotCompleteness: true,
   });
   const canonical = await readCanonicalRecords(canonicalDirectory);
@@ -1233,6 +1319,7 @@ async function buildProspectiveWorkspace({
     inventoryPath,
     importBytes,
     seedBytes,
+    promotionLedgerBytes,
     inventoryBytes: await readFile(inventoryPath),
     inventory,
     inventoryValidation,
@@ -1247,11 +1334,10 @@ function buildAdmissionEvidence({
   prospective,
   semanticAudit,
   semanticAuditCoverage,
-  production,
-  relation,
   preflight,
   gate,
   decisionSourceBytes,
+  promotionLedgerBytes,
   baseDecisionSource,
 } = {}) {
   const decisions = Object.fromEntries([...ALL_DECISIONS].map((decision) => [
@@ -1262,146 +1348,35 @@ function buildAdmissionEvidence({
     .filter(({ decision }) => IMPORTABLE_DECISIONS.has(decision))
     .map(({ reviewed_record: record }) => record);
   const finalSummary = canonicalSummary(prospective.canonical.records);
-  const splitRecords = importedRecords.filter((record) => record.senses.length > 1);
-  const preflightPassed = (name) => preflight?.checks?.[name]?.status === 'pass'
-    && preflight.checks[name].input_canonical_directory_sha256 === preflight.input_canonical_directory_sha256;
-  const relationCounts = {
-    before_count: relation.before_count,
-    after_count: relation.after_count,
-    added_count: relation.events.filter(({ operation }) => operation === 'add').length,
-    removed_count: relation.events.filter(({ operation }) => operation === 'remove').length,
-    retyped_count: relation.events.filter(({ operation }) => operation === 'retype').length,
-    retargeted_count: relation.events.filter(({ operation }) => operation === 'retarget').length,
-    changed_count: relation.events.length,
-    net_removed_count: relation.events.filter(({ operation }) => operation === 'remove').length
-      - relation.events.filter(({ operation }) => operation === 'add').length,
-    noise_event_count: 0,
-    noise_rate_of_before: 0,
-    classification_counts: {},
-    candidate_count: 0,
-    admitted_candidate_count: 0,
-    rejected_candidate_count: 0,
-    noise_denominator_count: 0,
-    noise_rate_of_candidates: 0,
-  };
   const verification = {
     review_mode: M5_12A_AGENT_REVIEW_MODE,
-    editorial_review_complete: true,
-    automated_editorial_review_complete: true,
     human_editorial_review_complete: false,
     agent_generated_provenance: true,
-    generation_verification_separated: preflightPassed('generation_verification_separated'),
     generation_pass_id: M5_12A_GENERATION_PASS_ID,
     verification_pass_id: M5_12A_VERIFICATION_PASS_ID,
     candidate_source_id: M5_12A_CANDIDATE_SOURCE_ID,
     candidate_identity_count: artifacts.candidateRecords.length,
-    canonical_integrity: preflightPassed('deterministic_sqlite'),
-    deterministic_sqlite: preflightPassed('deterministic_sqlite'),
-    search_product_regression: preflightPassed('search_product_regression'),
-    extension_build: preflightPassed('extension_build'),
-    package_validation: preflightPassed('package_validation'),
-    artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
     raw_material_excluded: true,
-    semantic_quality_complete: semanticAuditCoverage.review_complete,
-    semantic_summary: {
-      version: 'm5-12a-semantic-review-v1',
-      complete: true,
-      candidate_count: artifacts.candidateRecords.length,
-      selected_count: importedRecords.length,
-      broad_gloss_count: 0,
-      split_record_count: splitRecords.length,
-      split_sense_count: splitRecords.reduce(
-        (sum, record) => sum + record.senses.length - 1,
-        0,
-      ),
-      selected_axis_counts: Object.fromEntries(
-        unique(inputs.identities.map(({ axis }) => axis)).map((axis) => [axis, artifacts.reviewRows
-          .filter((row, index) => IMPORTABLE_DECISIONS.has(row.decision) && inputs.identities[index].axis === axis).length]),
-      ),
-      candidate_axis_counts: Object.fromEntries(
-        unique(inputs.identities.map(({ axis }) => axis)).map((axis) => [axis, inputs.identities.filter(({ axis: value }) => value === axis).length]),
-      ),
-      selected_expression_unit_count: importedRecords.filter(({ record_type: type }) => type === 'expression').length,
-      relation_candidate_count: 0,
-      no_relation_rationale_count: importedRecords.reduce((sum, record) => sum + record.senses.length, 0),
-      selection_rank_valid: new Set(artifacts.reviewRows.map(({ semantic_review: review }) => review.selection.rank)).size === artifacts.reviewRows.length,
-      relation_coverage_complete: true,
-    },
-    complete_canonical_review: {
-      artifact_id: semanticAudit.review.artifact_id,
-      contract_version: semanticAudit.review.contract_version,
-      review_pass_id: semanticAudit.review.review_pass.id,
-      status: semanticAudit.review.review_pass.status,
-      reviewer: semanticAudit.review.review_pass.reviewer,
-      record_count: semanticAudit.review.record_count,
-      sense_count: semanticAudit.review.sense_count,
-      open_finding_count: semanticAudit.review.review_pass.open_finding_count,
-      canonical_records_sha256: semanticAudit.source.canonical_records_sha256,
-      review_sha256: sha256Json(semanticAudit.review),
-    },
-  };
-  const metrics = {
-    policy: 'agent-generated',
-    candidate_pool_count: artifacts.candidateRecords.length,
-    imported_start_count: importedRecords.length,
-    reserve_count: M5_12A_RESERVE_COUNT,
-    processed_start_count: decisions.included + decisions.corrected + decisions.held + decisions.rejected,
-    deferred_start_count: decisions.deferred,
-    final_start_count: finalSummary.start_count,
-    canonical_collision_count: 0,
-    candidate_collision_count: 0,
-    placeholder_gloss_count: 0,
-    schema_integrity_blocker_count: 0,
-    relation_target_blocker_count: 0,
-    correction_rate_of_processed: decisions.corrected / (decisions.included + decisions.corrected + decisions.held + decisions.rejected),
-    relation_noise_rate_of_candidates: 0,
-    editor_seconds_per_selected_start: null,
-    editor_seconds_per_processed_start: null,
-    editor_time_status: 'not-required',
-    timing_status: 'not-required',
-    audit_status: 'agent-generated-complete',
-    audit_independent: false,
-    open_audit_blocker_count: 0,
-    editorial_review_complete: true,
-    automated_editorial_review_complete: true,
-    agent_generated_provenance: true,
-    generation_verification_separated: preflightPassed('generation_verification_separated'),
-    human_editorial_review_complete: false,
-    canonical_integrity: preflightPassed('deterministic_sqlite'),
-    deterministic_sqlite: preflightPassed('deterministic_sqlite'),
-    search_product_regression: preflightPassed('search_product_regression'),
-    extension_build: preflightPassed('extension_build'),
-    package_validation: preflightPassed('package_validation'),
-    artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
-    semantic_review_complete: semanticAuditCoverage.review_complete,
-    semantic_quality_blocker_count: 0,
-    semantic_selection_rank_valid: verification.semantic_summary.selection_rank_valid,
-    complete_audit_coverage: semanticAuditCoverage.coverage_complete,
-  };
-  const audit = {
-    status: 'agent-generated-complete',
-    policy: 'agent-generated',
-    independent: false,
-    session_id: null,
-    open_blocker_count: 0,
-    finding_count: 0,
-    semantic_audit: semanticAuditCoverage,
+    source_bound_semantic_decisions: true,
   };
   const gateEvidence = {
-    schema_version: '1',
+    schema_version: '2',
+    contract_version: 'lexical-batch-gate-evidence-v2',
     artifact_id: 'm5-12a-gate-evidence-20260920',
     issue: M5_12A_ISSUE,
     batch_id: M5_12A_BATCH_ID,
-    fixed_gate: gate.quality_passes,
-    production_state_sha256: sha256Json(production.production_state),
-    production_payloads_sha256: sha256Json(production.production_payloads),
-    semantic_audit_sha256: sha256(serializeSemanticAuditArtifact(semanticAudit)),
-    decision_source_sha256: sha256(decisionSourceBytes),
-    preflight,
-    complete_audit: semanticAuditCoverage,
+    inputs: {
+      prospective_canonical_sha256: prospective.canonicalDigest,
+      semantic_audit_sha256: sha256(serializeSemanticAuditArtifact(semanticAudit)),
+      decision_source_sha256: sha256(decisionSourceBytes),
+      promotion_ledger_sha256: sha256(promotionLedgerBytes),
+    },
+    preflight: compactPreflightEvidence(preflight),
+    complete_audit: compactSemanticAuditCoverage(semanticAuditCoverage),
   };
   return {
-    schema_version: '1',
+    schema_version: '2',
+    contract_version: 'lexical-batch-admission-v2',
     artifact_id: 'm5-12a-admission-20260920',
     issue: M5_12A_ISSUE,
     parent_issue: M5_12A_PARENT_ISSUE,
@@ -1420,6 +1395,7 @@ function buildAdmissionEvidence({
       canonical_directory_sha256: inputs.baseCanonicalDigest,
       inventory_sha256: M5_12A_BASE_INVENTORY_SHA256,
       seed_sha256: M5_12A_BASE_SEED_SHA256,
+      promotion_ledger_sha256: sha256(inputs.basePromotionLedgerBytes),
       summary: inputs.baseSummary,
     },
     actual: finalSummary,
@@ -1429,15 +1405,8 @@ function buildAdmissionEvidence({
       imported_start_count: importedRecords.length,
       deferred_denominator_excluded: true,
     },
-    metrics,
-    relation: relationCounts,
-    timing: {
-      editorial: { status: 'not-required', policy: 'agent-generated', pass_ids: [] },
-      audit: { status: 'not-required', policy: 'agent-generated', pass_ids: [] },
-    },
-    audit,
     verification,
-    gate,
+    gate: compactGateEvidence(gate),
     gate_evidence: gateEvidence,
     gate_evidence_sha256: sha256Json(gateEvidence),
     sources: {
@@ -1447,16 +1416,17 @@ function buildAdmissionEvidence({
         identity_sha256: candidateIdentityDigest(),
         identity_count: inputs.identities.length,
       },
-      proposal: sourceRef('proposal', 'external:m5-12a-generation', artifacts.proposalBytes),
       verification: sourceRef(
         'verification',
         'data/batches/m5-12a-semantic-decisions.json',
         artifacts.semanticDecisionSourceBytes,
       ),
-      verification_artifact: sourceRef('verification-artifact', 'external:m5-12a-verification', artifacts.reviewBytes),
-      semantic_audit: sourceRef('semantic_audit', 'external:m5-12a-semantic-audit', serializeSemanticAuditArtifact(semanticAudit)),
-      relation_diff: sourceRef('relation_diff', 'external:m5-12a-relation-diff', jsonBytes(relation)),
-      reviewed_import: sourceRef('reviewed_import', 'external:m5-12a-reviewed-import', prospective.importBytes),
+      semantic_audit: sourceRef('semantic_audit', 'derived:complete-canonical-audit', serializeSemanticAuditArtifact(semanticAudit)),
+      target_promotions: sourceRef(
+        'target_promotions',
+        'data/inventory/m5-target-promotions.jsonl',
+        promotionLedgerBytes,
+      ),
       base_inventory: {
         source_id: 'base_inventory',
         path: sourcePath(BASE_INVENTORY_PATH),
@@ -1479,18 +1449,6 @@ function buildAdmissionEvidence({
       verification_pass_id: M5_12A_VERIFICATION_PASS_ID,
       raw_material_excluded: true,
       batch_local_quality_fork: false,
-      shared_pipeline: [
-        'candidate_intake',
-        'lemma-search-normalization',
-        'pos-homonym-expression-classification',
-        'writer-facing-sense-separation',
-        'relation-tuple-validation',
-        'separate-verification',
-        'quality-coverage-selection',
-        'prospective-canonical',
-        'complete-lexical-semantic-audit',
-        'admission-promotion',
-      ],
       base_decision_source_id: baseDecisionSource.source_id,
     },
   };
@@ -1561,11 +1519,12 @@ function buildProductionStageEvidence({
 
 export async function buildM512A({
   currentSeedPath = CURRENT_SEED_PATH,
+  currentPromotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
   semanticDecisionSourcePath = M5_12A_SEMANTIC_DECISION_SOURCE_PATH,
   preflightRunner = runM512APreflight,
 } = {}) {
-  const inputs = await loadBaseInputs({ currentSeedPath });
+  const inputs = await loadBaseInputs({ currentSeedPath, currentPromotionLedgerPath });
   const baseRecords = inputs.baseCanonical.records.map(recordOf);
   const identities = M5_12A_CANDIDATE_IDENTITIES;
   const semanticDecisionSourceFile = await readM512ADecisionSource(semanticDecisionSourcePath);
@@ -1634,9 +1593,17 @@ export async function buildM512A({
     prospectiveLabel: 'M5-12A shared production prospective canonical records',
   });
   const seed = buildSeed(inputs.baseSeed, identities, reviewRows, artifacts.candidateRecords);
+  const promotionLedger = buildPromotionLedger(
+    inputs.basePromotionLedger,
+    identities,
+    reviewRows,
+    artifacts.candidateRecords,
+    semanticDecisionSource,
+  );
   const prospective = await buildProspectiveWorkspace({
     baseCanonicalDirectory: BASE_CANONICAL_DIRECTORY,
     baseSeed: seed,
+    promotionLedger,
     importedRecords,
   });
   assert.deepEqual(canonicalSummary(prospective.canonical.records), M5_12A_FINAL_SUMMARY);
@@ -1688,33 +1655,25 @@ export async function buildM512A({
     prospective,
     semanticAudit,
     semanticAuditCoverage,
-    production,
-    relation,
     preflight,
     gate,
     decisionSourceBytes,
+    promotionLedgerBytes: prospective.promotionLedgerBytes,
     baseDecisionSource,
   });
+  const admissionBytes = jsonBytes(admission);
   const promotion = {
-    schema_version: '1',
+    schema_version: '2',
+    contract_version: 'lexical-batch-promotion-v2',
     artifact_id: 'm5-12a-promotion-20260920',
     issue: M5_12A_ISSUE,
     parent_issue: M5_12A_PARENT_ISSUE,
     grandparent_issue: M5_12A_GRANDPARENT_ISSUE,
     batch_id: M5_12A_BATCH_ID,
     status: 'ready-for-explicit-promotion',
-    gate,
-    target: M5_12A_TARGET,
-    base: admission.base,
-    actual: admission.actual,
-    decisions: admission.decisions,
-    metrics: admission.metrics,
-    relation: admission.relation,
-    audit: admission.audit,
-    preflight,
-    verification: admission.verification,
+    admission_sha256: sha256(admissionBytes),
+    preflight: compactPreflightEvidence(preflight),
     gate_evidence_sha256: admission.gate_evidence_sha256,
-    sources: admission.sources,
     outputs: {
       canonical_import: {
         path: sourcePath(CANONICAL_IMPORT_PATH),
@@ -1727,6 +1686,11 @@ export async function buildM512A({
         path: sourcePath(CURRENT_SEED_PATH),
         sha256: sha256(prospective.seedBytes),
         target_count: seed.targets.length,
+      },
+      target_promotions: {
+        path: sourcePath(CURRENT_PROMOTION_LEDGER_PATH),
+        sha256: sha256(prospective.promotionLedgerBytes),
+        event_count: promotionLedger.length,
       },
       inventory: {
         path: sourcePath(path.join(INVENTORY_DIRECTORY, 'm5-target-inventory.json')),
@@ -1778,11 +1742,13 @@ export async function buildM512A({
     baseDecisionSource,
     production,
     seed,
+    promotionLedger,
     prospective,
     relation,
     semanticAuditCoverage,
     preflight,
     admission,
+    admissionBytes,
     promotion,
   };
 }
@@ -1795,6 +1761,17 @@ async function assertMissing(filePath, label) {
     throw error;
   }
   fail(`${label} already exists; M5-12A promotion is not replayable`, 'PROMOTION_ALREADY_APPLIED');
+}
+
+async function assertMissingOrEmpty(filePath, label) {
+  try {
+    const bytes = await readFile(filePath);
+    if (bytes.length === 0) return;
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  fail(`${label} already contains durable promotion events; M5-12A promotion is not replayable`, 'PROMOTION_ALREADY_APPLIED');
 }
 
 function assertPreflightEvidence(result) {
@@ -1848,26 +1825,32 @@ async function restoreOutput(pathname, snapshot) {
 async function assertExistingPromotionRewriteState({
   currentCanonicalDigest,
   currentSeedBytes,
+  currentPromotionLedgerBytes,
   admissionPath,
   promotionPath,
 } = {}) {
   const promotion = (await readJson(promotionPath, 'existing M5-12A promotion evidence')).value;
-  const admission = (await readJson(admissionPath, 'existing M5-12A admission evidence')).value;
+  const admissionFile = await readJson(admissionPath, 'existing M5-12A admission evidence');
+  const admission = admissionFile.value;
   if (promotion.status !== 'promoted'
-    || promotion.gate?.gate_status !== 'pass'
     || admission.gate?.gate_status !== 'pass') {
     fail('existing M5-12A outputs are not a previously promoted passing state', 'UNAUTHORIZED_PROMOTION_REWRITE');
+  }
+  if (promotion.admission_sha256 !== sha256(admissionFile.bytes)) {
+    fail('existing M5-12A promotion does not bind its admission evidence', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
   // The semantic decision source is the one intentionally reconciled input;
   // buildM512A validates the current bytes as the pre-promotion authority.
   // Canonical and seed drift remains unauthorized here.
   if (promotion.outputs?.canonical_directory_sha256 !== currentCanonicalDigest
-    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)) {
+    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)
+    || promotion.outputs?.target_promotions?.sha256 !== sha256(currentPromotionLedgerBytes)) {
     fail('existing M5-12A outputs do not match the durable promotion evidence', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
   if (promotion.post_promotion_audit?.status !== 'complete'
     || promotion.post_promotion_audit.canonical_directory_sha256 !== currentCanonicalDigest
-    || promotion.post_promotion_audit.seed_sha256 !== sha256(currentSeedBytes)) {
+    || promotion.post_promotion_audit.seed_sha256 !== sha256(currentSeedBytes)
+    || promotion.post_promotion_audit.promotion_ledger_sha256 !== sha256(currentPromotionLedgerBytes)) {
     fail('existing M5-12A post-promotion audit does not match the durable outputs', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
 }
@@ -1876,6 +1859,7 @@ export async function commitM512APromotionTransaction({
   result,
   currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
   currentSeedPath = CURRENT_SEED_PATH,
+  promotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
   canonicalImportPath = CANONICAL_IMPORT_PATH,
   admissionPath = ADMISSION_PATH,
@@ -1887,13 +1871,21 @@ export async function commitM512APromotionTransaction({
   assertPreflightEvidence(result);
   const currentDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedBytes = await readFile(currentSeedPath);
+  let currentPromotionLedgerBytes;
+  try {
+    currentPromotionLedgerBytes = await readFile(promotionLedgerPath);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    currentPromotionLedgerBytes = Buffer.alloc(0);
+  }
   const currentDecisionBytes = await readFile(decisionSourcePath);
   if (!result.inputs?.currentDecisionSourceBytes
     || sha256(currentDecisionBytes) !== sha256(result.inputs.currentDecisionSourceBytes)) {
     fail('current semantic decision source is not the pre-promotion authority', 'UNAUTHORIZED_PROMOTION');
   }
   const isBaseState = currentDigest === M5_12A_BASE_CANONICAL_SHA256
-    && sha256(currentSeedBytes) === M5_12A_BASE_SEED_SHA256;
+    && sha256(currentSeedBytes) === M5_12A_BASE_SEED_SHA256
+    && sha256(currentPromotionLedgerBytes) === sha256(result.inputs.basePromotionLedgerBytes);
   const isExistingPromotionRewrite = !isBaseState && allowExistingPromotionRewrite;
   if (!isBaseState && !isExistingPromotionRewrite) {
     fail('current canonical is not the retained M5-12A base snapshot', 'UNAUTHORIZED_PROMOTION');
@@ -1902,11 +1894,13 @@ export async function commitM512APromotionTransaction({
     await assertExistingPromotionRewriteState({
       currentCanonicalDigest: currentDigest,
       currentSeedBytes,
+      currentPromotionLedgerBytes,
       admissionPath,
       promotionPath,
     });
   } else {
     await assertMissing(canonicalImportPath, 'canonical import');
+    await assertMissingOrEmpty(promotionLedgerPath, 'target promotion ledger');
     await assertMissing(admissionPath, 'admission evidence');
     await assertMissing(promotionPath, 'promotion evidence');
   }
@@ -1923,6 +1917,10 @@ export async function commitM512APromotionTransaction({
       ...promotion.outputs.inventory,
       sha256: sha256(result.prospective.inventoryBytes),
     },
+    target_promotions: {
+      ...promotion.outputs.target_promotions,
+      sha256: sha256(result.prospective.promotionLedgerBytes),
+    },
     semantic_decision_source: {
       ...promotion.outputs.semantic_decision_source,
       sha256: sha256(result.decisionSourceBytes),
@@ -1931,7 +1929,7 @@ export async function commitM512APromotionTransaction({
   const transactionDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-commit-'));
   const snapshots = isExistingPromotionRewrite
     ? new Map(await Promise.all(
-      [canonicalImportPath, currentSeedPath, decisionSourcePath, admissionPath, promotionPath]
+      [canonicalImportPath, currentSeedPath, promotionLedgerPath, decisionSourcePath, admissionPath, promotionPath]
         .map(async (pathname) => [pathname, await snapshotOutput(pathname)]),
     ))
     : null;
@@ -1946,6 +1944,13 @@ export async function commitM512APromotionTransaction({
     created.push(canonicalImportPath);
     await writeTempAndRename(currentSeedPath, result.prospective.seedBytes, transactionDirectory, 'seed');
     created.push(currentSeedPath);
+    await writeTempAndRename(
+      promotionLedgerPath,
+      result.prospective.promotionLedgerBytes,
+      transactionDirectory,
+      'target-promotions',
+    );
+    created.push(promotionLedgerPath);
     await writeTempAndRename(decisionSourcePath, result.decisionSourceBytes, transactionDirectory, 'decision-source');
     created.push(decisionSourcePath);
     await writeTempAndRename(admissionPath, jsonBytes(result.admission), transactionDirectory, 'admission');
@@ -1955,9 +1960,11 @@ export async function commitM512APromotionTransaction({
 
     const finalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
     const finalSeedDigest = sha256(await readFile(currentSeedPath));
+    const finalPromotionLedgerDigest = sha256(await readFile(promotionLedgerPath));
     const finalDecisionDigest = sha256(await readFile(decisionSourcePath));
     if (finalDigest !== result.prospective.canonicalDigest
       || finalSeedDigest !== sha256(result.prospective.seedBytes)
+      || finalPromotionLedgerDigest !== sha256(result.prospective.promotionLedgerBytes)
       || finalDecisionDigest !== sha256(result.decisionSourceBytes)) {
       fail('M5-12A committed output digest does not match prevalidated state', 'PROMOTION_DIGEST_MISMATCH');
     }
@@ -1965,6 +1972,7 @@ export async function commitM512APromotionTransaction({
     promotion.post_promotion_audit = buildPostPromotionAudit({
       canonicalDigest: finalDigest,
       seedDigest: finalSeedDigest,
+      promotionLedgerDigest: finalPromotionLedgerDigest,
       decisionSourceDigest: finalDecisionDigest,
       semanticAuditBytes: result.semanticAuditBytes,
       semanticAuditCoverage: result.semanticAuditCoverage,
@@ -1980,6 +1988,7 @@ export async function commitM512APromotionTransaction({
       admission: result.admission,
       canonicalDigest: finalDigest,
       seedDigest: finalSeedDigest,
+      promotionLedgerDigest: finalPromotionLedgerDigest,
       decisionSourceDigest: finalDecisionDigest,
     };
   } catch (error) {
@@ -1990,6 +1999,7 @@ export async function commitM512APromotionTransaction({
         await rm(createdPath, { force: true });
       }
       await writeFile(currentSeedPath, currentSeedBytes);
+      await writeFile(promotionLedgerPath, currentPromotionLedgerBytes);
       await writeFile(decisionSourcePath, currentDecisionBytes);
     }
     throw error;
@@ -2015,16 +2025,19 @@ export async function reconcileM512APromotion(options = {}) {
 export async function refreshM512APromotionEvidence({
   currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
   currentSeedPath = CURRENT_SEED_PATH,
+  promotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
   admissionPath = ADMISSION_PATH,
   promotionPath = PROMOTION_PATH,
 } = {}) {
-  const result = await buildM512A({ currentSeedPath, decisionSourcePath });
+  const result = await buildM512A({ currentSeedPath, currentPromotionLedgerPath: promotionLedgerPath, decisionSourcePath });
   const currentCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedDigest = sha256(await readFile(currentSeedPath));
+  const currentPromotionLedgerDigest = sha256(await readFile(promotionLedgerPath));
   const currentDecisionSourceDigest = sha256(await readFile(decisionSourcePath));
   if (currentCanonicalDigest !== result.prospective.canonicalDigest
     || currentSeedDigest !== sha256(result.prospective.seedBytes)
+    || currentPromotionLedgerDigest !== sha256(result.prospective.promotionLedgerBytes)
     || currentDecisionSourceDigest !== sha256(result.decisionSourceBytes)) {
     fail('post-promotion evidence refresh found output drift', 'PROMOTION_DIGEST_MISMATCH');
   }
@@ -2038,6 +2051,7 @@ export async function refreshM512APromotionEvidence({
     post_promotion_audit: buildPostPromotionAudit({
       canonicalDigest: currentCanonicalDigest,
       seedDigest: currentSeedDigest,
+      promotionLedgerDigest: currentPromotionLedgerDigest,
       decisionSourceDigest: currentDecisionSourceDigest,
       semanticAuditBytes: result.semanticAuditBytes,
       semanticAuditCoverage: result.semanticAuditCoverage,
@@ -2066,24 +2080,29 @@ export async function refreshM512APromotionEvidence({
 export async function validateM512AFinal({
   currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
   currentSeedPath = CURRENT_SEED_PATH,
+  promotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
   decisionSourcePath = DECISION_SOURCE_PATH,
   admissionPath = ADMISSION_PATH,
   promotionPath = PROMOTION_PATH,
 } = {}) {
-  const result = await buildM512A({ currentSeedPath, decisionSourcePath });
+  const result = await buildM512A({ currentSeedPath, currentPromotionLedgerPath: promotionLedgerPath, decisionSourcePath });
   const currentCanonical = await readCanonicalRecords(currentCanonicalDirectory);
   const currentSummary = canonicalSummary(currentCanonical.records);
   const currentDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedBytes = await readFile(currentSeedPath);
+  const currentPromotionLedgerBytes = await readFile(promotionLedgerPath);
   const currentDecisionBytes = await readFile(decisionSourcePath);
   const admission = (await readJson(admissionPath, 'M5-12A admission evidence')).value;
   const promotion = (await readJson(promotionPath, 'M5-12A promotion evidence')).value;
   if (JSON.stringify(currentSummary) !== JSON.stringify(M5_12A_FINAL_SUMMARY)) fail('final canonical summary is not exactly +722', 'FINAL_COUNT_MISMATCH');
   if (currentDigest !== result.prospective.canonicalDigest) fail('final canonical digest drifted from prospective canonical', 'FINAL_DIGEST_MISMATCH');
   if (sha256(currentSeedBytes) !== sha256(result.prospective.seedBytes)) fail('final seed digest drifted from prospective seed', 'FINAL_DIGEST_MISMATCH');
+  if (sha256(currentPromotionLedgerBytes) !== sha256(result.prospective.promotionLedgerBytes)) fail('final target promotion ledger drifted', 'FINAL_DIGEST_MISMATCH');
   if (sha256(currentDecisionBytes) !== sha256(result.decisionSourceBytes)) fail('final semantic decision source drifted', 'SEMANTIC_DECISION_SOURCE_MISMATCH');
-  if (admission.gate?.gate_status !== 'pass' || promotion.gate?.gate_status !== 'pass') fail('M5-12A durable gate is not passing', 'M5_12A_GATE_HOLD');
+  if (admission.gate?.gate_status !== 'pass') fail('M5-12A durable gate is not passing', 'M5_12A_GATE_HOLD');
   if (promotion.status !== 'promoted') fail('M5-12A promotion status is not durable', 'PROMOTION_STATE_MISMATCH');
+  const admissionBytes = await readFile(admissionPath);
+  if (promotion.admission_sha256 !== sha256(admissionBytes)) fail('M5-12A promotion admission binding drifted', 'PROMOTION_DIGEST_MISMATCH');
   assertPreflightEvidence({
     preflight: promotion.preflight,
     prospective: result.prospective,
@@ -2099,15 +2118,17 @@ export async function validateM512AFinal({
     fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
   }
   if (promotion.outputs?.canonical_directory_sha256 !== currentDigest) fail('promotion canonical digest drifted', 'PROMOTION_DIGEST_MISMATCH');
+  if (promotion.outputs?.target_promotions?.sha256 !== sha256(currentPromotionLedgerBytes)) fail('promotion target ledger digest drifted', 'PROMOTION_DIGEST_MISMATCH');
   if (promotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)) fail('promotion semantic authority digest drifted', 'PROMOTION_DIGEST_MISMATCH');
   const postPromotionAudit = promotion.post_promotion_audit;
   if (!postPromotionAudit
     || postPromotionAudit.status !== 'complete'
     || postPromotionAudit.canonical_directory_sha256 !== currentDigest
     || postPromotionAudit.seed_sha256 !== sha256(currentSeedBytes)
+    || postPromotionAudit.promotion_ledger_sha256 !== sha256(currentPromotionLedgerBytes)
     || postPromotionAudit.semantic_decision_source_sha256 !== sha256(currentDecisionBytes)
     || postPromotionAudit.semantic_audit_sha256 !== sha256(result.semanticAuditBytes)
-    || JSON.stringify(postPromotionAudit.semantic_audit) !== JSON.stringify(result.semanticAuditCoverage)) {
+    || JSON.stringify(postPromotionAudit.semantic_audit) !== JSON.stringify(compactSemanticAuditCoverage(result.semanticAuditCoverage))) {
     fail('post-promotion audit evidence drifted', 'PROMOTION_DIGEST_MISMATCH');
   }
   const canonicalDecisionAudit = buildSemanticAuditFromDecisionSource(
@@ -2125,6 +2146,7 @@ export async function validateM512AFinal({
     current: currentSummary,
     canonical_directory_sha256: currentDigest,
     seed_sha256: sha256(currentSeedBytes),
+    promotion_ledger_sha256: sha256(currentPromotionLedgerBytes),
     semantic_decision_source_sha256: sha256(currentDecisionBytes),
     semantic_audit: currentAuditCoverage,
   };

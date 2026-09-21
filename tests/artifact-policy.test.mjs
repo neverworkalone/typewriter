@@ -34,10 +34,10 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   assert.equal(artifact.sense_count, 2301);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 15621959);
-  assert.equal(sha256(semanticAuditBytes), '020df51a830abfa03f447e8c28e7db4330efe902a0e99a05dc892892ee801f19');
-  assert.equal(inventoryBytes.length, 1338505);
-  assert.equal(sha256(inventoryBytes), 'bb89132cf55109d661cbbc731163320692b9fd41c4571c61bebb6baa362a6351');
+  assert.equal(semanticAuditBytes.length, 14936707);
+  assert.equal(sha256(semanticAuditBytes), '16b0602d01825194ed785e3a0eb82b6c2600610c0521220afaf257c2dee35cea');
+  assert.equal(inventoryBytes.length, 1338554);
+  assert.equal(sha256(inventoryBytes), '0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66');
   assert.equal(inventory.canonical_snapshot.record_count, 2042);
   assert.equal(inventory.canonical_snapshot.start_count, 2000);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
@@ -121,6 +121,46 @@ test('artifact policy rejects role-shaped projections relocated into a future ba
       );
       await rm(filePath, { force: true });
     }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects reconstructible gate output in a v2 durable manifest', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-gate-policy-'));
+  const relativePath = 'data/batches/future-admission.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '2',
+    contract_version: 'lexical-batch-admission-v2',
+    artifact_id: 'future-admission',
+    gate_evidence: {
+      contract_version: 'lexical-batch-gate-evidence-v2',
+      preflight: {
+        contract_version: 'lexical-batch-preflight-v1',
+        status: 'complete',
+        input_canonical_directory_sha256: 'a'.repeat(64),
+        checks: {
+          deterministic_sqlite: {
+            status: 'pass',
+            input_canonical_directory_sha256: 'a'.repeat(64),
+            summary: { outputPath: '/tmp/generated.sqlite' },
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_GATE_DUPLICATION',
+    );
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }

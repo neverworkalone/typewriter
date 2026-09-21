@@ -49,6 +49,12 @@ test('validates the M5 inventory and keeps independent start counts', async () =
   assert.equal(summary.heldCount, 78);
   assert.equal(summary.duplicateCount, 2);
   assert.equal(summary.inflectedFormCount, 2);
+  const inventory = await readInventory();
+  assert.ok(inventory.generated_from.includes('data/inventory/m5-target-promotions.jsonl'));
+  assert.equal(
+    inventory.entries.find((entry) => entry.inventory_id === 'm5-1085').source,
+    'canonical',
+  );
   assert.deepEqual(summary.reasonCodeCounts, {
     A: 375,
     C: 309,
@@ -248,8 +254,8 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
       checkPilotCompleteness: false,
     });
     assert.equal(summary.currentStartCount, 301);
-    assert.equal(summary.candidateStartCount, 1718);
-    assert.equal(summary.plannedStartCount, 2019);
+    assert.equal(summary.candidateStartCount, 996);
+    assert.equal(summary.plannedStartCount, 1297);
 
     for (const [driftIndex, mutate] of [
       (entry) => {

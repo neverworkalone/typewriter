@@ -33,7 +33,7 @@ material.
 
 The promotion is explicitly `agent-generated`. The durable M5-12A semantic
 decision source is an independently authored, candidate-by-candidate Codex
-verification pass (`m5-12a-agent-semantic-review-20260920-r2`), not a
+verification pass (`m5-12a-agent-semantic-review-20260920-r4`), not a
 deterministic projection of the candidate generator. Generation and
 verification use separate pass IDs, and the artifacts set
 `human_editorial_review_complete` to `false`; no human timing or human-review
@@ -53,9 +53,15 @@ Promotion outputs are bound in:
 - [`data/batches/m5-12a-promotion.json`](../data/batches/m5-12a-promotion.json)
 - [`data/canonical/m5-12a-expansion.jsonl`](../data/canonical/m5-12a-expansion.jsonl)
 - [`data/inventory/m5-target-seed.json`](../data/inventory/m5-target-seed.json)
+- [`data/inventory/m5-target-promotions.jsonl`](../data/inventory/m5-target-promotions.jsonl)
 - [`data/validation/canonical-semantic-decision-source.json`](../data/validation/canonical-semantic-decision-source.json)
 
-The promotion records issue #7's checkpoint at 2,000 canonical starts. No next
+The active seed retains the non-promoted planning rows; the 722 promoted
+inventory events are append-only ledger rows bound to their candidate decision
+source and reviewed-record digests. Admission and promotion manifests retain
+the authorization, source/output digests, mutation event, and compact
+preflight binding, while detailed build/package/search summaries remain
+recomputable execution output. The promotion records issue #7's checkpoint at 2,000 canonical starts. No next
 `+1000` expansion is created by this issue.
 
 ## Reproduction and validation

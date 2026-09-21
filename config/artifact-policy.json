@@ -49,11 +49,77 @@
     "data/canonical/**",
     "data/batches/**",
     "data/inventory/m5-target-seed.json",
+    "data/inventory/m5-target-promotions.jsonl",
     "data/validation/canonical-semantic-boundary-decisions.json",
     "data/validation/canonical-semantic-correction-manifest.json",
     "data/validation/canonical-semantic-decision-source.json",
     "data/validation/lexical-rule-inventory.json",
     "data/validation/m5-*-semantic-audit.json",
     "data/validation/m5-*-semantic-boundary-decisions.json"
-  ]
+  ],
+  "durable_semantics": {
+    "gate_contract_versions": [
+      "lexical-batch-gate-evidence-v2"
+    ],
+    "gate_forbidden_fields": [
+      "metrics",
+      "timing",
+      "relation",
+      "audit",
+      "quality_passes",
+      "production_state_sha256",
+      "production_payloads_sha256"
+    ],
+    "preflight_allowed_fields": [
+      "contract_version",
+      "status",
+      "input_canonical_directory_sha256",
+      "checks"
+    ],
+    "preflight_check_allowed_fields": [
+      "status",
+      "input_canonical_directory_sha256"
+    ],
+    "batch_decision_contract_versions": [
+      "lexical-semantic-decision-source-v2"
+    ],
+    "batch_decision_required_fields": [
+      "candidate_record_id",
+      "inventory_id",
+      "candidate_record_sha256",
+      "decision",
+      "rank",
+      "score",
+      "decision_rationale",
+      "sense_reviews"
+    ],
+    "batch_decision_forbidden_fields": [
+      "source_sha256",
+      "sense_id",
+      "sense_gloss_sha256",
+      "pos",
+      "record_type",
+      "observed_domain_axes",
+      "domain_evidence",
+      "connector_observations",
+      "semantic_rationale",
+      "boundary_rationale",
+      "relation_decision",
+      "relation_count",
+      "relation_ids",
+      "no_relation_rationale"
+    ],
+    "canonical_batch_binding_allowed_fields": [
+      "source_id",
+      "source_sha256",
+      "artifact_sha256",
+      "decision_row_sha256",
+      "candidate_record_id",
+      "candidate_record_sha256",
+      "decision",
+      "selection_rank",
+      "selection_score",
+      "reviewed_record_sha256"
+    ]
+  }
 }

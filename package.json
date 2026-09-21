@@ -13,6 +13,7 @@
     "validate:lexical": "node scripts/validate/lexical-quality.mjs && node scripts/validate/semantic-audit.mjs",
     "validate:semantic-audit": "node scripts/validate/semantic-audit.mjs",
     "validate:artifacts": "node scripts/validate/artifact-policy.mjs",
+    "validate:evidence": "node scripts/validate/evidence-footprint.mjs",
     "audit:semantic:build": "node scripts/validate/build-semantic-audit.mjs",
     "audit:semantic:corrections": "node scripts/validate/apply-semantic-corrections.mjs --corrections=data/validation/canonical-semantic-correction-manifest.json --amend-existing=true",
     "inventory:generate": "node scripts/inventory/generate-target-inventory.mjs",

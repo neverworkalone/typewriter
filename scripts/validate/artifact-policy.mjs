@@ -136,6 +136,209 @@ async function artifactRolesForFiles(repositoryDirectory, files, projectionRoles
   return roles;
 }
 
+function validateCompactPreflight(value, filePath, label, semantics) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    fail(`${filePath} ${label} must be an object`, 'DURABLE_GATE_POLICY_SHAPE');
+  }
+  const extraFields = Object.keys(value).filter((key) => !semantics.preflight_allowed_fields.includes(key));
+  if (extraFields.length > 0) {
+    fail(
+      `${filePath} ${label} stores non-durable preflight fields: ${extraFields.join(', ')}`,
+      'DURABLE_GATE_DUPLICATION',
+    );
+  }
+  if (!value.contract_version || !value.status || !value.input_canonical_directory_sha256
+    || !value.checks || typeof value.checks !== 'object' || Array.isArray(value.checks)) {
+    fail(`${filePath} ${label} is not a compact preflight manifest`, 'DURABLE_GATE_POLICY_SHAPE');
+  }
+  for (const [checkName, check] of Object.entries(value.checks)) {
+    if (!check || typeof check !== 'object' || Array.isArray(check)) {
+      fail(`${filePath} ${label}.checks.${checkName} must be an object`, 'DURABLE_GATE_POLICY_SHAPE');
+    }
+    const checkExtraFields = Object.keys(check)
+      .filter((key) => !semantics.preflight_check_allowed_fields.includes(key));
+    if (checkExtraFields.length > 0) {
+      fail(
+        `${filePath} ${label}.checks.${checkName} stores non-durable fields: ${checkExtraFields.join(', ')}`,
+        'DURABLE_GATE_DUPLICATION',
+      );
+    }
+  }
+}
+
+function validateCompactGateArtifact(value, filePath, semantics) {
+  const gateEvidence = value?.gate_evidence;
+  if (!gateEvidence || !semantics.gate_contract_versions.includes(gateEvidence.contract_version)) return;
+
+  const forbiddenTopLevel = semantics.gate_forbidden_fields
+    .filter((field) => Object.hasOwn(value, field));
+  if (forbiddenTopLevel.length > 0) {
+    fail(
+      `${filePath} stores reconstructible gate outputs: ${forbiddenTopLevel.join(', ')}`,
+      'DURABLE_GATE_DUPLICATION',
+    );
+  }
+  const forbiddenGateFields = [
+    ...semantics.gate_forbidden_fields,
+    'fixed_gate',
+  ].filter((field) => Object.hasOwn(gateEvidence, field));
+  if (forbiddenGateFields.length > 0) {
+    fail(
+      `${filePath}.gate_evidence stores reconstructible gate outputs: ${forbiddenGateFields.join(', ')}`,
+      'DURABLE_GATE_DUPLICATION',
+    );
+  }
+  if (value.preflight) validateCompactPreflight(value.preflight, filePath, 'preflight', semantics);
+  if (gateEvidence.preflight) {
+    validateCompactPreflight(gateEvidence.preflight, filePath, 'gate_evidence.preflight', semantics);
+  }
+  const audit = gateEvidence.complete_audit;
+  if (audit) {
+    const allowedAuditFields = new Set([
+      'contract_version',
+      'scope',
+      'canonical_records_sha256',
+      'record_count',
+      'sense_count',
+      'covered_record_count',
+      'covered_sense_count',
+      'coverage_complete',
+      'review_complete',
+      'corrected_record_count',
+    ]);
+    const extraAuditFields = Object.keys(audit).filter((key) => !allowedAuditFields.has(key));
+    if (extraAuditFields.length > 0) {
+      fail(
+        `${filePath}.gate_evidence.complete_audit stores reconstructible fields: ${extraAuditFields.join(', ')}`,
+        'DURABLE_GATE_DUPLICATION',
+      );
+    }
+  }
+}
+
+function validateCompactDecisionSource(value, filePath, semantics) {
+  if (!semantics.batch_decision_contract_versions.includes(value.contract_version)
+    || !Array.isArray(value.decisions)) return;
+  for (const [index, row] of value.decisions.entries()) {
+    for (const field of semantics.batch_decision_required_fields) {
+      if (!Object.hasOwn(row, field)) {
+        fail(
+          `${filePath} decision ${index} is missing compact field ${field}`,
+          'DURABLE_EVIDENCE_POLICY_SHAPE',
+        );
+      }
+    }
+    const duplicated = semantics.batch_decision_forbidden_fields
+      .filter((field) => Object.hasOwn(row, field));
+    if (duplicated.length > 0) {
+      fail(
+        `${filePath} decision ${index} stores reconstructible duplicate fields: ${duplicated.join(', ')}`,
+        'DURABLE_EVIDENCE_DUPLICATION',
+      );
+    }
+    if (!Array.isArray(row.sense_reviews)) {
+      fail(`${filePath} decision ${index}.sense_reviews must be an array`, 'DURABLE_EVIDENCE_POLICY_SHAPE');
+    }
+    for (const [senseIndex, senseReview] of row.sense_reviews.entries()) {
+      for (const field of semantics.batch_decision_forbidden_fields) {
+        if (Object.hasOwn(senseReview, field)
+          && !['sense_id', 'semantic_rationale', 'boundary_rationale', 'relation_decision', 'relation_count', 'relation_ids', 'no_relation_rationale'].includes(field)) {
+          fail(
+            `${filePath} decision ${index}.sense_reviews[${senseIndex}] stores reconstructible duplicate field ${field}`,
+            'DURABLE_EVIDENCE_DUPLICATION',
+          );
+        }
+      }
+      if (senseReview.review_basis) {
+        const keys = Object.keys(senseReview.review_basis);
+        if (keys.some((key) => !['topic_analysis', 'topic_analyses'].includes(key))) {
+          fail(
+            `${filePath} decision ${index}.sense_reviews[${senseIndex}].review_basis contains derived fields`,
+            'DURABLE_EVIDENCE_DUPLICATION',
+          );
+        }
+      }
+    }
+  }
+}
+
+function validateCanonicalBatchBindings(value, filePath, semantics) {
+  if (!Array.isArray(value?.authored_review?.records)) return;
+  const allowed = new Set(semantics.canonical_batch_binding_allowed_fields);
+  for (const record of value.authored_review.records) {
+    const binding = record.authored_batch_decision;
+    if (!binding) continue;
+    const duplicated = Object.keys(binding).filter((key) => !allowed.has(key));
+    if (duplicated.length > 0) {
+      fail(
+        `${filePath} ${record.record_id}.authored_batch_decision stores duplicated fields: ${duplicated.join(', ')}`,
+        'DURABLE_EVIDENCE_DUPLICATION',
+      );
+    }
+  }
+}
+
+async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, policy }) {
+  const semantics = policy.durable_semantics;
+  if (!semantics || typeof semantics !== 'object') {
+    fail('artifact policy durable_semantics must be an object', 'POLICY_SHAPE');
+  }
+  for (const key of [
+    'gate_contract_versions',
+    'gate_forbidden_fields',
+    'preflight_allowed_fields',
+    'preflight_check_allowed_fields',
+    'batch_decision_contract_versions',
+    'batch_decision_required_fields',
+    'batch_decision_forbidden_fields',
+    'canonical_batch_binding_allowed_fields',
+  ]) {
+    if (!Array.isArray(semantics[key]) || semantics[key].length === 0) {
+      fail(`artifact policy durable_semantics.${key} must be a non-empty array`, 'POLICY_SHAPE');
+    }
+  }
+  for (const filePath of tracked) {
+    if (!filePath.startsWith('data/')) continue;
+    const absolutePath = path.join(repositoryDirectory, filePath);
+    let bytes;
+    try {
+      bytes = await readFile(absolutePath);
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    if (filePath.endsWith('.json')) {
+      let value;
+      try {
+        value = JSON.parse(bytes.toString('utf8'));
+      } catch {
+        continue;
+      }
+      validateCompactDecisionSource(value, filePath, semantics);
+      validateCanonicalBatchBindings(value, filePath, semantics);
+      validateCompactGateArtifact(value, filePath, semantics);
+      continue;
+    }
+    if (filePath.endsWith('.jsonl')) {
+      const lines = bytes.toString('utf8').split('\n').filter((line) => line.trim().length > 0);
+      if (lines.length === 0) continue;
+      const first = JSON.parse(lines[0]);
+      if (!first.decision_source_id || !first.decision_row_sha256) continue;
+      for (const [index, line] of lines.entries()) {
+        const entry = JSON.parse(line);
+        for (const forbidden of ['lemma', 'search_forms', 'gloss', 'senses', 'candidate_record']) {
+          if (Object.hasOwn(entry, forbidden)) {
+            fail(
+              `${filePath} line ${index + 1} copies canonical candidate content in a promotion ledger`,
+              'DURABLE_EVIDENCE_DUPLICATION',
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
 export function classifyTrackedArtifacts(
   files,
   {
@@ -232,6 +435,8 @@ export async function validateArtifactPolicy({
       'UNCLASSIFIED_ARTIFACT',
     );
   }
+
+  await validateDurableEvidenceSemantics({ repositoryDirectory, tracked, policy });
 
   const presentProjections = await existingProjectionFiles(
     repositoryDirectory,

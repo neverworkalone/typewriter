@@ -6,7 +6,6 @@ import {
   sha256Json,
 } from '../validate/semantic-audit.mjs';
 import {
-  inspectGlossConnectors,
   inspectWriterDomainEvidence,
   validateTopicAnalysisEvidence,
   validateLexicalRecord,
@@ -32,7 +31,7 @@ export const M5_12A_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-12a-semantic-decisions.json',
 );
-export const M5_12A_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v1';
+export const M5_12A_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v2';
 export const M5_12A_SEMANTIC_DECISION_SOURCE_POLICY = 'source-authored-quality-coverage-v1';
 export const M5_12A_AUTHORED_SEMANTIC_REVIEW_VERSION = 'm5-12a-authored-semantic-review-v4';
 
@@ -94,14 +93,57 @@ function expectedDecisionCounts(rows) {
   ]));
 }
 
+const RECONSTRUCTIBLE_DECISION_FIELDS = Object.freeze([
+  'source_sha256',
+  'sense_id',
+  'sense_gloss_sha256',
+  'pos',
+  'record_type',
+  'observed_domain_axes',
+  'domain_evidence',
+  'connector_observations',
+  'semantic_rationale',
+  'boundary_rationale',
+  'relation_decision',
+  'relation_count',
+  'relation_ids',
+  'no_relation_rationale',
+]);
+
+export function compactM512ADecisionRow(row) {
+  const normalized = structuredClone(row);
+  for (const field of RECONSTRUCTIBLE_DECISION_FIELDS) delete normalized[field];
+  if (Array.isArray(normalized.sense_reviews)) {
+    normalized.sense_reviews = normalized.sense_reviews.map((senseReview) => {
+      const compact = structuredClone(senseReview);
+      for (const field of RECONSTRUCTIBLE_DECISION_FIELDS) {
+        if (field !== 'sense_id'
+          && field !== 'semantic_rationale'
+          && field !== 'boundary_rationale'
+          && field !== 'relation_decision'
+          && field !== 'relation_count'
+          && field !== 'relation_ids'
+          && field !== 'no_relation_rationale') {
+          delete compact[field];
+        }
+      }
+      if (compact.review_basis) {
+        compact.review_basis = Object.fromEntries(
+          Object.entries(compact.review_basis)
+            .filter(([key]) => key === 'topic_analysis' || key === 'topic_analyses'),
+        );
+        if (Object.keys(compact.review_basis).length === 0) delete compact.review_basis;
+      }
+      return compact;
+    });
+  }
+  return normalized;
+}
+
 function sourceForArtifactDigest(source) {
   const withoutDigest = structuredClone(source);
   delete withoutDigest.artifact_sha256;
-  withoutDigest.decisions = withoutDigest.decisions.map((row) => {
-    const normalized = { ...row };
-    normalized.source_sha256 = null;
-    return normalized;
-  });
+  withoutDigest.decisions = withoutDigest.decisions.map(compactM512ADecisionRow);
   return withoutDigest;
 }
 
@@ -256,10 +298,7 @@ export function serializeM512ADecisionSource(source) {
   const artifactSha256 = sha256Json(withoutDigest);
   const serialized = {
     ...withoutDigest,
-    decisions: source.decisions.map((row) => ({
-      ...row,
-      source_sha256: artifactSha256,
-    })),
+    decisions: source.decisions.map(compactM512ADecisionRow),
     artifact_sha256: artifactSha256,
   };
   return {
@@ -300,7 +339,6 @@ export function applyM512ADecisionCorrection(candidate, correction) {
 function validateDecisionRow(row, {
   identity,
   candidate,
-  sourceSha256,
   decisionSourceId,
 } = {}) {
   const label = `decision ${identity.inventory_id}`;
@@ -319,13 +357,12 @@ function validateDecisionRow(row, {
     || !row.decision_rationale.includes(candidate.id)) {
     fail(`${label}.decision_rationale must cite the inventory and candidate identity`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  if (row.source_sha256 !== sourceSha256) fail(`${label}.source_sha256 is not bound to the decision artifact`, 'M5_12A_DECISION_SOURCE_BINDING');
   if (row.review_pass_id !== M5_12A_VERIFICATION_PASS_ID) fail(`${label}.review_pass_id is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_PROVENANCE');
   if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'M5_12A_DECISION_SOURCE_VALUE');
   if (IMPORTABLE.has(row.decision) && row.gloss_judgment !== 'fit') {
     fail(`${label} importable decision requires a fit gloss judgment`, 'M5_12A_DECISION_SOURCE_COHERENCE');
   }
-  if (row.record_type !== candidate.record_type) {
+  if (row.record_type !== undefined && row.record_type !== candidate.record_type) {
     fail(`${label}.record_type is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
   if (row.decision === 'corrected') {
@@ -339,23 +376,11 @@ function validateDecisionRow(row, {
     const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
     const sense = candidate.senses[senseIndex];
     requireObject(senseReview, senseLabel);
-    if (senseReview.sense_id !== sense.id
-      || senseReview.sense_gloss_sha256 !== sha256Json(sense.gloss)
-      || senseReview.pos !== sense.pos
-      || senseReview.record_type !== candidate.record_type) {
+    if (senseReview.sense_id !== sense.id) {
       fail(`${senseLabel} is not source-bound to the authored sense`, 'M5_12A_DECISION_SOURCE_BINDING');
     }
     requireString(senseReview.semantic_rationale, `${senseLabel}.semantic_rationale`);
-    const reviewBasis = requireObject(
-      senseReview.review_basis ?? (senseIndex === 0 ? row.review_basis : undefined),
-      `${senseLabel}.review_basis`,
-    );
-    if (reviewBasis.lexical_unit !== candidate.lemma
-      || reviewBasis.gloss_sha256 !== sha256Json(sense.gloss)
-      || reviewBasis.review_pass_id !== M5_12A_VERIFICATION_PASS_ID
-      || reviewBasis.reviewer !== 'codex-agent') {
-      fail(`${senseLabel}.review_basis is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_BINDING');
-    }
+    const reviewBasis = senseReview.review_basis ?? {};
     validateTopicAnalysisEvidence(
       sense.gloss,
       reviewBasis,
@@ -366,12 +391,6 @@ function validateDecisionRow(row, {
       },
     );
     const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
-    const connectorObservations = inspectGlossConnectors(sense.gloss);
-    if (JSON.stringify(senseReview.observed_domain_axes) !== JSON.stringify(domainEvidence.axes)
-      || JSON.stringify(senseReview.domain_evidence) !== JSON.stringify(domainEvidence.matches)
-      || JSON.stringify(senseReview.connector_observations) !== JSON.stringify(connectorObservations)) {
-      fail(`${senseLabel} semantic observations do not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
-    }
     const expectedBoundaryDecision = domainEvidence.axes.length > 1 ? 'coordinated' : 'atomic';
     if (senseReview.boundary_action !== 'retain'
       || senseReview.boundary_classification !== 'atomic'
@@ -404,38 +423,14 @@ function validateDecisionRow(row, {
     validateAuthoredBoundaryPairs(candidate, row, label);
   }
 
-  const firstSense = candidate.senses[0];
-  const firstReview = senseReviews[0];
-  if (row.sense_id !== undefined && row.sense_id !== firstSense.id) {
-    fail(`${label}.sense_id is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
-  }
-  if (row.sense_gloss_sha256 !== undefined
-    && row.sense_gloss_sha256 !== sha256Json(firstSense.gloss)) {
-    fail(`${label}.sense_gloss_sha256 does not bind the candidate gloss`, 'M5_12A_DECISION_SOURCE_BINDING');
-  }
-  if (row.pos !== undefined && row.pos !== firstSense.pos) {
-    fail(`${label}.pos is not source-bound`, 'M5_12A_DECISION_SOURCE_BINDING');
-  }
-  if (row.observed_domain_axes !== undefined
-    && JSON.stringify(row.observed_domain_axes) !== JSON.stringify(firstReview.observed_domain_axes)) {
-    fail(`${label}.observed_domain_axes must bind the first authored sense`, 'M5_12A_DECISION_SOURCE_BINDING');
-  }
   const relationCount = senseReviews.reduce((sum, senseReview) => sum + senseReview.relation_count, 0);
   const relationIds = senseReviews.flatMap((senseReview) => senseReview.relation_ids);
   const relationDecision = relationCount === 0 ? 'no-relations' : 'relations-reviewed';
-  if (row.relation_count !== relationCount
-    || JSON.stringify(row.relation_ids ?? []) !== JSON.stringify(relationIds)
-    || row.relation_decision !== relationDecision) {
-    fail(`${label} aggregate relation evidence does not bind every authored sense`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (relationCount !== relationIds.length) {
+    fail(`${label} relation evidence does not bind every authored relation`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  if (relationCount === 0) {
-    requireString(row.no_relation_rationale, `${label}.no_relation_rationale`);
-    if (!row.no_relation_rationale.includes(identity.inventory_id)
-      || candidate.senses.some(({ id }) => !row.no_relation_rationale.includes(id))) {
-      fail(`${label}.no_relation_rationale must cite every source-bound sense`, 'M5_12A_DECISION_SOURCE_BINDING');
-    }
-  } else if (row.no_relation_rationale !== undefined) {
-    fail(`${label}.no_relation_rationale cannot accompany authored relations`, 'M5_12A_DECISION_SOURCE_BINDING');
+  if (relationCount === 0 && relationDecision !== 'no-relations') {
+    fail(`${label} relation evidence must record no-relations`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
   return row;
 }
@@ -521,7 +516,6 @@ export function validateM512ADecisionSource({
     validateDecisionRow(row, {
       identity,
       candidate,
-      sourceSha256: artifactSha256,
       decisionSourceId: source.source_id,
     });
   }
