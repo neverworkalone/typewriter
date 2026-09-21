@@ -29,7 +29,11 @@ import {
   buildSemanticAuditFromDecisionSource,
   buildSemanticCoverageArtifact,
   canonicalRecordsSha256,
+  compactSemanticReviewArtifact,
+  COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+  materializeSemanticReviewArtifact,
   serializeSemanticAuditArtifact,
+  SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   sha256Json,
   validateSemanticAuditCoverage,
 } from '../validate/semantic-audit.mjs';
@@ -840,7 +844,12 @@ function buildProspectiveDecisionSource({
   });
   const coverageById = new Map(coverage.records.map((record) => [record.record_id, record]));
   const baseIds = new Set(baseRecords.map(({ id }) => id));
-  const baseReviewRecords = baseDecisionSource.authored_review.records.filter(
+  const materializedBaseReview = materializeSemanticReviewArtifact(
+    baseRecords,
+    baseDecisionSource.authored_review,
+    { decisionSourceId },
+  );
+  const baseReviewRecords = materializedBaseReview.records.filter(
     ({ record_id: recordId }) => baseIds.has(recordId),
   );
   if (!m512aDecisionSource) {
@@ -859,12 +868,12 @@ function buildProspectiveDecisionSource({
         batchDecisionSourceSha256: m512aDecisionSource.sourceSha256,
         batchDecisionSourceArtifactSha256: m512aDecisionSource.artifactSha256,
       });
-    });
+  });
   const review = {
-    ...structuredClone(baseDecisionSource.authored_review),
+    ...structuredClone(materializedBaseReview),
     artifact_id: 'canonical-semantic-review-m5-12a',
     review_pass: {
-      ...structuredClone(baseDecisionSource.authored_review.review_pass),
+      ...structuredClone(materializedBaseReview.review_pass),
       id: 'canonical-semantic-reaudit-m5-12a-20260920',
       method: 'complete-canonical semantic re-audit with separate agent verification and source-bound decisions',
       record_count: prospectiveRecords.length,
@@ -872,19 +881,20 @@ function buildProspectiveDecisionSource({
       open_finding_count: 0,
     },
     source: {
-      ...structuredClone(baseDecisionSource.authored_review.source),
+      ...structuredClone(materializedBaseReview.source),
       canonical_records_sha256: canonicalRecordsSha256(prospectiveInfos),
     },
     record_count: prospectiveRecords.length,
     sense_count: prospectiveRecords.reduce((sum, record) => sum + record.senses.length, 0),
     records: [...baseReviewRecords, ...newReviewRecords],
     decision_source: {
-      ...structuredClone(baseDecisionSource.authored_review.decision_source),
+      ...structuredClone(materializedBaseReview.decision_source),
       source_id: decisionSourceId,
     },
   };
-  const decisionSource = {
+  const expandedDecisionSource = {
     ...structuredClone(baseDecisionSource),
+    contract_version: SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
     source: {
       ...structuredClone(baseDecisionSource.source),
       canonical_records_sha256: canonicalRecordsSha256(prospectiveInfos),
@@ -893,13 +903,13 @@ function buildProspectiveDecisionSource({
     authored_review: review,
   };
   validateM512AAuthoredCanonicalAuthority({
-    decisionSource,
+    decisionSource: expandedDecisionSource,
     m512aDecisionSource,
     records: prospectiveRecords.filter((record) => !baseIds.has(record.id)),
   });
   const semanticAudit = buildSemanticAuditFromDecisionSource(
     prospectiveInfos,
-    decisionSource,
+    expandedDecisionSource,
     {
       artifactId: 'm5-12a-canonical-semantic-audit',
       baseRecords: baseRecords.map((record, index) => asRecordInfo(record, 'base-canonical', index + 1)),
@@ -909,6 +919,13 @@ function buildProspectiveDecisionSource({
     baseRecords: baseRecords.map((record, index) => asRecordInfo(record, 'base-canonical', index + 1)),
     label: 'M5-12A complete prospective semantic audit',
   });
+  const compactReview = compactSemanticReviewArtifact(review);
+  const decisionSource = {
+    ...structuredClone(expandedDecisionSource),
+    contract_version: COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    authored_review: compactReview,
+    authored_review_sha256: sha256Json(compactReview),
+  };
   return { decisionSource, semanticAudit };
 }
 

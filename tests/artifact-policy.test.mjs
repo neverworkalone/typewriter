@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import test from 'node:test';
 import os from 'node:os';
 import path from 'node:path';
@@ -107,8 +107,8 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   assert.equal(artifact.sense_count, 2301);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 14936707);
-  assert.equal(sha256(semanticAuditBytes), '16b0602d01825194ed785e3a0eb82b6c2600610c0521220afaf257c2dee35cea');
+  assert.equal(semanticAuditBytes.length, 14498057);
+  assert.equal(sha256(semanticAuditBytes), '998dca43b3f6f2a6dcd97eed2cfaad8a3428c7f19d22f40377c1d1d25127717f');
   assert.equal(inventoryBytes.length, 1338554);
   assert.equal(sha256(inventoryBytes), '0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66');
   assert.equal(inventory.canonical_snapshot.record_count, 2042);
@@ -560,6 +560,54 @@ test('artifact policy rejects a markerless promotion-evidence JSONL envelope', a
     await assert.rejects(
       validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
       (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy closes the compact canonical decision source against derived-field reintroduction', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-source-policy-'));
+  const relativePath = 'data/validation/canonical-semantic-decision-source.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const source = JSON.parse(await readFile(
+    path.resolve('data/validation/canonical-semantic-decision-source.json'),
+    'utf8',
+  ));
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(source)}\n`, 'utf8');
+    await assert.doesNotReject(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+    );
+
+    const derivedField = structuredClone(source);
+    derivedField.authored_review.records[0].sense_reviews[0].pos = {
+      status: 'pass',
+      observed_pos: 'noun',
+    };
+    await writeFile(filePath, `${JSON.stringify(derivedField)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+
+    const unregistered = structuredClone(source);
+    unregistered.contract_version = 'lexical-semantic-canonical-decision-source-v3';
+    await writeFile(filePath, `${JSON.stringify(unregistered)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
     );
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });

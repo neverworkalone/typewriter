@@ -30,23 +30,30 @@ derived envelopes:
 | durable artifact | new bytes / lines | change from the baseline |
 | --- | ---: | ---: |
 | M5-12A semantic decisions | 2,130,279 / 34,620 | -3,692,829 bytes / -77,803 lines |
-| canonical semantic decision source | 11,935,192 / 217,285 | -685,252 bytes / -7,220 lines |
+| canonical semantic decision source | 3,601,987 / 63,535 | -9,018,457 bytes / -160,970 lines |
 | active seed | 621,487 / 26,095 | -425,969 bytes / -15,956 lines |
 | append-only promotion ledger | 478,965 / 722 | new historical event source |
 | compact admission manifest | 8,102 / 201 | -12,475 bytes / -335 lines |
 | compact promotion manifest | 5,713 / 135 | -13,809 bytes / -374 lines |
 
 Across these evidence artifacts, including the new ledger, the tracked surface
-falls from 19,531,107 bytes / 380,024 lines to 15,179,738 bytes / 279,058
+falls from 19,531,107 bytes / 380,024 lines to 6,846,533 bytes / 125,308
 lines. The canonical import is unchanged by this representation change. The
 line reduction is intentionally larger than the byte reduction because the
 durable JSON remains pretty-printed and reviewable.
 
-The current semantic decision source itself is split into approximately
+The current M5-12A semantic decision source itself is split into approximately
 306,299 bytes of candidate bodies, 1,510,609 bytes of compact decision rows,
 and a 2,466-byte envelope. The 722 canonical batch bindings average 601 bytes
 each. The 722 promotion ledger events average 663 bytes each and contain no
 candidate or canonical body.
+
+The canonical source compaction is measured separately against the exact
+pre-compaction source at `ed276b0`: 11,935,192 bytes / 217,285 lines became
+3,601,987 bytes / 63,535 lines, a reduction of 8,333,205 bytes and 153,750
+lines (69.82% of bytes and 70.76% of lines). The per-record cost fell from
+5,844.85 to 1,763.95 bytes and the per-sense cost fell from 5,186.96 to
+1,565.40 bytes.
 
 `npm run validate:evidence` also emits machine-readable accounting for the
 semantic payload and the complete tracked footprint. The semantic submetric
@@ -57,9 +64,9 @@ repeats only after their first occurrence:
 
 | accounting class | units | bytes | definition |
 | --- | ---: | ---: | --- |
-| unique semantic payload | 5,090 | 11,090,382 | one byte count for each distinct semantic-unit digest |
+| unique semantic payload | 5,090 | 5,068,474 | one byte count for each distinct semantic-unit digest |
 | duplicated payload | 0 | 0 | exact semantic-unit bytes repeated after the first digest occurrence |
-| current-corpus-dependent | 2,042 | 8,363,863 | canonical review units, whose count follows the current canonical corpus |
+| current-corpus-dependent | 2,042 | 2,341,955 | canonical review units, whose count follows the current canonical corpus |
 | batch-size-dependent | 3,048 | 2,726,519 | 802 candidate bodies, 802 decisions, 722 bindings, and 722 promotion events |
 
 The two dependency classes partition the unique semantic payload bytes, but this
@@ -83,10 +90,10 @@ ownership buckets, so wrappers and active-state bytes are not left unclassified:
 
 | ownership bucket | bytes | tracked artifacts |
 | --- | ---: | --- |
-| current-corpus authority | 11,935,192 | canonical semantic decision source |
+| current-corpus authority | 3,601,987 | canonical semantic decision source |
 | batch-size authority | 2,623,059 | semantic decisions, promotion ledger, admission and promotion manifests |
 | active inventory state | 621,487 | active target seed |
-| **tracked total** | **15,179,738** | **bucket sum matches tracked bytes** |
+| **tracked total** | **6,846,533** | **bucket sum matches tracked bytes** |
 
 The semantic payload numbers and the ownership buckets answer different
 questions: the former exposes exact-unit and known-field repetition, while the
@@ -109,6 +116,33 @@ latter proves that every tracked byte belongs to one durable artifact owner.
 | promotion event and output digests | atomic promotion transaction | reconcile and final validator | Proves what mutated and binds resulting files to the admitted state. | Keep compact promotion manifest. |
 | SQLite/package/search/build summaries and temporary paths | preflight runner | only the run that produced them | They are execution output and can be regenerated from the prospective canonical directory. | Keep in memory; do not persist. |
 | complete audit coverage and pass booleans | semantic/preflight validators | current pipeline | Reconstructible from canonical data plus authored authority. | Keep compact digest/count summary where it binds a historical gate; recompute details. |
+
+## Canonical authority field-family audit
+
+`data/validation/canonical-semantic-decision-source.json` now uses the
+registered `lexical-semantic-canonical-decision-source-v2` contract. Its
+durable payload stores authored judgments and immutable bindings only. The
+producer materializes the old review shape in memory for validation, then
+strips the projections before writing the source again.
+
+| field family | durable decision and necessity | active or historical consumer | action |
+| --- | --- | --- | --- |
+| record binding | `record_id` and `record_sha256` join the review to immutable canonical content; both are required integrity bindings | semantic audit and target-inventory validators | Keep |
+| canonical authored batch binding | source/artifact/row digests, candidate identity, decision, rank/score, and reviewed-record digest bind M5-12A lineage | admission, inventory, promotion-ledger, and final reconciliation validators | Keep |
+| boundary authored judgment | record classification, pairwise relationship/decision, evidence basis, and rationale are independent editorial decisions | semantic audit and correction replay | Keep |
+| sense authored judgment | per-sense boundary/semantic/no-relation rationale and exceptional topic analyses are not derivable from the canonical gloss alone | semantic audit and correction replay | Keep compact judgment only |
+| review provenance and correction history | source contract binding plus historical correction rows establish what was reviewed and preserve past repairs | semantic audit and correction replay | Keep |
+| boundary envelope, gloss digests, source IDs | status/method/independence/reviewed IDs and repeated evidence digests are regenerated from canonical content and one source-level binding | semantic-audit validation only | Remove; materialize in memory |
+| POS, expression, relation, domain, connector, and review-basis observations | observed values, counts, fingerprints, gloss digests, and pass/rationale envelopes are deterministic projections of canonical content and retained judgments | semantic-audit validation only | Remove; materialize in memory |
+| repeated review counts and pass fields | record/sense counts, open findings, and correction counts are recomputable from canonical records and retained correction history | semantic-audit validation only | Remove from durable source |
+
+The machine-readable accounting reports the same families and their exact
+before/after compact-JSON costs. The removed projections account for
+1,189,842 bytes of boundary envelope, 3,916,763 bytes of sense/content and
+relation projection, 126 bytes of repeated counts, and 1,112,348 bytes of
+repeated decision-source IDs in the pre-compaction source. The closed artifact
+policy rejects reintroduction of fields such as `pos`, `expression`, relation
+fingerprints, `review_basis.gloss_sha256`, and repeated per-row source IDs.
 
 ## Duplicate graph and boundary decisions
 
@@ -145,16 +179,21 @@ preflight's filesystem path is not treated as historical authority.
 
 ## Necessity and replay checks
 
-The representation change is guarded at three boundaries:
+The representation change is guarded at four boundaries:
 
-1. `tests/m5-12a.test.mjs` expands the compact rows with the old derived
+1. `materializeSemanticReviewArtifact()` expands the compact durable source
+   into the full in-memory review contract. A replay regression compares the
+   authored boundary, per-sense outcome, topic, and correction decisions before
+   and after compaction; it does not require derived digests or pass envelopes
+   to remain durable.
+2. `tests/m5-12a.test.mjs` expands the compact rows with the old derived
    envelope fields, serializes them through the v2 normalizer, and asserts the
    same serialized decisions, counts, and promotion-row bindings.
-2. `buildM512A()` still runs candidate binding, shared lexical production,
+3. `buildM512A()` still runs candidate binding, shared lexical production,
    per-sense semantic validation, full prospective audit, deterministic
    inventory generation, and the exact +722 gate. The only changed inputs are
    the representation of evidence and the split of promoted history.
-3. `validateM512AFinal()` recomputes the final canonical summary, canonical
+4. `validateM512AFinal()` recomputes the final canonical summary, canonical
    directory digest, seed digest, the M5-12A promotion-ledger prefix digest,
    decision-source digest, complete audit coverage, and compact preflight
    bindings before accepting the durable manifests. The current full ledger
@@ -168,6 +207,9 @@ and sense reviews, canonical batch bindings, and promotion-ledger rows all use
 typed closed schemas. A new durable JSON or JSONL file under a governed path
 cannot opt in merely by copying a known `contract_version`: an unregistered
 root, alternate envelope, or markerless promotion-ledger stream is rejected.
+The canonical semantic decision source now has its own exact path role and
+compact closed contract, so an unregistered version or any removed derived
+field is rejected at the same boundary.
 Explicitly enumerated legacy paths are the only exception, preserving
 historical pre-M5-12A evidence without making future artifacts untyped. The
 policy rejects v2

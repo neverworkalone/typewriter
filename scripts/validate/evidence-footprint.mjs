@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_BASELINE = 'a5d794a';
+const CANONICAL_SOURCE_COMPACTION_BASELINE = 'ed276b0';
 
 const ARTIFACTS = [
   'data/batches/m5-12a-semantic-decisions.json',
@@ -23,6 +24,12 @@ function lineCount(bytes) {
 
 function byteCount(value) {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
+}
+
+function pickFields(value, fields) {
+  return Object.fromEntries(fields
+    .filter((field) => Object.hasOwn(value ?? {}, field))
+    .map((field) => [field, value[field]]));
 }
 
 function payloadDigest(value) {
@@ -309,12 +316,331 @@ function canonicalBindingBreakdown(source) {
   };
 }
 
+function reviewCounts(source) {
+  const records = source.authored_review?.records ?? [];
+  return {
+    record_count: records.length,
+    sense_count: records.reduce((sum, record) => sum + (record.sense_reviews?.length ?? 0), 0),
+  };
+}
+
+function recordBindings(source) {
+  return (source.authored_review?.records ?? []).map((record) => pickFields(record, [
+    'record_id',
+    'record_sha256',
+  ]));
+}
+
+function authoredBatchBindings(source) {
+  return (source.authored_review?.records ?? [])
+    .map(({ authored_batch_decision: binding }) => binding)
+    .filter(Boolean);
+}
+
+function boundaryJudgments(source) {
+  return (source.authored_review?.records ?? []).map((record) => {
+    const boundary = record.boundary_review ?? {};
+    return {
+      record_id: record.record_id,
+      boundary_review: {
+        ...pickFields(boundary, ['review_id', 'decision', 'classification', 'rationale']),
+        evidence: (boundary.evidence ?? []).map((item) => pickFields(item, [
+          'sense_id',
+          'evidence_basis',
+          'rationale',
+        ])),
+        pairwise: (boundary.pairwise ?? []).map((item) => pickFields(item, [
+          'left_sense_id',
+          'right_sense_id',
+          'relationship',
+          'decision',
+          'evidence_basis',
+          'distinguishing_feature',
+          'rationale',
+        ])),
+      },
+    };
+  });
+}
+
+function senseJudgments(source) {
+  return (source.authored_review?.records ?? []).map((record) => ({
+    record_id: record.record_id,
+    sense_reviews: (record.sense_reviews ?? []).map((senseReview) => pickFields(senseReview, [
+      'sense_id',
+      'semantic_rationale',
+      'boundary_rationale',
+      'no_relation_rationale',
+      'review_basis',
+    ])),
+  }));
+}
+
+function reviewProvenance(source) {
+  const review = source.authored_review ?? {};
+  return {
+    review: pickFields(review, [
+      'schema_version',
+      'contract_version',
+      'artifact_id',
+      'scope',
+      'review_mode',
+      'source',
+      'decision_source',
+      'changes',
+    ]),
+    review_pass: pickFields(review.review_pass, [
+      'id',
+      'status',
+      'reviewer',
+      'review_mode',
+      'method',
+      'ruleset_version',
+      'boundary_ruleset_version',
+      'boundary_decision_source_version',
+      'correction_history',
+      'boundary_decision_history',
+      'correction_source',
+    ]),
+  };
+}
+
+function derivedBoundaryProjection(source) {
+  const projections = [];
+  for (const record of source.authored_review?.records ?? []) {
+    const boundary = record.boundary_review ?? {};
+    const envelope = pickFields(boundary, ['status', 'method', 'independence', 'reviewed_sense_ids']);
+    if (Object.keys(envelope).length > 0) projections.push(envelope);
+    for (const item of boundary.evidence ?? []) {
+      const value = pickFields(item, ['gloss_sha256', 'decision_source_id']);
+      if (Object.keys(value).length > 0) projections.push(value);
+    }
+    for (const item of boundary.pairwise ?? []) {
+      const value = pickFields(item, ['left_gloss_sha256', 'right_gloss_sha256', 'decision_source_id']);
+      if (Object.keys(value).length > 0) projections.push(value);
+    }
+  }
+  return projections;
+}
+
+function derivedSenseProjection(source) {
+  const retainedFields = new Set([
+    'sense_id',
+    'semantic_rationale',
+    'boundary_rationale',
+    'no_relation_rationale',
+    'review_basis',
+  ]);
+  return (source.authored_review?.records ?? [])
+    .flatMap((record) => (record.sense_reviews ?? []).map((senseReview) => Object.fromEntries(
+      Object.entries(senseReview).filter(([field]) => !retainedFields.has(field)),
+    )))
+    .filter((value) => Object.keys(value).length > 0);
+}
+
+function derivedReviewEnvelope(source) {
+  const review = source.authored_review ?? {};
+  return [
+    pickFields(review, ['record_count', 'sense_count']),
+    pickFields(review.review_pass, [
+      'record_count',
+      'sense_count',
+      'open_finding_count',
+      'correction_count',
+    ]),
+  ].filter((value) => Object.keys(value).length > 0);
+}
+
+function repeatedDecisionSourceIds(source) {
+  const ids = [];
+  for (const record of source.authored_review?.records ?? []) {
+    const boundary = record.boundary_review ?? {};
+    ids.push(boundary.independence?.decision_source_id);
+    for (const evidence of boundary.evidence ?? []) ids.push(evidence.decision_source_id);
+    for (const pair of boundary.pairwise ?? []) ids.push(pair.decision_source_id);
+    for (const senseReview of record.sense_reviews ?? []) {
+      ids.push(senseReview.sense_boundary?.decision_source_id);
+      ids.push(senseReview.pos?.decision_source_id);
+      ids.push(senseReview.expression?.decision_source_id);
+      ids.push(senseReview.relation?.decision_source_id);
+      ids.push(senseReview.review_basis?.decision_source_id);
+    }
+  }
+  return ids.filter((value) => value !== undefined).map((value) => ({ decision_source_id: value }));
+}
+
+function fieldGroupStats(beforeValue, afterValue, count) {
+  const beforeBytes = byteCount(beforeValue);
+  const afterBytes = byteCount(afterValue);
+  return {
+    before_bytes: beforeBytes,
+    after_bytes: afterBytes,
+    removed_bytes: beforeBytes - afterBytes,
+    before_average_bytes: count === 0 ? 0 : Math.round(beforeBytes / count),
+    after_average_bytes: count === 0 ? 0 : Math.round(afterBytes / count),
+  };
+}
+
+function canonicalAuthorityFieldAccounting(before, after, beforeArtifact, afterArtifact) {
+  const beforeCounts = reviewCounts(before);
+  const afterCounts = reviewCounts(after);
+  const retainedDefinitions = [
+    {
+      name: 'record_binding',
+      storage_paths: ['authored_review.records[].record_id', 'authored_review.records[].record_sha256'],
+      authority: 'canonical semantic decision source',
+      consumers: ['semantic-audit.mjs', 'generate-target-inventory.mjs'],
+      necessity: 'joins authored review rows to immutable canonical record content',
+      value: [recordBindings(before), recordBindings(after)],
+      count: afterCounts.record_count,
+    },
+    {
+      name: 'canonical_authored_batch_binding',
+      storage_paths: ['authored_review.records[].authored_batch_decision'],
+      authority: 'M5-12A authored batch decision source',
+      consumers: ['M5-12A admission', 'target inventory and promotion-ledger validators'],
+      necessity: 'binds each promoted canonical row to its source, decision row, and reviewed record digest',
+      value: [authoredBatchBindings(before), authoredBatchBindings(after)],
+      count: afterCounts.record_count,
+    },
+    {
+      name: 'boundary_authored_judgment',
+      storage_paths: ['authored_review.records[].boundary_review'],
+      authority: 'separately authored semantic review',
+      consumers: ['semantic-audit.mjs', 'apply-semantic-corrections.mjs'],
+      necessity: 'preserves record-level classification, pairwise decisions, and writer-facing rationale that cannot be reconstructed',
+      value: [boundaryJudgments(before), boundaryJudgments(after)],
+      count: afterCounts.record_count,
+    },
+    {
+      name: 'sense_authored_judgment',
+      storage_paths: ['authored_review.records[].sense_reviews[]'],
+      authority: 'separately authored semantic review',
+      consumers: ['semantic-audit.mjs', 'apply-semantic-corrections.mjs'],
+      necessity: 'preserves per-sense no-relation, boundary, semantic, and topic judgments that are not derivable from canonical content',
+      value: [senseJudgments(before), senseJudgments(after)],
+      count: afterCounts.sense_count,
+    },
+    {
+      name: 'review_provenance_and_correction_history',
+      storage_paths: ['authored_review.decision_source', 'authored_review.review_pass', 'authored_review.changes'],
+      authority: 'separately authored review and correction history',
+      consumers: ['semantic-audit.mjs', 'semantic-corrections replay'],
+      necessity: 'binds the review contract and preserves historical correction decisions',
+      value: [reviewProvenance(before), reviewProvenance(after)],
+      count: 1,
+    },
+  ];
+  const removedDefinitions = [
+    {
+      name: 'record_level_boundary_projection',
+      storage_paths: ['boundary_review.status', 'method', 'independence', 'reviewed_sense_ids', 'evidence[].gloss_sha256', 'pairwise[].*_gloss_sha256', '*.decision_source_id'],
+      producer: 'materializeSemanticReviewArtifact()',
+      consumers: ['semantic-audit validation only'],
+      necessity: 'fully recomputable from canonical glosses, sense IDs, and the retained authored boundary judgment',
+      value: [derivedBoundaryProjection(before), derivedBoundaryProjection(after)],
+      count: afterCounts.record_count,
+    },
+    {
+      name: 'sense_content_and_relation_projection',
+      storage_paths: ['sense_sha256', 'sense_boundary', 'pos', 'expression', 'relation', 'review_basis identity/gloss/domain/POS/type/count', 'coverage_gloss_sha256'],
+      producer: 'materializeSemanticReviewArtifact()',
+      consumers: ['semantic-audit validation only'],
+      necessity: 'fully recomputable from the current canonical record and sense values',
+      value: [derivedSenseProjection(before), derivedSenseProjection(after)],
+      count: afterCounts.sense_count,
+    },
+    {
+      name: 'repeated_review_counts_and_pass_envelope',
+      storage_paths: ['authored_review.record_count', 'authored_review.sense_count', 'review_pass.record_count', 'review_pass.sense_count', 'review_pass.open_finding_count', 'review_pass.correction_count'],
+      producer: 'materializeSemanticReviewArtifact()',
+      consumers: ['semantic-audit validation only'],
+      necessity: 'recomputed from canonical records and retained correction history',
+      value: [derivedReviewEnvelope(before), derivedReviewEnvelope(after)],
+      count: 1,
+    },
+    {
+      name: 'repeated_decision_source_ids',
+      storage_paths: ['boundary_review.*.decision_source_id', 'sense_reviews[].*.decision_source_id'],
+      producer: 'materializeSemanticReviewArtifact()',
+      consumers: ['semantic-audit validation only'],
+      necessity: 'replaced by one source-level decision_source binding and in-memory materialization',
+      value: [repeatedDecisionSourceIds(before), repeatedDecisionSourceIds(after)],
+      count: Math.max(repeatedDecisionSourceIds(before).length, repeatedDecisionSourceIds(after).length),
+    },
+  ];
+  const stats = (definition) => ({
+    field_family: definition.name,
+    storage_paths: definition.storage_paths,
+    ...(definition.authority ? {
+      authority: definition.authority,
+      consumers: definition.consumers,
+      necessity: definition.necessity,
+    } : {
+      producer: definition.producer,
+      consumers: definition.consumers,
+      necessity: definition.necessity,
+    }),
+    ...fieldGroupStats(definition.value[0], definition.value[1], definition.count),
+  });
+  const beforeBytes = beforeArtifact.bytes;
+  const afterBytes = afterArtifact.bytes;
+  const beforeLines = beforeArtifact.lines;
+  const afterLines = afterArtifact.lines;
+  return {
+    methodology: 'Field-family values are measured as compact JSON projections for an exact pre-compaction source and the current compact source. Whole-file bytes and lines are measured from UTF-8 artifacts; per-record and per-sense costs use the complete authored review counts.',
+    before_commit: CANONICAL_SOURCE_COMPACTION_BASELINE,
+    before: {
+      bytes: beforeBytes,
+      lines: beforeLines,
+      record_count: beforeCounts.record_count,
+      sense_count: beforeCounts.sense_count,
+      bytes_per_record: beforeCounts.record_count === 0 ? 0 : beforeBytes / beforeCounts.record_count,
+      bytes_per_sense: beforeCounts.sense_count === 0 ? 0 : beforeBytes / beforeCounts.sense_count,
+    },
+    after: {
+      bytes: afterBytes,
+      lines: afterLines,
+      record_count: afterCounts.record_count,
+      sense_count: afterCounts.sense_count,
+      bytes_per_record: afterCounts.record_count === 0 ? 0 : afterBytes / afterCounts.record_count,
+      bytes_per_sense: afterCounts.sense_count === 0 ? 0 : afterBytes / afterCounts.sense_count,
+    },
+    reduction: {
+      bytes: beforeBytes - afterBytes,
+      lines: beforeLines - afterLines,
+      byte_percent: beforeBytes === 0 ? 0 : Number((((beforeBytes - afterBytes) / beforeBytes) * 100).toFixed(2)),
+      line_percent: beforeLines === 0 ? 0 : Number((((beforeLines - afterLines) / beforeLines) * 100).toFixed(2)),
+    },
+    retained_field_groups: retainedDefinitions.map(stats),
+    recomputed_derived_field_groups: removedDefinitions.map(stats),
+  };
+}
+
+function readGitArtifact(commit, relativePath) {
+  const bytes = execFileSync('git', ['show', `${commit}:${relativePath}`], {
+    cwd: REPOSITORY_DIRECTORY,
+    maxBuffer: 40 * 1024 * 1024,
+  });
+  return {
+    path: relativePath,
+    bytes: bytes.length,
+    lines: lineCount(bytes),
+    value: JSON.parse(bytes.toString('utf8')),
+  };
+}
+
 async function main() {
   const baseline = process.argv.find((argument) => argument.startsWith('--baseline='))?.slice('--baseline='.length)
     ?? DEFAULT_BASELINE;
   const files = await Promise.all(ARTIFACTS.map(readArtifact));
   const source = files.find(({ path: filePath }) => filePath.endsWith('m5-12a-semantic-decisions.json')).value;
   const canonicalAuthority = files.find(({ path: filePath }) => filePath.endsWith('canonical-semantic-decision-source.json')).value;
+  const canonicalAuthorityArtifact = files.find(({ path: filePath }) => filePath.endsWith('canonical-semantic-decision-source.json'));
+  const canonicalAuthorityBefore = readGitArtifact(
+    CANONICAL_SOURCE_COMPACTION_BASELINE,
+    'data/validation/canonical-semantic-decision-source.json',
+  );
   const ledger = files.find(({ path: filePath }) => filePath.endsWith('m5-target-promotions.jsonl'));
   const promotionLedger = ledger.value ?? [];
   const ledgerCount = promotionLedger.length;
@@ -334,6 +660,12 @@ async function main() {
     },
     tracked_footprint_accounting: trackedFootprintAccounting(files),
     semantic_field_overlap: semanticFieldOverlap(source, canonicalAuthority, promotionLedger),
+    canonical_authority_accounting: canonicalAuthorityFieldAccounting(
+      canonicalAuthorityBefore.value,
+      canonicalAuthority,
+      canonicalAuthorityBefore,
+      canonicalAuthorityArtifact,
+    ),
     payload_accounting: payloadAccounting(payloadUnits),
   }, null, 2));
 }

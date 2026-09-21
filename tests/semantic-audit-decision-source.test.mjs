@@ -6,6 +6,10 @@ import test from 'node:test';
 
 import { rebuildSemanticEvidence } from '../scripts/validate/rebuild-semantic-evidence.mjs';
 import {
+  buildSemanticAuditFromDecisionSource,
+  compactSemanticDecisionSource,
+  SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+  sha256Json,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
@@ -27,6 +31,56 @@ function makeRecord(glosses, id = 'w-semantic-source-regression') {
       gloss,
     })),
   };
+}
+
+function authoredDecisionProjection(audit) {
+  return audit.review.records.map((record) => ({
+    record_id: record.record_id,
+    boundary: {
+      decision: record.boundary_review.decision,
+      classification: record.boundary_review.classification,
+      evidence: record.boundary_review.evidence.map((item) => ({
+        sense_id: item.sense_id,
+        evidence_basis: item.evidence_basis,
+        rationale: item.rationale,
+      })),
+      pairwise: record.boundary_review.pairwise.map((item) => ({
+        left_sense_id: item.left_sense_id,
+        right_sense_id: item.right_sense_id,
+        relationship: item.relationship,
+        decision: item.decision,
+        evidence_basis: item.evidence_basis,
+        distinguishing_feature: item.distinguishing_feature,
+        rationale: item.rationale,
+      })),
+      rationale: record.boundary_review.rationale,
+    },
+    senses: record.sense_reviews.map((sense) => ({
+      sense_id: sense.sense_id,
+      boundary: {
+        action: sense.sense_boundary.action,
+        classification: sense.sense_boundary.classification,
+        boundary_decision: sense.sense_boundary.boundary_decision,
+      },
+      pos: {
+        observed_pos: sense.pos.observed_pos,
+        decision: sense.pos.decision,
+      },
+      expression: {
+        expected_record_type: sense.expression.expected_record_type,
+        observed_record_type: sense.expression.observed_record_type,
+        decision: sense.expression.decision,
+      },
+      relation: {
+        decision: sense.relation.decision,
+        no_relation_rationale: sense.relation.no_relation_rationale,
+      },
+      topic: {
+        topic_analysis: sense.review_basis.topic_analysis,
+        topic_analyses: sense.review_basis.topic_analyses,
+      },
+    })),
+  }));
 }
 
 test('authored distinct and retain cannot override mechanically identical or nested pairs', () => {
@@ -100,4 +154,31 @@ test('semantic evidence rebuild rejects a legacy review passed as the decision s
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('compact canonical decision source replays the authored semantic decisions', () => {
+  const record = makeRecord(['작가가 문장을 고르는 말.', '글의 분위기를 만드는 표현.'], 'w9002');
+  const infos = [{ record, source: 'semantic-source-replay-regression' }];
+  const fullAudit = makeSemanticAudit(infos, {
+    artifactId: 'semantic-source-replay',
+  });
+  const fullSource = {
+    schema_version: '1',
+    contract_version: SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: fullAudit.review.decision_source.source_id,
+    authoring_mode: 'separately-authored',
+    scope: 'complete-canonical',
+    source: structuredClone(fullAudit.source),
+    authored_review_sha256: sha256Json(fullAudit.review),
+    authored_review: structuredClone(fullAudit.review),
+  };
+  const compactSource = compactSemanticDecisionSource(fullSource);
+  const replayed = buildSemanticAuditFromDecisionSource(infos, compactSource);
+
+  assert.equal(compactSource.contract_version, 'lexical-semantic-canonical-decision-source-v2');
+  assert.equal(Object.hasOwn(compactSource.authored_review.records[0].sense_reviews[0], 'pos'), false);
+  assert.equal(Object.hasOwn(compactSource.authored_review.records[0].sense_reviews[0], 'relation'), false);
+  assert.deepEqual(authoredDecisionProjection(replayed), authoredDecisionProjection(fullAudit));
+  assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, replayed));
 });

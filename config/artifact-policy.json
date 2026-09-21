@@ -58,9 +58,10 @@
     "data/validation/m5-*-semantic-boundary-decisions.json"
   ],
   "durable_semantics": {
-    "contract_required_patterns": [
-      "data/batches/**",
-      "data/**/*promotion*.jsonl"
+  "contract_required_patterns": [
+    "data/batches/**",
+    "data/**/*promotion*.jsonl",
+    "data/validation/canonical-semantic-decision-source.json"
     ],
     "legacy_untyped_patterns": [
       "data/batches/m5-3-**",
@@ -92,10 +93,14 @@
         "pattern": "data/batches/*-semantic-decisions.json",
         "contract": "decision_source"
       },
-      {
-        "pattern": "data/**/*promotion*.jsonl",
-        "contract": "promotion_ledger"
-      }
+    {
+      "pattern": "data/**/*promotion*.jsonl",
+      "contract": "promotion_ledger"
+    },
+    {
+      "pattern": "data/validation/canonical-semantic-decision-source.json",
+      "contract": "canonical_decision_source"
+    }
     ],
     "gate_contract_versions": [
       "lexical-batch-gate-evidence-v2"
@@ -873,6 +878,359 @@
           "$.candidate_records.*": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.candidate_records.*.senses.*": ["id", "pos", "gloss", "relations"],
           "$.candidate_records.*.senses.*.relations.*": ["target", "target_sense", "type", "note"]
+        }
+      },
+      "canonical_decision_source": {
+        "contract_versions": [
+          "lexical-semantic-canonical-decision-source-v2"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "authoring_mode",
+          "scope",
+          "source",
+          "authored_review_sha256",
+          "authored_review",
+          "correction_source"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "source_id": "string",
+          "authoring_mode": "string",
+          "scope": "string",
+          "source": "object",
+          "authored_review_sha256": "string",
+          "authored_review": "object",
+          "correction_source": "object"
+        },
+        "nested_allowed_fields": {
+          "$.source": [
+            "kind",
+            "canonical_records_sha256"
+          ],
+          "$.authored_review": [
+            "schema_version",
+            "contract_version",
+            "artifact_id",
+            "scope",
+            "review_mode",
+            "review_pass",
+            "source",
+            "records",
+            "changes",
+            "decision_source",
+            "boundary_decision_source"
+          ],
+          "$.authored_review.source": [
+            "kind",
+            "canonical_records_sha256"
+          ],
+          "$.authored_review.decision_source": [
+            "kind",
+            "contract_version",
+            "source_id",
+            "path",
+            "authored_review_sha256"
+          ],
+          "$.authored_review.boundary_decision_source": [
+            "method",
+            "source",
+            "decision_source_version",
+            "inspected_fields",
+            "decision_source_id"
+          ],
+          "$.authored_review.review_pass": [
+            "id",
+            "status",
+            "reviewer",
+            "review_mode",
+            "method",
+            "ruleset_version",
+            "boundary_ruleset_version",
+            "boundary_decision_source_version",
+            "correction_history",
+            "boundary_decision_history",
+            "correction_source"
+          ],
+          "$.authored_review.review_pass.correction_history.*": [
+            "record_id",
+            "before_record_sha256",
+            "after_record_sha256",
+            "source_revision",
+            "rationale",
+            "boundary_decision"
+          ],
+          "$.authored_review.review_pass.boundary_decision_history.*": [
+            "record_id",
+            "decision",
+            "before_record_sha256",
+            "after_record_sha256",
+            "rationale"
+          ],
+          "$.authored_review.review_pass.correction_source": [
+            "kind",
+            "path",
+            "sha256",
+            "source_revision"
+          ],
+          "$.authored_review.records.*": [
+            "record_id",
+            "record_sha256",
+            "authored_batch_decision",
+            "boundary_review",
+            "sense_reviews"
+          ],
+          "$.authored_review.records.*.authored_batch_decision": [
+            "source_id",
+            "source_sha256",
+            "artifact_sha256",
+            "decision_row_sha256",
+            "candidate_record_id",
+            "candidate_record_sha256",
+            "decision",
+            "selection_rank",
+            "selection_score",
+            "reviewed_record_sha256"
+          ],
+          "$.authored_review.records.*.boundary_review": [
+            "review_id",
+            "decision",
+            "classification",
+            "evidence",
+            "pairwise",
+            "rationale"
+          ],
+          "$.authored_review.records.*.boundary_review.evidence.*": [
+            "sense_id",
+            "evidence_basis",
+            "rationale"
+          ],
+          "$.authored_review.records.*.boundary_review.pairwise.*": [
+            "left_sense_id",
+            "right_sense_id",
+            "relationship",
+            "decision",
+            "evidence_basis",
+            "distinguishing_feature",
+            "rationale"
+          ],
+          "$.authored_review.records.*.sense_reviews.*": [
+            "sense_id",
+            "semantic_rationale",
+            "boundary_rationale",
+            "no_relation_rationale",
+            "review_basis"
+          ],
+          "$.authored_review.records.*.sense_reviews.*.review_basis": [
+            "topic_analysis",
+            "topic_analyses"
+          ],
+          "$.authored_review.records.*.sense_reviews.*.review_basis.topic_analysis": [
+            "status",
+            "state",
+            "topic",
+            "particle",
+            "predicate",
+            "token_index",
+            "topic_pos",
+            "evidence_basis",
+            "gloss_sha256",
+            "rationale",
+            "decision_source_id"
+          ],
+          "$.authored_review.records.*.sense_reviews.*.review_basis.topic_analyses.*": [
+            "status",
+            "state",
+            "topic",
+            "particle",
+            "predicate",
+            "token_index",
+            "topic_pos",
+            "evidence_basis",
+            "gloss_sha256",
+            "rationale",
+            "decision_source_id"
+          ],
+          "$.authored_review.changes.*": [
+            "record_id",
+            "decision",
+            "base_record_sha256",
+            "prospective_record_sha256",
+            "rationale"
+          ],
+          "$.correction_source": [
+            "kind",
+            "path",
+            "sha256",
+            "source_revision"
+          ]
+        },
+        "nested_field_types": {
+          "$.source": {
+            "kind": "string",
+            "canonical_records_sha256": "string"
+          },
+          "$.authored_review": {
+            "schema_version": "string",
+            "contract_version": "string",
+            "artifact_id": "string",
+            "scope": "string",
+            "review_mode": "string",
+            "review_pass": "object",
+            "source": "object",
+            "records": "array<object>",
+            "changes": "array<object>",
+            "decision_source": "object",
+            "boundary_decision_source": "object"
+          },
+          "$.authored_review.source": {
+            "kind": "string",
+            "canonical_records_sha256": "string"
+          },
+          "$.authored_review.decision_source": {
+            "kind": "string",
+            "contract_version": "string",
+            "source_id": "string",
+            "path": "string",
+            "authored_review_sha256": "string"
+          },
+          "$.authored_review.boundary_decision_source": {
+            "method": "string",
+            "source": "string",
+            "decision_source_version": "string",
+            "inspected_fields": "array<string>",
+            "decision_source_id": "string"
+          },
+          "$.authored_review.review_pass": {
+            "id": "string",
+            "status": "string",
+            "reviewer": "string",
+            "review_mode": "string",
+            "method": "string",
+            "ruleset_version": "string",
+            "boundary_ruleset_version": "string",
+            "boundary_decision_source_version": "string",
+            "correction_history": "array<object>",
+            "boundary_decision_history": "array<object>",
+            "correction_source": "object"
+          },
+          "$.authored_review.review_pass.correction_history.*": {
+            "record_id": "string",
+            "before_record_sha256": "string",
+            "after_record_sha256": "string",
+            "source_revision": "string",
+            "rationale": "string",
+            "boundary_decision": "string"
+          },
+          "$.authored_review.review_pass.boundary_decision_history.*": {
+            "record_id": "string",
+            "decision": "string",
+            "before_record_sha256": "string",
+            "after_record_sha256": "string",
+            "rationale": "string"
+          },
+          "$.authored_review.review_pass.correction_source": {
+            "kind": "string",
+            "path": "string",
+            "sha256": "string",
+            "source_revision": "string"
+          },
+          "$.authored_review.records.*": {
+            "record_id": "string",
+            "record_sha256": "string",
+            "authored_batch_decision": "object",
+            "boundary_review": "object",
+            "sense_reviews": "array<object>"
+          },
+          "$.authored_review.records.*.authored_batch_decision": {
+            "source_id": "string",
+            "source_sha256": "string",
+            "artifact_sha256": "string",
+            "decision_row_sha256": "string",
+            "candidate_record_id": "string",
+            "candidate_record_sha256": "string",
+            "decision": "string",
+            "selection_rank": "number",
+            "selection_score": "number",
+            "reviewed_record_sha256": "string"
+          },
+          "$.authored_review.records.*.boundary_review": {
+            "review_id": "string",
+            "decision": "string",
+            "classification": "string",
+            "evidence": "array<object>",
+            "pairwise": "array<object>",
+            "rationale": "string"
+          },
+          "$.authored_review.records.*.boundary_review.evidence.*": {
+            "sense_id": "string",
+            "evidence_basis": "string",
+            "rationale": "string"
+          },
+          "$.authored_review.records.*.boundary_review.pairwise.*": {
+            "left_sense_id": "string",
+            "right_sense_id": "string",
+            "relationship": "string",
+            "decision": "string",
+            "evidence_basis": "string",
+            "distinguishing_feature": "string",
+            "rationale": "string"
+          },
+          "$.authored_review.records.*.sense_reviews.*": {
+            "sense_id": "string",
+            "semantic_rationale": "string",
+            "boundary_rationale": "string",
+            "no_relation_rationale": "string",
+            "review_basis": "object"
+          },
+          "$.authored_review.records.*.sense_reviews.*.review_basis": {
+            "topic_analysis": "object",
+            "topic_analyses": "array<object>"
+          },
+          "$.authored_review.records.*.sense_reviews.*.review_basis.topic_analysis": {
+            "status": "string",
+            "state": "string",
+            "topic": "string",
+            "particle": "string",
+            "predicate": "string",
+            "token_index": "number",
+            "topic_pos": "string",
+            "evidence_basis": "string",
+            "gloss_sha256": "string",
+            "rationale": "string",
+            "decision_source_id": "string"
+          },
+          "$.authored_review.records.*.sense_reviews.*.review_basis.topic_analyses.*": {
+            "status": "string",
+            "state": "string",
+            "topic": "string",
+            "particle": "string",
+            "predicate": "string",
+            "token_index": "number",
+            "topic_pos": "string",
+            "evidence_basis": "string",
+            "gloss_sha256": "string",
+            "rationale": "string",
+            "decision_source_id": "string"
+          },
+          "$.authored_review.changes.*": {
+            "record_id": "string",
+            "decision": "string",
+            "base_record_sha256": "string",
+            "prospective_record_sha256": "string",
+            "rationale": "string"
+          },
+          "$.correction_source": {
+            "kind": "string",
+            "path": "string",
+            "sha256": "string",
+            "source_revision": "string"
+          }
         }
       },
       "promotion_ledger": {

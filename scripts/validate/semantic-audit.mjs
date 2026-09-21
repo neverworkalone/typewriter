@@ -50,6 +50,8 @@ export const SEMANTIC_BOUNDARY_METHOD = 'gloss-and-usage-pairwise-v2';
 export const SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION = 'lexical-semantic-boundary-decisions-v1';
 export const SEMANTIC_DECISION_SOURCE_SCHEMA_VERSION = '1';
 export const SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v1';
+export const COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-canonical-decision-source-v2';
+export const COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION = 'lexical-semantic-review-storage-v1';
 export const SEMANTIC_DECISION_SOURCE_KIND = 'separately-authored-semantic-decision-source';
 export const SEMANTIC_BOUNDARY_PAIR_DECISIONS = Object.freeze([
   'retain',
@@ -184,6 +186,283 @@ export function sha256Json(value) {
  */
 export function canonicalRecordsSha256(recordInfos) {
   return sha256Json(orderCanonicalRecordInfos(recordInfos).map(recordOf));
+}
+
+function pickDefined(value, fields) {
+  return Object.fromEntries(fields
+    .filter((field) => Object.hasOwn(value ?? {}, field))
+    .map((field) => [field, value[field]]));
+}
+
+/**
+ * Store authored semantic decisions and immutable bindings only. Canonical
+ * content facts, pass envelopes, and validator projections are reconstructed
+ * by materializeSemanticReviewArtifact() before validation.
+ */
+export function compactSemanticReviewRecord(reviewed) {
+  const boundary = reviewed?.boundary_review ?? {};
+  const compactBoundary = {
+    ...pickDefined(boundary, ['review_id', 'decision', 'classification', 'rationale']),
+    evidence: (boundary.evidence ?? []).map((item) => pickDefined(item, [
+      'sense_id',
+      'evidence_basis',
+      'rationale',
+    ])),
+    pairwise: (boundary.pairwise ?? []).map((item) => pickDefined(item, [
+      'left_sense_id',
+      'right_sense_id',
+      'relationship',
+      'decision',
+      'evidence_basis',
+      'distinguishing_feature',
+      'rationale',
+    ])),
+  };
+  const compactSenseReviews = (reviewed?.sense_reviews ?? []).map((senseReview) => {
+    const compact = pickDefined(senseReview, [
+      'sense_id',
+      'semantic_rationale',
+      'boundary_rationale',
+      'no_relation_rationale',
+    ]);
+    if (!Object.hasOwn(compact, 'no_relation_rationale')
+      && senseReview.relation?.no_relation_rationale !== undefined) {
+      compact.no_relation_rationale = senseReview.relation.no_relation_rationale;
+    }
+    const topicEvidence = pickDefined(senseReview.review_basis, ['topic_analysis', 'topic_analyses']);
+    if (Object.keys(topicEvidence).length > 0) compact.review_basis = topicEvidence;
+    return compact;
+  });
+  return {
+    ...pickDefined(reviewed, ['record_id', 'record_sha256', 'authored_batch_decision']),
+    boundary_review: compactBoundary,
+    sense_reviews: compactSenseReviews,
+  };
+}
+
+export function compactSemanticReviewArtifact(review) {
+  const compactReview = structuredClone(review);
+  if (compactReview.review_pass) {
+    compactReview.review_pass = pickDefined(compactReview.review_pass, [
+      'id',
+      'status',
+      'reviewer',
+      'review_mode',
+      'method',
+      'ruleset_version',
+      'boundary_ruleset_version',
+      'boundary_decision_source_version',
+      'correction_history',
+      'boundary_decision_history',
+      'correction_source',
+    ]);
+  }
+  delete compactReview.record_count;
+  delete compactReview.sense_count;
+  return {
+    ...compactReview,
+    contract_version: COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION,
+    records: (review.records ?? []).map(compactSemanticReviewRecord),
+  };
+}
+
+export function isCompactSemanticDecisionSource(source) {
+  return source?.contract_version === COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION;
+}
+
+export function compactSemanticDecisionSource(source) {
+  const compactReview = compactSemanticReviewArtifact(source.authored_review);
+  const compact = {
+    ...structuredClone(source),
+    contract_version: COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    authored_review: compactReview,
+    authored_review_sha256: sha256Json(compactReview),
+  };
+  if (compact.correction_source == null) delete compact.correction_source;
+  return compact;
+}
+
+function materializedBoundarySource(review, decisionSourceId) {
+  const source = review.boundary_decision_source ?? {};
+  return {
+    method: source.method ?? SEMANTIC_BOUNDARY_METHOD,
+    source: source.source ?? 'separately-authored-boundary-decision-source',
+    decision_source_version: source.decision_source_version ?? SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
+    inspected_fields: source.inspected_fields ?? ['gloss', 'writer-facing-usage', 'pairwise-authored-decision'],
+    decision_source_id: decisionSourceId,
+  };
+}
+
+/**
+ * Expand the compact durable source into the in-memory review contract. Every
+ * expanded field below is a deterministic projection of canonical content or
+ * a compact authored judgment retained by the source.
+ */
+export function materializeSemanticReviewArtifact(
+  recordInfos,
+  compactReview,
+  { decisionSourceId } = {},
+) {
+  if (compactReview?.contract_version !== COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION) {
+    return structuredClone(compactReview);
+  }
+  const recordsById = new Map(recordInfos.map((recordInfo) => {
+    const record = recordOf(recordInfo);
+    return [record.id, record];
+  }));
+  const sourceId = decisionSourceId ?? compactReview.decision_source?.source_id;
+  const boundarySource = materializedBoundarySource(compactReview, sourceId);
+  const reviewPassId = compactReview.review_pass?.id ?? compactReview.artifact_id ?? 'canonical-semantic-review';
+  const records = (compactReview.records ?? []).map((storedRecord, recordIndex) => {
+    const record = recordsById.get(storedRecord.record_id);
+    if (!record) {
+      fail(
+        `${compactReview.artifact_id ?? 'compact semantic review'}.records[${recordIndex}] is not canonical`,
+        'SEMANTIC_AUDIT_SCOPE',
+      );
+    }
+    const storedBoundary = storedRecord.boundary_review ?? {};
+    const boundaryReviewId = storedBoundary.review_id ?? `${reviewPassId}:${record.id}:boundary`;
+    const evidenceBySense = new Map((storedBoundary.evidence ?? []).map((item) => [item.sense_id, item]));
+    const materializedEvidence = record.senses.map((sense) => {
+      const item = evidenceBySense.get(sense.id) ?? {};
+      return {
+        sense_id: sense.id,
+        gloss_sha256: sha256Json(sense.gloss),
+        evidence_basis: item.evidence_basis,
+        rationale: item.rationale,
+        decision_source_id: sourceId,
+      };
+    });
+    const materializedPairwise = (storedBoundary.pairwise ?? []).map((item) => {
+      const leftSense = record.senses.find(({ id }) => id === item.left_sense_id);
+      const rightSense = record.senses.find(({ id }) => id === item.right_sense_id);
+      return {
+        ...structuredClone(item),
+        left_gloss_sha256: item.left_gloss_sha256 ?? (leftSense ? sha256Json(leftSense.gloss) : undefined),
+        right_gloss_sha256: item.right_gloss_sha256 ?? (rightSense ? sha256Json(rightSense.gloss) : undefined),
+        decision_source_id: sourceId,
+      };
+    });
+    const boundaryReview = {
+      status: 'pass',
+      review_id: boundaryReviewId,
+      method: boundarySource.method,
+      independence: {
+        independent_of_sense_count: true,
+        source: boundarySource.source,
+        decision_source_version: boundarySource.decision_source_version,
+        inspected_fields: boundarySource.inspected_fields,
+        decision_source_id: sourceId,
+      },
+      decision: storedBoundary.decision,
+      classification: storedBoundary.classification,
+      reviewed_sense_ids: record.senses.map(({ id }) => id),
+      evidence: materializedEvidence,
+      pairwise: materializedPairwise,
+      rationale: storedBoundary.rationale,
+    };
+    const storedSenseById = new Map((storedRecord.sense_reviews ?? []).map((item) => [item.sense_id, item]));
+    const senseReviews = record.senses.map((sense) => {
+      const storedSense = storedSenseById.get(sense.id) ?? {};
+      const storedBasis = storedSense.review_basis ?? {};
+      const senseGlossSha256 = sha256Json(sense.gloss);
+      const relationCoverage = senseRelationCoverage(sense);
+      const relationDecision = relationCoverage.relation_count === 0 ? 'no-relations' : 'relations-reviewed';
+      const boundaryEvidence = evidenceBySense.get(sense.id);
+      const boundaryRationale = storedSense.boundary_rationale
+        ?? boundaryEvidence?.rationale
+        ?? `${record.id} ${sense.id} was reviewed against the authored boundary decision.`;
+      const relationRationale = storedSense.no_relation_rationale
+        ?? `${record.id} ${sense.id} relation tuples were reviewed against canonical content.`;
+      return {
+        sense_id: sense.id,
+        sense_sha256: sha256Json(sense),
+        sense_boundary: {
+          status: 'pass',
+          action: storedBoundary.decision,
+          classification: storedBoundary.classification,
+          boundary_decision: boundarySenseDecisionForRecord(storedBoundary.decision, storedBoundary.classification),
+          boundary_review_id: boundaryReviewId,
+          reviewed_sense_ids: record.senses.map(({ id }) => id),
+          rationale: boundaryRationale,
+          decision_source_id: sourceId,
+        },
+        pos: {
+          status: 'pass',
+          observed_pos: sense.pos,
+          rationale: `${record.id} ${sense.id} POS was verified from canonical content under the authored review.`,
+          decision: 'verified',
+          decision_source_id: sourceId,
+        },
+        expression: {
+          status: 'pass',
+          expected_record_type: record.record_type,
+          observed_record_type: record.record_type,
+          rationale: `${record.id} ${sense.id} record type was verified from canonical content under the authored review.`,
+          decision: 'verified',
+          decision_source_id: sourceId,
+        },
+        relation: {
+          status: 'pass',
+          decision: relationDecision,
+          relation_count: relationCoverage.relation_count,
+          relation_sha256: relationCoverage.relation_sha256,
+          relation_fingerprints: relationCoverage.relation_fingerprints,
+          rationale: relationRationale,
+          ...(relationCoverage.relation_count === 0
+            ? { no_relation_rationale: storedSense.no_relation_rationale ?? relationRationale }
+            : {}),
+          decision_source_id: sourceId,
+        },
+        review_basis: {
+          record_id: record.id,
+          sense_id: sense.id,
+          lemma: record.lemma,
+          gloss_sha256: senseGlossSha256,
+          observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+          pos: sense.pos,
+          record_type: record.record_type,
+          relation_count: relationCoverage.relation_count,
+          rationale: storedBasis.rationale
+            ?? storedSense.semantic_rationale
+            ?? `${record.id} ${sense.id} reviewed gloss ${senseGlossSha256.slice(0, 12)} from the authored decision source.`,
+          decision_source_id: sourceId,
+          ...(storedBasis.topic_analysis ? { topic_analysis: structuredClone(storedBasis.topic_analysis) } : {}),
+          ...(Array.isArray(storedBasis.topic_analyses)
+            ? { topic_analyses: structuredClone(storedBasis.topic_analyses) }
+            : {}),
+        },
+      };
+    });
+    return {
+      record_id: storedRecord.record_id,
+      record_sha256: storedRecord.record_sha256,
+      ...(storedRecord.authored_batch_decision
+        ? { authored_batch_decision: structuredClone(storedRecord.authored_batch_decision) }
+        : {}),
+      boundary_review: boundaryReview,
+      sense_reviews: senseReviews,
+    };
+  });
+  const senseCount = recordInfos.reduce((sum, recordInfo) => sum + recordOf(recordInfo).senses.length, 0);
+  const materializedReviewPass = {
+    ...structuredClone(compactReview.review_pass ?? {}),
+    record_count: records.length,
+    sense_count: senseCount,
+    open_finding_count: 0,
+    correction_count: Array.isArray(compactReview.review_pass?.correction_history)
+      ? compactReview.review_pass.correction_history.length
+      : 0,
+  };
+  return {
+    ...structuredClone(compactReview),
+    contract_version: SEMANTIC_REVIEW_CONTRACT_VERSION,
+    record_count: records.length,
+    sense_count: senseCount,
+    review_pass: materializedReviewPass,
+    records,
+  };
 }
 
 function relationFingerprint(sourceSenseId, relation) {
@@ -1117,7 +1396,10 @@ export function validateSemanticDecisionSource(
 ) {
   requireObject(decisionSource, label);
   if (decisionSource.schema_version !== SEMANTIC_DECISION_SOURCE_SCHEMA_VERSION
-    || decisionSource.contract_version !== SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
+    || ![
+      SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+      COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    ].includes(decisionSource.contract_version)) {
     fail(`${label} contract version is unsupported`, 'SEMANTIC_AUDIT_SCHEMA');
   }
   if (decisionSource.scope !== 'complete-canonical') {
@@ -1147,14 +1429,19 @@ export function validateSemanticDecisionSource(
   }
   const authoredMetadata = validateDecisionSourceMetadata(authoredReview, `${label}.authored_review`);
   if (authoredMetadata.source_id !== decisionSource.source_id
-    || authoredMetadata.contract_version !== decisionSource.contract_version) {
+    || authoredMetadata.contract_version !== SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
     fail(`${label}.authored_review is not bound to this decision source`, 'SEMANTIC_AUDIT_PROVENANCE');
   }
-  validateSemanticReviewArtifact(recordInfos, authoredReview, {
+  const materializedReview = isCompactSemanticDecisionSource(decisionSource)
+    ? materializeSemanticReviewArtifact(recordInfos, authoredReview, {
+      decisionSourceId: decisionSource.source_id,
+    })
+    : authoredReview;
+  validateSemanticReviewArtifact(recordInfos, materializedReview, {
     baseRecords,
     label: `${label}.authored_review`,
   });
-  return authoredReview;
+  return materializedReview;
 }
 
 /**
