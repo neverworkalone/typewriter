@@ -1675,6 +1675,7 @@ export async function buildM512A({
     preflight: compactPreflightEvidence(preflight),
     gate_evidence_sha256: admission.gate_evidence_sha256,
     outputs: {
+      canonical_directory_sha256: prospective.canonicalDigest,
       canonical_import: {
         path: sourcePath(CANONICAL_IMPORT_PATH),
         sha256: sha256(prospective.importBytes),
