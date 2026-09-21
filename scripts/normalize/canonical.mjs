@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
 import {
   buildCanonicalSemanticAudit,
@@ -71,20 +71,30 @@ export function normalizeRecords(recordInfosOrRecords) {
 
 export async function normalizeCanonicalDirectory(
   directory = DEFAULT_CANONICAL_DIRECTORY,
-  { checkPilotCompleteness = false } = {},
-) {
-  const result = await readCanonicalRecords(directory);
-  const requireSemanticAudit = path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  const semanticAudit = requireSemanticAudit
-    ? (await buildCanonicalSemanticAudit({ canonicalDirectory: directory })).artifact
-    : undefined;
-  validateDatasetRecords(result.records, {
-    checkPilotCompleteness,
+  {
+    checkPilotCompleteness = false,
+    canonicalContext,
     semanticAudit,
+  } = {},
+) {
+  const context = canonicalContext ?? await loadCanonicalContext({ directory });
+  const requireSemanticAudit = path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const effectiveSemanticAudit = semanticAudit
+    ?? context.semanticAudit
+    ?? (requireSemanticAudit
+      ? (await buildCanonicalSemanticAudit({
+        canonicalDirectory: directory,
+        canonicalContext: context,
+      })).artifact
+      : undefined);
+  validateDatasetRecords(context.records, {
+    checkPilotCompleteness,
+    context,
+    semanticAudit: effectiveSemanticAudit,
     requireSemanticAudit,
   });
 
-  return normalizeRecords(result.records);
+  return normalizeRecords(context.records);
 }
 
 export async function main() {

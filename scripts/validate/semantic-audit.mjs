@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import { loadCanonicalContext } from './canonical-context.mjs';
 import {
   LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION,
   LEXICAL_TOPIC_EVIDENCE_KIND,
@@ -1069,11 +1069,32 @@ export function buildSemanticAuditFromDecisionSource(
 
 export async function buildCanonicalSemanticAudit({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  canonicalContext,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   artifactId = 'canonical-semantic-audit',
   batchDecisionSourcePaths = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
 } = {}) {
-  const canonical = await readCanonicalRecords(canonicalDirectory);
+  const context = canonicalContext ?? await loadCanonicalContext({
+    directory: canonicalDirectory,
+  });
+  const canonical = {
+    fileCount: context.fileCount,
+    records: context.records,
+  };
+  const canReuseMaterializedArtifact = Boolean(
+    context.semanticAudit
+      && artifactId === 'canonical-semantic-audit'
+      && path.resolve(decisionSourcePath) === path.resolve(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH)
+      && JSON.stringify(batchDecisionSourcePaths) === JSON.stringify(DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS),
+  );
+  if (canReuseMaterializedArtifact) {
+    return {
+      canonical,
+      decisionSource: context.semanticDecisionSource,
+      artifact: context.semanticAudit,
+    };
+  }
+
   const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
   const batchDecisionSources = await readAuthoredBatchDecisionSources(batchDecisionSourcePaths);
   const artifact = buildSemanticAuditFromDecisionSource(

@@ -42,6 +42,14 @@ Read multiple guides only when the actual behavioral impact requires them.
 If a change affects behavior outside its apparent file category, load the
 additional guide or source of truth needed for that impact.
 
+For canonical validation and CI architecture changes, verify that the shared
+context is built from the complete canonical revision, that the global audit
+still runs before SQLite build, and that downstream checks consume the same
+artifact. Treat reported parse/full-scan/index/build counts as evidence to
+check against the runner wiring, not as a substitute for correctness checks.
+Changed-only validation may accelerate failure feedback but must not become the
+final correctness gate.
+
 ## Depth by risk
 
 Do not review every changed file at equal depth.

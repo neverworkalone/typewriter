@@ -16,6 +16,8 @@ node scripts/validate/semantic-audit.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
 node --test tests/lexical-quality.test.mjs
+npm run ci:all
+npm run benchmark:canonical -- --sizes=10000,100000,500000 --sqlite-scale=10000
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -50,3 +52,23 @@ it cannot bypass this common audit or introduce a batch/ID allowlist.
 Candidate-producing workflows additionally use the batch-neutral
 `scripts/batch/lexical-production.mjs` contract for complete candidate coverage,
 source-bound semantic review, and selection.
+
+## Shared CI context
+
+The CI runner creates one `canonical-context-v1` session for the canonical
+revision. The session loads and schema-validates canonical JSONL once, then
+shares record/sense/candidate/relation indexes, semantic topic evidence, and
+the lexical audit report with the category subprocesses through a temporary
+context artifact. The global canonical audit remains mandatory; a changed-only
+check cannot replace it.
+
+The toolchain stage builds SQLite once after the global audit and passes the
+same temporary database to schema, fidelity, and query verification. The
+reproducibility tests still build independent fixture databases because those
+tests specifically exercise independent-build equivalence.
+
+For scale evidence, the benchmark generates self-authored synthetic JSONL
+without adding a 500K-record corpus to the repository. Each result records
+wall-clock time, memory, validator result counts, canonical parse/index/scan
+counts, and SQLite build count. A 500K run is intended for manual or scheduled
+validation rather than ordinary pull requests.

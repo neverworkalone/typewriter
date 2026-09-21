@@ -28,25 +28,5 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Core canonical and dataset validation
-        run: npm run ci:category -- canonical
-
-      - name: Shared lexical and semantic validation
-        run: npm run ci:category -- lexical
-
-      - name: Batch process and contract validation
-        run: npm run ci:category -- batch
-
-      - name: Historical replay and staged batch validation
-        run: npm run ci:category -- historical
-
-      - name: Normalization, dictionary build, and integrated audit
-        run: npm run ci:category -- toolchain
-
-      # Pre-1.0 CI intentionally ends at the product build. Release verification
-      # remains available for manual runs and future release automation.
-      - name: Product tests and extension build
-        run: npm run ci:category -- product
-
-      - name: Generated-artifact and clean-checkout enforcement
-        run: npm run ci:category -- artifacts
+      - name: Single-pass validation, toolchain, and product checks
+        run: npm run ci:all

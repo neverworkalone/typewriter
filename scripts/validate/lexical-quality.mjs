@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import { loadCanonicalContext } from './canonical-context.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
 /**
@@ -1435,10 +1435,33 @@ export function validateBulkGlossProjection(recordInfos, options = {}) {
  */
 export function auditCanonicalLexicalQuality(
   recordInfos,
-  { scope = 'complete-canonical', throwOnError = true, topicEvidence } = {},
+  {
+    scope = 'complete-canonical',
+    throwOnError = true,
+    topicEvidence,
+    context,
+  } = {},
 ) {
+  if (context?.derived?.lexicalQuality?.scope === scope) {
+    const cached = context.derived.lexicalQuality;
+    if (throwOnError && cached.blocking_finding_count > 0) {
+      const finding = cached.blocking_findings[0];
+      throw new LexicalQualityError(
+        `${finding.location}: ${finding.message}`,
+        finding.code,
+        finding,
+      );
+    }
+    return cached;
+  }
+
   const normalized = recordInfos.map(recordOf);
-  const nominalTerms = buildNominalTermPositions(recordInfos);
+  if (context && !context.derived) context.derived = {};
+  const nominalTerms = context?.derived?.nominalTerms
+    ?? buildNominalTermPositions(recordInfos);
+  if (context && !context.derived.nominalTerms) {
+    context.derived.nominalTerms = nominalTerms;
+  }
   const findings = [];
   const connectorCounts = Object.fromEntries(CONNECTORS.map((connector) => [connector, 0]));
   const classificationCounts = {};
@@ -1900,21 +1923,33 @@ export const WRITER_DOMAIN_POLICY = Object.freeze({
 
 export async function validateCanonicalLexicalQuality(
   directory = DEFAULT_CANONICAL_DIRECTORY,
+  { canonicalContext } = {},
 ) {
-  const result = await readCanonicalRecords(directory);
+  const context = canonicalContext ?? await loadCanonicalContext({ directory });
+  const result = context;
   let topicEvidence;
   if (path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
     const {
       buildCanonicalSemanticAudit,
       buildSemanticTopicEvidence,
     } = await import('./semantic-audit.mjs');
-    const { artifact } = await buildCanonicalSemanticAudit({ canonicalDirectory: directory });
-    topicEvidence = buildSemanticTopicEvidence(result.records, artifact);
+    const { artifact } = context.semanticAudit
+      ? { artifact: context.semanticAudit }
+      : await buildCanonicalSemanticAudit({
+        canonicalDirectory: directory,
+        canonicalContext: context,
+      });
+    topicEvidence = context.derived?.topicEvidence
+      ?? buildSemanticTopicEvidence(result.records, artifact);
+    if (context.derived && !context.derived.topicEvidence) {
+      context.derived.topicEvidence = topicEvidence;
+    }
   }
   return auditCanonicalLexicalQuality(result.records, {
     scope: 'complete-canonical',
     throwOnError: true,
     topicEvidence,
+    context,
   });
 }
 

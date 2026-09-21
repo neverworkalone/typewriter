@@ -29,6 +29,16 @@ function commandCheck(label, args, testFiles = []) {
   };
 }
 
+function globalCanonicalAuditCheck() {
+  return {
+    ...commandCheck(
+      'Run single-pass global canonical audit',
+      ['scripts/ci/global-canonical-audit.mjs'],
+    ),
+    oncePerCanonicalSession: 'global-canonical-audit',
+  };
+}
+
 function npmCheck(label, script, args = [], testFiles = []) {
   return {
     label,
@@ -65,10 +75,10 @@ export const CI_CATEGORIES = Object.freeze({
     checks: [
       commandCheck('Validate manifest version', ['scripts/ci/validate-manifest.mjs']),
       commandCheck('Validate canonical JSONL', ['scripts/validate/canonical-jsonl.mjs']),
+      globalCanonicalAuditCheck(),
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
-      commandCheck('Validate dataset integrity', ['scripts/validate/dataset-integrity.mjs']),
+      testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
-      commandCheck('Validate M5 target inventory', ['scripts/validate/target-inventory.mjs']),
       testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
       npmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
@@ -80,7 +90,7 @@ export const CI_CATEGORIES = Object.freeze({
   lexical: {
     label: 'Shared lexical and semantic validation',
     checks: [
-      npmCheck('Validate shared lexical quality and semantic audit', 'validate:lexical'),
+      globalCanonicalAuditCheck(),
       testCheck('tests/lexical-quality.test.mjs', 'Test shared lexical quality'),
       testCheck('tests/relation-admission.test.mjs', 'Test relation admission'),
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
@@ -163,8 +173,8 @@ export const CI_CATEGORIES = Object.freeze({
       commandCheck('Normalize canonical data', ['scripts/normalize/canonical.mjs']),
       testCheck('tests/normalize-canonical.test.mjs', 'Test canonical normalization'),
       {
-        label: 'Build SQLite dictionary',
-        command: () => nodeCommand(['scripts/build/dictionary.mjs', ...allowDirtyArguments()]),
+        label: 'Validate shared SQLite dictionary artifact',
+        command: () => nodeCommand(['scripts/ci/validate-shared-dictionary.mjs']),
         testFiles: [],
       },
       {

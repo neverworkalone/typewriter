@@ -10,6 +10,16 @@ import {
   CI_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
+import { buildDictionary } from '../build/dictionary.mjs';
+import {
+  loadCanonicalContext,
+  writeCanonicalContext,
+} from '../validate/canonical-context.mjs';
+import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
+import {
+  buildCanonicalSemanticAudit,
+  buildSemanticTopicEvidence,
+} from '../validate/semantic-audit.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -26,9 +36,12 @@ function formatCommand({ executable, args }) {
     .join(' ');
 }
 
-async function runCommand({ executable, args }) {
+async function runCommand({ executable, args }, context = {}) {
   return new Promise((resolve, reject) => {
-    const childEnvironment = { ...process.env };
+    const childEnvironment = {
+      ...process.env,
+      ...(context.environment ?? {}),
+    };
     delete childEnvironment.NODE_TEST_CONTEXT;
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
@@ -56,10 +69,20 @@ export async function runChecks(
   { execute = runCommand, log = console.log } = {},
 ) {
   for (const [index, check] of checks.entries()) {
+    if (
+      check.oncePerCanonicalSession
+      && context?.completedChecks?.has(check.oncePerCanonicalSession)
+    ) {
+      log(`\n--- ${index + 1}/${checks.length}: ${check.label} (already run) ---`);
+      continue;
+    }
     const command = check.command(context);
     log(`\n--- ${index + 1}/${checks.length}: ${check.label} ---`);
     log(`$ ${formatCommand(command)}`);
-    await execute(command);
+    await execute(command, context);
+    if (check.oncePerCanonicalSession && context?.completedChecks) {
+      context.completedChecks.add(check.oncePerCanonicalSession);
+    }
   }
 }
 
@@ -81,26 +104,107 @@ export async function materializeHistoricalInputs(tempDirectory) {
   return historicalInputs;
 }
 
-async function contextForCategory(categoryName) {
-  if (categoryName !== 'historical') {
-    return { historicalInputs: undefined, temporaryDirectory: undefined };
-  }
-
+async function createCanonicalSession() {
   const temporaryDirectory = await createTemporaryDirectory();
-  const historicalInputs = await materializeHistoricalInputs(temporaryDirectory);
-  return { historicalInputs, temporaryDirectory };
+  const contextPath = path.join(temporaryDirectory, 'canonical-context.json');
+  const canonicalContext = await loadCanonicalContext();
+  const { artifact: semanticAudit, decisionSource } = await buildCanonicalSemanticAudit({
+    canonicalContext,
+  });
+  canonicalContext.semanticAudit = semanticAudit;
+  canonicalContext.semanticDecisionSource = decisionSource;
+  canonicalContext.derived.topicEvidence = buildSemanticTopicEvidence(
+    canonicalContext.records,
+    semanticAudit,
+  );
+  canonicalContext.derived.lexicalQuality = auditCanonicalLexicalQuality(
+    canonicalContext.records,
+    {
+      context: canonicalContext,
+      topicEvidence: canonicalContext.derived.topicEvidence,
+      scope: 'complete-canonical',
+      throwOnError: false,
+    },
+  );
+  await writeCanonicalContext(canonicalContext, contextPath);
+
+  return {
+    canonicalContext,
+    completedChecks: new Set(),
+    contextPath,
+    temporaryDirectory,
+    sharedDictionaryPath: undefined,
+    environment: {
+      TYPEWRITER_CANONICAL_CONTEXT_PATH: contextPath,
+      TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY: canonicalContext.canonicalDirectory,
+    },
+  };
 }
 
-async function runCategory(categoryName) {
+async function ensureSharedDictionary(session) {
+  if (session.sharedDictionaryPath) {
+    return session.sharedDictionaryPath;
+  }
+
+  const outputPath = path.join(session.temporaryDirectory, 'dictionary.sqlite');
+  const summary = await buildDictionary({
+    inputDirectory: session.canonicalContext.canonicalDirectory,
+    outputPath,
+    checkPilotCompleteness: true,
+    repositoryDirectory: REPOSITORY_DIRECTORY,
+    allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
+    canonicalContext: session.canonicalContext,
+    semanticAudit: session.canonicalContext.semanticAudit,
+  });
+  session.sharedDictionaryPath = summary.outputPath;
+  session.environment.TYPEWRITER_SHARED_DICTIONARY_PATH = summary.outputPath;
+  await writeCanonicalContext(session.canonicalContext, session.contextPath);
+  console.log(
+    `Prepared shared SQLite artifact ${summary.outputPath} (build count ${session.canonicalContext.metrics.sqlite_build_count}).`,
+  );
+  return summary.outputPath;
+}
+
+async function contextForCategory(categoryName, sharedCanonicalSession) {
+  const session = sharedCanonicalSession ?? await createCanonicalSession();
+  const context = {
+    ...session,
+    historicalInputs: undefined,
+    historicalTemporaryDirectory: undefined,
+  };
+
+  if (categoryName === 'historical') {
+    context.historicalTemporaryDirectory = await createTemporaryDirectory();
+    context.historicalInputs = await materializeHistoricalInputs(
+      context.historicalTemporaryDirectory,
+    );
+  }
+
+  return {
+    context,
+    ownsCanonicalSession: sharedCanonicalSession === undefined,
+  };
+}
+
+async function runCategory(categoryName, sharedCanonicalSession) {
   const category = CI_CATEGORIES[categoryName];
-  const context = await contextForCategory(categoryName);
+  const {
+    context,
+    ownsCanonicalSession,
+  } = await contextForCategory(categoryName, sharedCanonicalSession);
 
   try {
+    if (categoryName === 'toolchain') {
+      await ensureSharedDictionary(context);
+    }
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
     await runChecks(category.checks, context);
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
-    if (context.temporaryDirectory) {
+    if (context.historicalTemporaryDirectory) {
+      await rm(context.historicalTemporaryDirectory, { recursive: true, force: true });
+    }
+    if (ownsCanonicalSession && context.temporaryDirectory) {
       await rm(context.temporaryDirectory, { recursive: true, force: true });
     }
   }
@@ -135,8 +239,16 @@ async function main() {
     return;
   }
 
-  for (const categoryName of categoryNames) {
-    await runCategory(categoryName);
+  const sharedCanonicalSession = await createCanonicalSession();
+  try {
+    for (const categoryName of categoryNames) {
+      await runCategory(categoryName, sharedCanonicalSession);
+    }
+  } finally {
+    await rm(sharedCanonicalSession.temporaryDirectory, {
+      recursive: true,
+      force: true,
+    });
   }
 }
 
