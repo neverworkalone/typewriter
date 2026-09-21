@@ -1,445 +1,53 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
+  "contract_version": "lexical-batch-promotion-v2",
   "artifact_id": "m5-12a-promotion-20260920",
   "issue": 138,
   "parent_issue": 98,
   "grandparent_issue": 7,
   "batch_id": "m5-12a-expansion-20260920",
   "status": "promoted",
-  "gate": {
-    "policy": "agent-generated",
-    "preflight": {
-      "status": "complete",
-      "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-      "checks": {
-        "candidate_source_digest": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "candidate_source_sha256": "f4f71c90a6abb2f495a25961eb5d225f8d03174f3d1f4632e4a4d5c6037a74da"
-        },
-        "generation_verification_separated": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "generation_pass_id": "m5-12a-generation-20260920",
-          "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r4"
-        },
-        "truthful_agent_provenance": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "human_review_claimed": false
-        },
-        "deterministic_sqlite": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "product_dictionary_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a",
-          "rebuilt_logical_snapshot": true,
-          "summary": {
-            "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-g05gbu/dictionary-second.sqlite",
-            "recordCount": 2042,
-            "searchFormCount": 2298,
-            "senseCount": 2301,
-            "relationCount": 487,
-            "metadata": {
-              "build_contract": "canonical-jsonl -> normalized-v1 -> sqlite-v1",
-              "build_tool_version": "1",
-              "candidate_count": "2000",
-              "dictionary_version": "m2-pilot-1",
-              "expression_count": "145",
-              "node_version": "v24.19.0",
-              "normalization_version": "1",
-              "record_count": "2042",
-              "reference_only_count": "42",
-              "relation_count": "487",
-              "schema_version": "1",
-              "search_form_count": "2298",
-              "sense_count": "2301",
-              "source_revision": "3d1aa05ca230d521f8e554cb36b35c8218a7c341",
-              "source_revision_source": "git-head",
-              "source_revision_verified": "true",
-              "sqlite_module": "node:sqlite",
-              "sqlite_version": "3.53.3",
-              "start_count": "2000",
-              "worktree_state": "clean"
-            }
-          }
-        },
-        "search_product_regression": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "ci_category": "product",
-          "check_labels": [
-            "Test shared search query contract",
-            "Test search regressions",
-            "Run product unit tests",
-            "Build product extension"
-          ],
-          "database_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a"
-        },
-        "extension_build": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "package_file_count": 23
-        },
-        "package_validation": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "package_file_count": 23,
-          "zip_file_count": 23
-        },
-        "artifact_policy_clean_checkout": {
-          "status": "pass",
-          "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-          "tracked_artifact_count": 168,
-          "generated_projection_count": 0,
-          "unclassified_artifact_count": 0,
-          "working_tree_clean": true
-        }
-      }
-    },
-    "quality_passes": {
-      "candidate_identity_binding": true,
-      "candidate_source_count": true,
-      "candidate_source_digest": true,
-      "candidate_pool": true,
-      "imported_start_count": true,
-      "reserve_count": true,
-      "processed_denominator": true,
-      "deferred_excluded_from_denominator": true,
-      "canonical_lexical_collisions": true,
-      "candidate_lexical_collisions": true,
-      "correction_rate": true,
-      "relation_noise_rate": true,
-      "relation_noise_below_baseline": true,
-      "lexical_semantic_blockers": true,
-      "complete_audit": true,
-      "generation_verification_separated": true,
-      "truthful_agent_provenance": true,
-      "human_review_not_claimed": true,
-      "canonical_integrity": true,
-      "deterministic_sqlite": true,
-      "search_product_regression": true,
-      "extension_build": true,
-      "package_validation": true,
-      "artifact_policy_clean_checkout": true
-    },
-    "gate_status": "pass",
-    "decision": "APPROVE AUTOMATED BOUNDED"
-  },
-  "target": {
-    "net_start_increase": 722,
-    "cumulative_start_target": 2000,
-    "candidate_buffer": 80,
-    "selection_slot_count": 802,
-    "candidate_identity_count": 802
-  },
-  "base": {
-    "canonical_directory_sha256": "122af925cac03ac2782346a534a44602d713986c34924d8a439786a4591cb3e3",
-    "inventory_sha256": "f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67",
-    "seed_sha256": "1b93e772f400ad81e6b7f0a91efdad8972516395d0445554689224c0cb65b3db",
-    "summary": {
-      "record_count": 1320,
-      "start_count": 1278,
-      "reference_only_count": 42,
-      "sense_count": 1579,
-      "relation_count": 487,
-      "expression_count": 73
-    }
-  },
-  "actual": {
-    "record_count": 2042,
-    "start_count": 2000,
-    "reference_only_count": 42,
-    "sense_count": 2301,
-    "relation_count": 487,
-    "expression_count": 145
-  },
-  "decisions": {
-    "included": 722,
-    "corrected": 0,
-    "held": 30,
-    "rejected": 20,
-    "deferred": 30,
-    "processed_start_count": 772,
-    "imported_start_count": 722,
-    "deferred_denominator_excluded": true
-  },
-  "metrics": {
-    "policy": "agent-generated",
-    "candidate_pool_count": 802,
-    "imported_start_count": 722,
-    "reserve_count": 80,
-    "processed_start_count": 772,
-    "deferred_start_count": 30,
-    "final_start_count": 2000,
-    "canonical_collision_count": 0,
-    "candidate_collision_count": 0,
-    "placeholder_gloss_count": 0,
-    "schema_integrity_blocker_count": 0,
-    "relation_target_blocker_count": 0,
-    "correction_rate_of_processed": 0,
-    "relation_noise_rate_of_candidates": 0,
-    "editor_seconds_per_selected_start": null,
-    "editor_seconds_per_processed_start": null,
-    "editor_time_status": "not-required",
-    "timing_status": "not-required",
-    "audit_status": "agent-generated-complete",
-    "audit_independent": false,
-    "open_audit_blocker_count": 0,
-    "editorial_review_complete": true,
-    "automated_editorial_review_complete": true,
-    "agent_generated_provenance": true,
-    "generation_verification_separated": true,
-    "human_editorial_review_complete": false,
-    "canonical_integrity": true,
-    "deterministic_sqlite": true,
-    "search_product_regression": true,
-    "extension_build": true,
-    "package_validation": true,
-    "artifact_policy_clean_checkout": true,
-    "semantic_review_complete": true,
-    "semantic_quality_blocker_count": 0,
-    "semantic_selection_rank_valid": true,
-    "complete_audit_coverage": true
-  },
-  "relation": {
-    "before_count": 487,
-    "after_count": 487,
-    "added_count": 0,
-    "removed_count": 0,
-    "retyped_count": 0,
-    "retargeted_count": 0,
-    "changed_count": 0,
-    "net_removed_count": 0,
-    "noise_event_count": 0,
-    "noise_rate_of_before": 0,
-    "classification_counts": {},
-    "candidate_count": 0,
-    "admitted_candidate_count": 0,
-    "rejected_candidate_count": 0,
-    "noise_denominator_count": 0,
-    "noise_rate_of_candidates": 0
-  },
-  "audit": {
-    "status": "agent-generated-complete",
-    "policy": "agent-generated",
-    "independent": false,
-    "session_id": null,
-    "open_blocker_count": 0,
-    "finding_count": 0,
-    "semantic_audit": {
-      "contract_version": "lexical-semantic-audit-v3",
-      "scope": "complete-canonical",
-      "canonical_records_sha256": "9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8",
-      "record_count": 2042,
-      "sense_count": 2301,
-      "covered_record_count": 2042,
-      "covered_sense_count": 2301,
-      "coverage_complete": true,
-      "review_complete": true,
-      "corrected_record_count": 0
-    }
-  },
+  "admission_sha256": "6aaeb63e8615e56bcd476c5d84385bfa09909c929df3731d0be784ca07459fcc",
   "preflight": {
+    "contract_version": "lexical-batch-preflight-v1",
     "status": "complete",
     "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "checks": {
       "candidate_source_digest": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "candidate_source_sha256": "f4f71c90a6abb2f495a25961eb5d225f8d03174f3d1f4632e4a4d5c6037a74da"
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "generation_verification_separated": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "generation_pass_id": "m5-12a-generation-20260920",
-        "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r4"
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "truthful_agent_provenance": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "human_review_claimed": false
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "deterministic_sqlite": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "product_dictionary_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a",
-        "rebuilt_logical_snapshot": true,
-        "summary": {
-          "outputPath": "/var/folders/8s/2jj7q8b1791bg2fr0bvms48m0000gn/T/typewriter-m5-12a-preflight-g05gbu/dictionary-second.sqlite",
-          "recordCount": 2042,
-          "searchFormCount": 2298,
-          "senseCount": 2301,
-          "relationCount": 487,
-          "metadata": {
-            "build_contract": "canonical-jsonl -> normalized-v1 -> sqlite-v1",
-            "build_tool_version": "1",
-            "candidate_count": "2000",
-            "dictionary_version": "m2-pilot-1",
-            "expression_count": "145",
-            "node_version": "v24.19.0",
-            "normalization_version": "1",
-            "record_count": "2042",
-            "reference_only_count": "42",
-            "relation_count": "487",
-            "schema_version": "1",
-            "search_form_count": "2298",
-            "sense_count": "2301",
-            "source_revision": "3d1aa05ca230d521f8e554cb36b35c8218a7c341",
-            "source_revision_source": "git-head",
-            "source_revision_verified": "true",
-            "sqlite_module": "node:sqlite",
-            "sqlite_version": "3.53.3",
-            "start_count": "2000",
-            "worktree_state": "clean"
-          }
-        }
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "search_product_regression": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "ci_category": "product",
-        "check_labels": [
-          "Test shared search query contract",
-          "Test search regressions",
-          "Run product unit tests",
-          "Build product extension"
-        ],
-        "database_sha256": "b867190b157391f7116ac565dda2819fc69fdcb4ac8de109877143f40280721a"
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "extension_build": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "package_file_count": 23
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "package_validation": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "package_file_count": 23,
-        "zip_file_count": 23
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       },
       "artifact_policy_clean_checkout": {
         "status": "pass",
-        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-        "tracked_artifact_count": 168,
-        "generated_projection_count": 0,
-        "unclassified_artifact_count": 0,
-        "working_tree_clean": true
+        "input_canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
       }
     }
   },
-  "verification": {
-    "review_mode": "agent-generated",
-    "editorial_review_complete": true,
-    "automated_editorial_review_complete": true,
-    "human_editorial_review_complete": false,
-    "agent_generated_provenance": true,
-    "generation_verification_separated": true,
-    "generation_pass_id": "m5-12a-generation-20260920",
-    "verification_pass_id": "m5-12a-agent-semantic-review-20260920-r4",
-    "candidate_source_id": "m5-12a-typewriter-authored-identities-20260920",
-    "candidate_identity_count": 802,
-    "canonical_integrity": true,
-    "deterministic_sqlite": true,
-    "search_product_regression": true,
-    "extension_build": true,
-    "package_validation": true,
-    "artifact_policy_clean_checkout": true,
-    "raw_material_excluded": true,
-    "semantic_quality_complete": true,
-    "semantic_summary": {
-      "version": "m5-12a-semantic-review-v1",
-      "complete": true,
-      "candidate_count": 802,
-      "selected_count": 722,
-      "broad_gloss_count": 0,
-      "split_record_count": 0,
-      "split_sense_count": 0,
-      "selected_axis_counts": {
-        "E": 110,
-        "Q": 100,
-        "S": 115,
-        "C": 105,
-        "A": 140,
-        "O": 80,
-        "X": 72
-      },
-      "candidate_axis_counts": {
-        "E": 120,
-        "Q": 120,
-        "S": 120,
-        "C": 120,
-        "A": 140,
-        "O": 100,
-        "X": 82
-      },
-      "selected_expression_unit_count": 72,
-      "relation_candidate_count": 0,
-      "no_relation_rationale_count": 722,
-      "selection_rank_valid": true,
-      "relation_coverage_complete": true
-    },
-    "complete_canonical_review": {
-      "artifact_id": "canonical-semantic-review-m5-12a",
-      "contract_version": "lexical-semantic-review-v2",
-      "review_pass_id": "canonical-semantic-reaudit-m5-12a-20260920",
-      "status": "complete",
-      "reviewer": "codex-agent",
-      "record_count": 2042,
-      "sense_count": 2301,
-      "open_finding_count": 0,
-      "canonical_records_sha256": "9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8",
-      "review_sha256": "7841fd89c0fe3c9d2c5203f40ff9ebfb08403f2713101c62908b6600d801967f"
-    }
-  },
-  "gate_evidence_sha256": "2ef726f62542bb358248a07933564668666d3602dc6573bb8fc933ba876d78f0",
-  "sources": {
-    "candidate_identities": {
-      "source_id": "m5-12a-typewriter-authored-identities-20260920",
-      "path": "scripts/batch/m5-12a-candidate-source.mjs",
-      "identity_sha256": "f4f71c90a6abb2f495a25961eb5d225f8d03174f3d1f4632e4a4d5c6037a74da",
-      "identity_count": 802
-    },
-    "proposal": {
-      "source_id": "proposal",
-      "path": "external:m5-12a-generation",
-      "sha256": "1fa10154c45bbb8d75f8463690ecbd8ac77190ab5359b1b4195fb6646fa9ccbb"
-    },
-    "verification": {
-      "source_id": "verification",
-      "path": "data/batches/m5-12a-semantic-decisions.json",
-      "sha256": "81cec28734df38a29cd2f00b4ef8a76158838b6064276c56f5001a5fedf9e137"
-    },
-    "verification_artifact": {
-      "source_id": "verification-artifact",
-      "path": "external:m5-12a-verification",
-      "sha256": "6a5abc4e41d723c4df542aaa75da2126839fdc6b14553fceede3b85bc4b956e9"
-    },
-    "semantic_audit": {
-      "source_id": "semantic_audit",
-      "path": "external:m5-12a-semantic-audit",
-      "sha256": "6c5a42b76174eddceabca0175dbf7598ad0cbfd3a4a236591a064ca9b25abe91"
-    },
-    "relation_diff": {
-      "source_id": "relation_diff",
-      "path": "external:m5-12a-relation-diff",
-      "sha256": "08e8a95a6821ceff6ffeb903999175f57685b2e706633431315046a5cf9b05c0"
-    },
-    "reviewed_import": {
-      "source_id": "reviewed_import",
-      "path": "external:m5-12a-reviewed-import",
-      "sha256": "3f4362a8fb109a6d2d44bf9cc42f63d64cb58c5ddae0084dcab5ac5fe347be45"
-    },
-    "base_inventory": {
-      "source_id": "base_inventory",
-      "path": "data/batches/m5-12-base-inventory.json",
-      "sha256": "f2a7c36547ca4db4b3dd2bc2b3b5f8962e991aa900b42ffce34533b84e57bc67"
-    },
-    "authorization": {
-      "source_id": "authorization",
-      "path": "external:m5-12a-authorization",
-      "sha256": "01dfbfe2a766d6d4d8ba59de80adabc120ad75eda85525884606ef0d67824cca"
-    }
-  },
+  "gate_evidence_sha256": "8e06745551a5a3cdf0914f2fb91c48db1644efd6b5ea72b417244c74eb223764",
   "outputs": {
     "canonical_import": {
       "path": "data/canonical/m5-12a-expansion.jsonl",
@@ -450,22 +58,26 @@
     },
     "seed": {
       "path": "data/inventory/m5-target-seed.json",
-      "sha256": "ada4c8efa8c3a8456407126b956189db0471fb333447a6bb43baf30e847f4e32",
-      "target_count": 1893
+      "sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
+      "target_count": 1171
+    },
+    "target_promotions": {
+      "path": "data/inventory/m5-target-promotions.jsonl",
+      "sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+      "event_count": 722
     },
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
       "materialization": "on-demand",
-      "sha256": "6f23a7c002f1d9fc6b51205bba37ed644e26651d17618120c588e0b03e52439c",
+      "sha256": "7c85c89bdba6643bd31a7699b2fdad55211588effa55235713d469017c088cb2",
       "entry_count": 2235
     },
     "semantic_decision_source": {
       "path": "data/validation/canonical-semantic-decision-source.json",
-      "sha256": "7d358c895398bad0355d8daed523294566d9ffe08d20ddfca61612748e8213e1",
+      "sha256": "6ec29ed5a1508b923113c343acc056d97c87ba19c8b6bfd50a9794a9a0a88489",
       "source_id": "canonical-semantic-decision-source-20260914",
       "canonical_records_sha256": "9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8"
-    },
-    "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df"
+    }
   },
   "closed_issues": [
     138,
@@ -490,9 +102,10 @@
     "policy": "agent-generated",
     "transaction": "m5-12a-post-promotion-digest-and-audit-check",
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-    "seed_sha256": "ada4c8efa8c3a8456407126b956189db0471fb333447a6bb43baf30e847f4e32",
-    "semantic_decision_source_sha256": "7d358c895398bad0355d8daed523294566d9ffe08d20ddfca61612748e8213e1",
-    "semantic_audit_sha256": "6c5a42b76174eddceabca0175dbf7598ad0cbfd3a4a236591a064ca9b25abe91",
+    "seed_sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
+    "promotion_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+    "semantic_decision_source_sha256": "6ec29ed5a1508b923113c343acc056d97c87ba19c8b6bfd50a9794a9a0a88489",
+    "semantic_audit_sha256": "3b41051f3b773e9d17d13a4b4b60a3abe686275789ed8ddaa394a254726ea2f6",
     "semantic_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",

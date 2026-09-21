@@ -33,11 +33,11 @@ derived envelopes:
 | canonical semantic decision source | 11,935,192 / 217,285 | -685,252 bytes / -7,220 lines |
 | active seed | 621,487 / 26,095 | -425,969 bytes / -15,956 lines |
 | append-only promotion ledger | 478,965 / 722 | new historical event source |
-| compact admission manifest | 6,904 / 177 | -13,673 bytes / -359 lines |
-| compact promotion manifest | 3,497 / 92 | -16,025 bytes / -417 lines |
+| compact admission manifest | 7,284 / 185 | -13,293 bytes / -351 lines |
+| compact promotion manifest | 4,940 / 122 | -14,582 bytes / -387 lines |
 
 Across these evidence artifacts, including the new ledger, the tracked surface
-falls from 19,531,107 bytes / 380,024 lines to 15,176,324 bytes / 278,991
+falls from 19,531,107 bytes / 380,024 lines to 15,178,147 bytes / 279,029
 lines. The canonical import is unchanged by this representation change. The
 line reduction is intentionally larger than the byte reduction because the
 durable JSON remains pretty-printed and reviewable.
