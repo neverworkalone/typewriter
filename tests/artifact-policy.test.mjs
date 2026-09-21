@@ -25,6 +25,79 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function decisionSourceFixture({ candidateRecords = [], decisions = [] } = {}) {
+  return {
+    schema_version: '1',
+    contract_version: 'lexical-semantic-decision-source-v2',
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: 'future-source',
+    authoring_mode: 'agent-authored-decision',
+    issue: 141,
+    parent_issue: 138,
+    batch_id: 'future-batch',
+    provenance: {},
+    candidate_source: {},
+    selection: {},
+    decisions,
+    review: {},
+    candidate_records: candidateRecords,
+    candidate_records_sha256: 'b'.repeat(64),
+    artifact_sha256: 'c'.repeat(64),
+  };
+}
+
+function decisionRowFixture(overrides = {}) {
+  return {
+    candidate_record_id: 'w1001',
+    inventory_id: 'm5-12a-w001',
+    candidate_record_sha256: 'a'.repeat(64),
+    decision: 'held',
+    rank: 1,
+    score: 1,
+    decision_rationale: 'future decision',
+    selection_rationale: 'future selection',
+    review_pass_id: 'future-review',
+    gloss_judgment: 'fit',
+    sense_reviews: [],
+    ...overrides,
+  };
+}
+
+function candidateRecordFixture({ multiSense = false, relation = false } = {}) {
+  const senses = [{
+    id: 'w1001-s1',
+    pos: 'noun',
+    gloss: '첫 번째 뜻',
+    ...(relation
+      ? {
+        relations: [{
+          target: 'w1002',
+          target_sense: 'w1002-s1',
+          type: 'near',
+          note: 'source-bound relation note',
+        }],
+      }
+      : {}),
+  }];
+  if (multiSense) {
+    senses.push({
+      id: 'w1001-s2',
+      pos: 'noun',
+      gloss: '두 번째 뜻',
+      relations: [],
+    });
+  }
+  return {
+    id: 'w1001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w1001',
+    lemma: '시험 단어',
+    search_forms: ['시험 단어'],
+    senses,
+  };
+}
+
 test('current semantic audit and target inventory are deterministic in-memory projections', async () => {
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
@@ -307,6 +380,109 @@ test('artifact policy closes nested admission and promotion durable containers',
         sources: {
           authorization: { source_id: 'authorization', path: 'external', sha256: 'a'.repeat(64) },
           unexpected_review_payload: { reviewed_record: { lemma: 'duplicate' } },
+        },
+      },
+    },
+  ];
+
+  try {
+    for (const { relativePath, value } of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy accepts authored correction, boundary, and relation payloads', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-typed-decision-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const correctedRecord = candidateRecordFixture({ relation: true });
+  const corrected = decisionSourceFixture({
+    candidateRecords: [correctedRecord],
+    decisions: [decisionRowFixture({
+      decision: 'corrected',
+      correction: {
+        action: 'replace-authored-record',
+        record: correctedRecord,
+        output_record_sha256: 'd'.repeat(64),
+      },
+    })],
+  });
+  const multiSenseRecord = candidateRecordFixture({ multiSense: true, relation: true });
+  const multiSense = decisionSourceFixture({
+    candidateRecords: [multiSenseRecord],
+    decisions: [decisionRowFixture({
+      boundary_pairs: [{
+        left_sense_id: 'w1001-s1',
+        right_sense_id: 'w1001-s2',
+        relationship: 'distinct',
+        decision: 'retain',
+        left_gloss_sha256: 'e'.repeat(64),
+        right_gloss_sha256: 'f'.repeat(64),
+        evidence_basis: 'separate gloss evidence',
+        distinguishing_feature: 'distinct writer-facing meanings',
+        decision_source_id: 'future-source',
+        rationale: 'w1001 w1001-s1 w1001-s2 pair evidence',
+      }],
+      sense_reviews: [{}, {}],
+    })],
+  });
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    for (const value of [corrected, multiSense]) {
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.doesNotReject(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+      );
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects arbitrary objects hidden in allowed scalar fields', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-typed-scalar-policy-'));
+  const cases = [
+    {
+      relativePath: 'data/batches/future-promotion.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-promotion-v2',
+        checkpoint: {
+          issue: 7,
+          milestone: { reviewed_record: { lemma: 'duplicate body' } },
+          canonical_records: 1,
+          canonical_starts: 1,
+          status: 'recorded-on-promotion',
+        },
+      },
+    },
+    {
+      relativePath: 'data/batches/future-admission.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-admission-v2',
+        sources: {
+          authorization: {
+            source_id: 'authorization',
+            path: { reviewed_record: { lemma: 'duplicate body' } },
+          },
         },
       },
     },

@@ -163,14 +163,17 @@ The v2 artifact policy identifies the durable role from the contract version,
 not from the filename. Admission and promotion manifests, their nested durable
 containers, the admission gate and gate evidence, decision-source rows and
 sense reviews, canonical batch bindings, and promotion-ledger rows all use
-closed allowlists. It rejects v2
+typed closed schemas. It rejects v2
 gate artifacts that reintroduce metrics, timing matrices, full audit payloads,
 SQLite/package summaries, or temporary output paths. It also rejects decision
 rows with derived gloss/POS/domain/connector copies, canonical batch bindings
 with extra narrative fields, and promotion-ledger rows containing candidate
 bodies under an alternate key. Synthetic fixtures cover a future promotion
 preflight, an alternate ledger body key, and an alternate decision-row
-envelope, so a new batch filename cannot bypass the machine policy.
+envelope, so a new batch filename cannot bypass the machine policy. The schemas
+also retain normal future authored shapes such as corrected decision records,
+multi-sense boundary pairs, and candidate sense relations, while rejecting an
+object or full-record payload hidden inside an allowed scalar field.
 
 ## Irreducible evidence
 

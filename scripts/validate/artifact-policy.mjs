@@ -180,6 +180,34 @@ function validateClosedObjectFields(value, allowedFields, filePath, label, code 
   }
 }
 
+function valueMatchesType(value, expectedType) {
+  const arrayMatch = /^array<(.+)>$/u.exec(expectedType);
+  if (arrayMatch) {
+    return Array.isArray(value) && value.every((item) => valueMatchesType(item, arrayMatch[1]));
+  }
+  if (expectedType === 'array') return Array.isArray(value);
+  if (expectedType === 'object') return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  if (expectedType === 'null') return value === null;
+  if (expectedType === 'integer') return Number.isInteger(value);
+  return typeof value === expectedType;
+}
+
+function validateClosedFieldTypes(value, fieldTypes, filePath, label, code = 'DURABLE_EVIDENCE_POLICY_SHAPE') {
+  if (!fieldTypes) return;
+  if (!fieldTypes || typeof fieldTypes !== 'object' || Array.isArray(fieldTypes)) {
+    fail(`${filePath} ${label} field type contract must be an object`, 'POLICY_SHAPE');
+  }
+  for (const [field, expectedType] of Object.entries(fieldTypes)) {
+    if (!Object.hasOwn(value, field)) continue;
+    if (typeof expectedType !== 'string' || !valueMatchesType(value[field], expectedType)) {
+      fail(
+        `${filePath} ${label}.${field} must have type ${expectedType}`,
+        code,
+      );
+    }
+  }
+}
+
 function resolveClosedObjectTargets(value, selector) {
   const segments = selector.split('.').filter((segment) => segment !== '$' && segment.length > 0);
   let targets = [value];
@@ -198,10 +226,17 @@ function resolveClosedObjectTargets(value, selector) {
   return targets;
 }
 
-function validateNestedClosedObjects(value, nestedAllowedFields, filePath, label) {
-  for (const [selector, allowedFields] of Object.entries(nestedAllowedFields ?? {})) {
+function validateNestedClosedObjects(value, nestedAllowedFields, nestedFieldTypes, filePath, label) {
+  const selectors = new Set([
+    ...Object.keys(nestedAllowedFields ?? {}),
+    ...Object.keys(nestedFieldTypes ?? {}),
+  ]);
+  for (const selector of selectors) {
+    const allowedFields = nestedAllowedFields?.[selector];
     for (const target of resolveClosedObjectTargets(value, selector)) {
-      validateClosedObjectFields(target, allowedFields, filePath, `${label}${selector.slice(1)}`);
+      const targetLabel = `${label}${selector.slice(1)}`;
+      if (allowedFields) validateClosedObjectFields(target, allowedFields, filePath, targetLabel);
+      validateClosedFieldTypes(target, nestedFieldTypes?.[selector], filePath, targetLabel);
     }
   }
 }
@@ -215,7 +250,14 @@ function validateClosedContract(value, filePath, semantics, label) {
       fail(`artifact policy durable_semantics.closed_contracts.${contractName}.allowed_fields must be an array`, 'POLICY_SHAPE');
     }
     validateClosedObjectFields(value, contract.allowed_fields, filePath, label);
-    validateNestedClosedObjects(value, contract.nested_allowed_fields, filePath, label);
+    validateClosedFieldTypes(value, contract.field_types, filePath, label);
+    validateNestedClosedObjects(
+      value,
+      contract.nested_allowed_fields,
+      contract.nested_field_types,
+      filePath,
+      label,
+    );
     return contract;
   }
   return undefined;
@@ -387,6 +429,12 @@ function validateCanonicalBatchBindings(value, filePath, semantics) {
         );
       }
     }
+    validateClosedFieldTypes(
+      binding,
+      semantics.canonical_batch_binding_field_types,
+      filePath,
+      `${record.record_id}.authored_batch_decision`,
+    );
     const duplicated = Object.keys(binding).filter((key) => !allowed.has(key));
     if (duplicated.length > 0) {
       fail(
@@ -458,6 +506,12 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
         validateClosedObjectFields(
           entry,
           ledgerContract.allowed_fields,
+          filePath,
+          `promotion ledger line ${index + 1}`,
+        );
+        validateClosedFieldTypes(
+          entry,
+          ledgerContract.field_types,
           filePath,
           `promotion ledger line ${index + 1}`,
         );

@@ -133,6 +133,18 @@
       "selection_score",
       "reviewed_record_sha256"
     ],
+    "canonical_batch_binding_field_types": {
+      "source_id": "string",
+      "source_sha256": "string",
+      "artifact_sha256": "string",
+      "decision_row_sha256": "string",
+      "candidate_record_id": "string",
+      "candidate_record_sha256": "string",
+      "decision": "string",
+      "selection_rank": "number",
+      "selection_score": "number",
+      "reviewed_record_sha256": "string"
+    },
     "gate_allowed_fields": [
       "contract_version",
       "policy",
@@ -193,6 +205,161 @@
           "promotion",
           "provenance"
         ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "artifact_id": "string",
+          "issue": "number",
+          "parent_issue": "number",
+          "grandparent_issue": "number",
+          "batch_id": "string",
+          "authorization": "object",
+          "target": "object",
+          "base": "object",
+          "actual": "object",
+          "decisions": "object",
+          "verification": "object",
+          "gate": "object",
+          "gate_evidence": "object",
+          "gate_evidence_sha256": "string",
+          "sources": "object",
+          "promotion": "object",
+          "provenance": "object"
+        },
+        "nested_field_types": {
+          "$.authorization": {
+            "kind": "string",
+            "issue": "number",
+            "decision": "string",
+            "human_editorial_review_complete": "boolean",
+            "generation_pass_id": "string",
+            "verification_pass_id": "string"
+          },
+          "$.target": {
+            "net_start_increase": "number",
+            "cumulative_start_target": "number",
+            "candidate_buffer": "number",
+            "selection_slot_count": "number",
+            "candidate_identity_count": "number"
+          },
+          "$.base": {
+            "canonical_directory_sha256": "string",
+            "inventory_sha256": "string",
+            "seed_sha256": "string",
+            "promotion_ledger_sha256": "string",
+            "summary": "object"
+          },
+          "$.base.summary": {
+            "record_count": "number",
+            "start_count": "number",
+            "reference_only_count": "number",
+            "sense_count": "number",
+            "relation_count": "number",
+            "expression_count": "number"
+          },
+          "$.actual": {
+            "record_count": "number",
+            "start_count": "number",
+            "reference_only_count": "number",
+            "sense_count": "number",
+            "relation_count": "number",
+            "expression_count": "number"
+          },
+          "$.decisions": {
+            "included": "number",
+            "corrected": "number",
+            "held": "number",
+            "rejected": "number",
+            "deferred": "number",
+            "processed_start_count": "number",
+            "imported_start_count": "number",
+            "deferred_denominator_excluded": "boolean"
+          },
+          "$.verification": {
+            "review_mode": "string",
+            "human_editorial_review_complete": "boolean",
+            "agent_generated_provenance": "boolean",
+            "generation_pass_id": "string",
+            "verification_pass_id": "string",
+            "candidate_source_id": "string",
+            "candidate_identity_count": "number",
+            "raw_material_excluded": "boolean",
+            "source_bound_semantic_decisions": "boolean"
+          },
+          "$.gate": {
+            "contract_version": "string",
+            "policy": "string",
+            "gate_status": "string",
+            "decision": "string"
+          },
+          "$.gate_evidence": {
+            "schema_version": "string",
+            "contract_version": "string",
+            "artifact_id": "string",
+            "issue": "number",
+            "batch_id": "string",
+            "inputs": "object",
+            "preflight": "object",
+            "complete_audit": "object"
+          },
+          "$.gate_evidence.inputs": {
+            "prospective_canonical_sha256": "string",
+            "semantic_audit_sha256": "string",
+            "decision_source_sha256": "string",
+            "promotion_ledger_sha256": "string"
+          },
+          "$.gate_evidence.preflight": {
+            "contract_version": "string",
+            "status": "string",
+            "input_canonical_directory_sha256": "string",
+            "checks": "object"
+          },
+          "$.gate_evidence.preflight.checks.*": {
+            "status": "string",
+            "input_canonical_directory_sha256": "string"
+          },
+          "$.gate_evidence.complete_audit": {
+            "contract_version": "string",
+            "scope": "string",
+            "canonical_records_sha256": "string",
+            "record_count": "number",
+            "sense_count": "number",
+            "covered_record_count": "number",
+            "covered_sense_count": "number",
+            "coverage_complete": "boolean",
+            "review_complete": "boolean",
+            "corrected_record_count": "number"
+          },
+          "$.sources": {
+            "candidate_identities": "object",
+            "verification": "object",
+            "semantic_audit": "object",
+            "target_promotions": "object",
+            "base_inventory": "object",
+            "authorization": "object"
+          },
+          "$.sources.*": {
+            "source_id": "string",
+            "path": "string",
+            "identity_sha256": "string",
+            "identity_count": "number",
+            "sha256": "string"
+          },
+          "$.promotion": {
+            "canonical_mutation": "boolean",
+            "seed_mutation": "boolean",
+            "inventory_mutation": "boolean",
+            "semantic_decision_source_mutation": "boolean",
+            "note": "string"
+          },
+          "$.provenance": {
+            "generation_pass_id": "string",
+            "verification_pass_id": "string",
+            "raw_material_excluded": "boolean",
+            "batch_local_quality_fork": "boolean",
+            "base_decision_source_id": "string"
+          }
+        },
         "nested_allowed_fields": {
           "$.authorization": ["kind", "issue", "decision", "human_editorial_review_complete", "generation_pass_id", "verification_pass_id"],
           "$.target": ["net_start_increase", "cumulative_start_target", "candidate_buffer", "selection_slot_count", "candidate_identity_count"],
@@ -240,6 +407,110 @@
           "promotion",
           "post_promotion_audit"
         ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "artifact_id": "string",
+          "issue": "number",
+          "parent_issue": "number",
+          "grandparent_issue": "number",
+          "batch_id": "string",
+          "status": "string",
+          "admission_sha256": "string",
+          "preflight": "object",
+          "gate_evidence_sha256": "string",
+          "outputs": "object",
+          "closed_issues": "array<number>",
+          "checkpoint": "object",
+          "promotion": "object",
+          "post_promotion_audit": "object"
+        },
+        "nested_field_types": {
+          "$.preflight": {
+            "contract_version": "string",
+            "status": "string",
+            "input_canonical_directory_sha256": "string",
+            "checks": "object"
+          },
+          "$.preflight.checks.*": {
+            "status": "string",
+            "input_canonical_directory_sha256": "string"
+          },
+          "$.outputs": {
+            "canonical_directory_sha256": "string",
+            "canonical_import": "object",
+            "seed": "object",
+            "target_promotions": "object",
+            "inventory": "object",
+            "semantic_decision_source": "object"
+          },
+          "$.outputs.canonical_import": {
+            "path": "string",
+            "sha256": "string",
+            "record_count": "number",
+            "first_canonical_id": "string",
+            "last_canonical_id": "string"
+          },
+          "$.outputs.seed": {
+            "path": "string",
+            "sha256": "string",
+            "target_count": "number"
+          },
+          "$.outputs.target_promotions": {
+            "path": "string",
+            "sha256": "string",
+            "event_count": "number"
+          },
+          "$.outputs.inventory": {
+            "path": "string",
+            "materialization": "string",
+            "sha256": "string",
+            "entry_count": "number"
+          },
+          "$.outputs.semantic_decision_source": {
+            "path": "string",
+            "sha256": "string",
+            "source_id": "string",
+            "canonical_records_sha256": "string"
+          },
+          "$.checkpoint": {
+            "issue": "number",
+            "milestone": "string",
+            "canonical_records": "number",
+            "canonical_starts": "number",
+            "status": "string"
+          },
+          "$.promotion": {
+            "canonical_mutation": "boolean",
+            "seed_mutation": "boolean",
+            "inventory_mutation": "boolean",
+            "semantic_decision_source_mutation": "boolean",
+            "transaction": "string"
+          },
+          "$.post_promotion_audit": {
+            "status": "string",
+            "policy": "string",
+            "transaction": "string",
+            "canonical_directory_sha256": "string",
+            "seed_sha256": "string",
+            "promotion_ledger_sha256": "string",
+            "semantic_decision_source_sha256": "string",
+            "semantic_audit_sha256": "string",
+            "semantic_audit": "object"
+          },
+          "$.post_promotion_audit.semantic_audit": {
+            "contract_version": "string",
+            "scope": "string",
+            "canonical_records_sha256": "string",
+            "record_count": "number",
+            "sense_count": "number",
+            "covered_record_count": "number",
+            "covered_sense_count": "number",
+            "coverage_complete": "boolean",
+            "review_complete": "boolean",
+            "corrected_record_count": "number"
+          }
+        },
         "nested_allowed_fields": {
           "$.preflight": ["contract_version", "status", "input_canonical_directory_sha256", "checks"],
           "$.preflight.checks.*": ["status", "input_canonical_directory_sha256"],
@@ -277,6 +548,192 @@
           "candidate_records_sha256",
           "artifact_sha256"
         ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "source_id": "string",
+          "authoring_mode": "string",
+          "issue": "number",
+          "parent_issue": "number",
+          "batch_id": "string",
+          "provenance": "object",
+          "candidate_source": "object",
+          "selection": "object",
+          "decisions": "array<object>",
+          "review": "object",
+          "candidate_records": "array<object>",
+          "candidate_records_sha256": "string",
+          "artifact_sha256": "string"
+        },
+        "nested_field_types": {
+          "$.provenance": {
+            "generator": "string",
+            "generator_version": "string",
+            "generation_pass_id": "string",
+            "verification_pass_id": "string",
+            "human_reviewed": "boolean",
+            "authoring_note": "string"
+          },
+          "$.candidate_source": {
+            "source_id": "string",
+            "identity_sha256": "string",
+            "identity_count": "number",
+            "candidate_records_sha256": "string"
+          },
+          "$.selection": {
+            "policy": "string",
+            "capacity": "number",
+            "imported": "number",
+            "reserve": "number",
+            "score_basis": "array<string>"
+          },
+          "$.decisions.*": {
+            "candidate_record_id": "string",
+            "inventory_id": "string",
+            "candidate_record_sha256": "string",
+            "decision": "string",
+            "rank": "number",
+            "score": "number",
+            "decision_rationale": "string",
+            "selection_rationale": "string",
+            "review_pass_id": "string",
+            "gloss_judgment": "string",
+            "sense_reviews": "array<object>",
+            "correction": "object",
+            "boundary_pairs": "array<object>"
+          },
+          "$.decisions.*.correction": {
+            "action": "string",
+            "record": "object",
+            "output_record_sha256": "string"
+          },
+          "$.decisions.*.correction.record": {
+            "id": "string",
+            "record_type": "string",
+            "role": "string",
+            "candidate_id": "string",
+            "lemma": "string",
+            "search_forms": "array<string>",
+            "senses": "array<object>"
+          },
+          "$.decisions.*.correction.record.senses.*": {
+            "id": "string",
+            "pos": "string",
+            "gloss": "string",
+            "relations": "array<object>"
+          },
+          "$.decisions.*.correction.record.senses.*.relations.*": {
+            "target": "string",
+            "target_sense": "string",
+            "type": "string",
+            "note": "string"
+          },
+          "$.decisions.*.boundary_pairs.*": {
+            "left_sense_id": "string",
+            "right_sense_id": "string",
+            "relationship": "string",
+            "decision": "string",
+            "left_gloss_sha256": "string",
+            "right_gloss_sha256": "string",
+            "evidence_basis": "string",
+            "distinguishing_feature": "string",
+            "decision_source_id": "string",
+            "rationale": "string"
+          },
+          "$.decisions.*.sense_reviews.*": {
+            "sense_id": "string",
+            "boundary_action": "string",
+            "boundary_classification": "string",
+            "boundary_decision": "string",
+            "boundary_rationale": "string",
+            "semantic_rationale": "string",
+            "relation_decision": "string",
+            "relation_count": "number",
+            "relation_ids": "array<string>",
+            "no_relation_rationale": "string",
+            "review_basis": "object"
+          },
+          "$.decisions.*.sense_reviews.*.review_basis": {
+            "topic_analysis": "object",
+            "topic_analyses": "array<object>"
+          },
+          "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": {
+            "status": "string",
+            "state": "string",
+            "topic": "string",
+            "particle": "string",
+            "predicate": "string",
+            "token_index": "number",
+            "topic_pos": "string",
+            "evidence_basis": "string",
+            "gloss_sha256": "string",
+            "rationale": "string",
+            "decision_source_id": "string"
+          },
+          "$.decisions.*.sense_reviews.*.review_basis.topic_analyses.*": {
+            "status": "string",
+            "state": "string",
+            "topic": "string",
+            "particle": "string",
+            "predicate": "string",
+            "token_index": "number",
+            "topic_pos": "string",
+            "evidence_basis": "string",
+            "gloss_sha256": "string",
+            "rationale": "string",
+            "decision_source_id": "string"
+          },
+          "$.review": {
+            "review_pass_id": "string",
+            "reviewer": "string",
+            "status": "string",
+            "candidate_count": "number",
+            "reviewed_candidate_count": "number",
+            "method": "string",
+            "criteria": "array<string>",
+            "decision_counts": "object",
+            "admission_rule": "string",
+            "prior_generator_replaced": "boolean",
+            "prior_generator_verification_pass_id": "string",
+            "counts": "object"
+          },
+          "$.review.decision_counts": {
+            "included": "number",
+            "corrected": "number",
+            "held": "number",
+            "rejected": "number",
+            "deferred": "number"
+          },
+          "$.review.counts": {
+            "included": "number",
+            "corrected": "number",
+            "held": "number",
+            "rejected": "number",
+            "deferred": "number"
+          },
+          "$.candidate_records.*": {
+            "id": "string",
+            "record_type": "string",
+            "role": "string",
+            "candidate_id": "string",
+            "lemma": "string",
+            "search_forms": "array<string>",
+            "senses": "array<object>"
+          },
+          "$.candidate_records.*.senses.*": {
+            "id": "string",
+            "pos": "string",
+            "gloss": "string",
+            "relations": "array<object>"
+          },
+          "$.candidate_records.*.senses.*.relations.*": {
+            "target": "string",
+            "target_sense": "string",
+            "type": "string",
+            "note": "string"
+          }
+        },
         "decision_allowed_fields": [
           "candidate_record_id",
           "inventory_id",
@@ -288,7 +745,9 @@
           "selection_rationale",
           "review_pass_id",
           "gloss_judgment",
-          "sense_reviews"
+          "sense_reviews",
+          "correction",
+          "boundary_pairs"
         ],
         "sense_review_allowed_fields": [
           "sense_id",
@@ -324,7 +783,12 @@
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis"],
-          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews"],
+          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews", "correction", "boundary_pairs"],
+          "$.decisions.*.correction": ["action", "record", "output_record_sha256"],
+          "$.decisions.*.correction.record": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
+          "$.decisions.*.correction.record.senses.*": ["id", "pos", "gloss", "relations"],
+          "$.decisions.*.correction.record.senses.*.relations.*": ["target", "target_sense", "type", "note"],
+          "$.decisions.*.boundary_pairs.*": ["left_sense_id", "right_sense_id", "relationship", "decision", "left_gloss_sha256", "right_gloss_sha256", "evidence_basis", "distinguishing_feature", "decision_source_id", "rationale"],
           "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis"],
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
@@ -333,7 +797,8 @@
           "$.review.decision_counts": ["included", "corrected", "held", "rejected", "deferred"],
           "$.review.counts": ["included", "corrected", "held", "rejected", "deferred"],
           "$.candidate_records.*": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
-          "$.candidate_records.*.senses.*": ["id", "pos", "gloss"]
+          "$.candidate_records.*.senses.*": ["id", "pos", "gloss", "relations"],
+          "$.candidate_records.*.senses.*.relations.*": ["target", "target_sense", "type", "note"]
         }
       },
       "promotion_ledger": {
@@ -364,7 +829,21 @@
           "reason_codes",
           "flags",
           "decision_note"
-        ]
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "batch_id": "string",
+          "inventory_id": "string",
+          "canonical_id": "string",
+          "decision": "string",
+          "record_sha256": "string",
+          "decision_source_id": "string",
+          "decision_source_sha256": "string",
+          "decision_row_sha256": "string",
+          "reason_codes": "array<string>",
+          "flags": "array<string>",
+          "decision_note": "string"
+        }
       }
     }
   }
