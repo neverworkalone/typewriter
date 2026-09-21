@@ -30,7 +30,11 @@ test('semantic decision source preserves locality for a representative future ba
   assert.ok(target);
   assert.ok(unaffected);
 
-  target.boundary_review.rationale += ' [future-batch-locality-fixture]';
+  if (typeof target.boundary_review.rationale === 'string') {
+    target.boundary_review.rationale += ' [future-batch-locality-fixture]';
+  } else {
+    target.boundary_review.rationale_code += '-future-batch-locality-fixture';
+  }
   after.authored_review_sha256 = sha256Json(after.authored_review);
 
   const afterBytes = serializeSemanticDecisionSource(after);

@@ -18,6 +18,7 @@ import {
   buildM512A,
   buildM512AReviewRows,
   commitM512APromotionTransaction,
+  validatePromotionLedgerPrefix,
   validateM512AAuthoredCanonicalAuthority,
   validateCandidateIdentityBinding,
   validateM512AFinal,
@@ -29,6 +30,7 @@ import {
   M5_12A_CANDIDATE_IDENTITIES,
 } from '../scripts/batch/m5-12a-candidate-source.mjs';
 import {
+  compactM512ADecisionRow,
   serializeM512ADecisionSource,
   validateM512ADecisionSource,
 } from '../scripts/batch/m5-12a-decision-source.mjs';
@@ -41,12 +43,31 @@ function jsonSha256(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
 }
 
+function serializedJsonSha256(value) {
+  return createHash('sha256').update(`${JSON.stringify(value, null, 2)}\n`, 'utf8').digest('hex');
+}
+
 test('M5-12A binds all 802 identities and admits exactly 722 through the shared producer', async () => {
   const result = await buildM512A();
 
   assert.equal(result.identities.length, M5_12A_SELECTION_COUNT);
   assert.equal(result.artifacts.candidateRecords.length, M5_12A_SELECTION_COUNT);
   assert.equal(result.importedRecords.length, M5_12A_IMPORT_COUNT);
+  assert.equal(result.semanticDecisionSource.source.contract_version, 'lexical-semantic-decision-source-v2');
+  assert.ok(result.semanticDecisionSource.rows.every((row) => (
+    !Object.hasOwn(row, 'source_sha256')
+      && !Object.hasOwn(row, 'sense_gloss_sha256')
+      && !Object.hasOwn(row, 'domain_evidence')
+      && !Object.hasOwn(row, 'connector_observations')
+  )));
+  assert.equal(result.promotionLedger.length, M5_12A_IMPORT_COUNT);
+  assert.ok(result.promotionLedger.every((entry) => (
+    !Object.hasOwn(entry, 'lemma')
+      && !Object.hasOwn(entry, 'senses')
+      && entry.decision_row_sha256 === jsonSha256(
+        result.semanticDecisionSource.byCandidateId.get(entry.canonical_id),
+      )
+  )));
   assert.deepEqual(result.admission.actual, M5_12A_FINAL_SUMMARY);
   const decisions = result.admission.decisions;
   const processed = decisions.included + decisions.corrected + decisions.held + decisions.rejected;
@@ -60,6 +81,8 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
   assert.equal(result.admission.verification.generation_pass_id, 'm5-12a-generation-20260920');
   assert.equal(result.admission.verification.verification_pass_id, 'm5-12a-agent-semantic-review-20260920-r4');
   assert.equal(result.admission.provenance.batch_local_quality_fork, false);
+  assert.equal(result.promotion.admission_sha256, serializedJsonSha256(result.admission));
+  assert.equal(result.promotion.gate, undefined);
   assert.equal(result.relation.events.length, 0);
 });
 
@@ -103,6 +126,42 @@ test('M5-12A decision scaffolding cannot manufacture or overwrite semantic autho
   assert.deepEqual(await readFile(sourcePath), sourceBefore);
 });
 
+test('M5-12A compact decisions replay the same outcomes as the legacy envelope shape', async () => {
+  const result = await buildM512A();
+  const expanded = structuredClone(result.semanticDecisionSource.source);
+  const candidateById = new Map(result.artifacts.candidateRecords.map((candidate) => [candidate.id, candidate]));
+  for (const row of expanded.decisions) {
+    const candidate = candidateById.get(row.candidate_record_id);
+    row.source_sha256 = expanded.artifact_sha256;
+    row.record_type = candidate.record_type;
+    row.semantic_rationale = `${candidate.id} legacy envelope projection`;
+    for (const senseReview of row.sense_reviews) {
+      const sense = candidate.senses.find(({ id }) => id === senseReview.sense_id);
+      senseReview.sense_gloss_sha256 = jsonSha256(sense.gloss);
+      senseReview.pos = sense.pos;
+      senseReview.record_type = candidate.record_type;
+      senseReview.observed_domain_axes = [];
+      senseReview.domain_evidence = [];
+      senseReview.connector_observations = [];
+    }
+  }
+
+  const compact = serializeM512ADecisionSource(expanded);
+  assert.deepEqual(compact.source, result.semanticDecisionSource.source);
+  assert.deepEqual(
+    compact.source.decisions.map((row) => [row.candidate_record_id, row.decision, row.rank, row.score]),
+    result.semanticDecisionSource.rows.map((row) => [row.candidate_record_id, row.decision, row.rank, row.score]),
+  );
+  assert.deepEqual(
+    result.promotionLedger.map((entry) => [entry.inventory_id, entry.decision, entry.decision_row_sha256]),
+    result.promotionLedger.map((entry) => [
+      entry.inventory_id,
+      entry.decision,
+      jsonSha256(compactM512ADecisionRow(result.semanticDecisionSource.byCandidateId.get(entry.canonical_id))),
+    ]),
+  );
+});
+
 test('M5-12A decision contract accepts a different legal outcome distribution', async () => {
   const result = await buildM512A();
   const source = structuredClone(result.semanticDecisionSource.source);
@@ -128,7 +187,7 @@ test('M5-12A decision contract accepts a different legal outcome distribution', 
     includedRow.decision_rationale = includedRow.decision_rationale
       .replace('the lexical unit is plausible, but the generated gloss needs a more specific usage context before admission', 'the lexical unit and gloss form a usable writer-facing lookup for this axis')
       .replace('Decision deferred', 'Decision included');
-    includedRow.semantic_rationale = includedRow.semantic_rationale
+    includedRow.sense_reviews[0].semantic_rationale = includedRow.sense_reviews[0].semantic_rationale
       .replace('the lexical unit is plausible, but the generated gloss needs a more specific usage context before admission', 'the lexical unit and gloss form a usable writer-facing lookup for this axis');
     includedRow.selection_rationale = includedRow.selection_rationale.replace(`rank ${includedRank}`, `rank ${heldRank}`);
   }
@@ -350,15 +409,10 @@ test('M5-12A producer admits multi-sense authored evidence and rejects missing p
   source.candidate_records[candidateIndex] = candidate;
   source.candidate_records_sha256 = jsonSha256(source.candidate_records);
   row.candidate_record_sha256 = jsonSha256(candidate);
+  const firstGlossSha256 = jsonSha256(candidate.senses[0].gloss);
   const secondGlossSha256 = jsonSha256(secondSense.gloss);
   const secondReview = {
     sense_id: secondSense.id,
-    sense_gloss_sha256: secondGlossSha256,
-    pos: secondSense.pos,
-    record_type: candidate.record_type,
-    observed_domain_axes: [],
-    domain_evidence: [],
-    connector_observations: [],
     boundary_action: 'retain',
     boundary_classification: 'atomic',
     boundary_decision: 'atomic',
@@ -368,25 +422,20 @@ test('M5-12A producer admits multi-sense authored evidence and rejects missing p
     relation_count: 0,
     relation_ids: [],
     no_relation_rationale: `${row.inventory_id} ${candidate.id} ${secondSense.id} has no independently supported relation tuple after review.`,
-    review_basis: {
-      ...row.review_basis,
-      gloss_sha256: secondGlossSha256,
-      review_pass_id: row.review_pass_id,
-    },
+    review_basis: {},
   };
   row.sense_reviews = [row.sense_reviews[0], secondReview];
-  row.no_relation_rationale = `${row.inventory_id} ${candidate.id} ${candidate.senses.map(({ id }) => id).join(' ')} have no independently supported relation tuple after review.`;
   row.boundary_pairs = [{
     left_sense_id: candidate.senses[0].id,
     right_sense_id: secondSense.id,
     relationship: 'distinct',
     decision: 'retain',
-    left_gloss_sha256: row.sense_reviews[0].sense_gloss_sha256,
+    left_gloss_sha256: firstGlossSha256,
     right_gloss_sha256: secondGlossSha256,
     evidence_basis: `${candidate.id} senses were compared directly.`,
     distinguishing_feature: 'the authored glosses describe separate writer-facing meanings',
     decision_source_id: source.source_id,
-    rationale: `${candidate.id} ${candidate.senses[0].id} ${secondSense.id} pair cites ${row.sense_reviews[0].sense_gloss_sha256.slice(0, 12)} and ${secondGlossSha256.slice(0, 12)}.`,
+    rationale: `${candidate.id} ${candidate.senses[0].id} ${secondSense.id} pair cites ${firstGlossSha256.slice(0, 12)} and ${secondGlossSha256.slice(0, 12)}.`,
   }];
   const serialized = serializeM512ADecisionSource(source);
   const validated = validateM512ADecisionSource({
@@ -467,6 +516,21 @@ test('M5-12A canonical semantic authority retains immutable authored batch bindi
     sourceReview.authored_batch_decision.source_sha256,
     result.semanticDecisionSource.sourceSha256,
   );
+  assert.deepEqual(
+    Object.keys(sourceReview.authored_batch_decision).sort(),
+    [
+      'artifact_sha256',
+      'candidate_record_id',
+      'candidate_record_sha256',
+      'decision',
+      'decision_row_sha256',
+      'reviewed_record_sha256',
+      'selection_rank',
+      'selection_score',
+      'source_id',
+      'source_sha256',
+    ],
+  );
 
   const missingEvidence = structuredClone(result.decisionSource);
   delete missingEvidence.authored_review.records
@@ -483,7 +547,7 @@ test('M5-12A canonical semantic authority retains immutable authored batch bindi
 
   const changedRows = new Map(result.semanticDecisionSource.rows.map((row) => [row.candidate_record_id, row]));
   const changedRow = structuredClone(changedRows.get(promoted[0].id));
-  changedRow.semantic_rationale += ' changed after authoring';
+  changedRow.sense_reviews[0].semantic_rationale += ' changed after authoring';
   changedRows.set(changedRow.candidate_record_id, changedRow);
   assert.throws(
     () => validateM512AAuthoredCanonicalAuthority({
@@ -507,11 +571,42 @@ test('M5-12A final promotion preserves the exact canonical, seed, and semantic a
   assert.equal(result.semantic_audit.review_complete, true);
 });
 
+test('M5-12A historical ledger validation remains local when a later event is appended', async () => {
+  const result = await buildM512A();
+  const laterEvent = {
+    ...structuredClone(result.promotionLedger[0]),
+    batch_id: 'later-independent-batch',
+    inventory_id: 'later-independent-inventory',
+    canonical_id: 'w9999',
+  };
+  const appended = [...result.promotionLedger, laterEvent];
+
+  assert.doesNotThrow(() => validatePromotionLedgerPrefix({
+    currentEntries: appended,
+    expectedPrefixEntries: result.promotionLedger,
+    baseEntries: result.inputs.basePromotionLedger,
+    binding: result.promotionLedgerBinding,
+  }));
+
+  const tampered = structuredClone(appended);
+  tampered[10].decision_note = 'historical event changed';
+  assert.throws(
+    () => validatePromotionLedgerPrefix({
+      currentEntries: tampered,
+      expectedPrefixEntries: result.promotionLedger,
+      baseEntries: result.inputs.basePromotionLedger,
+      binding: result.promotionLedgerBinding,
+    }),
+    (error) => error.code === 'PROMOTION_LEDGER_HISTORY_MISMATCH',
+  );
+});
+
 test('M5-12A promotion rolls back every output when the committed canonical digest drifts', async () => {
   const result = await buildM512A();
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-rollback-'));
   const currentCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
   const currentSeedPath = path.join(temporaryDirectory, 'seed.json');
+  const promotionLedgerPath = path.join(temporaryDirectory, 'promotions.jsonl');
   const decisionSourcePath = path.join(temporaryDirectory, 'decision-source.json');
   const canonicalImportPath = path.join(currentCanonicalDirectory, 'm5-12a-expansion.jsonl');
   const admissionPath = path.join(temporaryDirectory, 'admission.json');
@@ -520,9 +615,11 @@ test('M5-12A promotion rolls back every output when the committed canonical dige
   try {
     await cp(path.resolve('data/batches/m5-12-base-canonical'), currentCanonicalDirectory, { recursive: true });
     await writeFile(currentSeedPath, result.inputs.baseSeedBytes);
+    await writeFile(promotionLedgerPath, result.inputs.basePromotionLedgerBytes);
     await writeFile(decisionSourcePath, result.inputs.currentDecisionSourceBytes);
     const beforeCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
     const beforeSeedBytes = await readFile(currentSeedPath);
+    const beforePromotionLedgerBytes = await readFile(promotionLedgerPath);
     const beforeDecisionSourceBytes = await readFile(decisionSourcePath);
 
     const driftedResult = {
@@ -537,6 +634,7 @@ test('M5-12A promotion rolls back every output when the committed canonical dige
         result: driftedResult,
         currentCanonicalDirectory,
         currentSeedPath,
+        promotionLedgerPath,
         decisionSourcePath,
         canonicalImportPath,
         admissionPath,
@@ -548,6 +646,7 @@ test('M5-12A promotion rolls back every output when the committed canonical dige
     assert.equal(await hashCanonicalDirectory(currentCanonicalDirectory), beforeCanonicalDigest);
     assert.equal(beforeCanonicalDigest, M5_12A_BASE_CANONICAL_SHA256);
     assert.deepEqual(await readFile(currentSeedPath), beforeSeedBytes);
+    assert.deepEqual(await readFile(promotionLedgerPath), beforePromotionLedgerBytes);
     assert.deepEqual(await readFile(decisionSourcePath), beforeDecisionSourceBytes);
     await assert.rejects(stat(canonicalImportPath), { code: 'ENOENT' });
     await assert.rejects(stat(admissionPath), { code: 'ENOENT' });
@@ -562,6 +661,7 @@ test('M5-12A rejects a failed shared product preflight without mutating promotio
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-preflight-rollback-'));
   const currentCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
   const currentSeedPath = path.join(temporaryDirectory, 'seed.json');
+  const promotionLedgerPath = path.join(temporaryDirectory, 'promotions.jsonl');
   const decisionSourcePath = path.join(temporaryDirectory, 'decision-source.json');
   const canonicalImportPath = path.join(currentCanonicalDirectory, 'm5-12a-expansion.jsonl');
   const admissionPath = path.join(temporaryDirectory, 'admission.json');
@@ -570,9 +670,11 @@ test('M5-12A rejects a failed shared product preflight without mutating promotio
   try {
     await cp(path.resolve('data/batches/m5-12-base-canonical'), currentCanonicalDirectory, { recursive: true });
     await writeFile(currentSeedPath, result.inputs.baseSeedBytes);
+    await writeFile(promotionLedgerPath, result.inputs.basePromotionLedgerBytes);
     await writeFile(decisionSourcePath, result.inputs.currentDecisionSourceBytes);
     const beforeCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
     const beforeSeedBytes = await readFile(currentSeedPath);
+    const beforePromotionLedgerBytes = await readFile(promotionLedgerPath);
     const beforeDecisionSourceBytes = await readFile(decisionSourcePath);
     const failedPreflight = {
       ...result,
@@ -593,6 +695,7 @@ test('M5-12A rejects a failed shared product preflight without mutating promotio
         result: failedPreflight,
         currentCanonicalDirectory,
         currentSeedPath,
+        promotionLedgerPath,
         decisionSourcePath,
         canonicalImportPath,
         admissionPath,
@@ -603,6 +706,7 @@ test('M5-12A rejects a failed shared product preflight without mutating promotio
 
     assert.equal(await hashCanonicalDirectory(currentCanonicalDirectory), beforeCanonicalDigest);
     assert.deepEqual(await readFile(currentSeedPath), beforeSeedBytes);
+    assert.deepEqual(await readFile(promotionLedgerPath), beforePromotionLedgerBytes);
     assert.deepEqual(await readFile(decisionSourcePath), beforeDecisionSourceBytes);
     await assert.rejects(stat(canonicalImportPath), { code: 'ENOENT' });
     await assert.rejects(stat(admissionPath), { code: 'ENOENT' });

@@ -49,6 +49,12 @@ test('validates the M5 inventory and keeps independent start counts', async () =
   assert.equal(summary.heldCount, 78);
   assert.equal(summary.duplicateCount, 2);
   assert.equal(summary.inflectedFormCount, 2);
+  const inventory = await readInventory();
+  assert.ok(inventory.generated_from.includes('data/inventory/m5-target-promotions.jsonl'));
+  assert.equal(
+    inventory.entries.find((entry) => entry.inventory_id === 'm5-1085').source,
+    'canonical',
+  );
   assert.deepEqual(summary.reasonCodeCounts, {
     A: 375,
     C: 309,
@@ -104,6 +110,32 @@ test('inventory candidates remain outside canonical input and SQLite build scope
   assert.equal(generatedA2Candidate.source, 'editorial');
   assert.equal(generatedA2Candidate.status, 'candidate');
   assert.equal(generatedA2Candidate.canonical_id, undefined);
+});
+
+test('rejects promotion ledger digests that do not bind canonical and authored decision authority', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ledger-binding-'));
+  const promotionPath = path.join(temporaryDirectory, 'promotions.jsonl');
+  const source = await readFile(path.resolve('data/inventory/m5-target-promotions.jsonl'), 'utf8');
+  const entries = source.trim().split('\n').map((line) => JSON.parse(line));
+
+  try {
+    for (const mutate of [
+      (entry) => { entry.record_sha256 = '0'.repeat(64); },
+      (entry) => { entry.decision_source_id = 'unbound-source'; },
+      (entry) => { entry.decision_row_sha256 = 'f'.repeat(64); },
+    ]) {
+      const mutated = structuredClone(entries);
+      mutate(mutated[0]);
+      await writeFile(promotionPath, `${mutated.map((entry) => JSON.stringify(entry)).join('\n')}\n`, 'utf8');
+      await assert.rejects(
+        generateTargetInventory({ promotionPath }),
+        (error) => error instanceof TargetInventoryGenerationError
+          && error.code === 'PROMOTION_LEDGER_BINDING_MISMATCH',
+      );
+    }
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });
 
 test('rejects an inventory that omits a canonical record', async () => {
@@ -248,8 +280,8 @@ test('preserves inventory metadata when a candidate is promoted to a new canonic
       checkPilotCompleteness: false,
     });
     assert.equal(summary.currentStartCount, 301);
-    assert.equal(summary.candidateStartCount, 1718);
-    assert.equal(summary.plannedStartCount, 2019);
+    assert.equal(summary.candidateStartCount, 996);
+    assert.equal(summary.plannedStartCount, 1297);
 
     for (const [driftIndex, mutate] of [
       (entry) => {

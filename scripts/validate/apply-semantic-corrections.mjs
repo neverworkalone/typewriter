@@ -20,6 +20,10 @@ import {
   SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
   SEMANTIC_BOUNDARY_METHOD,
   canonicalRecordsSha256,
+  compactSemanticReviewArtifact,
+  isCompactSemanticDecisionSource,
+  materializeSemanticReviewArtifact,
+  readAuthoredBatchDecisionSources,
   readSemanticAuditArtifact,
   sha256Json,
   serializeSemanticDecisionSource,
@@ -669,6 +673,7 @@ function prepareDecisionSource({
   manifest,
   prospectiveRecords,
   correctionManifestPath,
+  batchDecisionSources = [],
 }) {
   if (decisionSource.source_id !== manifest.decision_source_id) {
     fail('decision source id does not match correction manifest.decision_source_id');
@@ -688,7 +693,18 @@ function prepareDecisionSource({
     fail('existing correction source is not the manifest revision being amended');
   }
 
+  const compactSource = isCompactSemanticDecisionSource(decisionSource);
   const next = structuredClone(decisionSource);
+  if (compactSource) {
+    next.authored_review = materializeSemanticReviewArtifact(
+      prospectiveRecords,
+      next.authored_review,
+      {
+        decisionSourceId: next.source_id,
+        batchDecisionSources,
+      },
+    );
+  }
   const authoredReview = next.authored_review;
   const authoredById = new Map(authoredReview.records.map((record) => [record.record_id, record]));
   const prospectiveById = new Map(prospectiveRecords.map((recordInfo) => [recordInfo.record.id, recordInfo.record]));
@@ -723,8 +739,10 @@ function prepareDecisionSource({
     source_revision: manifest.source_revision,
   };
   next.source.canonical_records_sha256 = canonicalDigest;
-  next.authored_review = authoredReview;
-  next.authored_review_sha256 = sha256Json(authoredReview);
+  next.authored_review = compactSource
+    ? compactSemanticReviewArtifact(authoredReview)
+    : authoredReview;
+  next.authored_review_sha256 = sha256Json(next.authored_review);
   next.correction_source = authoredReview.review_pass.correction_source;
   return { decisionSource: next, sourceAtProspective };
 }
@@ -875,6 +893,7 @@ export async function applyCorrections({
     readCanonicalRecords(canonicalDirectory),
     readJson(boundaryDecisionsPath),
   ]);
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
   validateManifest(manifest);
 
   const canonicalDigest = canonicalRecordsSha256(canonical.records);
@@ -913,6 +932,7 @@ export async function applyCorrections({
       manifest,
       prospectiveRecords,
       correctionManifestPath,
+      batchDecisionSources,
     });
     await writeFile(
       temporaryDecisionSourcePath,

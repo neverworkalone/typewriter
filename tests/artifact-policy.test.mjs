@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import test from 'node:test';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,6 +25,79 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function decisionSourceFixture({ candidateRecords = [], decisions = [] } = {}) {
+  return {
+    schema_version: '1',
+    contract_version: 'lexical-semantic-decision-source-v2',
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: 'future-source',
+    authoring_mode: 'agent-authored-decision',
+    issue: 141,
+    parent_issue: 138,
+    batch_id: 'future-batch',
+    provenance: {},
+    candidate_source: {},
+    selection: {},
+    decisions,
+    review: {},
+    candidate_records: candidateRecords,
+    candidate_records_sha256: 'b'.repeat(64),
+    artifact_sha256: 'c'.repeat(64),
+  };
+}
+
+function decisionRowFixture(overrides = {}) {
+  return {
+    candidate_record_id: 'w1001',
+    inventory_id: 'm5-12a-w001',
+    candidate_record_sha256: 'a'.repeat(64),
+    decision: 'held',
+    rank: 1,
+    score: 1,
+    decision_rationale: 'future decision',
+    selection_rationale: 'future selection',
+    review_pass_id: 'future-review',
+    gloss_judgment: 'fit',
+    sense_reviews: [],
+    ...overrides,
+  };
+}
+
+function candidateRecordFixture({ multiSense = false, relation = false } = {}) {
+  const senses = [{
+    id: 'w1001-s1',
+    pos: 'noun',
+    gloss: '첫 번째 뜻',
+    ...(relation
+      ? {
+        relations: [{
+          target: 'w1002',
+          target_sense: 'w1002-s1',
+          type: 'near',
+          note: 'source-bound relation note',
+        }],
+      }
+      : {}),
+  }];
+  if (multiSense) {
+    senses.push({
+      id: 'w1001-s2',
+      pos: 'noun',
+      gloss: '두 번째 뜻',
+      relations: [],
+    });
+  }
+  return {
+    id: 'w1001',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w1001',
+    lemma: '시험 단어',
+    search_forms: ['시험 단어'],
+    senses,
+  };
+}
+
 test('current semantic audit and target inventory are deterministic in-memory projections', async () => {
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
@@ -34,10 +107,10 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   assert.equal(artifact.sense_count, 2301);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 15621959);
-  assert.equal(sha256(semanticAuditBytes), '020df51a830abfa03f447e8c28e7db4330efe902a0e99a05dc892892ee801f19');
-  assert.equal(inventoryBytes.length, 1338505);
-  assert.equal(sha256(inventoryBytes), 'bb89132cf55109d661cbbc731163320692b9fd41c4571c61bebb6baa362a6351');
+  assert.equal(semanticAuditBytes.length, 14337098);
+  assert.equal(sha256(semanticAuditBytes), '80d519b2da976305a6d6dbe7955bf74598ac4cd7e8cac79579323ef250a5e1bf');
+  assert.equal(inventoryBytes.length, 1338554);
+  assert.equal(sha256(inventoryBytes), '0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66');
   assert.equal(inventory.canonical_snapshot.record_count, 2042);
   assert.equal(inventory.canonical_snapshot.start_count, 2000);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
@@ -121,6 +194,421 @@ test('artifact policy rejects role-shaped projections relocated into a future ba
       );
       await rm(filePath, { force: true });
     }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects reconstructible gate output in a v2 durable manifest', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-gate-policy-'));
+  const relativePath = 'data/batches/future-admission.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '2',
+    contract_version: 'lexical-batch-admission-v2',
+    artifact_id: 'future-admission',
+    gate_evidence: {
+      contract_version: 'lexical-batch-gate-evidence-v2',
+      preflight: {
+        contract_version: 'lexical-batch-preflight-v1',
+        status: 'complete',
+        input_canonical_directory_sha256: 'a'.repeat(64),
+        checks: {
+          deterministic_sqlite: {
+            status: 'pass',
+            input_canonical_directory_sha256: 'a'.repeat(64),
+            summary: { outputPath: '/tmp/generated.sqlite' },
+          },
+        },
+      },
+    },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_GATE_DUPLICATION',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy closes the v2 promotion preflight contract even without gate_evidence', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-promotion-policy-'));
+  const relativePath = 'data/batches/future-promotion.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '2',
+    contract_version: 'lexical-batch-promotion-v2',
+    preflight: {
+      contract_version: 'lexical-batch-preflight-v1',
+      status: 'complete',
+      input_canonical_directory_sha256: 'a'.repeat(64),
+      checks: {
+        deterministic_sqlite: {
+          status: 'pass',
+          input_canonical_directory_sha256: 'a'.repeat(64),
+          summary: { outputPath: '/tmp/generated.sqlite' },
+        },
+      },
+    },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_GATE_DUPLICATION',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects alternate full-record keys in a promotion ledger', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-ledger-policy-'));
+  const relativePath = 'data/inventory/m5-target-promotions.jsonl';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    batch_id: 'm5-12a',
+    inventory_id: 'm5-12a-w001',
+    canonical_id: 'w1001',
+    decision: 'included',
+    record_sha256: 'a'.repeat(64),
+    decision_source_id: 'm5-12a-decisions',
+    decision_source_sha256: 'b'.repeat(64),
+    decision_row_sha256: 'c'.repeat(64),
+    reason_codes: [],
+    flags: [],
+    decision_note: 'promotion event',
+    record: { lemma: '재도입된 본문' },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects alternate decision-row envelopes in the v2 source', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-decision-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    contract_version: 'lexical-semantic-decision-source-v2',
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: 'future-source',
+    authoring_mode: 'agent-authored-decision',
+    issue: 141,
+    parent_issue: 138,
+    batch_id: 'future-batch',
+    provenance: {},
+    candidate_source: {},
+    selection: {},
+    decisions: [{
+      candidate_record_id: 'w1001',
+      inventory_id: 'm5-12a-w001',
+      candidate_record_sha256: 'a'.repeat(64),
+      decision: 'held',
+      rank: 1,
+      score: 1,
+      decision_rationale: 'future decision',
+      sense_reviews: [],
+      candidate_record: { id: 'w1001', lemma: 'duplicate body' },
+    }],
+    review: {},
+    candidate_records: [],
+    candidate_records_sha256: 'b'.repeat(64),
+    artifact_sha256: 'c'.repeat(64),
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy closes nested admission and promotion durable containers', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-nested-policy-'));
+  const cases = [
+    {
+      relativePath: 'data/batches/future-promotion.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-promotion-v2',
+        outputs: {
+          canonical_directory_sha256: 'a'.repeat(64),
+          rebuilt_sqlite_summary: { outputPath: '/tmp/generated.sqlite' },
+        },
+      },
+    },
+    {
+      relativePath: 'data/batches/future-admission.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-admission-v2',
+        sources: {
+          authorization: { source_id: 'authorization', path: 'external', sha256: 'a'.repeat(64) },
+          unexpected_review_payload: { reviewed_record: { lemma: 'duplicate' } },
+        },
+      },
+    },
+  ];
+
+  try {
+    for (const { relativePath, value } of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy accepts authored correction, boundary, and relation payloads', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-typed-decision-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const correctedRecord = candidateRecordFixture({ relation: true });
+  const corrected = decisionSourceFixture({
+    candidateRecords: [correctedRecord],
+    decisions: [decisionRowFixture({
+      decision: 'corrected',
+      correction: {
+        action: 'replace-authored-record',
+        record: correctedRecord,
+        output_record_sha256: 'd'.repeat(64),
+      },
+    })],
+  });
+  const multiSenseRecord = candidateRecordFixture({ multiSense: true, relation: true });
+  const multiSense = decisionSourceFixture({
+    candidateRecords: [multiSenseRecord],
+    decisions: [decisionRowFixture({
+      boundary_pairs: [{
+        left_sense_id: 'w1001-s1',
+        right_sense_id: 'w1001-s2',
+        relationship: 'distinct',
+        decision: 'retain',
+        left_gloss_sha256: 'e'.repeat(64),
+        right_gloss_sha256: 'f'.repeat(64),
+        evidence_basis: 'separate gloss evidence',
+        distinguishing_feature: 'distinct writer-facing meanings',
+        decision_source_id: 'future-source',
+        rationale: 'w1001 w1001-s1 w1001-s2 pair evidence',
+      }],
+      sense_reviews: [{}, {}],
+    })],
+  });
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    for (const value of [corrected, multiSense]) {
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.doesNotReject(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+      );
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects arbitrary objects hidden in allowed scalar fields', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-typed-scalar-policy-'));
+  const cases = [
+    {
+      relativePath: 'data/batches/future-promotion.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-promotion-v2',
+        checkpoint: {
+          issue: 7,
+          milestone: { reviewed_record: { lemma: 'duplicate body' } },
+          canonical_records: 1,
+          canonical_starts: 1,
+          status: 'recorded-on-promotion',
+        },
+      },
+    },
+    {
+      relativePath: 'data/batches/future-admission.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-admission-v2',
+        sources: {
+          authorization: {
+            source_id: 'authorization',
+            path: { reviewed_record: { lemma: 'duplicate body' } },
+          },
+        },
+      },
+    },
+  ];
+
+  try {
+    for (const { relativePath, value } of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects an unregistered decision-source contract version', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-unregistered-contract-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = decisionSourceFixture();
+  value.contract_version = 'lexical-semantic-decision-source-v3';
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects an equivalent decision source hidden under an alternate root envelope', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-envelope-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = { archive: decisionSourceFixture() };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects a markerless promotion-evidence JSONL envelope', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-markerless-ledger-policy-'));
+  const relativePath = 'data/batches/future-promotion-evidence.jsonl';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    batch_id: 'future-batch',
+    record: { id: 'w1001', lemma: 'reintroduced body' },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy closes the compact canonical decision source against derived-field reintroduction', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-source-policy-'));
+  const relativePath = 'data/validation/canonical-semantic-decision-source.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const source = JSON.parse(await readFile(
+    path.resolve('data/validation/canonical-semantic-decision-source.json'),
+    'utf8',
+  ));
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(source)}\n`, 'utf8');
+    await assert.doesNotReject(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+    );
+
+    const derivedField = structuredClone(source);
+    derivedField.authored_review.records[0].sense_reviews[0].pos = {
+      status: 'pass',
+      observed_pos: 'noun',
+    };
+    await writeFile(filePath, `${JSON.stringify(derivedField)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+
+    const unregistered = structuredClone(source);
+    unregistered.contract_version = 'lexical-semantic-canonical-decision-source-v3';
+    await writeFile(filePath, `${JSON.stringify(unregistered)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }

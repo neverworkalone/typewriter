@@ -12,7 +12,7 @@ work areas are documented here without creating empty scaffolding.
 | Material | Responsibility | Location | Repository rule |
 | --- | --- | --- | --- |
 | Canonical dictionary data | Typewriter-authored and editorially reviewed words, senses, expressions, and relations | `data/canonical/*.jsonl` | Tracked in Git. This is the editable source of truth. |
-| M5 target inventory | Non-canonical target selection, classification, and review-state decisions | `data/inventory/m5-target-seed.json` plus the on-demand projection builder | The authored seed is tracked; the deterministic inventory projection is rebuilt in memory and is never a canonical or product build input. |
+| M5 target inventory | Non-canonical target selection, classification, review-state decisions, and promoted inventory history | `data/inventory/m5-target-seed.json` plus append-only `data/inventory/m5-target-promotions.jsonl` and the on-demand projection builder | The active seed contains planning rows; the promotion ledger contains immutable promoted events. The deterministic inventory projection joins both in memory and is never a canonical or product build input. |
 | M5 batch manifest and measurements | Review metadata, generator identity, decisions, event-level relation diffs, timing passes, and derived calibration measurements; no raw draft body | `data/batches/*.json` when a real batch is committed | Tracked only as an audit record; staging records, raw drafts, and external source text remain outside the repository. |
 | Raw unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | A temporary workspace outside this repository | Never committed. Keep only the review decision and permitted Typewriter-authored result when appropriate. |
@@ -49,9 +49,9 @@ The following locations are deliberately not created as part of the foundation:
 - user data has no repository directory because it belongs to browser storage.
 
 `data/inventory/` is an M5 exception: it contains reviewable target-selection
-artifacts, not lexical records. The validator joins its current snapshot to
-`data/canonical/` and rejects drift. The dictionary builder does not discover or
-read this directory.
+artifacts, not lexical records. The validator joins the active seed and
+append-only promotion ledger to `data/canonical/` and rejects drift. The
+dictionary builder does not discover or read this directory.
 
 `data/batches/` is a second M5 exception used for reviewable manifests, relation
 diff ledgers, and derived calibration measurements. A manifest records the target
@@ -141,18 +141,23 @@ artifact; it is not the current canonical gate after issue #138.
 
 Issue #138's M5-12A promotion is recorded by
 `data/batches/m5-12a-admission.json`, `data/batches/m5-12a-promotion.json`,
-`data/canonical/m5-12a-expansion.jsonl`, the current target seed, and the
-current semantic decision source. `scripts/batch/m5-12a-pipeline.mjs` binds 802
+`data/canonical/m5-12a-expansion.jsonl`, the current target seed,
+`data/inventory/m5-target-promotions.jsonl`, and the current semantic decision
+source. Promoted inventory history is recorded in the append-only ledger; the
+active seed retains non-promoted planning rows. `scripts/batch/m5-12a-pipeline.mjs` binds 802
 Typewriter-authored candidate identities to deterministic slots, runs the
 shared live lexical producer and complete semantic audit, and admits exactly
 722 imported starts. The current authored source records 700 included plus 22
 corrected starts; its held, rejected, and deferred rows remain visible in the
 seed. Admission enforces the 722-import, 80-row reserve, deferred-denominator,
 and correction-rate contracts without requiring those current sub-counts.
-The artifacts truthfully identify the work as `agent-generated`, keep
-generation and verification pass IDs separate, make no human-review claim,
-and record issue #7's 2,000-start checkpoint. Candidate bodies and temporary
-proposal/review projections remain outside the repository.
+The v2 manifests retain authorization, source/input digests, mutation/output
+events, and compact preflight bindings; recomputable pass matrices, build
+summaries, and temporary paths remain outside the repository. The artifacts
+truthfully identify the work as `agent-generated`, keep generation and
+verification pass IDs separate, make no human-review claim, and record issue
+#7's 2,000-start checkpoint. Candidate bodies and temporary proposal/review
+projections remain outside the repository.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event

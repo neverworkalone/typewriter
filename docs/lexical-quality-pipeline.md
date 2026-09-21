@@ -51,6 +51,35 @@ The shared implementation is:
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 
+## Durable batch evidence contract
+
+M5-12A uses the v2 decision-source contract. The tracked
+`data/batches/m5-12a-semantic-decisions.json` keeps authored candidate bodies
+and candidate-specific decisions, but it does not store observations that the
+shared validators derive from those bodies. POS, writer-domain axes,
+connector matches, gloss digests, and aggregate relation counts are rebuilt at
+the validation boundary. The durable row keeps independent semantic,
+boundary, relation, no-relation, and topic-span evidence where that evidence
+cannot be manufactured by the producer.
+
+The canonical semantic authority binds each promoted record to that source by
+source ID, source digest, decision-row digest, candidate-record digest, the
+selection decision/rank/score, and the reviewed-record digest. It does not
+copy the batch row's narrative or full candidate record into the binding.
+
+Promoted inventory history is an append-only
+`data/inventory/m5-target-promotions.jsonl` ledger. The active
+`m5-target-seed.json` contains only current non-promoted planning decisions for
+this batch; the inventory builder joins canonical records, the active seed, and
+the ledger in memory.
+
+Admission and promotion manifests retain authorization, source/input digests,
+the exact decision counts, mutation/output events, and compact preflight
+status/digest bindings. Full pass matrices, audit payloads, build/package
+summaries, and temporary filesystem paths remain execution-time projections.
+`config/artifact-policy.json` rejects their reintroduction under an equivalent
+v2 gate contract, regardless of the future filename.
+
 Historical replay uses the same contract at each immutable canonical boundary.
 The scoped envelopes [`data/validation/m5-10a-wave-a2-semantic-audit.json`](../data/validation/m5-10a-wave-a2-semantic-audit.json)
 and [`data/validation/m5-10-wave-b-semantic-audit.json`](../data/validation/m5-10-wave-b-semantic-audit.json)

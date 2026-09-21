@@ -42,6 +42,16 @@ against a clean checkout in CI. The policy is intentionally pattern-based and
 does not impose a blanket line or byte limit on `data/batches/**` or
 `data/validation/**`.
 
+Issue #141 extends this boundary to durable evidence semantics. The v2 batch
+decision contract rejects derived gloss/POS/domain/connector copies, canonical
+batch bindings reject copied narrative, and the v2 gate contract rejects
+reconstructible metrics, pass matrices, full preflight outputs, and temporary
+paths. Promoted inventory history is kept as an append-only digest ledger
+instead of accumulating in the active target seed. See
+[`docs/issue-141-evidence-minimization.md`](issue-141-evidence-minimization.md)
+for the PR #139 field map, duplicate graph, replay test, and retained
+irreducible evidence.
+
 ## Reproducibility evidence
 
 The current canonical source digest is

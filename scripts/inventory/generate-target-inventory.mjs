@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +13,17 @@ export const DEFAULT_SEED_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/inventory/m5-target-seed.json',
 );
+export const DEFAULT_PROMOTION_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/inventory/m5-target-promotions.jsonl',
+);
 export const DEFAULT_OUTPUT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/inventory/m5-target-inventory.json',
+);
+export const DEFAULT_DECISION_SOURCE_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/validation/canonical-semantic-decision-source.json',
 );
 
 export function serializeTargetInventory(inventory) {
@@ -176,6 +185,171 @@ function validateSeedPromotion(entry) {
   }
 }
 
+function requirePromotionDigest(value, label) {
+  if (typeof value !== 'string' || !/^[0-9a-f]{64}$/u.test(value)) {
+    throw new TargetInventoryGenerationError(
+      `${label} must be a SHA-256 digest`,
+      'INVALID_PROMOTION_DIGEST',
+    );
+  }
+}
+
+function sha256Json(value) {
+  return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+
+function recordOf(recordInfo) {
+  return recordInfo?.record ?? recordInfo;
+}
+
+const PROMOTION_LEDGER_FIELDS = new Set([
+  'schema_version',
+  'batch_id',
+  'inventory_id',
+  'canonical_id',
+  'decision',
+  'record_sha256',
+  'decision_source_id',
+  'decision_source_sha256',
+  'decision_row_sha256',
+  'reason_codes',
+  'flags',
+  'decision_note',
+]);
+
+function validatePromotionLedgerEntry(entry, index) {
+  const label = `promotion ledger[${index}]`;
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    throw new TargetInventoryGenerationError(`${label} must be an object`, 'INVALID_PROMOTION_LEDGER');
+  }
+  const unknownFields = Object.keys(entry).filter((key) => !PROMOTION_LEDGER_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    throw new TargetInventoryGenerationError(
+      `${label} contains unknown fields: ${unknownFields.join(', ')}`,
+      'INVALID_PROMOTION_LEDGER',
+    );
+  }
+  for (const key of [
+    'schema_version',
+    'batch_id',
+    'inventory_id',
+    'canonical_id',
+    'decision',
+    'record_sha256',
+    'decision_source_id',
+    'decision_source_sha256',
+    'decision_row_sha256',
+    'reason_codes',
+    'flags',
+    'decision_note',
+  ]) {
+    if (!Object.hasOwn(entry, key)) {
+      throw new TargetInventoryGenerationError(`${label}.${key} is required`, 'INVALID_PROMOTION_LEDGER');
+    }
+  }
+  if (entry.schema_version !== '1') {
+    throw new TargetInventoryGenerationError(`${label}.schema_version is unsupported`, 'INVALID_PROMOTION_LEDGER');
+  }
+  if (typeof entry.batch_id !== 'string' || entry.batch_id.length === 0
+    || typeof entry.inventory_id !== 'string' || entry.inventory_id.length === 0
+    || !/^w[0-9]{3,}$/u.test(entry.canonical_id)) {
+    throw new TargetInventoryGenerationError(`${label} identity is invalid`, 'INVALID_PROMOTION_LEDGER');
+  }
+  if (!['included', 'corrected'].includes(entry.decision)) {
+    throw new TargetInventoryGenerationError(`${label}.decision must be included or corrected`, 'INVALID_PROMOTION_LEDGER');
+  }
+  requirePromotionDigest(entry.record_sha256, `${label}.record_sha256`);
+  requirePromotionDigest(entry.decision_source_sha256, `${label}.decision_source_sha256`);
+  requirePromotionDigest(entry.decision_row_sha256, `${label}.decision_row_sha256`);
+  if (!Array.isArray(entry.reason_codes) || !Array.isArray(entry.flags)
+    || typeof entry.decision_note !== 'string' || entry.decision_note.length === 0
+    || typeof entry.decision_source_id !== 'string' || entry.decision_source_id.length === 0) {
+    throw new TargetInventoryGenerationError(`${label} metadata is invalid`, 'INVALID_PROMOTION_LEDGER');
+  }
+}
+
+export async function readPromotionLedger(promotionPath = DEFAULT_PROMOTION_PATH) {
+  try {
+    const bytes = await readFile(promotionPath, 'utf8');
+    const entries = bytes
+      .split('\n')
+      .filter((line) => line.trim().length > 0)
+      .map((line, index) => {
+        try {
+          return JSON.parse(line);
+        } catch (error) {
+          throw new TargetInventoryGenerationError(
+            `promotion ledger line ${index + 1} is not valid JSON: ${error.message}`,
+            'INVALID_PROMOTION_LEDGER',
+          );
+        }
+      });
+    entries.forEach(validatePromotionLedgerEntry);
+    return entries;
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+export function serializePromotionLedger(entries) {
+  return Buffer.from(
+    entries.length === 0
+      ? ''
+      : `${entries.map((entry) => JSON.stringify(entry)).join('\n')}\n`,
+    'utf8',
+  );
+}
+
+export function validatePromotionLedgerBindings({
+  entries = [],
+  canonicalRecords = [],
+  decisionSource,
+} = {}) {
+  const canonicalById = new Map(
+    canonicalRecords.map((recordInfo) => {
+      const record = recordOf(recordInfo);
+      return [record.id, record];
+    }),
+  );
+  const reviewRecords = decisionSource?.authored_review?.records;
+  if (!Array.isArray(reviewRecords)) {
+    throw new TargetInventoryGenerationError(
+      'promotion ledger requires canonical authored semantic decision records',
+      'PROMOTION_LEDGER_SOURCE_MISSING',
+    );
+  }
+  const reviewById = new Map(reviewRecords.map((review) => [review.record_id, review]));
+  for (const [index, entry] of entries.entries()) {
+    const label = `promotion ledger[${index}]`;
+    const record = canonicalById.get(entry.canonical_id);
+    if (!record) {
+      throw new TargetInventoryGenerationError(
+        `${label}.canonical_id ${entry.canonical_id} is not present in canonical data`,
+        'PROMOTION_LEDGER_BINDING_MISMATCH',
+      );
+    }
+    const recordDigest = sha256Json(record);
+    const review = reviewById.get(entry.canonical_id);
+    const binding = review?.authored_batch_decision;
+    if (!review || !binding
+      || review.record_sha256 !== recordDigest
+      || entry.record_sha256 !== recordDigest
+      || entry.decision_source_id !== binding.source_id
+      || entry.decision_source_sha256 !== binding.artifact_sha256
+      || entry.decision_row_sha256 !== binding.decision_row_sha256
+      || entry.canonical_id !== binding.candidate_record_id
+      || entry.decision !== binding.decision
+      || binding.reviewed_record_sha256 !== recordDigest) {
+      throw new TargetInventoryGenerationError(
+        `${label} is not bound to the canonical record and authored batch decision for ${entry.canonical_id}`,
+        'PROMOTION_LEDGER_BINDING_MISMATCH',
+      );
+    }
+  }
+  return true;
+}
+
 function proposedEditorialEntry(seedEntry) {
   const { proposal_canonical_id: ignoredProposalCanonicalId, ...entry } = seedEntry;
   return { ...entry, source: 'editorial', status: 'candidate' };
@@ -208,19 +382,55 @@ function promotedCanonicalEntry(recordInfo, seedEntry) {
 export async function buildTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
+  promotionPath,
+  decisionSourcePath = DEFAULT_DECISION_SOURCE_PATH,
   generatedFromSeedPath = seedPath,
   generatedFromCanonicalDirectory = canonicalDirectory,
   canonicalScopeDirectory = canonicalDirectory,
 } = {}) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const seed = JSON.parse(await readFile(seedPath, 'utf8'));
+  const effectivePromotionPath = promotionPath
+    ?? (path.resolve(seedPath) === path.resolve(DEFAULT_SEED_PATH)
+      ? DEFAULT_PROMOTION_PATH
+      : undefined);
+  const promotionLedger = effectivePromotionPath
+    ? await readPromotionLedger(effectivePromotionPath)
+    : [];
+  if (promotionLedger.length > 0) {
+    let decisionSource;
+    try {
+      decisionSource = JSON.parse(await readFile(decisionSourcePath, 'utf8'));
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        throw new TargetInventoryGenerationError(
+          `promotion decision source does not exist: ${decisionSourcePath}`,
+          'PROMOTION_LEDGER_SOURCE_MISSING',
+        );
+      }
+      if (error instanceof SyntaxError) {
+        throw new TargetInventoryGenerationError(
+          `promotion decision source is not valid JSON: ${error.message}`,
+          'PROMOTION_LEDGER_SOURCE_INVALID',
+        );
+      }
+      throw error;
+    }
+    validatePromotionLedgerBindings({
+      entries: promotionLedger,
+      canonicalRecords: canonical.records,
+      decisionSource,
+    });
+  }
 
-  const promotions = seed.targets.filter((entry) => {
+  const embeddedPromotions = seed.targets.filter((entry) => {
     validateSeedPromotion(entry);
     return entry.status === 'promoted';
   });
+  const promotions = [...embeddedPromotions, ...promotionLedger];
   const proposals = seed.targets.filter((entry) => entry.status === 'proposed');
   const promotionsByCanonicalId = new Map();
+  const promotionsByInventoryId = new Map();
   for (const promotion of promotions) {
     if (promotionsByCanonicalId.has(promotion.canonical_id)) {
       throw new TargetInventoryGenerationError(
@@ -228,7 +438,14 @@ export async function buildTargetInventory({
         'DUPLICATE_PROMOTED_CANONICAL_ID',
       );
     }
+    if (promotionsByInventoryId.has(promotion.inventory_id)) {
+      throw new TargetInventoryGenerationError(
+        `multiple promoted seeds use inventory ${promotion.inventory_id}`,
+        'DUPLICATE_PROMOTED_INVENTORY_ID',
+      );
+    }
     promotionsByCanonicalId.set(promotion.canonical_id, promotion);
+    promotionsByInventoryId.set(promotion.inventory_id, promotion);
   }
   const canonicalById = new Map(
     canonical.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),
@@ -296,6 +513,7 @@ export async function buildTargetInventory({
     generated_from: [
       path.relative(process.cwd(), generatedFromCanonicalDirectory),
       path.relative(process.cwd(), generatedFromSeedPath),
+      ...(promotionLedger.length > 0 ? [path.relative(process.cwd(), effectivePromotionPath)] : []),
     ],
     canonical_snapshot: {
       record_count: currentEntries.length,

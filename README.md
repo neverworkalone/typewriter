@@ -82,6 +82,12 @@ The deterministic candidate tiers and tie rules are documented in
 For milestone-specific design notes, implementation records, audits, and historical
 reports, see the documents under [`docs/`](docs/).
 
+Batch evidence must preserve authored decisions and immutable bindings while
+keeping recomputable validation output out of Git. The PR #139 case study and
+the v2 durable evidence contract are documented in
+[`docs/issue-141-evidence-minimization.md`](docs/issue-141-evidence-minimization.md);
+`npm run validate:evidence` prints its reproducible footprint report.
+
 ## Data policy
 
 External APIs, dictionaries, corpora, and LLMs may be used as reference, verification, or draft-generation tools when their terms permit the intended use.
