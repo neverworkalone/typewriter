@@ -7,7 +7,7 @@
   "grandparent_issue": 7,
   "batch_id": "m5-12a-expansion-20260920",
   "status": "promoted",
-  "admission_sha256": "ec251671be73b917b5475b6d9a08ca50944999e43bb79d9e81502f5545bc03aa",
+  "admission_sha256": "33639ee2e0240703d0882fea6219d87ea0d912bc8453969e05e103faa780bba7",
   "preflight": {
     "contract_version": "lexical-batch-preflight-v1",
     "status": "complete",
@@ -47,7 +47,7 @@
       }
     }
   },
-  "gate_evidence_sha256": "70c77fbe8110524735eed381ff1d80d815293e9b4d4379f931e50e73b817f38a",
+  "gate_evidence_sha256": "4f2ac1f5eca8bfd464a4217cb2cffe1a0c8e2762735eea314e6469babe64df1c",
   "outputs": {
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "canonical_import": {
@@ -74,12 +74,12 @@
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
       "materialization": "on-demand",
-      "sha256": "910de503da6257e21963bfe7ec1736dc882999f18174e65ed8d1c4353a24efe0",
+      "sha256": "8fad52a41591d85d3b065268ed19aad64b2faeeae845d953e5e565356e76ffb3",
       "entry_count": 2235
     },
     "semantic_decision_source": {
       "path": "data/validation/canonical-semantic-decision-source.json",
-      "sha256": "3aef49714ec2561c64cce210b57b060fae261905f27e8967b2efece015036e84",
+      "sha256": "875cb35a2ba575003ec4c4ffccd1e3943ac67b4d1558712d4d6bd7da7e14247d",
       "source_id": "canonical-semantic-decision-source-20260914",
       "canonical_records_sha256": "9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8"
     }
@@ -117,8 +117,8 @@
       "prefix_event_count": 722,
       "prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a"
     },
-    "semantic_decision_source_sha256": "3aef49714ec2561c64cce210b57b060fae261905f27e8967b2efece015036e84",
-    "semantic_audit_sha256": "f49fc128b4ac2801c7a1c84acffcae371cccf270f5c9ac36225d6adde9e37b8f",
+    "semantic_decision_source_sha256": "875cb35a2ba575003ec4c4ffccd1e3943ac67b4d1558712d4d6bd7da7e14247d",
+    "semantic_audit_sha256": "61bb122ab9c72e823f37893e1b5fd0fbfe6bc851fda9bb9d09a398befa1efde7",
     "semantic_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",
