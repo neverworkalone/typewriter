@@ -538,6 +538,53 @@ test('semantic-audit topic evidence covers every ambiguous span in one gloss', (
   );
 });
 
+test('topic evidence lookup stays span-exact for repeated ambiguous surfaces', () => {
+  const record = {
+    id: 'w-topic-span-repeated',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-span-repeated',
+    lemma: '반복주제',
+    search_forms: ['반복주제'],
+    senses: [{
+      id: 'w-topic-span-repeated-s1',
+      pos: 'noun',
+      gloss: '문장에서는 운동화은 배경으로 운동화은 배경으로 장면을 그린다.',
+    }],
+  };
+  const recordInfos = [{ record, source: 'topic-span-repeated-regression' }];
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-span-repeated-s1': [
+        {
+          state: 'adnominal',
+          topic: '운동화',
+          particle: '은',
+          predicate: '배경으로',
+        },
+        {
+          state: 'noun-topic',
+          topic: '운동화',
+          particle: '은',
+          predicate: '배경으로',
+        },
+      ],
+    },
+  });
+  const topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit);
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    throwOnError: false,
+    topicEvidence,
+  });
+
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
+      .map(({ sense_id: senseId, observation }) => [senseId, observation.token_index]),
+    [['w-topic-span-repeated-s1', 3]],
+  );
+});
+
 test('the complete canonical audit catches a repeated template completed by a later batch', () => {
   const recordInfos = ['기존의 결', '새로운 결', '또 다른 결', '마지막 결'].map((lemma, index) => ({
     source: index === 0 ? 'base' : 'prospective-batch',

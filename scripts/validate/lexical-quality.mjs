@@ -289,7 +289,16 @@ function stripGlossTokenPunctuation(token) {
   return token.replace(/^[()[\]{}"“”‘’'.,;:!?。！？…]+|[()[\]{}"“”‘’'.,;:!?。！？…]+$/gu, '');
 }
 
-function findAuthoredParticleFragment(gloss, { topic, particle, predicate } = {}) {
+function findAuthoredParticleFragment(
+  gloss,
+  {
+    topic,
+    particle,
+    predicate,
+    tokenIndex,
+    token_index: authoredTokenIndex,
+  } = {},
+) {
   if (typeof gloss !== 'string'
     || typeof topic !== 'string'
     || typeof particle !== 'string'
@@ -298,7 +307,9 @@ function findAuthoredParticleFragment(gloss, { topic, particle, predicate } = {}
   }
   const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
   const topicToken = `${topic}${particle}`;
+  const expectedTokenIndex = tokenIndex ?? authoredTokenIndex;
   for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (expectedTokenIndex !== undefined && index !== expectedTokenIndex) continue;
     if (tokens[index] === topicToken && tokens[index + 1] === predicate) {
       return { topic, particle, predicate, token_index: index };
     }
@@ -459,6 +470,7 @@ export function inspectMalformedParticles(
       stem,
       particle,
       nextToken,
+      tokenIndex,
       topicEvidence,
       senseId,
     })) continue;
@@ -466,6 +478,7 @@ export function inspectMalformedParticles(
       stem,
       particle,
       nextToken,
+      tokenIndex,
       topicEvidence,
       senseId,
     })) continue;
