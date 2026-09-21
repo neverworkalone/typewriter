@@ -23,6 +23,7 @@ import {
   compactSemanticReviewArtifact,
   isCompactSemanticDecisionSource,
   materializeSemanticReviewArtifact,
+  readAuthoredBatchDecisionSources,
   readSemanticAuditArtifact,
   sha256Json,
   serializeSemanticDecisionSource,
@@ -672,6 +673,7 @@ function prepareDecisionSource({
   manifest,
   prospectiveRecords,
   correctionManifestPath,
+  batchDecisionSources = [],
 }) {
   if (decisionSource.source_id !== manifest.decision_source_id) {
     fail('decision source id does not match correction manifest.decision_source_id');
@@ -697,7 +699,10 @@ function prepareDecisionSource({
     next.authored_review = materializeSemanticReviewArtifact(
       prospectiveRecords,
       next.authored_review,
-      { decisionSourceId: next.source_id },
+      {
+        decisionSourceId: next.source_id,
+        batchDecisionSources,
+      },
     );
   }
   const authoredReview = next.authored_review;
@@ -888,6 +893,7 @@ export async function applyCorrections({
     readCanonicalRecords(canonicalDirectory),
     readJson(boundaryDecisionsPath),
   ]);
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
   validateManifest(manifest);
 
   const canonicalDigest = canonicalRecordsSha256(canonical.records);
@@ -926,6 +932,7 @@ export async function applyCorrections({
       manifest,
       prospectiveRecords,
       correctionManifestPath,
+      batchDecisionSources,
     });
     await writeFile(
       temporaryDecisionSourcePath,

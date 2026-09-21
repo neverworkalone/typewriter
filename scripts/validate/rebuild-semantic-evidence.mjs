@@ -11,6 +11,7 @@ import {
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   assembleSemanticAuditArtifact,
   canonicalRecordsSha256,
+  readAuthoredBatchDecisionSources,
   validateSemanticAuditCoverage,
   validateSemanticDecisionSource,
 } from './semantic-audit.mjs';
@@ -34,10 +35,15 @@ async function rebuildOne({
   coverageOutputPath,
 }) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
   const review = validateSemanticDecisionSource(
     canonical.records,
     decisionSource,
-    { baseRecords: canonical.records, label: 'semantic decision source' },
+    {
+      baseRecords: canonical.records,
+      label: 'semantic decision source',
+      batchDecisionSources,
+    },
   );
   const audit = assembleSemanticAuditArtifact(canonical.records, review, {
     artifactId: path.basename(auditOutputPath, '.json'),

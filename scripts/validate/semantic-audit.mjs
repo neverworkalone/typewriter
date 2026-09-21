@@ -16,6 +16,7 @@ import {
   validateTopicAnalysisEvidence,
 } from './lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
+import { compactAuthoredSemanticDecisionRow } from './semantic-decision-row.mjs';
 
 export { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
@@ -79,6 +80,9 @@ export const DEFAULT_SEMANTIC_DECISION_SOURCE_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/validation/canonical-semantic-decision-source.json',
 );
+export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([
+  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-12a-semantic-decisions.json'),
+]);
 
 export class SemanticAuditError extends Error {
   constructor(message, code = 'SEMANTIC_AUDIT_ERROR') {
@@ -194,41 +198,212 @@ function pickDefined(value, fields) {
     .map((field) => [field, value[field]]));
 }
 
+function replaceAll(value, token, replacement) {
+  return token ? value.split(token).join(replacement) : value;
+}
+
+function rationaleTemplate(value, context = {}) {
+  if (typeof value !== 'string') return undefined;
+  let template = value;
+  const tokens = [
+    ['left_gloss_sha256', context.left_gloss_sha256],
+    ['right_gloss_sha256', context.right_gloss_sha256],
+    ['gloss_sha256', context.gloss_sha256],
+    ['left_gloss_sha256_prefix', context.left_gloss_sha256?.slice(0, 12)],
+    ['right_gloss_sha256_prefix', context.right_gloss_sha256?.slice(0, 12)],
+    ['gloss_sha256_prefix', context.gloss_sha256?.slice(0, 12)],
+    ['left_sense_id', context.left_sense_id],
+    ['right_sense_id', context.right_sense_id],
+    ['sense_id', context.sense_id],
+    ['record_id', context.record_id],
+  ].filter(([, token]) => typeof token === 'string' && token.length > 0)
+    .sort((left, right) => right[1].length - left[1].length);
+  for (const [name, token] of tokens) {
+    template = replaceAll(template, token, `{{${name}}}`);
+  }
+  return template;
+}
+
+function rationaleOccurrences(review) {
+  const occurrences = [];
+  const add = (value, context) => {
+    if (typeof value === 'string' && value.length > 0) occurrences.push({ value, context });
+  };
+  for (const record of review.records ?? []) {
+    if (record.authored_batch_decision) continue;
+    const recordContext = { record_id: record.record_id };
+    add(record.boundary_review?.rationale, recordContext);
+    for (const evidence of record.boundary_review?.evidence ?? []) {
+      add(evidence.evidence_basis, {
+        ...recordContext,
+        sense_id: evidence.sense_id,
+        gloss_sha256: evidence.gloss_sha256,
+      });
+      add(evidence.rationale, {
+        ...recordContext,
+        sense_id: evidence.sense_id,
+        gloss_sha256: evidence.gloss_sha256,
+      });
+    }
+    for (const pair of record.boundary_review?.pairwise ?? []) {
+      const context = {
+        ...recordContext,
+        left_sense_id: pair.left_sense_id,
+        right_sense_id: pair.right_sense_id,
+        left_gloss_sha256: pair.left_gloss_sha256,
+        right_gloss_sha256: pair.right_gloss_sha256,
+      };
+      add(pair.evidence_basis, context);
+      add(pair.distinguishing_feature, context);
+      add(pair.rationale, context);
+    }
+    for (const sense of record.sense_reviews ?? []) {
+      const context = {
+        ...recordContext,
+        sense_id: sense.sense_id,
+        gloss_sha256: sense.review_basis?.gloss_sha256,
+      };
+      add(sense.semantic_rationale, context);
+      add(sense.boundary_rationale, context);
+      add(sense.relation?.rationale, context);
+      add(sense.no_relation_rationale ?? sense.relation?.no_relation_rationale, context);
+    }
+  }
+  return occurrences;
+}
+
+function buildRationaleTemplateRegistry(review) {
+  const counts = new Map();
+  for (const occurrence of rationaleOccurrences(review)) {
+    const template = rationaleTemplate(occurrence.value, occurrence.context);
+    counts.set(template, (counts.get(template) ?? 0) + 1);
+  }
+  const codeByTemplate = new Map();
+  const templatesByCode = {};
+  for (const [template, count] of counts.entries()) {
+    if (count < 2) continue;
+    const code = `reason-${sha256Json(template).slice(0, 16)}`;
+    if (templatesByCode[code] !== undefined && templatesByCode[code] !== template) {
+      fail(`rationale template code collision for ${code}`, 'SEMANTIC_AUDIT_TEMPLATE_COLLISION');
+    }
+    codeByTemplate.set(template, code);
+    templatesByCode[code] = template;
+  }
+  return {
+    codeByTemplate,
+    templates: Object.entries(templatesByCode).map(([code, template]) => ({ code, template })),
+  };
+}
+
+function compactTextField(target, field, value, context, rationaleRegistry) {
+  if (value === undefined) return;
+  const template = rationaleTemplate(value, context);
+  const code = rationaleRegistry?.codeByTemplate.get(template);
+  if (code) target[`${field}_code`] = code;
+  else target[field] = value;
+}
+
+function resolveTextField(stored, field, context, templates, label) {
+  if (stored[field] !== undefined) return stored[field];
+  const code = stored[`${field}_code`];
+  if (code === undefined) return undefined;
+  const template = templates?.get(code);
+  if (typeof template !== 'string') {
+    fail(`${label}.${field}_code does not reference a retained rationale template`, 'SEMANTIC_AUDIT_TEMPLATE_MISSING');
+  }
+  const resolved = template
+    .replaceAll('{{record_id}}', context.record_id ?? '')
+    .replaceAll('{{sense_id}}', context.sense_id ?? '')
+    .replaceAll('{{left_sense_id}}', context.left_sense_id ?? '')
+    .replaceAll('{{right_sense_id}}', context.right_sense_id ?? '')
+    .replaceAll('{{gloss_sha256}}', context.gloss_sha256 ?? '')
+    .replaceAll('{{gloss_sha256_prefix}}', context.gloss_sha256?.slice(0, 12) ?? '')
+    .replaceAll('{{left_gloss_sha256}}', context.left_gloss_sha256 ?? '')
+    .replaceAll('{{right_gloss_sha256}}', context.right_gloss_sha256 ?? '')
+    .replaceAll('{{left_gloss_sha256_prefix}}', context.left_gloss_sha256?.slice(0, 12) ?? '')
+    .replaceAll('{{right_gloss_sha256_prefix}}', context.right_gloss_sha256?.slice(0, 12) ?? '');
+  return resolved;
+}
+
 /**
  * Store authored semantic decisions and immutable bindings only. Canonical
  * content facts, pass envelopes, and validator projections are reconstructed
  * by materializeSemanticReviewArtifact() before validation.
  */
-export function compactSemanticReviewRecord(reviewed) {
+export function compactSemanticReviewRecord(reviewed, { rationaleRegistry } = {}) {
+  // M5-12A owns its authored narrative in the batch decision source. The
+  // canonical authority keeps only the immutable binding and dereferences the
+  // row during materialization; copying the narrative here would create a
+  // second authority for the same decision.
+  if (reviewed?.authored_batch_decision) {
+    return {
+      ...pickDefined(reviewed, ['record_id', 'record_sha256', 'authored_batch_decision']),
+    };
+  }
   const boundary = reviewed?.boundary_review ?? {};
   const compactBoundary = {
-    ...pickDefined(boundary, ['review_id', 'decision', 'classification', 'rationale']),
+    ...pickDefined(boundary, ['review_id', 'decision', 'classification']),
     evidence: (boundary.evidence ?? []).map((item) => pickDefined(item, [
       'sense_id',
-      'evidence_basis',
-      'rationale',
     ])),
     pairwise: (boundary.pairwise ?? []).map((item) => pickDefined(item, [
       'left_sense_id',
       'right_sense_id',
       'relationship',
       'decision',
-      'evidence_basis',
-      'distinguishing_feature',
-      'rationale',
     ])),
   };
+  for (const [index, item] of (boundary.evidence ?? []).entries()) {
+    const compact = compactBoundary.evidence[index];
+    compactTextField(compact, 'evidence_basis', item.evidence_basis, {
+      record_id: reviewed.record_id,
+      sense_id: item.sense_id,
+      gloss_sha256: item.gloss_sha256,
+    }, rationaleRegistry);
+    compactTextField(compact, 'rationale', item.rationale, {
+      record_id: reviewed.record_id,
+      sense_id: item.sense_id,
+      gloss_sha256: item.gloss_sha256,
+    }, rationaleRegistry);
+  }
+  for (const [index, item] of (boundary.pairwise ?? []).entries()) {
+    const compact = compactBoundary.pairwise[index];
+    const context = {
+      record_id: reviewed.record_id,
+      left_sense_id: item.left_sense_id,
+      right_sense_id: item.right_sense_id,
+      left_gloss_sha256: item.left_gloss_sha256,
+      right_gloss_sha256: item.right_gloss_sha256,
+    };
+    compactTextField(compact, 'evidence_basis', item.evidence_basis, context, rationaleRegistry);
+    compactTextField(compact, 'distinguishing_feature', item.distinguishing_feature, context, rationaleRegistry);
+    compactTextField(compact, 'rationale', item.rationale, context, rationaleRegistry);
+  }
+  compactTextField(compactBoundary, 'rationale', boundary.rationale, {
+    record_id: reviewed.record_id,
+  }, rationaleRegistry);
   const compactSenseReviews = (reviewed?.sense_reviews ?? []).map((senseReview) => {
     const compact = pickDefined(senseReview, [
       'sense_id',
-      'semantic_rationale',
-      'boundary_rationale',
-      'no_relation_rationale',
+      'relation_decision',
     ]);
-    if (!Object.hasOwn(compact, 'no_relation_rationale')
-      && senseReview.relation?.no_relation_rationale !== undefined) {
-      compact.no_relation_rationale = senseReview.relation.no_relation_rationale;
-    }
+    const relationDecision = senseReview.relation_decision ?? senseReview.relation?.decision;
+    if (relationDecision !== undefined) compact.relation_decision = relationDecision;
+    const context = {
+      record_id: reviewed.record_id,
+      sense_id: senseReview.sense_id,
+      gloss_sha256: senseReview.review_basis?.gloss_sha256,
+    };
+    compactTextField(compact, 'semantic_rationale', senseReview.semantic_rationale, context, rationaleRegistry);
+    compactTextField(compact, 'boundary_rationale', senseReview.boundary_rationale, context, rationaleRegistry);
+    compactTextField(compact, 'relation_rationale', senseReview.relation_rationale ?? senseReview.relation?.rationale, context, rationaleRegistry);
+    compactTextField(
+      compact,
+      'no_relation_rationale',
+      senseReview.no_relation_rationale ?? senseReview.relation?.no_relation_rationale,
+      context,
+      rationaleRegistry,
+    );
     const topicEvidence = pickDefined(senseReview.review_basis, ['topic_analysis', 'topic_analyses']);
     if (Object.keys(topicEvidence).length > 0) compact.review_basis = topicEvidence;
     return compact;
@@ -242,6 +417,7 @@ export function compactSemanticReviewRecord(reviewed) {
 
 export function compactSemanticReviewArtifact(review) {
   const compactReview = structuredClone(review);
+  const rationaleRegistry = buildRationaleTemplateRegistry(review);
   if (compactReview.review_pass) {
     compactReview.review_pass = pickDefined(compactReview.review_pass, [
       'id',
@@ -259,11 +435,17 @@ export function compactSemanticReviewArtifact(review) {
   }
   delete compactReview.record_count;
   delete compactReview.sense_count;
-  return {
+  const compact = {
     ...compactReview,
     contract_version: COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION,
-    records: (review.records ?? []).map(compactSemanticReviewRecord),
+    records: (review.records ?? []).map((record) => compactSemanticReviewRecord(record, { rationaleRegistry })),
   };
+  if (rationaleRegistry.templates.length > 0) {
+    compact.rationale_templates = rationaleRegistry.templates;
+  } else {
+    delete compact.rationale_templates;
+  }
+  return compact;
 }
 
 export function isCompactSemanticDecisionSource(source) {
@@ -280,6 +462,223 @@ export function compactSemanticDecisionSource(source) {
   };
   if (compact.correction_source == null) delete compact.correction_source;
   return compact;
+}
+
+function sha256Bytes(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+/**
+ * Load authored batch sources used by canonical records that retain only an
+ * immutable batch binding. The returned entries are deliberately generic so
+ * the semantic validator can verify a reference without owning the batch's
+ * candidate/admission policy.
+ */
+export async function readAuthoredBatchDecisionSources(
+  sourcePaths = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
+) {
+  const sources = [];
+  for (const sourcePath of sourcePaths) {
+    const sourceBytes = await readFile(sourcePath);
+    let source;
+    try {
+      source = JSON.parse(sourceBytes.toString('utf8'));
+    } catch (error) {
+      fail(`authored batch decision source is not valid JSON: ${sourcePath} (${error.message})`, 'SEMANTIC_BATCH_SOURCE_JSON');
+    }
+    if (!Array.isArray(source.decisions)) {
+      fail(`authored batch decision source has no decisions: ${sourcePath}`, 'SEMANTIC_BATCH_SOURCE_SHAPE');
+    }
+    sources.push({
+      source,
+      sourceBytes,
+      sourceSha256: sha256Bytes(sourceBytes),
+      artifactSha256: source.artifact_sha256,
+      rows: source.decisions,
+      byCandidateId: new Map(source.decisions.map((row) => [row.candidate_record_id, row])),
+    });
+  }
+  return sources;
+}
+
+function normalizeBatchDecisionSources(batchDecisionSources = []) {
+  return batchDecisionSources.map((entry) => {
+    const source = entry?.source?.source_id ? entry.source : entry;
+    const rows = entry?.rows ?? source?.decisions ?? [];
+    return {
+      source,
+      sourceId: source?.source_id,
+      sourceSha256: entry?.sourceSha256
+        ?? (entry?.sourceBytes ? sha256Bytes(entry.sourceBytes) : undefined),
+      artifactSha256: entry?.artifactSha256 ?? source?.artifact_sha256,
+      byCandidateId: entry?.byCandidateId instanceof Map
+        ? entry.byCandidateId
+        : new Map(rows.map((row) => [row.candidate_record_id, row])),
+    };
+  });
+}
+
+function resolveBatchDecision(record, binding, batchDecisionSources) {
+  const source = batchDecisionSources.find(({ sourceId }) => sourceId === binding.source_id);
+  if (!source) {
+    fail(
+      `${record.id} references an unavailable authored batch decision source ${binding.source_id}`,
+      'SEMANTIC_AUDIT_BATCH_SOURCE_MISSING',
+    );
+  }
+  if (source.sourceSha256 !== undefined && source.sourceSha256 !== binding.source_sha256) {
+    fail(`${record.id} authored batch source bytes do not match its immutable binding`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+  }
+  if (source.artifactSha256 !== undefined && source.artifactSha256 !== binding.artifact_sha256) {
+    fail(`${record.id} authored batch artifact does not match its immutable binding`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+  }
+  const row = source.byCandidateId.get(binding.candidate_record_id);
+  if (!row) {
+    fail(`${record.id} is missing its bound authored batch decision row`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISSING');
+  }
+  if (row.candidate_record_id !== record.id
+    || row.candidate_record_sha256 !== binding.candidate_record_sha256
+    || row.decision !== binding.decision
+    || row.rank !== binding.selection_rank
+    || row.score !== binding.selection_score
+    || sha256Json(compactAuthoredSemanticDecisionRow(row)) !== binding.decision_row_sha256) {
+    fail(`${record.id} authored batch decision row drifted from its canonical binding`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+  }
+  return row;
+}
+
+function materializeBatchReviewRecord(record, storedRecord, binding, row, decisionSourceId) {
+  const storedSenseReviews = row.sense_reviews ?? [
+    {
+      ...row,
+      sense_id: record.senses[0]?.id,
+    },
+  ];
+  if (!Array.isArray(storedSenseReviews) || storedSenseReviews.length !== record.senses.length) {
+    fail(`${record.id} authored batch row does not cover every canonical sense`, 'SEMANTIC_AUDIT_BATCH_SOURCE_SCOPE');
+  }
+  const storedSenseById = new Map(storedSenseReviews.map((senseReview) => [senseReview.sense_id, senseReview]));
+  const firstSenseReview = storedSenseById.get(record.senses[0]?.id);
+  if (!firstSenseReview) fail(`${record.id} authored batch row is missing its first sense review`, 'SEMANTIC_AUDIT_BATCH_SOURCE_SCOPE');
+  const boundaryDecision = firstSenseReview.boundary_action;
+  const boundaryClassification = firstSenseReview.boundary_classification;
+  const boundaryReviewId = `${row.review_pass_id}:canonical:${record.id}:boundary`;
+  const boundary = {
+    status: 'pass',
+    review_id: boundaryReviewId,
+    method: SEMANTIC_BOUNDARY_METHOD,
+    independence: {
+      independent_of_sense_count: true,
+      source: 'separate-agent-verification-pass',
+      decision_source_version: SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION,
+      inspected_fields: ['gloss', 'writer-facing-usage', 'pairwise-authored-decision'],
+      decision_source_id: decisionSourceId,
+    },
+    decision: boundaryDecision,
+    classification: boundaryClassification,
+    reviewed_sense_ids: record.senses.map(({ id }) => id),
+    evidence: record.senses.map((sense) => {
+      const senseReview = storedSenseById.get(sense.id);
+      if (!senseReview) fail(`${record.id} authored batch row is missing ${sense.id}`, 'SEMANTIC_AUDIT_BATCH_SOURCE_SCOPE');
+      return {
+        sense_id: sense.id,
+        gloss_sha256: sha256Json(sense.gloss),
+        evidence_basis: senseReview.semantic_rationale,
+        rationale: senseReview.boundary_rationale,
+        decision_source_id: decisionSourceId,
+      };
+    }),
+    pairwise: (row.boundary_pairs ?? []).map((pair) => ({
+      ...structuredClone(pair),
+      decision_source_id: decisionSourceId,
+    })),
+    rationale: firstSenseReview.boundary_rationale,
+  };
+  const senseReviews = record.senses.map((sense) => {
+    const storedSense = storedSenseById.get(sense.id);
+    const relationCoverage = senseRelationCoverage(sense);
+    if (!storedSense?.relation_decision) {
+      fail(`${record.id} ${sense.id} authored relation decision is missing`, 'SEMANTIC_AUDIT_BATCH_SOURCE_SCOPE');
+    }
+    const relationRationale = storedSense.no_relation_rationale ?? storedSense.semantic_rationale;
+    const senseGlossSha256 = sha256Json(sense.gloss);
+    return {
+      sense_id: sense.id,
+      sense_sha256: sha256Json(sense),
+      sense_boundary: {
+        status: 'pass',
+        action: boundaryDecision,
+        classification: boundaryClassification,
+        boundary_decision: boundarySenseDecisionForRecord(boundaryDecision, boundaryClassification),
+        boundary_review_id: boundaryReviewId,
+        reviewed_sense_ids: record.senses.map(({ id }) => id),
+        rationale: storedSense.boundary_rationale,
+        decision_source_id: decisionSourceId,
+      },
+      pos: {
+        status: 'pass',
+        observed_pos: sense.pos,
+        rationale: `${record.id} ${sense.id} POS was verified from canonical content under the bound authored batch decision.`,
+        decision: 'verified',
+        decision_source_id: decisionSourceId,
+      },
+      expression: {
+        status: 'pass',
+        expected_record_type: record.record_type,
+        observed_record_type: record.record_type,
+        rationale: `${record.id} ${sense.id} record type was verified from canonical content under the bound authored batch decision.`,
+        decision: 'verified',
+        decision_source_id: decisionSourceId,
+      },
+      relation: {
+        status: 'pass',
+        decision: storedSense.relation_decision,
+        relation_count: relationCoverage.relation_count,
+        relation_sha256: relationCoverage.relation_sha256,
+        relation_fingerprints: relationCoverage.relation_fingerprints,
+        rationale: relationRationale,
+        ...(relationCoverage.relation_count === 0
+          ? { no_relation_rationale: storedSense.no_relation_rationale ?? relationRationale }
+          : {}),
+        decision_source_id: decisionSourceId,
+      },
+      review_basis: {
+        record_id: record.id,
+        sense_id: sense.id,
+        lemma: record.lemma,
+        gloss_sha256: senseGlossSha256,
+        observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+        pos: sense.pos,
+        record_type: record.record_type,
+        relation_count: relationCoverage.relation_count,
+        rationale: `${record.id} ${sense.id} reviewed gloss ${senseGlossSha256.slice(0, 12)} from the bound authored batch decision.`,
+        decision_source_id: decisionSourceId,
+        ...(storedSense.review_basis?.topic_analysis
+          ? {
+            topic_analysis: {
+              ...structuredClone(storedSense.review_basis.topic_analysis),
+              decision_source_id: decisionSourceId,
+            },
+          }
+          : {}),
+        ...(Array.isArray(storedSense.review_basis?.topic_analyses)
+          ? {
+            topic_analyses: storedSense.review_basis.topic_analyses.map((analysis) => ({
+              ...structuredClone(analysis),
+              decision_source_id: decisionSourceId,
+            })),
+          }
+          : {}),
+      },
+    };
+  });
+  return {
+    record_id: storedRecord.record_id,
+    record_sha256: storedRecord.record_sha256,
+    authored_batch_decision: structuredClone(binding),
+    boundary_review: boundary,
+    sense_reviews: senseReviews,
+  };
 }
 
 function materializedBoundarySource(review, decisionSourceId) {
@@ -301,7 +700,7 @@ function materializedBoundarySource(review, decisionSourceId) {
 export function materializeSemanticReviewArtifact(
   recordInfos,
   compactReview,
-  { decisionSourceId } = {},
+  { decisionSourceId, batchDecisionSources = [] } = {},
 ) {
   if (compactReview?.contract_version !== COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION) {
     return structuredClone(compactReview);
@@ -312,6 +711,10 @@ export function materializeSemanticReviewArtifact(
   }));
   const sourceId = decisionSourceId ?? compactReview.decision_source?.source_id;
   const boundarySource = materializedBoundarySource(compactReview, sourceId);
+  const normalizedBatchDecisionSources = normalizeBatchDecisionSources(batchDecisionSources);
+  const rationaleTemplates = new Map(
+    (compactReview.rationale_templates ?? []).map(({ code, template }) => [code, template]),
+  );
   const reviewPassId = compactReview.review_pass?.id ?? compactReview.artifact_id ?? 'canonical-semantic-review';
   const records = (compactReview.records ?? []).map((storedRecord, recordIndex) => {
     const record = recordsById.get(storedRecord.record_id);
@@ -321,26 +724,58 @@ export function materializeSemanticReviewArtifact(
         'SEMANTIC_AUDIT_SCOPE',
       );
     }
-    const storedBoundary = storedRecord.boundary_review ?? {};
+    const batchBinding = storedRecord.authored_batch_decision;
+    const referencedRecord = batchBinding
+      ? materializeBatchReviewRecord(
+        record,
+        storedRecord,
+        batchBinding,
+        resolveBatchDecision(record, batchBinding, normalizedBatchDecisionSources),
+        sourceId,
+      )
+      : storedRecord;
+    if (batchBinding && (storedRecord.boundary_review || storedRecord.sense_reviews)) {
+      fail(
+        `${record.id} must dereference its authored batch decision instead of copying its review narrative`,
+        'SEMANTIC_AUDIT_REDUNDANT_AUTHORITY',
+      );
+    }
+    const storedBoundary = referencedRecord.boundary_review ?? {};
     const boundaryReviewId = storedBoundary.review_id ?? `${reviewPassId}:${record.id}:boundary`;
     const evidenceBySense = new Map((storedBoundary.evidence ?? []).map((item) => [item.sense_id, item]));
     const materializedEvidence = record.senses.map((sense) => {
       const item = evidenceBySense.get(sense.id) ?? {};
+      const glossSha256 = sha256Json(sense.gloss);
+      const context = {
+        record_id: record.id,
+        sense_id: sense.id,
+        gloss_sha256: item.gloss_sha256 ?? glossSha256,
+      };
       return {
         sense_id: sense.id,
-        gloss_sha256: sha256Json(sense.gloss),
-        evidence_basis: item.evidence_basis,
-        rationale: item.rationale,
+        gloss_sha256: glossSha256,
+        evidence_basis: resolveTextField(item, 'evidence_basis', context, rationaleTemplates, `${record.id} ${sense.id} boundary evidence`),
+        rationale: resolveTextField(item, 'rationale', context, rationaleTemplates, `${record.id} ${sense.id} boundary evidence`),
         decision_source_id: sourceId,
       };
     });
     const materializedPairwise = (storedBoundary.pairwise ?? []).map((item) => {
       const leftSense = record.senses.find(({ id }) => id === item.left_sense_id);
       const rightSense = record.senses.find(({ id }) => id === item.right_sense_id);
-      return {
-        ...structuredClone(item),
+      const context = {
+        record_id: record.id,
+        left_sense_id: item.left_sense_id,
+        right_sense_id: item.right_sense_id,
         left_gloss_sha256: item.left_gloss_sha256 ?? (leftSense ? sha256Json(leftSense.gloss) : undefined),
         right_gloss_sha256: item.right_gloss_sha256 ?? (rightSense ? sha256Json(rightSense.gloss) : undefined),
+      };
+      return {
+        ...structuredClone(item),
+        evidence_basis: resolveTextField(item, 'evidence_basis', context, rationaleTemplates, `${record.id} boundary pair`),
+        distinguishing_feature: resolveTextField(item, 'distinguishing_feature', context, rationaleTemplates, `${record.id} boundary pair`),
+        rationale: resolveTextField(item, 'rationale', context, rationaleTemplates, `${record.id} boundary pair`),
+        left_gloss_sha256: context.left_gloss_sha256,
+        right_gloss_sha256: context.right_gloss_sha256,
         decision_source_id: sourceId,
       };
     });
@@ -360,20 +795,42 @@ export function materializeSemanticReviewArtifact(
       reviewed_sense_ids: record.senses.map(({ id }) => id),
       evidence: materializedEvidence,
       pairwise: materializedPairwise,
-      rationale: storedBoundary.rationale,
+      rationale: resolveTextField(
+        storedBoundary,
+        'rationale',
+        { record_id: record.id },
+        rationaleTemplates,
+        `${record.id} boundary review`,
+      ),
     };
-    const storedSenseById = new Map((storedRecord.sense_reviews ?? []).map((item) => [item.sense_id, item]));
+    const storedSenseById = new Map((referencedRecord.sense_reviews ?? []).map((item) => [item.sense_id, item]));
     const senseReviews = record.senses.map((sense) => {
-      const storedSense = storedSenseById.get(sense.id) ?? {};
+      const rawStoredSense = storedSenseById.get(sense.id) ?? {};
+      const senseContext = {
+        record_id: record.id,
+        sense_id: sense.id,
+        gloss_sha256: sha256Json(sense.gloss),
+      };
+      const storedSense = {
+        ...rawStoredSense,
+        semantic_rationale: resolveTextField(rawStoredSense, 'semantic_rationale', senseContext, rationaleTemplates, `${record.id} ${sense.id}`),
+        boundary_rationale: resolveTextField(rawStoredSense, 'boundary_rationale', senseContext, rationaleTemplates, `${record.id} ${sense.id}`),
+        relation_rationale: resolveTextField(rawStoredSense, 'relation_rationale', senseContext, rationaleTemplates, `${record.id} ${sense.id}`),
+        no_relation_rationale: resolveTextField(rawStoredSense, 'no_relation_rationale', senseContext, rationaleTemplates, `${record.id} ${sense.id}`),
+      };
       const storedBasis = storedSense.review_basis ?? {};
       const senseGlossSha256 = sha256Json(sense.gloss);
       const relationCoverage = senseRelationCoverage(sense);
-      const relationDecision = relationCoverage.relation_count === 0 ? 'no-relations' : 'relations-reviewed';
+      const relationDecision = storedSense.relation_decision ?? storedSense.relation?.decision;
+      if (relationDecision === undefined) {
+        fail(`${record.id} ${sense.id} authored relation decision is missing`, 'SEMANTIC_AUDIT_DECISION_MISSING');
+      }
       const boundaryEvidence = evidenceBySense.get(sense.id);
       const boundaryRationale = storedSense.boundary_rationale
         ?? boundaryEvidence?.rationale
         ?? `${record.id} ${sense.id} was reviewed against the authored boundary decision.`;
-      const relationRationale = storedSense.no_relation_rationale
+      const relationRationale = storedSense.relation_rationale
+        ?? storedSense.no_relation_rationale
         ?? `${record.id} ${sense.id} relation tuples were reviewed against canonical content.`;
       return {
         sense_id: sense.id,
@@ -436,10 +893,10 @@ export function materializeSemanticReviewArtifact(
       };
     });
     return {
-      record_id: storedRecord.record_id,
-      record_sha256: storedRecord.record_sha256,
-      ...(storedRecord.authored_batch_decision
-        ? { authored_batch_decision: structuredClone(storedRecord.authored_batch_decision) }
+      record_id: referencedRecord.record_id,
+      record_sha256: referencedRecord.record_sha256,
+      ...(referencedRecord.authored_batch_decision
+        ? { authored_batch_decision: structuredClone(referencedRecord.authored_batch_decision) }
         : {}),
       boundary_review: boundaryReview,
       sense_reviews: senseReviews,
@@ -455,8 +912,9 @@ export function materializeSemanticReviewArtifact(
       ? compactReview.review_pass.correction_history.length
       : 0,
   };
+  const { rationale_templates: ignoredRationaleTemplates, ...reviewWithoutRationaleTemplates } = structuredClone(compactReview);
   return {
-    ...structuredClone(compactReview),
+    ...reviewWithoutRationaleTemplates,
     contract_version: SEMANTIC_REVIEW_CONTRACT_VERSION,
     record_count: records.length,
     sense_count: senseCount,
@@ -584,7 +1042,11 @@ export function assembleSemanticAuditArtifact(
 export function buildSemanticAuditFromDecisionSource(
   recordInfos,
   decisionSource,
-  { artifactId = 'canonical-semantic-audit', baseRecords } = {},
+  {
+    artifactId = 'canonical-semantic-audit',
+    baseRecords,
+    batchDecisionSources = [],
+  } = {},
 ) {
   const semanticReview = validateSemanticDecisionSource(
     recordInfos,
@@ -592,6 +1054,7 @@ export function buildSemanticAuditFromDecisionSource(
     {
       baseRecords: baseRecords ?? recordInfos,
       label: 'semantic decision source',
+      batchDecisionSources,
     },
   );
   const artifact = assembleSemanticAuditArtifact(recordInfos, semanticReview, {
@@ -608,13 +1071,15 @@ export async function buildCanonicalSemanticAudit({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   artifactId = 'canonical-semantic-audit',
+  batchDecisionSourcePaths = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
 } = {}) {
   const canonical = await readCanonicalRecords(canonicalDirectory);
   const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
+  const batchDecisionSources = await readAuthoredBatchDecisionSources(batchDecisionSourcePaths);
   const artifact = buildSemanticAuditFromDecisionSource(
     canonical.records,
     decisionSource,
-    { artifactId },
+    { artifactId, batchDecisionSources },
   );
   return { canonical, decisionSource, artifact };
 }
@@ -1392,7 +1857,11 @@ export function validateSemanticReviewArtifact(
 export function validateSemanticDecisionSource(
   recordInfos,
   decisionSource,
-  { baseRecords, label = 'semantic decision source' } = {},
+  {
+    baseRecords,
+    label = 'semantic decision source',
+    batchDecisionSources = [],
+  } = {},
 ) {
   requireObject(decisionSource, label);
   if (decisionSource.schema_version !== SEMANTIC_DECISION_SOURCE_SCHEMA_VERSION
@@ -1435,6 +1904,7 @@ export function validateSemanticDecisionSource(
   const materializedReview = isCompactSemanticDecisionSource(decisionSource)
     ? materializeSemanticReviewArtifact(recordInfos, authoredReview, {
       decisionSourceId: decisionSource.source_id,
+      batchDecisionSources,
     })
     : authoredReview;
   validateSemanticReviewArtifact(recordInfos, materializedReview, {

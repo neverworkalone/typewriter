@@ -250,6 +250,178 @@ function semanticFieldOverlap(source, canonicalAuthority, promotionLedger) {
   };
 }
 
+function narrativeOccurrences(source) {
+  const occurrences = [];
+  const add = (value, kind) => {
+    if (typeof value === 'string' && value.length > 0) occurrences.push({ value, kind });
+  };
+  for (const record of source.authored_review?.records ?? []) {
+    if (record.authored_batch_decision) continue;
+    add(record.boundary_review?.rationale, 'boundary_rationale');
+    for (const evidence of record.boundary_review?.evidence ?? []) {
+      add(evidence.evidence_basis, 'boundary_evidence_basis');
+      add(evidence.rationale, 'boundary_evidence_rationale');
+    }
+    for (const pair of record.boundary_review?.pairwise ?? []) {
+      add(pair.evidence_basis, 'pairwise_evidence_basis');
+      add(pair.distinguishing_feature, 'pairwise_distinguishing_feature');
+      add(pair.rationale, 'pairwise_rationale');
+    }
+    for (const sense of record.sense_reviews ?? []) {
+      add(sense.semantic_rationale, 'semantic_rationale');
+      add(sense.boundary_rationale, 'sense_boundary_rationale');
+      add(sense.relation_rationale, 'relation_rationale');
+      add(sense.no_relation_rationale, 'no_relation_rationale');
+    }
+  }
+  return occurrences;
+}
+
+function narrativeTemplateKey(value) {
+  return value
+    .replace(/\bw\d+-s\d+\b/gu, '{sense_id}')
+    .replace(/\bw\d+\b/gu, '{record_id}')
+    .replace(/\b[a-f0-9]{12,64}\b/gu, '{digest}');
+}
+
+function narrativeStorageAccounting(before, after) {
+  const stats = (source) => {
+    const values = narrativeOccurrences(source);
+    const groups = new Map();
+    for (const occurrence of values) {
+      const key = narrativeTemplateKey(occurrence.value);
+      const group = groups.get(key) ?? [];
+      group.push(occurrence);
+      groups.set(key, group);
+    }
+    const duplicateValueBytes = [...groups.values()]
+      .flatMap((group) => group.slice(1))
+      .reduce((total, occurrence) => total + Buffer.byteLength(occurrence.value, 'utf8'), 0);
+    const inlineBytes = values.reduce((total, occurrence) => total + Buffer.byteLength(occurrence.value, 'utf8'), 0);
+    const codeReferences = [];
+    for (const record of source.authored_review?.records ?? []) {
+      if (record.authored_batch_decision) continue;
+      const collectCodes = (value) => {
+        for (const [field, fieldValue] of Object.entries(value ?? {})) {
+          if (field.endsWith('_code') && typeof fieldValue === 'string') codeReferences.push(fieldValue);
+        }
+      };
+      collectCodes(record.boundary_review);
+      for (const item of record.boundary_review?.evidence ?? []) collectCodes(item);
+      for (const item of record.boundary_review?.pairwise ?? []) collectCodes(item);
+      for (const item of record.sense_reviews ?? []) collectCodes(item);
+    }
+    const templateDefinitions = (source.authored_review?.rationale_templates ?? [])
+      .filter((entry) => typeof entry?.template === 'string');
+    return {
+      narrative_occurrence_count: values.length,
+      inline_string_value_bytes: inlineBytes,
+      normalized_template_count: groups.size,
+      normalized_duplicate_value_bytes: duplicateValueBytes,
+      reason_code_reference_count: codeReferences.length,
+      reason_code_reference_bytes: codeReferences
+        .reduce((total, code) => total + Buffer.byteLength(code, 'utf8'), 0),
+      template_definition_count: templateDefinitions.length,
+      template_definition_bytes: templateDefinitions
+        .reduce((total, entry) => total + Buffer.byteLength(entry.template, 'utf8'), 0),
+      compact_value_bytes: values.reduce(
+        (total, occurrence) => total + Buffer.byteLength(occurrence.value, 'utf8'),
+        0,
+      )
+        + codeReferences.reduce((total, code) => total + Buffer.byteLength(code, 'utf8'), 0)
+        + templateDefinitions.reduce((total, entry) => total + Buffer.byteLength(entry.template, 'utf8'), 0),
+    };
+  };
+  const beforeStats = stats(before);
+  const afterStats = stats(after);
+  return {
+    methodology: 'Narrative field values are normalized by replacing record/sense IDs and gloss digests with placeholders. Repeated templates are counted as duplicate value bytes before compaction; after compaction, one source-level template definition plus per-occurrence reason-code references are counted.',
+    before: beforeStats,
+    after: afterStats,
+    transition: {
+      removed_normalized_duplicate_value_bytes:
+        beforeStats.normalized_duplicate_value_bytes - afterStats.normalized_duplicate_value_bytes,
+      removed_inline_string_value_bytes:
+        beforeStats.inline_string_value_bytes - afterStats.inline_string_value_bytes,
+      retained_template_definition_bytes: afterStats.template_definition_bytes,
+      retained_reason_code_reference_bytes: afterStats.reason_code_reference_bytes,
+    },
+  };
+}
+
+function canonicalBatchNarrativeOverlap(batchSource, canonicalBefore, canonicalAfter) {
+  const beforeById = indexedBy(canonicalBefore.authored_review?.records ?? [], 'record_id');
+  const afterById = indexedBy(canonicalAfter.authored_review?.records ?? [], 'record_id');
+  const groups = [
+    {
+      name: 'semantic_rationale_to_boundary_evidence_basis',
+      getBatch: (row, sense) => sense.semantic_rationale,
+      getCanonical: (record, sense) => record.boundary_review?.evidence?.find((item) => item.sense_id === sense.sense_id)?.evidence_basis,
+    },
+    {
+      name: 'boundary_rationale_to_boundary_evidence',
+      getBatch: (row, sense) => sense.boundary_rationale,
+      getCanonical: (record, sense) => record.boundary_review?.evidence?.find((item) => item.sense_id === sense.sense_id)?.rationale,
+    },
+    {
+      name: 'boundary_rationale_to_record_boundary',
+      getBatch: (row, sense) => sense.boundary_rationale,
+      getCanonical: (record) => record.boundary_review?.rationale,
+    },
+    {
+      name: 'no_relation_rationale_to_canonical_sense',
+      getBatch: (row, sense) => sense.no_relation_rationale,
+      getCanonical: (record, sense) => {
+        const canonicalSense = record.sense_reviews?.find((item) => item.sense_id === sense.sense_id);
+        return canonicalSense?.no_relation_rationale ?? canonicalSense?.relation?.no_relation_rationale;
+      },
+    },
+  ];
+  const results = groups.map((group) => {
+    let compared = 0;
+    let beforeMatches = 0;
+    let afterMatches = 0;
+    let beforeCopyBytes = 0;
+    let afterCopyBytes = 0;
+    for (const row of batchSource.decisions ?? []) {
+      const beforeRecord = beforeById.get(row.candidate_record_id);
+      const afterRecord = afterById.get(row.candidate_record_id);
+      if (!beforeRecord || !afterRecord) continue;
+      for (const sense of row.sense_reviews ?? []) {
+        const batchValue = group.getBatch(row, sense);
+        if (typeof batchValue !== 'string') continue;
+        compared += 1;
+        if (batchValue === group.getCanonical(beforeRecord, sense)) {
+          beforeMatches += 1;
+          beforeCopyBytes += Buffer.byteLength(batchValue, 'utf8');
+        }
+        if (batchValue === group.getCanonical(afterRecord, sense)) {
+          afterMatches += 1;
+          afterCopyBytes += Buffer.byteLength(batchValue, 'utf8');
+        }
+      }
+    }
+    return {
+      group: group.name,
+      compared_count: compared,
+      before_exact_match_count: beforeMatches,
+      after_exact_match_count: afterMatches,
+      before_secondary_copy_bytes: beforeCopyBytes,
+      after_secondary_copy_bytes: afterCopyBytes,
+      removed_secondary_copy_bytes: beforeCopyBytes - afterCopyBytes,
+    };
+  });
+  return {
+    methodology: 'M5-12A authored narrative values are compared against the pre-compaction and current canonical authority by candidate/sense identity. A match is a copied narrative value, not merely a shared record ID or digest.',
+    groups: results,
+    before_exact_copy_count: results.reduce((total, group) => total + group.before_exact_match_count, 0),
+    after_exact_copy_count: results.reduce((total, group) => total + group.after_exact_match_count, 0),
+    before_secondary_copy_bytes: results.reduce((total, group) => total + group.before_secondary_copy_bytes, 0),
+    after_secondary_copy_bytes: results.reduce((total, group) => total + group.after_secondary_copy_bytes, 0),
+    removed_secondary_copy_bytes: results.reduce((total, group) => total + group.removed_secondary_copy_bytes, 0),
+  };
+}
+
 function baselineDiff(baseline, files) {
   const output = execFileSync(
     'git',
@@ -316,11 +488,19 @@ function canonicalBindingBreakdown(source) {
   };
 }
 
-function reviewCounts(source) {
+function reviewCounts(source, { batchSource } = {}) {
   const records = source.authored_review?.records ?? [];
+  const batchDecisionsByCandidateId = new Map(
+    (batchSource?.decisions ?? []).map((decision) => [decision.candidate_record_id, decision]),
+  );
+  const retainedSenseCount = records.reduce((sum, record) => sum + (record.sense_reviews?.length ?? 0), 0);
+  const dereferencedBatchSenseCount = records.reduce((sum, record) => {
+    if (!record.authored_batch_decision || (record.sense_reviews?.length ?? 0) > 0) return sum;
+    return sum + (batchDecisionsByCandidateId.get(record.authored_batch_decision.candidate_record_id)?.sense_reviews?.length ?? 0);
+  }, 0);
   return {
     record_count: records.length,
-    sense_count: records.reduce((sum, record) => sum + (record.sense_reviews?.length ?? 0), 0),
+    sense_count: retainedSenseCount + dereferencedBatchSenseCount,
   };
 }
 
@@ -481,9 +661,9 @@ function fieldGroupStats(beforeValue, afterValue, count) {
   };
 }
 
-function canonicalAuthorityFieldAccounting(before, after, beforeArtifact, afterArtifact) {
+function canonicalAuthorityFieldAccounting(before, after, beforeArtifact, afterArtifact, batchSource) {
   const beforeCounts = reviewCounts(before);
-  const afterCounts = reviewCounts(after);
+  const afterCounts = reviewCounts(after, { batchSource });
   const retainedDefinitions = [
     {
       name: 'record_binding',
@@ -665,7 +845,19 @@ async function main() {
       canonicalAuthority,
       canonicalAuthorityBefore,
       canonicalAuthorityArtifact,
+      source,
     ),
+    canonical_narrative_accounting: {
+      batch_authority_overlap: canonicalBatchNarrativeOverlap(
+        source,
+        canonicalAuthorityBefore.value,
+        canonicalAuthority,
+      ),
+      retained_template_storage: narrativeStorageAccounting(
+        canonicalAuthorityBefore.value,
+        canonicalAuthority,
+      ),
+    },
     payload_accounting: payloadAccounting(payloadUnits),
   }, null, 2));
 }

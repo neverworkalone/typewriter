@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,10 +9,14 @@ import { rebuildSemanticEvidence } from '../scripts/validate/rebuild-semantic-ev
 import {
   buildSemanticAuditFromDecisionSource,
   compactSemanticDecisionSource,
+  compactSemanticReviewArtifact,
+  materializeSemanticReviewArtifact,
   SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+  COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   sha256Json,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
+import { compactAuthoredSemanticDecisionRow } from '../scripts/validate/semantic-decision-row.mjs';
 import {
   makeSemanticAudit,
   makeSemanticReview,
@@ -179,6 +184,134 @@ test('compact canonical decision source replays the authored semantic decisions'
   assert.equal(compactSource.contract_version, 'lexical-semantic-canonical-decision-source-v2');
   assert.equal(Object.hasOwn(compactSource.authored_review.records[0].sense_reviews[0], 'pos'), false);
   assert.equal(Object.hasOwn(compactSource.authored_review.records[0].sense_reviews[0], 'relation'), false);
+  assert.ok(compactSource.authored_review.rationale_templates.length > 0);
+  assert.equal(Object.hasOwn(
+    compactSource.authored_review.records[0].boundary_review.evidence[0],
+    'rationale_code',
+  ), true);
   assert.deepEqual(authoredDecisionProjection(replayed), authoredDecisionProjection(fullAudit));
   assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, replayed));
+});
+
+test('positive relation outcome is retained as authored evidence instead of inferred from canonical relations', () => {
+  const record = makeRecord(['작가가 문장을 고르는 말.'], 'w9003');
+  record.senses[0].relations = [{ target: 'w9004', type: 'near', note: 'fixture relation' }];
+  const infos = [{ record, source: 'semantic-source-relation-regression' }];
+  const fullAudit = makeSemanticAudit(infos, { artifactId: 'semantic-source-relation' });
+  const fullSource = {
+    schema_version: '1',
+    contract_version: SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: fullAudit.review.decision_source.source_id,
+    authoring_mode: 'separately-authored',
+    scope: 'complete-canonical',
+    source: structuredClone(fullAudit.source),
+    authored_review_sha256: sha256Json(fullAudit.review),
+    authored_review: structuredClone(fullAudit.review),
+  };
+  const compactSource = compactSemanticDecisionSource(fullSource);
+  const compactReview = compactSource.authored_review;
+  delete compactReview.records[0].sense_reviews[0].relation_decision;
+  compactSource.authored_review_sha256 = sha256Json(compactReview);
+
+  assert.throws(
+    () => materializeSemanticReviewArtifact(infos, compactReview, {
+      decisionSourceId: compactSource.source_id,
+    }),
+    (error) => error.code === 'SEMANTIC_AUDIT_DECISION_MISSING',
+  );
+});
+
+test('M5 canonical rows dereference batch authority without copying authored narrative', () => {
+  const record = makeRecord(['작가가 문장을 고르는 말.'], 'w9005');
+  record.senses[0].relations = [{ target: 'w9006', type: 'near', note: 'fixture relation' }];
+  const infos = [{ record, source: 'semantic-source-batch-reference-regression' }];
+  const fullAudit = makeSemanticAudit(infos, { artifactId: 'semantic-source-batch-reference' });
+  const row = {
+    candidate_record_id: record.id,
+    candidate_record_sha256: sha256Json(record),
+    decision: 'included',
+    rank: 1,
+    score: 0.9,
+    decision_rationale: `${record.id} was included from an authored batch decision.`,
+    selection_rationale: `${record.id} was selected from an authored batch decision.`,
+    review_pass_id: 'batch-review-v1',
+    gloss_judgment: 'fit',
+    sense_reviews: [{
+      sense_id: record.senses[0].id,
+      boundary_action: 'retain',
+      boundary_classification: 'atomic',
+      boundary_decision: 'atomic',
+      boundary_rationale: `${record.id} ${record.senses[0].id} boundary cites ${sha256Json(record.senses[0].gloss).slice(0, 12)}.`,
+      semantic_rationale: `${record.id} ${record.senses[0].id} semantic meaning was independently reviewed.`,
+      relation_decision: 'relations-reviewed',
+      relation_count: 1,
+      relation_ids: [`${record.senses[0].id}:relation-1`],
+    }],
+  };
+  const sourceBytes = Buffer.from('synthetic authored batch source\n', 'utf8');
+  const batchSource = {
+    source: {
+      source_id: 'synthetic-batch-source-v1',
+      artifact_sha256: 'a'.repeat(64),
+    },
+    sourceBytes,
+    sourceSha256: sha256Json(sourceBytes.toString('utf8')),
+    artifactSha256: 'a'.repeat(64),
+    byCandidateId: new Map([[record.id, row]]),
+  };
+  // The resolver hashes bytes with SHA-256, not the JSON helper's hash.
+  batchSource.sourceSha256 = createHash('sha256')
+    .update(sourceBytes)
+    .digest('hex');
+  const binding = {
+    source_id: batchSource.source.source_id,
+    source_sha256: batchSource.sourceSha256,
+    artifact_sha256: batchSource.artifactSha256,
+    decision_row_sha256: sha256Json(compactAuthoredSemanticDecisionRow(row)),
+    candidate_record_id: record.id,
+    candidate_record_sha256: sha256Json(record),
+    decision: row.decision,
+    selection_rank: row.rank,
+    selection_score: row.score,
+    reviewed_record_sha256: sha256Json(record),
+  };
+  const authoredReview = structuredClone(fullAudit.review);
+  authoredReview.records[0].authored_batch_decision = binding;
+  const compactReview = compactSemanticReviewArtifact(authoredReview);
+  assert.deepEqual(Object.keys(compactReview.records[0]).sort(), [
+    'authored_batch_decision',
+    'record_id',
+    'record_sha256',
+  ]);
+  const decisionSource = {
+    schema_version: '1',
+    contract_version: COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: fullAudit.review.decision_source.source_id,
+    authoring_mode: 'separately-authored',
+    scope: 'complete-canonical',
+    source: structuredClone(fullAudit.source),
+    authored_review_sha256: sha256Json(compactReview),
+    authored_review: compactReview,
+  };
+  const replayed = buildSemanticAuditFromDecisionSource(infos, decisionSource, {
+    batchDecisionSources: [batchSource],
+  });
+  assert.equal(replayed.review.records[0].sense_reviews[0].relation.decision, 'relations-reviewed');
+  assert.doesNotThrow(() => validateSemanticAuditCoverage(infos, replayed));
+
+  const duplicatedReview = structuredClone(compactReview);
+  duplicatedReview.records[0].boundary_review = structuredClone(fullAudit.review.records[0].boundary_review);
+  const duplicatedSource = {
+    ...decisionSource,
+    authored_review_sha256: sha256Json(duplicatedReview),
+    authored_review: duplicatedReview,
+  };
+  assert.throws(
+    () => buildSemanticAuditFromDecisionSource(infos, duplicatedSource, {
+      batchDecisionSources: [batchSource],
+    }),
+    (error) => error.code === 'SEMANTIC_AUDIT_REDUNDANT_AUTHORITY',
+  );
 });

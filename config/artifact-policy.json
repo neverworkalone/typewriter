@@ -922,6 +922,7 @@
             "review_pass",
             "source",
             "records",
+            "rationale_templates",
             "changes",
             "decision_source",
             "boundary_decision_source"
@@ -929,6 +930,10 @@
           "$.authored_review.source": [
             "kind",
             "canonical_records_sha256"
+          ],
+          "$.authored_review.rationale_templates.*": [
+            "code",
+            "template"
           ],
           "$.authored_review.decision_source": [
             "kind",
@@ -1003,12 +1008,15 @@
             "classification",
             "evidence",
             "pairwise",
-            "rationale"
+            "rationale",
+            "rationale_code"
           ],
           "$.authored_review.records.*.boundary_review.evidence.*": [
             "sense_id",
             "evidence_basis",
-            "rationale"
+            "evidence_basis_code",
+            "rationale",
+            "rationale_code"
           ],
           "$.authored_review.records.*.boundary_review.pairwise.*": [
             "left_sense_id",
@@ -1016,14 +1024,23 @@
             "relationship",
             "decision",
             "evidence_basis",
+            "evidence_basis_code",
             "distinguishing_feature",
-            "rationale"
+            "distinguishing_feature_code",
+            "rationale",
+            "rationale_code"
           ],
           "$.authored_review.records.*.sense_reviews.*": [
             "sense_id",
             "semantic_rationale",
+            "semantic_rationale_code",
             "boundary_rationale",
+            "boundary_rationale_code",
+            "relation_decision",
+            "relation_rationale",
+            "relation_rationale_code",
             "no_relation_rationale",
+            "no_relation_rationale_code",
             "review_basis"
           ],
           "$.authored_review.records.*.sense_reviews.*.review_basis": [
@@ -1084,6 +1101,7 @@
             "review_pass": "object",
             "source": "object",
             "records": "array<object>",
+            "rationale_templates": "array<object>",
             "changes": "array<object>",
             "decision_source": "object",
             "boundary_decision_source": "object"
@@ -1091,6 +1109,10 @@
           "$.authored_review.source": {
             "kind": "string",
             "canonical_records_sha256": "string"
+          },
+          "$.authored_review.rationale_templates.*": {
+            "code": "string",
+            "template": "string"
           },
           "$.authored_review.decision_source": {
             "kind": "string",
@@ -1165,12 +1187,15 @@
             "classification": "string",
             "evidence": "array<object>",
             "pairwise": "array<object>",
-            "rationale": "string"
+            "rationale": "string",
+            "rationale_code": "string"
           },
           "$.authored_review.records.*.boundary_review.evidence.*": {
             "sense_id": "string",
             "evidence_basis": "string",
-            "rationale": "string"
+            "evidence_basis_code": "string",
+            "rationale": "string",
+            "rationale_code": "string"
           },
           "$.authored_review.records.*.boundary_review.pairwise.*": {
             "left_sense_id": "string",
@@ -1178,14 +1203,23 @@
             "relationship": "string",
             "decision": "string",
             "evidence_basis": "string",
+            "evidence_basis_code": "string",
             "distinguishing_feature": "string",
-            "rationale": "string"
+            "distinguishing_feature_code": "string",
+            "rationale": "string",
+            "rationale_code": "string"
           },
           "$.authored_review.records.*.sense_reviews.*": {
             "sense_id": "string",
             "semantic_rationale": "string",
+            "semantic_rationale_code": "string",
             "boundary_rationale": "string",
+            "boundary_rationale_code": "string",
+            "relation_decision": "string",
+            "relation_rationale": "string",
+            "relation_rationale_code": "string",
             "no_relation_rationale": "string",
+            "no_relation_rationale_code": "string",
             "review_basis": "object"
           },
           "$.authored_review.records.*.sense_reviews.*.review_basis": {

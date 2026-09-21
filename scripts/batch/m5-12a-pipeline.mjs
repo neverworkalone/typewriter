@@ -2264,7 +2264,11 @@ export async function validateM512AFinal({
   const canonicalDecisionAudit = buildSemanticAuditFromDecisionSource(
     currentCanonical.records,
     JSON.parse(currentDecisionBytes.toString('utf8')),
-    { artifactId: 'm5-12a-final-canonical-audit', baseRecords: result.inputs.baseCanonical.records },
+    {
+      artifactId: 'm5-12a-final-canonical-audit',
+      baseRecords: result.inputs.baseCanonical.records,
+      batchDecisionSources: [result.semanticDecisionSource],
+    },
   );
   const currentAuditCoverage = validateSemanticAuditCoverage(currentCanonical.records, canonicalDecisionAudit, {
     baseRecords: result.inputs.baseCanonical.records,

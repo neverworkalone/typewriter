@@ -23,6 +23,9 @@ import {
   M5_12A_GENERATION_PASS_ID,
   M5_12A_VERIFICATION_PASS_ID,
 } from './m5-12a-candidate-source.mjs';
+import {
+  compactAuthoredSemanticDecisionRow,
+} from '../validate/semantic-decision-row.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
@@ -93,52 +96,7 @@ function expectedDecisionCounts(rows) {
   ]));
 }
 
-const RECONSTRUCTIBLE_DECISION_FIELDS = Object.freeze([
-  'source_sha256',
-  'sense_id',
-  'sense_gloss_sha256',
-  'pos',
-  'record_type',
-  'observed_domain_axes',
-  'domain_evidence',
-  'connector_observations',
-  'semantic_rationale',
-  'boundary_rationale',
-  'relation_decision',
-  'relation_count',
-  'relation_ids',
-  'no_relation_rationale',
-]);
-
-export function compactM512ADecisionRow(row) {
-  const normalized = structuredClone(row);
-  for (const field of RECONSTRUCTIBLE_DECISION_FIELDS) delete normalized[field];
-  if (Array.isArray(normalized.sense_reviews)) {
-    normalized.sense_reviews = normalized.sense_reviews.map((senseReview) => {
-      const compact = structuredClone(senseReview);
-      for (const field of RECONSTRUCTIBLE_DECISION_FIELDS) {
-        if (field !== 'sense_id'
-          && field !== 'semantic_rationale'
-          && field !== 'boundary_rationale'
-          && field !== 'relation_decision'
-          && field !== 'relation_count'
-          && field !== 'relation_ids'
-          && field !== 'no_relation_rationale') {
-          delete compact[field];
-        }
-      }
-      if (compact.review_basis) {
-        compact.review_basis = Object.fromEntries(
-          Object.entries(compact.review_basis)
-            .filter(([key]) => key === 'topic_analysis' || key === 'topic_analyses'),
-        );
-        if (Object.keys(compact.review_basis).length === 0) delete compact.review_basis;
-      }
-      return compact;
-    });
-  }
-  return normalized;
-}
+export const compactM512ADecisionRow = compactAuthoredSemanticDecisionRow;
 
 function sourceForArtifactDigest(source) {
   const withoutDigest = structuredClone(source);
