@@ -64,8 +64,12 @@
     },
     "target_promotions": {
       "path": "data/inventory/m5-target-promotions.jsonl",
-      "sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
-      "event_count": 722
+      "previous_ledger_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "append_start": 0,
+      "append_count": 722,
+      "append_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+      "prefix_event_count": 722,
+      "prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a"
     },
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
@@ -104,7 +108,6 @@
     "transaction": "m5-12a-post-promotion-digest-and-audit-check",
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "seed_sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
-    "promotion_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
     "semantic_decision_source_sha256": "6ec29ed5a1508b923113c343acc056d97c87ba19c8b6bfd50a9794a9a0a88489",
     "semantic_audit_sha256": "3b41051f3b773e9d17d13a4b4b60a3abe686275789ed8ddaa394a254726ea2f6",
     "semantic_audit": {
@@ -118,6 +121,15 @@
       "coverage_complete": true,
       "review_complete": true,
       "corrected_record_count": 0
+    },
+    "promotion_ledger_prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+    "promotion_ledger_binding": {
+      "previous_ledger_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "append_start": 0,
+      "append_count": 722,
+      "append_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+      "prefix_event_count": 722,
+      "prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a"
     }
   }
 }

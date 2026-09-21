@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +20,10 @@ export const DEFAULT_PROMOTION_PATH = path.resolve(
 export const DEFAULT_OUTPUT_PATH = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/inventory/m5-target-inventory.json',
+);
+export const DEFAULT_DECISION_SOURCE_PATH = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/validation/canonical-semantic-decision-source.json',
 );
 
 export function serializeTargetInventory(inventory) {
@@ -189,6 +194,14 @@ function requirePromotionDigest(value, label) {
   }
 }
 
+function sha256Json(value) {
+  return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+
+function recordOf(recordInfo) {
+  return recordInfo?.record ?? recordInfo;
+}
+
 const PROMOTION_LEDGER_FIELDS = new Set([
   'schema_version',
   'batch_id',
@@ -288,6 +301,55 @@ export function serializePromotionLedger(entries) {
   );
 }
 
+export function validatePromotionLedgerBindings({
+  entries = [],
+  canonicalRecords = [],
+  decisionSource,
+} = {}) {
+  const canonicalById = new Map(
+    canonicalRecords.map((recordInfo) => {
+      const record = recordOf(recordInfo);
+      return [record.id, record];
+    }),
+  );
+  const reviewRecords = decisionSource?.authored_review?.records;
+  if (!Array.isArray(reviewRecords)) {
+    throw new TargetInventoryGenerationError(
+      'promotion ledger requires canonical authored semantic decision records',
+      'PROMOTION_LEDGER_SOURCE_MISSING',
+    );
+  }
+  const reviewById = new Map(reviewRecords.map((review) => [review.record_id, review]));
+  for (const [index, entry] of entries.entries()) {
+    const label = `promotion ledger[${index}]`;
+    const record = canonicalById.get(entry.canonical_id);
+    if (!record) {
+      throw new TargetInventoryGenerationError(
+        `${label}.canonical_id ${entry.canonical_id} is not present in canonical data`,
+        'PROMOTION_LEDGER_BINDING_MISMATCH',
+      );
+    }
+    const recordDigest = sha256Json(record);
+    const review = reviewById.get(entry.canonical_id);
+    const binding = review?.authored_batch_decision;
+    if (!review || !binding
+      || review.record_sha256 !== recordDigest
+      || entry.record_sha256 !== recordDigest
+      || entry.decision_source_id !== binding.source_id
+      || entry.decision_source_sha256 !== binding.artifact_sha256
+      || entry.decision_row_sha256 !== binding.decision_row_sha256
+      || entry.canonical_id !== binding.candidate_record_id
+      || entry.decision !== binding.decision
+      || binding.reviewed_record_sha256 !== recordDigest) {
+      throw new TargetInventoryGenerationError(
+        `${label} is not bound to the canonical record and authored batch decision for ${entry.canonical_id}`,
+        'PROMOTION_LEDGER_BINDING_MISMATCH',
+      );
+    }
+  }
+  return true;
+}
+
 function proposedEditorialEntry(seedEntry) {
   const { proposal_canonical_id: ignoredProposalCanonicalId, ...entry } = seedEntry;
   return { ...entry, source: 'editorial', status: 'candidate' };
@@ -321,6 +383,7 @@ export async function buildTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   seedPath = DEFAULT_SEED_PATH,
   promotionPath,
+  decisionSourcePath = DEFAULT_DECISION_SOURCE_PATH,
   generatedFromSeedPath = seedPath,
   generatedFromCanonicalDirectory = canonicalDirectory,
   canonicalScopeDirectory = canonicalDirectory,
@@ -334,6 +397,31 @@ export async function buildTargetInventory({
   const promotionLedger = effectivePromotionPath
     ? await readPromotionLedger(effectivePromotionPath)
     : [];
+  if (promotionLedger.length > 0) {
+    let decisionSource;
+    try {
+      decisionSource = JSON.parse(await readFile(decisionSourcePath, 'utf8'));
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        throw new TargetInventoryGenerationError(
+          `promotion decision source does not exist: ${decisionSourcePath}`,
+          'PROMOTION_LEDGER_SOURCE_MISSING',
+        );
+      }
+      if (error instanceof SyntaxError) {
+        throw new TargetInventoryGenerationError(
+          `promotion decision source is not valid JSON: ${error.message}`,
+          'PROMOTION_LEDGER_SOURCE_INVALID',
+        );
+      }
+      throw error;
+    }
+    validatePromotionLedgerBindings({
+      entries: promotionLedger,
+      canonicalRecords: canonical.records,
+      decisionSource,
+    });
+  }
 
   const embeddedPromotions = seed.targets.filter((entry) => {
     validateSeedPromotion(entry);

@@ -18,6 +18,7 @@ import {
   buildM512A,
   buildM512AReviewRows,
   commitM512APromotionTransaction,
+  validatePromotionLedgerPrefix,
   validateM512AAuthoredCanonicalAuthority,
   validateCandidateIdentityBinding,
   validateM512AFinal,
@@ -568,6 +569,36 @@ test('M5-12A final promotion preserves the exact canonical, seed, and semantic a
   assert.equal(result.gate.gate_status, 'pass');
   assert.equal(result.semantic_audit.coverage_complete, true);
   assert.equal(result.semantic_audit.review_complete, true);
+});
+
+test('M5-12A historical ledger validation remains local when a later event is appended', async () => {
+  const result = await buildM512A();
+  const laterEvent = {
+    ...structuredClone(result.promotionLedger[0]),
+    batch_id: 'later-independent-batch',
+    inventory_id: 'later-independent-inventory',
+    canonical_id: 'w9999',
+  };
+  const appended = [...result.promotionLedger, laterEvent];
+
+  assert.doesNotThrow(() => validatePromotionLedgerPrefix({
+    currentEntries: appended,
+    expectedPrefixEntries: result.promotionLedger,
+    baseEntries: result.inputs.basePromotionLedger,
+    binding: result.promotionLedgerBinding,
+  }));
+
+  const tampered = structuredClone(appended);
+  tampered[10].decision_note = 'historical event changed';
+  assert.throws(
+    () => validatePromotionLedgerPrefix({
+      currentEntries: tampered,
+      expectedPrefixEntries: result.promotionLedger,
+      baseEntries: result.inputs.basePromotionLedger,
+      binding: result.promotionLedgerBinding,
+    }),
+    (error) => error.code === 'PROMOTION_LEDGER_HISTORY_MISMATCH',
+  );
 });
 
 test('M5-12A promotion rolls back every output when the committed canonical digest drifts', async () => {

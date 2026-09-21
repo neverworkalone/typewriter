@@ -112,6 +112,32 @@ test('inventory candidates remain outside canonical input and SQLite build scope
   assert.equal(generatedA2Candidate.canonical_id, undefined);
 });
 
+test('rejects promotion ledger digests that do not bind canonical and authored decision authority', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-ledger-binding-'));
+  const promotionPath = path.join(temporaryDirectory, 'promotions.jsonl');
+  const source = await readFile(path.resolve('data/inventory/m5-target-promotions.jsonl'), 'utf8');
+  const entries = source.trim().split('\n').map((line) => JSON.parse(line));
+
+  try {
+    for (const mutate of [
+      (entry) => { entry.record_sha256 = '0'.repeat(64); },
+      (entry) => { entry.decision_source_id = 'unbound-source'; },
+      (entry) => { entry.decision_row_sha256 = 'f'.repeat(64); },
+    ]) {
+      const mutated = structuredClone(entries);
+      mutate(mutated[0]);
+      await writeFile(promotionPath, `${mutated.map((entry) => JSON.stringify(entry)).join('\n')}\n`, 'utf8');
+      await assert.rejects(
+        generateTargetInventory({ promotionPath }),
+        (error) => error instanceof TargetInventoryGenerationError
+          && error.code === 'PROMOTION_LEDGER_BINDING_MISMATCH',
+      );
+    }
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('rejects an inventory that omits a canonical record', async () => {
   await assert.rejects(
     validateModifiedInventory((inventory) => {

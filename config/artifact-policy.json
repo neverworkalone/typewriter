@@ -58,6 +58,45 @@
     "data/validation/m5-*-semantic-boundary-decisions.json"
   ],
   "durable_semantics": {
+    "contract_required_patterns": [
+      "data/batches/**",
+      "data/**/*promotion*.jsonl"
+    ],
+    "legacy_untyped_patterns": [
+      "data/batches/m5-3-**",
+      "data/batches/m5-5-**",
+      "data/batches/m5-7-**",
+      "data/batches/m5-8-**",
+      "data/batches/m5-9-**",
+      "data/batches/m5-9a-**",
+      "data/batches/m5-10-**",
+      "data/batches/m5-10a-**",
+      "data/batches/m5-10c-**",
+      "data/batches/m5-10d-**",
+      "data/batches/m5-11-**",
+      "data/batches/m5-12-base-canonical/**",
+      "data/batches/m5-12-base-inventory.json",
+      "data/batches/m5-12-review.json",
+      "data/batches/m5-12-stage.json"
+    ],
+    "contract_path_patterns": [
+      {
+        "pattern": "data/batches/*-admission.json",
+        "contract": "admission_manifest"
+      },
+      {
+        "pattern": "data/batches/*-promotion.json",
+        "contract": "promotion_manifest"
+      },
+      {
+        "pattern": "data/batches/*-semantic-decisions.json",
+        "contract": "decision_source"
+      },
+      {
+        "pattern": "data/**/*promotion*.jsonl",
+        "contract": "promotion_ledger"
+      }
+    ],
     "gate_contract_versions": [
       "lexical-batch-gate-evidence-v2"
     ],
@@ -165,7 +204,7 @@
       "prospective_canonical_sha256",
       "semantic_audit_sha256",
       "decision_source_sha256",
-      "promotion_ledger_sha256"
+      "promotion_ledger_prefix_sha256"
     ],
     "gate_complete_audit_allowed_fields": [
       "contract_version",
@@ -201,6 +240,7 @@
           "gate",
           "gate_evidence",
           "gate_evidence_sha256",
+          "promotion_ledger_binding",
           "sources",
           "promotion",
           "provenance"
@@ -222,6 +262,7 @@
           "gate": "object",
           "gate_evidence": "object",
           "gate_evidence_sha256": "string",
+          "promotion_ledger_binding": "object",
           "sources": "object",
           "promotion": "object",
           "provenance": "object"
@@ -246,7 +287,7 @@
             "canonical_directory_sha256": "string",
             "inventory_sha256": "string",
             "seed_sha256": "string",
-            "promotion_ledger_sha256": "string",
+            "promotion_ledger_prefix_sha256": "string",
             "summary": "object"
           },
           "$.base.summary": {
@@ -306,7 +347,7 @@
             "prospective_canonical_sha256": "string",
             "semantic_audit_sha256": "string",
             "decision_source_sha256": "string",
-            "promotion_ledger_sha256": "string"
+            "promotion_ledger_prefix_sha256": "string"
           },
           "$.gate_evidence.preflight": {
             "contract_version": "string",
@@ -338,12 +379,29 @@
             "base_inventory": "object",
             "authorization": "object"
           },
+          "$.promotion_ledger_binding": {
+            "previous_ledger_sha256": "string",
+            "append_start": "number",
+            "append_count": "number",
+            "append_sha256": "string",
+            "prefix_event_count": "number",
+            "prefix_sha256": "string"
+          },
           "$.sources.*": {
             "source_id": "string",
             "path": "string",
             "identity_sha256": "string",
             "identity_count": "number",
-            "sha256": "string"
+            "sha256": "string",
+            "ledger_binding": "object"
+          },
+          "$.sources.target_promotions.ledger_binding": {
+            "previous_ledger_sha256": "string",
+            "append_start": "number",
+            "append_count": "number",
+            "append_sha256": "string",
+            "prefix_event_count": "number",
+            "prefix_sha256": "string"
           },
           "$.promotion": {
             "canonical_mutation": "boolean",
@@ -363,14 +421,15 @@
         "nested_allowed_fields": {
           "$.authorization": ["kind", "issue", "decision", "human_editorial_review_complete", "generation_pass_id", "verification_pass_id"],
           "$.target": ["net_start_increase", "cumulative_start_target", "candidate_buffer", "selection_slot_count", "candidate_identity_count"],
-          "$.base": ["canonical_directory_sha256", "inventory_sha256", "seed_sha256", "promotion_ledger_sha256", "summary"],
+          "$.base": ["canonical_directory_sha256", "inventory_sha256", "seed_sha256", "promotion_ledger_prefix_sha256", "summary"],
           "$.base.summary": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
           "$.actual": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
           "$.decisions": ["included", "corrected", "held", "rejected", "deferred", "processed_start_count", "imported_start_count", "deferred_denominator_excluded"],
           "$.verification": ["review_mode", "human_editorial_review_complete", "agent_generated_provenance", "generation_pass_id", "verification_pass_id", "candidate_source_id", "candidate_identity_count", "raw_material_excluded", "source_bound_semantic_decisions"],
           "$.gate": ["contract_version", "policy", "gate_status", "decision"],
           "$.gate_evidence": ["schema_version", "contract_version", "artifact_id", "issue", "batch_id", "inputs", "preflight", "complete_audit"],
-          "$.gate_evidence.inputs": ["prospective_canonical_sha256", "semantic_audit_sha256", "decision_source_sha256", "promotion_ledger_sha256"],
+          "$.gate_evidence.inputs": ["prospective_canonical_sha256", "semantic_audit_sha256", "decision_source_sha256", "promotion_ledger_prefix_sha256"],
+          "$.promotion_ledger_binding": ["previous_ledger_sha256", "append_start", "append_count", "append_sha256", "prefix_event_count", "prefix_sha256"],
           "$.gate_evidence.preflight": ["contract_version", "status", "input_canonical_directory_sha256", "checks"],
           "$.gate_evidence.preflight.checks.*": ["status", "input_canonical_directory_sha256"],
           "$.gate_evidence.complete_audit": ["contract_version", "scope", "canonical_records_sha256", "record_count", "sense_count", "covered_record_count", "covered_sense_count", "coverage_complete", "review_complete", "corrected_record_count"],
@@ -378,7 +437,8 @@
           "$.sources.candidate_identities": ["source_id", "path", "identity_sha256", "identity_count"],
           "$.sources.verification": ["source_id", "path", "sha256"],
           "$.sources.semantic_audit": ["source_id", "path", "sha256"],
-          "$.sources.target_promotions": ["source_id", "path", "sha256"],
+          "$.sources.target_promotions": ["source_id", "path", "sha256", "ledger_binding"],
+          "$.sources.target_promotions.ledger_binding": ["previous_ledger_sha256", "append_start", "append_count", "append_sha256", "prefix_event_count", "prefix_sha256"],
           "$.sources.base_inventory": ["source_id", "path", "sha256"],
           "$.sources.authorization": ["source_id", "path", "sha256"],
           "$.promotion": ["canonical_mutation", "seed_mutation", "inventory_mutation", "semantic_decision_source_mutation", "note"],
@@ -458,8 +518,12 @@
           },
           "$.outputs.target_promotions": {
             "path": "string",
-            "sha256": "string",
-            "event_count": "number"
+            "previous_ledger_sha256": "string",
+            "append_start": "number",
+            "append_count": "number",
+            "append_sha256": "string",
+            "prefix_event_count": "number",
+            "prefix_sha256": "string"
           },
           "$.outputs.inventory": {
             "path": "string",
@@ -493,10 +557,19 @@
             "transaction": "string",
             "canonical_directory_sha256": "string",
             "seed_sha256": "string",
-            "promotion_ledger_sha256": "string",
+            "promotion_ledger_prefix_sha256": "string",
+            "promotion_ledger_binding": "object",
             "semantic_decision_source_sha256": "string",
             "semantic_audit_sha256": "string",
             "semantic_audit": "object"
+          },
+          "$.post_promotion_audit.promotion_ledger_binding": {
+            "previous_ledger_sha256": "string",
+            "append_start": "number",
+            "append_count": "number",
+            "append_sha256": "string",
+            "prefix_event_count": "number",
+            "prefix_sha256": "string"
           },
           "$.post_promotion_audit.semantic_audit": {
             "contract_version": "string",
@@ -517,12 +590,13 @@
           "$.outputs": ["canonical_directory_sha256", "canonical_import", "seed", "target_promotions", "inventory", "semantic_decision_source"],
           "$.outputs.canonical_import": ["path", "sha256", "record_count", "first_canonical_id", "last_canonical_id"],
           "$.outputs.seed": ["path", "sha256", "target_count"],
-          "$.outputs.target_promotions": ["path", "sha256", "event_count"],
+          "$.outputs.target_promotions": ["path", "previous_ledger_sha256", "append_start", "append_count", "append_sha256", "prefix_event_count", "prefix_sha256"],
           "$.outputs.inventory": ["path", "materialization", "sha256", "entry_count"],
           "$.outputs.semantic_decision_source": ["path", "sha256", "source_id", "canonical_records_sha256"],
           "$.checkpoint": ["issue", "milestone", "canonical_records", "canonical_starts", "status"],
           "$.promotion": ["canonical_mutation", "seed_mutation", "inventory_mutation", "semantic_decision_source_mutation", "transaction"],
-          "$.post_promotion_audit": ["status", "policy", "transaction", "canonical_directory_sha256", "seed_sha256", "promotion_ledger_sha256", "semantic_decision_source_sha256", "semantic_audit_sha256", "semantic_audit"],
+          "$.post_promotion_audit": ["status", "policy", "transaction", "canonical_directory_sha256", "seed_sha256", "promotion_ledger_prefix_sha256", "promotion_ledger_binding", "semantic_decision_source_sha256", "semantic_audit_sha256", "semantic_audit"],
+          "$.post_promotion_audit.promotion_ledger_binding": ["previous_ledger_sha256", "append_start", "append_count", "append_sha256", "prefix_event_count", "prefix_sha256"],
           "$.post_promotion_audit.semantic_audit": ["contract_version", "scope", "canonical_records_sha256", "record_count", "sense_count", "covered_record_count", "covered_sense_count", "coverage_complete", "review_complete", "corrected_record_count"]
         }
       },

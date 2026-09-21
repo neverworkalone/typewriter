@@ -20,6 +20,7 @@ import {
   generateTargetInventory,
   readPromotionLedger,
   serializePromotionLedger,
+  validatePromotionLedgerBindings,
 } from '../inventory/generate-target-inventory.mjs';
 import {
   validateTargetInventory,
@@ -165,6 +166,56 @@ function jsonlBytes(records) {
       : `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
     'utf8',
   );
+}
+
+function buildPromotionLedgerBinding({ baseEntries = [], appendedEntries = [] } = {}) {
+  const previousBytes = serializePromotionLedger(baseEntries);
+  const appendBytes = serializePromotionLedger(appendedEntries);
+  const prefixBytes = Buffer.concat([previousBytes, appendBytes]);
+  return {
+    previous_ledger_sha256: sha256(previousBytes),
+    append_start: baseEntries.length,
+    append_count: appendedEntries.length,
+    append_sha256: sha256(appendBytes),
+    prefix_event_count: baseEntries.length + appendedEntries.length,
+    prefix_sha256: sha256(prefixBytes),
+  };
+}
+
+export function validatePromotionLedgerPrefix({
+  currentEntries = [],
+  expectedPrefixEntries = [],
+  baseEntries = [],
+  binding,
+  label = 'promotion ledger',
+} = {}) {
+  const expectedAppendedEntries = expectedPrefixEntries.slice(baseEntries.length);
+  const expectedBinding = buildPromotionLedgerBinding({
+    baseEntries,
+    appendedEntries: expectedAppendedEntries,
+  });
+  const prefixEnd = expectedBinding.prefix_event_count;
+  if (currentEntries.length < prefixEnd) {
+    fail(`${label} is shorter than its immutable historical prefix`, 'PROMOTION_LEDGER_HISTORY_MISMATCH');
+  }
+  const currentPreviousBytes = serializePromotionLedger(currentEntries.slice(0, expectedBinding.append_start));
+  const currentAppendBytes = serializePromotionLedger(currentEntries.slice(
+    expectedBinding.append_start,
+    prefixEnd,
+  ));
+  const currentPrefixBytes = serializePromotionLedger(currentEntries.slice(0, prefixEnd));
+  const expectedPrefixBytes = serializePromotionLedger(expectedPrefixEntries);
+  const actualBinding = binding?.ledger_binding ?? binding;
+  const bindingMatches = actualBinding
+    && Object.entries(expectedBinding).every(([key, value]) => actualBinding[key] === value);
+  if (!bindingMatches
+    || sha256(currentPreviousBytes) !== expectedBinding.previous_ledger_sha256
+    || sha256(currentAppendBytes) !== expectedBinding.append_sha256
+    || sha256(currentPrefixBytes) !== expectedBinding.prefix_sha256
+    || sha256(expectedPrefixBytes) !== expectedBinding.prefix_sha256) {
+    fail(`${label} historical prefix or append binding drifted`, 'PROMOTION_LEDGER_HISTORY_MISMATCH');
+  }
+  return true;
 }
 
 function recordOf(recordInfo) {
@@ -1131,9 +1182,21 @@ async function loadBaseInputs({
   if (baseInventory.value.revision !== 'm5-11') fail('M5-12A base inventory revision drifted', 'BASE_INVENTORY_MISMATCH');
   const currentPromotionLedger = await readPromotionLedger(currentPromotionLedgerPath);
   const candidateInventoryIds = new Set(M5_12A_CANDIDATE_IDENTITIES.map(({ inventory_id: id }) => id));
-  const basePromotionLedger = currentPromotionLedger.filter(
-    ({ inventory_id: inventoryId }) => !candidateInventoryIds.has(inventoryId),
-  );
+  const candidateIndexes = currentPromotionLedger
+    .map((entry, index) => (candidateInventoryIds.has(entry.inventory_id) ? index : -1))
+    .filter((index) => index >= 0);
+  let basePromotionLedger = currentPromotionLedger;
+  if (candidateIndexes.length > 0) {
+    const firstCandidateIndex = Math.min(...candidateIndexes);
+    const lastCandidateIndex = Math.max(...candidateIndexes);
+    if (lastCandidateIndex - firstCandidateIndex + 1 !== candidateIndexes.length) {
+      fail(
+        'M5-12A promotion events are not one append-local historical segment',
+        'PROMOTION_LEDGER_HISTORY_MISMATCH',
+      );
+    }
+    basePromotionLedger = currentPromotionLedger.slice(0, firstCandidateIndex);
+  }
   return {
     baseCanonical,
     baseSummary,
@@ -1161,7 +1224,7 @@ function sourceRef(sourceId, filePath, bytes, extra = {}) {
 function buildPostPromotionAudit({
   canonicalDigest,
   seedDigest,
-  promotionLedgerDigest,
+  promotionLedgerBinding,
   decisionSourceDigest,
   semanticAuditBytes,
   semanticAuditCoverage,
@@ -1172,7 +1235,8 @@ function buildPostPromotionAudit({
     transaction: 'm5-12a-post-promotion-digest-and-audit-check',
     canonical_directory_sha256: canonicalDigest,
     seed_sha256: seedDigest,
-    promotion_ledger_sha256: promotionLedgerDigest,
+    promotion_ledger_prefix_sha256: promotionLedgerBinding.prefix_sha256,
+    promotion_ledger_binding: structuredClone(promotionLedgerBinding),
     semantic_decision_source_sha256: decisionSourceDigest,
     semantic_audit_sha256: sha256(semanticAuditBytes),
     semantic_audit: compactSemanticAuditCoverage(semanticAuditCoverage),
@@ -1338,6 +1402,7 @@ function buildAdmissionEvidence({
   gate,
   decisionSourceBytes,
   promotionLedgerBytes,
+  promotionLedgerBinding,
   baseDecisionSource,
 } = {}) {
   const decisions = Object.fromEntries([...ALL_DECISIONS].map((decision) => [
@@ -1369,7 +1434,7 @@ function buildAdmissionEvidence({
       prospective_canonical_sha256: prospective.canonicalDigest,
       semantic_audit_sha256: sha256(serializeSemanticAuditArtifact(semanticAudit)),
       decision_source_sha256: sha256(decisionSourceBytes),
-      promotion_ledger_sha256: sha256(promotionLedgerBytes),
+      promotion_ledger_prefix_sha256: promotionLedgerBinding.prefix_sha256,
     },
     preflight: compactPreflightEvidence(preflight),
     complete_audit: compactSemanticAuditCoverage(semanticAuditCoverage),
@@ -1395,7 +1460,7 @@ function buildAdmissionEvidence({
       canonical_directory_sha256: inputs.baseCanonicalDigest,
       inventory_sha256: M5_12A_BASE_INVENTORY_SHA256,
       seed_sha256: M5_12A_BASE_SEED_SHA256,
-      promotion_ledger_sha256: sha256(inputs.basePromotionLedgerBytes),
+      promotion_ledger_prefix_sha256: promotionLedgerBinding.previous_ledger_sha256,
       summary: inputs.baseSummary,
     },
     actual: finalSummary,
@@ -1409,6 +1474,7 @@ function buildAdmissionEvidence({
     gate: compactGateEvidence(gate),
     gate_evidence: gateEvidence,
     gate_evidence_sha256: sha256Json(gateEvidence),
+    promotion_ledger_binding: structuredClone(promotionLedgerBinding),
     sources: {
       candidate_identities: {
         source_id: M5_12A_CANDIDATE_SOURCE_ID,
@@ -1426,6 +1492,7 @@ function buildAdmissionEvidence({
         'target_promotions',
         'data/inventory/m5-target-promotions.jsonl',
         promotionLedgerBytes,
+        { ledger_binding: structuredClone(promotionLedgerBinding) },
       ),
       base_inventory: {
         source_id: 'base_inventory',
@@ -1600,6 +1667,10 @@ export async function buildM512A({
     artifacts.candidateRecords,
     semanticDecisionSource,
   );
+  const promotionLedgerBinding = buildPromotionLedgerBinding({
+    baseEntries: inputs.basePromotionLedger,
+    appendedEntries: promotionLedger.slice(inputs.basePromotionLedger.length),
+  });
   const prospective = await buildProspectiveWorkspace({
     baseCanonicalDirectory: BASE_CANONICAL_DIRECTORY,
     baseSeed: seed,
@@ -1659,6 +1730,7 @@ export async function buildM512A({
     gate,
     decisionSourceBytes,
     promotionLedgerBytes: prospective.promotionLedgerBytes,
+    promotionLedgerBinding,
     baseDecisionSource,
   });
   const admissionBytes = jsonBytes(admission);
@@ -1690,8 +1762,7 @@ export async function buildM512A({
       },
       target_promotions: {
         path: sourcePath(CURRENT_PROMOTION_LEDGER_PATH),
-        sha256: sha256(prospective.promotionLedgerBytes),
-        event_count: promotionLedger.length,
+        ...promotionLedgerBinding,
       },
       inventory: {
         path: sourcePath(path.join(INVENTORY_DIRECTORY, 'm5-target-inventory.json')),
@@ -1744,6 +1815,7 @@ export async function buildM512A({
     production,
     seed,
     promotionLedger,
+    promotionLedgerBinding,
     prospective,
     relation,
     semanticAuditCoverage,
@@ -1826,7 +1898,10 @@ async function restoreOutput(pathname, snapshot) {
 async function assertExistingPromotionRewriteState({
   currentCanonicalDigest,
   currentSeedBytes,
-  currentPromotionLedgerBytes,
+  currentPromotionLedgerEntries,
+  expectedPromotionLedgerEntries,
+  basePromotionLedgerEntries,
+  promotionLedgerBinding,
   admissionPath,
   promotionPath,
 } = {}) {
@@ -1844,14 +1919,22 @@ async function assertExistingPromotionRewriteState({
   // buildM512A validates the current bytes as the pre-promotion authority.
   // Canonical and seed drift remains unauthorized here.
   if (promotion.outputs?.canonical_directory_sha256 !== currentCanonicalDigest
-    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)
-    || promotion.outputs?.target_promotions?.sha256 !== sha256(currentPromotionLedgerBytes)) {
+    || promotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)) {
     fail('existing M5-12A outputs do not match the durable promotion evidence', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
+  validatePromotionLedgerPrefix({
+    currentEntries: currentPromotionLedgerEntries,
+    expectedPrefixEntries: expectedPromotionLedgerEntries,
+    baseEntries: basePromotionLedgerEntries,
+    binding: promotion.outputs?.target_promotions,
+    label: 'existing M5-12A promotion ledger',
+  });
   if (promotion.post_promotion_audit?.status !== 'complete'
     || promotion.post_promotion_audit.canonical_directory_sha256 !== currentCanonicalDigest
     || promotion.post_promotion_audit.seed_sha256 !== sha256(currentSeedBytes)
-    || promotion.post_promotion_audit.promotion_ledger_sha256 !== sha256(currentPromotionLedgerBytes)) {
+    || promotion.post_promotion_audit.promotion_ledger_prefix_sha256 !== promotionLedgerBinding.prefix_sha256
+    || JSON.stringify(promotion.post_promotion_audit.promotion_ledger_binding)
+      !== JSON.stringify(promotionLedgerBinding)) {
     fail('existing M5-12A post-promotion audit does not match the durable outputs', 'UNAUTHORIZED_PROMOTION_REWRITE');
   }
 }
@@ -1879,6 +1962,7 @@ export async function commitM512APromotionTransaction({
     if (error.code !== 'ENOENT') throw error;
     currentPromotionLedgerBytes = Buffer.alloc(0);
   }
+  const currentPromotionLedgerEntries = await readPromotionLedger(promotionLedgerPath);
   const currentDecisionBytes = await readFile(decisionSourcePath);
   if (!result.inputs?.currentDecisionSourceBytes
     || sha256(currentDecisionBytes) !== sha256(result.inputs.currentDecisionSourceBytes)) {
@@ -1895,7 +1979,10 @@ export async function commitM512APromotionTransaction({
     await assertExistingPromotionRewriteState({
       currentCanonicalDigest: currentDigest,
       currentSeedBytes,
-      currentPromotionLedgerBytes,
+      currentPromotionLedgerEntries,
+      expectedPromotionLedgerEntries: result.promotionLedger,
+      basePromotionLedgerEntries: result.inputs.basePromotionLedger,
+      promotionLedgerBinding: result.promotionLedgerBinding,
       admissionPath,
       promotionPath,
     });
@@ -1920,7 +2007,6 @@ export async function commitM512APromotionTransaction({
     },
     target_promotions: {
       ...promotion.outputs.target_promotions,
-      sha256: sha256(result.prospective.promotionLedgerBytes),
     },
     semantic_decision_source: {
       ...promotion.outputs.semantic_decision_source,
@@ -1947,7 +2033,7 @@ export async function commitM512APromotionTransaction({
     created.push(currentSeedPath);
     await writeTempAndRename(
       promotionLedgerPath,
-      result.prospective.promotionLedgerBytes,
+      isExistingPromotionRewrite ? currentPromotionLedgerBytes : result.prospective.promotionLedgerBytes,
       transactionDirectory,
       'target-promotions',
     );
@@ -1961,11 +2047,19 @@ export async function commitM512APromotionTransaction({
 
     const finalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
     const finalSeedDigest = sha256(await readFile(currentSeedPath));
-    const finalPromotionLedgerDigest = sha256(await readFile(promotionLedgerPath));
+    const finalPromotionLedgerBytes = await readFile(promotionLedgerPath);
+    const finalPromotionLedgerEntries = await readPromotionLedger(promotionLedgerPath);
+    validatePromotionLedgerPrefix({
+      currentEntries: finalPromotionLedgerEntries,
+      expectedPrefixEntries: result.promotionLedger,
+      baseEntries: result.inputs.basePromotionLedger,
+      binding: result.promotionLedgerBinding,
+      label: 'committed M5-12A promotion ledger',
+    });
+    const finalPromotionLedgerDigest = sha256(finalPromotionLedgerBytes);
     const finalDecisionDigest = sha256(await readFile(decisionSourcePath));
     if (finalDigest !== result.prospective.canonicalDigest
       || finalSeedDigest !== sha256(result.prospective.seedBytes)
-      || finalPromotionLedgerDigest !== sha256(result.prospective.promotionLedgerBytes)
       || finalDecisionDigest !== sha256(result.decisionSourceBytes)) {
       fail('M5-12A committed output digest does not match prevalidated state', 'PROMOTION_DIGEST_MISMATCH');
     }
@@ -1973,7 +2067,7 @@ export async function commitM512APromotionTransaction({
     promotion.post_promotion_audit = buildPostPromotionAudit({
       canonicalDigest: finalDigest,
       seedDigest: finalSeedDigest,
-      promotionLedgerDigest: finalPromotionLedgerDigest,
+      promotionLedgerBinding: result.promotionLedgerBinding,
       decisionSourceDigest: finalDecisionDigest,
       semanticAuditBytes: result.semanticAuditBytes,
       semanticAuditCoverage: result.semanticAuditCoverage,
@@ -2034,14 +2128,20 @@ export async function refreshM512APromotionEvidence({
   const result = await buildM512A({ currentSeedPath, currentPromotionLedgerPath: promotionLedgerPath, decisionSourcePath });
   const currentCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedDigest = sha256(await readFile(currentSeedPath));
-  const currentPromotionLedgerDigest = sha256(await readFile(promotionLedgerPath));
+  const currentPromotionLedgerEntries = await readPromotionLedger(promotionLedgerPath);
   const currentDecisionSourceDigest = sha256(await readFile(decisionSourcePath));
   if (currentCanonicalDigest !== result.prospective.canonicalDigest
     || currentSeedDigest !== sha256(result.prospective.seedBytes)
-    || currentPromotionLedgerDigest !== sha256(result.prospective.promotionLedgerBytes)
     || currentDecisionSourceDigest !== sha256(result.decisionSourceBytes)) {
     fail('post-promotion evidence refresh found output drift', 'PROMOTION_DIGEST_MISMATCH');
   }
+  validatePromotionLedgerPrefix({
+    currentEntries: currentPromotionLedgerEntries,
+    expectedPrefixEntries: result.promotionLedger,
+    baseEntries: result.inputs.basePromotionLedger,
+    binding: result.promotionLedgerBinding,
+    label: 'M5-12A promotion ledger refresh',
+  });
   if (result.admission.gate?.gate_status !== 'pass') fail('post-promotion evidence requires a passing admission gate', 'M5_12A_GATE_HOLD');
   await readJson(promotionPath, 'M5-12A promotion evidence');
   const promotion = {
@@ -2050,7 +2150,7 @@ export async function refreshM512APromotionEvidence({
     post_promotion_audit: buildPostPromotionAudit({
       canonicalDigest: currentCanonicalDigest,
       seedDigest: currentSeedDigest,
-      promotionLedgerDigest: currentPromotionLedgerDigest,
+      promotionLedgerBinding: result.promotionLedgerBinding,
       decisionSourceDigest: currentDecisionSourceDigest,
       semanticAuditBytes: result.semanticAuditBytes,
       semanticAuditCoverage: result.semanticAuditCoverage,
@@ -2090,13 +2190,25 @@ export async function validateM512AFinal({
   const currentDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedBytes = await readFile(currentSeedPath);
   const currentPromotionLedgerBytes = await readFile(promotionLedgerPath);
+  const currentPromotionLedgerEntries = await readPromotionLedger(promotionLedgerPath);
   const currentDecisionBytes = await readFile(decisionSourcePath);
   const admission = (await readJson(admissionPath, 'M5-12A admission evidence')).value;
   const promotion = (await readJson(promotionPath, 'M5-12A promotion evidence')).value;
+  validatePromotionLedgerBindings({
+    entries: currentPromotionLedgerEntries,
+    canonicalRecords: currentCanonical.records,
+    decisionSource: JSON.parse(currentDecisionBytes.toString('utf8')),
+  });
   if (JSON.stringify(currentSummary) !== JSON.stringify(M5_12A_FINAL_SUMMARY)) fail('final canonical summary is not exactly +722', 'FINAL_COUNT_MISMATCH');
   if (currentDigest !== result.prospective.canonicalDigest) fail('final canonical digest drifted from prospective canonical', 'FINAL_DIGEST_MISMATCH');
   if (sha256(currentSeedBytes) !== sha256(result.prospective.seedBytes)) fail('final seed digest drifted from prospective seed', 'FINAL_DIGEST_MISMATCH');
-  if (sha256(currentPromotionLedgerBytes) !== sha256(result.prospective.promotionLedgerBytes)) fail('final target promotion ledger drifted', 'FINAL_DIGEST_MISMATCH');
+  validatePromotionLedgerPrefix({
+    currentEntries: currentPromotionLedgerEntries,
+    expectedPrefixEntries: result.promotionLedger,
+    baseEntries: result.inputs.basePromotionLedger,
+    binding: promotion.outputs?.target_promotions,
+    label: 'M5-12A final promotion ledger',
+  });
   if (sha256(currentDecisionBytes) !== sha256(result.decisionSourceBytes)) fail('final semantic decision source drifted', 'SEMANTIC_DECISION_SOURCE_MISMATCH');
   if (admission.gate?.gate_status !== 'pass') fail('M5-12A durable gate is not passing', 'M5_12A_GATE_HOLD');
   if (promotion.status !== 'promoted') fail('M5-12A promotion status is not durable', 'PROMOTION_STATE_MISMATCH');
@@ -2117,14 +2229,16 @@ export async function validateM512AFinal({
     fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
   }
   if (promotion.outputs?.canonical_directory_sha256 !== currentDigest) fail('promotion canonical digest drifted', 'PROMOTION_DIGEST_MISMATCH');
-  if (promotion.outputs?.target_promotions?.sha256 !== sha256(currentPromotionLedgerBytes)) fail('promotion target ledger digest drifted', 'PROMOTION_DIGEST_MISMATCH');
+  if (promotion.outputs?.target_promotions?.prefix_sha256 !== result.promotionLedgerBinding.prefix_sha256) fail('promotion target ledger prefix drifted', 'PROMOTION_DIGEST_MISMATCH');
   if (promotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)) fail('promotion semantic authority digest drifted', 'PROMOTION_DIGEST_MISMATCH');
   const postPromotionAudit = promotion.post_promotion_audit;
   if (!postPromotionAudit
     || postPromotionAudit.status !== 'complete'
     || postPromotionAudit.canonical_directory_sha256 !== currentDigest
     || postPromotionAudit.seed_sha256 !== sha256(currentSeedBytes)
-    || postPromotionAudit.promotion_ledger_sha256 !== sha256(currentPromotionLedgerBytes)
+    || postPromotionAudit.promotion_ledger_prefix_sha256 !== result.promotionLedgerBinding.prefix_sha256
+    || JSON.stringify(postPromotionAudit.promotion_ledger_binding)
+      !== JSON.stringify(result.promotionLedgerBinding)
     || postPromotionAudit.semantic_decision_source_sha256 !== sha256(currentDecisionBytes)
     || postPromotionAudit.semantic_audit_sha256 !== sha256(result.semanticAuditBytes)
     || JSON.stringify(postPromotionAudit.semantic_audit) !== JSON.stringify(compactSemanticAuditCoverage(result.semanticAuditCoverage))) {
@@ -2146,6 +2260,7 @@ export async function validateM512AFinal({
     canonical_directory_sha256: currentDigest,
     seed_sha256: sha256(currentSeedBytes),
     promotion_ledger_sha256: sha256(currentPromotionLedgerBytes),
+    promotion_ledger_prefix_sha256: result.promotionLedgerBinding.prefix_sha256,
     semantic_decision_source_sha256: sha256(currentDecisionBytes),
     semantic_audit: currentAuditCoverage,
   };

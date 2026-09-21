@@ -506,3 +506,62 @@ test('artifact policy rejects arbitrary objects hidden in allowed scalar fields'
     await rm(repositoryDirectory, { recursive: true, force: true });
   }
 });
+
+test('artifact policy rejects an unregistered decision-source contract version', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-unregistered-contract-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = decisionSourceFixture();
+  value.contract_version = 'lexical-semantic-decision-source-v3';
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects an equivalent decision source hidden under an alternate root envelope', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-envelope-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = { archive: decisionSourceFixture() };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects a markerless promotion-evidence JSONL envelope', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-markerless-ledger-policy-'));
+  const relativePath = 'data/batches/future-promotion-evidence.jsonl';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    batch_id: 'future-batch',
+    record: { id: 'w1001', lemma: 'reintroduced body' },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
