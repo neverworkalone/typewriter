@@ -2042,12 +2042,10 @@ export async function refreshM512APromotionEvidence({
     fail('post-promotion evidence refresh found output drift', 'PROMOTION_DIGEST_MISMATCH');
   }
   if (result.admission.gate?.gate_status !== 'pass') fail('post-promotion evidence requires a passing admission gate', 'M5_12A_GATE_HOLD');
-  const promotionFile = await readJson(promotionPath, 'M5-12A promotion evidence');
+  await readJson(promotionPath, 'M5-12A promotion evidence');
   const promotion = {
-    ...promotionFile.value,
     ...structuredClone(result.promotion),
     status: 'promoted',
-    preflight: result.preflight,
     post_promotion_audit: buildPostPromotionAudit({
       canonicalDigest: currentCanonicalDigest,
       seedDigest: currentSeedDigest,
