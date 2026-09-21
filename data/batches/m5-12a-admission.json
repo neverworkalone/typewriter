@@ -78,8 +78,8 @@
     "batch_id": "m5-12a-expansion-20260920",
     "inputs": {
       "prospective_canonical_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-      "semantic_audit_sha256": "3b41051f3b773e9d17d13a4b4b60a3abe686275789ed8ddaa394a254726ea2f6",
-      "decision_source_sha256": "6ec29ed5a1508b923113c343acc056d97c87ba19c8b6bfd50a9794a9a0a88489",
+      "semantic_audit_sha256": "f49fc128b4ac2801c7a1c84acffcae371cccf270f5c9ac36225d6adde9e37b8f",
+      "decision_source_sha256": "3aef49714ec2561c64cce210b57b060fae261905f27e8967b2efece015036e84",
       "promotion_ledger_prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a"
     },
     "preflight": {
@@ -134,7 +134,7 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "2167405014718862ca78e99736720b638f03a77d5129e4c0a4af6c0f61a26bd1",
+  "gate_evidence_sha256": "70c77fbe8110524735eed381ff1d80d815293e9b4d4379f931e50e73b817f38a",
   "promotion_ledger_binding": {
     "previous_ledger_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "append_start": 0,
@@ -158,7 +158,7 @@
     "semantic_audit": {
       "source_id": "semantic_audit",
       "path": "derived:complete-canonical-audit",
-      "sha256": "3b41051f3b773e9d17d13a4b4b60a3abe686275789ed8ddaa394a254726ea2f6"
+      "sha256": "f49fc128b4ac2801c7a1c84acffcae371cccf270f5c9ac36225d6adde9e37b8f"
     },
     "target_promotions": {
       "source_id": "target_promotions",
