@@ -48,6 +48,24 @@ and a 2,466-byte envelope. The 722 canonical batch bindings average 601 bytes
 each. The 722 promotion ledger events average 663 bytes each and contain no
 candidate or canonical body.
 
+`npm run validate:evidence` also emits a machine-readable payload accounting
+for the four footprint questions required by this issue. It treats each
+candidate, decision row, canonical review record (with its batch binding
+removed), canonical batch binding, and promotion event as one semantic payload
+unit, hashes the canonical JSON for each unit, and counts exact digest repeats
+only after their first occurrence:
+
+| accounting class | units | bytes | definition |
+| --- | ---: | ---: | --- |
+| unique semantic payload | 5,090 | 11,090,382 | one byte count for each distinct semantic-unit digest |
+| duplicated payload | 0 | 0 | exact semantic-unit bytes repeated after the first digest occurrence |
+| current-corpus-dependent | 2,042 | 8,363,863 | canonical review units, whose count follows the current canonical corpus |
+| batch-size-dependent | 3,048 | 2,726,519 | 802 candidate bodies, 802 decisions, 722 bindings, and 722 promotion events |
+
+The two dependency classes partition the unique semantic payload bytes. Repeated
+digest strings inside bindings are identity references, not copied semantic
+payloads, so they are deliberately not counted as duplicate payload bytes.
+
 ## Field-level authority map
 
 | field / artifact | producer | active consumers | authority and historical need | action |
@@ -115,13 +133,17 @@ The representation change is guarded at three boundaries:
    digest, complete audit coverage, and compact preflight bindings before
    accepting the durable manifests.
 
-The v2 artifact policy adds a shape-based check, independent of filename. It
-rejects v2 gate artifacts that reintroduce metrics, timing matrices, full audit
-payloads, SQLite/package summaries, or temporary output paths. It also rejects
-decision rows with derived gloss/POS/domain/connector copies, canonical batch
-bindings with extra narrative fields, and promotion-ledger rows containing
-candidate bodies. A new batch filename cannot bypass these checks when it uses
-the same durable contract.
+The v2 artifact policy identifies the durable role from the contract version,
+not from the filename. Admission and promotion manifests, the admission gate
+and gate evidence, decision-source rows and sense reviews, canonical batch
+bindings, and promotion-ledger rows all use closed allowlists. It rejects v2
+gate artifacts that reintroduce metrics, timing matrices, full audit payloads,
+SQLite/package summaries, or temporary output paths. It also rejects decision
+rows with derived gloss/POS/domain/connector copies, canonical batch bindings
+with extra narrative fields, and promotion-ledger rows containing candidate
+bodies under an alternate key. Synthetic fixtures cover a future promotion
+preflight, an alternate ledger body key, and an alternate decision-row
+envelope, so a new batch filename cannot bypass the machine policy.
 
 ## Irreducible evidence
 

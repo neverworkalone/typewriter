@@ -165,3 +165,122 @@ test('artifact policy rejects reconstructible gate output in a v2 durable manife
     await rm(repositoryDirectory, { recursive: true, force: true });
   }
 });
+
+test('artifact policy closes the v2 promotion preflight contract even without gate_evidence', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-promotion-policy-'));
+  const relativePath = 'data/batches/future-promotion.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '2',
+    contract_version: 'lexical-batch-promotion-v2',
+    preflight: {
+      contract_version: 'lexical-batch-preflight-v1',
+      status: 'complete',
+      input_canonical_directory_sha256: 'a'.repeat(64),
+      checks: {
+        deterministic_sqlite: {
+          status: 'pass',
+          input_canonical_directory_sha256: 'a'.repeat(64),
+          summary: { outputPath: '/tmp/generated.sqlite' },
+        },
+      },
+    },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_GATE_DUPLICATION',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects alternate full-record keys in a promotion ledger', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-ledger-policy-'));
+  const relativePath = 'data/inventory/m5-target-promotions.jsonl';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    batch_id: 'm5-12a',
+    inventory_id: 'm5-12a-w001',
+    canonical_id: 'w1001',
+    decision: 'included',
+    record_sha256: 'a'.repeat(64),
+    decision_source_id: 'm5-12a-decisions',
+    decision_source_sha256: 'b'.repeat(64),
+    decision_row_sha256: 'c'.repeat(64),
+    reason_codes: [],
+    flags: [],
+    decision_note: 'promotion event',
+    record: { lemma: '재도입된 본문' },
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects alternate decision-row envelopes in the v2 source', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-decision-policy-'));
+  const relativePath = 'data/batches/future-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = {
+    schema_version: '1',
+    contract_version: 'lexical-semantic-decision-source-v2',
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: 'future-source',
+    authoring_mode: 'agent-authored-decision',
+    issue: 141,
+    parent_issue: 138,
+    batch_id: 'future-batch',
+    provenance: {},
+    candidate_source: {},
+    selection: {},
+    decisions: [{
+      candidate_record_id: 'w1001',
+      inventory_id: 'm5-12a-w001',
+      candidate_record_sha256: 'a'.repeat(64),
+      decision: 'held',
+      rank: 1,
+      score: 1,
+      decision_rationale: 'future decision',
+      sense_reviews: [],
+      candidate_record: { id: 'w1001', lemma: 'duplicate body' },
+    }],
+    review: {},
+    candidate_records: [],
+    candidate_records_sha256: 'b'.repeat(64),
+    artifact_sha256: 'c'.repeat(64),
+  };
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({
+        repositoryDirectory,
+        tracked: [relativePath],
+      }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});

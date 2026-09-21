@@ -120,6 +120,199 @@
       "selection_rank",
       "selection_score",
       "reviewed_record_sha256"
-    ]
+    ],
+    "canonical_batch_binding_required_fields": [
+      "source_id",
+      "source_sha256",
+      "artifact_sha256",
+      "decision_row_sha256",
+      "candidate_record_id",
+      "candidate_record_sha256",
+      "decision",
+      "selection_rank",
+      "selection_score",
+      "reviewed_record_sha256"
+    ],
+    "gate_allowed_fields": [
+      "contract_version",
+      "policy",
+      "gate_status",
+      "decision"
+    ],
+    "gate_evidence_allowed_fields": [
+      "schema_version",
+      "contract_version",
+      "artifact_id",
+      "issue",
+      "batch_id",
+      "inputs",
+      "preflight",
+      "complete_audit"
+    ],
+    "gate_inputs_allowed_fields": [
+      "prospective_canonical_sha256",
+      "semantic_audit_sha256",
+      "decision_source_sha256",
+      "promotion_ledger_sha256"
+    ],
+    "gate_complete_audit_allowed_fields": [
+      "contract_version",
+      "scope",
+      "canonical_records_sha256",
+      "record_count",
+      "sense_count",
+      "covered_record_count",
+      "covered_sense_count",
+      "coverage_complete",
+      "review_complete",
+      "corrected_record_count"
+    ],
+    "closed_contracts": {
+      "admission_manifest": {
+        "contract_versions": [
+          "lexical-batch-admission-v2"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "artifact_id",
+          "issue",
+          "parent_issue",
+          "grandparent_issue",
+          "batch_id",
+          "authorization",
+          "target",
+          "base",
+          "actual",
+          "decisions",
+          "verification",
+          "gate",
+          "gate_evidence",
+          "gate_evidence_sha256",
+          "sources",
+          "promotion",
+          "provenance"
+        ]
+      },
+      "promotion_manifest": {
+        "contract_versions": [
+          "lexical-batch-promotion-v2"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "artifact_id",
+          "issue",
+          "parent_issue",
+          "grandparent_issue",
+          "batch_id",
+          "status",
+          "admission_sha256",
+          "preflight",
+          "gate_evidence_sha256",
+          "outputs",
+          "closed_issues",
+          "checkpoint",
+          "promotion",
+          "post_promotion_audit"
+        ]
+      },
+      "decision_source": {
+        "contract_versions": [
+          "lexical-semantic-decision-source-v2"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "authoring_mode",
+          "issue",
+          "parent_issue",
+          "batch_id",
+          "provenance",
+          "candidate_source",
+          "selection",
+          "decisions",
+          "review",
+          "candidate_records",
+          "candidate_records_sha256",
+          "artifact_sha256"
+        ],
+        "decision_allowed_fields": [
+          "candidate_record_id",
+          "inventory_id",
+          "candidate_record_sha256",
+          "decision",
+          "rank",
+          "score",
+          "decision_rationale",
+          "selection_rationale",
+          "review_pass_id",
+          "gloss_judgment",
+          "sense_reviews"
+        ],
+        "sense_review_allowed_fields": [
+          "sense_id",
+          "boundary_action",
+          "boundary_classification",
+          "boundary_decision",
+          "boundary_rationale",
+          "semantic_rationale",
+          "relation_decision",
+          "relation_count",
+          "relation_ids",
+          "no_relation_rationale",
+          "review_basis"
+        ],
+        "review_basis_allowed_fields": [
+          "topic_analysis",
+          "topic_analyses"
+        ],
+        "review_basis_topic_allowed_fields": [
+          "status",
+          "state",
+          "topic",
+          "particle",
+          "predicate",
+          "token_index",
+          "topic_pos",
+          "evidence_basis",
+          "gloss_sha256",
+          "rationale",
+          "decision_source_id"
+        ]
+      },
+      "promotion_ledger": {
+        "required_fields": [
+          "schema_version",
+          "batch_id",
+          "inventory_id",
+          "canonical_id",
+          "decision",
+          "record_sha256",
+          "decision_source_id",
+          "decision_source_sha256",
+          "decision_row_sha256",
+          "reason_codes",
+          "flags",
+          "decision_note"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "batch_id",
+          "inventory_id",
+          "canonical_id",
+          "decision",
+          "record_sha256",
+          "decision_source_id",
+          "decision_source_sha256",
+          "decision_row_sha256",
+          "reason_codes",
+          "flags",
+          "decision_note"
+        ]
+      }
+    }
   }
 }

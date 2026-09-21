@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -24,6 +25,89 @@ function byteCount(value) {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
 }
 
+function payloadDigest(value) {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
+
+function semanticPayloadUnits(source, canonicalAuthority, promotionLedger) {
+  const units = [];
+  const add = (category, values) => {
+    for (const [index, value] of values.entries()) {
+      units.push({
+        category,
+        index,
+        bytes: byteCount(value),
+        digest: payloadDigest(value),
+      });
+    }
+  };
+
+  add('candidate_records', source.candidate_records);
+  add('decisions', source.decisions);
+  add(
+    'canonical_review',
+    canonicalAuthority.authored_review.records.map(({ authored_batch_decision: ignored, ...record }) => record),
+  );
+  add(
+    'canonical_bindings',
+    canonicalAuthority.authored_review.records
+      .map(({ authored_batch_decision: binding }) => binding)
+      .filter(Boolean),
+  );
+  add('promotion_ledger', promotionLedger);
+  return units;
+}
+
+function payloadAccounting(units) {
+  const firstByDigest = new Map();
+  let uniqueBytes = 0;
+  let duplicatedBytes = 0;
+  let duplicateUnitCount = 0;
+  for (const unit of units) {
+    if (!firstByDigest.has(unit.digest)) {
+      firstByDigest.set(unit.digest, unit);
+      uniqueBytes += unit.bytes;
+    } else {
+      duplicatedBytes += unit.bytes;
+      duplicateUnitCount += 1;
+    }
+  }
+  const categoryUnits = Object.fromEntries(
+    [...new Set(units.map(({ category }) => category))].map((category) => [
+      category,
+      {
+        count: units.filter((unit) => unit.category === category).length,
+        bytes: units
+          .filter((unit) => unit.category === category)
+          .reduce((total, unit) => total + unit.bytes, 0),
+      },
+    ]),
+  );
+  const currentCorpusCategories = new Set(['canonical_review']);
+  const batchSizeCategories = new Set([
+    'candidate_records',
+    'decisions',
+    'canonical_bindings',
+    'promotion_ledger',
+  ]);
+  return {
+    methodology: 'UTF-8 bytes of canonical JSON semantic payload units; exact digest repeats count as duplicated bytes after the first occurrence.',
+    unit_count: units.length,
+    unique_unit_count: firstByDigest.size,
+    duplicate_unit_count: duplicateUnitCount,
+    unique_semantic_payload_bytes: uniqueBytes,
+    duplicated_payload_bytes: duplicatedBytes,
+    total_semantic_payload_bytes: uniqueBytes + duplicatedBytes,
+    current_corpus_dependent_bytes: units
+      .filter(({ category }) => currentCorpusCategories.has(category))
+      .reduce((total, unit) => total + unit.bytes, 0),
+    batch_size_dependent_bytes: units
+      .filter(({ category }) => batchSizeCategories.has(category))
+      .reduce((total, unit) => total + unit.bytes, 0),
+    category_units: categoryUnits,
+  };
+}
+
 function baselineDiff(baseline, files) {
   const output = execFileSync(
     'git',
@@ -42,7 +126,12 @@ async function readArtifact(relativePath) {
   try {
     value = JSON.parse(bytes.toString('utf8'));
   } catch {
-    value = undefined;
+    if (relativePath.endsWith('.jsonl')) {
+      value = bytes.toString('utf8')
+        .split('\n')
+        .filter((line) => line.trim().length > 0)
+        .map((line) => JSON.parse(line));
+    }
   }
   return {
     path: relativePath,
@@ -92,7 +181,9 @@ async function main() {
   const source = files.find(({ path: filePath }) => filePath.endsWith('m5-12a-semantic-decisions.json')).value;
   const canonicalAuthority = files.find(({ path: filePath }) => filePath.endsWith('canonical-semantic-decision-source.json')).value;
   const ledger = files.find(({ path: filePath }) => filePath.endsWith('m5-target-promotions.jsonl'));
-  const ledgerCount = ledger.lines;
+  const promotionLedger = ledger.value ?? [];
+  const ledgerCount = promotionLedger.length;
+  const payloadUnits = semanticPayloadUnits(source, canonicalAuthority, promotionLedger);
   console.log(JSON.stringify({
     baseline_commit: baseline,
     baseline_diff: baselineDiff(baseline, ARTIFACTS),
@@ -106,6 +197,7 @@ async function main() {
         average_bytes: ledgerCount === 0 ? 0 : Math.round(ledger.bytes / ledgerCount),
       },
     },
+    payload_accounting: payloadAccounting(payloadUnits),
   }, null, 2));
 }
 

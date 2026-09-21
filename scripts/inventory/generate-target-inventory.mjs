@@ -189,10 +189,32 @@ function requirePromotionDigest(value, label) {
   }
 }
 
+const PROMOTION_LEDGER_FIELDS = new Set([
+  'schema_version',
+  'batch_id',
+  'inventory_id',
+  'canonical_id',
+  'decision',
+  'record_sha256',
+  'decision_source_id',
+  'decision_source_sha256',
+  'decision_row_sha256',
+  'reason_codes',
+  'flags',
+  'decision_note',
+]);
+
 function validatePromotionLedgerEntry(entry, index) {
   const label = `promotion ledger[${index}]`;
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
     throw new TargetInventoryGenerationError(`${label} must be an object`, 'INVALID_PROMOTION_LEDGER');
+  }
+  const unknownFields = Object.keys(entry).filter((key) => !PROMOTION_LEDGER_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    throw new TargetInventoryGenerationError(
+      `${label} contains unknown fields: ${unknownFields.join(', ')}`,
+      'INVALID_PROMOTION_LEDGER',
+    );
   }
   for (const key of [
     'schema_version',
