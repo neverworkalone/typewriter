@@ -33,11 +33,11 @@ derived envelopes:
 | canonical semantic decision source | 11,935,192 / 217,285 | -685,252 bytes / -7,220 lines |
 | active seed | 621,487 / 26,095 | -425,969 bytes / -15,956 lines |
 | append-only promotion ledger | 478,965 / 722 | new historical event source |
-| compact admission manifest | 7,284 / 185 | -13,293 bytes / -351 lines |
-| compact promotion manifest | 5,042 / 123 | -14,480 bytes / -386 lines |
+| compact admission manifest | 8,102 / 201 | -12,475 bytes / -335 lines |
+| compact promotion manifest | 5,713 / 135 | -13,809 bytes / -374 lines |
 
 Across these evidence artifacts, including the new ledger, the tracked surface
-falls from 19,531,107 bytes / 380,024 lines to 15,178,249 bytes / 279,030
+falls from 19,531,107 bytes / 380,024 lines to 15,179,738 bytes / 279,058
 lines. The canonical import is unchanged by this representation change. The
 line reduction is intentionally larger than the byte reduction because the
 durable JSON remains pretty-printed and reviewable.
@@ -84,9 +84,9 @@ ownership buckets, so wrappers and active-state bytes are not left unclassified:
 | ownership bucket | bytes | tracked artifacts |
 | --- | ---: | --- |
 | current-corpus authority | 11,935,192 | canonical semantic decision source |
-| batch-size authority | 2,621,570 | semantic decisions, promotion ledger, admission and promotion manifests |
+| batch-size authority | 2,623,059 | semantic decisions, promotion ledger, admission and promotion manifests |
 | active inventory state | 621,487 | active target seed |
-| **tracked total** | **15,178,249** | **bucket sum matches tracked bytes** |
+| **tracked total** | **15,179,738** | **bucket sum matches tracked bytes** |
 
 The semantic payload numbers and the ownership buckets answer different
 questions: the former exposes exact-unit and known-field repetition, while the
@@ -155,15 +155,22 @@ The representation change is guarded at three boundaries:
    inventory generation, and the exact +722 gate. The only changed inputs are
    the representation of evidence and the split of promoted history.
 3. `validateM512AFinal()` recomputes the final canonical summary, canonical
-   directory digest, seed digest, promotion-ledger digest, decision-source
-   digest, complete audit coverage, and compact preflight bindings before
-   accepting the durable manifests.
+   directory digest, seed digest, the M5-12A promotion-ledger prefix digest,
+   decision-source digest, complete audit coverage, and compact preflight
+   bindings before accepting the durable manifests. The current full ledger
+   digest remains reporting state; it is not the immutable identity of an
+   already recorded M5-12A segment.
 
-The v2 artifact policy identifies the durable role from the contract version,
-not from the filename. Admission and promotion manifests, their nested durable
-containers, the admission gate and gate evidence, decision-source rows and
-sense reviews, canonical batch bindings, and promotion-ledger rows all use
-typed closed schemas. It rejects v2
+The v2 artifact policy requires both a registered durable path role and its
+registered contract version. Admission and promotion manifests, their nested
+durable containers, the admission gate and gate evidence, decision-source rows
+and sense reviews, canonical batch bindings, and promotion-ledger rows all use
+typed closed schemas. A new durable JSON or JSONL file under a governed path
+cannot opt in merely by copying a known `contract_version`: an unregistered
+root, alternate envelope, or markerless promotion-ledger stream is rejected.
+Explicitly enumerated legacy paths are the only exception, preserving
+historical pre-M5-12A evidence without making future artifacts untyped. The
+policy rejects v2
 gate artifacts that reintroduce metrics, timing matrices, full audit payloads,
 SQLite/package summaries, or temporary output paths. It also rejects decision
 rows with derived gloss/POS/domain/connector copies, canonical batch bindings
@@ -174,6 +181,17 @@ envelope, so a new batch filename cannot bypass the machine policy. The schemas
 also retain normal future authored shapes such as corrected decision records,
 multi-sense boundary pairs, and candidate sense relations, while rejecting an
 object or full-record payload hidden inside an allowed scalar field.
+
+The append-only promotion ledger is bound locally to the historical segment
+that a manifest records. M5-12A stores the previous-ledger digest, append start
+and count, appended-segment digest, prefix event count, and immutable prefix
+digest. A later event may extend the ledger without invalidating the M5-12A
+evidence, while changing any event inside that prefix fails validation. The
+shared inventory validator additionally binds each event's canonical-record
+digest and decision-source ID, artifact digest, and decision-row digest to the
+canonical record and the authoritative `authored_batch_decision`; well-formed
+but fabricated digests or source IDs therefore cannot satisfy the common
+consumer path.
 
 ## Irreducible evidence
 
