@@ -49,6 +49,7 @@
   },
   "gate_evidence_sha256": "8e06745551a5a3cdf0914f2fb91c48db1644efd6b5ea72b417244c74eb223764",
   "outputs": {
+    "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "canonical_import": {
       "path": "data/canonical/m5-12a-expansion.jsonl",
       "sha256": "3f4362a8fb109a6d2d44bf9cc42f63d64cb58c5ddae0084dcab5ac5fe347be45",
@@ -69,7 +70,7 @@
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
       "materialization": "on-demand",
-      "sha256": "7c85c89bdba6643bd31a7699b2fdad55211588effa55235713d469017c088cb2",
+      "sha256": "066f39e22d69d2b7c67ae2d4cdd0e45380b8f0b068aa7029145d6855fcdc7c47",
       "entry_count": 2235
     },
     "semantic_decision_source": {
