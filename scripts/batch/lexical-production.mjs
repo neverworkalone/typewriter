@@ -7,7 +7,10 @@ import {
   validateLexicalProductionPreAuditState,
   validateLexicalProductionState,
 } from './lexical-production-state.mjs';
-import { validateLexicalSemanticReview } from '../validate/lexical-quality.mjs';
+import {
+  validateBulkGlossProjection,
+  validateLexicalSemanticReview,
+} from '../validate/lexical-quality.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_DECISIONS = Object.freeze([
@@ -311,6 +314,7 @@ export function validateLexicalProduction({
   candidateLabel = 'production candidate records',
   reviewedLabel = 'production reviewed records',
   prospectiveLabel = 'production prospective canonical records',
+  requireIndependentDecisionEvidence = true,
 } = {}) {
   if (allowReplay === true) {
     fail(
@@ -353,6 +357,21 @@ export function validateLexicalProduction({
       fail(`production.candidate_records contains duplicate candidate ${candidate.id}`, 'LEXICAL_PRODUCTION_SCOPE');
     }
     candidateRecordsById.set(candidate.id, candidate);
+  }
+  try {
+    validateBulkGlossProjection(candidates, { maxOccurrences: 3 });
+  } catch (error) {
+    fail(`production candidate semantic content failed shared diversity validation: ${error.message}`, error.code);
+  }
+  // `prospectiveRecords` is the complete base-plus-import dictionary by
+  // contract.  Apply the same invariant at this producer boundary so a
+  // candidate cannot evade the guard merely by splitting a repeated template
+  // across batches; the admission audit repeats the check after all evidence
+  // and bindings have been validated.
+  try {
+    validateBulkGlossProjection(prospectiveRecords, { maxOccurrences: 3 });
+  } catch (error) {
+    fail(`production prospective canonical content failed shared diversity validation: ${error.message}`, error.code);
   }
   const selectedRecords = [];
   const ranks = [];
@@ -399,6 +418,7 @@ export function validateLexicalProduction({
         expectedRecordType: entry.expected_record_type,
         catalogCount: catalogCount ?? candidates.length,
         requireSemanticEvidence: true,
+        requireIndependentDecisionEvidence,
         selectionRationaleTokens: ['verification', 'coverage'],
       });
     } catch (error) {
@@ -445,6 +465,7 @@ export function validateLexicalProduction({
         expectedRecordType: entry.expected_record_type,
         catalogCount: catalogCount ?? Math.max(candidates.length, 1),
         requireSemanticEvidence: true,
+        requireIndependentDecisionEvidence,
         selectionRationaleTokens: ['verification', 'coverage'],
       });
     } catch (error) {

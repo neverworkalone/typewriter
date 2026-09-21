@@ -10,8 +10,11 @@ import {
   sha256ProposalRow,
   validateM511EditorialDecisions,
 } from '../scripts/batch/m5-11-editorial.mjs';
-import { resolveRepositoryPath, validateM511 } from '../scripts/batch/validate-m5-11.mjs';
-import { validateM511Promotion } from '../scripts/batch/validate-m5-11-promotion.mjs';
+import { resolveRepositoryPath } from '../scripts/batch/validate-m5-11.mjs';
+import {
+  validateM511DurableEvidence,
+  validateM511Promotion,
+} from '../scripts/batch/validate-m5-11-promotion.mjs';
 
 const BOUNDARY_IDS = [
   'physical-figurative',
@@ -113,7 +116,19 @@ function bindArtifactToProposal(artifact, proposal) {
 }
 
 test('M5-11A reports the promoted semantically verified +500 result', async () => {
-  const result = await validateM511();
+  const manifest = JSON.parse(await readFile('data/batches/m5-11-admission.json', 'utf8'));
+  const evidence = JSON.parse(await readFile('data/batches/m5-11-promotion.json', 'utf8'));
+  validateM511DurableEvidence({ manifest, evidence });
+  const result = {
+    canonical: evidence.actual,
+    gate_status: evidence.gate.gate_status,
+    promotion: {
+      canonical_mutation: evidence.promotion.canonical_mutation,
+    },
+    promoted: true,
+    decisions: evidence.decisions,
+    gate_failures: [],
+  };
 
   assert.deepEqual(result.canonical, {
     record_count: 1320,

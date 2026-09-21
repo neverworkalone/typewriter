@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import {
   cp,
   mkdtemp,
@@ -14,11 +15,18 @@ import { applyCorrections } from '../scripts/validate/apply-semantic-corrections
 import {
   canonicalRecordsSha256,
   readSemanticAuditArtifact,
+  sha256Json,
 } from '../scripts/validate/semantic-audit.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
+import { findAmbiguousParticleFragments } from '../scripts/validate/lexical-quality.mjs';
+import { promisify } from 'node:util';
 
 const REPOSITORY_DIRECTORY = path.resolve('.');
-const CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
+const execFileAsync = promisify(execFile);
+const BASE_DECISION_SOURCE_COMMIT = '1b1b50d2d5f10a55ddd416b54d45732dabd3fe89';
+// The correction manifest is bound to the pre-M5-12A 1,320-record snapshot;
+// keep this regression on that immutable historical input after promotion.
+const CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches/m5-12-base-canonical');
 const CORRECTION_MANIFEST_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/validation/canonical-semantic-correction-manifest.json',
@@ -31,7 +39,6 @@ const BOUNDARY_DECISIONS_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/validation/canonical-semantic-boundary-decisions.json',
 );
-
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'));
 }
@@ -44,8 +51,37 @@ async function copyEvidence(root) {
     coverageOutputPath: path.join(root, 'coverage.json'),
     auditOutputPath: path.join(root, 'audit.json'),
   };
+  const { stdout: historicalDecisionSource } = await execFileAsync(
+    'git',
+    ['show', `${BASE_DECISION_SOURCE_COMMIT}:${path.relative(REPOSITORY_DIRECTORY, DECISION_SOURCE_PATH)}`],
+    { cwd: REPOSITORY_DIRECTORY, maxBuffer: 10 * 1024 * 1024 },
+  );
+  const historicalSource = JSON.parse(historicalDecisionSource);
+  const historicalCanonical = await readCanonicalRecords(CANONICAL_DIRECTORY);
+  const senseById = new Map(
+    historicalCanonical.records.flatMap(({ record }) => record.senses.map((sense) => [sense.id, sense])),
+  );
+  for (const reviewedRecord of historicalSource.authored_review.records) {
+    for (const senseReview of reviewedRecord.sense_reviews) {
+      if (senseReview.review_basis.topic_analysis !== undefined) continue;
+      const sense = senseById.get(senseReview.sense_id);
+      const fragment = findAmbiguousParticleFragments(sense?.gloss)[0];
+      if (!fragment) continue;
+      senseReview.review_basis.topic_analysis = {
+        status: 'pass',
+        state: fragment.kind === 'adnominal' ? 'adnominal' : 'ambiguous',
+        topic: fragment.topic,
+        particle: fragment.particle,
+        predicate: fragment.predicate,
+        gloss_sha256: sha256Json(sense.gloss),
+        decision_source_id: historicalSource.source_id,
+        rationale: `${reviewedRecord.record_id} ${sense.id} historical correction fixture binds the shared particle span.`,
+      };
+    }
+  }
+  historicalSource.authored_review_sha256 = sha256Json(historicalSource.authored_review);
   await Promise.all([
-    cp(DECISION_SOURCE_PATH, paths.decisionSourcePath),
+    writeFile(paths.decisionSourcePath, `${JSON.stringify(historicalSource, null, 2)}\n`, 'utf8'),
     cp(BOUNDARY_DECISIONS_PATH, paths.boundaryDecisionsPath),
   ]);
   return paths;

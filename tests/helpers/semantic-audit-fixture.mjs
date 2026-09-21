@@ -15,9 +15,9 @@ import {
 } from '../../scripts/validate/semantic-audit.mjs';
 import {
   auditCanonicalLexicalQuality,
+  findAmbiguousParticleFragments,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
-  requiresTopicAnalysis,
 } from '../../scripts/validate/lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from '../../scripts/validate/sense-boundary.mjs';
 import {
@@ -33,43 +33,76 @@ function recordOf(recordInfo) {
 
 function makeTopicAnalysis(sense, decisionSourceId, topicAnalyses = {}) {
   const configured = topicAnalyses[sense.id];
-  const fragment = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u.exec(sense.gloss.trim());
-  if (!fragment && configured === undefined) return undefined;
-  const configuredValue = typeof configured === 'string'
-    ? { state: configured }
-    : (configured ?? {});
-  const state = configuredValue.state ?? (fragment ? 'ambiguous' : 'unsupported');
-  return {
-    status: 'pass',
-    state,
-    ...(fragment ? fragment.groups : {}),
-    ...(configuredValue.topic ? { topic: configuredValue.topic } : {}),
-    ...(configuredValue.particle ? { particle: configuredValue.particle } : {}),
-    ...(configuredValue.predicate ? { predicate: configuredValue.predicate } : {}),
-    gloss_sha256: sha256Json(sense.gloss),
-    rationale: configuredValue.rationale
-      ?? `${sense.id} topic/adnominal reading was explicitly reviewed from the authored fixture evidence.`,
-    decision_source_id: decisionSourceId,
-    ...(state === 'noun-topic'
-      ? {
-        topic_pos: configuredValue.topic_pos ?? 'noun',
-        evidence_basis: configuredValue.evidence_basis
-          ?? `${sense.id} explicitly establishes a noun topic before the particle.`,
-      }
-      : {}),
+  const fragments = findAmbiguousParticleFragments(sense.gloss);
+  if (fragments.length === 0 && configured === undefined) return undefined;
+
+  const makeOne = (fragment, value = {}) => {
+    const configuredValue = typeof value === 'string' ? { state: value } : (value ?? {});
+    const state = configuredValue.state ?? (fragment ? 'ambiguous' : 'unsupported');
+    return {
+      status: 'pass',
+      state,
+      ...(fragment ? {
+        token_index: fragment.token_index,
+        topic: fragment.topic,
+        particle: fragment.particle,
+        predicate: fragment.predicate,
+      } : {}),
+      ...(configuredValue.topic ? { topic: configuredValue.topic } : {}),
+      ...(configuredValue.particle ? { particle: configuredValue.particle } : {}),
+      ...(configuredValue.predicate ? { predicate: configuredValue.predicate } : {}),
+      gloss_sha256: sha256Json(sense.gloss),
+      rationale: configuredValue.rationale
+        ?? `${sense.id} topic/adnominal reading was explicitly reviewed from the authored fixture evidence.`,
+      decision_source_id: decisionSourceId,
+      ...(state === 'noun-topic'
+        ? {
+          topic_pos: configuredValue.topic_pos ?? 'noun',
+          evidence_basis: configuredValue.evidence_basis
+            ?? `${sense.id} explicitly establishes a noun topic before the particle.`,
+        }
+        : {}),
+    };
   };
+
+  if (fragments.length > 1) {
+    const configuredValues = Array.isArray(configured) ? configured : [];
+    return fragments.map((fragment, index) => makeOne(fragment, configuredValues[index]));
+  }
+
+  const configuredValue = Array.isArray(configured) ? configured[0] : configured;
+  return makeOne(fragments[0], configuredValue);
+}
+
+function topicAnalysisFields(topicAnalysis) {
+  if (topicAnalysis === undefined) return {};
+  return Array.isArray(topicAnalysis)
+    ? { topic_analyses: topicAnalysis }
+    : { topic_analysis: topicAnalysis };
 }
 
 function makeProductionSemanticReview(record, {
   decision,
   artifactId,
   rank,
+  candidateRecord = record,
+  reviewedRecord = record,
   topicAnalyses = {},
 } = {}) {
   const decisionSourceId = `${artifactId}:decision-source`;
   const multiSense = record.senses.length > 1;
   const action = multiSense ? 'split' : 'retain';
   const classification = multiSense ? 'separated' : 'atomic';
+  const score = 1;
+  const sourceSha256 = sha256Json({
+    artifact_id: artifactId,
+    decision_source_id: decisionSourceId,
+    candidate_record_sha256: sha256Json(candidateRecord),
+    reviewed_record_sha256: sha256Json(reviewedRecord),
+    decision,
+    rank,
+    score,
+  });
   const pairs = inspectSenseBoundaryPairs(record).map((pair) => {
     const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
     const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
@@ -95,6 +128,33 @@ function makeProductionSemanticReview(record, {
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: decisionSourceId,
       path: `tests/fixtures/${artifactId}-decision-source.json`,
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: sourceSha256,
+    },
+    authored_decision: {
+      source_sha256: sourceSha256,
+      decision_source_id: decisionSourceId,
+      candidate_record_id: candidateRecord.id,
+      candidate_record_sha256: sha256Json(candidateRecord),
+      reviewed_record_sha256: sha256Json(reviewedRecord),
+      decision,
+      selection_rank: rank,
+      selection_score: score,
+      rationale: `${candidateRecord.id} was selected from the separately authored fixture decision source.`,
+      sense_evidence: reviewedRecord.senses.map((sense) => ({
+        sense_id: sense.id,
+        gloss_sha256: sha256Json(sense.gloss),
+        basis: `${reviewedRecord.id} ${sense.id} gloss and writer-facing use were explicitly reviewed.`,
+      })),
+      relation_evidence: reviewedRecord.senses.map((sense) => {
+        const relationCount = sense.relations?.length ?? 0;
+        return {
+          sense_id: sense.id,
+          relation_count: relationCount,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          basis: `${reviewedRecord.id} ${sense.id} relation outcome was explicitly reviewed.`,
+        };
+      }),
     },
     sense_boundary: {
       status: 'pass',
@@ -125,7 +185,7 @@ function makeProductionSemanticReview(record, {
               ? 'coordinated'
               : multiSense ? 'split' : 'atomic',
             decision_source_id: decisionSourceId,
-            ...(topicAnalysis ? { topic_analysis: topicAnalysis } : {}),
+            ...topicAnalysisFields(topicAnalysis),
           },
         };
       }),
@@ -169,7 +229,7 @@ function makeProductionSemanticReview(record, {
     selection: {
       status: ['included', 'corrected'].includes(decision) ? 'selected' : decision,
       rank,
-      score: 1,
+      score,
       rationale: `${record.id} was selected by authored verification and coverage evidence`,
     },
   };
@@ -203,6 +263,8 @@ export function makeProductionState({
         decision,
         artifactId,
         rank: index + 1,
+        candidateRecord: candidate,
+        reviewedRecord: reviewedValues[index] ?? candidate,
         topicAnalyses,
       }),
       ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
@@ -517,6 +579,7 @@ export function makeSemanticReview(
         const boundaryReview = boundaryReviews.get(record.id);
         const domainAxes = inspectWriterDomainEvidence(sense.gloss).axes;
         const relationCount = sense.relations?.length ?? 0;
+        const topicAnalysis = makeTopicAnalysis(sense, decisionSourceId, topicAnalyses);
         return {
           sense_id: sense.id,
           sense_sha256: sha256Json(sense),
@@ -570,9 +633,7 @@ export function makeSemanticReview(
             relation_count: relationCount,
             decision_source_id: decisionSourceId,
             rationale: `${record.id} ${sense.id} reviewed gloss ${sha256Json(sense.gloss).slice(0, 12)} with its POS, type, boundary, and relation outcome.`,
-            ...(requiresTopicAnalysis(sense.gloss) || topicAnalyses[sense.id] !== undefined
-              ? { topic_analysis: makeTopicAnalysis(sense, decisionSourceId, topicAnalyses) }
-              : {}),
+            ...topicAnalysisFields(topicAnalysis),
           },
         };
       }),

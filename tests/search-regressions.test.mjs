@@ -35,6 +35,30 @@ const fixturePath = path.join(
 );
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 
+async function openRegressionDatabase(prefix) {
+  const configuredPath = process.env.TYPEWRITER_SEARCH_REGRESSION_DATABASE;
+  if (configuredPath) {
+    return {
+      database: new DatabaseSync(configuredPath, { readOnly: true }),
+      outputDirectory: null,
+    };
+  }
+
+  const outputDirectory = await mkdtemp(path.join(repositoryDirectory, prefix));
+  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+  await buildDictionary({
+    inputDirectory: path.join(repositoryDirectory, 'data/canonical'),
+    outputPath,
+    checkPilotCompleteness: true,
+    allowDirty: true,
+    repositoryDirectory,
+  });
+  return {
+    database: new DatabaseSync(outputPath, { readOnly: true }),
+    outputDirectory,
+  };
+}
+
 test('M4 search regression corpus has a valid shape and no source sentences', () => {
   assert.deepEqual(validateSearchRegressionCorpus(fixture), []);
   assert.doesNotThrow(() => assertValidSearchRegressionCorpus(fixture));
@@ -54,19 +78,9 @@ test('fixture validation rejects duplicate results and source-text fields', () =
 });
 
 test('M3 baseline cases match the canonical SQLite exact-query contract', async () => {
-  const outputDirectory = await mkdtemp(path.join(repositoryDirectory, 'tmp-search-regression-'));
-  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-
+  const opened = await openRegressionDatabase('tmp-search-regression-');
   try {
-    await buildDictionary({
-      inputDirectory: path.join(repositoryDirectory, 'data/canonical'),
-      outputPath,
-      checkPilotCompleteness: true,
-      allowDirty: true,
-      repositoryDirectory,
-    });
-
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    const { database } = opened;
     try {
       for (const searchCase of casesByEvaluation(fixture, 'baseline')) {
         const rows = findRecordsByExactTerm(database, searchCase.query);
@@ -165,24 +179,16 @@ test('M3 baseline cases match the canonical SQLite exact-query contract', async 
       database.close();
     }
   } finally {
-    await rm(outputDirectory, { recursive: true, force: true });
+    if (opened.outputDirectory) {
+      await rm(opened.outputDirectory, { recursive: true, force: true });
+    }
   }
 });
 
 test('M4 query responses preserve normalization and match provenance', async () => {
-  const outputDirectory = await mkdtemp(path.join(repositoryDirectory, 'tmp-search-query-contract-'));
-  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
-
+  const opened = await openRegressionDatabase('tmp-search-query-contract-');
   try {
-    await buildDictionary({
-      inputDirectory: path.join(repositoryDirectory, 'data/canonical'),
-      outputPath,
-      checkPilotCompleteness: true,
-      allowDirty: true,
-      repositoryDirectory,
-    });
-
-    const database = new DatabaseSync(outputPath, { readOnly: true });
+    const { database } = opened;
     try {
       for (const searchCase of fixture.cases.filter(({ actual }) => actual.raw_query !== undefined)) {
         const response = findRecordsBySearchTerm(database, searchCase.query);
@@ -227,6 +233,8 @@ test('M4 query responses preserve normalization and match provenance', async () 
       database.close();
     }
   } finally {
-    await rm(outputDirectory, { recursive: true, force: true });
+    if (opened.outputDirectory) {
+      await rm(opened.outputDirectory, { recursive: true, force: true });
+    }
   }
 });

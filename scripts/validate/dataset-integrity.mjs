@@ -277,6 +277,7 @@ export function validateDatasetRecords(
     requireSemanticAudit = false,
     semanticAuditBaseRecords,
     requireDecisionSource = true,
+    requireTopicAnalysis = true,
   } = {},
 ) {
   const indexes = indexRecords(recordInfos);
@@ -293,6 +294,7 @@ export function validateDatasetRecords(
         baseRecords: semanticAuditBaseRecords,
         label: 'complete canonical semantic audit',
         requireDecisionSource,
+        requireTopicAnalysis,
       });
     } catch (error) {
       fail(error.message, error.code);
@@ -300,6 +302,7 @@ export function validateDatasetRecords(
     try {
       topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
         label: 'complete canonical semantic audit',
+        requireTopicAnalysis,
       });
     } catch (error) {
       fail(error.message, error.code);
@@ -308,6 +311,7 @@ export function validateDatasetRecords(
     try {
       topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
         label: 'semantic audit',
+        requireTopicAnalysis,
       });
     } catch (error) {
       fail(error.message, error.code);

@@ -207,9 +207,13 @@ function validateLexicalAdditionInternal({
     baseRecords: baseInfos,
     label: `${batchId} semantic audit`,
     requireDecisionSource: !allowReplay,
+    // Historical replay validates the recorded artifact and its digests as-is;
+    // current admission still requires complete span-bound topic evidence.
+    requireTopicAnalysis: !allowReplay,
   });
   const topicEvidence = buildSemanticTopicEvidence(prospectiveInfos, semanticAudit, {
     label: `${batchId} semantic audit`,
+    requireTopicAnalysis: !allowReplay,
   });
   const indexes = validateDatasetRecords(prospectiveInfos, {
     checkPilotCompleteness,
@@ -217,6 +221,7 @@ function validateLexicalAdditionInternal({
     requireSemanticAudit: true,
     semanticAuditBaseRecords: baseInfos,
     requireDecisionSource: !allowReplay,
+    requireTopicAnalysis: !allowReplay,
   });
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset

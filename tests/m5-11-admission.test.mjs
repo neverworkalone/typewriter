@@ -35,6 +35,7 @@ import {
   M5_11_BATCH_ID,
   M5_11_AGENT_SEMANTIC_REVIEW_VERSION,
   evaluateM511SemanticCoverage,
+  rebaseM511CandidateRecord,
   sha256Json,
   sha256ProposalRow,
   validateM511EditorialDecisions,
@@ -49,6 +50,7 @@ import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
   DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
   buildCanonicalSemanticAudit,
+  canonicalRecordsSha256,
   serializeSemanticAuditArtifact,
   validateCanonicalSemanticAudit,
 } from '../scripts/validate/semantic-audit.mjs';
@@ -91,14 +93,48 @@ async function createM511PromotionTransactionFixture() {
   await cp('data/batches/m5-11-base-canonical', currentCanonicalDirectory, { recursive: true });
   await cp('data/batches/m5-11-base-canonical', prospectiveCanonicalDirectory, { recursive: true });
   const importBytes = await readFile('data/canonical/m5-11-expansion.jsonl');
-  const seedBytes = await readFile('data/inventory/m5-target-seed.json');
+  const currentSeed = JSON.parse(await readFile('data/inventory/m5-target-seed.json', 'utf8'));
+  currentSeed.revision = 'm5-11';
+  currentSeed.targets = currentSeed.targets.filter(({ inventory_id: inventoryId }) => {
+    const number = Number(inventoryId.slice(3));
+    return !(inventoryId.startsWith('m5-') && number >= 1085 && number <= 1886);
+  });
+  const seedBytes = Buffer.from(`${JSON.stringify(currentSeed, null, 2)}\n`, 'utf8');
   await writeFile(path.join(prospectiveCanonicalDirectory, 'm5-11-expansion.jsonl'), importBytes);
   await writeFile(prospectiveSeedPath, seedBytes);
   await writeFile(currentSeedPath, initialSeedBytes);
 
+  // M5-11 is a historical 1,320-record boundary. The live decision source
+  // now includes the promoted M5-12A rows, so derive the exact historical
+  // source in this isolated fixture instead of binding an older snapshot to
+  // a newer canonical authority.
+  const historicalDecisionSourcePath = path.join(temporaryDirectory, 'm5-11-decision-source.json');
+  const historicalCanonical = await readCanonicalRecords(prospectiveCanonicalDirectory);
+  const historicalIds = new Set(historicalCanonical.records.map(({ record }) => record.id));
+  const historicalDecisionSource = JSON.parse(
+    await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
+  );
+  const historicalReview = historicalDecisionSource.authored_review;
+  const historicalRecords = historicalCanonical.records.map(({ record }) => record);
+  const historicalSenseCount = historicalRecords.reduce((sum, record) => sum + record.senses.length, 0);
+  const historicalDigest = canonicalRecordsSha256(historicalCanonical.records);
+  historicalReview.records = historicalReview.records.filter(({ record_id: recordId }) => historicalIds.has(recordId));
+  historicalReview.record_count = historicalRecords.length;
+  historicalReview.sense_count = historicalSenseCount;
+  historicalReview.source.canonical_records_sha256 = historicalDigest;
+  historicalReview.review_pass.record_count = historicalRecords.length;
+  historicalReview.review_pass.sense_count = historicalSenseCount;
+  historicalDecisionSource.source.canonical_records_sha256 = historicalDigest;
+  historicalDecisionSource.authored_review_sha256 = sha256Json(historicalReview);
+  await writeFile(
+    historicalDecisionSourcePath,
+    `${JSON.stringify(historicalDecisionSource, null, 2)}\n`,
+    'utf8',
+  );
+
   const { artifact } = await buildCanonicalSemanticAudit({
     canonicalDirectory: prospectiveCanonicalDirectory,
-    decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+    decisionSourcePath: historicalDecisionSourcePath,
   });
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const prospectiveInventoryBytes = serializeTargetInventory(await buildTargetInventory({
@@ -115,6 +151,7 @@ async function createM511PromotionTransactionFixture() {
     currentSeedPath,
     canonicalImportPath,
     promotionEvidencePath,
+    historicalDecisionSourcePath,
     initialSeedBytes,
     semanticAuditBytes,
     prospective: {
@@ -147,6 +184,15 @@ function makeCatalog() {
   }));
 }
 
+function authoredFixtureGloss(lemma) {
+  return {
+    보류말: '보류말은 비 갠 골목에 남은 느린 여운을 가리킨다.',
+    거절말: '거절말은 낮은 계단 앞에서 멈춘 단호한 태도를 가리킨다.',
+    포함말: '포함말은 열린 우편함에서 발견되는 뜻밖의 안도를 가리킨다.',
+    수정말: '수정말은 비어 있는 정류장에 남은 오래된 다짐을 가리킨다.',
+  }[lemma] ?? `${lemma}의 검수된 의미`;
+}
+
 function makeProposal(catalog) {
   const proposals = catalog.map((entry, index) => {
     const candidateLemma = ['보류말', '거절말', '포함말', '수정말'][index];
@@ -161,7 +207,7 @@ function makeProposal(catalog) {
       senses: [{
         id: `${candidateId}-s1`,
         pos: 'noun',
-        gloss: `${candidateLemma}의 검수된 의미`,
+        gloss: authoredFixtureGloss(candidateLemma),
       }],
     };
     const row = {
@@ -213,7 +259,11 @@ function admittedDecision(inventoryId, candidateLemma, canonicalId, correctedLem
       candidate_id: canonicalId,
       lemma,
       search_forms: [lemma],
-      senses: [{ id: senseId, pos: 'noun', gloss: `${lemma}의 검수된 의미` }],
+      senses: [{
+        id: senseId,
+        pos: 'noun',
+        gloss: correctedLemma === undefined ? authoredFixtureGloss(candidateLemma) : `${lemma}의 검수된 의미`,
+      }],
     },
       sense_review: {
       status: 'complete',
@@ -576,9 +626,20 @@ function makeAgentSources(catalog) {
     const proposalRecord = fixture.proposal.proposals[index].candidate_record;
     const record = decision.canonical_record ?? proposalRecord;
     const imported = decision.canonical_record !== undefined;
+    const producerCandidate = imported
+      ? rebaseM511CandidateRecord(proposalRecord, record.id)
+      : proposalRecord;
     const decisionSourceId = `${catalogEntry.inventory_id}:decision-source`;
     const boundaryAction = record.senses.length > 1 ? 'split' : 'retain';
     const boundaryClassification = record.senses.length > 1 ? 'separated' : 'atomic';
+    const selectionScore = scores[index];
+    const sourceSha256 = sha256Json({
+      candidate_record_sha256: sha256Json(producerCandidate),
+      reviewed_record_sha256: sha256Json(record),
+      decision: decision.decision,
+      selection_rank: ranks[index],
+      selection_score: selectionScore,
+    });
     const pairwise = inspectSenseBoundaryPairs(record).map((pair) => {
       const leftSense = record.senses.find(({ id }) => id === pair.left_sense_id);
       const rightSense = record.senses.find(({ id }) => id === pair.right_sense_id);
@@ -605,6 +666,33 @@ function makeAgentSources(catalog) {
         contract_version: 'lexical-semantic-decision-source-v1',
         source_id: decisionSourceId,
         path: `tests/fixtures/${catalogEntry.inventory_id}-decision-source.json`,
+        authoring_mode: 'agent-authored-decision',
+        source_sha256: sourceSha256,
+      },
+      authored_decision: {
+        source_sha256: sourceSha256,
+        decision_source_id: decisionSourceId,
+        candidate_record_id: producerCandidate.id,
+        candidate_record_sha256: sha256Json(producerCandidate),
+        reviewed_record_sha256: sha256Json(record),
+        decision: decision.decision,
+        selection_rank: ranks[index],
+        selection_score: selectionScore,
+        rationale: `${catalogEntry.inventory_id} was selected from the separately authored M5-11 fixture decision source.`,
+        sense_evidence: record.senses.map((sense) => ({
+          sense_id: sense.id,
+          gloss_sha256: sha256Json(sense.gloss),
+          basis: `${catalogEntry.inventory_id} ${sense.id} gloss and writer-facing use were explicitly reviewed.`,
+        })),
+        relation_evidence: record.senses.map((sense) => {
+          const relationCount = sense.relations?.length ?? 0;
+          return {
+            sense_id: sense.id,
+            relation_count: relationCount,
+            decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+            basis: `${catalogEntry.inventory_id} ${sense.id} relation outcome was explicitly reviewed.`,
+          };
+        }),
       },
       axis: catalogEntry.axis,
       flags: [...catalogEntry.flags],
@@ -672,7 +760,7 @@ function makeAgentSources(catalog) {
       selection: {
         status: imported ? 'selected' : decision.decision,
         rank: ranks[index],
-        score: scores[index],
+        score: selectionScore,
         rationale: `${catalogEntry.inventory_id} selected by verification and coverage outcome`,
       },
     };
@@ -1301,7 +1389,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
       currentSeedPath: fixture.currentSeedPath,
       canonicalImportPath: fixture.canonicalImportPath,
       promotionEvidencePath: fixture.promotionEvidencePath,
-      semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      semanticDecisionSourcePath: fixture.historicalDecisionSourcePath,
     });
 
     assert.equal(transaction.canonicalDigest, prospective.canonicalDigest);
@@ -1311,7 +1399,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
     const promotionEvidence = JSON.parse(await readFile(fixture.promotionEvidencePath, 'utf8'));
     assert.equal(
       promotionEvidence.outputs.semantic_decision_source.path,
-      'data/validation/canonical-semantic-decision-source.json',
+      path.relative(process.cwd(), fixture.historicalDecisionSourcePath),
     );
     assert.equal(
       promotionEvidence.outputs.semantic_audit.sha256,
@@ -1320,7 +1408,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
 
     const authority = await verifySemanticDecisionSource({
       canonicalDirectory: fixture.currentCanonicalDirectory,
-      decisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      decisionSourcePath: fixture.historicalDecisionSourcePath,
       expectedSemanticAuditBytes: semanticAuditBytes,
     });
 
@@ -1329,7 +1417,7 @@ test('M5-11 successful promotion transaction verifies the durable semantic sourc
     await validateCanonicalSemanticAudit(
       fixture.currentCanonicalDirectory,
       undefined,
-      DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+      fixture.historicalDecisionSourcePath,
     );
   } finally {
     await rm(fixture.temporaryDirectory, { recursive: true, force: true });
@@ -1351,7 +1439,7 @@ test('M5-11 promotion transaction rejects a mismatched semantic authority withou
         currentSeedPath: fixture.currentSeedPath,
         canonicalImportPath: fixture.canonicalImportPath,
         promotionEvidencePath: fixture.promotionEvidencePath,
-        semanticDecisionSourcePath: DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+        semanticDecisionSourcePath: fixture.historicalDecisionSourcePath,
       }),
       (error) => error?.code === 'SEMANTIC_DECISION_SOURCE_MISMATCH',
     );

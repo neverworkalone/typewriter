@@ -8,7 +8,14 @@ import vue from '@vitejs/plugin-vue';
 import { buildDictionary } from './scripts/build/dictionary.mjs';
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url));
-const canonicalDirectory = path.join(projectRoot, 'data/canonical');
+const canonicalDirectory = path.resolve(
+  process.env.TYPEWRITER_CANONICAL_DIRECTORY ?? path.join(projectRoot, 'data/canonical'),
+);
+const outputDirectory = path.resolve(
+  process.env.TYPEWRITER_BUILD_OUTPUT_DIRECTORY ?? path.join(projectRoot, 'dist'),
+);
+const defaultOutputDirectory = path.join(projectRoot, 'dist');
+const defaultDictionaryPath = path.join(projectRoot, 'dist/dictionary.sqlite');
 const sqliteWasmDirectory = path.join(
   projectRoot,
   'node_modules/@sqlite.org/sqlite-wasm/dist',
@@ -16,7 +23,7 @@ const sqliteWasmDirectory = path.join(
 const shouldMinify = process.env.TYPEWRITER_BUILD_MINIFY !== 'false';
 
 async function copyRuntimeAssets() {
-  const runtimeDirectory = path.join(projectRoot, 'dist/runtime');
+  const runtimeDirectory = path.join(outputDirectory, 'runtime');
   const vendorDirectory = path.join(runtimeDirectory, 'vendor');
 
   await mkdir(vendorDirectory, { recursive: true });
@@ -49,7 +56,9 @@ async function copyRuntimeAssets() {
 
   const summary = await buildDictionary({
     inputDirectory: canonicalDirectory,
-    outputPath: path.join(projectRoot, 'dist/dictionary.sqlite'),
+    outputPath: outputDirectory === defaultOutputDirectory
+      ? defaultDictionaryPath
+      : path.join(outputDirectory, 'dictionary.sqlite'),
     checkPilotCompleteness: true,
     repositoryDirectory: projectRoot,
     allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
@@ -72,6 +81,7 @@ function productRuntimeAssets() {
 export default defineConfig({
   plugins: [vue(), productRuntimeAssets()],
   build: {
+    outDir: outputDirectory,
     target: 'es2022',
     minify: shouldMinify ? 'esbuild' : false,
     emptyOutDir: true,

@@ -7,10 +7,15 @@ import test from 'node:test';
 import {
   auditCanonicalLexicalQuality,
   buildNominalTermPositions,
+  requiresTopicAnalysis,
   LexicalQualityError,
   inspectWriterDomainEvidence,
   inspectGlossQuality,
   inspectGlossConnectors,
+  inspectMalformedParticles,
+  findAmbiguousParticleFragments,
+  findBulkGlossProjectionFindings,
+  validateBulkGlossProjection,
   validateLexicalSemanticReview,
   validateLexicalRecord,
 } from '../scripts/validate/lexical-quality.mjs';
@@ -22,6 +27,7 @@ import {
   buildSemanticTopicEvidence,
   canonicalRecordsSha256,
   inspectSenseBoundaryPairs,
+  sha256Json,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
 import {
@@ -63,15 +69,560 @@ test('the shared audit covers the complete current canonical dictionary', async 
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
     checkPilotCompleteness: true,
   });
-  assert.equal(result.recordCount, 1320);
+  assert.equal(result.recordCount, 2042);
 
   const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
   const canonical = await readCanonicalRecords(path.resolve('data/canonical'));
   const audit = auditCanonicalLexicalQuality(canonical.records, { throwOnError: false });
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
-  assert.equal(audit.record_count, 1320);
-  assert.equal(audit.sense_count, 1579);
+  assert.equal(audit.record_count, 2042);
+  assert.equal(audit.sense_count, 2301);
+});
+
+test('the shared production boundary rejects bulk gloss projection without a batch allowlist', () => {
+  const records = Array.from({ length: 4 }, (_, index) => ({
+    id: `w-bulk-${index}`,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: `w-bulk-${index}`,
+    lemma: `후보${index}`,
+    search_forms: [`후보${index}`],
+    senses: [{
+      id: `w-bulk-${index}-s1`,
+      pos: 'noun',
+      gloss: '같은 뜻풀이를 반복한 후보 의미',
+    }],
+  }));
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_BULK_GLOSS_PROJECTION');
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_BULK_GLOSS_PROJECTION',
+  );
+  assert.doesNotThrow(() => validateBulkGlossProjection(records.slice(0, 3), { maxOccurrences: 3 }));
+});
+
+test('the shared production boundary rejects parameterized gloss templates with unique surfaces', () => {
+  const records = ['푸름의 결', '붉음의 결', '고요의 결', '긴장의 결'].map((lemma, index) => {
+    const root = lemma.split('의')[0];
+    return {
+      id: `w-parameterized-${index}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-parameterized-${index}`,
+      lemma,
+      search_forms: [lemma],
+      senses: [{
+        id: `w-parameterized-${index}-s1`,
+        pos: 'noun',
+        gloss: `‘${lemma}’은 표면과 분위기에 드러나는 미세한 차이를 가리키며, ${root}을 정도나 인상의 변화로 묘사할 때 쓴다.`,
+      }],
+    };
+  });
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION');
+  assert.equal(findings[0].kind, 'parameterized-template');
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+  );
+});
+
+test('the shared production boundary compares definition cores before appended examples', () => {
+  const records = ['푸름의 결', '붉음의 결', '고요의 결', '긴장의 결'].map((lemma, index) => {
+    const root = lemma.split('의')[0];
+    return {
+      id: `w-definition-core-${index}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-definition-core-${index}`,
+      lemma,
+      search_forms: [lemma],
+      senses: [{
+        id: `w-definition-core-${index}-s1`,
+        pos: 'noun',
+        gloss: `‘${lemma}’은 표면과 분위기에 드러나는 미세한 차이를 가리키며, ${root}을 문장의 인상으로 포착한다. ${root}이 놓이는 장면은 후보마다 다르다.`,
+      }],
+    };
+  });
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION');
+  assert.equal(findings[0].owners.length, 4);
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+  );
+});
+
+test('the shared lexical quality rule rejects incompatible nominal particles', () => {
+  const malformed = '감정의 결으로 묘사할 때, 젖은 운동화과 맞물리는 장면을 포착한다.';
+  const findings = inspectMalformedParticles(malformed);
+  assert.deepEqual(
+    findings.map(({ token, expected_particle }) => [token, expected_particle]),
+    [['결으로', '로'], ['운동화과', '와']],
+  );
+  assert.deepEqual(inspectMalformedParticles('감정의 결로 묘사할 때, 젖은 운동화와 맞물린다.'), []);
+  assert.deepEqual(inspectMalformedParticles('가까이 보이는 곳과 미리 정한 약속'), []);
+  assert.deepEqual(inspectGlossQuality(malformed).malformed_particles, findings);
+});
+
+test('the shared particle rule covers conjugated and nominal-complement contexts', () => {
+  const malformed = '멈춘 엘리베이터과 맞물려 짧은 환기를 남긴다. 젖은 운동화을 배경으로 후회가 번진다. 느린 횡단보도과 맞물려 생각을 가다듬는다.';
+  assert.deepEqual(
+    inspectMalformedParticles(malformed).map(({ token, expected_particle, next_token }) => [
+      token,
+      expected_particle,
+      next_token,
+    ]),
+    [
+      ['엘리베이터과', '와', '맞물려'],
+      ['운동화을', '를', '배경으로'],
+      ['횡단보도과', '와', '맞물려'],
+    ],
+  );
+  assert.deepEqual(
+    inspectMalformedParticles('멈춘 엘리베이터와 맞물려 젖은 운동화를 배경으로 느린 횡단보도와 맞물려'),
+    [],
+  );
+});
+
+test('the shared particle rule preserves productive adnominal endings before complements', () => {
+  for (const gloss of [
+    '먹는 방식으로 묘사한다.',
+    '읽는 방식으로 설명한다.',
+    '있는 방향으로 시선이 움직인다.',
+  ]) {
+    assert.deepEqual(inspectMalformedParticles(gloss), [], gloss);
+  }
+});
+
+test('the shared particle rule keeps unverified terminal 이 surfaces open-world', () => {
+  const recordInfos = [
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w990',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w990',
+        lemma: 'lexical-adverb-fixture',
+        search_forms: ['lexical-adverb-fixture'],
+        senses: [{ id: 'w990-s1', pos: 'adverb', gloss: '가벼이 바라본다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w991',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w991',
+        lemma: 'positive-topic-fixture',
+        search_forms: ['positive-topic-fixture'],
+        senses: [{ id: 'w991-s1', pos: 'noun', gloss: '바다이 보인다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w992',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w992',
+        lemma: 'mid-sentence-topic-fixture',
+        search_forms: ['mid-sentence-topic-fixture'],
+        senses: [{ id: 'w992-s1', pos: 'noun', gloss: '문장에서는 바다이 보인다.' }],
+      },
+    },
+  ];
+  assert.deepEqual(inspectMalformedParticles('가벼이 바라본다.'), []);
+  assert.deepEqual(inspectMalformedParticles('바다이 보인다.'), []);
+  assert.deepEqual(inspectMalformedParticles('문장에서는 바다이 보인다.'), []);
+
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w991-s1': {
+        state: 'noun-topic',
+        topic: '바다',
+        particle: '이',
+        predicate: '보인다',
+      },
+      'w992-s1': {
+        state: 'noun-topic',
+        topic: '바다',
+        particle: '이',
+        predicate: '보인다',
+      },
+    },
+  });
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    throwOnError: false,
+    topicEvidence: buildSemanticTopicEvidence(recordInfos, semanticAudit),
+  });
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
+      .map(({ record_id, observation }) => [record_id, observation.token, observation.expected_particle]),
+    [
+      ['w991', '바다이', '가'],
+      ['w992', '바다이', '가'],
+    ],
+  );
+});
+
+test('the shared particle rule still rejects nominal 은/는 outside adnominal ambiguity', () => {
+  for (const [gloss, token, expectedParticle] of [
+    ['운동화은 보인다.', '운동화은', '는'],
+    ['책는 보인다.', '책는', '은'],
+  ]) {
+    assert.deepEqual(
+      inspectMalformedParticles(gloss).map(({ token: findingToken, expected_particle }) => [
+        findingToken,
+        expected_particle,
+      ]),
+      [[token, expectedParticle]],
+      gloss,
+    );
+  }
+
+  assert.deepEqual(
+    inspectMalformedParticles('먹는 방식으로 묘사한다.', {
+      nominalTerms: new Map([['먹', new Set(['noun'])]]),
+    }),
+    [],
+  );
+});
+
+test('the complete canonical audit catches missed particle surface contexts', () => {
+  const recordInfos = [
+    ['w980', '멈춘 엘리베이터과 맞물려 장면을 그린다.'],
+    ['w981', '젖은 운동화을 배경으로 장면을 그린다.'],
+    ['w982', '느린 횡단보도과 맞물려 장면을 그린다.'],
+    ['w983', '운동화은 보인다.'],
+    ['w984', '먹는 방식으로 묘사한다.'],
+  ].map(([id, gloss]) => ({
+    source: 'complete-canonical',
+    record: {
+      id,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: id,
+      lemma: `particle-${id}`,
+      search_forms: [`particle-${id}`],
+      senses: [{ id: `${id}-s1`, pos: 'noun', gloss }],
+    },
+  }));
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
+      .map(({ record_id, observation }) => [record_id, observation.token, observation.expected_particle]),
+    [
+      ['w980', '엘리베이터과', '와'],
+      ['w981', '운동화을', '를'],
+      ['w982', '횡단보도과', '와'],
+      ['w983', '운동화은', '는'],
+    ],
+  );
+});
+
+test('the complete canonical audit preserves adnominal homographs with inflectional evidence', () => {
+  const recordInfos = [
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w985',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w985',
+        lemma: '먹',
+        search_forms: ['먹'],
+        senses: [{ id: 'w985-s1', pos: 'noun', gloss: '먹은 흔적을 남긴다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w986',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w986',
+        lemma: '먹다',
+        search_forms: ['먹다'],
+        senses: [{ id: 'w986-s1', pos: 'verb', gloss: '음식을 삼키는 행위다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w987',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w987',
+        lemma: 'homograph-particle',
+        search_forms: ['homograph-particle'],
+        senses: [{ id: 'w987-s1', pos: 'noun', gloss: '먹는 방식으로 묘사한다.' }],
+      },
+    },
+  ];
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings.filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE'),
+    [],
+  );
+  assert.deepEqual(
+    [...buildNominalTermPositions(recordInfos).get('먹')].sort(),
+    ['noun', 'verb'],
+  );
+});
+
+test('the complete canonical audit stays open-world when a competing stem is not admitted', () => {
+  const recordInfos = [
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w988',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w988',
+        lemma: '먹',
+        search_forms: ['먹'],
+        senses: [{ id: 'w988-s1', pos: 'noun', gloss: '먹은 흔적을 남긴다.' }],
+      },
+    },
+    {
+      source: 'complete-canonical',
+      record: {
+        id: 'w989',
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'w989',
+        lemma: 'open-world-particle',
+        search_forms: ['open-world-particle'],
+        senses: [{ id: 'w989-s1', pos: 'noun', gloss: '먹는 방식으로 묘사한다.' }],
+      },
+    },
+  ];
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.deepEqual(
+    audit.blocking_findings.filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE'),
+    [],
+  );
+});
+
+test('bound noun-topic evidence resolves an ambiguous 은/는 before a noun-like complement', () => {
+  const gloss = '문장에서는 운동화은 배경으로 장면을 그린다.';
+  const quality = inspectGlossQuality(gloss, {
+    topicEvidence: topicEvidenceForGloss(gloss, {
+      state: 'noun-topic',
+      topic: '운동화',
+      particle: '은',
+      predicate: '배경으로',
+    }),
+    senseId: TOPIC_EVIDENCE_SENSE_ID,
+  });
+  assert.deepEqual(
+    quality.malformed_particles.map(({ token, expected_particle }) => [token, expected_particle]),
+    [['운동화은', '는']],
+  );
+});
+
+test('token-span ambiguity drives semantic-audit topic evidence requirements', () => {
+  const records = [
+    ['w-topic-span-adnominal', '문장에서는 운동화은 배경으로 장면을 그린다.'],
+    ['w-topic-span-terminal-i', '문장에서는 바다이 보인다.'],
+    ['w-topic-span-valid-adnominal', '먹는 방식으로 묘사한다.'],
+  ].map(([id, gloss]) => ({
+    id,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: id,
+    lemma: id,
+    search_forms: [id],
+    senses: [{ id: `${id}-s1`, pos: 'noun', gloss }],
+  }));
+  const recordInfos = records.map((record) => ({ record, source: 'topic-span-regression' }));
+  assert.equal(requiresTopicAnalysis(records[0].senses[0].gloss), true);
+  assert.equal(requiresTopicAnalysis(records[1].senses[0].gloss), true);
+  assert.equal(requiresTopicAnalysis(records[2].senses[0].gloss), true);
+
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-span-adnominal-s1': {
+        state: 'noun-topic',
+        topic: '운동화',
+        particle: '은',
+        predicate: '배경으로',
+      },
+      'w-topic-span-terminal-i-s1': {
+        state: 'noun-topic',
+        topic: '바다',
+        particle: '이',
+        predicate: '보인다',
+      },
+      'w-topic-span-valid-adnominal-s1': {
+        state: 'adnominal',
+        topic: '먹',
+        particle: '는',
+        predicate: '방식으로',
+      },
+    },
+  });
+  assert.doesNotThrow(() => buildSemanticTopicEvidence(recordInfos, semanticAudit));
+
+  const missingEvidence = structuredClone(semanticAudit);
+  delete missingEvidence.review.records
+    .find(({ record_id: recordId }) => recordId === 'w-topic-span-adnominal')
+    .sense_reviews[0].review_basis.topic_analysis;
+  assert.throws(
+    () => buildSemanticTopicEvidence(recordInfos, missingEvidence),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+  );
+});
+
+test('semantic-audit topic evidence covers every ambiguous span in one gloss', () => {
+  const record = {
+    id: 'w-topic-span-multi',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-span-multi',
+    lemma: '복합주제',
+    search_forms: ['복합주제'],
+    senses: [{
+      id: 'w-topic-span-multi-s1',
+      pos: 'noun',
+      gloss: '문장에서는 운동화은 배경으로 바다이 보인다.',
+    }],
+  };
+  const recordInfos = [{ record, source: 'topic-span-multi-regression' }];
+  assert.equal(findAmbiguousParticleFragments(record.senses[0].gloss).length, 2);
+
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-span-multi-s1': [
+        {
+          state: 'adnominal',
+          topic: '운동화',
+          particle: '은',
+          predicate: '배경으로',
+        },
+        {
+          state: 'noun-topic',
+          topic: '바다',
+          particle: '이',
+          predicate: '보인다',
+        },
+      ],
+    },
+  });
+  const reviewBasis = semanticAudit.review.records[0].sense_reviews[0].review_basis;
+  assert.deepEqual(
+    reviewBasis.topic_analyses.map(({ token_index: tokenIndex }) => tokenIndex),
+    [1, 3],
+  );
+  assert.doesNotThrow(() => buildSemanticTopicEvidence(recordInfos, semanticAudit));
+
+  const missingSpanEvidence = structuredClone(semanticAudit);
+  missingSpanEvidence.review.records[0].sense_reviews[0].review_basis.topic_analyses.pop();
+  assert.throws(
+    () => buildSemanticTopicEvidence(recordInfos, missingSpanEvidence),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE'
+      && error.message.includes('exactly one analysis per ambiguous particle span'),
+  );
+});
+
+test('topic evidence lookup stays span-exact for repeated ambiguous surfaces', () => {
+  const record = {
+    id: 'w-topic-span-repeated',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-span-repeated',
+    lemma: '반복주제',
+    search_forms: ['반복주제'],
+    senses: [{
+      id: 'w-topic-span-repeated-s1',
+      pos: 'noun',
+      gloss: '문장에서는 운동화은 배경으로 운동화은 배경으로 장면을 그린다.',
+    }],
+  };
+  const recordInfos = [{ record, source: 'topic-span-repeated-regression' }];
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-span-repeated-s1': [
+        {
+          state: 'adnominal',
+          topic: '운동화',
+          particle: '은',
+          predicate: '배경으로',
+        },
+        {
+          state: 'noun-topic',
+          topic: '운동화',
+          particle: '은',
+          predicate: '배경으로',
+        },
+      ],
+    },
+  });
+  const topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit);
+  const audit = auditCanonicalLexicalQuality(recordInfos, {
+    throwOnError: false,
+    topicEvidence,
+  });
+
+  assert.deepEqual(
+    audit.blocking_findings
+      .filter(({ code }) => code === 'LEXICAL_MALFORMED_PARTICLE')
+      .map(({ sense_id: senseId, observation }) => [senseId, observation.token_index]),
+    [['w-topic-span-repeated-s1', 3]],
+  );
+});
+
+test('the complete canonical audit catches a repeated template completed by a later batch', () => {
+  const recordInfos = ['기존의 결', '새로운 결', '또 다른 결', '마지막 결'].map((lemma, index) => ({
+    source: index === 0 ? 'base' : 'prospective-batch',
+    record: {
+      id: `w-cross-batch-${index}`,
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: `w-cross-batch-${index}`,
+      lemma,
+      search_forms: [lemma],
+      senses: [{
+        id: `w-cross-batch-${index}-s1`,
+        pos: 'noun',
+        gloss: `‘${lemma}’은 표면과 분위기에 드러나는 미세한 차이를 가리키며, ${lemma.split('의')[0]}을 문장의 인상으로 포착한다. 서로 다른 장면 예시를 붙인 후보 의미다.`,
+      }],
+    },
+  }));
+  const audit = auditCanonicalLexicalQuality(recordInfos, { throwOnError: false });
+  assert.ok(audit.blocking_findings.some(({ code }) => code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION'));
+});
+
+test('the shared production boundary keeps genuinely distinct gloss definitions', () => {
+  const records = [
+    ['푸름의 결', '색이 옅고 짙어지는 정도가 시야에 남는 인상을 가리킨다.'],
+    ['붉음의 결', '붉은 기운이 피부와 천에 번지는 속도를 묘사할 때 쓴다.'],
+    ['고요의 결', '소리가 끊긴 뒤 공간에 남은 안정된 상태를 드러낸다.'],
+    ['긴장의 결', '말을 고르기 전 몸이 먼저 굳는 반응을 포착한다.'],
+  ].map(([lemma, gloss], index) => ({
+    id: `w-distinct-${index}`,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: `w-distinct-${index}`,
+    lemma,
+    search_forms: [lemma],
+    senses: [{ id: `w-distinct-${index}-s1`, pos: 'noun', gloss }],
+  }));
+
+  assert.doesNotThrow(() => validateBulkGlossProjection(records, { maxOccurrences: 3 }));
 });
 
 test('the shared lexical audit rejects malformed topic fragments without a record allowlist', () => {
@@ -1126,6 +1677,13 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
   const sense = record.senses[0];
   const evidence = inspectWriterDomainEvidence(gloss);
   const decisionSourceId = `future-batch:${record.id}:decision-source`;
+  const sourceSha256 = sha256Json({
+    candidate_record_sha256: sha256Json(candidateRecord),
+    reviewed_record_sha256: sha256Json(record),
+    decision: 'included',
+    selection_rank: 1,
+    selection_score: 1,
+  });
   return {
     status: 'complete',
     decision_source: {
@@ -1133,6 +1691,33 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: decisionSourceId,
       path: `tests/fixtures/${record.id}-decision-source.json`,
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: sourceSha256,
+    },
+    authored_decision: {
+      source_sha256: sourceSha256,
+      decision_source_id: decisionSourceId,
+      candidate_record_id: candidateRecord.id,
+      candidate_record_sha256: sha256Json(candidateRecord),
+      reviewed_record_sha256: sha256Json(record),
+      decision: 'included',
+      selection_rank: 1,
+      selection_score: 1,
+      rationale: `${candidateRecord.id} was selected from the separately authored fixture decision source.`,
+      sense_evidence: record.senses.map((reviewedSense) => ({
+        sense_id: reviewedSense.id,
+        gloss_sha256: sha256Json(reviewedSense.gloss),
+        basis: `${record.id} ${reviewedSense.id} gloss and writer-facing use were explicitly reviewed.`,
+      })),
+      relation_evidence: record.senses.map((reviewedSense) => {
+        const relationCount = reviewedSense.relations?.length ?? 0;
+        return {
+          sense_id: reviewedSense.id,
+          relation_count: relationCount,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          basis: `${record.id} ${reviewedSense.id} relation outcome was explicitly reviewed.`,
+        };
+      }),
     },
     sense_boundary: {
       status: 'pass',
@@ -1207,6 +1792,13 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
   const right = record.senses[1];
   const leftGlossSha256 = createHash('sha256').update(JSON.stringify(left.gloss), 'utf8').digest('hex');
   const rightGlossSha256 = createHash('sha256').update(JSON.stringify(right.gloss), 'utf8').digest('hex');
+  const sourceSha256 = sha256Json({
+    candidate_record_sha256: sha256Json(record),
+    reviewed_record_sha256: sha256Json(record),
+    decision: 'included',
+    selection_rank: 1,
+    selection_score: 1,
+  });
   return {
     status: 'complete',
     decision_source: {
@@ -1214,6 +1806,33 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
       contract_version: 'lexical-semantic-decision-source-v1',
       source_id: decisionSourceId,
       path: `tests/fixtures/${record.id}-decision-source.json`,
+      authoring_mode: 'agent-authored-decision',
+      source_sha256: sourceSha256,
+    },
+    authored_decision: {
+      source_sha256: sourceSha256,
+      decision_source_id: decisionSourceId,
+      candidate_record_id: record.id,
+      candidate_record_sha256: sha256Json(record),
+      reviewed_record_sha256: sha256Json(record),
+      decision: 'included',
+      selection_rank: 1,
+      selection_score: 1,
+      rationale: `${record.id} was selected from the separately authored fixture decision source.`,
+      sense_evidence: record.senses.map((reviewedSense) => ({
+        sense_id: reviewedSense.id,
+        gloss_sha256: sha256Json(reviewedSense.gloss),
+        basis: `${record.id} ${reviewedSense.id} gloss and writer-facing use were explicitly reviewed.`,
+      })),
+      relation_evidence: record.senses.map((reviewedSense) => {
+        const relationCount = reviewedSense.relations?.length ?? 0;
+        return {
+          sense_id: reviewedSense.id,
+          relation_count: relationCount,
+          decision: relationCount === 0 ? 'no-relations' : 'relations-reviewed',
+          basis: `${record.id} ${reviewedSense.id} relation outcome was explicitly reviewed.`,
+        };
+      }),
     },
     sense_boundary: {
       status: 'pass',

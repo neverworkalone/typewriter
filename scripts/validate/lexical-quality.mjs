@@ -17,7 +17,7 @@ import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
  */
 export const LEXICAL_QUALITY_RULESET_VERSION = 'lexical-quality-v1';
 export const BROAD_GLOSS_CONNECTOR_PATTERN = /(?:이나|또는|거나)/u;
-export const LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION = 'lexical-topic-evidence-v1';
+export const LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION = 'lexical-topic-evidence-v2';
 export const LEXICAL_TOPIC_EVIDENCE_KIND = 'semantic-review-topic-analysis';
 
 const RECORD_TYPES = Object.freeze(['entry', 'expression']);
@@ -144,6 +144,36 @@ const GENERIC_GLOSS_TEMPLATE_PATTERN = /(?:가|이)\s*나타내는\s+(?:첫 번�
 // reading.
 const MALFORMED_TOPIC_FRAGMENT_PATTERN = /^(?<topic>[\p{L}\p{M}\p{N}]+)(?<particle>은|는)\s+(?<predicate>[\p{L}\p{M}\p{N}]+)$/u;
 const VALID_PREDICATE_ENDING_PATTERN = /다$/u;
+const PARTICLE_COMPATIBILITY = Object.freeze({
+  은: (finalIndex) => (finalIndex === 0 ? '는' : '은'),
+  는: (finalIndex) => (finalIndex === 0 ? '는' : '은'),
+  이: (finalIndex) => (finalIndex === 0 ? '가' : '이'),
+  가: (finalIndex) => (finalIndex === 0 ? '가' : '이'),
+  을: (finalIndex) => (finalIndex === 0 ? '를' : '을'),
+  를: (finalIndex) => (finalIndex === 0 ? '를' : '을'),
+  과: (finalIndex) => (finalIndex === 0 ? '와' : '과'),
+  와: (finalIndex) => (finalIndex === 0 ? '와' : '과'),
+  으로: (finalIndex) => (finalIndex === 0 || finalIndex === 8 ? '로' : '으로'),
+  로: (finalIndex) => (finalIndex === 0 || finalIndex === 8 ? '로' : '으로'),
+  이라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
+  라는: (finalIndex) => (finalIndex === 0 ? '라는' : '이라는'),
+});
+const PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN = /^(?:드러나|나타나|보이|보인|읽히|번지|바뀌|남|지나|맞물리|가리키|포착|선명하게|구체화|묘사|보여|생기|퍼지|이어지|통과|전하|느껴|만들|붙잡|바라보|인상)/u;
+// These are surface-grammar patterns rather than word or batch allowlists:
+// conjugated `려` connective endings cover forms such as `맞물려`, while a
+// noun-like complement ending in `으로` covers contexts such as `배경으로`.
+// Narrowing this to an unambiguous connective family avoids treating a
+// productive adnominal such as `있는` before a token ending in `고` as a
+// nominal particle.
+const PARTICLE_CONNECTIVE_CONTEXT_CUE_PATTERN = /려(?:고|서|면|야)?$/u;
+const PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN = /^[\p{L}\p{M}\p{N}]{2,}으로$/u;
+// `은/는` are also productive adnominal endings (`먹는 방식으로`).  Without
+// a morphological analyzer, a following noun-like complement is the only
+// conservative context in which the surface can remain ambiguous.  Ordinary
+// predicate contexts and bound authored noun-topic evidence still run the
+// particle compatibility check.
+const AMBIGUOUS_ADNOMINAL_PARTICLES = new Set(['은', '는']);
+const PARTICLE_SURFACE_PATTERN = /^(?<stem>[\p{L}\p{M}\p{N}]{1,}?)(?<particle>이라는|라는|으로|로|은|는|이|가|을|를|과|와)$/u;
 const TOPIC_ANALYSIS_STATES = Object.freeze([
   'noun-topic',
   'adnominal',
@@ -183,7 +213,7 @@ function nominalTermPositions(nominalTerms, topic) {
 
 function topicAnalysisForSense(
   topicEvidence,
-  { senseId, gloss, topic, particle, predicate } = {},
+  { senseId, gloss, topic, particle, predicate, tokenIndex } = {},
 ) {
   if (!topicEvidence
     || topicEvidence.kind !== LEXICAL_TOPIC_EVIDENCE_KIND
@@ -193,22 +223,23 @@ function topicAnalysisForSense(
     return undefined;
   }
   const evidence = topicEvidence.by_sense.get(senseId);
-  if (!evidence
-    || evidence.sense_id !== senseId
-    || evidence.gloss_sha256 !== sha256Json(gloss)
-    || evidence.topic !== topic
-    || evidence.particle !== particle
-    || evidence.predicate !== predicate) {
-    return undefined;
-  }
-  return evidence;
+  const candidates = Array.isArray(evidence) ? evidence : [evidence];
+  return candidates.find((candidate) => candidate
+    && candidate.sense_id === senseId
+    && candidate.gloss_sha256 === sha256Json(gloss)
+    && candidate.topic === topic
+    && candidate.particle === particle
+    && candidate.predicate === predicate
+    && (tokenIndex === undefined
+      || candidate.token_index === undefined
+      || candidate.token_index === tokenIndex));
 }
 
 function classifyTopicToken(
   topic,
   nominalTerms,
   topicEvidence,
-  { senseId, gloss, particle, predicate } = {},
+  { senseId, gloss, particle, predicate, tokenIndex } = {},
 ) {
   const authoredTopicAnalysis = topicAnalysisForSense(topicEvidence, {
     senseId,
@@ -216,6 +247,7 @@ function classifyTopicToken(
     topic,
     particle,
     predicate,
+    tokenIndex,
   });
   if (authoredTopicAnalysis !== undefined) {
     return { state: authoredTopicAnalysis.state };
@@ -238,6 +270,7 @@ function inspectTopicFragment(gloss, { nominalTerms, topicEvidence, senseId } = 
     gloss,
     particle,
     predicate,
+    tokenIndex: 0,
   });
   const bareNominalPredicate = !VALID_PREDICATE_ENDING_PATTERN.test(predicate);
   return {
@@ -246,15 +279,233 @@ function inspectTopicFragment(gloss, { nominalTerms, topicEvidence, senseId } = 
   };
 }
 
+function hangulFinalIndex(text) {
+  const codePoint = text.codePointAt(text.length - 1);
+  if (codePoint === undefined || codePoint < 0xac00 || codePoint > 0xd7a3) return undefined;
+  return (codePoint - 0xac00) % 28;
+}
+
+function stripGlossTokenPunctuation(token) {
+  return token.replace(/^[()[\]{}"“”‘’'.,;:!?。！？…]+|[()[\]{}"“”‘’'.,;:!?。！？…]+$/gu, '');
+}
+
+function findAuthoredParticleFragment(
+  gloss,
+  {
+    topic,
+    particle,
+    predicate,
+    tokenIndex,
+    token_index: authoredTokenIndex,
+  } = {},
+) {
+  if (typeof gloss !== 'string'
+    || typeof topic !== 'string'
+    || typeof particle !== 'string'
+    || typeof predicate !== 'string') {
+    return undefined;
+  }
+  const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
+  const topicToken = `${topic}${particle}`;
+  const expectedTokenIndex = tokenIndex ?? authoredTokenIndex;
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (expectedTokenIndex !== undefined && index !== expectedTokenIndex) continue;
+    if (tokens[index] === topicToken && tokens[index + 1] === predicate) {
+      return { topic, particle, predicate, token_index: index };
+    }
+  }
+  return undefined;
+}
+
+function isParticleContextCue(token) {
+  return PARTICLE_LEXICAL_CONTEXT_CUE_PATTERN.test(token)
+    || PARTICLE_CONNECTIVE_CONTEXT_CUE_PATTERN.test(token)
+    || PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(token);
+}
+
+function findContextualParticleFragments(gloss) {
+  if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
+  const tokens = gloss.split(/\s+/u).map(stripGlossTokenPunctuation);
+  const fragments = [];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const token = tokens[index];
+    const nextToken = tokens[index + 1];
+    if (!token || !nextToken || !isParticleContextCue(nextToken)) continue;
+    const match = PARTICLE_SURFACE_PATTERN.exec(token);
+    if (!match) continue;
+    fragments.push({
+      token,
+      stem: match.groups.stem,
+      particle: match.groups.particle,
+      nextToken,
+      token_index: index,
+    });
+  }
+  return fragments;
+}
+
+/**
+ * Return the token spans whose particle reading is ambiguous without
+ * authored grammatical evidence.  The detector deliberately covers both
+ * productive adnominal `은/는` before a noun-like `으로` complement and
+ * vowel-final terminal `이`, in addition to the historical two-token topic
+ * shape.  Callers can bind an authored analysis to the returned topic,
+ * particle, predicate, and full gloss digest.
+ */
+export function findAmbiguousParticleFragments(gloss) {
+  const fragments = [];
+  const seen = new Set();
+  const add = (fragment, kind) => {
+    const key = `${fragment.topic}:${fragment.particle}:${fragment.predicate}:${fragment.token_index}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    fragments.push({ ...fragment, kind });
+  };
+
+  const wholeGlossFragment = typeof gloss === 'string'
+    ? MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
+    : undefined;
+  if (wholeGlossFragment) {
+    add({
+      topic: wholeGlossFragment.groups.topic,
+      particle: wholeGlossFragment.groups.particle,
+      predicate: wholeGlossFragment.groups.predicate,
+      token_index: 0,
+    }, 'topic-fragment');
+  }
+
+  for (const fragment of findContextualParticleFragments(gloss)) {
+    const { stem, particle, nextToken } = fragment;
+    if ((AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)
+      && PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(nextToken))
+      || (particle === '이' && hangulFinalIndex(stem) === 0)) {
+      add({
+        topic: stem,
+        particle,
+        predicate: nextToken,
+        token_index: fragment.token_index,
+      }, particle === '이' ? 'terminal-i' : 'adnominal');
+    }
+  }
+  return fragments;
+}
+
+function hasAuthoredNounTopicEvidence(
+  gloss,
+  { stem, particle, nextToken, tokenIndex, topicEvidence, senseId } = {},
+) {
+  const fragment = findAuthoredParticleFragment(gloss, {
+    topic: stem,
+    particle,
+    predicate: nextToken,
+    tokenIndex,
+  });
+  if (!fragment) return false;
+  return topicAnalysisForSense(topicEvidence, {
+    senseId,
+    gloss,
+    topic: stem,
+    particle,
+    predicate: nextToken,
+    tokenIndex,
+  })?.state === 'noun-topic';
+}
+
+function isProductiveAdnominalAmbiguity(
+  gloss,
+  { stem, particle, nextToken, tokenIndex, topicEvidence, senseId } = {},
+) {
+  if (!AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)
+    || !PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(nextToken)) {
+    return false;
+  }
+  if (hasAuthoredNounTopicEvidence(gloss, {
+    stem,
+    particle,
+    nextToken,
+    tokenIndex,
+    topicEvidence,
+    senseId,
+  })) {
+    return false;
+  }
+  // The canonical lexicon is intentionally incomplete: a missing verb or
+  // adjective entry is not evidence that the surface cannot be adnominal.
+  // Without positive authored noun-topic evidence, leave this homograph
+  // ambiguous rather than guessing from the current term inventory.
+  return true;
+}
+
+function hasUnresolvedLexicalAdverbAmbiguity(
+  gloss,
+  { stem, particle, nextToken, tokenIndex, topicEvidence, senseId } = {},
+) {
+  if (particle !== '이' || hangulFinalIndex(stem) !== 0) return false;
+  return !hasAuthoredNounTopicEvidence(gloss, {
+    stem,
+    particle,
+    nextToken,
+    tokenIndex,
+    topicEvidence,
+    senseId,
+  });
+}
+
+/**
+ * Detect the compatibility errors that arise when an attached Korean nominal
+ * particle is selected without considering the preceding syllable's final
+ * consonant.  The rule is intentionally context-bound: terminal `이` is
+ * ambiguous with productive lexical adverbial `-이`, so a surface with no
+ * final consonant remains open unless bound authored noun-topic evidence
+ * establishes a grammatical particle reading.
+ */
+export function inspectMalformedParticles(
+  gloss,
+  { topicEvidence, senseId } = {},
+) {
+  if (typeof gloss !== 'string' || gloss.trim().length === 0) return [];
+  const findings = [];
+  for (const { token, stem, particle, nextToken, token_index: tokenIndex } of findContextualParticleFragments(gloss)) {
+    if (isProductiveAdnominalAmbiguity(gloss, {
+      stem,
+      particle,
+      nextToken,
+      tokenIndex,
+      topicEvidence,
+      senseId,
+    })) continue;
+    if (hasUnresolvedLexicalAdverbAmbiguity(gloss, {
+      stem,
+      particle,
+      nextToken,
+      tokenIndex,
+      topicEvidence,
+      senseId,
+    })) continue;
+    const finalIndex = hangulFinalIndex(stem);
+    if (finalIndex === undefined) continue;
+    const expectedParticle = PARTICLE_COMPATIBILITY[particle]?.(finalIndex);
+    if (expectedParticle === undefined || expectedParticle === particle) continue;
+    findings.push({
+      token,
+      stem,
+      particle,
+      expected_particle: expectedParticle,
+      next_token: nextToken,
+      token_index: tokenIndex,
+    });
+  }
+  return findings;
+}
+
 export function requiresTopicAnalysis(gloss) {
-  return typeof gloss === 'string'
-    && MALFORMED_TOPIC_FRAGMENT_PATTERN.test(gloss.trim());
+  return findAmbiguousParticleFragments(gloss).length > 0;
 }
 
 export function validateAuthoredTopicAnalysis(
   gloss,
   analysis,
-  { decisionSourceId, label = 'topic_analysis' } = {},
+  { decisionSourceId, label = 'topic_analysis', expectedFragment } = {},
 ) {
   requireObject(analysis, label);
   if (analysis.status !== 'pass') {
@@ -272,14 +523,20 @@ export function validateAuthoredTopicAnalysis(
     }
   }
   requireString(analysis.rationale, `${label}.rationale`);
-  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim());
+  const fragment = expectedFragment
+    ?? MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
+    ?? findAuthoredParticleFragment(gloss, analysis);
   if (!fragment) {
     if (analysis.state === 'noun-topic') {
       fail(`${label}.state noun-topic requires a two-token topic fragment`, 'LEXICAL_SEMANTIC_BINDING');
     }
     return analysis;
   }
-  const { topic, particle, predicate } = fragment.groups;
+  const { topic, particle, predicate } = fragment.groups ?? fragment;
+  if (analysis.token_index !== undefined
+    && analysis.token_index !== fragment.token_index) {
+    fail(`${label}.token_index must bind the normalized gloss token span`, 'LEXICAL_SEMANTIC_BINDING');
+  }
   if (analysis.topic !== topic
     || analysis.particle !== particle
     || analysis.predicate !== predicate) {
@@ -294,6 +551,102 @@ export function validateAuthoredTopicAnalysis(
   return analysis;
 }
 
+/**
+ * Validate the complete authored evidence contract for every ambiguous
+ * particle span in a gloss.  The legacy singular field remains valid for a
+ * single span; multiple spans must use the ordered `topic_analyses` array so
+ * one decision cannot accidentally cover a different span.
+ */
+export function validateTopicAnalysisEvidence(
+  gloss,
+  evidence,
+  {
+    decisionSourceId,
+    label = 'topic_analysis',
+    requireEvidence = true,
+    incompleteCode = 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE',
+  } = {},
+) {
+  const fragments = findAmbiguousParticleFragments(gloss);
+  const topicAnalysis = evidence?.topic_analysis;
+  const topicAnalyses = evidence?.topic_analyses;
+  if (topicAnalysis !== undefined && topicAnalyses !== undefined) {
+    fail(`${label} must use either topic_analysis or topic_analyses, not both`, 'LEXICAL_SEMANTIC_SHAPE');
+  }
+
+  if (fragments.length > 1) {
+    if (!Array.isArray(topicAnalyses)) {
+      if (requireEvidence) {
+        fail(
+          `${label}.topic_analyses must cover every ambiguous particle span`,
+          incompleteCode,
+        );
+      }
+      return undefined;
+    }
+    if (topicAnalyses.length !== fragments.length) {
+      fail(
+        `${label}.topic_analyses must contain exactly one analysis per ambiguous particle span`,
+        incompleteCode,
+      );
+    }
+    const coveredIndexes = new Set();
+    for (const [index, analysis] of topicAnalyses.entries()) {
+      requireObject(analysis, `${label}.topic_analyses[${index}]`);
+      const fragment = fragments.find((candidate) => candidate.token_index === analysis.token_index
+        && candidate.topic === analysis.topic
+        && candidate.particle === analysis.particle
+        && candidate.predicate === analysis.predicate);
+      if (!fragment || coveredIndexes.has(fragment.token_index)) {
+        fail(
+          `${label}.topic_analyses[${index}] does not bind a unique ambiguous particle span`,
+          'LEXICAL_SEMANTIC_BINDING',
+        );
+      }
+      coveredIndexes.add(fragment.token_index);
+      validateAuthoredTopicAnalysis(gloss, analysis, {
+        decisionSourceId,
+        expectedFragment: fragment,
+        label: `${label}.topic_analyses[${index}]`,
+      });
+    }
+    return topicAnalyses;
+  }
+
+  if (topicAnalyses !== undefined) {
+    if (!Array.isArray(topicAnalyses)) {
+      fail(`${label}.topic_analyses must be an array`, 'LEXICAL_SEMANTIC_SHAPE');
+    }
+    if (topicAnalyses.length !== fragments.length) {
+      fail(
+        `${label}.topic_analyses must contain exactly one analysis per ambiguous particle span`,
+        incompleteCode,
+      );
+    }
+    for (const [index, analysis] of topicAnalyses.entries()) {
+      validateAuthoredTopicAnalysis(gloss, analysis, {
+        decisionSourceId,
+        expectedFragment: fragments[index],
+        label: `${label}.topic_analyses[${index}]`,
+      });
+    }
+    return topicAnalyses;
+  }
+
+  if (topicAnalysis !== undefined) {
+    validateAuthoredTopicAnalysis(gloss, topicAnalysis, {
+      decisionSourceId,
+      expectedFragment: fragments[0],
+      label,
+    });
+    return [topicAnalysis];
+  }
+  if (requireEvidence && fragments.length > 0) {
+    fail(`${label} is required for every ambiguous particle span`, incompleteCode);
+  }
+  return undefined;
+}
+
 export function buildNominalTermPositions(recordInfos) {
   const positions = new Map();
   for (const recordInfo of recordInfos) {
@@ -306,9 +659,21 @@ export function buildNominalTermPositions(recordInfos) {
     );
     for (const term of [record.lemma, ...(record.search_forms ?? [])]) {
       if (typeof term !== 'string' || term.length === 0) continue;
-      const existing = positions.get(term) ?? new Set();
-      for (const pos of recordPositions) existing.add(pos);
-      positions.set(term, existing);
+      const indexedTerms = [term];
+      const inflectionalStem = /^(?<stem>[\p{L}\p{M}\p{N}]+)다$/u.exec(term)?.groups.stem;
+      // A verb/adjective lemma is stored with its dictionary ending, while
+      // productive adnominal forms attach directly to the stem (`먹다` ->
+      // `먹는`).  Index that stem as well so an exact noun homograph does not
+      // override the available verb/adjective evidence.
+      if (inflectionalStem
+        && (recordPositions.has('verb') || recordPositions.has('adjective'))) {
+        indexedTerms.push(inflectionalStem);
+      }
+      for (const indexedTerm of indexedTerms) {
+        const existing = positions.get(indexedTerm) ?? new Set();
+        for (const pos of recordPositions) existing.add(pos);
+        positions.set(indexedTerm, existing);
+      }
     }
   }
   return positions;
@@ -364,6 +729,107 @@ function validateSemanticDecisionSource(review, label) {
   requireString(source.source_id, `${label}.decision_source.source_id`);
   requireString(source.path, `${label}.decision_source.path`);
   return source.source_id;
+}
+
+function validateIndependentDecisionEvidence(review, {
+  decision,
+  candidateRecord,
+  reviewedRecord,
+  inventoryId,
+  label,
+  decisionSourceId,
+} = {}) {
+  const source = review.decision_source;
+  if (!['agent-authored-decision', 'human-authored-decision'].includes(source.authoring_mode)) {
+    fail(
+      `${label}.decision_source.authoring_mode must identify the authored decision path`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  if (!/^[0-9a-f]{64}$/u.test(source.source_sha256 ?? '')) {
+    fail(
+      `${label}.decision_source.source_sha256 must bind a separately supplied decision artifact`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  const authored = requireObject(review.authored_decision, `${label}.authored_decision`);
+  if (authored.source_sha256 !== source.source_sha256
+    || authored.decision_source_id !== decisionSourceId) {
+    fail(
+      `${label}.authored_decision must bind the exact authored decision source`,
+      'LEXICAL_SEMANTIC_PROVENANCE',
+    );
+  }
+  if (authored.candidate_record_id !== candidateRecord.id
+    || authored.candidate_record_sha256 !== sha256Json(candidateRecord)) {
+    fail(
+      `${label}.authored_decision must bind the exact candidate record`,
+      'LEXICAL_SEMANTIC_BINDING',
+    );
+  }
+  const reviewed = reviewedRecord ?? candidateRecord;
+  if (authored.reviewed_record_sha256 !== sha256Json(reviewed)) {
+    fail(
+      `${label}.authored_decision.reviewed_record_sha256 must bind the exact reviewed record`,
+      'LEXICAL_SEMANTIC_BINDING',
+    );
+  }
+  if (authored.decision !== decision
+    || authored.selection_rank !== review.selection.rank
+    || authored.selection_score !== review.selection.score) {
+    fail(
+      `${label}.authored_decision must bind the decision and selection output`,
+      'LEXICAL_SELECTION_BINDING',
+    );
+  }
+  requireString(authored.rationale, `${label}.authored_decision.rationale`);
+  if (inventoryId !== undefined && !authored.rationale.includes(inventoryId)) {
+    fail(
+      `${label}.authored_decision.rationale must bind ${inventoryId}`,
+      'LEXICAL_SEMANTIC_BINDING',
+    );
+  }
+  const senseEvidence = requireArray(
+    authored.sense_evidence,
+    `${label}.authored_decision.sense_evidence`,
+    { minItems: 1 },
+  );
+  assert.deepEqual(
+    senseEvidence.map(({ sense_id: senseId }) => senseId),
+    reviewed.senses.map(({ id }) => id),
+    `${label}.authored_decision.sense_evidence must cover every reviewed sense`,
+  );
+  for (const [index, evidence] of senseEvidence.entries()) {
+    const evidenceLabel = `${label}.authored_decision.sense_evidence[${index}]`;
+    requireObject(evidence, evidenceLabel);
+    const sense = reviewed.senses[index];
+    if (evidence.sense_id !== sense.id || evidence.gloss_sha256 !== sha256Json(sense.gloss)) {
+      fail(`${evidenceLabel} does not bind the reviewed sense`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+    requireString(evidence.basis, `${evidenceLabel}.basis`);
+  }
+  const relationEvidence = requireArray(
+    authored.relation_evidence,
+    `${label}.authored_decision.relation_evidence`,
+    { minItems: 1 },
+  );
+  assert.deepEqual(
+    relationEvidence.map(({ sense_id: senseId }) => senseId),
+    reviewed.senses.map(({ id }) => id),
+    `${label}.authored_decision.relation_evidence must cover every reviewed sense`,
+  );
+  for (const [index, evidence] of relationEvidence.entries()) {
+    const evidenceLabel = `${label}.authored_decision.relation_evidence[${index}]`;
+    requireObject(evidence, evidenceLabel);
+    const sense = reviewed.senses[index];
+    const relationCount = sense.relations?.length ?? 0;
+    if (evidence.sense_id !== sense.id
+      || evidence.relation_count !== relationCount
+      || evidence.decision !== (relationCount === 0 ? 'no-relations' : 'relations-reviewed')) {
+      fail(`${evidenceLabel} does not bind the reviewed relation outcome`, 'LEXICAL_RELATION_BINDING');
+    }
+    requireString(evidence.basis, `${evidenceLabel}.basis`);
+  }
 }
 
 function boundaryDecisionForFinding(action, classification) {
@@ -659,6 +1125,7 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
       generic_template: false,
       malformed_fragment: false,
       malformed_structure: false,
+      malformed_particles: [],
       topic_state: 'unsupported',
     };
   }
@@ -669,6 +1136,10 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
     generic_template: GENERIC_GLOSS_TEMPLATE_PATTERN.test(gloss),
     malformed_fragment: topicAnalysis.malformed,
     malformed_structure: topicAnalysis.malformed,
+    malformed_particles: inspectMalformedParticles(trimmed, {
+      topicEvidence,
+      senseId,
+    }),
     topic_state: TOPIC_ANALYSIS_STATES.includes(topicAnalysis.state)
       ? topicAnalysis.state
       : 'unsupported',
@@ -774,6 +1245,14 @@ function recordQualityFindings(record, {
         message: `${senseLabel}.gloss contains an unfinished or malformed lexical fragment`,
       });
     }
+    if (glossQuality.malformed_particles.length > 0) {
+      const particleFinding = glossQuality.malformed_particles[0];
+      findings.push({
+        code: 'LEXICAL_MALFORMED_PARTICLE',
+        message: `${senseLabel}.gloss attaches ${particleFinding.particle} to ${particleFinding.stem}, but the compatible particle is ${particleFinding.expected_particle} before ${particleFinding.next_token}`,
+        observation: particleFinding,
+      });
+    }
     const observations = inspectGlossConnectors(sense.gloss);
     if (rejectAnyBroadConnector && observations.length > 0) {
       findings.push({
@@ -864,6 +1343,92 @@ export function findLexicalQualityFindings(record, options = {}) {
 }
 
 /**
+ * A batch must not manufacture a large lexical set by copying one gloss over
+ * unrelated records.  A repeated gloss can be legitimate in a small semantic
+ * cluster, so the shared boundary only rejects bulk reuse; callers that need a
+ * broader equivalence class must author separate evidence instead of silently
+ * bypassing this invariant.
+ */
+export function findBulkGlossProjectionFindings(
+  recordInfos,
+  { maxOccurrences = 3 } = {},
+) {
+  const ownersByGloss = new Map();
+  const ownersByTemplate = new Map();
+
+  const lemmaTerms = (lemma) => {
+    const terms = new Set([lemma, lemma.replace(/\s+/gu, '')]);
+    for (const token of lemma.split(/\s+/gu)) {
+      terms.add(token);
+      for (const component of token.split(/(?=의|에)|(?<=의|에)/u)) {
+        if (component !== '의' && component !== '에') terms.add(component);
+      }
+      const stem = token.replace(/(?:으로|에서|에게|한테|처럼|까지|부터|보다|의|은|는|이|가|을|를|에|로|와|과|도|만)$/u, '');
+      if (stem.length >= 1) terms.add(stem);
+    }
+    return [...terms]
+      .filter((term) => term.length >= 1 && term !== '의' && term !== '에')
+      .sort((left, right) => right.length - left.length);
+  };
+
+  const templateFingerprint = (record, gloss) => {
+    let fingerprint = gloss.normalize('NFC').split(/[.!?。！？]/u)[0];
+    for (const term of lemmaTerms(record.lemma)) {
+      fingerprint = fingerprint.replaceAll(term, '{lexeme}');
+    }
+    return fingerprint
+      .replace(/[‘’“”"']/gu, '')
+      .replace(/\s+/gu, ' ')
+      .trim();
+  };
+
+  for (const recordInfo of recordInfos) {
+    const record = recordOf(recordInfo);
+    for (const sense of record?.senses ?? []) {
+      if (typeof sense.gloss !== 'string') continue;
+      const owner = { record_id: record.id, sense_id: sense.id };
+      const glossOwners = ownersByGloss.get(sense.gloss) ?? [];
+      glossOwners.push(owner);
+      ownersByGloss.set(sense.gloss, glossOwners);
+      const fingerprint = templateFingerprint(record, sense.gloss);
+      const templateOwners = ownersByTemplate.get(fingerprint) ?? [];
+      templateOwners.push(owner);
+      ownersByTemplate.set(fingerprint, templateOwners);
+    }
+  }
+  const exactFindings = [...ownersByGloss.entries()]
+    .filter(([, owners]) => owners.length > maxOccurrences)
+    .map(([gloss, owners]) => ({
+      code: 'LEXICAL_BULK_GLOSS_PROJECTION',
+      kind: 'exact-gloss',
+      gloss,
+      owners,
+      message: `gloss ${JSON.stringify(gloss)} is reused by ${owners.length} candidate senses; author lemma-specific semantic content before admission`,
+    }));
+  const exactFindingKeys = new Set(exactFindings.flatMap(({ owners }) => owners.map(({ record_id: recordId, sense_id: senseId }) => `${recordId}:${senseId}`)));
+  const templateFindings = [...ownersByTemplate.entries()]
+    .filter(([, owners]) => owners.length > maxOccurrences)
+    .map(([fingerprint, owners]) => ({
+      code: 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+      kind: 'parameterized-template',
+      fingerprint,
+      owners,
+      message: `gloss definition template ${JSON.stringify(fingerprint)} is reused by ${owners.length} candidate senses after lemma substitution; author candidate-specific semantic content before admission`,
+    }))
+    .filter(({ owners }) => owners.some(({ record_id: recordId, sense_id: senseId }) => !exactFindingKeys.has(`${recordId}:${senseId}`)));
+  return [...exactFindings, ...templateFindings];
+}
+
+export function validateBulkGlossProjection(recordInfos, options = {}) {
+  const findings = findBulkGlossProjectionFindings(recordInfos, options);
+  if (findings.length > 0) {
+    const finding = findings[0];
+    fail(finding.message, finding.code, finding);
+  }
+  return findings;
+}
+
+/**
  * Run the complete canonical audit.  The returned report is deterministic and
  * can be embedded in a batch verification artifact.  No batch ID, record ID,
  * or historical allowlist can suppress a finding.
@@ -878,6 +1443,16 @@ export function auditCanonicalLexicalQuality(
   const connectorCounts = Object.fromEntries(CONNECTORS.map((connector) => [connector, 0]));
   const classificationCounts = {};
   let senseCount = 0;
+  for (const finding of findBulkGlossProjectionFindings(recordInfos)) {
+    const owner = finding.owners[0];
+    findings.push({
+      ...finding,
+      record_id: owner?.record_id ?? null,
+      sense_id: owner?.sense_id ?? null,
+      location: scope,
+      message: `${scope}: ${finding.message.replace(/candidate senses/gu, 'canonical senses')}`,
+    });
+  }
   for (const [index, recordInfo] of recordInfos.entries()) {
     const record = normalized[index];
     if (!record || typeof record !== 'object') {
@@ -1014,6 +1589,7 @@ export function validateLexicalSemanticReview(review, {
   catalogCount = 550,
   rejectAnyBroadConnector = false,
   requireSemanticEvidence = false,
+  requireIndependentDecisionEvidence = false,
   selectionRationaleTokens = ['verification', 'coverage'],
 } = {}) {
   requireObject(review, label);
@@ -1148,22 +1724,14 @@ export function validateLexicalSemanticReview(review, {
           );
         }
       }
-      if (requiresTopicAnalysis(sense.gloss) && semanticEvidence.topic_analysis === undefined) {
-        fail(
-          `${senseLabel}.semantic_evidence.topic_analysis is required for a two-token topic/adnominal shape`,
-          'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE',
-        );
-      }
-      if (semanticEvidence.topic_analysis !== undefined) {
-        validateAuthoredTopicAnalysis(
-          sense.gloss,
-          semanticEvidence.topic_analysis,
-          {
-            decisionSourceId,
-            label: `${senseLabel}.semantic_evidence.topic_analysis`,
-          },
-        );
-      }
+      validateTopicAnalysisEvidence(
+        sense.gloss,
+        semanticEvidence,
+        {
+          decisionSourceId,
+          label: `${senseLabel}.semantic_evidence`,
+        },
+      );
     }
   }
 
@@ -1297,6 +1865,16 @@ export function validateLexicalSemanticReview(review, {
   if (selectionRationaleTokens.length > 0
     && !selectionRationaleTokens.some((token) => selection.rationale.includes(token))) {
     fail(`${label}.selection.rationale must bind ${selectionRationaleTokens.join(' or ')}`, 'LEXICAL_SELECTION_BINDING');
+  }
+  if (requireIndependentDecisionEvidence) {
+    validateIndependentDecisionEvidence(review, {
+      decision,
+      candidateRecord,
+      reviewedRecord,
+      inventoryId,
+      label,
+      decisionSourceId,
+    });
   }
 
   return {

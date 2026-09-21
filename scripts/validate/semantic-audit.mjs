@@ -13,8 +13,7 @@ import {
   LEXICAL_QUALITY_RULESET_VERSION,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
-  requiresTopicAnalysis,
-  validateAuthoredTopicAnalysis,
+  validateTopicAnalysisEvidence,
 } from './lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
@@ -674,7 +673,11 @@ function validateSemanticReviewSense(
   senseIndex,
   label,
   boundaryReview,
-  { decisionSourceId, requireDecisionSource = true } = {},
+  {
+    decisionSourceId,
+    requireDecisionSource = true,
+    requireTopicAnalysis = true,
+  } = {},
 ) {
   requireObject(review, label);
   if (review.sense_id !== sense.id) fail(`${label}.sense_id is not bound`, 'SEMANTIC_AUDIT_BINDING');
@@ -832,22 +835,16 @@ function validateSemanticReviewSense(
       'SEMANTIC_AUDIT_GENERIC_EVIDENCE',
     );
   }
-  if (requiresTopicAnalysis(sense.gloss) && basis.topic_analysis === undefined) {
-    fail(
-      `${label}.review_basis.topic_analysis is required for a two-token topic/adnominal shape`,
-      'SEMANTIC_AUDIT_INCOMPLETE',
-    );
-  }
-  if (basis.topic_analysis !== undefined) {
-    validateAuthoredTopicAnalysis(
-      sense.gloss,
-      basis.topic_analysis,
+  validateTopicAnalysisEvidence(
+    sense.gloss,
+    basis,
       {
         decisionSourceId,
-        label: `${label}.review_basis.topic_analysis`,
-      },
-    );
-  }
+        requireEvidence: requireTopicAnalysis,
+        incompleteCode: 'SEMANTIC_AUDIT_INCOMPLETE',
+        label: `${label}.review_basis`,
+    },
+  );
 }
 
 function validateSemanticReviewPass(recordInfos, artifact, label) {
@@ -1016,7 +1013,12 @@ function validateSemanticReviewChanges(recordInfos, baseRecords, changes, label)
 export function validateSemanticReviewArtifact(
   recordInfos,
   artifact,
-  { baseRecords, label = 'semantic review', requireDecisionSource = true } = {},
+  {
+    baseRecords,
+    label = 'semantic review',
+    requireDecisionSource = true,
+    requireTopicAnalysis = true,
+  } = {},
 ) {
   requireObject(artifact, label);
   if (artifact.schema_version !== SEMANTIC_AUDIT_SCHEMA_VERSION
@@ -1080,6 +1082,7 @@ export function validateSemanticReviewArtifact(
         {
           decisionSourceId: decisionSource?.source_id,
           requireDecisionSource,
+          requireTopicAnalysis,
         },
       );
     }
@@ -1161,7 +1164,12 @@ export function validateSemanticDecisionSource(
 export function validateSemanticAuditCoverage(
   recordInfos,
   artifact,
-  { baseRecords, label = 'semantic audit', requireDecisionSource = true } = {},
+  {
+    baseRecords,
+    label = 'semantic audit',
+    requireDecisionSource = true,
+    requireTopicAnalysis = true,
+  } = {},
 ) {
   requireObject(artifact, label);
   if (artifact.schema_version !== SEMANTIC_AUDIT_SCHEMA_VERSION
@@ -1189,6 +1197,7 @@ export function validateSemanticAuditCoverage(
     baseRecords,
     label: `${label}.review`,
     requireDecisionSource,
+    requireTopicAnalysis,
   });
   if (coverage.source.canonical_records_sha256 !== review.source.canonical_records_sha256) {
     fail(`${label} coverage and review source digests differ`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
@@ -1225,7 +1234,7 @@ export function validateSemanticAuditCoverage(
 export function buildSemanticTopicEvidence(
   recordInfos,
   artifact,
-  { label = 'semantic audit' } = {},
+  { label = 'semantic audit', requireTopicAnalysis = true } = {},
 ) {
   requireObject(artifact, label);
   const review = requireObject(artifact.review, `${label}.review`);
@@ -1255,35 +1264,32 @@ export function buildSemanticTopicEvidence(
         senseReviews[senseIndex],
         `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}]`,
       );
-      const analysis = senseReview.review_basis?.topic_analysis;
-      if (requiresTopicAnalysis(sense.gloss) && analysis === undefined) {
-        fail(
-          `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}].review_basis.topic_analysis is missing`,
-          'SEMANTIC_AUDIT_INCOMPLETE',
-        );
-      }
-      if (analysis === undefined) continue;
-      validateAuthoredTopicAnalysis(
+      const analyses = validateTopicAnalysisEvidence(
         sense.gloss,
-        analysis,
+        senseReview.review_basis,
         {
           decisionSourceId,
-          label: `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}].review_basis.topic_analysis`,
+          requireEvidence: requireTopicAnalysis,
+          incompleteCode: 'SEMANTIC_AUDIT_INCOMPLETE',
+          label: `${label}.review.records[${recordIndex}].sense_reviews[${senseIndex}].review_basis`,
         },
       );
-      if (analysis.state === 'noun-topic' && decisionSourceId === undefined) {
-        fail(
-          `${label}.review contains noun-topic evidence without an authored decision source`,
-          'SEMANTIC_AUDIT_PROVENANCE',
-        );
+      if (analyses === undefined) continue;
+      for (const analysis of analyses) {
+        if (analysis.state === 'noun-topic' && decisionSourceId === undefined) {
+          fail(
+            `${label}.review contains noun-topic evidence without an authored decision source`,
+            'SEMANTIC_AUDIT_PROVENANCE',
+          );
+        }
       }
       if (bySense.has(sense.id)) {
         fail(`${label}.review contains duplicate topic analysis for ${sense.id}`, 'SEMANTIC_AUDIT_SCOPE');
       }
-      bySense.set(sense.id, {
+      bySense.set(sense.id, analyses.map((analysis) => ({
         ...analysis,
         sense_id: sense.id,
-      });
+      })));
     }
   }
 
