@@ -149,6 +149,9 @@ function createMetrics({ fileCount, source = 'canonical-jsonl' }) {
     canonical_record_scan_count: 1,
     relation_index_build_count: 1,
     sqlite_build_count: 0,
+    canonical_context_serialize_count: 0,
+    canonical_context_deserialize_count: 0,
+    canonical_context_rehydrate_count: 0,
   };
 }
 
@@ -171,6 +174,7 @@ export function createCanonicalContext(
   const context = {
     contractVersion: CANONICAL_CONTEXT_CONTRACT_VERSION,
     canonicalDirectory: path.resolve(canonicalDirectory),
+    canonicalRevision: canonical.canonicalRevision ?? null,
     fileCount: canonical.fileCount ?? 0,
     records: canonical.records,
     indexes,
@@ -303,6 +307,7 @@ function serializeContext(context) {
   return {
     contract_version: CANONICAL_CONTEXT_CONTRACT_VERSION,
     canonical_directory: context.canonicalDirectory,
+    canonical_revision: context.canonicalRevision,
     file_count: context.fileCount,
     records: context.records,
     indexes: serializeIndexes(context),
@@ -325,6 +330,8 @@ function rehydrateContext(value, contextPath) {
   }
   if (
     typeof value.canonical_directory !== 'string'
+    || (value.canonical_revision !== null
+      && typeof value.canonical_revision !== 'string')
     || !Array.isArray(value.records)
     || !value.indexes
   ) {
@@ -337,11 +344,18 @@ function rehydrateContext(value, contextPath) {
   const context = {
     contractVersion: value.contract_version,
     canonicalDirectory: path.resolve(value.canonical_directory),
+    canonicalRevision: value.canonical_revision ?? null,
     fileCount: value.file_count ?? 0,
     records: value.records,
     indexes: rehydrateIndexes(value.records, value.indexes),
     statistics: value.statistics ?? value.indexes.stats ?? {},
-    metrics: value.metrics ?? {},
+    metrics: {
+      ...(value.metrics ?? {}),
+      canonical_context_deserialize_count:
+        (value.metrics?.canonical_context_deserialize_count ?? 0) + 1,
+      canonical_context_rehydrate_count:
+        (value.metrics?.canonical_context_rehydrate_count ?? 0) + 1,
+    },
     derived: rehydrateDerived(value.derived),
   };
   if (value.semantic_audit) context.semanticAudit = value.semantic_audit;
@@ -353,6 +367,8 @@ function rehydrateContext(value, contextPath) {
 
 export async function readCanonicalContext(contextPath, {
   expectedCanonicalDirectory,
+  expectedCanonicalRevision = process.env.TYPEWRITER_CANONICAL_REVISION,
+  requireCanonicalRevision = false,
 } = {}) {
   let value;
   try {
@@ -374,10 +390,24 @@ export async function readCanonicalContext(contextPath, {
       'CONTEXT_DIRECTORY_MISMATCH',
     );
   }
+  if (requireCanonicalRevision && !expectedCanonicalRevision) {
+    throw new CanonicalContextError(
+      `${contextPath}: canonical context requires TYPEWRITER_CANONICAL_REVISION`,
+      'CONTEXT_REVISION_REQUIRED',
+    );
+  }
+  if (expectedCanonicalRevision && context.canonicalRevision !== expectedCanonicalRevision) {
+    throw new CanonicalContextError(
+      `${contextPath}: canonical context revision does not match the expected current revision`,
+      'CONTEXT_REVISION_MISMATCH',
+    );
+  }
   return context;
 }
 
 export async function writeCanonicalContext(context, contextPath) {
+  context.metrics.canonical_context_serialize_count =
+    (context.metrics.canonical_context_serialize_count ?? 0) + 1;
   await writeFile(
     contextPath,
     `${JSON.stringify(serializeContext(context), null, 2)}\n`,
@@ -391,12 +421,17 @@ export async function loadCanonicalContext({
   contextPath = process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH,
 } = {}) {
   if (contextPath && path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
+    const expectedCanonicalRevision = process.env.TYPEWRITER_CANONICAL_REVISION;
     return readCanonicalContext(contextPath, {
       expectedCanonicalDirectory: directory,
+      expectedCanonicalRevision,
+      requireCanonicalRevision: true,
     });
   }
 
-  const canonical = await readCanonicalRecords(directory);
+  const canonical = await readCanonicalRecords(directory, {
+    useSharedContext: contextPath !== null,
+  });
   return createCanonicalContext(canonical, {
     canonicalDirectory: directory,
   });
@@ -411,6 +446,7 @@ export function contextSummary(context) {
   return {
     contract_version: context.contractVersion,
     canonical_directory: context.canonicalDirectory,
+    canonical_revision: context.canonicalRevision,
     file_count: context.fileCount,
     ...context.statistics,
     metrics: { ...context.metrics },

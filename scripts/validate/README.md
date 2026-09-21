@@ -17,6 +17,7 @@ node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
 node --test tests/lexical-quality.test.mjs
 npm run ci:all
+npm run ci:deep
 npm run benchmark:canonical -- --sizes=10000,100000,500000 --sqlite-scale=10000
 ```
 
@@ -55,20 +56,27 @@ source-bound semantic review, and selection.
 
 ## Shared CI context
 
-The CI runner creates one `canonical-context-v1` session for the canonical
-revision. The session loads and schema-validates canonical JSONL once, then
-shares record/sense/candidate/relation indexes, semantic topic evidence, and
-the lexical audit report with the category subprocesses through a temporary
-context artifact. The global canonical audit remains mandatory; a changed-only
-check cannot replace it.
+The CI runner creates one fresh `canonical-context-v1` session for the current
+canonical revision. The session loads and schema-validates canonical JSONL once,
+then shares record/sense/candidate/relation indexes, semantic topic evidence,
+and the lexical audit report as the same in-process context object. Production
+canonical gates run in that process; fixture and unit tests remain isolated
+subprocesses and do not inherit the context transport. A context artifact, when
+used by an external caller, is bound to the canonical directory and revision.
+External context consumers must provide the expected digest in
+`TYPEWRITER_CANONICAL_REVISION`; an unbound context is rejected.
+The global canonical audit remains mandatory; a changed-only check cannot
+replace it.
 
 The toolchain stage builds SQLite once after the global audit and passes the
 same temporary database to schema, fidelity, and query verification. The
-reproducibility tests still build independent fixture databases because those
-tests specifically exercise independent-build equivalence.
+two-independent-build reproducibility check is intentionally moved to
+`npm run ci:deep`, which is the manual/scheduled deep-validation path. The
+pull-request `ci:all` path verifies the one shared current-revision artifact.
 
 For scale evidence, the benchmark generates self-authored synthetic JSONL
 without adding a 500K-record corpus to the repository. Each result records
 wall-clock time, memory, validator result counts, canonical parse/index/scan
-counts, and SQLite build count. A 500K run is intended for manual or scheduled
-validation rather than ordinary pull requests.
+counts, SQLite build count, and context transport counts. The benchmark's
+`same-process-shared-context` wiring matches the PR runner; a 500K run is
+intended for manual or scheduled validation rather than ordinary pull requests.

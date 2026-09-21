@@ -194,6 +194,7 @@ export async function buildDictionary({
   allowDirty = false,
   canonicalContext,
   semanticAudit,
+  normalizedModel,
 } = {}) {
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
@@ -201,7 +202,7 @@ export async function buildDictionary({
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,
   });
-  const model = await normalizeCanonicalDirectory(inputDirectory, {
+  const model = normalizedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness,
     canonicalContext: context,
     semanticAudit,

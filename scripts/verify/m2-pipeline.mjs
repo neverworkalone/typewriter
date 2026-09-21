@@ -270,6 +270,7 @@ export async function runM2Pipeline({
   allowDirty = false,
   canonicalContext,
   databasePath,
+  model: suppliedModel,
 } = {}) {
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,
@@ -283,7 +284,7 @@ export async function runM2Pipeline({
     canonicalContext: context,
     semanticAudit: context.semanticAudit,
   });
-  const model = await normalizeCanonicalDirectory(inputDirectory, {
+  const model = suppliedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness: true,
     canonicalContext: context,
     semanticAudit: context.semanticAudit,

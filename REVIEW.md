@@ -45,10 +45,13 @@ additional guide or source of truth needed for that impact.
 For canonical validation and CI architecture changes, verify that the shared
 context is built from the complete canonical revision, that the global audit
 still runs before SQLite build, and that downstream checks consume the same
-artifact. Treat reported parse/full-scan/index/build counts as evidence to
-check against the runner wiring, not as a substitute for correctness checks.
-Changed-only validation may accelerate failure feedback but must not become the
-final correctness gate.
+artifact. Verify that current-canonical production gates share the same
+in-process context and that isolated fixture tests do not repeatedly transport
+the full context. Treat reported parse/full-scan/index/build and context
+transport counts as evidence to check against the runner wiring, not as a
+substitute for correctness checks. Independent two-build reproducibility is a
+deep/manual validation path, not a duplicate PR gate. Changed-only validation
+may accelerate failure feedback but must not become the final correctness gate.
 
 ## Depth by risk
 

@@ -166,6 +166,12 @@ export async function benchmarkCanonicalValidation({
           blocking_finding_count: context.derived.lexicalQuality?.blocking_finding_count ?? 0,
         };
         result.metrics = contextSummary(context).metrics;
+        result.context_transport = {
+          mode: 'same-process-shared-context',
+          serialize_count: context.metrics.canonical_context_serialize_count ?? 0,
+          deserialize_count: context.metrics.canonical_context_deserialize_count ?? 0,
+          rehydrate_count: context.metrics.canonical_context_rehydrate_count ?? 0,
+        };
 
         if (sqliteScale === scale) {
           result.failure_stage = 'sqlite-build';
@@ -202,6 +208,7 @@ export async function benchmarkCanonicalValidation({
 
   return {
     contract_version: 'canonical-validation-benchmark-v1',
+    runner_wiring: 'same-process-shared-context',
     synthetic_record_shape: 'one reference-only noun sense per record; every record after the first has one near relation to its predecessor',
     sqlite_scale: sqliteScale ?? null,
     results,

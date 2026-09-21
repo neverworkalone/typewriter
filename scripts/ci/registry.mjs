@@ -29,12 +29,18 @@ function commandCheck(label, args, testFiles = []) {
   };
 }
 
+function inProcessCheck(label, inProcess) {
+  return {
+    label,
+    inProcess,
+    command: () => ({ executable: '[in-process]', args: [inProcess] }),
+    testFiles: [],
+  };
+}
+
 function globalCanonicalAuditCheck() {
   return {
-    ...commandCheck(
-      'Run single-pass global canonical audit',
-      ['scripts/ci/global-canonical-audit.mjs'],
-    ),
+    ...inProcessCheck('Run single-pass global canonical audit', 'global-canonical-audit'),
     oncePerCanonicalSession: 'global-canonical-audit',
   };
 }
@@ -45,10 +51,6 @@ function npmCheck(label, script, args = [], testFiles = []) {
     command: () => npmCommand(script, args),
     testFiles,
   };
-}
-
-function allowDirtyArguments() {
-  return process.env.TYPEWRITER_ALLOW_DIRTY === 'true' ? ['--allow-dirty'] : [];
 }
 
 function testCheck(file, label = `Run ${file}`) {
@@ -69,12 +71,14 @@ export const CI_CATEGORY_ORDER = Object.freeze([
   'artifacts',
 ]);
 
+export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['deep']);
+
 export const CI_CATEGORIES = Object.freeze({
   canonical: {
     label: 'Core canonical and dataset validation',
     checks: [
       commandCheck('Validate manifest version', ['scripts/ci/validate-manifest.mjs']),
-      commandCheck('Validate canonical JSONL', ['scripts/validate/canonical-jsonl.mjs']),
+      inProcessCheck('Validate canonical JSONL', 'canonical-jsonl'),
       globalCanonicalAuditCheck(),
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
       testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
@@ -170,21 +174,18 @@ export const CI_CATEGORIES = Object.freeze({
   toolchain: {
     label: 'Normalization, dictionary build, and integrated audit',
     checks: [
-      commandCheck('Normalize canonical data', ['scripts/normalize/canonical.mjs']),
+      globalCanonicalAuditCheck(),
+      inProcessCheck('Normalize canonical data', 'normalize-canonical'),
       testCheck('tests/normalize-canonical.test.mjs', 'Test canonical normalization'),
       {
-        label: 'Validate shared SQLite dictionary artifact',
-        command: () => nodeCommand(['scripts/ci/validate-shared-dictionary.mjs']),
-        testFiles: [],
+        ...inProcessCheck('Build shared SQLite dictionary artifact', 'shared-dictionary-build'),
       },
       {
-        label: 'Run integrated M2 audit',
-        command: () => nodeCommand(['scripts/verify/m2-pipeline.mjs', ...allowDirtyArguments()]),
-        testFiles: [],
+        ...inProcessCheck('Validate shared SQLite dictionary artifact', 'shared-dictionary-validation'),
       },
+      inProcessCheck('Run integrated M2 audit', 'm2-audit'),
       testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
       testCheck('tests/m2-pipeline.test.mjs', 'Test integrated M2 audit'),
-      testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
     ],
   },
 
@@ -209,10 +210,19 @@ export const CI_CATEGORIES = Object.freeze({
       ]),
     ],
   },
+
+  deep: {
+    label: 'Manual deep current-revision reproducibility validation',
+    checks: [
+      globalCanonicalAuditCheck(),
+      inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+      testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+    ],
+  },
 });
 
 export function collectTestOwnership() {
-  return CI_CATEGORY_ORDER.flatMap((categoryName) => (
+  return [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER].flatMap((categoryName) => (
     CI_CATEGORIES[categoryName].checks.flatMap((check) => (
       (check.testFiles ?? []).map((file) => ({
         category: categoryName,

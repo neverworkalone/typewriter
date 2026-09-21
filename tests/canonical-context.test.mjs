@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -45,7 +45,12 @@ test('serializes and rehydrates the shared context without rebuilding from JSONL
     const restored = await readCanonicalContext(contextPath, {
       expectedCanonicalDirectory: context.canonicalDirectory,
     });
-    assert.deepEqual(contextSummary(restored), contextSummary(context));
+    const { metrics: restoredMetrics, ...restoredSummary } = contextSummary(restored);
+    const { metrics: originalMetrics, ...originalSummary } = contextSummary(context);
+    assert.deepEqual(restoredSummary, originalSummary);
+    assert.equal(originalMetrics.canonical_context_serialize_count, 1);
+    assert.equal(restoredMetrics.canonical_context_deserialize_count, 1);
+    assert.equal(restoredMetrics.canonical_context_rehydrate_count, 1);
     assert.deepEqual(
       restored.records.map(({ record }) => record.id),
       context.records.map(({ record }) => record.id),
@@ -64,14 +69,75 @@ test('readCanonicalRecords consumes the CI context for the default corpus', asyn
   const contextPath = path.join(temporaryDirectory, 'canonical-context.json');
   const previousPath = process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH;
   const previousDirectory = process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY;
+  const previousRevision = process.env.TYPEWRITER_CANONICAL_REVISION;
 
   try {
     await writeCanonicalContext(context, contextPath);
     process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH = contextPath;
     process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY = context.canonicalDirectory;
+    process.env.TYPEWRITER_CANONICAL_REVISION = context.canonicalRevision;
     const shared = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
     assert.equal(shared.fileCount, context.fileCount);
     assert.deepEqual(shared.records, context.records);
+  } finally {
+    if (previousPath === undefined) delete process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH;
+    else process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH = previousPath;
+    if (previousDirectory === undefined) delete process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY;
+    else process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY = previousDirectory;
+    if (previousRevision === undefined) delete process.env.TYPEWRITER_CANONICAL_REVISION;
+    else process.env.TYPEWRITER_CANONICAL_REVISION = previousRevision;
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('rejects a shared context bound to a stale canonical revision', async () => {
+  const context = await loadCanonicalContext({
+    directory: path.resolve('tests/fixtures/normalization/one-file.jsonl'),
+  });
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-context-stale-'));
+  const contextPath = path.join(temporaryDirectory, 'canonical-context.json');
+  const previousRevision = process.env.TYPEWRITER_CANONICAL_REVISION;
+
+  try {
+    await writeCanonicalContext(context, contextPath);
+    const stale = JSON.parse(await readFile(contextPath, 'utf8'));
+    stale.canonical_revision = 'stale-revision';
+    await writeFile(contextPath, `${JSON.stringify(stale)}\n`, 'utf8');
+    process.env.TYPEWRITER_CANONICAL_REVISION = context.canonicalRevision;
+
+    await assert.rejects(
+      readCanonicalContext(contextPath, {
+        expectedCanonicalDirectory: context.canonicalDirectory,
+      }),
+      (error) => error.code === 'CONTEXT_REVISION_MISMATCH',
+    );
+  } finally {
+    if (previousRevision === undefined) delete process.env.TYPEWRITER_CANONICAL_REVISION;
+    else process.env.TYPEWRITER_CANONICAL_REVISION = previousRevision;
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('fresh canonical loads bypass an inherited shared context', async () => {
+  const directory = path.resolve('tests/fixtures/normalization/one-file.jsonl');
+  const fresh = await loadCanonicalContext({ directory, contextPath: null });
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-context-fresh-'));
+  const contextPath = path.join(temporaryDirectory, 'canonical-context.json');
+  const previousPath = process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH;
+  const previousDirectory = process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY;
+
+  try {
+    await writeCanonicalContext(fresh, contextPath);
+    const stale = JSON.parse(await readFile(contextPath, 'utf8'));
+    stale.records = stale.records.slice(0, 1);
+    stale.file_count = 1;
+    await writeFile(contextPath, `${JSON.stringify(stale)}\n`, 'utf8');
+    process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH = contextPath;
+    process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY = directory;
+
+    const loaded = await loadCanonicalContext({ directory, contextPath: null });
+    assert.equal(loaded.records.length, fresh.records.length);
+    assert.equal(loaded.canonicalRevision, fresh.canonicalRevision);
   } finally {
     if (previousPath === undefined) delete process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH;
     else process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH = previousPath;

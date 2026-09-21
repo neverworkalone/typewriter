@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CI_CATEGORIES,
   CI_CATEGORY_ORDER,
+  CI_DEEP_CATEGORY_ORDER,
   collectTestOwnership,
 } from '../scripts/ci/registry.mjs';
 
@@ -35,8 +36,9 @@ test('every root Node test file has exactly one CI category owner', async () => 
 });
 
 test('CI categories are ordered and every category has a descriptive label', () => {
-  assert.deepEqual(Object.keys(CI_CATEGORIES), CI_CATEGORY_ORDER);
-  for (const categoryName of CI_CATEGORY_ORDER) {
+  const allCategoryNames = [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER];
+  assert.deepEqual(Object.keys(CI_CATEGORIES), allCategoryNames);
+  for (const categoryName of allCategoryNames) {
     const category = CI_CATEGORIES[categoryName];
     assert.equal(typeof category.label, 'string');
     assert.ok(category.label.length > 0);
@@ -46,4 +48,12 @@ test('CI categories are ordered and every category has a descriptive label', () 
       assert.equal(typeof check.command, 'function');
     }
   }
+});
+
+test('toolchain builds SQLite only after the shared global audit', () => {
+  const toolchainChecks = CI_CATEGORIES.toolchain.checks;
+  assert.equal(toolchainChecks[0].inProcess, 'global-canonical-audit');
+  assert.equal(toolchainChecks[1].inProcess, 'normalize-canonical');
+  assert.equal(toolchainChecks[3].inProcess, 'shared-dictionary-build');
+  assert.equal(CI_CATEGORIES.deep.checks.at(-1).testFiles[0], 'tests/reproducibility.test.mjs');
 });

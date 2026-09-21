@@ -8,18 +8,22 @@ import { fileURLToPath } from 'node:url';
 import {
   CI_CATEGORIES,
   CI_CATEGORY_ORDER,
+  CI_DEEP_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
 import {
   loadCanonicalContext,
-  writeCanonicalContext,
 } from '../validate/canonical-context.mjs';
 import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
 import {
   buildCanonicalSemanticAudit,
   buildSemanticTopicEvidence,
 } from '../validate/semantic-audit.mjs';
+import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
+import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
+import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
+import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -36,12 +40,9 @@ function formatCommand({ executable, args }) {
     .join(' ');
 }
 
-async function runCommand({ executable, args }, context = {}) {
+async function runCommand({ executable, args }) {
   return new Promise((resolve, reject) => {
-    const childEnvironment = {
-      ...process.env,
-      ...(context.environment ?? {}),
-    };
+    const childEnvironment = { ...process.env };
     delete childEnvironment.NODE_TEST_CONTEXT;
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
@@ -79,7 +80,11 @@ export async function runChecks(
     const command = check.command(context);
     log(`\n--- ${index + 1}/${checks.length}: ${check.label} ---`);
     log(`$ ${formatCommand(command)}`);
-    await execute(command, context);
+    if (check.inProcess) {
+      await runInProcessCheck(check.inProcess, context);
+    } else {
+      await execute(command, context);
+    }
     if (check.oncePerCanonicalSession && context?.completedChecks) {
       context.completedChecks.add(check.oncePerCanonicalSession);
     }
@@ -106,8 +111,7 @@ export async function materializeHistoricalInputs(tempDirectory) {
 
 async function createCanonicalSession() {
   const temporaryDirectory = await createTemporaryDirectory();
-  const contextPath = path.join(temporaryDirectory, 'canonical-context.json');
-  const canonicalContext = await loadCanonicalContext();
+  const canonicalContext = await loadCanonicalContext({ contextPath: null });
   const { artifact: semanticAudit, decisionSource } = await buildCanonicalSemanticAudit({
     canonicalContext,
   });
@@ -126,18 +130,12 @@ async function createCanonicalSession() {
       throwOnError: false,
     },
   );
-  await writeCanonicalContext(canonicalContext, contextPath);
-
   return {
     canonicalContext,
     completedChecks: new Set(),
-    contextPath,
     temporaryDirectory,
     sharedDictionaryPath: undefined,
-    environment: {
-      TYPEWRITER_CANONICAL_CONTEXT_PATH: contextPath,
-      TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY: canonicalContext.canonicalDirectory,
-    },
+    normalizedModel: undefined,
   };
 }
 
@@ -155,14 +153,98 @@ async function ensureSharedDictionary(session) {
     allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
     canonicalContext: session.canonicalContext,
     semanticAudit: session.canonicalContext.semanticAudit,
+    normalizedModel: session.normalizedModel,
   });
   session.sharedDictionaryPath = summary.outputPath;
-  session.environment.TYPEWRITER_SHARED_DICTIONARY_PATH = summary.outputPath;
-  await writeCanonicalContext(session.canonicalContext, session.contextPath);
   console.log(
     `Prepared shared SQLite artifact ${summary.outputPath} (build count ${session.canonicalContext.metrics.sqlite_build_count}).`,
   );
   return summary.outputPath;
+}
+
+async function runInProcessCheck(name, context) {
+  const canonicalContext = context.canonicalContext;
+  if (name === 'canonical-jsonl') {
+    console.log(
+      `Validated ${canonicalContext.fileCount} canonical JSONL file(s) / ${canonicalContext.records.length} record(s) with schema.`,
+    );
+    return;
+  }
+
+  if (name === 'global-canonical-audit') {
+    console.log(JSON.stringify(await runGlobalCanonicalAudit({ canonicalContext }), null, 2));
+    return;
+  }
+
+  if (name === 'normalize-canonical') {
+    context.normalizedModel = await normalizeCanonicalDirectory(
+      canonicalContext.canonicalDirectory,
+      {
+        checkPilotCompleteness: true,
+        canonicalContext,
+        semanticAudit: canonicalContext.semanticAudit,
+      },
+    );
+    const senseCount = context.normalizedModel.records.reduce(
+      (count, record) => count + record.senses.length,
+      0,
+    );
+    const relationCount = context.normalizedModel.records.reduce(
+      (count, record) => count + record.senses.reduce(
+        (senseCountForRecord, sense) => senseCountForRecord + sense.relations.length,
+        0,
+      ),
+      0,
+    );
+    console.log(
+      `Normalized ${context.normalizedModel.records.length} record(s) / ${senseCount} sense(s) / ${relationCount} relation(s) in memory (normalization v${context.normalizedModel.normalization_version}).`,
+    );
+    return;
+  }
+
+  if (name === 'shared-dictionary-build') {
+    await ensureSharedDictionary(context);
+    return;
+  }
+
+  if (name === 'shared-dictionary-validation') {
+    console.log(JSON.stringify(await validateSharedDictionary({
+      databasePath: context.sharedDictionaryPath,
+      canonicalContext,
+    }), null, 2));
+    return;
+  }
+
+  if (name === 'm2-audit') {
+    const summary = await runM2Pipeline({
+      inputDirectory: canonicalContext.canonicalDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
+      canonicalContext,
+      databasePath: context.sharedDictionaryPath,
+      model: context.normalizedModel,
+    });
+    console.log(
+      `M2 audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s), with ${summary.databaseBuilds} reproducible SQLite builds.`,
+    );
+    return;
+  }
+
+  if (name === 'deep-m2-reproducibility') {
+    const summary = await runM2Pipeline({
+      inputDirectory: canonicalContext.canonicalDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
+      canonicalContext,
+      model: context.normalizedModel,
+    });
+    console.log(
+      `Deep current-revision reproducibility passed: ${summary.databaseBuilds} independent SQLite builds.`,
+    );
+    return;
+  }
+
+  throw new Error(`Unknown in-process CI check ${name}`);
 }
 
 async function contextForCategory(categoryName, sharedCanonicalSession) {
@@ -194,9 +276,6 @@ async function runCategory(categoryName, sharedCanonicalSession) {
   } = await contextForCategory(categoryName, sharedCanonicalSession);
 
   try {
-    if (categoryName === 'toolchain') {
-      await ensureSharedDictionary(context);
-    }
     console.log(`\n=== ${category.label} [${categoryName}] ===`);
     await runChecks(category.checks, context);
     console.log(`\n=== ${categoryName} passed ===`);
@@ -212,13 +291,13 @@ async function runCategory(categoryName, sharedCanonicalSession) {
 
 function printUsage() {
   console.error('Usage: node scripts/ci/run-category.mjs <category|all>');
-  console.error(`Categories: ${CI_CATEGORY_ORDER.join(', ')}`);
+  console.error(`Categories: ${[...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER].join(', ')}`);
 }
 
 async function main() {
   const [requestedCategory] = process.argv.slice(2);
   if (requestedCategory === '--list') {
-    for (const categoryName of CI_CATEGORY_ORDER) {
+    for (const categoryName of [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER]) {
       console.log(`${categoryName}: ${CI_CATEGORIES[categoryName].label}`);
     }
     return;
