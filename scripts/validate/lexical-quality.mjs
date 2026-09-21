@@ -17,7 +17,7 @@ import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
  */
 export const LEXICAL_QUALITY_RULESET_VERSION = 'lexical-quality-v1';
 export const BROAD_GLOSS_CONNECTOR_PATTERN = /(?:이나|또는|거나)/u;
-export const LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION = 'lexical-topic-evidence-v1';
+export const LEXICAL_TOPIC_EVIDENCE_CONTRACT_VERSION = 'lexical-topic-evidence-v2';
 export const LEXICAL_TOPIC_EVIDENCE_KIND = 'semantic-review-topic-analysis';
 
 const RECORD_TYPES = Object.freeze(['entry', 'expression']);
@@ -213,7 +213,7 @@ function nominalTermPositions(nominalTerms, topic) {
 
 function topicAnalysisForSense(
   topicEvidence,
-  { senseId, gloss, topic, particle, predicate } = {},
+  { senseId, gloss, topic, particle, predicate, tokenIndex } = {},
 ) {
   if (!topicEvidence
     || topicEvidence.kind !== LEXICAL_TOPIC_EVIDENCE_KIND
@@ -223,22 +223,23 @@ function topicAnalysisForSense(
     return undefined;
   }
   const evidence = topicEvidence.by_sense.get(senseId);
-  if (!evidence
-    || evidence.sense_id !== senseId
-    || evidence.gloss_sha256 !== sha256Json(gloss)
-    || evidence.topic !== topic
-    || evidence.particle !== particle
-    || evidence.predicate !== predicate) {
-    return undefined;
-  }
-  return evidence;
+  const candidates = Array.isArray(evidence) ? evidence : [evidence];
+  return candidates.find((candidate) => candidate
+    && candidate.sense_id === senseId
+    && candidate.gloss_sha256 === sha256Json(gloss)
+    && candidate.topic === topic
+    && candidate.particle === particle
+    && candidate.predicate === predicate
+    && (tokenIndex === undefined
+      || candidate.token_index === undefined
+      || candidate.token_index === tokenIndex));
 }
 
 function classifyTopicToken(
   topic,
   nominalTerms,
   topicEvidence,
-  { senseId, gloss, particle, predicate } = {},
+  { senseId, gloss, particle, predicate, tokenIndex } = {},
 ) {
   const authoredTopicAnalysis = topicAnalysisForSense(topicEvidence, {
     senseId,
@@ -246,6 +247,7 @@ function classifyTopicToken(
     topic,
     particle,
     predicate,
+    tokenIndex,
   });
   if (authoredTopicAnalysis !== undefined) {
     return { state: authoredTopicAnalysis.state };
@@ -268,6 +270,7 @@ function inspectTopicFragment(gloss, { nominalTerms, topicEvidence, senseId } = 
     gloss,
     particle,
     predicate,
+    tokenIndex: 0,
   });
   const bareNominalPredicate = !VALID_PREDICATE_ENDING_PATTERN.test(predicate);
   return {
@@ -378,12 +381,13 @@ export function findAmbiguousParticleFragments(gloss) {
 
 function hasAuthoredNounTopicEvidence(
   gloss,
-  { stem, particle, nextToken, topicEvidence, senseId } = {},
+  { stem, particle, nextToken, tokenIndex, topicEvidence, senseId } = {},
 ) {
   const fragment = findAuthoredParticleFragment(gloss, {
     topic: stem,
     particle,
     predicate: nextToken,
+    tokenIndex,
   });
   if (!fragment) return false;
   return topicAnalysisForSense(topicEvidence, {
@@ -392,12 +396,13 @@ function hasAuthoredNounTopicEvidence(
     topic: stem,
     particle,
     predicate: nextToken,
+    tokenIndex,
   })?.state === 'noun-topic';
 }
 
 function isProductiveAdnominalAmbiguity(
   gloss,
-  { stem, particle, nextToken, topicEvidence, senseId } = {},
+  { stem, particle, nextToken, tokenIndex, topicEvidence, senseId } = {},
 ) {
   if (!AMBIGUOUS_ADNOMINAL_PARTICLES.has(particle)
     || !PARTICLE_NOMINAL_COMPLEMENT_CONTEXT_CUE_PATTERN.test(nextToken)) {
@@ -407,6 +412,7 @@ function isProductiveAdnominalAmbiguity(
     stem,
     particle,
     nextToken,
+    tokenIndex,
     topicEvidence,
     senseId,
   })) {
@@ -421,13 +427,14 @@ function isProductiveAdnominalAmbiguity(
 
 function hasUnresolvedLexicalAdverbAmbiguity(
   gloss,
-  { stem, particle, nextToken, topicEvidence, senseId } = {},
+  { stem, particle, nextToken, tokenIndex, topicEvidence, senseId } = {},
 ) {
   if (particle !== '이' || hangulFinalIndex(stem) !== 0) return false;
   return !hasAuthoredNounTopicEvidence(gloss, {
     stem,
     particle,
     nextToken,
+    tokenIndex,
     topicEvidence,
     senseId,
   });
@@ -485,7 +492,7 @@ export function requiresTopicAnalysis(gloss) {
 export function validateAuthoredTopicAnalysis(
   gloss,
   analysis,
-  { decisionSourceId, label = 'topic_analysis' } = {},
+  { decisionSourceId, label = 'topic_analysis', expectedFragment } = {},
 ) {
   requireObject(analysis, label);
   if (analysis.status !== 'pass') {
@@ -503,7 +510,8 @@ export function validateAuthoredTopicAnalysis(
     }
   }
   requireString(analysis.rationale, `${label}.rationale`);
-  const fragment = MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
+  const fragment = expectedFragment
+    ?? MALFORMED_TOPIC_FRAGMENT_PATTERN.exec(gloss.trim())
     ?? findAuthoredParticleFragment(gloss, analysis);
   if (!fragment) {
     if (analysis.state === 'noun-topic') {
@@ -512,6 +520,10 @@ export function validateAuthoredTopicAnalysis(
     return analysis;
   }
   const { topic, particle, predicate } = fragment.groups ?? fragment;
+  if (analysis.token_index !== undefined
+    && analysis.token_index !== fragment.token_index) {
+    fail(`${label}.token_index must bind the normalized gloss token span`, 'LEXICAL_SEMANTIC_BINDING');
+  }
   if (analysis.topic !== topic
     || analysis.particle !== particle
     || analysis.predicate !== predicate) {
@@ -524,6 +536,102 @@ export function validateAuthoredTopicAnalysis(
     requireString(analysis.evidence_basis, `${label}.evidence_basis`);
   }
   return analysis;
+}
+
+/**
+ * Validate the complete authored evidence contract for every ambiguous
+ * particle span in a gloss.  The legacy singular field remains valid for a
+ * single span; multiple spans must use the ordered `topic_analyses` array so
+ * one decision cannot accidentally cover a different span.
+ */
+export function validateTopicAnalysisEvidence(
+  gloss,
+  evidence,
+  {
+    decisionSourceId,
+    label = 'topic_analysis',
+    requireEvidence = true,
+    incompleteCode = 'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE',
+  } = {},
+) {
+  const fragments = findAmbiguousParticleFragments(gloss);
+  const topicAnalysis = evidence?.topic_analysis;
+  const topicAnalyses = evidence?.topic_analyses;
+  if (topicAnalysis !== undefined && topicAnalyses !== undefined) {
+    fail(`${label} must use either topic_analysis or topic_analyses, not both`, 'LEXICAL_SEMANTIC_SHAPE');
+  }
+
+  if (fragments.length > 1) {
+    if (!Array.isArray(topicAnalyses)) {
+      if (requireEvidence) {
+        fail(
+          `${label}.topic_analyses must cover every ambiguous particle span`,
+          incompleteCode,
+        );
+      }
+      return undefined;
+    }
+    if (topicAnalyses.length !== fragments.length) {
+      fail(
+        `${label}.topic_analyses must contain exactly one analysis per ambiguous particle span`,
+        incompleteCode,
+      );
+    }
+    const coveredIndexes = new Set();
+    for (const [index, analysis] of topicAnalyses.entries()) {
+      requireObject(analysis, `${label}.topic_analyses[${index}]`);
+      const fragment = fragments.find((candidate) => candidate.token_index === analysis.token_index
+        && candidate.topic === analysis.topic
+        && candidate.particle === analysis.particle
+        && candidate.predicate === analysis.predicate);
+      if (!fragment || coveredIndexes.has(fragment.token_index)) {
+        fail(
+          `${label}.topic_analyses[${index}] does not bind a unique ambiguous particle span`,
+          'LEXICAL_SEMANTIC_BINDING',
+        );
+      }
+      coveredIndexes.add(fragment.token_index);
+      validateAuthoredTopicAnalysis(gloss, analysis, {
+        decisionSourceId,
+        expectedFragment: fragment,
+        label: `${label}.topic_analyses[${index}]`,
+      });
+    }
+    return topicAnalyses;
+  }
+
+  if (topicAnalyses !== undefined) {
+    if (!Array.isArray(topicAnalyses)) {
+      fail(`${label}.topic_analyses must be an array`, 'LEXICAL_SEMANTIC_SHAPE');
+    }
+    if (topicAnalyses.length !== fragments.length) {
+      fail(
+        `${label}.topic_analyses must contain exactly one analysis per ambiguous particle span`,
+        incompleteCode,
+      );
+    }
+    for (const [index, analysis] of topicAnalyses.entries()) {
+      validateAuthoredTopicAnalysis(gloss, analysis, {
+        decisionSourceId,
+        expectedFragment: fragments[index],
+        label: `${label}.topic_analyses[${index}]`,
+      });
+    }
+    return topicAnalyses;
+  }
+
+  if (topicAnalysis !== undefined) {
+    validateAuthoredTopicAnalysis(gloss, topicAnalysis, {
+      decisionSourceId,
+      expectedFragment: fragments[0],
+      label,
+    });
+    return [topicAnalysis];
+  }
+  if (requireEvidence && fragments.length > 0) {
+    fail(`${label} is required for every ambiguous particle span`, incompleteCode);
+  }
+  return undefined;
 }
 
 export function buildNominalTermPositions(recordInfos) {
@@ -1603,22 +1711,14 @@ export function validateLexicalSemanticReview(review, {
           );
         }
       }
-      if (requiresTopicAnalysis(sense.gloss) && semanticEvidence.topic_analysis === undefined) {
-        fail(
-          `${senseLabel}.semantic_evidence.topic_analysis is required for a two-token topic/adnominal shape`,
-          'LEXICAL_SEMANTIC_REVIEW_INCOMPLETE',
-        );
-      }
-      if (semanticEvidence.topic_analysis !== undefined) {
-        validateAuthoredTopicAnalysis(
-          sense.gloss,
-          semanticEvidence.topic_analysis,
-          {
-            decisionSourceId,
-            label: `${senseLabel}.semantic_evidence.topic_analysis`,
-          },
-        );
-      }
+      validateTopicAnalysisEvidence(
+        sense.gloss,
+        semanticEvidence,
+        {
+          decisionSourceId,
+          label: `${senseLabel}.semantic_evidence`,
+        },
+      );
     }
   }
 

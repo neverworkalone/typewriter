@@ -6,11 +6,9 @@ import {
   sha256Json,
 } from '../validate/semantic-audit.mjs';
 import {
-  findAmbiguousParticleFragments,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
-  requiresTopicAnalysis,
-  validateAuthoredTopicAnalysis,
+  validateTopicAnalysisEvidence,
   validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from '../validate/sense-boundary.mjs';
@@ -358,22 +356,15 @@ function validateDecisionRow(row, {
       || reviewBasis.reviewer !== 'codex-agent') {
       fail(`${senseLabel}.review_basis is not bound to the authored verification pass`, 'M5_12A_DECISION_SOURCE_BINDING');
     }
-    if (requiresTopicAnalysis(sense.gloss) && reviewBasis.topic_analysis === undefined) {
-      fail(
-        `${senseLabel}.review_basis.topic_analysis is required for ambiguous particle spans ${JSON.stringify(findAmbiguousParticleFragments(sense.gloss))}`,
-        'M5_12A_DECISION_SOURCE_SCOPE',
-      );
-    }
-    if (reviewBasis.topic_analysis !== undefined) {
-      validateAuthoredTopicAnalysis(
-        sense.gloss,
-        reviewBasis.topic_analysis,
-        {
-          decisionSourceId,
-          label: `${senseLabel}.review_basis.topic_analysis`,
-        },
-      );
-    }
+    validateTopicAnalysisEvidence(
+      sense.gloss,
+      reviewBasis,
+      {
+        decisionSourceId,
+        incompleteCode: 'M5_12A_DECISION_SOURCE_SCOPE',
+        label: `${senseLabel}.review_basis`,
+      },
+    );
     const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
     const connectorObservations = inspectGlossConnectors(sense.gloss);
     if (JSON.stringify(senseReview.observed_domain_axes) !== JSON.stringify(domainEvidence.axes)

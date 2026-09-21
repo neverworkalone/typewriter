@@ -18,7 +18,6 @@ import {
   findAmbiguousParticleFragments,
   inspectGlossConnectors,
   inspectWriterDomainEvidence,
-  requiresTopicAnalysis,
 } from '../../scripts/validate/lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from '../../scripts/validate/sense-boundary.mjs';
 import {
@@ -34,35 +33,52 @@ function recordOf(recordInfo) {
 
 function makeTopicAnalysis(sense, decisionSourceId, topicAnalyses = {}) {
   const configured = topicAnalyses[sense.id];
-  const fragment = findAmbiguousParticleFragments(sense.gloss)[0];
-  if (!fragment && configured === undefined) return undefined;
-  const configuredValue = typeof configured === 'string'
-    ? { state: configured }
-    : (configured ?? {});
-  const state = configuredValue.state ?? (fragment ? 'ambiguous' : 'unsupported');
-  return {
-    status: 'pass',
-    state,
-    ...(fragment ? {
-      topic: fragment.topic,
-      particle: fragment.particle,
-      predicate: fragment.predicate,
-    } : {}),
-    ...(configuredValue.topic ? { topic: configuredValue.topic } : {}),
-    ...(configuredValue.particle ? { particle: configuredValue.particle } : {}),
-    ...(configuredValue.predicate ? { predicate: configuredValue.predicate } : {}),
-    gloss_sha256: sha256Json(sense.gloss),
-    rationale: configuredValue.rationale
-      ?? `${sense.id} topic/adnominal reading was explicitly reviewed from the authored fixture evidence.`,
-    decision_source_id: decisionSourceId,
-    ...(state === 'noun-topic'
-      ? {
-        topic_pos: configuredValue.topic_pos ?? 'noun',
-        evidence_basis: configuredValue.evidence_basis
-          ?? `${sense.id} explicitly establishes a noun topic before the particle.`,
-      }
-      : {}),
+  const fragments = findAmbiguousParticleFragments(sense.gloss);
+  if (fragments.length === 0 && configured === undefined) return undefined;
+
+  const makeOne = (fragment, value = {}) => {
+    const configuredValue = typeof value === 'string' ? { state: value } : (value ?? {});
+    const state = configuredValue.state ?? (fragment ? 'ambiguous' : 'unsupported');
+    return {
+      status: 'pass',
+      state,
+      ...(fragment ? {
+        token_index: fragment.token_index,
+        topic: fragment.topic,
+        particle: fragment.particle,
+        predicate: fragment.predicate,
+      } : {}),
+      ...(configuredValue.topic ? { topic: configuredValue.topic } : {}),
+      ...(configuredValue.particle ? { particle: configuredValue.particle } : {}),
+      ...(configuredValue.predicate ? { predicate: configuredValue.predicate } : {}),
+      gloss_sha256: sha256Json(sense.gloss),
+      rationale: configuredValue.rationale
+        ?? `${sense.id} topic/adnominal reading was explicitly reviewed from the authored fixture evidence.`,
+      decision_source_id: decisionSourceId,
+      ...(state === 'noun-topic'
+        ? {
+          topic_pos: configuredValue.topic_pos ?? 'noun',
+          evidence_basis: configuredValue.evidence_basis
+            ?? `${sense.id} explicitly establishes a noun topic before the particle.`,
+        }
+        : {}),
+    };
   };
+
+  if (fragments.length > 1) {
+    const configuredValues = Array.isArray(configured) ? configured : [];
+    return fragments.map((fragment, index) => makeOne(fragment, configuredValues[index]));
+  }
+
+  const configuredValue = Array.isArray(configured) ? configured[0] : configured;
+  return makeOne(fragments[0], configuredValue);
+}
+
+function topicAnalysisFields(topicAnalysis) {
+  if (topicAnalysis === undefined) return {};
+  return Array.isArray(topicAnalysis)
+    ? { topic_analyses: topicAnalysis }
+    : { topic_analysis: topicAnalysis };
 }
 
 function makeProductionSemanticReview(record, {
@@ -169,7 +185,7 @@ function makeProductionSemanticReview(record, {
               ? 'coordinated'
               : multiSense ? 'split' : 'atomic',
             decision_source_id: decisionSourceId,
-            ...(topicAnalysis ? { topic_analysis: topicAnalysis } : {}),
+            ...topicAnalysisFields(topicAnalysis),
           },
         };
       }),
@@ -563,6 +579,7 @@ export function makeSemanticReview(
         const boundaryReview = boundaryReviews.get(record.id);
         const domainAxes = inspectWriterDomainEvidence(sense.gloss).axes;
         const relationCount = sense.relations?.length ?? 0;
+        const topicAnalysis = makeTopicAnalysis(sense, decisionSourceId, topicAnalyses);
         return {
           sense_id: sense.id,
           sense_sha256: sha256Json(sense),
@@ -616,9 +633,7 @@ export function makeSemanticReview(
             relation_count: relationCount,
             decision_source_id: decisionSourceId,
             rationale: `${record.id} ${sense.id} reviewed gloss ${sha256Json(sense.gloss).slice(0, 12)} with its POS, type, boundary, and relation outcome.`,
-            ...(requiresTopicAnalysis(sense.gloss) || topicAnalyses[sense.id] !== undefined
-              ? { topic_analysis: makeTopicAnalysis(sense, decisionSourceId, topicAnalyses) }
-              : {}),
+            ...topicAnalysisFields(topicAnalysis),
           },
         };
       }),

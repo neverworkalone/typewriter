@@ -297,6 +297,14 @@ function makeProductionSemanticReview(record, {
           },
         }
         : {}),
+      ...(Array.isArray(senseReview.review_basis?.topic_analyses)
+        ? {
+          topic_analyses: senseReview.review_basis.topic_analyses.map((analysis) => ({
+            ...structuredClone(analysis),
+            decision_source_id: verificationSourceId,
+          })),
+        }
+        : {}),
     };
   };
   const authoredDecision = {
@@ -727,6 +735,14 @@ function makeSemanticRecordReview(
                 ...structuredClone(senseReview.review_basis.topic_analysis),
                 decision_source_id: decisionSourceId,
               },
+            }
+            : {}),
+          ...(Array.isArray(senseReview.review_basis?.topic_analyses)
+            ? {
+              topic_analyses: senseReview.review_basis.topic_analyses.map((analysis) => ({
+                ...structuredClone(analysis),
+                decision_source_id: decisionSourceId,
+              })),
             }
             : {}),
         },

@@ -13,6 +13,7 @@ import {
   inspectGlossQuality,
   inspectGlossConnectors,
   inspectMalformedParticles,
+  findAmbiguousParticleFragments,
   findBulkGlossProjectionFindings,
   validateBulkGlossProjection,
   validateLexicalSemanticReview,
@@ -483,6 +484,57 @@ test('token-span ambiguity drives semantic-audit topic evidence requirements', (
   assert.throws(
     () => buildSemanticTopicEvidence(recordInfos, missingEvidence),
     (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE',
+  );
+});
+
+test('semantic-audit topic evidence covers every ambiguous span in one gloss', () => {
+  const record = {
+    id: 'w-topic-span-multi',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-topic-span-multi',
+    lemma: '복합주제',
+    search_forms: ['복합주제'],
+    senses: [{
+      id: 'w-topic-span-multi-s1',
+      pos: 'noun',
+      gloss: '문장에서는 운동화은 배경으로 바다이 보인다.',
+    }],
+  };
+  const recordInfos = [{ record, source: 'topic-span-multi-regression' }];
+  assert.equal(findAmbiguousParticleFragments(record.senses[0].gloss).length, 2);
+
+  const semanticAudit = makeSemanticAudit(recordInfos, {
+    topicAnalyses: {
+      'w-topic-span-multi-s1': [
+        {
+          state: 'adnominal',
+          topic: '운동화',
+          particle: '은',
+          predicate: '배경으로',
+        },
+        {
+          state: 'noun-topic',
+          topic: '바다',
+          particle: '이',
+          predicate: '보인다',
+        },
+      ],
+    },
+  });
+  const reviewBasis = semanticAudit.review.records[0].sense_reviews[0].review_basis;
+  assert.deepEqual(
+    reviewBasis.topic_analyses.map(({ token_index: tokenIndex }) => tokenIndex),
+    [1, 3],
+  );
+  assert.doesNotThrow(() => buildSemanticTopicEvidence(recordInfos, semanticAudit));
+
+  const missingSpanEvidence = structuredClone(semanticAudit);
+  missingSpanEvidence.review.records[0].sense_reviews[0].review_basis.topic_analyses.pop();
+  assert.throws(
+    () => buildSemanticTopicEvidence(recordInfos, missingSpanEvidence),
+    (error) => error.code === 'SEMANTIC_AUDIT_INCOMPLETE'
+      && error.message.includes('exactly one analysis per ambiguous particle span'),
   );
 });
 
