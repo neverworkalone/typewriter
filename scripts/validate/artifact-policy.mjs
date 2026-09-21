@@ -180,6 +180,32 @@ function validateClosedObjectFields(value, allowedFields, filePath, label, code 
   }
 }
 
+function resolveClosedObjectTargets(value, selector) {
+  const segments = selector.split('.').filter((segment) => segment !== '$' && segment.length > 0);
+  let targets = [value];
+  for (const segment of segments) {
+    const next = [];
+    for (const target of targets) {
+      if (segment === '*') {
+        if (Array.isArray(target)) next.push(...target);
+        else if (target && typeof target === 'object') next.push(...Object.values(target));
+      } else if (target && typeof target === 'object' && Object.hasOwn(target, segment)) {
+        next.push(target[segment]);
+      }
+    }
+    targets = next;
+  }
+  return targets;
+}
+
+function validateNestedClosedObjects(value, nestedAllowedFields, filePath, label) {
+  for (const [selector, allowedFields] of Object.entries(nestedAllowedFields ?? {})) {
+    for (const target of resolveClosedObjectTargets(value, selector)) {
+      validateClosedObjectFields(target, allowedFields, filePath, `${label}${selector.slice(1)}`);
+    }
+  }
+}
+
 function validateClosedContract(value, filePath, semantics, label) {
   const contracts = semantics.closed_contracts ?? {};
   for (const [contractName, contract] of Object.entries(contracts)) {
@@ -189,6 +215,7 @@ function validateClosedContract(value, filePath, semantics, label) {
       fail(`artifact policy durable_semantics.closed_contracts.${contractName}.allowed_fields must be an array`, 'POLICY_SHAPE');
     }
     validateClosedObjectFields(value, contract.allowed_fields, filePath, label);
+    validateNestedClosedObjects(value, contract.nested_allowed_fields, filePath, label);
     return contract;
   }
   return undefined;
@@ -411,10 +438,12 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       } catch {
         continue;
       }
+      // Preserve the gate-specific duplication diagnostics before applying the
+      // recursive contract allowlists to the remaining durable containers.
+      validateCompactGateArtifact(value, filePath, semantics);
       validateClosedContract(value, filePath, semantics, 'durable artifact');
       validateCompactDecisionSource(value, filePath, semantics);
       validateCanonicalBatchBindings(value, filePath, semantics);
-      validateCompactGateArtifact(value, filePath, semantics);
       continue;
     }
     if (filePath.endsWith('.jsonl')) {

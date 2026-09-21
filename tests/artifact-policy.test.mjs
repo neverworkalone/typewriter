@@ -284,3 +284,49 @@ test('artifact policy rejects alternate decision-row envelopes in the v2 source'
     await rm(repositoryDirectory, { recursive: true, force: true });
   }
 });
+
+test('artifact policy closes nested admission and promotion durable containers', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-nested-policy-'));
+  const cases = [
+    {
+      relativePath: 'data/batches/future-promotion.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-promotion-v2',
+        outputs: {
+          canonical_directory_sha256: 'a'.repeat(64),
+          rebuilt_sqlite_summary: { outputPath: '/tmp/generated.sqlite' },
+        },
+      },
+    },
+    {
+      relativePath: 'data/batches/future-admission.json',
+      value: {
+        schema_version: '2',
+        contract_version: 'lexical-batch-admission-v2',
+        sources: {
+          authorization: { source_id: 'authorization', path: 'external', sha256: 'a'.repeat(64) },
+          unexpected_review_payload: { reviewed_record: { lemma: 'duplicate' } },
+        },
+      },
+    },
+  ];
+
+  try {
+    for (const { relativePath, value } of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({
+          repositoryDirectory,
+          tracked: [relativePath],
+        }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});

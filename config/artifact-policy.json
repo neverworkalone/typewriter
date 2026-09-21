@@ -192,7 +192,31 @@
           "sources",
           "promotion",
           "provenance"
-        ]
+        ],
+        "nested_allowed_fields": {
+          "$.authorization": ["kind", "issue", "decision", "human_editorial_review_complete", "generation_pass_id", "verification_pass_id"],
+          "$.target": ["net_start_increase", "cumulative_start_target", "candidate_buffer", "selection_slot_count", "candidate_identity_count"],
+          "$.base": ["canonical_directory_sha256", "inventory_sha256", "seed_sha256", "promotion_ledger_sha256", "summary"],
+          "$.base.summary": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
+          "$.actual": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
+          "$.decisions": ["included", "corrected", "held", "rejected", "deferred", "processed_start_count", "imported_start_count", "deferred_denominator_excluded"],
+          "$.verification": ["review_mode", "human_editorial_review_complete", "agent_generated_provenance", "generation_pass_id", "verification_pass_id", "candidate_source_id", "candidate_identity_count", "raw_material_excluded", "source_bound_semantic_decisions"],
+          "$.gate": ["contract_version", "policy", "gate_status", "decision"],
+          "$.gate_evidence": ["schema_version", "contract_version", "artifact_id", "issue", "batch_id", "inputs", "preflight", "complete_audit"],
+          "$.gate_evidence.inputs": ["prospective_canonical_sha256", "semantic_audit_sha256", "decision_source_sha256", "promotion_ledger_sha256"],
+          "$.gate_evidence.preflight": ["contract_version", "status", "input_canonical_directory_sha256", "checks"],
+          "$.gate_evidence.preflight.checks.*": ["status", "input_canonical_directory_sha256"],
+          "$.gate_evidence.complete_audit": ["contract_version", "scope", "canonical_records_sha256", "record_count", "sense_count", "covered_record_count", "covered_sense_count", "coverage_complete", "review_complete", "corrected_record_count"],
+          "$.sources": ["candidate_identities", "verification", "semantic_audit", "target_promotions", "base_inventory", "authorization"],
+          "$.sources.candidate_identities": ["source_id", "path", "identity_sha256", "identity_count"],
+          "$.sources.verification": ["source_id", "path", "sha256"],
+          "$.sources.semantic_audit": ["source_id", "path", "sha256"],
+          "$.sources.target_promotions": ["source_id", "path", "sha256"],
+          "$.sources.base_inventory": ["source_id", "path", "sha256"],
+          "$.sources.authorization": ["source_id", "path", "sha256"],
+          "$.promotion": ["canonical_mutation", "seed_mutation", "inventory_mutation", "semantic_decision_source_mutation", "note"],
+          "$.provenance": ["generation_pass_id", "verification_pass_id", "raw_material_excluded", "batch_local_quality_fork", "base_decision_source_id"]
+        }
       },
       "promotion_manifest": {
         "contract_versions": [
@@ -215,7 +239,21 @@
           "checkpoint",
           "promotion",
           "post_promotion_audit"
-        ]
+        ],
+        "nested_allowed_fields": {
+          "$.preflight": ["contract_version", "status", "input_canonical_directory_sha256", "checks"],
+          "$.preflight.checks.*": ["status", "input_canonical_directory_sha256"],
+          "$.outputs": ["canonical_directory_sha256", "canonical_import", "seed", "target_promotions", "inventory", "semantic_decision_source"],
+          "$.outputs.canonical_import": ["path", "sha256", "record_count", "first_canonical_id", "last_canonical_id"],
+          "$.outputs.seed": ["path", "sha256", "target_count"],
+          "$.outputs.target_promotions": ["path", "sha256", "event_count"],
+          "$.outputs.inventory": ["path", "materialization", "sha256", "entry_count"],
+          "$.outputs.semantic_decision_source": ["path", "sha256", "source_id", "canonical_records_sha256"],
+          "$.checkpoint": ["issue", "milestone", "canonical_records", "canonical_starts", "status"],
+          "$.promotion": ["canonical_mutation", "seed_mutation", "inventory_mutation", "semantic_decision_source_mutation", "transaction"],
+          "$.post_promotion_audit": ["status", "policy", "transaction", "canonical_directory_sha256", "seed_sha256", "promotion_ledger_sha256", "semantic_decision_source_sha256", "semantic_audit_sha256", "semantic_audit"],
+          "$.post_promotion_audit.semantic_audit": ["contract_version", "scope", "canonical_records_sha256", "record_count", "sense_count", "covered_record_count", "covered_sense_count", "coverage_complete", "review_complete", "corrected_record_count"]
+        }
       },
       "decision_source": {
         "contract_versions": [
@@ -281,7 +319,22 @@
           "gloss_sha256",
           "rationale",
           "decision_source_id"
-        ]
+        ],
+        "nested_allowed_fields": {
+          "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
+          "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
+          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis"],
+          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews"],
+          "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis"],
+          "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
+          "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
+          "$.decisions.*.sense_reviews.*.review_basis.topic_analyses.*": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
+          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "prior_generator_replaced", "prior_generator_verification_pass_id", "counts"],
+          "$.review.decision_counts": ["included", "corrected", "held", "rejected", "deferred"],
+          "$.review.counts": ["included", "corrected", "held", "rejected", "deferred"],
+          "$.candidate_records.*": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
+          "$.candidate_records.*.senses.*": ["id", "pos", "gloss"]
+        }
       },
       "promotion_ledger": {
         "required_fields": [

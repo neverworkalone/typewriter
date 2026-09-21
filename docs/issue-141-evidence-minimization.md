@@ -48,12 +48,12 @@ and a 2,466-byte envelope. The 722 canonical batch bindings average 601 bytes
 each. The 722 promotion ledger events average 663 bytes each and contain no
 candidate or canonical body.
 
-`npm run validate:evidence` also emits a machine-readable payload accounting
-for the four footprint questions required by this issue. It treats each
-candidate, decision row, canonical review record (with its batch binding
-removed), canonical batch binding, and promotion event as one semantic payload
-unit, hashes the canonical JSON for each unit, and counts exact digest repeats
-only after their first occurrence:
+`npm run validate:evidence` also emits machine-readable accounting for the
+semantic payload and the complete tracked footprint. The semantic submetric
+treats each candidate, decision row, canonical review record (with its batch
+binding removed), canonical batch binding, and promotion event as one semantic
+payload unit, hashes the canonical JSON for each unit, and counts exact digest
+repeats only after their first occurrence:
 
 | accounting class | units | bytes | definition |
 | --- | ---: | ---: | --- |
@@ -62,9 +62,35 @@ only after their first occurrence:
 | current-corpus-dependent | 2,042 | 8,363,863 | canonical review units, whose count follows the current canonical corpus |
 | batch-size-dependent | 3,048 | 2,726,519 | 802 candidate bodies, 802 decisions, 722 bindings, and 722 promotion events |
 
-The two dependency classes partition the unique semantic payload bytes. Repeated
-digest strings inside bindings are identity references, not copied semantic
-payloads, so they are deliberately not counted as duplicate payload bytes.
+The two dependency classes partition the unique semantic payload bytes, but this
+is a semantic submetric rather than a claim that every byte in the tracked files
+is semantic payload. Exact whole-unit duplicate bytes are a lower bound: the
+same fact can occur in different object envelopes or under different field
+names. The report therefore also compares known repeated facts across the
+decision-to-binding and binding-to-ledger boundaries. All 7,220 compared field
+groups currently match, with 350,666 bytes of known secondary field/value
+copies. This overlap is explanatory and is not subtracted from the ownership
+accounting below.
+
+| known repeated field group | matched fields | secondary-copy bytes |
+| --- | ---: | ---: |
+| semantic decision → canonical binding | 3,610 | 139,842 |
+| canonical binding → promotion ledger | 3,610 | 210,824 |
+| **total** | **7,220** | **350,666** |
+
+The full tracked footprint is assigned exactly once to mutually exclusive
+ownership buckets, so wrappers and active-state bytes are not left unclassified:
+
+| ownership bucket | bytes | tracked artifacts |
+| --- | ---: | --- |
+| current-corpus authority | 11,935,192 | canonical semantic decision source |
+| batch-size authority | 2,621,570 | semantic decisions, promotion ledger, admission and promotion manifests |
+| active inventory state | 621,487 | active target seed |
+| **tracked total** | **15,178,249** | **bucket sum matches tracked bytes** |
+
+The semantic payload numbers and the ownership buckets answer different
+questions: the former exposes exact-unit and known-field repetition, while the
+latter proves that every tracked byte belongs to one durable artifact owner.
 
 ## Field-level authority map
 
@@ -134,9 +160,10 @@ The representation change is guarded at three boundaries:
    accepting the durable manifests.
 
 The v2 artifact policy identifies the durable role from the contract version,
-not from the filename. Admission and promotion manifests, the admission gate
-and gate evidence, decision-source rows and sense reviews, canonical batch
-bindings, and promotion-ledger rows all use closed allowlists. It rejects v2
+not from the filename. Admission and promotion manifests, their nested durable
+containers, the admission gate and gate evidence, decision-source rows and
+sense reviews, canonical batch bindings, and promotion-ledger rows all use
+closed allowlists. It rejects v2
 gate artifacts that reintroduce metrics, timing matrices, full audit payloads,
 SQLite/package summaries, or temporary output paths. It also rejects decision
 rows with derived gloss/POS/domain/connector copies, canonical batch bindings
