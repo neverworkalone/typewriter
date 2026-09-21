@@ -50,8 +50,11 @@ in-process context and that isolated fixture tests do not repeatedly transport
 the full context. Treat reported parse/full-scan/index/build and context
 transport counts as evidence to check against the runner wiring, not as a
 substitute for correctness checks. Independent two-build reproducibility is a
-deep/manual validation path, not a duplicate PR gate. Changed-only validation
-may accelerate failure feedback but must not become the final correctness gate.
+deep/manual validation path, not a duplicate normal gate. The public CI levels
+must remain nested: `ci:fast` for early feedback, `ci:normal` for the full
+merge-coverage continuation, and `ci:all` for scheduled/manual deep checks
+including the scale benchmark. Changed-only validation may accelerate failure
+feedback but must not become the final correctness gate.
 
 ## Depth by risk
 

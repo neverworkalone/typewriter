@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -7,12 +8,13 @@ import { fileURLToPath } from 'node:url';
 
 import {
   CI_CATEGORIES,
-  CI_CATEGORY_ORDER,
-  CI_DEEP_CATEGORY_ORDER,
+  CI_ALL_CATEGORY_ORDER,
+  CI_LEVEL_CATEGORY_ORDER,
   REPOSITORY_DIRECTORY,
 } from './registry.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
 import {
+  contextSummary,
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
 import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
@@ -290,14 +292,18 @@ async function runCategory(categoryName, sharedCanonicalSession) {
 }
 
 function printUsage() {
-  console.error('Usage: node scripts/ci/run-category.mjs <category|all>');
-  console.error(`Categories: ${[...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER].join(', ')}`);
+  console.error('Usage: node scripts/ci/run-category.mjs <level|category>');
+  console.error(`Levels: ${Object.keys(CI_LEVEL_CATEGORY_ORDER).join(', ')}`);
+  console.error(`Categories: ${CI_ALL_CATEGORY_ORDER.join(', ')}`);
 }
 
 async function main() {
   const [requestedCategory] = process.argv.slice(2);
   if (requestedCategory === '--list') {
-    for (const categoryName of [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER]) {
+    for (const [levelName, categoryNames] of Object.entries(CI_LEVEL_CATEGORY_ORDER)) {
+      console.log(`${levelName}: ${categoryNames.join(', ')}`);
+    }
+    for (const categoryName of CI_ALL_CATEGORY_ORDER) {
       console.log(`${categoryName}: ${CI_CATEGORIES[categoryName].label}`);
     }
     return;
@@ -309,20 +315,36 @@ async function main() {
     return;
   }
 
-  const categoryNames = requestedCategory === 'all'
-    ? CI_CATEGORY_ORDER
-    : [requestedCategory];
+  const categoryNames = CI_LEVEL_CATEGORY_ORDER[requestedCategory]
+    ?? [requestedCategory];
   if (categoryNames.some((categoryName) => !CI_CATEGORIES[categoryName])) {
     printUsage();
     process.exitCode = 1;
     return;
   }
 
+  const startedAt = performance.now();
   const sharedCanonicalSession = await createCanonicalSession();
   try {
     for (const categoryName of categoryNames) {
       await runCategory(categoryName, sharedCanonicalSession);
     }
+    const summary = contextSummary(sharedCanonicalSession.canonicalContext);
+    console.log(`\n=== ${requestedCategory} evidence ===`);
+    console.log(JSON.stringify({
+      contract_version: 'ci-run-evidence-v1',
+      level: requestedCategory,
+      category_order: categoryNames,
+      wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
+      canonical_revision: summary.canonical_revision,
+      record_count: summary.recordCount,
+      metrics: summary.metrics,
+      context_transport: {
+        serialize_count: summary.metrics.canonical_context_serialize_count ?? 0,
+        deserialize_count: summary.metrics.canonical_context_deserialize_count ?? 0,
+        rehydrate_count: summary.metrics.canonical_context_rehydrate_count ?? 0,
+      },
+    }, null, 2));
   } finally {
     await rm(sharedCanonicalSession.temporaryDirectory, {
       recursive: true,

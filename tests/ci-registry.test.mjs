@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
   CI_CATEGORIES,
+  CI_ALL_CATEGORY_ORDER,
   CI_CATEGORY_ORDER,
   CI_DEEP_CATEGORY_ORDER,
+  CI_FAST_CATEGORY_ORDER,
+  CI_LEVEL_CATEGORY_ORDER,
+  CI_NORMAL_CATEGORY_ORDER,
   collectTestOwnership,
 } from '../scripts/ci/registry.mjs';
 
@@ -55,5 +59,41 @@ test('toolchain builds SQLite only after the shared global audit', () => {
   assert.equal(toolchainChecks[0].inProcess, 'global-canonical-audit');
   assert.equal(toolchainChecks[1].inProcess, 'normalize-canonical');
   assert.equal(toolchainChecks[3].inProcess, 'shared-dictionary-build');
-  assert.equal(CI_CATEGORIES.deep.checks.at(-1).testFiles[0], 'tests/reproducibility.test.mjs');
+  assert.equal(
+    CI_CATEGORIES.deep.checks.find((check) => check.testFiles?.includes('tests/reproducibility.test.mjs'))
+      .testFiles[0],
+    'tests/reproducibility.test.mjs',
+  );
+});
+
+test('CI levels are nested and deep owns the scale benchmark', () => {
+  assert.deepEqual(CI_NORMAL_CATEGORY_ORDER, CI_CATEGORY_ORDER);
+  assert.deepEqual(CI_ALL_CATEGORY_ORDER, [
+    ...CI_NORMAL_CATEGORY_ORDER,
+    ...CI_DEEP_CATEGORY_ORDER,
+  ]);
+  assert.ok(CI_FAST_CATEGORY_ORDER.every(
+    (categoryName) => CI_NORMAL_CATEGORY_ORDER.includes(categoryName),
+  ));
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.fast, CI_FAST_CATEGORY_ORDER);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_NORMAL_CATEGORY_ORDER);
+  assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
+  assert.equal(CI_CATEGORIES.deep.checks.at(-1).label, 'Run 10K/100K/500K synthetic canonical benchmark');
+});
+
+test('workflow maps pull requests, master pushes, and deep triggers to CI levels', async () => {
+  const workflow = await readFile(
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
+    'utf8',
+  );
+  assert.match(workflow, /pull_request:/u);
+  assert.match(workflow, /run: npm run ci:fast/u);
+  assert.match(workflow, /run: npm run ci:normal/u);
+  assert.match(workflow, /schedule:/u);
+  assert.match(workflow, /workflow_dispatch:/u);
+  assert.match(workflow, /run: npm run ci:all/u);
+  await assert.rejects(
+    readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-validation.yml'), 'utf8'),
+    (error) => error.code === 'ENOENT',
+  );
 });

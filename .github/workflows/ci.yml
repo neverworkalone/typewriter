@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,5 +31,18 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Single-pass validation, toolchain, and product checks
+      - name: PR fast validation
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npm run ci:fast
+
+      - name: PR full normal validation
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npm run ci:normal
+
+      - name: Master normal validation
+        if: ${{ github.event_name == 'push' }}
+        run: npm run ci:normal
+
+      - name: Scheduled/manual all validation
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: npm run ci:all

@@ -71,7 +71,25 @@ export const CI_CATEGORY_ORDER = Object.freeze([
   'artifacts',
 ]);
 
+export const CI_FAST_CATEGORY_ORDER = Object.freeze([
+  'canonical',
+  'lexical',
+  'toolchain',
+]);
+
+export const CI_NORMAL_CATEGORY_ORDER = CI_CATEGORY_ORDER;
 export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['deep']);
+export const CI_ALL_CATEGORY_ORDER = Object.freeze([
+  ...CI_NORMAL_CATEGORY_ORDER,
+  ...CI_DEEP_CATEGORY_ORDER,
+]);
+
+export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
+  fast: CI_FAST_CATEGORY_ORDER,
+  normal: CI_NORMAL_CATEGORY_ORDER,
+  all: CI_ALL_CATEGORY_ORDER,
+  deep: CI_DEEP_CATEGORY_ORDER,
+});
 
 export const CI_CATEGORIES = Object.freeze({
   canonical: {
@@ -217,12 +235,17 @@ export const CI_CATEGORIES = Object.freeze({
       globalCanonicalAuditCheck(),
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+      npmCheck(
+        'Run 10K/100K/500K synthetic canonical benchmark',
+        'benchmark:canonical',
+        ['--sizes=10000,100000,500000', '--sqlite-scale=10000'],
+      ),
     ],
   },
 });
 
 export function collectTestOwnership() {
-  return [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER].flatMap((categoryName) => (
+  return CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => (
     CI_CATEGORIES[categoryName].checks.flatMap((check) => (
       (check.testFiles ?? []).map((file) => ({
         category: categoryName,

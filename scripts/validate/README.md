@@ -16,8 +16,9 @@ node scripts/validate/semantic-audit.mjs
 node --test tests/validate-canonical-jsonl.test.mjs
 node --test tests/validate-dataset-integrity.test.mjs
 node --test tests/lexical-quality.test.mjs
+npm run ci:fast
+npm run ci:normal
 npm run ci:all
-npm run ci:deep
 npm run benchmark:canonical -- --sizes=10000,100000,500000 --sqlite-scale=10000
 ```
 
@@ -68,11 +69,26 @@ External context consumers must provide the expected digest in
 The global canonical audit remains mandatory; a changed-only check cannot
 replace it.
 
+The public CI levels are nested:
+
+- `ci:fast`: canonical, lexical, and toolchain gates for early pull-request
+  feedback, including the complete global audit and one SQLite build.
+- `ci:normal`: `ci:fast` plus batch, historical, product, and artifact gates.
+- `ci:all`: `ci:normal` plus independent current-revision reproducibility and
+  the 10K/100K/500K synthetic benchmark.
+
+Pull requests run `ci:fast` and the full `ci:normal` continuation so the fast
+feedback signal does not weaken existing merge coverage. Master pushes run
+`ci:normal`; scheduled and manually dispatched runs run `ci:all`. Each level
+prints `ci-run-evidence-v1` with wall-clock time, canonical revision, scan and
+SQLite-build metrics, and context transport counts.
+
 The toolchain stage builds SQLite once after the global audit and passes the
 same temporary database to schema, fidelity, and query verification. The
 two-independent-build reproducibility check is intentionally moved to
-`npm run ci:deep`, which is the manual/scheduled deep-validation path. The
-pull-request `ci:all` path verifies the one shared current-revision artifact.
+the deep portion of `npm run ci:all`, which is the manual/scheduled
+deep-validation path. The normal path verifies the one shared
+current-revision artifact.
 
 For scale evidence, the benchmark generates self-authored synthetic JSONL
 without adding a 500K-record corpus to the repository. Each result records
