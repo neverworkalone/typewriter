@@ -11,6 +11,7 @@ import {
 import {
   contextSummary,
   loadCanonicalContext,
+  markSQLiteBuild,
   readCanonicalContext,
   writeCanonicalContext,
 } from '../scripts/validate/canonical-context.mjs';
@@ -143,6 +144,36 @@ test('fresh canonical loads bypass an inherited shared context', async () => {
     else process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH = previousPath;
     if (previousDirectory === undefined) delete process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY;
     else process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY = previousDirectory;
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('records SQLite build events for parent evidence to aggregate', async () => {
+  const context = await loadCanonicalContext({
+    directory: path.resolve('tests/fixtures/normalization/one-file.jsonl'),
+  });
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-process-metrics-'));
+  const metricsPath = path.join(temporaryDirectory, 'metrics.jsonl');
+  const previousMetricsPath = process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+
+  try {
+    process.env.TYPEWRITER_PROCESS_METRICS_PATH = metricsPath;
+    markSQLiteBuild(context, 2);
+    const events = (await readFile(metricsPath, 'utf8'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(events, [{
+      type: 'sqlite-build',
+      pid: process.pid,
+      count: 2,
+      canonical_directory: context.canonicalDirectory,
+      canonical_revision: context.canonicalRevision,
+    }]);
+    assert.equal(context.metrics.sqlite_build_count, 2);
+  } finally {
+    if (previousMetricsPath === undefined) delete process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+    else process.env.TYPEWRITER_PROCESS_METRICS_PATH = previousMetricsPath;
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
 });

@@ -86,6 +86,14 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.fast, CI_FAST_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.normal, CI_NORMAL_CATEGORY_ORDER);
   assert.deepEqual(CI_LEVEL_CATEGORY_ORDER.all, CI_ALL_CATEGORY_ORDER);
+  assert.equal(
+    CI_CATEGORIES.batch.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
+    false,
+  );
+  assert.equal(
+    CI_CATEGORIES.deep.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
+    true,
+  );
   assert.equal(CI_CATEGORIES.deep.checks.at(-1).label, 'Run 10K/100K/500K synthetic canonical benchmark');
 });
 

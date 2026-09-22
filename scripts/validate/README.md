@@ -88,11 +88,14 @@ scan and SQLite-build metrics, context transport counts, and peak RSS for the
 runner plus its isolated child processes.
 
 The toolchain stage builds SQLite once after the global audit and passes the
-same temporary database to schema, fidelity, and query verification. The
-two-independent-build reproducibility check is intentionally moved to
+same temporary database to schema, fidelity, query verification, search
+regressions, and the product extension build. The product build copies that
+exact current-revision artifact instead of rebuilding the canonical directory.
+The two-independent-build reproducibility check is intentionally moved to
 the deep portion of `npm run ci:all`, which is the manual/scheduled
-deep-validation path. The normal path verifies the one shared
-current-revision artifact.
+deep-validation path. The full M5-12A admission/preflight replay is also deep
+validation; normal CI retains the shared global audit and promoted-canonical
+regressions without replaying admission-time product/package work.
 
 For scale evidence, the benchmark generates self-authored synthetic JSONL
 without adding a 500K-record corpus to the repository. Each result records

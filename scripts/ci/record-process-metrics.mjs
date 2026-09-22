@@ -8,6 +8,7 @@ if (metricsPath) {
     appendFileSync(
       metricsPath,
       `${JSON.stringify({
+        type: 'process',
         pid: process.pid,
         peak_rss_kb: process.resourceUsage().maxRSS,
       })}\n`,

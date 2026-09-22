@@ -44,6 +44,9 @@ export async function validateSharedDictionary({
         throw new Error(`shared SQLite metadata ${key} does not match canonical context`);
       }
     }
+    if (metadata.canonical_revision !== context.canonicalRevision) {
+      throw new Error('shared SQLite metadata canonical_revision does not match canonical context');
+    }
     return {
       database_path: path.resolve(databasePath),
       sqlite_user_version: userVersion,

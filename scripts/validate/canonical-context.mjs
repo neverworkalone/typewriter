@@ -1,5 +1,7 @@
+import { appendFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import process from 'node:process';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
@@ -439,6 +441,20 @@ export async function loadCanonicalContext({
 
 export function markSQLiteBuild(context, count = 1) {
   context.metrics.sqlite_build_count = (context.metrics.sqlite_build_count ?? 0) + count;
+  const metricsPath = process.env.TYPEWRITER_PROCESS_METRICS_PATH;
+  if (metricsPath && count > 0) {
+    appendFileSync(
+      metricsPath,
+      `${JSON.stringify({
+        type: 'sqlite-build',
+        pid: process.pid,
+        count,
+        canonical_directory: context.canonicalDirectory,
+        canonical_revision: context.canonicalRevision,
+      })}\n`,
+      'utf8',
+    );
+  }
   return context;
 }
 

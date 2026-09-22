@@ -160,8 +160,6 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
       testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
-      npmCheck('Validate M5-12A exact +722 promotion', 'batch:m5-12a:check'),
-      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A candidate and promotion contract'),
     ],
   },
 
@@ -238,6 +236,7 @@ export const CI_CATEGORIES = Object.freeze({
     label: 'Manual deep current-revision reproducibility validation',
     checks: [
       globalCanonicalAuditCheck(),
+      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
       npmCheck(

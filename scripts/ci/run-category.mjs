@@ -60,16 +60,28 @@ function updateChildProcessMetrics(processMetrics) {
 
   let peakRssKb = 0;
   let processCount = 0;
+  let sqliteBuildCount = 0;
+  let currentRevisionSqliteBuildCount = 0;
   for (const line of contents.split('\n')) {
     if (!line) {
       continue;
     }
     const metrics = JSON.parse(line);
+    if (metrics.type === 'sqlite-build') {
+      const count = metrics.count ?? 1;
+      sqliteBuildCount += count;
+      if (metrics.canonical_revision === processMetrics.canonicalRevision) {
+        currentRevisionSqliteBuildCount += count;
+      }
+      continue;
+    }
     processCount += 1;
     peakRssKb = Math.max(peakRssKb, metrics.peak_rss_kb ?? 0);
   }
   processMetrics.childProcessCount = processCount;
   processMetrics.childPeakRssKb = peakRssKb;
+  processMetrics.childSqliteBuildCount = sqliteBuildCount;
+  processMetrics.childCurrentRevisionSqliteBuildCount = currentRevisionSqliteBuildCount;
 }
 
 function processMemorySummary(processMetrics) {
@@ -85,6 +97,9 @@ function processMemorySummary(processMetrics) {
     parent_peak_rss_mb: Math.round((parentPeakRssBytes / (1024 * 1024)) * 100) / 100,
     child_peak_rss_mb: Math.round((childPeakRssBytes / (1024 * 1024)) * 100) / 100,
     child_process_count: processMetrics?.childProcessCount ?? 0,
+    child_sqlite_build_count: processMetrics?.childSqliteBuildCount ?? 0,
+    child_current_revision_sqlite_build_count:
+      processMetrics?.childCurrentRevisionSqliteBuildCount ?? 0,
   };
 }
 
@@ -97,6 +112,10 @@ function printEvidence({
   processMetrics,
 }) {
   const summary = contextSummary(canonicalContext);
+  const parentSqliteBuildCount = summary.metrics.sqlite_build_count ?? 0;
+  const childSqliteBuildCount = processMetrics?.childSqliteBuildCount ?? 0;
+  const currentRevisionSqliteBuildCount = parentSqliteBuildCount
+    + (processMetrics?.childCurrentRevisionSqliteBuildCount ?? 0);
   console.log(`\n=== ${level} evidence ===`);
   console.log(JSON.stringify({
     contract_version: contractVersion,
@@ -105,7 +124,13 @@ function printEvidence({
     wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
     canonical_revision: summary.canonical_revision,
     record_count: summary.recordCount,
-    metrics: summary.metrics,
+    metrics: {
+      ...summary.metrics,
+      sqlite_build_count: currentRevisionSqliteBuildCount,
+      current_revision_sqlite_build_count: currentRevisionSqliteBuildCount,
+      child_sqlite_build_count: childSqliteBuildCount,
+      all_sqlite_build_count: parentSqliteBuildCount + childSqliteBuildCount,
+    },
     context_transport: {
       serialize_count: summary.metrics.canonical_context_serialize_count ?? 0,
       deserialize_count: summary.metrics.canonical_context_deserialize_count ?? 0,
@@ -133,6 +158,10 @@ async function runCommand({ executable, args }, context = {}) {
         childEnvironment.NODE_OPTIONS,
         `--import=${metricsModule}`,
       ].filter(Boolean).join(' ');
+    }
+    if (context.sharedDictionaryPath) {
+      childEnvironment.TYPEWRITER_SHARED_DICTIONARY_PATH = context.sharedDictionaryPath;
+      childEnvironment.TYPEWRITER_SEARCH_REGRESSION_DATABASE = context.sharedDictionaryPath;
     }
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
@@ -230,6 +259,9 @@ async function createCanonicalSession() {
       path: path.join(temporaryDirectory, 'child-process-metrics.jsonl'),
       childPeakRssKb: 0,
       childProcessCount: 0,
+      canonicalRevision: canonicalContext.canonicalRevision,
+      childSqliteBuildCount: 0,
+      childCurrentRevisionSqliteBuildCount: 0,
     },
     sharedDictionaryPath: undefined,
     normalizedModel: undefined,
@@ -377,6 +409,10 @@ async function runCategory(categoryName, sharedCanonicalSession) {
     await runChecks(category.checks, context);
     console.log(`\n=== ${categoryName} passed ===`);
   } finally {
+    if (sharedCanonicalSession) {
+      sharedCanonicalSession.sharedDictionaryPath = context.sharedDictionaryPath;
+      sharedCanonicalSession.normalizedModel = context.normalizedModel;
+    }
     if (context.historicalTemporaryDirectory) {
       await rm(context.historicalTemporaryDirectory, { recursive: true, force: true });
     }

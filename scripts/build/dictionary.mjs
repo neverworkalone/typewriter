@@ -225,6 +225,9 @@ export async function buildDictionary({
       .get().version;
     generatedMetadata = metadataEntries(model, {
       ...metadata,
+      ...(context.canonicalRevision
+        ? { canonical_revision: context.canonicalRevision }
+        : {}),
       ...provenance,
       node_version: process.version,
       sqlite_module: 'node:sqlite',
