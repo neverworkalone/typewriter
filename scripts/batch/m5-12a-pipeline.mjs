@@ -32,6 +32,7 @@ import {
   compactSemanticReviewArtifact,
   COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   materializeSemanticReviewArtifact,
+  readAuthoredBatchDecisionSources,
   serializeSemanticAuditArtifact,
   SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   sha256Json,
@@ -2308,7 +2309,12 @@ export async function validateM512AFinal({
     {
       artifactId: 'm5-12a-final-canonical-audit',
       baseRecords: result.inputs.baseCanonical.records,
-      batchDecisionSources: [result.semanticDecisionSource],
+      batchDecisionSources: [
+        result.semanticDecisionSource,
+        ...(await readAuthoredBatchDecisionSources()).filter(
+          ({ source }) => source.source_id !== result.semanticDecisionSource.source.source_id,
+        ),
+      ],
     },
   );
   const currentAuditCoverage = validateSemanticAuditCoverage(currentCanonical.records, canonicalDecisionAudit, {
