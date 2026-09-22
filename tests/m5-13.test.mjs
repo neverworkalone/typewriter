@@ -92,6 +92,8 @@ test('M5-13 uses the shared producer and a separately authored mixed-outcome dec
   const candidates = buildM513CandidateRecords();
   const authoredCandidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
   assert.deepEqual(candidates, authoredCandidates);
+  assert.equal(candidates.some(({ lemma }) => lemma.includes('에서 읽는')), false);
+  assert.equal(candidates.some(({ lemma }) => lemma.includes('기대에서')), false);
   const decisionSource = validateM513DecisionSource({
     source: sourceFile.source,
     sourceBytes: sourceFile.sourceBytes,
@@ -99,12 +101,14 @@ test('M5-13 uses the shared producer and a separately authored mixed-outcome dec
   });
   assert.equal(decisionSource.source.source_id, M5_13_SEMANTIC_DECISION_SOURCE_ID);
   assert.deepEqual(decisionSource.counts, {
-    included: 1000,
+    included: 1070,
     corrected: 0,
-    held: 15,
+    held: 5,
     rejected: 5,
-    deferred: 80,
+    deferred: 20,
   });
+  assert.equal(decisionSource.selection.selected.length, M5_13_IMPORT_COUNT);
+  assert.equal(decisionSource.selection.reserve.length, 70);
   assert.throws(
     () => buildM513DecisionSource(),
     (error) => error.code === 'M5_13_DECISION_SOURCE_REGENERATION',
@@ -130,8 +134,11 @@ test('M5-13 executes producer, semantic audit, selection, prospective canonical,
     assert.equal(result.admission.gate.gate_status, 'pass');
     assert.equal(result.production.production_state.producer_mode, 'live');
     assert.equal(result.semanticAuditCoverage.coverage_complete, true);
-    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'held').length, 15);
+    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'held').length, 5);
     assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'rejected').length, 5);
+    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'selected').length, 1000);
+    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, 70);
+    assert.deepEqual(result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length, 140);
     assert.deepEqual(await readFile('data/canonical/m5-12a-expansion.jsonl'), beforeCanonical);
     assert.deepEqual(await readFile('data/inventory/m5-target-seed.json'), beforeSeed);
     assert.equal(result.semanticDecisionSource.source.artifact_sha256, result.semanticDecisionSource.artifactSha256);

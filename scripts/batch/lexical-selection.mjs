@@ -1,0 +1,117 @@
+// Batch-neutral selection after semantic review.
+//
+// Semantic review decides whether a candidate is eligible for admission.  This
+// module owns the separate capacity decision.  It must never infer semantic
+// quality from a preassigned rank or make a rank boundary an admission rule.
+
+const IMPORTABLE_DECISIONS = new Set(['included', 'corrected']);
+const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
+
+export class LexicalSelectionError extends Error {
+  constructor(message, code = 'LEXICAL_SELECTION_ERROR') {
+    super(message);
+    this.name = 'LexicalSelectionError';
+    this.code = code;
+  }
+}
+
+function fail(message, code = 'LEXICAL_SELECTION_ERROR') {
+  throw new LexicalSelectionError(message, code);
+}
+
+function requireInteger(value, label) {
+  if (!Number.isInteger(value) || value < 0) fail(`${label} must be a non-negative integer`, 'LEXICAL_SELECTION_VALUE');
+  return value;
+}
+
+/**
+ * Select reviewed candidates by semantic eligibility and score.
+ *
+ * `rows` contain semantic outcomes only.  `rank` is retained as evidence from
+ * the verification pass and is used only as a deterministic tie-breaker; it
+ * cannot make an ineligible row eligible or disqualify an eligible row.  A
+ * qualified reserve row may therefore replace a rejected top-ranked row.
+ */
+export function selectReviewedCandidates(
+  rows,
+  {
+    capacity,
+    idField = 'candidate_record_id',
+    decisionField = 'decision',
+    scoreField = 'score',
+    rankField = 'rank',
+  } = {},
+) {
+  if (!Array.isArray(rows)) fail('selection rows must be an array', 'LEXICAL_SELECTION_SHAPE');
+  requireInteger(capacity, 'selection capacity');
+  if (capacity > rows.length) {
+    return {
+      status: 'hold',
+      reason: 'insufficient-qualified-candidates',
+      required_count: capacity,
+      qualified_count: rows.filter((row) => IMPORTABLE_DECISIONS.has(row?.[decisionField])).length,
+      selected: [],
+      reserve: [],
+      excluded: rows.map((row) => row?.[idField]),
+    };
+  }
+
+  const seenIds = new Set();
+  const qualified = [];
+  const excluded = [];
+  for (const [index, row] of rows.entries()) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) {
+      fail(`selection row ${index} must be an object`, 'LEXICAL_SELECTION_SHAPE');
+    }
+    const id = row[idField];
+    if (typeof id !== 'string' || id.length === 0) fail(`selection row ${index} has no identity`, 'LEXICAL_SELECTION_BINDING');
+    if (seenIds.has(id)) fail(`selection contains duplicate identity ${id}`, 'LEXICAL_SELECTION_BINDING');
+    seenIds.add(id);
+    if (!DECISIONS.has(row[decisionField])) fail(`selection row ${id} has an unsupported semantic decision`, 'LEXICAL_SELECTION_VALUE');
+    if (IMPORTABLE_DECISIONS.has(row[decisionField])) {
+      if (!Number.isFinite(row[scoreField])) fail(`selection row ${id} has no finite semantic score`, 'LEXICAL_SELECTION_VALUE');
+      qualified.push({ row, index });
+    } else {
+      excluded.push(id);
+    }
+  }
+
+  if (qualified.length < capacity) {
+    return {
+      status: 'hold',
+      reason: 'insufficient-qualified-candidates',
+      required_count: capacity,
+      qualified_count: qualified.length,
+      selected: [],
+      reserve: qualified.map(({ row }) => row[idField]),
+      excluded,
+    };
+  }
+
+  qualified.sort((left, right) => (
+    right.row[scoreField] - left.row[scoreField]
+    || (Number.isFinite(left.row[rankField]) ? left.row[rankField] : Number.MAX_SAFE_INTEGER)
+      - (Number.isFinite(right.row[rankField]) ? right.row[rankField] : Number.MAX_SAFE_INTEGER)
+    || left.row[idField].localeCompare(right.row[idField])
+  ));
+  const selected = qualified.slice(0, capacity).map(({ row }) => row);
+  const reserve = qualified.slice(capacity).map(({ row }) => row);
+  return {
+    status: 'pass',
+    reason: 'capacity-filled-from-qualified-review-results',
+    required_count: capacity,
+    qualified_count: qualified.length,
+    selected,
+    reserve,
+    excluded,
+  };
+}
+
+export function selectionOutcomeById(selection, idField = 'candidate_record_id') {
+  if (!selection || selection.status !== 'pass') return new Map();
+  return new Map([
+    ...selection.selected.map((row) => [row[idField], 'selected']),
+    ...selection.reserve.map((row) => [row[idField], 'reserve']),
+    ...selection.excluded.map((id) => [id, 'excluded']),
+  ]);
+}

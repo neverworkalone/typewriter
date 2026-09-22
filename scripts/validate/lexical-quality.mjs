@@ -1645,6 +1645,7 @@ function semanticStatusForDecision(decision) {
  */
 export function validateLexicalSemanticReview(review, {
   decision,
+  selectionStatus,
   candidateRecord,
   reviewedRecord,
   inventoryId,
@@ -1913,7 +1914,10 @@ export function validateLexicalSemanticReview(review, {
   }
 
   const selection = requireObject(review.selection, `${label}.selection`);
-  const expectedSelectionStatus = semanticStatusForDecision(decision);
+  const expectedSelectionStatus = selectionStatus ?? semanticStatusForDecision(decision);
+  if (!['selected', 'reserve', 'excluded', 'included', 'corrected', 'held', 'rejected', 'deferred'].includes(expectedSelectionStatus)) {
+    fail(`${label}.selection.status is unsupported`, 'LEXICAL_SELECTION_BINDING');
+  }
   if (selection.status !== expectedSelectionStatus) {
     fail(`${label}.selection.status must be ${expectedSelectionStatus}`, 'LEXICAL_SELECTION_BINDING');
   }

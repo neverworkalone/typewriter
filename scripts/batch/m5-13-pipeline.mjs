@@ -35,6 +35,7 @@ import {
   validateLexicalRecord,
 } from '../validate/lexical-quality.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
+import { selectionOutcomeById } from './lexical-selection.mjs';
 import { productionSourceBytes } from './lexical-production-state.mjs';
 import { compareRelationSnapshots } from './relation-diff.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -85,7 +86,6 @@ const REVIEW_PATH = path.join(BATCH_DIRECTORY, 'm5-13-review.json');
 const STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-13-stage.json');
 const M5_13_AGENT_REVIEW_MODE = 'agent-generated';
 const M5_13_GATE_DECISION = 'APPROVE AUTOMATED BOUNDED';
-const IMPORTABLE_DECISIONS = new Set(['included', 'corrected']);
 const ALL_DECISIONS = ['included', 'corrected', 'held', 'rejected', 'deferred'];
 const BASE_LEDGER_COUNT = 722;
 
@@ -301,10 +301,11 @@ function validateCandidateIdentityBinding({ identities, candidateRecords, baseRe
   }
 }
 
-function makeSeedEntry(identity, record, decision) {
+function makeSeedEntry(identity, record, decision, selectionStatus) {
+  const status = selectionStatus === 'reserve' ? 'deferred' : decision;
   return {
     inventory_id: identity.inventory_id,
-    status: decision,
+    status,
     planned_role: decision === 'held' ? 'start' : null,
     record_type: record.record_type,
     lemma: record.lemma,
@@ -313,7 +314,7 @@ function makeSeedEntry(identity, record, decision) {
     pos: [...new Set(record.senses.map(({ pos }) => pos))],
     sense_profile: record.record_type === 'expression' ? 'expression' : 'single',
     flags: [...new Set([...identity.flags, ...(record.record_type === 'expression' ? ['expression-unit'] : [])])],
-    decision_note: `${identity.inventory_id} ${decision} after separate generation ${M5_13_GENERATION_PASS_ID} and verification ${M5_13_VERIFICATION_PASS_ID}.`,
+    decision_note: `${identity.inventory_id} semantic_decision=${decision}; selection=${selectionStatus} after separate generation ${M5_13_GENERATION_PASS_ID} and verification ${M5_13_VERIFICATION_PASS_ID}.`,
   };
 }
 
@@ -321,12 +322,12 @@ function buildSeed(baseSeed, identities, reviewRows, candidateRecords) {
   const existing = new Set(baseSeed.targets.map(({ inventory_id: inventoryId }) => inventoryId));
   const additions = reviewRows
     .map((row, index) => ({ row, index }))
-    .filter(({ row }) => !IMPORTABLE_DECISIONS.has(row.decision))
+    .filter(({ row }) => row.selection_status !== 'selected')
     .map(({ row, index }) => {
       const identity = identities[index];
       if (existing.has(identity.inventory_id)) fail(`seed already contains ${identity.inventory_id}`, 'SEED_COLLISION');
       existing.add(identity.inventory_id);
-      return makeSeedEntry(identity, candidateRecords[index], row.decision);
+      return makeSeedEntry(identity, candidateRecords[index], row.decision, row.selection_status);
     });
   return {
     ...structuredClone(baseSeed),
@@ -339,7 +340,7 @@ function buildPromotionLedger(baseEntries, identities, reviewRows, candidateReco
   const existing = new Set(baseEntries.map(({ inventory_id: inventoryId }) => inventoryId));
   const additions = reviewRows
     .map((row, index) => ({ row, index }))
-    .filter(({ row }) => IMPORTABLE_DECISIONS.has(row.decision))
+    .filter(({ row }) => row.selection_status === 'selected')
     .map(({ row, index }) => {
       const identity = identities[index];
       if (existing.has(identity.inventory_id)) fail(`promotion ledger already contains ${identity.inventory_id}`, 'PROMOTION_LEDGER_COLLISION');
@@ -365,7 +366,7 @@ function buildPromotionLedger(baseEntries, identities, reviewRows, candidateReco
   return [...structuredClone(baseEntries), ...additions];
 }
 
-function makeProductionSemanticReview(record, identity, decisionRow, semanticDecisionSource) {
+function makeProductionSemanticReview(record, identity, decisionRow, semanticDecisionSource, selectionStatus) {
   const sourceId = semanticDecisionSource.source.source_id;
   const senseReviews = decisionSenseReviews(record, decisionRow, `decision ${identity.inventory_id}`);
   const reviewForSense = (sense) => senseReviews.find(({ sense_id: senseId }) => senseId === sense.id);
@@ -477,7 +478,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
       })),
     },
     selection: {
-      status: IMPORTABLE_DECISIONS.has(decisionRow.decision) ? 'selected' : decisionRow.decision,
+      status: selectionStatus,
       rank: decisionRow.rank,
       score: decisionRow.score,
       rationale: decisionRow.selection_rationale,
@@ -486,11 +487,14 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
 }
 
 function buildReviewRows(identities, candidateRecords, semanticDecisionSource) {
+  const selectionStatuses = selectionOutcomeById(semanticDecisionSource.selection);
   return identities.map((identity, index) => {
     const candidate = candidateRecords[index];
     const decisionRow = semanticDecisionSource.byCandidateId.get(candidate.id);
     if (!decisionRow) fail(`M5-13 decision is missing for ${candidate.id}`, 'M5_13_DECISION_SOURCE_SCOPE');
-    const reviewedRecord = IMPORTABLE_DECISIONS.has(decisionRow.decision) ? structuredClone(candidate) : undefined;
+    const selectionStatus = selectionStatuses.get(candidate.id);
+    if (!selectionStatus) fail(`M5-13 selection is missing for ${candidate.id}`, 'M5_13_SELECTION_SCOPE');
+    const reviewedRecord = selectionStatus === 'selected' ? structuredClone(candidate) : undefined;
     return {
       slot_id: identity.slot_id,
       inventory_id: identity.inventory_id,
@@ -500,12 +504,14 @@ function buildReviewRows(identities, candidateRecords, semanticDecisionSource) {
       generation_pass_id: M5_13_GENERATION_PASS_ID,
       verification_pass_id: M5_13_VERIFICATION_PASS_ID,
       decision: decisionRow.decision,
+      selection_status: selectionStatus,
       expected_record_type: identity.record_type,
       semantic_review: makeProductionSemanticReview(
         reviewedRecord ?? candidate,
         identity,
         decisionRow,
         semanticDecisionSource,
+        selectionStatus,
       ),
       ...(reviewedRecord ? { reviewed_record: reviewedRecord } : {}),
     };
@@ -657,7 +663,7 @@ function buildProductionStageEvidence({ artifacts, prospectiveRecords, semanticA
   return {
     candidate_intake: { status: 'complete', source_path: 'external:m5-13-generation', source_bytes: artifacts.proposalBytes, source_sha256: sha256(artifacts.proposalBytes) },
     semantic_review: { status: 'complete', source_path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH), source_bytes: artifacts.semanticDecisionSourceBytes, source_sha256: artifacts.semanticDecisionSourceSha256 },
-    selection: { status: 'complete', source_path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH), source_bytes: artifacts.semanticDecisionSourceBytes, source_sha256: artifacts.semanticDecisionSourceSha256, policy: 'shared-quality-coverage-selection' },
+    selection: { status: 'complete', source_path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH), source_bytes: artifacts.semanticDecisionSourceBytes, source_sha256: artifacts.semanticDecisionSourceSha256, policy: 'shared-quality-coverage-selection-v3' },
     prospective_canonical: { status: 'complete', source_path: 'external:m5-13-prospective-canonical', source_bytes: prospectiveBytes, source_sha256: sha256(prospectiveBytes) },
     audit: { status: 'complete', source_path: 'external:m5-13-semantic-audit', source_bytes: semanticAuditBytes, source_sha256: sha256(semanticAuditBytes) },
     admission: { status: 'complete', source_path: 'external:m5-13-admission', source_bytes: admissionSourceBytes, source_sha256: sha256(admissionSourceBytes), authorization_bytes: authorizationBytes, authorization_ref: 'm5-13-agent-generated-admission-authority', decision: 'admit' },
@@ -667,7 +673,7 @@ function buildProductionStageEvidence({ artifacts, prospectiveRecords, semanticA
 function buildGate({ identities, reviewRows, production, semanticAuditCoverage, finalSummary, relation, preflight, candidateSourceDigest, generationPassId, verificationPassId }) {
   const decisions = Object.fromEntries(ALL_DECISIONS.map((decision) => [decision, reviewRows.filter((row) => row.decision === decision).length]));
   const processed = identities.length - decisions.deferred;
-  const imported = decisions.included + decisions.corrected;
+  const imported = reviewRows.filter((row) => row.selection_status === 'selected').length;
   const preflightPassed = (name) => preflight?.checks?.[name]?.status === 'pass'
     && preflight.checks[name].input_canonical_directory_sha256 === preflight.input_canonical_directory_sha256;
   const qualityPasses = {
@@ -709,7 +715,7 @@ function buildGate({ identities, reviewRows, production, semanticAuditCoverage, 
 
 function buildAdmission({ inputs, artifacts, prospective, semanticAudit, semanticAuditCoverage, preflight, gate, decisionSourceBytes, promotionLedgerBytes, promotionLedgerBinding, baseDecisionSource, production }) {
   const decisions = Object.fromEntries(ALL_DECISIONS.map((decision) => [decision, artifacts.reviewRows.filter((row) => row.decision === decision).length]));
-  const importedRecords = artifacts.reviewRows.filter(({ decision }) => IMPORTABLE_DECISIONS.has(decision)).map(({ reviewed_record: record }) => record);
+  const importedRecords = artifacts.reviewRows.filter(({ selection_status: selectionStatus }) => selectionStatus === 'selected').map(({ reviewed_record: record }) => record);
   const gateEvidence = {
     schema_version: '2',
     contract_version: 'lexical-batch-gate-evidence-v2',
@@ -939,14 +945,14 @@ export async function buildM513({
   validateCandidateIdentityBinding({ identities, candidateRecords, baseRecords: inputs.baseRecords, baseSeed: inputs.baseSeed });
   try {
     const candidateInfos = candidateRecords.map((record, index) => asRecordInfo(record, 'm5-13-candidate-source', index + 1));
-    const prospectiveCandidateRecords = [...inputs.baseRecords.map((record, index) => asRecordInfo(record, 'base-canonical', index + 1)), ...candidateInfos.filter((_, index) => IMPORTABLE_DECISIONS.has(artifacts.reviewRows[index].decision))];
+    const prospectiveCandidateRecords = [...inputs.baseRecords.map((record, index) => asRecordInfo(record, 'base-canonical', index + 1)), ...candidateInfos.filter((_, index) => artifacts.reviewRows[index].selection_status === 'selected')];
     const { validateBulkGlossProjection } = await import('../validate/lexical-quality.mjs');
     validateBulkGlossProjection(prospectiveCandidateRecords, { maxOccurrences: 3 });
   } catch (error) {
     fail(`M5-13 shared candidate diversity validation failed: ${error.message}`, error.code);
   }
 
-  const importedRecords = artifacts.reviewRows.filter(({ decision }) => IMPORTABLE_DECISIONS.has(decision)).map(({ reviewed_record: record }) => record);
+  const importedRecords = artifacts.reviewRows.filter(({ selection_status: selectionStatus }) => selectionStatus === 'selected').map(({ reviewed_record: record }) => record);
   const prospectiveRecords = [...inputs.baseRecords, ...importedRecords];
   const { decisionSource, prospectiveInfos } = buildProspectiveDecisionSource({
     baseDecisionSource: inputs.baseDecisionSource,

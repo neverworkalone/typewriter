@@ -388,7 +388,17 @@ export function validateLexicalProduction({
     }
     candidateIds.add(entry.candidate_id);
     const reviewedRecord = entry.reviewed_record ? recordOf(entry.reviewed_record) : undefined;
-    if (['included', 'corrected'].includes(entry.decision)) {
+    const selectedForAdmission = entry.selection_status === undefined
+      ? ['included', 'corrected'].includes(entry.decision)
+      : entry.selection_status === 'selected';
+    if (entry.selection_status !== undefined
+      && !['selected', 'reserve', 'excluded'].includes(entry.selection_status)) {
+      fail(`production.reviews[${index}].selection_status is unsupported`, 'LEXICAL_PRODUCTION_SELECTION');
+    }
+    if (selectedForAdmission) {
+      if (!['included', 'corrected'].includes(entry.decision)) {
+        fail(`production.reviews[${index}] selected status requires an included or corrected decision`, 'LEXICAL_PRODUCTION_SELECTION');
+      }
       if (!reviewedRecord) fail(`production.reviews[${index}] selected decision is missing reviewed_record`, 'LEXICAL_PRODUCTION_REVIEW_MISSING');
       if (reviewedRecord.id !== candidate.id) {
         fail(
@@ -412,6 +422,7 @@ export function validateLexicalProduction({
     try {
       result = validateLexicalSemanticReview(entry.semantic_review, {
         decision: entry.decision,
+        selectionStatus: entry.selection_status,
         candidateRecord: candidate,
         reviewedRecord,
         inventoryId: entry.inventory_id,
@@ -425,7 +436,7 @@ export function validateLexicalProduction({
       fail(`production.reviews[${index}] semantic review failed: ${error.message}`, error.code);
     }
     ranks.push(result.selection_rank);
-    if (['included', 'corrected'].includes(entry.decision)) {
+    if (selectedForAdmission) {
       selectedRanks.push(result.selection_rank);
     }
   }
@@ -492,7 +503,10 @@ export function validateLexicalProduction({
     prospectiveRecords.map((recordInfo) => [recordOf(recordInfo).id, recordOf(recordInfo)]),
   );
   for (const [index, entry] of reviewRows.entries()) {
-    if (!['included', 'corrected'].includes(entry.decision)) continue;
+    const selectedForAdmission = entry.selection_status === undefined
+      ? ['included', 'corrected'].includes(entry.decision)
+      : entry.selection_status === 'selected';
+    if (!selectedForAdmission) continue;
     const reviewedRecord = recordOf(entry.reviewed_record);
     const prospectiveRecord = prospectiveRecordsById.get(reviewedRecord.id);
     if (!prospectiveRecord || JSON.stringify(prospectiveRecord) !== JSON.stringify(reviewedRecord)) {

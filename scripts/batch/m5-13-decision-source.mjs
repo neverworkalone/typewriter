@@ -23,16 +23,17 @@ import {
   M5_13_SEMANTIC_REVIEW_VERSION,
   M5_13_VERIFICATION_PASS_ID,
 } from './m5-13-candidate-source.mjs';
+import { selectReviewedCandidates } from './lexical-selection.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260922-r2';
+export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260922-r3';
 export const M5_13_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-13-semantic-decisions.json',
 );
 export const M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v2';
-export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'source-authored-semantic-selection-v2';
+export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-quality-coverage-selection-v3';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);
@@ -193,12 +194,6 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId } = {}
   if (row.gloss_judgment !== expectedJudgment) {
     fail(`${label}.gloss_judgment contradicts its authored decision`, 'M5_13_DECISION_SOURCE_COHERENCE');
   }
-  if (IMPORTABLE.has(row.decision) && row.rank > M5_13_IMPORT_COUNT) {
-    fail(`${label} importable decision is outside the authored selection boundary`, 'M5_13_DECISION_SOURCE_COHERENCE');
-  }
-  if (!IMPORTABLE.has(row.decision) && row.rank <= M5_13_IMPORT_COUNT) {
-    fail(`${label} reserve decision is inside the authored selection boundary`, 'M5_13_DECISION_SOURCE_COHERENCE');
-  }
   const senseReviews = decisionSenseReviews(candidate, row, label);
   for (const [senseIndex, senseReview] of senseReviews.entries()) {
     const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
@@ -332,14 +327,20 @@ export function validateM513DecisionSource({
   }
   if (seenIds.size !== identities.length || seenRanks.size !== M5_13_SELECTION_COUNT) fail('M5-13 selection coverage is incomplete', 'M5_13_DECISION_SOURCE_SCOPE');
   const counts = expectedDecisionCounts(source.decisions);
-  const imported = counts.included + counts.corrected;
+  const selectionResult = selectReviewedCandidates(source.decisions, {
+    capacity: M5_13_IMPORT_COUNT,
+  });
+  if (selectionResult.status !== 'pass') {
+    fail('M5-13 semantic review produced fewer qualified candidates than the admission capacity', 'M5_13_SELECTION_HOLD');
+  }
+  const imported = selectionResult.selected.length;
   const heldOrRejected = counts.held + counts.rejected;
   const processed = source.decisions.length - counts.deferred;
-  const expectedDeferred = identities.length - imported - heldOrRejected;
+  const expectedDeferred = identities.length - imported - selectionResult.reserve.length - heldOrRejected;
   if (imported !== M5_13_IMPORT_COUNT
-    || heldOrRejected > M5_13_RESERVE_COUNT
+    || selectionResult.reserve.length + heldOrRejected + counts.deferred !== M5_13_RESERVE_COUNT
     || counts.deferred !== expectedDeferred
-    || processed !== imported + heldOrRejected
+    || processed !== counts.included + counts.corrected + heldOrRejected
     || processed <= 0
     || counts.corrected / processed > MAX_CORRECTION_RATE) {
     fail(`M5-13 decision contract is invalid: ${JSON.stringify({ ...counts, imported, heldOrRejected, processed })}`, 'M5_13_DECISION_SOURCE_SCOPE');
@@ -356,6 +357,7 @@ export function validateM513DecisionSource({
     rows: source.decisions,
     byCandidateId: new Map(source.decisions.map((row) => [row.candidate_record_id, row])),
     counts,
+    selection: selectionResult,
   };
 }
 
