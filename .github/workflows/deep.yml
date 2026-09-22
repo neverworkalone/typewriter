@@ -1,17 +1,16 @@
-name: CI
+name: Deep CI
 
 on:
-  pull_request:
-  push:
-    branches:
-      - master
+  schedule:
+    - cron: '0 22 * * 0'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   validate:
-    name: Validate and test Typewriter
+    name: Deep validation
     runs-on: ubuntu-24.04
 
     steps:
@@ -28,5 +27,5 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Normal validation (fast checkpoint + continuation)
-        run: npm run ci:normal
+      - name: Complete validation (normal + deep)
+        run: npm run ci:all

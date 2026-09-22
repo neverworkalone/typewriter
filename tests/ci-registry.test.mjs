@@ -119,21 +119,52 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
   );
 });
 
-test('workflow maps pull requests, master pushes, and deep triggers to CI levels', async () => {
+test('workflows keep normal and deep CI responsibilities separate', async () => {
   const workflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
     'utf8',
   );
+  const deepWorkflow = await readFile(
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/deep.yml'),
+    'utf8',
+  );
+  const readme = await readFile(
+    path.resolve(TEST_DIRECTORY, '../README.md'),
+    'utf8',
+  );
+
   assert.match(workflow, /pull_request:/u);
-  assert.match(workflow, /Pull request normal validation \(fast checkpoint \+ continuation\)/u);
+  assert.match(workflow, /branches:\n\s+- master/u);
+  assert.match(workflow, /name: Normal validation \(fast checkpoint \+ continuation\)/u);
   assert.match(workflow, /run: npm run ci:normal/u);
-  assert.doesNotMatch(workflow, /name: PR fast validation/u);
-  assert.doesNotMatch(workflow, /name: PR full normal validation/u);
-  assert.match(workflow, /schedule:/u);
-  assert.match(workflow, /workflow_dispatch:/u);
-  assert.match(workflow, /run: npm run ci:all/u);
-  await assert.rejects(
-    readFile(path.resolve(TEST_DIRECTORY, '../.github/workflows/deep-validation.yml'), 'utf8'),
-    (error) => error.code === 'ENOENT',
+  assert.equal((workflow.match(/run: npm run ci:normal/gu) ?? []).length, 1);
+  assert.match(workflow, /runs-on: ubuntu-24\.04/u);
+  assert.match(workflow, /actions\/checkout@v7/u);
+  assert.match(workflow, /actions\/setup-node@v7/u);
+  assert.match(workflow, /node-version: 22\.13\.x/u);
+  assert.doesNotMatch(workflow, /^\s+schedule:/mu);
+  assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
+  assert.doesNotMatch(workflow, /npm run ci:fast/u);
+  assert.doesNotMatch(workflow, /npm run ci:all/u);
+
+  assert.match(deepWorkflow, /^name: Deep CI$/mu);
+  assert.match(deepWorkflow, /schedule:\n\s+- cron: '0 22 \* \* 0'/u);
+  assert.match(deepWorkflow, /workflow_dispatch:/u);
+  assert.match(deepWorkflow, /run: npm run ci:all/u);
+  assert.equal((deepWorkflow.match(/run: npm run ci:all/gu) ?? []).length, 1);
+  assert.match(deepWorkflow, /runs-on: ubuntu-24\.04/u);
+  assert.match(deepWorkflow, /actions\/checkout@v7/u);
+  assert.match(deepWorkflow, /actions\/setup-node@v7/u);
+  assert.match(deepWorkflow, /node-version: 22\.13\.x/u);
+  assert.doesNotMatch(deepWorkflow, /^\s+pull_request:/mu);
+  assert.doesNotMatch(deepWorkflow, /^\s+push:/mu);
+
+  assert.match(
+    readme,
+    /!\[CI\]\(https:\/\/github\.com\/neverworkalone\/typewriter\/actions\/workflows\/ci\.yml\/badge\.svg\)/u,
+  );
+  assert.match(
+    readme,
+    /!\[Deep CI\]\(https:\/\/github\.com\/neverworkalone\/typewriter\/actions\/workflows\/deep\.yml\/badge\.svg\)/u,
   );
 });
