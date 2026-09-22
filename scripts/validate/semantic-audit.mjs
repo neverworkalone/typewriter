@@ -1031,13 +1031,15 @@ export function materializeSemanticReviewArtifact(
   // The compact source can contain hundreds of thousands of record bindings
   // during scale validation. Clone only the review metadata here; cloning the
   // compact `records` array before immediately replacing it duplicates the
-  // entire corpus and adds avoidable O(N) memory pressure.
-  const {
-    rationale_templates: ignoredRationaleTemplates,
-    records: ignoredCompactRecords,
-    ...compactMetadata
-  } = compactReview;
-  const reviewWithoutRationaleTemplates = structuredClone(compactMetadata);
+  // entire corpus and adds avoidable O(N) memory pressure. Preserve the source
+  // key order by placing the materialized records at the compact records key.
+  const reviewWithoutRationaleTemplates = {};
+  for (const [key, value] of Object.entries(compactReview)) {
+    if (key === 'rationale_templates') continue;
+    reviewWithoutRationaleTemplates[key] = key === 'records'
+      ? records
+      : structuredClone(value);
+  }
   return {
     ...reviewWithoutRationaleTemplates,
     contract_version: SEMANTIC_REVIEW_CONTRACT_VERSION,
