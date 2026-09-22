@@ -45,7 +45,7 @@ test('validates the M5 inventory and keeps independent start counts', async () =
   assert.equal(summary.currentStartCount, 3000);
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 19);
-  assert.equal(summary.plannedStartCount, 2019);
+  assert.equal(summary.plannedStartCount, 3019);
   assert.equal(summary.heldCount, 78);
   assert.equal(summary.duplicateCount, 2);
   assert.equal(summary.inflectedFormCount, 2);
