@@ -162,7 +162,7 @@ Every PR requires two independent reviews on the exact same HEAD.
 - Both reviewers use the same scope and standards. Do not divide review
   responsibility or assume another reviewer already covered an area.
 
-Required sequence: `0 -> +1 -> +2 -> merge`.
+Required sequence: `0 -> +1 -> +2 -> Squash merge`.
 
 ## Stop condition
 
