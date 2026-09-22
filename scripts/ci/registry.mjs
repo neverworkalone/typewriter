@@ -77,7 +77,12 @@ export const CI_FAST_CATEGORY_ORDER = Object.freeze([
   'toolchain',
 ]);
 
-export const CI_NORMAL_CATEGORY_ORDER = CI_CATEGORY_ORDER;
+export const CI_NORMAL_CATEGORY_ORDER = Object.freeze([
+  ...CI_FAST_CATEGORY_ORDER,
+  ...CI_CATEGORY_ORDER.filter(
+    (categoryName) => !CI_FAST_CATEGORY_ORDER.includes(categoryName),
+  ),
+]);
 export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['deep']);
 export const CI_ALL_CATEGORY_ORDER = Object.freeze([
   ...CI_NORMAL_CATEGORY_ORDER,

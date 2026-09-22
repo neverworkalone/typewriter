@@ -67,7 +67,15 @@ test('toolchain builds SQLite only after the shared global audit', () => {
 });
 
 test('CI levels are nested and deep owns the scale benchmark', () => {
-  assert.deepEqual(CI_NORMAL_CATEGORY_ORDER, CI_CATEGORY_ORDER);
+  assert.deepEqual(
+    CI_NORMAL_CATEGORY_ORDER.slice(0, CI_FAST_CATEGORY_ORDER.length),
+    CI_FAST_CATEGORY_ORDER,
+  );
+  assert.equal(new Set(CI_NORMAL_CATEGORY_ORDER).size, CI_NORMAL_CATEGORY_ORDER.length);
+  assert.deepEqual(
+    [...CI_NORMAL_CATEGORY_ORDER].sort(),
+    [...CI_CATEGORY_ORDER].sort(),
+  );
   assert.deepEqual(CI_ALL_CATEGORY_ORDER, [
     ...CI_NORMAL_CATEGORY_ORDER,
     ...CI_DEEP_CATEGORY_ORDER,
@@ -87,8 +95,10 @@ test('workflow maps pull requests, master pushes, and deep triggers to CI levels
     'utf8',
   );
   assert.match(workflow, /pull_request:/u);
-  assert.match(workflow, /run: npm run ci:fast/u);
+  assert.match(workflow, /Pull request normal validation \(fast checkpoint \+ continuation\)/u);
   assert.match(workflow, /run: npm run ci:normal/u);
+  assert.doesNotMatch(workflow, /name: PR fast validation/u);
+  assert.doesNotMatch(workflow, /name: PR full normal validation/u);
   assert.match(workflow, /schedule:/u);
   assert.match(workflow, /workflow_dispatch:/u);
   assert.match(workflow, /run: npm run ci:all/u);

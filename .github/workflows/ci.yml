@@ -31,11 +31,7 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: PR fast validation
-        if: ${{ github.event_name == 'pull_request' }}
-        run: npm run ci:fast
-
-      - name: PR full normal validation
+      - name: Pull request normal validation (fast checkpoint + continuation)
         if: ${{ github.event_name == 'pull_request' }}
         run: npm run ci:normal
 

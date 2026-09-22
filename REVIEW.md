@@ -53,7 +53,10 @@ substitute for correctness checks. Independent two-build reproducibility is a
 deep/manual validation path, not a duplicate normal gate. The public CI levels
 must remain nested: `ci:fast` for early feedback, `ci:normal` for the full
 merge-coverage continuation, and `ci:all` for scheduled/manual deep checks
-including the scale benchmark. Changed-only validation may accelerate failure
+including the scale benchmark. A pull-request workflow may expose the fast
+checkpoint and continue normal validation in the same process/session; it must
+not run fast and normal as separate fresh processes that duplicate canonical
+parse/index/build work. Changed-only validation may accelerate failure
 feedback but must not become the final correctness gate.
 
 ## Depth by risk

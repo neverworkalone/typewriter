@@ -42,6 +42,50 @@ function formatCommand({ executable, args }) {
     .join(' ');
 }
 
+function processMemorySummary() {
+  const resourceUsage = process.resourceUsage?.();
+  const peakRssBytes = Number.isFinite(resourceUsage?.maxRSS)
+    ? resourceUsage.maxRSS * 1024
+    : process.memoryUsage().rss;
+  return {
+    peak_rss_bytes: peakRssBytes,
+    peak_rss_mb: Math.round((peakRssBytes / (1024 * 1024)) * 100) / 100,
+  };
+}
+
+function printEvidence({
+  contractVersion,
+  level,
+  categoryNames,
+  startedAt,
+  canonicalContext,
+}) {
+  const summary = contextSummary(canonicalContext);
+  console.log(`\n=== ${level} evidence ===`);
+  console.log(JSON.stringify({
+    contract_version: contractVersion,
+    level,
+    category_order: categoryNames,
+    wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
+    canonical_revision: summary.canonical_revision,
+    record_count: summary.recordCount,
+    metrics: summary.metrics,
+    context_transport: {
+      serialize_count: summary.metrics.canonical_context_serialize_count ?? 0,
+      deserialize_count: summary.metrics.canonical_context_deserialize_count ?? 0,
+      rehydrate_count: summary.metrics.canonical_context_rehydrate_count ?? 0,
+    },
+    process_memory: processMemorySummary(),
+  }, null, 2));
+}
+
+function isFastPrefix(categoryNames, completedCategoryCount) {
+  return completedCategoryCount >= CI_LEVEL_CATEGORY_ORDER.fast.length
+    && CI_LEVEL_CATEGORY_ORDER.fast.every(
+      (categoryName, index) => categoryNames[index] === categoryName,
+    );
+}
+
 async function runCommand({ executable, args }) {
   return new Promise((resolve, reject) => {
     const childEnvironment = { ...process.env };
@@ -326,25 +370,27 @@ async function main() {
   const startedAt = performance.now();
   const sharedCanonicalSession = await createCanonicalSession();
   try {
-    for (const categoryName of categoryNames) {
+    let fastCheckpointPrinted = requestedCategory === 'fast';
+    for (const [index, categoryName] of categoryNames.entries()) {
       await runCategory(categoryName, sharedCanonicalSession);
+      if (!fastCheckpointPrinted && isFastPrefix(categoryNames, index + 1)) {
+        printEvidence({
+          contractVersion: 'ci-run-checkpoint-v1',
+          level: 'fast',
+          categoryNames: CI_LEVEL_CATEGORY_ORDER.fast,
+          startedAt,
+          canonicalContext: sharedCanonicalSession.canonicalContext,
+        });
+        fastCheckpointPrinted = true;
+      }
     }
-    const summary = contextSummary(sharedCanonicalSession.canonicalContext);
-    console.log(`\n=== ${requestedCategory} evidence ===`);
-    console.log(JSON.stringify({
-      contract_version: 'ci-run-evidence-v1',
+    printEvidence({
+      contractVersion: 'ci-run-evidence-v1',
       level: requestedCategory,
-      category_order: categoryNames,
-      wall_clock_ms: Math.round((performance.now() - startedAt) * 100) / 100,
-      canonical_revision: summary.canonical_revision,
-      record_count: summary.recordCount,
-      metrics: summary.metrics,
-      context_transport: {
-        serialize_count: summary.metrics.canonical_context_serialize_count ?? 0,
-        deserialize_count: summary.metrics.canonical_context_deserialize_count ?? 0,
-        rehydrate_count: summary.metrics.canonical_context_rehydrate_count ?? 0,
-      },
-    }, null, 2));
+      categoryNames,
+      startedAt,
+      canonicalContext: sharedCanonicalSession.canonicalContext,
+    });
   } finally {
     await rm(sharedCanonicalSession.temporaryDirectory, {
       recursive: true,

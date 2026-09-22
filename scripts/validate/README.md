@@ -77,11 +77,15 @@ The public CI levels are nested:
 - `ci:all`: `ci:normal` plus independent current-revision reproducibility and
   the 10K/100K/500K synthetic benchmark.
 
-Pull requests run `ci:fast` and the full `ci:normal` continuation so the fast
-feedback signal does not weaken existing merge coverage. Master pushes run
-`ci:normal`; scheduled and manually dispatched runs run `ci:all`. Each level
-prints `ci-run-evidence-v1` with wall-clock time, canonical revision, scan and
-SQLite-build metrics, and context transport counts.
+Pull requests run one `ci:normal` process. It emits a `ci:fast` checkpoint
+after the canonical, lexical, and toolchain categories, then continues with
+the remaining normal categories in the same canonical session. This preserves
+the full merge coverage without rerunning the fast work in a second process.
+Master pushes run `ci:normal`; scheduled and manually dispatched runs run
+`ci:all`. Each final level emits `ci-run-evidence-v1`; the nested checkpoint
+emits `ci-run-checkpoint-v1`. Both include wall-clock time, canonical revision,
+scan and SQLite-build metrics, context transport counts, and peak RSS for the
+runner process.
 
 The toolchain stage builds SQLite once after the global audit and passes the
 same temporary database to schema, fidelity, and query verification. The
