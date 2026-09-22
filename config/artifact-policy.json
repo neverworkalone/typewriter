@@ -89,13 +89,17 @@
         "pattern": "data/batches/*-promotion.json",
         "contract": "promotion_manifest"
       },
-      {
-        "pattern": "data/batches/*-semantic-decisions.json",
-        "contract": "decision_source"
-      },
-      {
-        "pattern": "data/batches/m5-13-review.json",
-        "contract": "pre_admission_review"
+    {
+      "pattern": "data/batches/*-semantic-decisions.json",
+      "contract": "decision_source"
+    },
+    {
+      "pattern": "data/batches/m5-13-lexical-unit-source.json",
+      "contract": "candidate_source"
+    },
+    {
+      "pattern": "data/batches/m5-13-review.json",
+      "contract": "pre_admission_review"
       },
       {
         "pattern": "data/batches/m5-13-stage.json",
@@ -893,6 +897,65 @@
           "$.candidate_records.*": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.candidate_records.*.senses.*": ["id", "pos", "gloss", "relations"],
           "$.candidate_records.*.senses.*.relations.*": ["target", "target_sense", "type", "note"]
+        }
+      },
+      "candidate_source": {
+        "contract_versions": [
+          "lexical-candidate-source-v1"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "authoring_mode",
+          "base_canonical_records_sha256",
+          "base_seed_sha256",
+          "pool_sha256",
+          "axis_counts",
+          "candidate_count",
+          "units",
+          "artifact_sha256"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "source_id": "string",
+          "authoring_mode": "string",
+          "base_canonical_records_sha256": "string",
+          "base_seed_sha256": "string",
+          "pool_sha256": "string",
+          "axis_counts": "object",
+          "candidate_count": "number",
+          "units": "array<object>",
+          "artifact_sha256": "string"
+        },
+        "nested_field_types": {
+          "$.axis_counts": {
+            "E": "number",
+            "Q": "number",
+            "S": "number",
+            "C": "number",
+            "A": "number",
+            "O": "number",
+            "X": "number"
+          },
+          "$.units.*": {
+            "source_unit_id": "string",
+            "lemma": "string",
+            "axis": "string",
+            "flags": "array<string>",
+            "record_type": "string",
+            "pos": "string",
+            "source_kind": "string",
+            "writer_use": "string",
+            "writer_gloss": "string"
+          }
+        },
+        "nested_allowed_fields": {
+          "$.axis_counts": ["E", "Q", "S", "C", "A", "O", "X"],
+          "$.units.*": ["source_unit_id", "lemma", "axis", "flags", "record_type", "pos", "source_kind", "writer_use", "writer_gloss"]
         }
       },
       "canonical_decision_source": {
