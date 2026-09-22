@@ -1,111 +1,162 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   M5_13_CATALOG,
 } from '../scripts/batch/m5-13-catalog.mjs';
 import {
+  M5_13_CANDIDATE_IDENTITIES,
+  M5_13_IMPORT_COUNT,
+  M5_13_SELECTION_COUNT,
+  buildM513CandidateRecords,
+} from '../scripts/batch/m5-13-candidate-source.mjs';
+import {
+  buildM513,
+} from '../scripts/batch/m5-13-pipeline.mjs';
+import {
+  M5_13_SEMANTIC_DECISION_SOURCE_ID,
+  buildM513DecisionSource,
+  candidateRecordsFromM513DecisionSource,
+  readM513DecisionSource,
+  validateM513DecisionSource,
+} from '../scripts/batch/m5-13-decision-source.mjs';
+import {
+  M5_13_FINAL_SUMMARY,
   M5_13_TARGET,
   validateM513,
   validateM513Catalog,
 } from '../scripts/batch/validate-m5-13.mjs';
-import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
-import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
+import {
+  createCanonicalContext,
+  loadCanonicalContext,
+} from '../scripts/validate/canonical-context.mjs';
+import {
+  readCanonicalRecords,
+  withCanonicalLoadObserver,
+} from '../scripts/validate/canonical-jsonl.mjs';
 
-test('M5-13 declares capacity slots without pretending they are selected candidates', () => {
+async function buildInputCanonicalContext() {
+  const current = await loadCanonicalContext({ contextPath: null });
+  const importPath = path.join(current.canonicalDirectory, 'm5-13-expansion.jsonl');
+  try {
+    await stat(importPath);
+  } catch (error) {
+    if (error.code === 'ENOENT') return { context: current, cleanup: async () => {} };
+    throw error;
+  }
+
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-13-test-'));
+  const baseCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  await cp(current.canonicalDirectory, baseCanonicalDirectory, { recursive: true });
+  await rm(path.join(baseCanonicalDirectory, 'm5-13-expansion.jsonl'), { force: true });
+  const baseCanonical = await readCanonicalRecords(baseCanonicalDirectory, { useSharedContext: false });
+  return {
+    context: createCanonicalContext(baseCanonical, { canonicalDirectory: baseCanonicalDirectory }),
+    cleanup: () => rm(temporaryDirectory, { recursive: true, force: true }),
+  };
+}
+
+const preflightStub = async ({ prospectiveCanonicalDigest }) => ({
+  status: 'complete',
+  input_canonical_directory_sha256: prospectiveCanonicalDigest,
+  checks: Object.fromEntries([
+    'deterministic_sqlite',
+    'search_product_regression',
+    'extension_build',
+    'package_validation',
+    'artifact_policy_clean_checkout',
+  ].map((name) => [name, {
+    status: 'pass',
+    input_canonical_directory_sha256: prospectiveCanonicalDigest,
+  }])),
+});
+
+test('M5-13 keeps 1,100 capacity slots separate from authored identities', () => {
   assert.equal(M5_13_CATALOG.length, M5_13_TARGET.selection_slot_count);
-  assert.equal(
-    new Set(M5_13_CATALOG.map(({ slot_id: slotId }) => slotId)).size,
-    M5_13_CATALOG.length,
-  );
-  assert.deepEqual(M5_13_CATALOG.at(0), {
-    catalog_index: 0,
-    slot_id: 'm5-13-slot-0001',
-    axis: 'E',
-    flags: ['mood-range'],
-  });
-  assert.deepEqual(M5_13_CATALOG.at(-1), {
-    catalog_index: 1099,
-    slot_id: 'm5-13-slot-1100',
-    axis: 'X',
-    flags: ['direct-boundary'],
-  });
-  for (const entry of M5_13_CATALOG) {
-    assert.equal(Object.hasOwn(entry, 'inventory_id'), false);
-    assert.equal(Object.hasOwn(entry, 'lemma'), false);
-    assert.equal(Object.hasOwn(entry, 'pos'), false);
-    assert.equal(Object.hasOwn(entry, 'candidate_record'), false);
+  assert.equal(M5_13_CANDIDATE_IDENTITIES.length, M5_13_TARGET.candidate_identity_count);
+  assert.equal(new Set(M5_13_CANDIDATE_IDENTITIES.map(({ lemma }) => lemma)).size, 1100);
+  assert.equal(M5_13_CATALOG.at(0).slot_id, 'm5-13-slot-0001');
+  assert.equal(M5_13_CATALOG.at(-1).slot_id, 'm5-13-slot-1100');
+  for (const identity of M5_13_CANDIDATE_IDENTITIES) {
+    assert.equal(Object.hasOwn(identity.source_basis, 'source_quality'), false);
+    assert.equal(Object.hasOwn(identity.source_basis, 'quality_score'), false);
+    assert.equal(Object.hasOwn(identity.source_basis, 'selection_basis'), false);
   }
 });
 
-test('M5-13 rejects a catalog row that smuggles an unbound inventory target', () => {
+test('M5-13 uses the shared producer and a separately authored mixed-outcome decision source', async () => {
+  const sourceFile = await readM513DecisionSource();
+  const candidates = buildM513CandidateRecords();
+  const authoredCandidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
+  assert.deepEqual(candidates, authoredCandidates);
+  const decisionSource = validateM513DecisionSource({
+    source: sourceFile.source,
+    sourceBytes: sourceFile.sourceBytes,
+    candidateRecords: candidates,
+  });
+  assert.equal(decisionSource.source.source_id, M5_13_SEMANTIC_DECISION_SOURCE_ID);
+  assert.deepEqual(decisionSource.counts, {
+    included: 1000,
+    corrected: 0,
+    held: 15,
+    rejected: 5,
+    deferred: 80,
+  });
+  assert.throws(
+    () => buildM513DecisionSource(),
+    (error) => error.code === 'M5_13_DECISION_SOURCE_REGENERATION',
+  );
+});
+
+test('M5-13 executes producer, semantic audit, selection, prospective canonical, and admission', async () => {
+  const beforeCanonical = await readFile('data/canonical/m5-12a-expansion.jsonl');
+  const beforeSeed = await readFile('data/inventory/m5-target-seed.json');
+  const { context, cleanup } = await buildInputCanonicalContext();
+  try {
+    const result = await buildM513({ canonicalContext: context, preflightRunner: preflightStub });
+    assert.deepEqual({
+      record_count: result.prospective.canonical.records.length,
+      start_count: result.prospective.canonical.records.filter(({ record, role }) => (record ?? { role }).role === 'start').length,
+      expression_count: result.prospective.canonical.records.filter(({ record, record_type }) => (record ?? { record_type }).record_type === 'expression').length,
+    }, {
+      record_count: M5_13_FINAL_SUMMARY.record_count,
+      start_count: M5_13_FINAL_SUMMARY.start_count,
+      expression_count: M5_13_FINAL_SUMMARY.expression_count,
+    });
+    assert.equal(result.importedRecords.length, M5_13_IMPORT_COUNT);
+    assert.equal(result.admission.gate.gate_status, 'pass');
+    assert.equal(result.production.production_state.producer_mode, 'live');
+    assert.equal(result.semanticAuditCoverage.coverage_complete, true);
+    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'held').length, 15);
+    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'rejected').length, 5);
+    assert.deepEqual(await readFile('data/canonical/m5-12a-expansion.jsonl'), beforeCanonical);
+    assert.deepEqual(await readFile('data/inventory/m5-target-seed.json'), beforeSeed);
+    assert.equal(result.semanticDecisionSource.source.artifact_sha256, result.semanticDecisionSource.artifactSha256);
+  } finally {
+    await cleanup();
+  }
+});
+
+test('M5-13 proves supplied canonical context is the loader authority', async () => {
+  const canonicalContext = await loadCanonicalContext({ contextPath: null });
+  const loaderEvents = [];
+  const result = await withCanonicalLoadObserver(
+    (event) => loaderEvents.push(event),
+    () => validateM513({ canonicalContext }),
+  );
+  assert.equal(result.candidate_count, M5_13_TARGET.candidate_identity_count);
+  assert.equal(loaderEvents.some(({ directory }) => directory === canonicalContext.canonicalDirectory), false);
+});
+
+test('M5-13 catalog validation rejects an unbound inventory field', () => {
   const driftedCatalog = M5_13_CATALOG.map((entry, index) => (
     index === 0 ? { ...entry, inventory_id: 'm5-9999' } : entry
   ));
-
   assert.throws(
     () => validateM513Catalog(driftedCatalog),
     (error) => error.code === 'CATALOG_SHAPE_ERROR',
   );
-});
-
-test('M5-13 stage validation binds the current canonical authority and keeps promotion blocked', async () => {
-  const result = await validateM513();
-  assert.equal(result.canonical.start_count, 2000);
-  assert.equal(result.target.net_start_increase, 1000);
-  assert.equal(result.target.cumulative_start_target, 3000);
-  assert.equal(result.target.candidate_identity_count, 0);
-  assert.equal(result.decisions.unresolved_slot_count, 1100);
-  assert.equal(result.gate_status, 'fail');
-  assert.deepEqual(result.upstream_capability, {
-    status: 'missing',
-    required: 'an approved source-bound lexical identity/candidate contract for shared producer intake',
-    available: 'M5-13 capacity-only catalog with no lemma, POS, sense, or gloss evidence',
-    excluded: 'ignored local external corpus without a completed source-policy review record',
-  });
-  assert.equal(result.promotion.canonical_mutation, false);
-  assert.equal(result.promotion.seed_mutation, false);
-});
-
-test('M5-13 validation consumes a supplied shared canonical context', async () => {
-  const canonicalContext = await loadCanonicalContext({ contextPath: null });
-  const metricsBefore = { ...canonicalContext.metrics };
-
-  const result = await validateM513({ canonicalContext });
-
-  assert.equal(result.canonical.start_count, 2000);
-  assert.equal(canonicalContext.metrics.canonical_load_count, metricsBefore.canonical_load_count);
-  assert.equal(canonicalContext.metrics.canonical_parse_count, metricsBefore.canonical_parse_count);
-  assert.deepEqual(canonicalContext.metrics, metricsBefore);
-});
-
-test('M5-13 stage evidence contains no canonical import artifact or review decision', async () => {
-  const stage = parseJsonWithUniqueKeys(
-    await readFile('data/batches/m5-13-stage.json', 'utf8'),
-    'data/batches/m5-13-stage.json',
-  );
-  const review = parseJsonWithUniqueKeys(
-    await readFile('data/batches/m5-13-review.json', 'utf8'),
-    'data/batches/m5-13-review.json',
-  );
-
-  assert.equal(stage.contract_version, 'lexical-batch-pre-admission-stage-v1');
-  assert.equal(review.contract_version, 'lexical-batch-pre-admission-review-v1');
-  assert.equal(stage.gate.decision, 'HOLD PROCESS');
-  assert.equal(stage.status, 'blocked-upstream-source');
-  assert.deepEqual(stage.gate.failures, [
-    'candidate_identity_source',
-    'source_bound_candidate_contract_missing',
-    'semantic_decision_artifact_missing',
-    'prospective_audit_blocked',
-    'canonical_promotion',
-  ]);
-  assert.equal(stage.promotion.canonical_mutation, false);
-  assert.equal(review.decision_artifact, null);
-  assert.equal(review.status, 'blocked-upstream-source');
-  assert.equal(review.review_mode, 'agent-generated');
-  assert.equal(review.human_editorial_review_complete, false);
-  assert.equal(stage.predecessor_expansion.artifact, 'data/batches/m5-12a-admission.json');
-  assert.equal(stage.predecessor_expansion.gate_status, 'pass');
 });

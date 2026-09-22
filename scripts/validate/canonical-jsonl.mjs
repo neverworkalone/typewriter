@@ -15,6 +15,30 @@ export const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
   '../../data/canonical',
 );
 const SHARED_CONTEXT_CONTRACT_VERSION = 'canonical-context-v1';
+const canonicalLoadObservers = [];
+
+/**
+ * Observe every canonical loader boundary, including calls that bypass a
+ * supplied shared context.  This is intentionally process-local so tests can
+ * prove that a consumer uses its injected context without changing production
+ * data or loader behavior.
+ */
+export async function withCanonicalLoadObserver(observer, callback) {
+  if (typeof observer !== 'function' || typeof callback !== 'function') {
+    throw new TypeError('canonical load observer and callback are required');
+  }
+  canonicalLoadObservers.push(observer);
+  try {
+    return await callback();
+  } finally {
+    canonicalLoadObservers.pop();
+  }
+}
+
+function observeCanonicalLoad(event) {
+  const observer = canonicalLoadObservers.at(-1);
+  if (observer) observer(event);
+}
 
 export class ValidationError extends Error {
   constructor(message, code) {
@@ -401,6 +425,10 @@ export async function readCanonicalRecords(
   directory = DEFAULT_CANONICAL_DIRECTORY,
   { useSharedContext = true } = {},
 ) {
+  observeCanonicalLoad({
+    directory: path.resolve(directory),
+    useSharedContext,
+  });
   const sharedContext = useSharedContext
     ? await readSharedCanonicalContext(directory)
     : undefined;

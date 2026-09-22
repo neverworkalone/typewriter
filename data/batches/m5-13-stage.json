@@ -4,7 +4,7 @@
   "stage_id": "m5-13-plus-1000",
   "issue": 99,
   "parent_issue": 7,
-  "status": "blocked-upstream-source",
+  "status": "complete",
   "predecessor_expansion": {
     "issue": 138,
     "artifact": "data/batches/m5-12a-admission.json",
@@ -30,8 +30,8 @@
     "canonical_starts": 2000
   },
   "input": {
-    "inventory_revision": "m5-12",
-    "inventory_sha256": "0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66",
+    "inventory_revision": "m5-13",
+    "inventory_sha256": "4cb316db39765c1632c0225995940382c9572e10619e62d1b41d3204a8b3fb97",
     "canonical_directory": "data/canonical",
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "canonical_snapshot": {
@@ -48,50 +48,44 @@
     "cumulative_start_target": 3000,
     "candidate_buffer": 100,
     "selection_slot_count": 1100,
-    "candidate_identity_count": 0
+    "candidate_identity_count": 1100
   },
   "decisions": {
-    "included_start_count": 0,
+    "included_start_count": 1000,
     "corrected_start_count": 0,
-    "held_start_count": 0,
-    "rejected_start_count": 0,
-    "deferred_start_count": 0,
-    "processed_start_count": 0,
+    "held_start_count": 15,
+    "rejected_start_count": 5,
+    "deferred_start_count": 80,
+    "processed_start_count": 1020,
     "unreviewed_start_count": 0,
-    "unresolved_slot_count": 1100
+    "unresolved_slot_count": 0
   },
   "actual": {
     "canonical_snapshot": {
-      "record_count": 2042,
-      "start_count": 2000,
+      "record_count": 3042,
+      "start_count": 3000,
       "reference_only_count": 42,
-      "sense_count": 2301,
+      "sense_count": 3301,
       "relation_count": 487,
-      "expression_count": 145
+      "expression_count": 285
     },
-    "imported_start_count": 0
+    "imported_start_count": 1000
   },
   "gate": {
-    "gate_status": "fail",
-    "decision": "HOLD PROCESS",
-    "failures": [
-      "candidate_identity_source",
-      "source_bound_candidate_contract_missing",
-      "semantic_decision_artifact_missing",
-      "prospective_audit_blocked",
-      "canonical_promotion"
-    ]
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED",
+    "failures": []
   },
   "promotion": {
     "canonical_mutation": false,
     "seed_mutation": false,
     "inventory_mutation": false,
     "next_stage_created": false,
-    "next_stage_authorized": false
+    "next_stage_authorized": true
   },
   "source": {
     "review": "data/batches/m5-13-review.json",
-    "review_sha256": "18e4e2dea42c9f2cda169d0f5ef051cd6bf4e469cb36b74c4fd40af67b9822eb",
+    "review_sha256": "e16b21354d44fee5041d8df45acc61536a22efcceb188beda541a6e253d0443d",
     "catalog": "scripts/batch/m5-13-catalog.mjs",
     "catalog_count": 1100,
     "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
@@ -109,9 +103,9 @@
     "candidate_intake": "shared lexical producer",
     "semantic_review": "shared semantic audit",
     "selection": "shared lexical admission",
-    "prospective_canonical": "blocked until the shared producer receives an approved source-bound lexical candidate contract",
-    "audit": "blocked until source-bound candidates and independent decisions exist",
+    "prospective_canonical": "prospective canonical workspace",
+    "audit": "complete source-bound semantic audit",
     "batch_local_quality_fork": false
   },
-  "note": "This digest-bound boundary declares capacity slots rather than selected candidates. Agent-generated execution is authorized, but the shared producer cannot run without an approved source-bound lexical identity/candidate contract; the current catalog is capacity-only and the local external corpus has no reviewed source-policy record. Canonical, seed, and generated inventory remain unchanged."
+  "note": "M5-13 execution is source-bound and admission-gated. The stage records a prospective +1,000 result and does not mutate canonical, seed, or inventory state until the explicit promotion transaction."
 }

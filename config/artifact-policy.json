@@ -1329,7 +1329,7 @@
           "human_editorial_review_complete": "boolean",
           "candidate_pool": "object",
           "decisions": "object",
-          "decision_artifact": "null",
+          "decision_artifact": "object",
           "timing": "object",
           "audit": "object",
           "source_policy": "object",
@@ -1344,7 +1344,15 @@
             "reserve_count",
             "catalog_count",
             "catalog_sha256",
-            "selection_status"
+            "selection_status",
+            "candidate_source_id"
+          ],
+          "$.decision_artifact": [
+            "path",
+            "source_id",
+            "sha256",
+            "artifact_sha256",
+            "decision_count"
           ],
           "$.decisions": [
             "included",
@@ -1388,7 +1396,15 @@
             "reserve_count": "integer",
             "catalog_count": "integer",
             "catalog_sha256": "string",
-            "selection_status": "string"
+            "selection_status": "string",
+            "candidate_source_id": "string"
+          },
+          "$.decision_artifact": {
+            "path": "string",
+            "source_id": "string",
+            "sha256": "string",
+            "artifact_sha256": "string",
+            "decision_count": "integer"
           },
           "$.decisions": {
             "included": "integer",
