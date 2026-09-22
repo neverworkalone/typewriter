@@ -299,6 +299,7 @@
           "$.base": {
             "canonical_directory_sha256": "string",
             "inventory_sha256": "string",
+            "inventory_materialization": "string",
             "seed_sha256": "string",
             "promotion_ledger_prefix_sha256": "string",
             "summary": "object"
@@ -416,6 +417,12 @@
             "prefix_event_count": "number",
             "prefix_sha256": "string"
           },
+          "$.sources.base_inventory": {
+            "source_id": "string",
+            "path": "string",
+            "materialization": "string",
+            "sha256": "string"
+          },
           "$.promotion": {
             "canonical_mutation": "boolean",
             "seed_mutation": "boolean",
@@ -434,7 +441,7 @@
         "nested_allowed_fields": {
           "$.authorization": ["kind", "issue", "decision", "human_editorial_review_complete", "generation_pass_id", "verification_pass_id"],
           "$.target": ["net_start_increase", "cumulative_start_target", "candidate_buffer", "selection_slot_count", "candidate_identity_count"],
-          "$.base": ["canonical_directory_sha256", "inventory_sha256", "seed_sha256", "promotion_ledger_prefix_sha256", "summary"],
+          "$.base": ["canonical_directory_sha256", "inventory_sha256", "inventory_materialization", "seed_sha256", "promotion_ledger_prefix_sha256", "summary"],
           "$.base.summary": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
           "$.actual": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
           "$.decisions": ["included", "corrected", "held", "rejected", "deferred", "processed_start_count", "imported_start_count", "deferred_denominator_excluded"],
@@ -452,7 +459,7 @@
           "$.sources.semantic_audit": ["source_id", "path", "sha256"],
           "$.sources.target_promotions": ["source_id", "path", "sha256", "ledger_binding"],
           "$.sources.target_promotions.ledger_binding": ["previous_ledger_sha256", "append_start", "append_count", "append_sha256", "prefix_event_count", "prefix_sha256"],
-          "$.sources.base_inventory": ["source_id", "path", "sha256"],
+          "$.sources.base_inventory": ["source_id", "path", "materialization", "sha256"],
           "$.sources.authorization": ["source_id", "path", "sha256"],
           "$.promotion": ["canonical_mutation", "seed_mutation", "inventory_mutation", "semantic_decision_source_mutation", "note"],
           "$.provenance": ["generation_pass_id", "verification_pass_id", "raw_material_excluded", "batch_local_quality_fork", "base_decision_source_id"]
