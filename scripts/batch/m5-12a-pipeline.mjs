@@ -2212,87 +2212,130 @@ export async function validateM512AFinal({
   const result = await buildM512A({ currentSeedPath, currentPromotionLedgerPath: promotionLedgerPath, decisionSourcePath });
   const currentCanonical = await readCanonicalRecords(currentCanonicalDirectory);
   const currentSummary = canonicalSummary(currentCanonical.records);
-  const currentDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedBytes = await readFile(currentSeedPath);
-  const currentPromotionLedgerBytes = await readFile(promotionLedgerPath);
   const currentPromotionLedgerEntries = await readPromotionLedger(promotionLedgerPath);
-  const currentDecisionBytes = await readFile(decisionSourcePath);
   const admission = (await readJson(admissionPath, 'M5-12A admission evidence')).value;
   const promotion = (await readJson(promotionPath, 'M5-12A promotion evidence')).value;
-  validatePromotionLedgerBindings({
-    entries: currentPromotionLedgerEntries,
-    canonicalRecords: currentCanonical.records,
-    decisionSource: JSON.parse(currentDecisionBytes.toString('utf8')),
-  });
-  if (JSON.stringify(currentSummary) !== JSON.stringify(M5_12A_FINAL_SUMMARY)) fail('final canonical summary is not exactly +722', 'FINAL_COUNT_MISMATCH');
-  if (currentDigest !== result.prospective.canonicalDigest) fail('final canonical digest drifted from prospective canonical', 'FINAL_DIGEST_MISMATCH');
-  if (sha256(currentSeedBytes) !== sha256(result.prospective.seedBytes)) fail('final seed digest drifted from prospective seed', 'FINAL_DIGEST_MISMATCH');
-  validatePromotionLedgerPrefix({
-    currentEntries: currentPromotionLedgerEntries,
-    expectedPrefixEntries: result.promotionLedger,
-    baseEntries: result.inputs.basePromotionLedger,
-    binding: promotion.outputs?.target_promotions,
-    label: 'M5-12A final promotion ledger',
-  });
-  if (sha256(currentDecisionBytes) !== sha256(result.decisionSourceBytes)) fail('final semantic decision source drifted', 'SEMANTIC_DECISION_SOURCE_MISMATCH');
-  if (admission.gate?.gate_status !== 'pass') fail('M5-12A durable gate is not passing', 'M5_12A_GATE_HOLD');
-  if (promotion.status !== 'promoted') fail('M5-12A promotion status is not durable', 'PROMOTION_STATE_MISMATCH');
-  const admissionBytes = await readFile(admissionPath);
-  if (promotion.admission_sha256 !== sha256(admissionBytes)) fail('M5-12A promotion admission binding drifted', 'PROMOTION_DIGEST_MISMATCH');
-  assertPreflightEvidence({
-    preflight: promotion.preflight,
-    prospective: result.prospective,
-  });
-  if (admission.decisions?.included + admission.decisions?.corrected !== M5_12A_IMPORT_COUNT) fail('admission imported count drifted', 'DECISION_COUNT_MISMATCH');
-  const processedDecisionCount = admission.decisions?.included
-    + admission.decisions?.corrected
-    + admission.decisions?.held
-    + admission.decisions?.rejected;
-  if (admission.decisions?.processed_start_count !== processedDecisionCount
-    || admission.decisions?.deferred !== M5_12A_SELECTION_COUNT - processedDecisionCount
-    || admission.decisions?.held + admission.decisions?.rejected > M5_12A_RESERVE_COUNT) {
-    fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
-  }
-  if (promotion.outputs?.canonical_directory_sha256 !== currentDigest) fail('promotion canonical digest drifted', 'PROMOTION_DIGEST_MISMATCH');
-  if (promotion.outputs?.target_promotions?.prefix_sha256 !== result.promotionLedgerBinding.prefix_sha256) fail('promotion target ledger prefix drifted', 'PROMOTION_DIGEST_MISMATCH');
-  if (promotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)) fail('promotion semantic authority digest drifted', 'PROMOTION_DIGEST_MISMATCH');
-  const postPromotionAudit = promotion.post_promotion_audit;
-  if (!postPromotionAudit
-    || postPromotionAudit.status !== 'complete'
-    || postPromotionAudit.canonical_directory_sha256 !== currentDigest
-    || postPromotionAudit.seed_sha256 !== sha256(currentSeedBytes)
-    || postPromotionAudit.promotion_ledger_prefix_sha256 !== result.promotionLedgerBinding.prefix_sha256
-    || JSON.stringify(postPromotionAudit.promotion_ledger_binding)
-      !== JSON.stringify(result.promotionLedgerBinding)
-    || postPromotionAudit.semantic_decision_source_sha256 !== sha256(currentDecisionBytes)
-    || postPromotionAudit.semantic_audit_sha256 !== sha256(result.semanticAuditBytes)
-    || JSON.stringify(postPromotionAudit.semantic_audit) !== JSON.stringify(compactSemanticAuditCoverage(result.semanticAuditCoverage))) {
-    fail('post-promotion audit evidence drifted', 'PROMOTION_DIGEST_MISMATCH');
-  }
-  const canonicalDecisionAudit = buildSemanticAuditFromDecisionSource(
-    currentCanonical.records,
-    JSON.parse(currentDecisionBytes.toString('utf8')),
-    {
-      artifactId: 'm5-12a-final-canonical-audit',
+  const historicalDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-historical-final-'));
+  try {
+    const currentIsM512AFinal = JSON.stringify(currentSummary) === JSON.stringify(M5_12A_FINAL_SUMMARY);
+    if (currentIsM512AFinal) {
+      await rm(historicalDirectory, { recursive: true, force: true });
+    } else {
+      await rm(historicalDirectory, { recursive: true, force: true });
+      await cp(BASE_CANONICAL_DIRECTORY, historicalDirectory, { recursive: true });
+      await cp(
+        path.join(currentCanonicalDirectory, path.basename(CANONICAL_IMPORT_PATH)),
+        path.join(historicalDirectory, path.basename(CANONICAL_IMPORT_PATH)),
+      );
+    }
+    const historicalCanonicalDirectory = currentIsM512AFinal
+      ? currentCanonicalDirectory
+      : historicalDirectory;
+    const historicalCanonical = currentIsM512AFinal
+      ? currentCanonical
+      : await readCanonicalRecords(historicalCanonicalDirectory);
+    const historicalSummary = canonicalSummary(historicalCanonical.records);
+    const historicalDigest = await hashCanonicalDirectory(historicalCanonicalDirectory);
+    if (JSON.stringify(historicalSummary) !== JSON.stringify(M5_12A_FINAL_SUMMARY)) {
+      fail('historical M5-12A canonical summary is not exactly +722', 'FINAL_COUNT_MISMATCH');
+    }
+    if (historicalDigest !== result.prospective.canonicalDigest) {
+      fail('historical M5-12A canonical digest drifted from prospective canonical', 'FINAL_DIGEST_MISMATCH');
+    }
+
+    const currentSeed = JSON.parse(currentSeedBytes.toString('utf8'));
+    const historicalSeed = {
+      ...currentSeed,
+      revision: 'm5-12',
+      targets: currentSeed.targets.filter(({ decision_note: decisionNote }) => (
+        !decisionNote?.includes('m5-13-generation-')
+      )),
+    };
+    const historicalSeedBytes = jsonBytes(historicalSeed);
+    if (sha256(historicalSeedBytes) !== sha256(result.prospective.seedBytes)) {
+      fail('historical M5-12A seed digest drifted from prospective seed', 'FINAL_DIGEST_MISMATCH');
+    }
+
+    const historicalPromotionLedger = currentPromotionLedgerEntries.slice(0, result.promotionLedger.length);
+    const historicalDecisionBytes = result.decisionSourceBytes;
+    const historicalDecisionSource = JSON.parse(historicalDecisionBytes.toString('utf8'));
+    validatePromotionLedgerBindings({
+      entries: historicalPromotionLedger,
+      canonicalRecords: historicalCanonical.records,
+      decisionSource: historicalDecisionSource,
+    });
+    validatePromotionLedgerPrefix({
+      currentEntries: currentPromotionLedgerEntries,
+      expectedPrefixEntries: result.promotionLedger,
+      baseEntries: result.inputs.basePromotionLedger,
+      binding: promotion.outputs?.target_promotions,
+      label: 'M5-12A historical promotion ledger prefix',
+    });
+    if (sha256(historicalDecisionBytes) !== sha256(result.decisionSourceBytes)) {
+      fail('historical M5-12A semantic decision source drifted', 'SEMANTIC_DECISION_SOURCE_MISMATCH');
+    }
+    if (admission.gate?.gate_status !== 'pass') fail('M5-12A durable gate is not passing', 'M5_12A_GATE_HOLD');
+    if (promotion.status !== 'promoted') fail('M5-12A promotion status is not durable', 'PROMOTION_STATE_MISMATCH');
+    const admissionBytes = await readFile(admissionPath);
+    if (promotion.admission_sha256 !== sha256(admissionBytes)) fail('M5-12A promotion admission binding drifted', 'PROMOTION_DIGEST_MISMATCH');
+    assertPreflightEvidence({
+      preflight: promotion.preflight,
+      prospective: result.prospective,
+    });
+    if (admission.decisions?.included + admission.decisions?.corrected !== M5_12A_IMPORT_COUNT) fail('admission imported count drifted', 'DECISION_COUNT_MISMATCH');
+    const processedDecisionCount = admission.decisions?.included
+      + admission.decisions?.corrected
+      + admission.decisions?.held
+      + admission.decisions?.rejected;
+    if (admission.decisions?.processed_start_count !== processedDecisionCount
+      || admission.decisions?.deferred !== M5_12A_SELECTION_COUNT - processedDecisionCount
+      || admission.decisions?.held + admission.decisions?.rejected > M5_12A_RESERVE_COUNT) {
+      fail('deferred denominator drifted', 'DECISION_COUNT_MISMATCH');
+    }
+    if (promotion.outputs?.canonical_directory_sha256 !== historicalDigest) fail('promotion canonical digest drifted', 'PROMOTION_DIGEST_MISMATCH');
+    if (promotion.outputs?.target_promotions?.prefix_sha256 !== result.promotionLedgerBinding.prefix_sha256) fail('promotion target ledger prefix drifted', 'PROMOTION_DIGEST_MISMATCH');
+    if (promotion.outputs?.semantic_decision_source?.sha256 !== sha256(historicalDecisionBytes)) fail('promotion semantic authority digest drifted', 'PROMOTION_DIGEST_MISMATCH');
+    const postPromotionAudit = promotion.post_promotion_audit;
+    if (!postPromotionAudit
+      || postPromotionAudit.status !== 'complete'
+      || postPromotionAudit.canonical_directory_sha256 !== historicalDigest
+      || postPromotionAudit.seed_sha256 !== sha256(result.prospective.seedBytes)
+      || postPromotionAudit.promotion_ledger_prefix_sha256 !== result.promotionLedgerBinding.prefix_sha256
+      || JSON.stringify(postPromotionAudit.promotion_ledger_binding)
+        !== JSON.stringify(result.promotionLedgerBinding)
+      || postPromotionAudit.semantic_decision_source_sha256 !== sha256(historicalDecisionBytes)
+      || postPromotionAudit.semantic_audit_sha256 !== sha256(result.semanticAuditBytes)
+      || JSON.stringify(postPromotionAudit.semantic_audit) !== JSON.stringify(compactSemanticAuditCoverage(result.semanticAuditCoverage))) {
+      fail('post-promotion audit evidence drifted', 'PROMOTION_DIGEST_MISMATCH');
+    }
+    const canonicalDecisionAudit = buildSemanticAuditFromDecisionSource(
+      historicalCanonical.records,
+      historicalDecisionSource,
+      {
+        artifactId: 'm5-12a-final-canonical-audit',
+        baseRecords: result.inputs.baseCanonical.records,
+        batchDecisionSources: [result.semanticDecisionSource],
+      },
+    );
+    const currentAuditCoverage = validateSemanticAuditCoverage(historicalCanonical.records, canonicalDecisionAudit, {
       baseRecords: result.inputs.baseCanonical.records,
-      batchDecisionSources: [result.semanticDecisionSource],
-    },
-  );
-  const currentAuditCoverage = validateSemanticAuditCoverage(currentCanonical.records, canonicalDecisionAudit, {
-    baseRecords: result.inputs.baseCanonical.records,
-    label: 'M5-12A final canonical semantic audit',
-  });
-  return {
-    batch_id: M5_12A_BATCH_ID,
-    gate: admission.gate,
-    current: currentSummary,
-    canonical_directory_sha256: currentDigest,
-    seed_sha256: sha256(currentSeedBytes),
-    promotion_ledger_sha256: sha256(currentPromotionLedgerBytes),
-    promotion_ledger_prefix_sha256: result.promotionLedgerBinding.prefix_sha256,
-    semantic_decision_source_sha256: sha256(currentDecisionBytes),
-    semantic_audit: currentAuditCoverage,
-  };
+      label: 'M5-12A final canonical semantic audit',
+    });
+    return {
+      batch_id: M5_12A_BATCH_ID,
+      gate: admission.gate,
+      current: historicalSummary,
+      canonical_directory_sha256: historicalDigest,
+      seed_sha256: sha256(result.prospective.seedBytes),
+      promotion_ledger_sha256: sha256(serializePromotionLedger(historicalPromotionLedger)),
+      promotion_ledger_prefix_sha256: result.promotionLedgerBinding.prefix_sha256,
+      semantic_decision_source_sha256: sha256(historicalDecisionBytes),
+      semantic_audit: currentAuditCoverage,
+    };
+  } finally {
+    await rm(historicalDirectory, { recursive: true, force: true });
+  }
 }
 
 export async function main(argv = process.argv.slice(2)) {
