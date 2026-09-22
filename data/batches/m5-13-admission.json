@@ -61,8 +61,7 @@
     "candidate_source_id": "m5-13-typewriter-authored-composition-source-20260922",
     "candidate_identity_count": 1100,
     "raw_material_excluded": true,
-    "source_bound_semantic_decisions": true,
-    "selection_basis": "source-bound quality threshold with explicit deferred reserve"
+    "source_bound_semantic_decisions": true
   },
   "gate": {
     "contract_version": "lexical-batch-gate-v2",
@@ -143,13 +142,6 @@
     "prefix_event_count": 1722,
     "prefix_sha256": "c3c59640b789680931336a026c1c39e59b604616351e3944098096d660e3d17f"
   },
-  "production": {
-    "pipeline_version": "lexical-production-v1",
-    "candidate_count": 1100,
-    "selected_count": 1000,
-    "correction_count": 0,
-    "audit_blocking_finding_count": 0
-  },
   "sources": {
     "candidate_identities": {
       "source_id": "m5-13-typewriter-authored-composition-source-20260922",
@@ -160,9 +152,7 @@
     "verification": {
       "source_id": "m5-13-authored-semantic-decisions-20260922-r1",
       "path": "data/batches/m5-13-semantic-decisions.json",
-      "sha256": "b5f1466ae21d0dc29104044559c8b6eac5174b21a3593cc60bf3d26881abeadb",
-      "artifact_sha256": "a14f3cc1941cb5a2831ad3d69a4157bf753156445f26923def17c7d4d8289982",
-      "decision_count": 1100
+      "sha256": "b5f1466ae21d0dc29104044559c8b6eac5174b21a3593cc60bf3d26881abeadb"
     },
     "semantic_audit": {
       "source_id": "derived:complete-canonical-audit",
@@ -191,11 +181,6 @@
       "source_id": "authorization",
       "path": "external:m5-13-authorization",
       "sha256": "d6074aec552b13b3ef949480f5a4a31f66d1c814dbf40aa80304368fe794cbec"
-    },
-    "canonical_authority": {
-      "source_id": "canonical-semantic-decision-source",
-      "path": "data/validation/canonical-semantic-decision-source.json",
-      "sha256": "46bba9244d71729e467b64c1985dba1acd5c7500c7c7486dba496eaf65eb4b64"
     }
   },
   "promotion": {

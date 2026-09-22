@@ -771,7 +771,6 @@ function buildAdmission({ inputs, artifacts, prospective, semanticAudit, semanti
       candidate_identity_count: artifacts.candidateRecords.length,
       raw_material_excluded: true,
       source_bound_semantic_decisions: true,
-      selection_basis: 'source-bound quality threshold with explicit deferred reserve',
     },
     gate: {
       contract_version: 'lexical-batch-gate-v2',
@@ -782,13 +781,6 @@ function buildAdmission({ inputs, artifacts, prospective, semanticAudit, semanti
     gate_evidence: gateEvidence,
     gate_evidence_sha256: sha256Json(gateEvidence),
     promotion_ledger_binding: structuredClone(promotionLedgerBinding),
-    production: {
-      pipeline_version: production.pipeline_version,
-      candidate_count: production.candidate_count,
-      selected_count: production.selected_count,
-      correction_count: production.correction_count,
-      audit_blocking_finding_count: production.admission.audit.blocking_finding_count,
-    },
     sources: {
       candidate_identities: {
         source_id: M5_13_CANDIDATE_SOURCE_ID,
@@ -800,14 +792,11 @@ function buildAdmission({ inputs, artifacts, prospective, semanticAudit, semanti
         source_id: M5_13_SEMANTIC_DECISION_SOURCE_ID,
         path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH),
         sha256: sha256(artifacts.semanticDecisionSourceBytes),
-        artifact_sha256: artifacts.semanticDecisionSource.artifactSha256,
-        decision_count: artifacts.semanticDecisionSource.rows.length,
       },
       semantic_audit: { source_id: 'derived:complete-canonical-audit', path: 'derived:complete-canonical-audit', sha256: sha256(serializeSemanticAuditArtifact(semanticAudit)) },
       target_promotions: { source_id: 'target_promotions', path: sourcePath(CURRENT_PROMOTION_LEDGER_PATH), sha256: sha256(promotionLedgerBytes), ledger_binding: structuredClone(promotionLedgerBinding) },
       base_inventory: { source_id: 'base_inventory', path: 'derived:m5-13-base-inventory', sha256: M5_13_BASE_INVENTORY_SHA256 },
       authorization: { source_id: 'authorization', path: 'external:m5-13-authorization', sha256: sha256(production.production_state_sources.admission) },
-      canonical_authority: { source_id: 'canonical-semantic-decision-source', path: sourcePath(DECISION_SOURCE_PATH), sha256: sha256(decisionSourceBytes) },
     },
     promotion: {
       canonical_mutation: false,
