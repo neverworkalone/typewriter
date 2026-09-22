@@ -3,6 +3,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseJsonWithUniqueKeys } from './unique-json.mjs';
+
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const DEFAULT_POLICY_PATH = path.join(
@@ -121,7 +123,7 @@ async function existingProjectionFiles(
 
 export async function readArtifactPolicy(policyPath = DEFAULT_POLICY_PATH) {
   try {
-    return JSON.parse(await readFile(policyPath, 'utf8'));
+    return parseJsonWithUniqueKeys(await readFile(policyPath, 'utf8'), policyPath);
   } catch (error) {
     if (error instanceof SyntaxError) {
       fail(`artifact policy is not valid JSON: ${policyPath}`, 'POLICY_JSON');
@@ -155,7 +157,10 @@ async function artifactRolesForFiles(repositoryDirectory, files, projectionRoles
   for (const filePath of files) {
     if (!filePath.endsWith('.json')) continue;
     try {
-      const value = JSON.parse(await readFile(path.join(repositoryDirectory, filePath), 'utf8'));
+      const value = parseJsonWithUniqueKeys(
+        await readFile(path.join(repositoryDirectory, filePath), 'utf8'),
+        filePath,
+      );
       const role = detectProjectionRole(value, projectionRoles);
       if (role) roles.set(filePath, role);
     } catch (error) {
@@ -211,6 +216,9 @@ function validateClosedObjectFields(value, allowedFields, filePath, label, code 
 }
 
 function valueMatchesType(value, expectedType) {
+  if (expectedType.includes('|')) {
+    return expectedType.split('|').some((alternative) => valueMatchesType(value, alternative));
+  }
   const arrayMatch = /^array<(.+)>$/u.exec(expectedType);
   if (arrayMatch) {
     return Array.isArray(value) && value.every((item) => valueMatchesType(item, arrayMatch[1]));
@@ -286,6 +294,14 @@ function validateClosedContract(value, filePath, semantics, label, requiredContr
         `${filePath} uses unregistered ${requiredContractName} contract version ${String(value?.contract_version)}`,
         'DURABLE_CONTRACT_UNREGISTERED',
       );
+    }
+    for (const field of contract.required_fields ?? []) {
+      if (!Object.hasOwn(value, field)) {
+        fail(
+          `${filePath} ${label} is missing required field ${field}`,
+          'DURABLE_EVIDENCE_POLICY_SHAPE',
+        );
+      }
     }
     validateClosedObjectFields(value, contract.allowed_fields, filePath, label);
     validateClosedFieldTypes(value, contract.field_types, filePath, label);
@@ -561,8 +577,9 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
     if (filePath.endsWith('.json')) {
       let value;
       try {
-        value = JSON.parse(bytes.toString('utf8'));
-      } catch {
+        value = parseJsonWithUniqueKeys(bytes, filePath);
+      } catch (error) {
+        if (error.code === 'DUPLICATE_JSON_KEY') throw error;
         continue;
       }
       // Preserve the gate-specific duplication diagnostics before applying the
@@ -583,7 +600,7 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       const ledgerContract = semantics.closed_contracts?.promotion_ledger;
       if (!ledgerContract) fail('artifact policy is missing the promotion-ledger closed contract', 'POLICY_SHAPE');
       for (const [index, line] of lines.entries()) {
-        const entry = JSON.parse(line);
+        const entry = parseJsonWithUniqueKeys(line, `${filePath} line ${index + 1}`);
         validateClosedObjectFields(
           entry,
           ledgerContract.allowed_fields,

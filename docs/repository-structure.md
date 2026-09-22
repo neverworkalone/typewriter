@@ -159,6 +159,22 @@ verification pass IDs separate, make no human-review claim, and record issue
 #7's 2,000-start checkpoint. Candidate bodies and temporary proposal/review
 projections remain outside the repository.
 
+Issue #99's M5-13 pre-admission boundary is recorded by
+`data/batches/m5-13-stage.json` and `data/batches/m5-13-review.json`. Its catalog
+declares 1,100 capacity slots for an exact +1,000 target and 100-row reserve,
+but contains no candidate identity or body. The stage binds the current
+`data/canonical/` authority and its M5-12 checkpoint Git tree by digest; the
+target inventory is reconstructed from that authority and the current seed
+instead of being copied into a batch snapshot. The stage is intentionally
+`HOLD PROCESS` until a separate source-bound candidate and editorial decision
+artifact is supplied; it does not mutate canonical, seed, inventory, or
+promotion history. These two pre-admission artifacts use the versioned closed contracts
+`lexical-batch-pre-admission-review-v1` and
+`lexical-batch-pre-admission-stage-v1`; future batch stage/review JSON cannot
+fall back to the historical untyped exceptions. Durable JSON loading also
+rejects duplicate object keys before schema validation so digest-bound evidence
+cannot hide overwritten values behind `JSON.parse` last-key-wins behavior.
+
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event
 for reproducibility, but they do not contain raw drafts, external source text,

@@ -1,0 +1,55 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-batch-pre-admission-review-v1",
+  "artifact_id": "m5-13-review-20260922",
+  "issue": 99,
+  "batch_id": "m5-13-expansion-20260922",
+  "status": "pending-human-editorial-decision",
+  "review_mode": "human-required",
+  "editorial_review_complete": false,
+  "human_editorial_review_complete": false,
+  "candidate_pool": {
+    "selection_slot_count": 1100,
+    "candidate_identity_count": 0,
+    "import_target": 1000,
+    "reserve_count": 100,
+    "catalog_count": 1100,
+    "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
+    "selection_status": "capacity-only"
+  },
+  "decisions": {
+    "included": 0,
+    "corrected": 0,
+    "held": 0,
+    "rejected": 0,
+    "deferred": 0,
+    "processed_start_count": 0,
+    "unreviewed_start_count": 0,
+    "unresolved_slot_count": 1100,
+    "imported_start_count": 0
+  },
+  "decision_artifact": null,
+  "timing": {
+    "status": "not-started",
+    "editor_seconds": null,
+    "processed_start_count": 0,
+    "unmeasured_pass_count": null
+  },
+  "audit": {
+    "status": "not-started",
+    "independent": null,
+    "open_blocker_count": null
+  },
+  "source_policy": {
+    "candidate_bodies": "external-only-until-editorial-review",
+    "raw_external_material": "external-only",
+    "canonical_mutation": "blocked-until-admission-gate"
+  },
+  "admission_path": {
+    "producer": "shared lexical producer",
+    "semantic_audit": "shared semantic audit",
+    "admission": "shared lexical admission",
+    "batch_local_quality_fork": false
+  },
+  "note": "M5-13 declares 1,100 selection-capacity slots for the exact +1,000 target and 100-row reserve. Candidate identities, candidate bodies, editorial decisions, timing, audit, and canonical promotion remain unresolved; no quota-filled candidates are stored."
+}

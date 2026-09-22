@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-batch-pre-admission-stage-v1",
+  "stage_id": "m5-13-plus-1000",
+  "issue": 99,
+  "parent_issue": 7,
+  "status": "pre-admission",
+  "predecessor_expansion": {
+    "issue": 138,
+    "artifact": "data/batches/m5-12a-admission.json",
+    "artifact_sha256": "33639ee2e0240703d0882fea6219d87ea0d912bc8453969e05e103faa780bba7",
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED",
+    "actual": {
+      "record_count": 2042,
+      "start_count": 2000,
+      "reference_only_count": 42,
+      "sense_count": 2301,
+      "relation_count": 487,
+      "expression_count": 145
+    }
+  },
+  "previous_stage": {
+    "issue": 138,
+    "status": "complete",
+    "checkpoint_commit": "a5d794a4e57070ad81285eb97ad0e0c68c9e1d3c",
+    "checkpoint_tree": "ae9e9b7a27a32d890cd110fc1291d1fdc2a0c940",
+    "checkpoint_pr_head": "480198da9e8c1927b9c5702cd28188f66adca558",
+    "canonical_records": 2042,
+    "canonical_starts": 2000
+  },
+  "input": {
+    "inventory_revision": "m5-12",
+    "inventory_sha256": "0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
+    "canonical_snapshot": {
+      "record_count": 2042,
+      "start_count": 2000,
+      "reference_only_count": 42,
+      "sense_count": 2301,
+      "relation_count": 487,
+      "expression_count": 145
+    }
+  },
+  "target": {
+    "net_start_increase": 1000,
+    "cumulative_start_target": 3000,
+    "candidate_buffer": 100,
+    "selection_slot_count": 1100,
+    "candidate_identity_count": 0
+  },
+  "decisions": {
+    "included_start_count": 0,
+    "corrected_start_count": 0,
+    "held_start_count": 0,
+    "rejected_start_count": 0,
+    "deferred_start_count": 0,
+    "processed_start_count": 0,
+    "unreviewed_start_count": 0,
+    "unresolved_slot_count": 1100
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 2042,
+      "start_count": 2000,
+      "reference_only_count": 42,
+      "sense_count": 2301,
+      "relation_count": 487,
+      "expression_count": 145
+    },
+    "imported_start_count": 0
+  },
+  "gate": {
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "failures": [
+      "candidate_identity_source",
+      "editorial_decision_artifact",
+      "human_editorial_review",
+      "timing_complete",
+      "audit",
+      "canonical_promotion"
+    ]
+  },
+  "promotion": {
+    "canonical_mutation": false,
+    "seed_mutation": false,
+    "inventory_mutation": false,
+    "next_stage_created": false,
+    "next_stage_authorized": false
+  },
+  "source": {
+    "review": "data/batches/m5-13-review.json",
+    "review_sha256": "948227e9444d9c0a98e999f27ba50b16b19802837e9e9cae50c83d2863a0eed7",
+    "catalog": "scripts/batch/m5-13-catalog.mjs",
+    "catalog_count": 1100,
+    "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
+    "predecessor_admission": "data/batches/m5-12a-admission.json",
+    "predecessor_admission_sha256": "33639ee2e0240703d0882fea6219d87ea0d912bc8453969e05e103faa780bba7",
+    "predecessor_promotion": "data/batches/m5-12a-promotion.json",
+    "predecessor_promotion_sha256": "5afde1c3da7236c6f254f62135de6e11d186a87fdd000dd48169e0d103f66fcc",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
+    "seed": "data/inventory/m5-target-seed.json",
+    "seed_sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
+    "previous_stage_commit": "a5d794a4e57070ad81285eb97ad0e0c68c9e1d3c"
+  },
+  "pipeline": {
+    "candidate_intake": "shared lexical producer",
+    "semantic_review": "shared semantic audit",
+    "selection": "shared lexical admission",
+    "prospective_canonical": "blocked until source-bound editorial admission",
+    "audit": "independent final audit required",
+    "batch_local_quality_fork": false
+  },
+  "note": "This digest-bound pre-admission boundary declares capacity slots rather than selected candidates. Candidate identities and bodies remain external until a source-bound decision artifact exists; canonical, seed, and generated inventory are unchanged."
+}

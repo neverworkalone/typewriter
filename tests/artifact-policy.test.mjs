@@ -20,6 +20,7 @@ import {
   readArtifactPolicy,
   validateArtifactPolicy,
 } from '../scripts/validate/artifact-policy.mjs';
+import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -197,6 +198,67 @@ test('artifact policy rejects role-shaped projections relocated into a future ba
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
   }
+});
+
+test('artifact policy requires a registered closed contract for future pre-admission artifacts', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-pre-admission-policy-'));
+  const cases = [
+    ['data/batches/m5-14-review.json', { schema_version: '1', status: 'pre-admission' }],
+    ['data/batches/m5-14-stage.json', { schema_version: '1', status: 'pre-admission' }],
+  ];
+
+  try {
+    for (const [relativePath, value] of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNCLASSIFIED',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects future copied canonical and inventory snapshots', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-snapshot-policy-'));
+  const cases = [
+    ['data/batches/m5-14-base-canonical/pilot.jsonl', '{}\n'],
+    ['data/batches/m5-14-base-inventory.json', '{}\n'],
+  ];
+
+  try {
+    for (const [relativePath, contents] of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, contents, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNCLASSIFIED',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('durable JSON loading rejects duplicate keys before schema validation', async () => {
+  assert.deepEqual(
+    parseJsonWithUniqueKeys('{"outer":{"key":1},"items":[{"key":2}]}', 'synthetic fixture'),
+    { outer: { key: 1 }, items: [{ key: 2 }] },
+  );
+  assert.throws(
+    () => parseJsonWithUniqueKeys('{"key":1,"key":2}', 'synthetic fixture'),
+    (error) => error.code === 'DUPLICATE_JSON_KEY' && error.message.includes('"key"'),
+  );
+  assert.throws(
+    () => parseJsonWithUniqueKeys('{"outer":{"key":1,"key":2}}', 'synthetic fixture'),
+    (error) => error.code === 'DUPLICATE_JSON_KEY' && error.message.includes('$.outer'),
+  );
 });
 
 test('artifact policy rejects reconstructible gate output in a v2 durable manifest', async () => {

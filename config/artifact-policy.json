@@ -93,14 +93,22 @@
         "pattern": "data/batches/*-semantic-decisions.json",
         "contract": "decision_source"
       },
-    {
-      "pattern": "data/**/*promotion*.jsonl",
-      "contract": "promotion_ledger"
-    },
-    {
-      "pattern": "data/validation/canonical-semantic-decision-source.json",
-      "contract": "canonical_decision_source"
-    }
+      {
+        "pattern": "data/batches/m5-13-review.json",
+        "contract": "pre_admission_review"
+      },
+      {
+        "pattern": "data/batches/m5-13-stage.json",
+        "contract": "pre_admission_stage"
+      },
+      {
+        "pattern": "data/**/*promotion*.jsonl",
+        "contract": "promotion_ledger"
+      },
+      {
+        "pattern": "data/validation/canonical-semantic-decision-source.json",
+        "contract": "canonical_decision_source"
+      }
     ],
     "gate_contract_versions": [
       "lexical-batch-gate-evidence-v2"
@@ -1264,6 +1272,432 @@
             "path": "string",
             "sha256": "string",
             "source_revision": "string"
+          }
+        }
+      },
+      "pre_admission_review": {
+        "contract_versions": [
+          "lexical-batch-pre-admission-review-v1"
+        ],
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "artifact_id",
+          "issue",
+          "batch_id",
+          "status",
+          "review_mode",
+          "editorial_review_complete",
+          "human_editorial_review_complete",
+          "candidate_pool",
+          "decisions",
+          "decision_artifact",
+          "timing",
+          "audit",
+          "source_policy",
+          "admission_path",
+          "note"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "artifact_id",
+          "issue",
+          "batch_id",
+          "status",
+          "review_mode",
+          "editorial_review_complete",
+          "human_editorial_review_complete",
+          "candidate_pool",
+          "decisions",
+          "decision_artifact",
+          "timing",
+          "audit",
+          "source_policy",
+          "admission_path",
+          "note"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "artifact_id": "string",
+          "issue": "integer",
+          "batch_id": "string",
+          "status": "string",
+          "review_mode": "string",
+          "editorial_review_complete": "boolean",
+          "human_editorial_review_complete": "boolean",
+          "candidate_pool": "object",
+          "decisions": "object",
+          "decision_artifact": "null",
+          "timing": "object",
+          "audit": "object",
+          "source_policy": "object",
+          "admission_path": "object",
+          "note": "string"
+        },
+        "nested_allowed_fields": {
+          "$.candidate_pool": [
+            "selection_slot_count",
+            "candidate_identity_count",
+            "import_target",
+            "reserve_count",
+            "catalog_count",
+            "catalog_sha256",
+            "selection_status"
+          ],
+          "$.decisions": [
+            "included",
+            "corrected",
+            "held",
+            "rejected",
+            "deferred",
+            "processed_start_count",
+            "unreviewed_start_count",
+            "unresolved_slot_count",
+            "imported_start_count"
+          ],
+          "$.timing": [
+            "status",
+            "editor_seconds",
+            "processed_start_count",
+            "unmeasured_pass_count"
+          ],
+          "$.audit": [
+            "status",
+            "independent",
+            "open_blocker_count"
+          ],
+          "$.source_policy": [
+            "candidate_bodies",
+            "raw_external_material",
+            "canonical_mutation"
+          ],
+          "$.admission_path": [
+            "producer",
+            "semantic_audit",
+            "admission",
+            "batch_local_quality_fork"
+          ]
+        },
+        "nested_field_types": {
+          "$.candidate_pool": {
+            "selection_slot_count": "integer",
+            "candidate_identity_count": "integer",
+            "import_target": "integer",
+            "reserve_count": "integer",
+            "catalog_count": "integer",
+            "catalog_sha256": "string",
+            "selection_status": "string"
+          },
+          "$.decisions": {
+            "included": "integer",
+            "corrected": "integer",
+            "held": "integer",
+            "rejected": "integer",
+            "deferred": "integer",
+            "processed_start_count": "integer",
+            "unreviewed_start_count": "integer",
+            "unresolved_slot_count": "integer",
+            "imported_start_count": "integer"
+          },
+          "$.timing": {
+            "status": "string",
+            "editor_seconds": "number|null",
+            "processed_start_count": "integer",
+            "unmeasured_pass_count": "integer|null"
+          },
+          "$.audit": {
+            "status": "string",
+            "independent": "boolean|null",
+            "open_blocker_count": "integer|null"
+          },
+          "$.source_policy": {
+            "candidate_bodies": "string",
+            "raw_external_material": "string",
+            "canonical_mutation": "string"
+          },
+          "$.admission_path": {
+            "producer": "string",
+            "semantic_audit": "string",
+            "admission": "string",
+            "batch_local_quality_fork": "boolean"
+          }
+        }
+      },
+      "pre_admission_stage": {
+        "contract_versions": [
+          "lexical-batch-pre-admission-stage-v1"
+        ],
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "stage_id",
+          "issue",
+          "parent_issue",
+          "status",
+          "predecessor_expansion",
+          "previous_stage",
+          "input",
+          "target",
+          "decisions",
+          "actual",
+          "gate",
+          "promotion",
+          "source",
+          "pipeline",
+          "note"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "stage_id",
+          "issue",
+          "parent_issue",
+          "status",
+          "predecessor_expansion",
+          "previous_stage",
+          "input",
+          "target",
+          "decisions",
+          "actual",
+          "gate",
+          "promotion",
+          "source",
+          "pipeline",
+          "note"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "stage_id": "string",
+          "issue": "integer",
+          "parent_issue": "integer",
+          "status": "string",
+          "predecessor_expansion": "object",
+          "previous_stage": "object",
+          "input": "object",
+          "target": "object",
+          "decisions": "object",
+          "actual": "object",
+          "gate": "object",
+          "promotion": "object",
+          "source": "object",
+          "pipeline": "object",
+          "note": "string"
+        },
+        "nested_allowed_fields": {
+          "$.predecessor_expansion": [
+            "issue",
+            "artifact",
+            "artifact_sha256",
+            "gate_status",
+            "decision",
+            "actual"
+          ],
+          "$.predecessor_expansion.actual": [
+            "record_count",
+            "start_count",
+            "reference_only_count",
+            "sense_count",
+            "relation_count",
+            "expression_count"
+          ],
+          "$.previous_stage": [
+            "issue",
+            "status",
+            "checkpoint_commit",
+            "checkpoint_tree",
+            "checkpoint_pr_head",
+            "canonical_records",
+            "canonical_starts"
+          ],
+          "$.input": [
+            "inventory_revision",
+            "inventory_sha256",
+            "canonical_directory",
+            "canonical_directory_sha256",
+            "canonical_snapshot"
+          ],
+          "$.input.canonical_snapshot": [
+            "record_count",
+            "start_count",
+            "reference_only_count",
+            "sense_count",
+            "relation_count",
+            "expression_count"
+          ],
+          "$.target": [
+            "net_start_increase",
+            "cumulative_start_target",
+            "candidate_buffer",
+            "selection_slot_count",
+            "candidate_identity_count"
+          ],
+          "$.decisions": [
+            "included_start_count",
+            "corrected_start_count",
+            "held_start_count",
+            "rejected_start_count",
+            "deferred_start_count",
+            "processed_start_count",
+            "unreviewed_start_count",
+            "unresolved_slot_count"
+          ],
+          "$.actual": [
+            "canonical_snapshot",
+            "imported_start_count"
+          ],
+          "$.actual.canonical_snapshot": [
+            "record_count",
+            "start_count",
+            "reference_only_count",
+            "sense_count",
+            "relation_count",
+            "expression_count"
+          ],
+          "$.gate": [
+            "gate_status",
+            "decision",
+            "failures"
+          ],
+          "$.promotion": [
+            "canonical_mutation",
+            "seed_mutation",
+            "inventory_mutation",
+            "next_stage_created",
+            "next_stage_authorized"
+          ],
+          "$.source": [
+            "review",
+            "review_sha256",
+            "catalog",
+            "catalog_count",
+            "catalog_sha256",
+            "predecessor_admission",
+            "predecessor_admission_sha256",
+            "predecessor_promotion",
+            "predecessor_promotion_sha256",
+            "canonical_directory",
+            "canonical_directory_sha256",
+            "seed",
+            "seed_sha256",
+            "previous_stage_commit"
+          ],
+          "$.pipeline": [
+            "candidate_intake",
+            "semantic_review",
+            "selection",
+            "prospective_canonical",
+            "audit",
+            "batch_local_quality_fork"
+          ]
+        },
+        "nested_field_types": {
+          "$.predecessor_expansion": {
+            "issue": "integer",
+            "artifact": "string",
+            "artifact_sha256": "string",
+            "gate_status": "string",
+            "decision": "string",
+            "actual": "object"
+          },
+          "$.predecessor_expansion.actual": {
+            "record_count": "integer",
+            "start_count": "integer",
+            "reference_only_count": "integer",
+            "sense_count": "integer",
+            "relation_count": "integer",
+            "expression_count": "integer"
+          },
+          "$.previous_stage": {
+            "issue": "integer",
+            "status": "string",
+            "checkpoint_commit": "string",
+            "checkpoint_tree": "string",
+            "checkpoint_pr_head": "string",
+            "canonical_records": "integer",
+            "canonical_starts": "integer"
+          },
+          "$.input": {
+            "inventory_revision": "string",
+            "inventory_sha256": "string",
+            "canonical_directory": "string",
+            "canonical_directory_sha256": "string",
+            "canonical_snapshot": "object"
+          },
+          "$.input.canonical_snapshot": {
+            "record_count": "integer",
+            "start_count": "integer",
+            "reference_only_count": "integer",
+            "sense_count": "integer",
+            "relation_count": "integer",
+            "expression_count": "integer"
+          },
+          "$.target": {
+            "net_start_increase": "integer",
+            "cumulative_start_target": "integer",
+            "candidate_buffer": "integer",
+            "selection_slot_count": "integer",
+            "candidate_identity_count": "integer"
+          },
+          "$.decisions": {
+            "included_start_count": "integer",
+            "corrected_start_count": "integer",
+            "held_start_count": "integer",
+            "rejected_start_count": "integer",
+            "deferred_start_count": "integer",
+            "processed_start_count": "integer",
+            "unreviewed_start_count": "integer",
+            "unresolved_slot_count": "integer"
+          },
+          "$.actual": {
+            "canonical_snapshot": "object",
+            "imported_start_count": "integer"
+          },
+          "$.actual.canonical_snapshot": {
+            "record_count": "integer",
+            "start_count": "integer",
+            "reference_only_count": "integer",
+            "sense_count": "integer",
+            "relation_count": "integer",
+            "expression_count": "integer"
+          },
+          "$.gate": {
+            "gate_status": "string",
+            "decision": "string",
+            "failures": "array<string>"
+          },
+          "$.promotion": {
+            "canonical_mutation": "boolean",
+            "seed_mutation": "boolean",
+            "inventory_mutation": "boolean",
+            "next_stage_created": "boolean",
+            "next_stage_authorized": "boolean"
+          },
+          "$.source": {
+            "review": "string",
+            "review_sha256": "string",
+            "catalog": "string",
+            "catalog_count": "integer",
+            "catalog_sha256": "string",
+            "predecessor_admission": "string",
+            "predecessor_admission_sha256": "string",
+            "predecessor_promotion": "string",
+            "predecessor_promotion_sha256": "string",
+            "canonical_directory": "string",
+            "canonical_directory_sha256": "string",
+            "seed": "string",
+            "seed_sha256": "string",
+            "previous_stage_commit": "string"
+          },
+          "$.pipeline": {
+            "candidate_intake": "string",
+            "semantic_review": "string",
+            "selection": "string",
+            "prospective_canonical": "string",
+            "audit": "string",
+            "batch_local_quality_fork": "boolean"
           }
         }
       },
