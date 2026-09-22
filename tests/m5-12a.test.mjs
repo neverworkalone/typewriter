@@ -565,8 +565,7 @@ test('M5-12A canonical semantic authority retains immutable authored batch bindi
 test('M5-12A final promotion preserves the exact canonical, seed, and semantic authority digests', async () => {
   const result = await validateM512AFinal();
 
-  assert.deepEqual(result.historical, M5_12A_FINAL_SUMMARY);
-  assert.ok(result.current.record_count >= result.historical.record_count);
+  assert.deepEqual(result.current, M5_12A_FINAL_SUMMARY);
   assert.equal(result.gate.gate_status, 'pass');
   assert.equal(result.semantic_audit.coverage_complete, true);
   assert.equal(result.semantic_audit.review_complete, true);

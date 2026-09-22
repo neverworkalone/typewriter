@@ -96,7 +96,6 @@ async function runM512APreflightOnce({
   generationPassId,
   verificationPassId,
   humanReviewClaimed,
-  expectedMetadata,
 } = {}) {
   if (!prospectiveCanonicalDirectory || !prospectiveCanonicalDigest || !expectedSummary) {
     fail('M5-12A preflight requires the complete prospective canonical input and digest', 'M5_12A_PREFLIGHT_INPUT_REQUIRED');
@@ -152,7 +151,6 @@ async function runM512APreflightOnce({
       projectRoot: REPOSITORY_DIRECTORY,
       packageDir: outputDirectory,
       zipPath,
-      expectedMetadata,
     });
     if (packageResult.errors.length > 0) {
       fail(`prospective package validation failed: ${packageResult.errors.join('; ')}`, 'M5_12A_PREFLIGHT_PACKAGE_FAILED');
@@ -267,7 +265,6 @@ function preflightCacheKey(options) {
     generationPassId: options.generationPassId,
     verificationPassId: options.verificationPassId,
     humanReviewClaimed: options.humanReviewClaimed,
-    expectedMetadata: options.expectedMetadata,
   });
 }
 

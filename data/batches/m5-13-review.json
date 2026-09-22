@@ -4,52 +4,52 @@
   "artifact_id": "m5-13-review-20260922",
   "issue": 99,
   "batch_id": "m5-13-expansion-20260922",
-  "status": "complete",
+  "status": "blocked-upstream-source",
   "review_mode": "agent-generated",
   "editorial_review_complete": false,
   "human_editorial_review_complete": false,
   "candidate_pool": {
     "selection_slot_count": 1100,
-    "candidate_identity_count": 1100,
+    "candidate_identity_count": 0,
     "import_target": 1000,
     "reserve_count": 100,
     "catalog_count": 1100,
     "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
-    "selection_status": "source-bound-decisions"
+    "selection_status": "capacity-only"
   },
   "decisions": {
-    "included": 1000,
+    "included": 0,
     "corrected": 0,
     "held": 0,
     "rejected": 0,
-    "deferred": 100,
-    "processed_start_count": 1000,
+    "deferred": 0,
+    "processed_start_count": 0,
     "unreviewed_start_count": 0,
-    "unresolved_slot_count": 0,
-    "imported_start_count": 1000
+    "unresolved_slot_count": 1100,
+    "imported_start_count": 0
   },
   "decision_artifact": null,
   "timing": {
-    "status": "not-required-agent-generated",
+    "status": "not-started",
     "editor_seconds": null,
-    "processed_start_count": 1000,
+    "processed_start_count": 0,
     "unmeasured_pass_count": null
   },
   "audit": {
-    "status": "complete",
-    "independent": true,
-    "open_blocker_count": 0
+    "status": "blocked-upstream-source",
+    "independent": null,
+    "open_blocker_count": null
   },
   "source_policy": {
-    "candidate_bodies": "shared-producer-source-bound",
-    "raw_external_material": "excluded",
-    "canonical_mutation": "explicit-admission-transaction"
+    "candidate_bodies": "blocked-missing-source-bound-candidate-contract",
+    "raw_external_material": "not-adopted-pending-source-review",
+    "canonical_mutation": "blocked-until-admission-gate"
   },
   "admission_path": {
-    "producer": "owner-authorized shared lexical producer",
-    "semantic_audit": "shared complete canonical semantic audit",
-    "admission": "shared lexical admission and digest-bound promotion transaction",
+    "producer": "shared lexical producer",
+    "semantic_audit": "shared semantic audit",
+    "admission": "shared lexical admission",
     "batch_local_quality_fork": false
   },
-  "note": "This durable review summary records the completed agent-generated path. The full source-bound candidate and decision artifact is data/batches/m5-13-semantic-decisions.json; the authoritative admission and promotion manifests are data/batches/m5-13-admission.json and data/batches/m5-13-promotion.json. Human editorial review is not claimed."
+  "note": "M5-13 declares 1,100 capacity slots for the exact +1,000 target and 100-row reserve. The shared producer is authorized to generate candidates, but the repository currently has no approved source-bound lexical identity/candidate contract: the catalog declares capacity and axes only, while the local corpus is ignored, unreviewed external material. Until that upstream capability exists, no candidate, decision artifact, prospective canonical, or canonical mutation is authorized."
 }

@@ -4,7 +4,7 @@
   "stage_id": "m5-13-plus-1000",
   "issue": 99,
   "parent_issue": 7,
-  "status": "complete",
+  "status": "blocked-upstream-source",
   "predecessor_expansion": {
     "issue": 138,
     "artifact": "data/batches/m5-12a-admission.json",
@@ -48,44 +48,50 @@
     "cumulative_start_target": 3000,
     "candidate_buffer": 100,
     "selection_slot_count": 1100,
-    "candidate_identity_count": 1100
+    "candidate_identity_count": 0
   },
   "decisions": {
-    "included_start_count": 1000,
+    "included_start_count": 0,
     "corrected_start_count": 0,
     "held_start_count": 0,
     "rejected_start_count": 0,
-    "deferred_start_count": 100,
-    "processed_start_count": 1000,
+    "deferred_start_count": 0,
+    "processed_start_count": 0,
     "unreviewed_start_count": 0,
-    "unresolved_slot_count": 0
+    "unresolved_slot_count": 1100
   },
   "actual": {
     "canonical_snapshot": {
-      "record_count": 3042,
-      "start_count": 3000,
+      "record_count": 2042,
+      "start_count": 2000,
       "reference_only_count": 42,
-      "sense_count": 3301,
+      "sense_count": 2301,
       "relation_count": 487,
-      "expression_count": 285
+      "expression_count": 145
     },
-    "imported_start_count": 1000
+    "imported_start_count": 0
   },
   "gate": {
-    "gate_status": "pass",
-    "decision": "APPROVE AUTOMATED BOUNDED",
-    "failures": []
+    "gate_status": "fail",
+    "decision": "HOLD PROCESS",
+    "failures": [
+      "candidate_identity_source",
+      "source_bound_candidate_contract_missing",
+      "semantic_decision_artifact_missing",
+      "prospective_audit_blocked",
+      "canonical_promotion"
+    ]
   },
   "promotion": {
-    "canonical_mutation": true,
-    "seed_mutation": true,
+    "canonical_mutation": false,
+    "seed_mutation": false,
     "inventory_mutation": false,
-    "next_stage_created": true,
-    "next_stage_authorized": true
+    "next_stage_created": false,
+    "next_stage_authorized": false
   },
   "source": {
-    "review": "data/batches/m5-13-semantic-decisions.json",
-    "review_sha256": "b5f1466ae21d0dc29104044559c8b6eac5174b21a3593cc60bf3d26881abeadb",
+    "review": "data/batches/m5-13-review.json",
+    "review_sha256": "18e4e2dea42c9f2cda169d0f5ef051cd6bf4e469cb36b74c4fd40af67b9822eb",
     "catalog": "scripts/batch/m5-13-catalog.mjs",
     "catalog_count": 1100,
     "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
@@ -100,12 +106,12 @@
     "previous_stage_commit": "a5d794a4e57070ad81285eb97ad0e0c68c9e1d3c"
   },
   "pipeline": {
-    "candidate_intake": "owner-authorized shared lexical producer generated source-bound candidates",
-    "semantic_review": "separate agent semantic verification pass with complete sense evidence",
-    "selection": "source-bound quality threshold; no relation-type quota",
-    "prospective_canonical": "prospective canonical plus target inventory validated before mutation",
-    "audit": "complete canonical semantic audit with no blocking findings",
+    "candidate_intake": "shared lexical producer",
+    "semantic_review": "shared semantic audit",
+    "selection": "shared lexical admission",
+    "prospective_canonical": "blocked until the shared producer receives an approved source-bound lexical candidate contract",
+    "audit": "blocked until source-bound candidates and independent decisions exist",
     "batch_local_quality_fork": false
   },
-  "note": "M5-13 consumed the shared producer output without manual candidate identities or decision artifacts. The 1,100-slot pool yielded 1,000 included starts and a source-quality deferred reserve of 100; admission and promotion are recorded in data/batches/m5-13-admission.json and data/batches/m5-13-promotion.json."
+  "note": "This digest-bound boundary declares capacity slots rather than selected candidates. Agent-generated execution is authorized, but the shared producer cannot run without an approved source-bound lexical identity/candidate contract; the current catalog is capacity-only and the local external corpus has no reviewed source-policy record. Canonical, seed, and generated inventory remain unchanged."
 }

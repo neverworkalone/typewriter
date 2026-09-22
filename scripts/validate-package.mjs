@@ -248,7 +248,7 @@ function readCurrentHead(projectRoot) {
   }
 }
 
-function validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata = EXPECTED_METADATA }) {
+function validateDictionaryMetadata({ packageDir, projectRoot }) {
   const errors = [];
   const databasePath = path.join(packageDir, 'dictionary.sqlite');
   if (!existsSync(databasePath)) return errors;
@@ -261,7 +261,7 @@ function validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata 
         .map(({ key, value }) => [key, value]),
     );
 
-    for (const [key, expected] of Object.entries(expectedMetadata)) {
+    for (const [key, expected] of Object.entries(EXPECTED_METADATA)) {
       if (metadata[key] !== expected) {
         errors.push(`Dictionary metadata ${key} must be ${JSON.stringify(expected)}, received ${JSON.stringify(metadata[key])}.`);
       }
@@ -320,11 +320,7 @@ function validateLegalFiles(packageDir, files) {
   return errors;
 }
 
-export function validatePackageDirectory({
-  packageDir,
-  projectRoot = path.resolve(packageDir, '..'),
-  expectedMetadata = EXPECTED_METADATA,
-}) {
+export function validatePackageDirectory({ packageDir, projectRoot = path.resolve(packageDir, '..') }) {
   const errors = [];
   const actualFiles = existsSync(packageDir) ? listFiles(packageDir) : [];
   const manifestPath = path.join(packageDir, 'manifest.json');
@@ -352,7 +348,7 @@ export function validatePackageDirectory({
   errors.push(...validateRemoteCode(packageDir, actualFiles));
   errors.push(...validateFileModes(packageDir, actualFiles));
   errors.push(...validateRuntimeAssets(packageDir, actualFiles));
-  errors.push(...validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata }));
+  errors.push(...validateDictionaryMetadata({ packageDir, projectRoot }));
   errors.push(...validateLegalFiles(packageDir, actualFiles));
 
   const expectedFiles = new Set(REQUIRED_PRODUCT_FILES);
@@ -432,13 +428,8 @@ export function validatePackageZip({ packageDir, zipPath, packageFiles, manifest
   return { errors, zipFiles };
 }
 
-export function validatePackage({
-  projectRoot,
-  packageDir,
-  zipPath = null,
-  expectedMetadata = EXPECTED_METADATA,
-}) {
-  const directoryResult = validatePackageDirectory({ packageDir, projectRoot, expectedMetadata });
+export function validatePackage({ projectRoot, packageDir, zipPath = null }) {
+  const directoryResult = validatePackageDirectory({ packageDir, projectRoot });
   const errors = [...directoryResult.errors];
   let zipResult = { errors: [], zipFiles: [] };
 
