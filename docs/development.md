@@ -213,31 +213,41 @@ commands themselves should pass.
 
 `.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
 the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.13.x, and runs the pre-1.0 checks through the shared category runner:
+Node.js 22.13.x, and runs `npm run ci:normal` in one process. The normal runner
+emits the `ci:fast` checkpoint and then continues with the remaining normal checks;
+the fast checkpoint is not started as a second GitHub Actions workflow.
+
+`.github/workflows/deep.yml` owns scheduled and manual full validation. It runs
+`npm run ci:all`, which includes normal validation followed by historical replay,
+reproducibility, and the scale benchmark. Its weekly schedule is Sunday 22:00 UTC
+(Monday 07:00 KST).
+
+The normal category order is:
 
 1. `npm run ci:category -- canonical` — manifest, canonical, dataset, inventory, and rule checks;
 2. `npm run ci:category -- lexical` — shared lexical and semantic validation;
-3. `npm run ci:category -- batch` — batch process, contract, recovery, and authorization checks;
-4. `npm run ci:category -- historical` — Wave A2/Wave B materialization and historical replay;
-5. `npm run ci:category -- toolchain` — normalization, SQLite, and integrated M2 checks;
-6. `npm run ci:category -- product` — shared search, unit tests, and extension build;
-7. `npm run ci:category -- artifacts` — package/artifact tests and the final clean-checkout policy.
+3. `npm run ci:category -- toolchain` — normalization, SQLite, and integrated M2 checks;
+4. `npm run ci:category -- batch` — batch process, contract, recovery, and authorization checks;
+5. `npm run ci:category -- product` — shared search, unit tests, and extension build;
+6. `npm run ci:category -- artifacts` — package/artifact tests and the final clean-checkout policy.
+
+The deep-only additions are `historical` replay and the `deep` category. To run the
+complete sequence locally, use `npm run ci:all`.
 
 The registry in `scripts/ci/registry.mjs` owns every root `tests/*.test.mjs` file
 exactly once. Each declared check is logged by name and has its own execution
 boundary; checks run sequentially and a failure stops the category before any later
 check starts. Historical runner inputs are copied to an external temporary directory by
-`scripts/ci/run-category.mjs`; the workflow does not need one YAML step per
-materialization. To run the complete sequence locally, use `npm run ci:all`. A
-representative future batch check should be added to the appropriate registry
-category rather than to this workflow.
+`scripts/ci/run-category.mjs`; the workflows do not need one YAML step per
+materialization. A representative future batch check should be added to the
+appropriate registry category rather than to a workflow file.
 
 Release ZIP creation (`npm run package` and `npm run package:minify`) and Chrome for
 Testing package verification (`npm run test:mv3:package`) are intentionally deferred
 from ordinary pre-1.0 PR/push CI to keep feedback focused and inexpensive. The
 underlying scripts remain available for explicit manual execution and future
 release-oriented automation; this is a scheduling decision, not deprecation. The
-workflow proves that the documented JSONL, dataset, normalization, SQLite,
+workflows prove that the documented JSONL, dataset, normalization, SQLite,
 integrated-audit, regression, unit-test, and product-build checks run in a clean
 environment. It does not claim that the canonical dictionary has editorial,
 lexical, relation, or coverage quality.
