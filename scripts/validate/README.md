@@ -19,7 +19,7 @@ node --test tests/lexical-quality.test.mjs
 npm run ci:fast
 npm run ci:normal
 npm run ci:all
-npm run benchmark:canonical -- --sizes=10000,100000,500000 --sqlite-scale=10000
+npm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -73,9 +73,9 @@ The public CI levels are nested:
 
 - `ci:fast`: canonical, lexical, and toolchain gates for early pull-request
   feedback, including the complete global audit and one SQLite build.
-- `ci:normal`: `ci:fast` plus batch, historical, product, and artifact gates.
-- `ci:all`: `ci:normal` plus independent current-revision reproducibility and
-  the 10K/100K/500K synthetic benchmark.
+- `ci:normal`: `ci:fast` plus current batch, product, and artifact gates.
+- `ci:all`: `ci:normal` plus historical replay, independent current-revision
+  reproducibility, and the 500K/1M synthetic benchmark.
 
 Pull requests run one `ci:normal` process. It emits a `ci:fast` checkpoint
 after the canonical, lexical, and toolchain categories, then continues with
@@ -97,9 +97,19 @@ deep-validation path. The full M5-12A admission/preflight replay is also deep
 validation; normal CI retains the shared global audit and promoted-canonical
 regressions without replaying admission-time product/package work.
 
+Historical Wave A/Wave B replay is also reserved for the deep/manual level. The
+normal path retains the batch contracts and current-canonical regressions that
+protect merge correctness, while expensive historical/admission replay remains
+available in `ci:deep` and `ci:all`.
+
 For scale evidence, the benchmark generates self-authored synthetic JSONL
-without adding a 500K-record corpus to the repository. Each result records
+without adding a 500K/1M-record corpus to the repository. Each result records
 wall-clock time, memory, validator result counts, canonical parse/index/scan
-counts, SQLite build count, and context transport counts. The benchmark's
-`same-process-shared-context` wiring matches the PR runner; a 500K run is
-intended for manual or scheduled validation rather than ordinary pull requests.
+counts, SQLite build count, and context transport counts. When SQLite is
+enabled for a scale, the benchmark exercises the level continuation itself:
+`fast` builds one artifact, `normal` validates and consumes that exact artifact
+through the product build, and `deep` performs an independent byte-identical
+SQLite rebuild. Cumulative fast/normal/deep timings are compared with the
+60s/180s/600s targets. Batch and historical replay checks remain against their
+authoritative fixtures and are intentionally not synthesized from generated
+records.

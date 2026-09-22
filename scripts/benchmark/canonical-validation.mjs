@@ -1,19 +1,26 @@
+import { execFile as execFileCallback } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { mkdir, mkdtemp, open, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 import { buildDictionary } from '../build/dictionary.mjs';
+import { CI_LEVEL_CATEGORY_ORDER } from '../ci/registry.mjs';
 import {
   contextSummary,
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { validateSharedDictionary } from '../ci/validate-shared-dictionary.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
+const execFile = promisify(execFileCallback);
 
 function parseSizes(argument = process.argv.find((value) => value.startsWith('--sizes='))) {
   const raw = argument?.slice('--sizes='.length) ?? '10000,100000,500000';
@@ -24,14 +31,14 @@ function parseSizes(argument = process.argv.find((value) => value.startsWith('--
   return sizes;
 }
 
-function parseOptionalScale(argument = process.argv.find((value) => value.startsWith('--sqlite-scale='))) {
+function parseOptionalScales(argument = process.argv.find((value) => value.startsWith('--sqlite-scale='))) {
   const raw = argument?.slice('--sqlite-scale='.length);
-  if (raw === undefined || raw === 'none') return undefined;
-  const scale = Number(raw);
-  if (!Number.isSafeInteger(scale) || scale < 1) {
-    throw new Error(`--sqlite-scale must be a positive integer or none: ${raw}`);
+  if (raw === undefined || raw === 'none') return new Set();
+  const scales = raw.split(',').map((value) => Number(value.trim()));
+  if (scales.some((scale) => !Number.isSafeInteger(scale) || scale < 1)) {
+    throw new Error(`--sqlite-scale must contain positive integers or none: ${raw}`);
   }
-  return scale;
+  return new Set(scales);
 }
 
 function syntheticRecord(index) {
@@ -105,10 +112,53 @@ async function writeSyntheticCanonical(filePath, scale) {
   }
 }
 
+async function sha256File(filePath) {
+  const hash = createHash('sha256');
+  const stream = createReadStream(filePath);
+  for await (const chunk of stream) {
+    hash.update(chunk);
+  }
+  return hash.digest('hex');
+}
+
+async function runProductBuild({ sharedDictionaryPath, outputDirectory }) {
+  const vitePath = path.join(REPOSITORY_DIRECTORY, 'node_modules/vite/bin/vite.js');
+  await execFile(
+    process.execPath,
+    [vitePath, 'build', '--config', path.join(REPOSITORY_DIRECTORY, 'vite.config.js')],
+    {
+      cwd: REPOSITORY_DIRECTORY,
+      env: {
+        ...process.env,
+        TYPEWRITER_ALLOW_DIRTY: 'true',
+        TYPEWRITER_BUILD_OUTPUT_DIRECTORY: outputDirectory,
+        TYPEWRITER_SHARED_DICTIONARY_PATH: sharedDictionaryPath,
+      },
+      maxBuffer: 8 * 1024 * 1024,
+    },
+  );
+}
+
+function levelBudget(level, wallClockMs) {
+  const budgetMs = {
+    fast: 60_000,
+    normal: 180_000,
+    deep: 600_000,
+  }[level];
+  return {
+    target_wall_clock_ms: budgetMs,
+    within_target: wallClockMs <= budgetMs,
+  };
+}
+
 export async function benchmarkCanonicalValidation({
   sizes = parseSizes(),
-  sqliteScale = parseOptionalScale(),
+  sqliteScale,
+  sqliteScales,
 } = {}) {
+  const selectedSqliteScales = sqliteScales === undefined
+    ? (sqliteScale === undefined ? parseOptionalScales() : new Set([sqliteScale]))
+    : new Set(sqliteScales);
   const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-benchmark-'));
   const results = [];
 
@@ -119,6 +169,7 @@ export async function benchmarkCanonicalValidation({
         failure_stage: null,
         error: null,
         sqlite_build_count: 0,
+        levels: {},
       };
       let peakMemory;
       const sampleMemory = () => {
@@ -173,7 +224,7 @@ export async function benchmarkCanonicalValidation({
           rehydrate_count: context.metrics.canonical_context_rehydrate_count ?? 0,
         };
 
-        if (sqliteScale === scale) {
+        if (selectedSqliteScales.has(scale)) {
           result.failure_stage = 'sqlite-build';
           const buildStart = now();
           await buildDictionary({
@@ -186,6 +237,69 @@ export async function benchmarkCanonicalValidation({
           result.sqlite_build_ms = elapsed(buildStart);
           result.sqlite_build_count = context.metrics.sqlite_build_count;
           sampleMemory();
+
+          const fastEnd = now();
+          result.levels.fast = {
+            category_order: CI_LEVEL_CATEGORY_ORDER.fast,
+            wall_clock_ms: Math.round((fastEnd - totalStart) * 100) / 100,
+            canonical_context: 'loaded, indexed, and globally validated once',
+            sqlite_build_count: 1,
+            ...levelBudget('fast', fastEnd - totalStart),
+          };
+
+          const normalStart = now();
+          await validateSharedDictionary({
+            databasePath: outputPath,
+            canonicalContext: context,
+          });
+          const sharedDigest = await sha256File(outputPath);
+          const productOutputDirectory = path.join(scaleDirectory, 'product');
+          await runProductBuild({
+            sharedDictionaryPath: outputPath,
+            outputDirectory: productOutputDirectory,
+          });
+          const productDictionaryPath = path.join(productOutputDirectory, 'dictionary.sqlite');
+          const productDictionaryDigest = await sha256File(productDictionaryPath);
+          if (productDictionaryDigest !== sharedDigest) {
+            throw new Error('product build did not reuse the shared SQLite artifact');
+          }
+          const normalEnd = now();
+          result.levels.normal = {
+            category_order: CI_LEVEL_CATEGORY_ORDER.normal,
+            wall_clock_ms: Math.round((normalEnd - totalStart) * 100) / 100,
+            continuation_ms: Math.round((normalEnd - normalStart) * 100) / 100,
+            shared_sqlite_artifact_reused: true,
+            product_dictionary_digest_matches: true,
+            sqlite_build_count: 0,
+            ...levelBudget('normal', normalEnd - totalStart),
+          };
+
+          const deepStart = now();
+          const reproducibleOutputPath = path.join(scaleDirectory, 'dictionary-reproducible.sqlite');
+          await buildDictionary({
+            inputDirectory: canonicalDirectory,
+            outputPath: reproducibleOutputPath,
+            canonicalContext: context,
+            repositoryDirectory: REPOSITORY_DIRECTORY,
+            allowDirty: true,
+          });
+          const reproducibleDigest = await sha256File(reproducibleOutputPath);
+          if (reproducibleDigest !== sharedDigest) {
+            throw new Error('independent SQLite build did not reproduce the shared artifact');
+          }
+          const deepEnd = now();
+          result.levels.deep = {
+            category_order: CI_LEVEL_CATEGORY_ORDER.deep,
+            wall_clock_ms: Math.round((deepEnd - totalStart) * 100) / 100,
+            continuation_ms: Math.round((deepEnd - deepStart) * 100) / 100,
+            independent_sqlite_build_count: 1,
+            reproducible: true,
+            ...levelBudget('deep', deepEnd - totalStart),
+          };
+          result.sqlite_build_count = context.metrics.sqlite_build_count;
+          result.shared_sqlite_sha256 = sharedDigest;
+          result.product_dictionary_sha256 = productDictionaryDigest;
+          result.reproducible_sqlite_sha256 = reproducibleDigest;
         }
 
         result.failure_stage = null;
@@ -207,10 +321,15 @@ export async function benchmarkCanonicalValidation({
   }
 
   return {
-    contract_version: 'canonical-validation-benchmark-v1',
-    runner_wiring: 'same-process-shared-context',
+    contract_version: 'canonical-validation-benchmark-v2',
+    runner_wiring: 'same-process-shared-context-with-level-continuation',
     synthetic_record_shape: 'one reference-only noun sense per record; every record after the first has one near relation to its predecessor',
-    sqlite_scale: sqliteScale ?? null,
+    sqlite_scales: [...selectedSqliteScales].sort((left, right) => left - right),
+    level_wiring: {
+      fast: 'shared canonical load/index/full synthetic validation plus one shared SQLite build',
+      normal: 'shared SQLite validation plus product extension consumer',
+      deep: 'independent SQLite rebuild and byte-level reproducibility check',
+    },
     results,
   };
 }

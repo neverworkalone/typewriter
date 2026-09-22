@@ -64,9 +64,8 @@ function contractCheck(label, script, testFile) {
 export const CI_CATEGORY_ORDER = Object.freeze([
   'canonical',
   'lexical',
-  'batch',
-  'historical',
   'toolchain',
+  'batch',
   'product',
   'artifacts',
 ]);
@@ -83,7 +82,7 @@ export const CI_NORMAL_CATEGORY_ORDER = Object.freeze([
     (categoryName) => !CI_FAST_CATEGORY_ORDER.includes(categoryName),
   ),
 ]);
-export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['deep']);
+export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['historical', 'deep']);
 export const CI_ALL_CATEGORY_ORDER = Object.freeze([
   ...CI_NORMAL_CATEGORY_ORDER,
   ...CI_DEEP_CATEGORY_ORDER,
@@ -240,9 +239,9 @@ export const CI_CATEGORIES = Object.freeze({
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
       npmCheck(
-        'Run 10K/100K/500K synthetic canonical benchmark',
+        'Run 500K/1M fast/normal/deep synthetic canonical benchmark',
         'benchmark:canonical',
-        ['--sizes=10000,100000,500000', '--sqlite-scale=10000'],
+        ['--sizes=500000,1000000', '--sqlite-scale=500000,1000000'],
       ),
     ],
   },

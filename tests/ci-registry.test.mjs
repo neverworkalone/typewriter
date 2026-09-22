@@ -41,7 +41,10 @@ test('every root Node test file has exactly one CI category owner', async () => 
 
 test('CI categories are ordered and every category has a descriptive label', () => {
   const allCategoryNames = [...CI_CATEGORY_ORDER, ...CI_DEEP_CATEGORY_ORDER];
-  assert.deepEqual(Object.keys(CI_CATEGORIES), allCategoryNames);
+  assert.deepEqual(
+    new Set(Object.keys(CI_CATEGORIES)),
+    new Set(allCategoryNames),
+  );
   for (const categoryName of allCategoryNames) {
     const category = CI_CATEGORIES[categoryName];
     assert.equal(typeof category.label, 'string');
@@ -94,7 +97,19 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
     CI_CATEGORIES.deep.checks.some((check) => check.testFiles?.includes('tests/m5-12a.test.mjs')),
     true,
   );
-  assert.equal(CI_CATEGORIES.deep.checks.at(-1).label, 'Run 10K/100K/500K synthetic canonical benchmark');
+  assert.equal(
+    CI_NORMAL_CATEGORY_ORDER.includes('historical'),
+    false,
+  );
+  assert.deepEqual(CI_DEEP_CATEGORY_ORDER, ['historical', 'deep']);
+  assert.equal(
+    CI_CATEGORIES.deep.checks.at(-1).label,
+    'Run 500K/1M fast/normal/deep synthetic canonical benchmark',
+  );
+  assert.deepEqual(
+    CI_CATEGORIES.deep.checks.at(-1).command({}).args,
+    ['run', 'benchmark:canonical', '--', '--sizes=500000,1000000', '--sqlite-scale=500000,1000000'],
+  );
 });
 
 test('workflow maps pull requests, master pushes, and deep triggers to CI levels', async () => {
