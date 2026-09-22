@@ -8,28 +8,27 @@
   "parent_issue": 7,
   "batch_id": "m5-13-expansion-20260922",
   "provenance": {
-    "kind": "agent_generated",
     "generator": "codex",
     "generator_version": "m5-13-shared-lexical-producer-v1",
     "generation_pass_id": "m5-13-generation-20260922",
     "verification_pass_id": "m5-13-agent-semantic-review-20260922-r1",
     "human_reviewed": false,
-    "semantic_verification_separate": true
+    "authoring_note": "The shared producer generated source-bound candidate records; a separate agent verification pass authored every semantic decision and explicit reserve outcome."
   },
   "candidate_source": {
     "source_id": "m5-13-typewriter-authored-composition-source-20260922",
-    "source_path": "scripts/batch/m5-13-candidate-source.mjs",
     "identity_sha256": "70b4938e0e4dbe5b6c61913402c7dcc5f3cc6081812117fbf4a225e1f9339022",
-    "identity_count": 1100,
-    "first_inventory_id": "m5-2001",
-    "last_inventory_id": "m5-3100"
+    "identity_count": 1100
   },
   "selection": {
     "policy": "source-authored-quality-coverage-v1",
     "capacity": 1100,
     "imported": 1000,
     "reserve": 100,
-    "selection_basis": "source-bound semantic quality threshold; no relation-type quota"
+    "score_basis": [
+      "source-bound semantic quality threshold",
+      "no relation-type quota"
+    ]
   },
   "decisions": [
     {
@@ -28759,8 +28758,30 @@
     "status": "complete",
     "candidate_count": 1100,
     "reviewed_candidate_count": 1100,
+    "method": "source-bound semantic evidence and shared lexical admission review",
+    "criteria": [
+      "source quality",
+      "atomic sense boundary",
+      "explicit no-relations evidence",
+      "reserve capacity"
+    ],
+    "decision_counts": {
+      "included": 1000,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 100
+    },
+    "admission_rule": "import included or corrected decisions only; defer context-needed reserve rows",
     "prior_generator_replaced": true,
-    "decision_scope": "complete candidate pool with source-bound deferred reserve"
+    "prior_generator_verification_pass_id": "m5-13-generation-20260922",
+    "counts": {
+      "included": 1000,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 100
+    }
   },
   "candidate_records": [
     {
@@ -47465,5 +47486,5 @@
     }
   ],
   "candidate_records_sha256": "0f6447aeacba1595a4d3fd9e9c9129f270da8ece5bafcebf6987b6e1aa90d9f7",
-  "artifact_sha256": "cd631166e2291a4825fa9532ad48cd6dc064500d9bb1e236f2dd97ece05fcc1a"
+  "artifact_sha256": "a14f3cc1941cb5a2831ad3d69a4157bf753156445f26923def17c7d4d8289982"
 }
