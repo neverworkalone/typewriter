@@ -1,0 +1,128 @@
+{
+  "schema_version": "2",
+  "contract_version": "lexical-batch-promotion-v2",
+  "artifact_id": "m5-13-promotion-20260922",
+  "issue": 99,
+  "parent_issue": 7,
+  "batch_id": "m5-13-expansion-20260922",
+  "status": "promoted",
+  "admission_sha256": "3c15b5714bff051114acced959b90cf7cd60a5cd6ef1e0373f5fba64799e9194",
+  "preflight": {
+    "contract_version": "lexical-batch-preflight-v1",
+    "status": "complete",
+    "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef",
+    "checks": {
+      "candidate_source_digest": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "generation_verification_separated": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "truthful_agent_provenance": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "deterministic_sqlite": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "search_product_regression": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "extension_build": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "package_validation": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      },
+      "artifact_policy_clean_checkout": {
+        "status": "pass",
+        "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+      }
+    }
+  },
+  "gate_evidence_sha256": "95f5d363890d753396315ab6b8271a5201fc5b30e0efab5259c145511bf119f3",
+  "outputs": {
+    "canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef",
+    "canonical_import": {
+      "path": "data/canonical/m5-13-expansion.jsonl",
+      "sha256": "bbc439aa4fbb0b0cb680dae560b2c48e12601d96d1458d631dbc11952dfde8d3",
+      "record_count": 1000
+    },
+    "seed": {
+      "path": "data/inventory/m5-target-seed.json",
+      "sha256": "e590ac2bb6d9dd65029e29c259349bd5aac3276ac8c1d6ae685e71679559d445",
+      "target_count": 1271
+    },
+    "target_promotions": {
+      "path": "data/inventory/m5-target-promotions.jsonl",
+      "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+      "append_start": 722,
+      "append_count": 1000,
+      "append_sha256": "56fbcdfd28485b0a51f27f3368385951e91d83f79dd203c88a8ed87d21d302b0",
+      "prefix_event_count": 1722,
+      "prefix_sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0"
+    },
+    "inventory": {
+      "path": "data/inventory/m5-target-inventory.json",
+      "materialization": "on-demand",
+      "sha256": "eb5866abba838cdbb718605307746aad1001697793e2a31b69ad095fbef60632",
+      "entry_count": 3335
+    },
+    "semantic_decision_source": {
+      "path": "data/validation/canonical-semantic-decision-source.json",
+      "sha256": "4ca9037da2719c9cffd6b2649fbadefa510222a5db242dfc24b4b40e37e555f1",
+      "source_id": "canonical-semantic-decision-source-20260914",
+      "canonical_records_sha256": "8d1499ffb5bac13cda638d82861eb54a33444a191bb338e6fb724bbfc410dcc2"
+    }
+  },
+  "checkpoint": {
+    "issue": 7,
+    "milestone": "M5-13 exact +1,000 promotion",
+    "canonical_records": 3042,
+    "canonical_starts": 3000,
+    "status": "recorded-on-promotion"
+  },
+  "promotion": {
+    "canonical_mutation": true,
+    "seed_mutation": true,
+    "inventory_mutation": false,
+    "semantic_decision_source_mutation": true,
+    "transaction": "prevalidated-atomic-output-commit"
+  },
+  "post_promotion_audit": {
+    "status": "complete",
+    "policy": "agent-generated",
+    "transaction": "m5-13-post-promotion-digest-and-audit-check",
+    "canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef",
+    "seed_sha256": "e590ac2bb6d9dd65029e29c259349bd5aac3276ac8c1d6ae685e71679559d445",
+    "promotion_ledger_prefix_sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0",
+    "promotion_ledger_binding": {
+      "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
+      "append_start": 722,
+      "append_count": 1000,
+      "append_sha256": "56fbcdfd28485b0a51f27f3368385951e91d83f79dd203c88a8ed87d21d302b0",
+      "prefix_event_count": 1722,
+      "prefix_sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0"
+    },
+    "semantic_decision_source_sha256": "4ca9037da2719c9cffd6b2649fbadefa510222a5db242dfc24b4b40e37e555f1",
+    "semantic_audit_sha256": "f7b07c06e7f99c345bf3327d75e35d13a4139f854ef7ef2ecf8607772f9dd1a8",
+    "semantic_audit": {
+      "contract_version": "lexical-semantic-audit-v3",
+      "scope": "complete-canonical",
+      "canonical_records_sha256": "8d1499ffb5bac13cda638d82861eb54a33444a191bb338e6fb724bbfc410dcc2",
+      "record_count": 3042,
+      "sense_count": 3301,
+      "covered_record_count": 3042,
+      "covered_sense_count": 3301,
+      "coverage_complete": true,
+      "review_complete": true,
+      "corrected_record_count": 0
+    }
+  }
+}
