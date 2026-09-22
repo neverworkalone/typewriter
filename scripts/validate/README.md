@@ -119,6 +119,11 @@ not counted twice. Batch and historical replay checks remain against their
 authoritative fixtures and are included in that fixed remainder; they are
 intentionally not synthesized from generated records.
 
+The checked-in evidence records the Actions run used for each level. For the
+deep level, the fixed remainder is taken from the exact-head `ci:all` window
+before the scale benchmark, so the 500K/1M benchmark itself is not counted
+again when its measured corpus component is composed with the fixed work.
+
 Synthetic JSONL generation and construction of the synthetic authored decision
 source are fixture preparation, not CI runner gates, so both are excluded from
 the reported corpus-dependent wall-clock component. The generated shape keeps

@@ -1,27 +1,35 @@
 {
   "contract_version": "ci-level-evidence-v1",
-  "source_head": "f83e68f16430b97d808e42898d91c68f0bc75f38",
-  "source_run": "35679633879",
-  "source_url": "https://github.com/neverworkalone/typewriter/actions/runs/35679633879",
-  "measurement": "fixed remainder derived from exact-head level wall-clock minus the current-canonical corpus baseline; remainder upper bounds rounded up to the next millisecond",
+  "source_head": "c87c3013e3ccd7bd9160912ddca1632f1c4ddfa8",
+  "source_runs": {
+    "fast": "35690480989",
+    "normal": "35690480989",
+    "deep": "35690502805"
+  },
+  "source_urls": {
+    "fast": "https://github.com/neverworkalone/typewriter/actions/runs/35690480989",
+    "normal": "https://github.com/neverworkalone/typewriter/actions/runs/35690480989",
+    "deep": "https://github.com/neverworkalone/typewriter/actions/runs/35690502805"
+  },
+  "measurement": "fast and normal fixed remainders derive from exact-head PR level wall-clock minus the current-canonical corpus baseline; deep uses the exact-head ci:all non-benchmark window minus the current-canonical deep corpus baseline; remainder upper bounds are rounded up to the next millisecond",
   "levels": {
     "fast": {
-      "observed_wall_clock_ms": 20054.33,
-      "corpus_baseline_wall_clock_ms": 183.76,
-      "fixed_remainder_observed_wall_clock_ms": 19870.57,
-      "fixed_remainder_upper_bound_ms": 19871
+      "observed_wall_clock_ms": 14632.84,
+      "corpus_baseline_wall_clock_ms": 178.65,
+      "fixed_remainder_observed_wall_clock_ms": 14454.19,
+      "fixed_remainder_upper_bound_ms": 14455
     },
     "normal": {
-      "observed_wall_clock_ms": 78820.24,
-      "corpus_baseline_wall_clock_ms": 616.56,
-      "fixed_remainder_observed_wall_clock_ms": 78203.68,
-      "fixed_remainder_upper_bound_ms": 78204
+      "observed_wall_clock_ms": 69784.76,
+      "corpus_baseline_wall_clock_ms": 612.92,
+      "fixed_remainder_observed_wall_clock_ms": 69171.84,
+      "fixed_remainder_upper_bound_ms": 69172
     },
     "deep": {
-      "observed_wall_clock_ms": 172214.82,
-      "corpus_baseline_wall_clock_ms": 733.33,
-      "fixed_remainder_observed_wall_clock_ms": 171481.49,
-      "fixed_remainder_upper_bound_ms": 171482
+      "observed_wall_clock_ms": 182810.68,
+      "corpus_baseline_wall_clock_ms": 731.73,
+      "fixed_remainder_observed_wall_clock_ms": 182078.95,
+      "fixed_remainder_upper_bound_ms": 182079
     }
   }
 }
