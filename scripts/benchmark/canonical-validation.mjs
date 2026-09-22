@@ -32,6 +32,8 @@ import { validateSharedDictionary } from '../ci/validate-shared-dictionary.mjs';
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const execFile = promisify(execFileCallback);
+const SYNTHETIC_RELATION_PERIOD = 1000;
+const SYNTHETIC_RELATION_SLOTS = 238;
 
 function parseSizes(argument = process.argv.find((value) => value.startsWith('--sizes='))) {
   const raw = argument?.slice('--sizes='.length) ?? '10000,100000,500000';
@@ -67,7 +69,7 @@ function syntheticRecord(index) {
       id: `${id}-s1`,
       pos: 'noun',
       gloss: `synthetic writer-facing record ${String(index + 1).padStart(6, '0')}`,
-      ...(previousId && index % 4 === 0
+      ...(previousId && index % SYNTHETIC_RELATION_PERIOD < SYNTHETIC_RELATION_SLOTS
         ? {
           relations: [{
             target: previousId,
@@ -201,6 +203,12 @@ function now() {
 
 function elapsed(start) {
   return Math.round((now() - start) * 100) / 100;
+}
+
+function corpusElapsed(totalStart, end, result) {
+  const totalWallClockMs = (end - totalStart) * 1;
+  const fixturePreparationMs = (result.generate_ms ?? 0) + (result.synthetic_decision_source_ms ?? 0);
+  return Math.round(Math.max(0, totalWallClockMs - fixturePreparationMs) * 100) / 100;
 }
 
 function memorySnapshot() {
@@ -506,7 +514,7 @@ export async function benchmarkCanonicalValidation({
           const fastEnd = now();
           result.corpus_cost.fast = {
             runner_category_order: CI_LEVEL_CATEGORY_ORDER.fast,
-            wall_clock_ms: Math.round((fastEnd - totalStart) * 100) / 100,
+            wall_clock_ms: corpusElapsed(totalStart, fastEnd, result),
             canonical_context: 'loaded, indexed, and globally validated once',
             sqlite_build_count: 1,
             corpus_phases: [
@@ -539,7 +547,7 @@ export async function benchmarkCanonicalValidation({
           const normalEnd = now();
           result.corpus_cost.normal = {
             runner_category_order: CI_LEVEL_CATEGORY_ORDER.normal,
-            wall_clock_ms: Math.round((normalEnd - totalStart) * 100) / 100,
+            wall_clock_ms: corpusElapsed(totalStart, normalEnd, result),
             continuation_ms: Math.round((normalEnd - normalStart) * 100) / 100,
             shared_sqlite_artifact_reused: true,
             product_dictionary_digest_matches: true,
@@ -582,7 +590,7 @@ export async function benchmarkCanonicalValidation({
           const deepEnd = now();
           result.corpus_cost.deep = {
             runner_category_order: CI_LEVEL_CATEGORY_ORDER.deep,
-            wall_clock_ms: Math.round((deepEnd - totalStart) * 100) / 100,
+            wall_clock_ms: corpusElapsed(totalStart, deepEnd, result),
             continuation_ms: Math.round((deepEnd - deepStart) * 100) / 100,
             independent_sqlite_build_count: 2,
             reproducible: true,
@@ -626,10 +634,11 @@ export async function benchmarkCanonicalValidation({
   return {
     contract_version: 'canonical-validation-benchmark-v4',
     runner_wiring: 'same-process-shared-context-with-real-corpus-phases-and-level-continuation',
-    synthetic_record_shape: 'one reference-only noun sense per record; every fourth record has one near relation to its predecessor',
+    synthetic_record_shape: 'one reference-only noun sense per record; 23.8% of non-initial records have one near relation to their predecessor',
+    benchmark_setup: 'synthetic JSONL generation and synthetic authored-decision construction are excluded from corpus cost because they are fixture preparation, not CI runner gates',
     sqlite_scales: [...selectedSqliteScales].sort((left, right) => left - right),
     corpus_cost_wiring: {
-      fast: 'real session semantic audit/topic evidence/lexical quality/full dataset validation/normalization plus one shared SQLite build',
+      fast: 'real session load/index plus semantic audit/topic evidence/lexical quality/full dataset validation/normalization and one shared SQLite build; fixture generation is excluded',
       normal: 'shared SQLite validation plus product extension consumer',
       deep: 'two independent SQLite rebuilds and byte-level reproducibility checks',
     },

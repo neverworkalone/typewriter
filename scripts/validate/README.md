@@ -118,3 +118,10 @@ remainder to each measured scale component so semantic/lexical/SQLite work is
 not counted twice. Batch and historical replay checks remain against their
 authoritative fixtures and are included in that fixed remainder; they are
 intentionally not synthesized from generated records.
+
+Synthetic JSONL generation and construction of the synthetic authored decision
+source are fixture preparation, not CI runner gates, so both are excluded from
+the reported corpus-dependent wall-clock component. The generated shape keeps
+one reference-only noun sense per record and gives 23.8% of non-initial records
+one `near` relation, matching the current canonical relation density closely
+enough for scale measurement without introducing a second editorial corpus.
