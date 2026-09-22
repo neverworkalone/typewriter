@@ -612,7 +612,8 @@ async function buildProspectiveWorkspace({ baseCanonicalDirectory, seed, promoti
     promotionPath,
     decisionSourcePath,
     generatedFromCanonicalDirectory: baseCanonicalDirectory,
-    generatedFromSeedPath: seedPath,
+    generatedFromSeedPath: CURRENT_SEED_PATH,
+    generatedFromPromotionPath: CURRENT_PROMOTION_LEDGER_PATH,
     canonicalScopeDirectory: canonicalDirectory,
     outputPath: inventoryPath,
   });

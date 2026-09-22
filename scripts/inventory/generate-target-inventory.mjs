@@ -386,6 +386,7 @@ export async function buildTargetInventory({
   promotionPath,
   decisionSourcePath = DEFAULT_DECISION_SOURCE_PATH,
   generatedFromSeedPath = seedPath,
+  generatedFromPromotionPath,
   generatedFromCanonicalDirectory = canonicalDirectory,
   canonicalScopeDirectory = canonicalDirectory,
 } = {}) {
@@ -516,7 +517,9 @@ export async function buildTargetInventory({
     generated_from: [
       path.relative(process.cwd(), generatedFromCanonicalDirectory),
       path.relative(process.cwd(), generatedFromSeedPath),
-      ...(promotionLedger.length > 0 ? [path.relative(process.cwd(), effectivePromotionPath)] : []),
+      ...(promotionLedger.length > 0
+        ? [path.relative(process.cwd(), generatedFromPromotionPath ?? effectivePromotionPath)]
+        : []),
     ],
     canonical_snapshot: {
       record_count: currentEntries.length,
