@@ -359,7 +359,7 @@ test('M5-12A shared production rejects a batch-local whitespace alias', async ()
         checkPilotCompleteness: true,
       })
     )),
-    (error) => error.code === 'LEXICAL_SEMANTIC_BINDING',
+    /collapsed internal-whitespace alias/u,
   );
 });
 
