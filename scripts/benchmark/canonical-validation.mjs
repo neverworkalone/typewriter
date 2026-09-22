@@ -2,7 +2,7 @@ import { execFile as execFileCallback } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { performance } from 'node:perf_hooks';
-import { mkdir, mkdtemp, open, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -15,7 +15,18 @@ import {
   contextSummary,
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
+import {
+  DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  SEMANTIC_DECISION_SOURCE_KIND,
+  buildCanonicalSemanticAudit,
+  buildSemanticTopicEvidence,
+  cachedSha256Json,
+  canonicalRecordsSha256,
+  createCanonicalAuditCache,
+} from '../validate/semantic-audit.mjs';
 import { validateDatasetRecords } from '../validate/dataset-integrity.mjs';
+import { auditCanonicalLexicalQuality } from '../validate/lexical-quality.mjs';
+import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { validateSharedDictionary } from '../ci/validate-shared-dictionary.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -56,7 +67,7 @@ function syntheticRecord(index) {
       id: `${id}-s1`,
       pos: 'noun',
       gloss: `synthetic writer-facing record ${String(index + 1).padStart(6, '0')}`,
-      ...(previousId
+      ...(previousId && index % 4 === 0
         ? {
           relations: [{
             target: previousId,
@@ -66,6 +77,121 @@ function syntheticRecord(index) {
         }
         : {}),
     }],
+  };
+}
+
+function recordOf(recordInfo) {
+  return recordInfo?.record ?? recordInfo;
+}
+
+function createSyntheticDecisionSource(recordInfos, template, scale, hashCache) {
+  const records = recordInfos.map(recordOf);
+  const canonicalDigest = hashCache?.canonicalDigest ?? canonicalRecordsSha256(recordInfos);
+  const sourceId = `synthetic-canonical-benchmark-${scale}`;
+  const templateReview = template.authored_review;
+  const templatePass = templateReview.review_pass;
+  const templateRecord = templateReview.records.find((record) => record.boundary_review);
+  const templateEvidence = templateRecord?.boundary_review?.evidence?.find(Boolean);
+  const templateSense = templateRecord?.sense_reviews?.find(Boolean);
+  const findCode = (value, fieldName) => {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = findCode(item, fieldName);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    if (!value || typeof value !== 'object') return undefined;
+    if (typeof value[fieldName] === 'string') return value[fieldName];
+    for (const child of Object.values(value)) {
+      const found = findCode(child, fieldName);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  const rationaleCodes = {
+    boundaryEvidence: templateEvidence?.evidence_basis_code
+      ?? findCode(templateReview.records, 'evidence_basis_code'),
+    evidenceRationale: templateEvidence?.rationale_code
+      ?? findCode(templateReview.records, 'rationale_code'),
+    boundaryRationale: templateRecord?.boundary_review?.rationale_code
+      ?? findCode(templateReview.records, 'rationale_code'),
+    relationRationale: templateSense?.relation_rationale_code
+      ?? findCode(templateReview.records, 'relation_rationale_code'),
+    noRelationRationale: templateSense?.no_relation_rationale_code
+      ?? findCode(templateReview.records, 'no_relation_rationale_code'),
+  };
+  const senseCount = records.reduce((count, record) => count + record.senses.length, 0);
+  const authoredReview = {
+    schema_version: templateReview.schema_version,
+    contract_version: templateReview.contract_version,
+    artifact_id: `${sourceId}-review`,
+    scope: 'complete-canonical',
+    review_mode: templateReview.review_mode,
+    review_pass: {
+      ...structuredClone(templatePass),
+      id: `${sourceId}-review-pass`,
+      reviewer: 'synthetic-benchmark',
+      record_count: records.length,
+      sense_count: senseCount,
+      open_finding_count: 0,
+      correction_count: 0,
+      correction_history: [],
+      boundary_decision_history: [],
+    },
+    source: {
+      kind: 'canonical-jsonl-record-values',
+      canonical_records_sha256: canonicalDigest,
+    },
+    decision_source: {
+      kind: SEMANTIC_DECISION_SOURCE_KIND,
+      contract_version: templateReview.decision_source.contract_version,
+      source_id: sourceId,
+      path: `benchmark://${sourceId}`,
+    },
+    record_count: records.length,
+    sense_count: senseCount,
+    records: records.map((record) => ({
+      record_id: record.id,
+      record_sha256: cachedSha256Json(record, hashCache),
+      boundary_review: {
+        decision: 'retain',
+        classification: 'atomic',
+        evidence: record.senses.map((sense) => ({
+          sense_id: sense.id,
+          evidence_basis_code: rationaleCodes.boundaryEvidence,
+          rationale_code: rationaleCodes.evidenceRationale,
+        })),
+        rationale_code: rationaleCodes.boundaryRationale,
+      },
+      sense_reviews: record.senses.map((sense) => {
+        const hasRelations = (sense.relations?.length ?? 0) > 0;
+        return {
+          sense_id: sense.id,
+          relation_decision: hasRelations ? 'relations-reviewed' : 'no-relations',
+          ...(hasRelations
+            ? {}
+            : { no_relation_rationale_code: rationaleCodes.noRelationRationale }),
+        };
+      }),
+    })),
+    changes: [],
+    rationale_templates: structuredClone(templateReview.rationale_templates ?? []),
+  };
+
+  return {
+    schema_version: template.schema_version,
+    contract_version: template.contract_version,
+    kind: template.kind,
+    source_id: sourceId,
+    authoring_mode: template.authoring_mode,
+    scope: 'complete-canonical',
+    source: {
+      kind: 'canonical-jsonl-record-values',
+      canonical_records_sha256: canonicalDigest,
+    },
+    authored_review_sha256: cachedSha256Json(authoredReview, hashCache),
+    authored_review: authoredReview,
   };
 }
 
@@ -139,32 +265,49 @@ async function runProductBuild({ sharedDictionaryPath, outputDirectory }) {
   );
 }
 
-function parseFixedLevelCosts(
-  argument = process.argv.find((value) => value.startsWith('--fixed-level-ms=')),
+function parseFixedLevelEvidencePath(
+  argument = process.argv.find((value) => value.startsWith('--fixed-level-evidence=')),
 ) {
-  const raw = argument?.slice('--fixed-level-ms='.length);
+  const raw = argument?.slice('--fixed-level-evidence='.length);
   if (raw === undefined || raw === 'none') return undefined;
-  const costs = Object.fromEntries(raw.split(',').map((entry) => {
-    const [level, value] = entry.split(':');
-    const milliseconds = Number(value);
-    if (!['fast', 'normal', 'deep'].includes(level)
-      || !Number.isFinite(milliseconds)
-      || milliseconds < 0) {
-      throw new Error(
-        `--fixed-level-ms must contain fast|normal|deep non-negative millisecond pairs: ${raw}`,
-      );
-    }
-    return [level, milliseconds];
-  }));
-  for (const level of ['fast', 'normal', 'deep']) {
-    if (!Object.hasOwn(costs, level)) {
-      throw new Error(`--fixed-level-ms is missing the ${level} level: ${raw}`);
-    }
-  }
-  return costs;
+  return path.resolve(REPOSITORY_DIRECTORY, raw);
 }
 
-function composeLevelBudgets(corpusCost, fixedLevelCosts) {
+function validateFixedLevelEvidence(evidence, sourcePath = '<inline evidence>') {
+  if (!evidence || evidence.contract_version !== 'ci-level-evidence-v1') {
+    throw new Error(`${sourcePath}: unsupported fixed-level evidence contract`);
+  }
+  for (const level of ['fast', 'normal', 'deep']) {
+    const entry = evidence.levels?.[level];
+    if (!entry
+      || !Number.isFinite(entry.observed_wall_clock_ms)
+      || !Number.isFinite(entry.corpus_baseline_wall_clock_ms)
+      || !Number.isFinite(entry.fixed_remainder_observed_wall_clock_ms)
+      || !Number.isFinite(entry.fixed_remainder_upper_bound_ms)
+      || entry.observed_wall_clock_ms < 0
+      || entry.corpus_baseline_wall_clock_ms < 0
+      || entry.fixed_remainder_observed_wall_clock_ms < 0
+      || entry.fixed_remainder_upper_bound_ms < entry.fixed_remainder_observed_wall_clock_ms) {
+      throw new Error(`${sourcePath}: ${level} must contain exact-head wall-clock, corpus baseline, and fixed remainder evidence`);
+    }
+  }
+  return evidence;
+}
+
+async function loadFixedLevelEvidence(inlineEvidence) {
+  if (inlineEvidence !== undefined) return validateFixedLevelEvidence(inlineEvidence);
+  const evidencePath = parseFixedLevelEvidencePath();
+  if (!evidencePath) return undefined;
+  let evidence;
+  try {
+    evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
+  } catch (error) {
+    throw new Error(`unable to read fixed-level evidence ${evidencePath}: ${error.message}`);
+  }
+  return validateFixedLevelEvidence(evidence, evidencePath);
+}
+
+function composeLevelBudgets(corpusCost, fixedLevelEvidence) {
   const targetWallClockMs = {
     fast: 60_000,
     normal: 180_000,
@@ -172,9 +315,13 @@ function composeLevelBudgets(corpusCost, fixedLevelCosts) {
   };
   return Object.fromEntries(Object.entries(targetWallClockMs).map(([level, target]) => {
     const corpusComponentMs = corpusCost[level].wall_clock_ms;
-    const conservativeUpperBoundMs = fixedLevelCosts[level] + corpusComponentMs;
+    const fixedLevelEvidenceMs = fixedLevelEvidence.levels[level].fixed_remainder_upper_bound_ms;
+    const conservativeUpperBoundMs = fixedLevelEvidenceMs + corpusComponentMs;
     return [level, {
-      fixed_level_upper_bound_ms: fixedLevelCosts[level],
+      fixed_level_observed_ms: fixedLevelEvidence.levels[level].observed_wall_clock_ms,
+      fixed_remainder_observed_ms: fixedLevelEvidence.levels[level].fixed_remainder_observed_wall_clock_ms,
+      fixed_remainder_upper_bound_ms: fixedLevelEvidenceMs,
+      fixed_remainder_source_corpus_baseline_ms: fixedLevelEvidence.levels[level].corpus_baseline_wall_clock_ms,
       corpus_component_ms: corpusComponentMs,
       conservative_upper_bound_ms: Math.round(conservativeUpperBoundMs * 100) / 100,
       target_wall_clock_ms: target,
@@ -188,11 +335,31 @@ export async function benchmarkCanonicalValidation({
   sqliteScale,
   sqliteScales,
   fixedLevelCosts,
+  fixedLevelEvidence,
 } = {}) {
   const selectedSqliteScales = sqliteScales === undefined
     ? (sqliteScale === undefined ? parseOptionalScales() : new Set([sqliteScale]))
     : new Set(sqliteScales);
-  const selectedFixedLevelCosts = fixedLevelCosts ?? parseFixedLevelCosts();
+  const selectedFixedLevelEvidence = await loadFixedLevelEvidence(
+    fixedLevelEvidence
+      ?? (fixedLevelCosts
+        ? {
+          contract_version: 'ci-level-evidence-v1',
+          measurement: 'inline caller-supplied level upper bounds',
+          levels: Object.fromEntries(
+            Object.entries(fixedLevelCosts).map(([level, milliseconds]) => [level, {
+              observed_wall_clock_ms: milliseconds,
+              corpus_baseline_wall_clock_ms: 0,
+              fixed_remainder_observed_wall_clock_ms: milliseconds,
+              fixed_remainder_upper_bound_ms: milliseconds,
+            }]),
+          ),
+        }
+        : undefined),
+  );
+  const semanticDecisionSourceTemplate = JSON.parse(
+    await readFile(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH, 'utf8'),
+  );
   const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-benchmark-'));
   const results = [];
 
@@ -233,12 +400,64 @@ export async function benchmarkCanonicalValidation({
         result.load_and_index_ms = elapsed(loadStart);
         sampleMemory();
 
+        result.failure_stage = 'semantic-audit';
+        const semanticAuditStart = now();
+        const semanticAuditCache = createCanonicalAuditCache(context.records);
+        context.semanticAuditCache = semanticAuditCache;
+        const syntheticSourceStart = now();
+        const syntheticDecisionSource = createSyntheticDecisionSource(
+          context.records,
+          semanticDecisionSourceTemplate,
+          scale,
+          semanticAuditCache,
+        );
+        result.synthetic_decision_source_ms = elapsed(syntheticSourceStart);
+        const { artifact: semanticAudit, decisionSource } = await buildCanonicalSemanticAudit({
+          canonicalDirectory,
+          canonicalContext: context,
+          decisionSource: syntheticDecisionSource,
+          hashCache: semanticAuditCache,
+          batchDecisionSourcePaths: [],
+        });
+        context.semanticAudit = semanticAudit;
+        context.semanticDecisionSource = decisionSource;
+        result.semantic_audit_ms = elapsed(semanticAuditStart);
+        sampleMemory();
+
+        result.failure_stage = 'topic-evidence';
+        const topicEvidenceStart = now();
+        const topicEvidence = buildSemanticTopicEvidence(
+          context.records,
+          semanticAudit,
+          { hashCache: context.semanticAuditCache },
+        );
+        context.derived.topicEvidence = topicEvidence;
+        result.topic_evidence_ms = elapsed(topicEvidenceStart);
+        sampleMemory();
+
+        result.failure_stage = 'lexical-quality';
+        const lexicalQualityStart = now();
+        const lexicalQuality = auditCanonicalLexicalQuality(
+          context.records,
+          {
+            context,
+            topicEvidence,
+            scope: 'complete-canonical',
+            throwOnError: false,
+          },
+        );
+        context.derived.lexicalQuality = lexicalQuality;
+        result.lexical_quality_ms = elapsed(lexicalQualityStart);
+        sampleMemory();
+
         result.failure_stage = 'global-validation';
         const validationStart = now();
         const indexes = validateDatasetRecords(context.records, {
           context,
           checkPilotCompleteness: false,
+          semanticAudit,
           requireSemanticAudit: false,
+          lexicalQuality,
         });
         result.global_validation_ms = elapsed(validationStart);
         sampleMemory();
@@ -259,6 +478,16 @@ export async function benchmarkCanonicalValidation({
         };
 
         if (selectedSqliteScales.has(scale)) {
+          result.failure_stage = 'normalize';
+          const normalizeStart = now();
+          const normalizedModel = await normalizeCanonicalDirectory(canonicalDirectory, {
+            checkPilotCompleteness: false,
+            canonicalContext: context,
+            semanticAudit,
+          });
+          result.normalize_ms = elapsed(normalizeStart);
+          sampleMemory();
+
           result.failure_stage = 'sqlite-build';
           const buildStart = now();
           await buildDictionary({
@@ -267,6 +496,8 @@ export async function benchmarkCanonicalValidation({
             canonicalContext: context,
             repositoryDirectory: REPOSITORY_DIRECTORY,
             allowDirty: true,
+            semanticAudit,
+            normalizedModel,
           });
           result.sqlite_build_ms = elapsed(buildStart);
           result.sqlite_build_count = context.metrics.sqlite_build_count;
@@ -278,6 +509,15 @@ export async function benchmarkCanonicalValidation({
             wall_clock_ms: Math.round((fastEnd - totalStart) * 100) / 100,
             canonical_context: 'loaded, indexed, and globally validated once',
             sqlite_build_count: 1,
+            corpus_phases: [
+              'load_and_index',
+              'buildCanonicalSemanticAudit',
+              'buildSemanticTopicEvidence',
+              'auditCanonicalLexicalQuality',
+              'validateDatasetRecords',
+              'normalizeCanonicalDirectory',
+              'buildDictionary',
+            ],
           };
 
           const normalStart = now();
@@ -304,6 +544,10 @@ export async function benchmarkCanonicalValidation({
             shared_sqlite_artifact_reused: true,
             product_dictionary_digest_matches: true,
             sqlite_build_count: 0,
+            corpus_phases: [
+              'validateSharedDictionary',
+              'product_extension_consumer',
+            ],
           };
 
           const deepStart = now();
@@ -314,27 +558,49 @@ export async function benchmarkCanonicalValidation({
             canonicalContext: context,
             repositoryDirectory: REPOSITORY_DIRECTORY,
             allowDirty: true,
+            semanticAudit,
+            normalizedModel,
+          });
+          const reproducibleSecondOutputPath = path.join(
+            scaleDirectory,
+            'dictionary-reproducible-second.sqlite',
+          );
+          await buildDictionary({
+            inputDirectory: canonicalDirectory,
+            outputPath: reproducibleSecondOutputPath,
+            canonicalContext: context,
+            repositoryDirectory: REPOSITORY_DIRECTORY,
+            allowDirty: true,
+            semanticAudit,
+            normalizedModel,
           });
           const reproducibleDigest = await sha256File(reproducibleOutputPath);
-          if (reproducibleDigest !== sharedDigest) {
-            throw new Error('independent SQLite build did not reproduce the shared artifact');
+          const reproducibleSecondDigest = await sha256File(reproducibleSecondOutputPath);
+          if (reproducibleDigest !== sharedDigest || reproducibleSecondDigest !== sharedDigest) {
+            throw new Error('independent SQLite builds did not reproduce the shared artifact');
           }
           const deepEnd = now();
           result.corpus_cost.deep = {
             runner_category_order: CI_LEVEL_CATEGORY_ORDER.deep,
             wall_clock_ms: Math.round((deepEnd - totalStart) * 100) / 100,
             continuation_ms: Math.round((deepEnd - deepStart) * 100) / 100,
-            independent_sqlite_build_count: 1,
+            independent_sqlite_build_count: 2,
             reproducible: true,
+            corpus_phases: [
+              'independent_buildDictionary_1',
+              'independent_buildDictionary_2',
+              'byte_identical_digest_check',
+            ],
           };
           result.sqlite_build_count = context.metrics.sqlite_build_count;
           result.shared_sqlite_sha256 = sharedDigest;
           result.product_dictionary_sha256 = productDictionaryDigest;
           result.reproducible_sqlite_sha256 = reproducibleDigest;
-          if (selectedFixedLevelCosts) {
+          result.reproducible_second_sqlite_sha256 = reproducibleSecondDigest;
+          if (selectedFixedLevelEvidence) {
             result.composed_ci_levels = composeLevelBudgets(
               result.corpus_cost,
-              selectedFixedLevelCosts,
+              selectedFixedLevelEvidence,
             );
           }
         }
@@ -358,16 +624,16 @@ export async function benchmarkCanonicalValidation({
   }
 
   return {
-    contract_version: 'canonical-validation-benchmark-v2',
-    runner_wiring: 'same-process-shared-context-with-level-continuation',
-    synthetic_record_shape: 'one reference-only noun sense per record; every record after the first has one near relation to its predecessor',
+    contract_version: 'canonical-validation-benchmark-v4',
+    runner_wiring: 'same-process-shared-context-with-real-corpus-phases-and-level-continuation',
+    synthetic_record_shape: 'one reference-only noun sense per record; every fourth record has one near relation to its predecessor',
     sqlite_scales: [...selectedSqliteScales].sort((left, right) => left - right),
     corpus_cost_wiring: {
-      fast: 'shared canonical load/index/full synthetic validation plus one shared SQLite build',
+      fast: 'real session semantic audit/topic evidence/lexical quality/full dataset validation/normalization plus one shared SQLite build',
       normal: 'shared SQLite validation plus product extension consumer',
-      deep: 'independent SQLite rebuild and byte-level reproducibility check',
+      deep: 'two independent SQLite rebuilds and byte-level reproducibility checks',
     },
-    fixed_level_costs_ms: selectedFixedLevelCosts ?? null,
+    fixed_level_evidence: selectedFixedLevelEvidence ?? null,
     results,
   };
 }

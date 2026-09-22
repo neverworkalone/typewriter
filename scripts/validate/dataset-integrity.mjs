@@ -299,6 +299,7 @@ export function validateDatasetRecords(
         label: 'complete canonical semantic audit',
         requireDecisionSource,
         requireTopicAnalysis,
+        hashCache: context?.semanticAuditCache,
       });
     } catch (error) {
       fail(error.message, error.code);
@@ -310,6 +311,7 @@ export function validateDatasetRecords(
         topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
           label: 'complete canonical semantic audit',
           requireTopicAnalysis,
+          hashCache: context?.semanticAuditCache,
         });
       } catch (error) {
         fail(error.message, error.code);
@@ -323,6 +325,7 @@ export function validateDatasetRecords(
         topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
           label: 'semantic audit',
           requireTopicAnalysis,
+          hashCache: context?.semanticAuditCache,
         });
       } catch (error) {
         fail(error.message, error.code);

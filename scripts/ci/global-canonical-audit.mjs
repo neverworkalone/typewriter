@@ -21,7 +21,9 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
   }
 
   const topicEvidence = context.derived.topicEvidence
-    ?? buildSemanticTopicEvidence(context.records, semanticAudit);
+    ?? buildSemanticTopicEvidence(context.records, semanticAudit, {
+      hashCache: context.semanticAuditCache,
+    });
   context.derived.topicEvidence = topicEvidence;
   const lexicalQuality = context.derived.lexicalQuality
     ?? auditCanonicalLexicalQuality(context.records, {

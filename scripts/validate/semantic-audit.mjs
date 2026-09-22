@@ -47,6 +47,7 @@ const MECHANICAL_BOUNDARY_RELATIONSHIPS = new Set([
   'usage-variant',
   'overlapping',
 ]);
+const SHA256_PATTERN = /^[a-f0-9]{64}$/u;
 export const SEMANTIC_BOUNDARY_METHOD = 'gloss-and-usage-pairwise-v2';
 export const SEMANTIC_BOUNDARY_DECISION_SOURCE_VERSION = 'lexical-semantic-boundary-decisions-v1';
 export const SEMANTIC_DECISION_SOURCE_SCHEMA_VERSION = '1';
@@ -117,7 +118,7 @@ function requireString(value, label) {
 
 function requireDigest(value, label) {
   requireString(value, label);
-  if (!/^[a-f0-9]{64}$/u.test(value)) {
+  if (!SHA256_PATTERN.test(value)) {
     fail(`${label} must be a SHA-256 digest`, 'SEMANTIC_AUDIT_VALUE');
   }
   return value;
@@ -168,6 +169,17 @@ function compareCanonicalRecordIds(leftId, rightId) {
  * files without changing any record value.
  */
 export function orderCanonicalRecordInfos(recordInfos) {
+  let isAlreadyOrdered = true;
+  for (let index = 1; index < recordInfos.length; index += 1) {
+    if (compareCanonicalRecordIds(
+      recordOf(recordInfos[index - 1]).id,
+      recordOf(recordInfos[index]).id,
+    ) > 0) {
+      isAlreadyOrdered = false;
+      break;
+    }
+  }
+  if (isAlreadyOrdered) return recordInfos;
   return recordInfos
     .map((recordInfo, index) => ({ recordInfo, index }))
     .sort((left, right) => {
@@ -182,6 +194,75 @@ export function orderCanonicalRecordInfos(recordInfos) {
 
 export function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
+}
+
+const CANONICAL_AUDIT_CACHE_TOKEN = Symbol('canonical-audit-cache');
+
+export function createCanonicalAuditCache(recordInfos) {
+  const ordered = orderCanonicalRecordInfos(recordInfos);
+  return {
+    [CANONICAL_AUDIT_CACHE_TOKEN]: true,
+    recordInfos,
+    orderedRecordInfos: ordered,
+    canonicalDigest: sha256Json(ordered.map(recordOf)),
+    objectHashes: new WeakMap(),
+    primitiveHashes: new Map(),
+    relationCoverage: new WeakMap(),
+    writerDomainEvidence: new Map(),
+    glossConnectors: new Map(),
+  };
+}
+
+function isCanonicalAuditCache(hashCache, recordInfos) {
+  return Boolean(
+    hashCache?.[CANONICAL_AUDIT_CACHE_TOKEN] === true
+      && hashCache.recordInfos === recordInfos,
+  );
+}
+
+export function cachedSha256Json(value, hashCache) {
+  if (!hashCache?.[CANONICAL_AUDIT_CACHE_TOKEN]) return sha256Json(value);
+  if (value !== null && typeof value === 'object') {
+    const cached = hashCache.objectHashes.get(value);
+    if (cached) return cached;
+    const digest = sha256Json(value);
+    hashCache.objectHashes.set(value, digest);
+    return digest;
+  }
+  const key = `${typeof value}:${String(value)}`;
+  const cached = hashCache.primitiveHashes.get(key);
+  if (cached) return cached;
+  const digest = sha256Json(value);
+  hashCache.primitiveHashes.set(key, digest);
+  return digest;
+}
+
+function canonicalDigestFor(recordInfos, hashCache) {
+  if (isCanonicalAuditCache(hashCache, recordInfos)) return hashCache.canonicalDigest;
+  return canonicalRecordsSha256(recordInfos);
+}
+
+function orderedRecordInfosFor(recordInfos, hashCache) {
+  if (isCanonicalAuditCache(hashCache, recordInfos)) return hashCache.orderedRecordInfos;
+  return orderCanonicalRecordInfos(recordInfos);
+}
+
+function cachedWriterDomainEvidence(gloss, hashCache) {
+  if (!hashCache?.writerDomainEvidence) return inspectWriterDomainEvidence(gloss);
+  const cached = hashCache.writerDomainEvidence.get(gloss);
+  if (cached) return cached;
+  const evidence = inspectWriterDomainEvidence(gloss);
+  hashCache.writerDomainEvidence.set(gloss, evidence);
+  return evidence;
+}
+
+function cachedGlossConnectors(gloss, hashCache) {
+  if (!hashCache?.glossConnectors) return inspectGlossConnectors(gloss);
+  const cached = hashCache.glossConnectors.get(gloss);
+  if (cached) return cached;
+  const connectors = inspectGlossConnectors(gloss);
+  hashCache.glossConnectors.set(gloss, connectors);
+  return connectors;
 }
 
 /**
@@ -303,6 +384,8 @@ function compactTextField(target, field, value, context, rationaleRegistry) {
   else target[field] = value;
 }
 
+const RATIONALE_TEMPLATE_TOKEN_PATTERN = /\{\{(left_gloss_sha256|right_gloss_sha256|gloss_sha256|left_gloss_sha256_prefix|right_gloss_sha256_prefix|gloss_sha256_prefix|left_sense_id|right_sense_id|sense_id|record_id)\}\}/gu;
+
 function resolveTextField(stored, field, context, templates, label) {
   if (stored[field] !== undefined) return stored[field];
   const code = stored[`${field}_code`];
@@ -311,18 +394,12 @@ function resolveTextField(stored, field, context, templates, label) {
   if (typeof template !== 'string') {
     fail(`${label}.${field}_code does not reference a retained rationale template`, 'SEMANTIC_AUDIT_TEMPLATE_MISSING');
   }
-  const resolved = template
-    .replaceAll('{{record_id}}', context.record_id ?? '')
-    .replaceAll('{{sense_id}}', context.sense_id ?? '')
-    .replaceAll('{{left_sense_id}}', context.left_sense_id ?? '')
-    .replaceAll('{{right_sense_id}}', context.right_sense_id ?? '')
-    .replaceAll('{{gloss_sha256}}', context.gloss_sha256 ?? '')
-    .replaceAll('{{gloss_sha256_prefix}}', context.gloss_sha256?.slice(0, 12) ?? '')
-    .replaceAll('{{left_gloss_sha256}}', context.left_gloss_sha256 ?? '')
-    .replaceAll('{{right_gloss_sha256}}', context.right_gloss_sha256 ?? '')
-    .replaceAll('{{left_gloss_sha256_prefix}}', context.left_gloss_sha256?.slice(0, 12) ?? '')
-    .replaceAll('{{right_gloss_sha256_prefix}}', context.right_gloss_sha256?.slice(0, 12) ?? '');
-  return resolved;
+  return template.replace(RATIONALE_TEMPLATE_TOKEN_PATTERN, (_match, token) => {
+    if (token.endsWith('_prefix')) {
+      return context[token.slice(0, -'_prefix'.length)]?.slice(0, 12) ?? '';
+    }
+    return context[token] ?? '';
+  });
 }
 
 /**
@@ -547,7 +624,14 @@ function resolveBatchDecision(record, binding, batchDecisionSources) {
   return row;
 }
 
-function materializeBatchReviewRecord(record, storedRecord, binding, row, decisionSourceId) {
+function materializeBatchReviewRecord(
+  record,
+  storedRecord,
+  binding,
+  row,
+  decisionSourceId,
+  { hashCache } = {},
+) {
   const storedSenseReviews = row.sense_reviews ?? [
     {
       ...row,
@@ -582,7 +666,7 @@ function materializeBatchReviewRecord(record, storedRecord, binding, row, decisi
       if (!senseReview) fail(`${record.id} authored batch row is missing ${sense.id}`, 'SEMANTIC_AUDIT_BATCH_SOURCE_SCOPE');
       return {
         sense_id: sense.id,
-        gloss_sha256: sha256Json(sense.gloss),
+        gloss_sha256: cachedSha256Json(sense.gloss, hashCache),
         evidence_basis: senseReview.semantic_rationale,
         rationale: senseReview.boundary_rationale,
         decision_source_id: decisionSourceId,
@@ -596,15 +680,15 @@ function materializeBatchReviewRecord(record, storedRecord, binding, row, decisi
   };
   const senseReviews = record.senses.map((sense) => {
     const storedSense = storedSenseById.get(sense.id);
-    const relationCoverage = senseRelationCoverage(sense);
+    const relationCoverage = senseRelationCoverage(sense, { hashCache });
     if (!storedSense?.relation_decision) {
       fail(`${record.id} ${sense.id} authored relation decision is missing`, 'SEMANTIC_AUDIT_BATCH_SOURCE_SCOPE');
     }
     const relationRationale = storedSense.no_relation_rationale ?? storedSense.semantic_rationale;
-    const senseGlossSha256 = sha256Json(sense.gloss);
+    const senseGlossSha256 = cachedSha256Json(sense.gloss, hashCache);
     return {
       sense_id: sense.id,
-      sense_sha256: sha256Json(sense),
+      sense_sha256: cachedSha256Json(sense, hashCache),
       sense_boundary: {
         status: 'pass',
         action: boundaryDecision,
@@ -647,7 +731,7 @@ function materializeBatchReviewRecord(record, storedRecord, binding, row, decisi
         sense_id: sense.id,
         lemma: record.lemma,
         gloss_sha256: senseGlossSha256,
-        observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+        observed_domain_axes: cachedWriterDomainEvidence(sense.gloss, hashCache).axes,
         pos: sense.pos,
         record_type: record.record_type,
         relation_count: relationCoverage.relation_count,
@@ -700,15 +784,18 @@ function materializedBoundarySource(review, decisionSourceId) {
 export function materializeSemanticReviewArtifact(
   recordInfos,
   compactReview,
-  { decisionSourceId, batchDecisionSources = [] } = {},
+  { decisionSourceId, batchDecisionSources = [], hashCache, onRecord } = {},
 ) {
   if (compactReview?.contract_version !== COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION) {
     return structuredClone(compactReview);
   }
-  const recordsById = new Map(recordInfos.map((recordInfo) => {
-    const record = recordOf(recordInfo);
-    return [record.id, record];
-  }));
+  const canonicalRecords = recordInfos.map(recordOf);
+  const compactRecords = compactReview.records ?? [];
+  const recordsMatchCanonicalOrder = compactRecords.length === canonicalRecords.length
+    && compactRecords.every((storedRecord, index) => storedRecord.record_id === canonicalRecords[index].id);
+  const recordsById = recordsMatchCanonicalOrder
+    ? undefined
+    : new Map(canonicalRecords.map((record) => [record.id, record]));
   const sourceId = decisionSourceId ?? compactReview.decision_source?.source_id;
   const boundarySource = materializedBoundarySource(compactReview, sourceId);
   const normalizedBatchDecisionSources = normalizeBatchDecisionSources(batchDecisionSources);
@@ -716,8 +803,10 @@ export function materializeSemanticReviewArtifact(
     (compactReview.rationale_templates ?? []).map(({ code, template }) => [code, template]),
   );
   const reviewPassId = compactReview.review_pass?.id ?? compactReview.artifact_id ?? 'canonical-semantic-review';
-  const records = (compactReview.records ?? []).map((storedRecord, recordIndex) => {
-    const record = recordsById.get(storedRecord.record_id);
+  const records = compactRecords.map((storedRecord, recordIndex) => {
+    const record = recordsMatchCanonicalOrder
+      ? canonicalRecords[recordIndex]
+      : recordsById.get(storedRecord.record_id);
     if (!record) {
       fail(
         `${compactReview.artifact_id ?? 'compact semantic review'}.records[${recordIndex}] is not canonical`,
@@ -732,6 +821,7 @@ export function materializeSemanticReviewArtifact(
         batchBinding,
         resolveBatchDecision(record, batchBinding, normalizedBatchDecisionSources),
         sourceId,
+        { hashCache },
       )
       : storedRecord;
     if (batchBinding && (storedRecord.boundary_review || storedRecord.sense_reviews)) {
@@ -742,10 +832,17 @@ export function materializeSemanticReviewArtifact(
     }
     const storedBoundary = referencedRecord.boundary_review ?? {};
     const boundaryReviewId = storedBoundary.review_id ?? `${reviewPassId}:${record.id}:boundary`;
-    const evidenceBySense = new Map((storedBoundary.evidence ?? []).map((item) => [item.sense_id, item]));
-    const materializedEvidence = record.senses.map((sense) => {
-      const item = evidenceBySense.get(sense.id) ?? {};
-      const glossSha256 = sha256Json(sense.gloss);
+    const boundaryEvidenceItems = storedBoundary.evidence ?? [];
+    const evidenceMatchesSenseOrder = boundaryEvidenceItems.length === record.senses.length
+      && boundaryEvidenceItems.every((item, senseIndex) => item.sense_id === record.senses[senseIndex].id);
+    const evidenceBySense = evidenceMatchesSenseOrder
+      ? undefined
+      : new Map(boundaryEvidenceItems.map((item) => [item.sense_id, item]));
+    const materializedEvidence = record.senses.map((sense, senseIndex) => {
+      const item = (evidenceMatchesSenseOrder
+        ? boundaryEvidenceItems[senseIndex]
+        : evidenceBySense.get(sense.id)) ?? {};
+      const glossSha256 = cachedSha256Json(sense.gloss, hashCache);
       const context = {
         record_id: record.id,
         sense_id: sense.id,
@@ -766,8 +863,10 @@ export function materializeSemanticReviewArtifact(
         record_id: record.id,
         left_sense_id: item.left_sense_id,
         right_sense_id: item.right_sense_id,
-        left_gloss_sha256: item.left_gloss_sha256 ?? (leftSense ? sha256Json(leftSense.gloss) : undefined),
-        right_gloss_sha256: item.right_gloss_sha256 ?? (rightSense ? sha256Json(rightSense.gloss) : undefined),
+        left_gloss_sha256: item.left_gloss_sha256
+          ?? (leftSense ? cachedSha256Json(leftSense.gloss, hashCache) : undefined),
+        right_gloss_sha256: item.right_gloss_sha256
+          ?? (rightSense ? cachedSha256Json(rightSense.gloss, hashCache) : undefined),
       };
       return {
         ...structuredClone(item),
@@ -803,13 +902,20 @@ export function materializeSemanticReviewArtifact(
         `${record.id} boundary review`,
       ),
     };
-    const storedSenseById = new Map((referencedRecord.sense_reviews ?? []).map((item) => [item.sense_id, item]));
-    const senseReviews = record.senses.map((sense) => {
-      const rawStoredSense = storedSenseById.get(sense.id) ?? {};
+    const storedSenseReviews = referencedRecord.sense_reviews ?? [];
+    const senseReviewsMatchSenseOrder = storedSenseReviews.length === record.senses.length
+      && storedSenseReviews.every((item, senseIndex) => item.sense_id === record.senses[senseIndex].id);
+    const storedSenseById = senseReviewsMatchSenseOrder
+      ? undefined
+      : new Map(storedSenseReviews.map((item) => [item.sense_id, item]));
+    const senseReviews = record.senses.map((sense, senseIndex) => {
+      const rawStoredSense = (senseReviewsMatchSenseOrder
+        ? storedSenseReviews[senseIndex]
+        : storedSenseById.get(sense.id)) ?? {};
       const senseContext = {
         record_id: record.id,
         sense_id: sense.id,
-        gloss_sha256: sha256Json(sense.gloss),
+        gloss_sha256: cachedSha256Json(sense.gloss, hashCache),
       };
       const storedSense = {
         ...rawStoredSense,
@@ -819,22 +925,24 @@ export function materializeSemanticReviewArtifact(
         no_relation_rationale: resolveTextField(rawStoredSense, 'no_relation_rationale', senseContext, rationaleTemplates, `${record.id} ${sense.id}`),
       };
       const storedBasis = storedSense.review_basis ?? {};
-      const senseGlossSha256 = sha256Json(sense.gloss);
-      const relationCoverage = senseRelationCoverage(sense);
+      const senseGlossSha256 = cachedSha256Json(sense.gloss, hashCache);
+      const relationCoverage = senseRelationCoverage(sense, { hashCache });
       const relationDecision = storedSense.relation_decision ?? storedSense.relation?.decision;
       if (relationDecision === undefined) {
         fail(`${record.id} ${sense.id} authored relation decision is missing`, 'SEMANTIC_AUDIT_DECISION_MISSING');
       }
-      const boundaryEvidence = evidenceBySense.get(sense.id);
+      const boundaryEvidenceItem = evidenceMatchesSenseOrder
+        ? boundaryEvidenceItems[senseIndex]
+        : evidenceBySense.get(sense.id);
       const boundaryRationale = storedSense.boundary_rationale
-        ?? boundaryEvidence?.rationale
+        ?? boundaryEvidenceItem?.rationale
         ?? `${record.id} ${sense.id} was reviewed against the authored boundary decision.`;
       const relationRationale = storedSense.relation_rationale
         ?? storedSense.no_relation_rationale
         ?? `${record.id} ${sense.id} relation tuples were reviewed against canonical content.`;
       return {
         sense_id: sense.id,
-        sense_sha256: sha256Json(sense),
+        sense_sha256: cachedSha256Json(sense, hashCache),
         sense_boundary: {
           status: 'pass',
           action: storedBoundary.decision,
@@ -877,7 +985,7 @@ export function materializeSemanticReviewArtifact(
           sense_id: sense.id,
           lemma: record.lemma,
           gloss_sha256: senseGlossSha256,
-          observed_domain_axes: inspectWriterDomainEvidence(sense.gloss).axes,
+          observed_domain_axes: cachedWriterDomainEvidence(sense.gloss, hashCache).axes,
           pos: sense.pos,
           record_type: record.record_type,
           relation_count: relationCoverage.relation_count,
@@ -892,7 +1000,7 @@ export function materializeSemanticReviewArtifact(
         },
       };
     });
-    return {
+    const materializedRecord = {
       record_id: referencedRecord.record_id,
       record_sha256: referencedRecord.record_sha256,
       ...(referencedRecord.authored_batch_decision
@@ -901,6 +1009,14 @@ export function materializeSemanticReviewArtifact(
       boundary_review: boundaryReview,
       sense_reviews: senseReviews,
     };
+    onRecord?.({
+      record,
+      materializedRecord,
+      recordIndex,
+      boundaryReview,
+      senseReviews,
+    });
+    return materializedRecord;
   });
   const senseCount = recordInfos.reduce((sum, recordInfo) => sum + recordOf(recordInfo).senses.length, 0);
   const materializedReviewPass = {
@@ -912,7 +1028,16 @@ export function materializeSemanticReviewArtifact(
       ? compactReview.review_pass.correction_history.length
       : 0,
   };
-  const { rationale_templates: ignoredRationaleTemplates, ...reviewWithoutRationaleTemplates } = structuredClone(compactReview);
+  // The compact source can contain hundreds of thousands of record bindings
+  // during scale validation. Clone only the review metadata here; cloning the
+  // compact `records` array before immediately replacing it duplicates the
+  // entire corpus and adds avoidable O(N) memory pressure.
+  const {
+    rationale_templates: ignoredRationaleTemplates,
+    records: ignoredCompactRecords,
+    ...compactMetadata
+  } = compactReview;
+  const reviewWithoutRationaleTemplates = structuredClone(compactMetadata);
   return {
     ...reviewWithoutRationaleTemplates,
     contract_version: SEMANTIC_REVIEW_CONTRACT_VERSION,
@@ -923,41 +1048,47 @@ export function materializeSemanticReviewArtifact(
   };
 }
 
-function relationFingerprint(sourceSenseId, relation) {
-  return sha256Json({
+function relationFingerprint(sourceSenseId, relation, { hashCache } = {}) {
+  return cachedSha256Json({
     source_sense: sourceSenseId,
     target: relation.target,
     target_sense: relation.target_sense ?? null,
     type: relation.type,
     note: relation.note,
-  });
+  }, hashCache);
 }
 
-function senseRelationCoverage(sense) {
+function senseRelationCoverage(sense, { hashCache } = {}) {
+  if (hashCache?.relationCoverage instanceof WeakMap) {
+    const cached = hashCache.relationCoverage.get(sense);
+    if (cached) return cached;
+  }
   const relations = sense.relations ?? [];
-  return {
+  const coverage = {
     relation_count: relations.length,
-    relation_sha256: sha256Json({
+    relation_sha256: cachedSha256Json({
       source_sense: sense.id,
       relations,
-    }),
-    relation_fingerprints: relations.map((relation) => relationFingerprint(sense.id, relation)),
+    }, hashCache),
+    relation_fingerprints: relations.map((relation) => relationFingerprint(sense.id, relation, { hashCache })),
   };
+  if (hashCache?.relationCoverage instanceof WeakMap) hashCache.relationCoverage.set(sense, coverage);
+  return coverage;
 }
 
-function buildSenseCoverage(record, sense) {
-  const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
+function buildSenseCoverage(record, sense, { hashCache } = {}) {
+  const domainEvidence = cachedWriterDomainEvidence(sense.gloss, hashCache);
   return {
     sense_id: sense.id,
-    sense_sha256: sha256Json(sense),
+    sense_sha256: cachedSha256Json(sense, hashCache),
     content: {
-      gloss_sha256: sha256Json(sense.gloss),
+      gloss_sha256: cachedSha256Json(sense.gloss, hashCache),
       observed_domain_axes: domainEvidence.axes,
       domain_evidence: domainEvidence.matches,
-      connector_observations: inspectGlossConnectors(sense.gloss),
+      connector_observations: cachedGlossConnectors(sense.gloss, hashCache),
       pos: sense.pos,
       record_type: record.record_type,
-      ...senseRelationCoverage(sense),
+      ...senseRelationCoverage(sense, { hashCache }),
     },
   };
 }
@@ -969,9 +1100,9 @@ function buildSenseCoverage(record, sense) {
  */
 export function buildSemanticCoverageArtifact(
   recordInfos,
-  { artifactId = 'canonical-semantic-coverage' } = {},
+  { artifactId = 'canonical-semantic-coverage', hashCache } = {},
 ) {
-  const records = orderCanonicalRecordInfos(recordInfos).map(recordOf);
+  const records = orderedRecordInfosFor(recordInfos, hashCache).map(recordOf);
   return {
     schema_version: SEMANTIC_AUDIT_SCHEMA_VERSION,
     contract_version: SEMANTIC_COVERAGE_CONTRACT_VERSION,
@@ -980,17 +1111,17 @@ export function buildSemanticCoverageArtifact(
     lexical_quality_ruleset_version: LEXICAL_QUALITY_RULESET_VERSION,
     source: {
       kind: 'canonical-jsonl-record-values',
-      canonical_records_sha256: canonicalRecordsSha256(recordInfos),
+      canonical_records_sha256: canonicalDigestFor(recordInfos, hashCache),
     },
     record_count: records.length,
     sense_count: records.reduce((sum, record) => sum + record.senses.length, 0),
     records: records.map((record) => ({
       record_id: record.id,
-      record_sha256: sha256Json(record),
+      record_sha256: cachedSha256Json(record, hashCache),
       lemma: record.lemma,
       record_type: record.record_type,
       role: record.role,
-      sense_coverage: record.senses.map((sense) => buildSenseCoverage(record, sense)),
+      sense_coverage: record.senses.map((sense) => buildSenseCoverage(record, sense, { hashCache })),
     })),
   };
 }
@@ -1003,18 +1134,18 @@ export function buildSemanticCoverageArtifact(
 export function assembleSemanticAuditArtifact(
   recordInfos,
   semanticReview,
-  { artifactId = 'canonical-semantic-audit' } = {},
+  { artifactId = 'canonical-semantic-audit', hashCache } = {},
 ) {
   requireObject(semanticReview, 'semantic review artifact');
   const decisionSource = validateDecisionSourceMetadata(
     semanticReview,
     'semantic review artifact',
   );
-  const canonicalDigest = canonicalRecordsSha256(recordInfos);
+  const canonicalDigest = canonicalDigestFor(recordInfos, hashCache);
   if (semanticReview.source?.canonical_records_sha256 !== canonicalDigest) {
     fail('semantic review artifact is not bound to the supplied canonical records', 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
-  const coverage = buildSemanticCoverageArtifact(recordInfos);
+  const coverage = buildSemanticCoverageArtifact(recordInfos, { hashCache });
   return {
     schema_version: SEMANTIC_AUDIT_SCHEMA_VERSION,
     contract_version: SEMANTIC_AUDIT_CONTRACT_VERSION,
@@ -1046,6 +1177,7 @@ export function buildSemanticAuditFromDecisionSource(
     artifactId = 'canonical-semantic-audit',
     baseRecords,
     batchDecisionSources = [],
+    hashCache = createCanonicalAuditCache(recordInfos),
   } = {},
 ) {
   const semanticReview = validateSemanticDecisionSource(
@@ -1055,15 +1187,19 @@ export function buildSemanticAuditFromDecisionSource(
       baseRecords: baseRecords ?? recordInfos,
       label: 'semantic decision source',
       batchDecisionSources,
+      hashCache,
     },
   );
   const artifact = assembleSemanticAuditArtifact(recordInfos, semanticReview, {
     artifactId,
+    hashCache,
   });
-  validateSemanticAuditCoverage(recordInfos, artifact, {
-    baseRecords: baseRecords ?? recordInfos,
-    label: 'reconstructed semantic audit',
-  });
+  // `validateSemanticDecisionSource` has already validated every authored
+  // review binding.  The coverage envelope is generated directly from the
+  // same canonical records here, so validating that newly constructed
+  // projection again would repeat the complete review and coverage scan.
+  // Consumers that accept a serialized or externally supplied audit still use
+  // `validateSemanticAuditCoverage` at their boundary.
   return artifact;
 }
 
@@ -1071,6 +1207,8 @@ export async function buildCanonicalSemanticAudit({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
   canonicalContext,
   decisionSourcePath = DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
+  decisionSource: suppliedDecisionSource,
+  hashCache: suppliedHashCache,
   artifactId = 'canonical-semantic-audit',
   batchDecisionSourcePaths = DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
 } = {}) {
@@ -1082,7 +1220,8 @@ export async function buildCanonicalSemanticAudit({
     records: context.records,
   };
   const canReuseMaterializedArtifact = Boolean(
-    context.semanticAudit
+    suppliedDecisionSource === undefined
+      && context.semanticAudit
       && artifactId === 'canonical-semantic-audit'
       && path.resolve(decisionSourcePath) === path.resolve(DEFAULT_SEMANTIC_DECISION_SOURCE_PATH)
       && JSON.stringify(batchDecisionSourcePaths) === JSON.stringify(DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS),
@@ -1095,13 +1234,20 @@ export async function buildCanonicalSemanticAudit({
     };
   }
 
-  const decisionSource = await readSemanticDecisionSourceArtifact(decisionSourcePath);
-  const batchDecisionSources = await readAuthoredBatchDecisionSources(batchDecisionSourcePaths);
+  const decisionSource = suppliedDecisionSource
+    ?? await readSemanticDecisionSourceArtifact(decisionSourcePath);
+  const batchDecisionSources = suppliedDecisionSource
+    ? []
+    : await readAuthoredBatchDecisionSources(batchDecisionSourcePaths);
+  const hashCache = isCanonicalAuditCache(suppliedHashCache, canonical.records)
+    ? suppliedHashCache
+    : createCanonicalAuditCache(canonical.records);
   const artifact = buildSemanticAuditFromDecisionSource(
     canonical.records,
     decisionSource,
-    { artifactId, batchDecisionSources },
+    { artifactId, batchDecisionSources, hashCache },
   );
+  context.semanticAuditCache = hashCache;
   return { canonical, decisionSource, artifact };
 }
 
@@ -1113,26 +1259,43 @@ export function serializeSemanticDecisionSource(decisionSource) {
   return Buffer.from(`${JSON.stringify(decisionSource, null, 2)}\n`, 'utf8');
 }
 
+function valuesExactlyEqual(left, right) {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left)
+      && Array.isArray(right)
+      && left.length === right.length
+      && left.every((value, index) => valuesExactlyEqual(value, right[index]));
+  }
+  if (left && right && typeof left === 'object' && typeof right === 'object') {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    return leftKeys.length === rightKeys.length
+      && leftKeys.every((key) => Object.hasOwn(right, key) && valuesExactlyEqual(left[key], right[key]));
+  }
+  return false;
+}
+
 function assertExact(actual, expected, label, code = 'SEMANTIC_AUDIT_BINDING') {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+  if (!valuesExactlyEqual(actual, expected)) {
     fail(`${label} does not match the canonical source`, code);
   }
 }
 
-function validateCoverageSense(record, sense, coverage, senseIndex, label) {
+function validateCoverageSense(record, sense, coverage, senseIndex, label, { hashCache } = {}) {
   requireObject(coverage, label);
   if (coverage.sense_id !== sense.id) fail(`${label}.sense_id is not bound`, 'SEMANTIC_AUDIT_BINDING');
   requireDigest(coverage.sense_sha256, `${label}.sense_sha256`);
-  if (coverage.sense_sha256 !== sha256Json(sense)) {
+  if (coverage.sense_sha256 !== cachedSha256Json(sense, hashCache)) {
     fail(`${label}.sense_sha256 does not match the canonical sense`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
 
   const content = requireObject(coverage.content, `${label}.content`);
   requireDigest(content.gloss_sha256, `${label}.content.gloss_sha256`);
-  if (content.gloss_sha256 !== sha256Json(sense.gloss)) {
+  if (content.gloss_sha256 !== cachedSha256Json(sense.gloss, hashCache)) {
     fail(`${label}.content.gloss_sha256 does not match the canonical gloss`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
-  const domainEvidence = inspectWriterDomainEvidence(sense.gloss);
+  const domainEvidence = cachedWriterDomainEvidence(sense.gloss, hashCache);
   assertExact(
     content.observed_domain_axes,
     domainEvidence.axes,
@@ -1147,14 +1310,14 @@ function validateCoverageSense(record, sense, coverage, senseIndex, label) {
   );
   assertExact(
     content.connector_observations,
-    inspectGlossConnectors(sense.gloss),
+    cachedGlossConnectors(sense.gloss, hashCache),
     `${label}.content.connector_observations`,
     'SEMANTIC_AUDIT_CONTENT_MISMATCH',
   );
   if (content.pos !== sense.pos || content.record_type !== record.record_type) {
     fail(`${label}.content POS or record type does not match the canonical source`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
-  const expectedRelations = senseRelationCoverage(sense);
+  const expectedRelations = senseRelationCoverage(sense, { hashCache });
   if (content.relation_count !== expectedRelations.relation_count
     || content.relation_sha256 !== expectedRelations.relation_sha256) {
     fail(`${label}.content relation coverage does not match canonical content`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
@@ -1168,7 +1331,7 @@ function validateCoverageSense(record, sense, coverage, senseIndex, label) {
   if (senseIndex < 0) fail(`${label} has an invalid sense index`, 'SEMANTIC_AUDIT_SCOPE');
 }
 
-function validateSemanticCoverageArtifact(recordInfos, artifact, label) {
+function validateSemanticCoverageArtifact(recordInfos, artifact, label, { hashCache } = {}) {
   requireObject(artifact, label);
   if (artifact.schema_version !== SEMANTIC_AUDIT_SCHEMA_VERSION
     || artifact.contract_version !== SEMANTIC_COVERAGE_CONTRACT_VERSION) {
@@ -1181,47 +1344,56 @@ function validateSemanticCoverageArtifact(recordInfos, artifact, label) {
   const source = requireObject(artifact.source, `${label}.source`);
   if (source.kind !== 'canonical-jsonl-record-values') fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
   requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
-  const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
+  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
   if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
     fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
 
-  const records = orderCanonicalRecordInfos(recordInfos).map(recordOf);
+  const records = orderedRecordInfosFor(recordInfos, hashCache).map(recordOf);
   if (artifact.record_count !== records.length) fail(`${label}.record_count does not cover the complete canonical input`, 'SEMANTIC_AUDIT_SCOPE');
   const expectedSenseCount = records.reduce((sum, record) => sum + record.senses.length, 0);
   if (artifact.sense_count !== expectedSenseCount) fail(`${label}.sense_count does not cover every canonical sense`, 'SEMANTIC_AUDIT_SCOPE');
   const auditedRecords = requireArray(artifact.records, `${label}.records`);
   if (auditedRecords.length !== records.length) fail(`${label}.records must cover every canonical record`, 'SEMANTIC_AUDIT_SCOPE');
 
-  const recordIds = new Set();
-  const auditedById = new Map();
-  for (const [recordIndex, auditedValue] of auditedRecords.entries()) {
-    const recordLabel = `${label}.records[${recordIndex}]`;
-    const audited = requireObject(auditedValue, recordLabel);
-    if (recordIds.has(audited.record_id)) fail(`${label} contains duplicate record ${audited.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
-    recordIds.add(audited.record_id);
-    auditedById.set(audited.record_id, { audited, recordLabel });
+  const auditedRecordsMatchCanonicalOrder = auditedRecords.every(
+    (audited, recordIndex) => audited?.record_id === records[recordIndex].id,
+  );
+  const auditedById = auditedRecordsMatchCanonicalOrder ? undefined : new Map();
+  if (auditedById) {
+    const recordIds = new Set();
+    for (const [recordIndex, auditedValue] of auditedRecords.entries()) {
+      const recordLabel = `${label}.records[${recordIndex}]`;
+      const audited = requireObject(auditedValue, recordLabel);
+      if (recordIds.has(audited.record_id)) fail(`${label} contains duplicate record ${audited.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
+      recordIds.add(audited.record_id);
+      auditedById.set(audited.record_id, { audited, recordLabel });
+    }
   }
-  for (const record of records) {
-    const auditedEntry = auditedById.get(record.id);
+  for (const [recordIndex, record] of records.entries()) {
+    const recordLabel = `${label}.records[${recordIndex}]`;
+    const auditedEntry = auditedRecordsMatchCanonicalOrder
+      ? { audited: requireObject(auditedRecords[recordIndex], recordLabel), recordLabel }
+      : auditedById.get(record.id);
     if (!auditedEntry) fail(`${label} is missing record ${record.id}`, 'SEMANTIC_AUDIT_SCOPE');
-    const { audited, recordLabel } = auditedEntry;
-    requireDigest(audited.record_sha256, `${recordLabel}.record_sha256`);
-    if (audited.record_sha256 !== sha256Json(record)) fail(`${recordLabel}.record_sha256 does not match canonical content`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+    const { audited, recordLabel: auditedRecordLabel } = auditedEntry;
+    requireDigest(audited.record_sha256, `${auditedRecordLabel}.record_sha256`);
+    if (audited.record_sha256 !== cachedSha256Json(record, hashCache)) fail(`${auditedRecordLabel}.record_sha256 does not match canonical content`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     if (audited.lemma !== record.lemma
       || audited.record_type !== record.record_type
       || audited.role !== record.role) {
-      fail(`${recordLabel} record identity facts drifted`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+      fail(`${auditedRecordLabel} record identity facts drifted`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     }
-    const senseCoverage = requireArray(audited.sense_coverage, `${recordLabel}.sense_coverage`);
-    if (senseCoverage.length !== record.senses.length) fail(`${recordLabel}.sense_coverage must cover every sense`, 'SEMANTIC_AUDIT_SCOPE');
+    const senseCoverage = requireArray(audited.sense_coverage, `${auditedRecordLabel}.sense_coverage`);
+    if (senseCoverage.length !== record.senses.length) fail(`${auditedRecordLabel}.sense_coverage must cover every sense`, 'SEMANTIC_AUDIT_SCOPE');
     for (const [senseIndex, sense] of record.senses.entries()) {
       validateCoverageSense(
         record,
         sense,
         senseCoverage[senseIndex],
         senseIndex,
-        `${recordLabel}.sense_coverage[${senseIndex}]`,
+        `${auditedRecordLabel}.sense_coverage[${senseIndex}]`,
+        { hashCache },
       );
     }
   }
@@ -1252,7 +1424,7 @@ function validateBoundaryReview(
   record,
   boundary,
   label,
-  { decisionSourceId, requireDecisionSource = true } = {},
+  { decisionSourceId, requireDecisionSource = true, hashCache } = {},
 ) {
   requireObject(boundary, label);
   if (boundary.status !== 'pass') {
@@ -1306,7 +1478,7 @@ function validateBoundaryReview(
     const sense = record.senses.find(({ id }) => id === item.sense_id);
     if (!sense) fail(`${evidenceLabel}.sense_id is not in the current record`, 'SEMANTIC_AUDIT_BINDING');
     requireDigest(item.gloss_sha256, `${evidenceLabel}.gloss_sha256`);
-    if (item.gloss_sha256 !== sha256Json(sense.gloss)) {
+    if (item.gloss_sha256 !== cachedSha256Json(sense.gloss, hashCache)) {
       fail(`${evidenceLabel}.gloss_sha256 does not bind the current gloss`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     }
     requireString(item.evidence_basis, `${evidenceLabel}.evidence_basis`);
@@ -1357,8 +1529,8 @@ function validateBoundaryReview(
     const rightSense = record.senses.find(({ id }) => id === item.right_sense_id);
     requireDigest(item.left_gloss_sha256, `${pairLabel}.left_gloss_sha256`);
     requireDigest(item.right_gloss_sha256, `${pairLabel}.right_gloss_sha256`);
-    if (item.left_gloss_sha256 !== sha256Json(leftSense.gloss)
-      || item.right_gloss_sha256 !== sha256Json(rightSense.gloss)) {
+    if (item.left_gloss_sha256 !== cachedSha256Json(leftSense.gloss, hashCache)
+      || item.right_gloss_sha256 !== cachedSha256Json(rightSense.gloss, hashCache)) {
       fail(`${pairLabel} gloss evidence does not match the canonical sense pair`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     }
     requireString(item.evidence_basis, `${pairLabel}.evidence_basis`);
@@ -1442,12 +1614,13 @@ function validateSemanticReviewSense(
     decisionSourceId,
     requireDecisionSource = true,
     requireTopicAnalysis = true,
+    hashCache,
   } = {},
 ) {
   requireObject(review, label);
   if (review.sense_id !== sense.id) fail(`${label}.sense_id is not bound`, 'SEMANTIC_AUDIT_BINDING');
   requireDigest(review.sense_sha256, `${label}.sense_sha256`);
-  if (review.sense_sha256 !== sha256Json(sense)) {
+  if (review.sense_sha256 !== cachedSha256Json(sense, hashCache)) {
     fail(`${label}.sense_sha256 does not match the canonical sense`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
 
@@ -1532,7 +1705,7 @@ function validateSemanticReviewSense(
       fail(`${label}.relation.decision_source_id is not bound to the authored decision source`, 'SEMANTIC_AUDIT_PROVENANCE');
     }
   }
-  const expectedRelations = senseRelationCoverage(sense);
+  const expectedRelations = senseRelationCoverage(sense, { hashCache });
   if (relation.decision !== (expectedRelations.relation_count === 0 ? 'no-relations' : 'relations-reviewed')) {
     fail(`${label}.relation.decision does not explicitly cover the canonical relation outcome`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
@@ -1573,20 +1746,20 @@ function validateSemanticReviewSense(
     }
   }
   requireDigest(basis.gloss_sha256, `${label}.review_basis.gloss_sha256`);
-  if (basis.gloss_sha256 !== sha256Json(sense.gloss)) {
+  if (basis.gloss_sha256 !== cachedSha256Json(sense.gloss, hashCache)) {
     fail(`${label}.review_basis.gloss_sha256 does not bind the canonical gloss`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
   if (basis.pos !== sense.pos || basis.record_type !== record.record_type) {
     fail(`${label}.review_basis POS or record type does not bind the canonical source`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
-  const basisDomainEvidence = inspectWriterDomainEvidence(sense.gloss);
+  const basisDomainEvidence = cachedWriterDomainEvidence(sense.gloss, hashCache);
   assertExact(
     basis.observed_domain_axes,
     basisDomainEvidence.axes,
     `${label}.review_basis.observed_domain_axes`,
     'SEMANTIC_AUDIT_CONTENT_MISMATCH',
   );
-  const basisRelations = senseRelationCoverage(sense);
+  const basisRelations = senseRelationCoverage(sense, { hashCache });
   if (basis.relation_count !== basisRelations.relation_count) {
     fail(`${label}.review_basis.relation_count does not bind canonical relations`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
   }
@@ -1612,7 +1785,7 @@ function validateSemanticReviewSense(
   );
 }
 
-function validateSemanticReviewPass(recordInfos, artifact, label) {
+function validateSemanticReviewPass(recordInfos, artifact, label, { hashCache } = {}) {
   const pass = requireObject(artifact.review_pass, `${label}.review_pass`);
   requireString(pass.id, `${label}.review_pass.id`);
   if (pass.status !== 'complete') fail(`${label}.review_pass.status must be complete`, 'SEMANTIC_AUDIT_INCOMPLETE');
@@ -1642,7 +1815,13 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
   if (pass.correction_count !== history.length) {
     fail(`${label}.review_pass.correction_count does not match correction_history`, 'SEMANTIC_AUDIT_SCOPE');
   }
-  const recordsById = new Map(records.map((record) => [record.id, record]));
+  // The common complete-canonical pass has no correction history.  Avoid
+  // rebuilding a million-entry record map when there are no correction rows
+  // that can consult it; corrected historical inputs still use the indexed
+  // path below.
+  const recordsById = history.length > 0
+    ? new Map(records.map((record) => [record.id, record]))
+    : undefined;
   const correctionKeys = new Set();
   const correctionsByKey = new Map();
   const correctionsByRecord = new Map();
@@ -1685,7 +1864,7 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
   for (const [recordId, recordHistory] of correctionsByRecord.entries()) {
     const record = recordsById.get(recordId);
     const lastCorrection = recordHistory.at(-1);
-    if (lastCorrection.after_record_sha256 !== sha256Json(record)) {
+    if (lastCorrection.after_record_sha256 !== cachedSha256Json(record, hashCache)) {
       fail(
         `${label}.review_pass.correction_history for ${recordId} is not bound to the repaired canonical record`,
         'SEMANTIC_AUDIT_CONTENT_MISMATCH',
@@ -1730,12 +1909,15 @@ function validateSemanticReviewPass(recordInfos, artifact, label) {
   }
 }
 
-function validateSemanticReviewChanges(recordInfos, baseRecords, changes, label) {
+function validateSemanticReviewChanges(recordInfos, baseRecords, changes, label, { hashCache } = {}) {
+  const changeRows = requireArray(changes, `${label}.changes`);
+  if ((baseRecords === undefined || baseRecords === recordInfos) && changeRows.length === 0) {
+    return 0;
+  }
   const records = orderCanonicalRecordInfos(recordInfos).map(recordOf);
   const base = (baseRecords ?? recordInfos).map(recordOf);
   const prospectiveById = new Map(records.map((record) => [record.id, record]));
   const baseById = new Map(base.map((record) => [record.id, record]));
-  const changeRows = requireArray(changes, `${label}.changes`);
   const changeById = new Map();
   for (const [index, change] of changeRows.entries()) {
     const changeLabel = `${label}.changes[${index}]`;
@@ -1749,8 +1931,8 @@ function validateSemanticReviewChanges(recordInfos, baseRecords, changes, label)
     if (!baseRecord || !prospectiveRecord) fail(`${changeLabel}.record_id is not present in both base and prospective canonical data`, 'SEMANTIC_AUDIT_SCOPE');
     requireDigest(change.base_record_sha256, `${changeLabel}.base_record_sha256`);
     requireDigest(change.prospective_record_sha256, `${changeLabel}.prospective_record_sha256`);
-    if (change.base_record_sha256 !== sha256Json(baseRecord)
-      || change.prospective_record_sha256 !== sha256Json(prospectiveRecord)
+    if (change.base_record_sha256 !== cachedSha256Json(baseRecord, hashCache)
+      || change.prospective_record_sha256 !== cachedSha256Json(prospectiveRecord, hashCache)
       || change.base_record_sha256 === change.prospective_record_sha256) {
       fail(`${changeLabel} is not bound to an actual reviewed correction`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
     }
@@ -1771,6 +1953,116 @@ function validateSemanticReviewChanges(recordInfos, baseRecords, changes, label)
   return changeRows.length;
 }
 
+function validateSemanticReviewRecord(
+  record,
+  audited,
+  recordLabel,
+  {
+    decisionSourceId,
+    requireDecisionSource = true,
+    requireTopicAnalysis = true,
+    hashCache,
+  } = {},
+) {
+  const reviewedRecord = requireObject(audited, recordLabel);
+  requireDigest(reviewedRecord.record_sha256, `${recordLabel}.record_sha256`);
+  if (reviewedRecord.record_sha256 !== cachedSha256Json(record, hashCache)) {
+    fail(`${recordLabel}.record_sha256 does not match canonical content`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
+  }
+  const boundaryReview = validateBoundaryReview(
+    record,
+    reviewedRecord.boundary_review,
+    `${recordLabel}.boundary_review`,
+    {
+      decisionSourceId,
+      requireDecisionSource,
+      hashCache,
+    },
+  );
+  const senseReviews = requireArray(reviewedRecord.sense_reviews, `${recordLabel}.sense_reviews`);
+  if (senseReviews.length !== record.senses.length) {
+    fail(`${recordLabel}.sense_reviews must cover every sense`, 'SEMANTIC_AUDIT_SCOPE');
+  }
+  for (const [senseIndex, sense] of record.senses.entries()) {
+    validateSemanticReviewSense(
+      record,
+      sense,
+      senseReviews[senseIndex],
+      senseIndex,
+      `${recordLabel}.sense_reviews[${senseIndex}]`,
+      boundaryReview,
+      {
+        decisionSourceId,
+        requireDecisionSource,
+        requireTopicAnalysis,
+        hashCache,
+      },
+    );
+  }
+  return { boundaryReview, senseReviews };
+}
+
+function validateCompactSemanticReviewEnvelope(
+  recordInfos,
+  artifact,
+  label,
+  { decisionSourceId, requireDecisionSource = true, hashCache } = {},
+) {
+  requireObject(artifact, label);
+  if (artifact.schema_version !== SEMANTIC_AUDIT_SCHEMA_VERSION
+    || artifact.contract_version !== COMPACT_SEMANTIC_REVIEW_CONTRACT_VERSION) {
+    fail(`${label} contract version is unsupported`, 'SEMANTIC_AUDIT_SCHEMA');
+  }
+  if (artifact.scope !== 'complete-canonical') fail(`${label}.scope must be complete-canonical`, 'SEMANTIC_AUDIT_SCOPE');
+  if (artifact.review_mode !== 'agent-authored-decision') {
+    fail(`${label}.review_mode must be agent-authored-decision`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
+  const decisionSource = requireDecisionSource
+    ? validateDecisionSourceMetadata(artifact, label)
+    : artifact.decision_source;
+  if (decisionSourceId !== undefined && decisionSource?.source_id !== decisionSourceId) {
+    fail(`${label}.decision_source is not bound to the outer decision source`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
+  const records = recordInfos.map(recordOf);
+  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
+  const source = requireObject(artifact.source, `${label}.source`);
+  if (source.kind !== 'canonical-jsonl-record-values') {
+    fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
+  }
+  requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
+  if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
+    fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
+  }
+  const compactRecords = requireArray(artifact.records, `${label}.records`);
+  if (compactRecords.length !== records.length) {
+    fail(`${label}.records must cover every canonical record`, 'SEMANTIC_AUDIT_SCOPE');
+  }
+  const recordsMatchCanonicalOrder = compactRecords.every(
+    (storedRecord, recordIndex) => storedRecord?.record_id === records[recordIndex].id,
+  );
+  const canonicalIds = recordsMatchCanonicalOrder
+    ? undefined
+    : new Set(records.map((record) => record.id));
+  const seenIds = recordsMatchCanonicalOrder ? undefined : new Set();
+  for (const [recordIndex, compactRecord] of compactRecords.entries()) {
+    const recordLabel = `${label}.records[${recordIndex}]`;
+    const storedRecord = requireObject(compactRecord, recordLabel);
+    requireString(storedRecord.record_id, `${recordLabel}.record_id`);
+    if (canonicalIds && !canonicalIds.has(storedRecord.record_id)) {
+      fail(`${recordLabel}.record_id is not canonical`, 'SEMANTIC_AUDIT_SCOPE');
+    }
+    if (seenIds?.has(storedRecord.record_id)) {
+      fail(`${label} contains duplicate record ${storedRecord.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
+    }
+    seenIds?.add(storedRecord.record_id);
+  }
+  return {
+    decisionSource,
+    canonicalRecords: records,
+    canonicalRecordsSha256: expectedCanonicalDigest,
+  };
+}
+
 /**
  * Validate a separately authored semantic/editorial decision artifact. No
  * decision is inferred from the canonical record by this validator.
@@ -1783,6 +2075,7 @@ export function validateSemanticReviewArtifact(
     label = 'semantic review',
     requireDecisionSource = true,
     requireTopicAnalysis = true,
+    hashCache,
   } = {},
 ) {
   requireObject(artifact, label);
@@ -1795,9 +2088,9 @@ export function validateSemanticReviewArtifact(
   const decisionSource = requireDecisionSource
     ? validateDecisionSourceMetadata(artifact, label)
     : artifact.decision_source;
-  validateSemanticReviewPass(recordInfos, artifact, label);
+  validateSemanticReviewPass(recordInfos, artifact, label, { hashCache });
   const records = recordInfos.map(recordOf);
-  const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
+  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
   const source = requireObject(artifact.source, `${label}.source`);
   if (source.kind !== 'canonical-jsonl-record-values') fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
   requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
@@ -1810,53 +2103,41 @@ export function validateSemanticReviewArtifact(
   const auditedRecords = requireArray(artifact.records, `${label}.records`);
   if (auditedRecords.length !== records.length) fail(`${label}.records must cover every canonical record`, 'SEMANTIC_AUDIT_SCOPE');
 
-  const recordIds = new Set();
-  const auditedById = new Map();
-  for (const [recordIndex, auditedValue] of auditedRecords.entries()) {
-    const recordLabel = `${label}.records[${recordIndex}]`;
-    const audited = requireObject(auditedValue, recordLabel);
-    if (recordIds.has(audited.record_id)) fail(`${label} contains duplicate record ${audited.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
-    recordIds.add(audited.record_id);
-    auditedById.set(audited.record_id, { audited, recordLabel });
+  const auditedRecordsMatchCanonicalOrder = auditedRecords.every(
+    (audited, recordIndex) => audited?.record_id === records[recordIndex].id,
+  );
+  const auditedById = auditedRecordsMatchCanonicalOrder
+    ? undefined
+    : new Map();
+  if (auditedById) {
+    const recordIds = new Set();
+    for (const [recordIndex, auditedValue] of auditedRecords.entries()) {
+      const recordLabel = `${label}.records[${recordIndex}]`;
+      const audited = requireObject(auditedValue, recordLabel);
+      if (recordIds.has(audited.record_id)) fail(`${label} contains duplicate record ${audited.record_id}`, 'SEMANTIC_AUDIT_SCOPE');
+      recordIds.add(audited.record_id);
+      auditedById.set(audited.record_id, { audited, recordLabel });
+    }
   }
   for (const [recordIndex, record] of records.entries()) {
-    const auditedEntry = auditedById.get(record.id);
+    const recordLabel = `${label}.records[${recordIndex}]`;
+    const auditedEntry = auditedRecordsMatchCanonicalOrder
+      ? { audited: requireObject(auditedRecords[recordIndex], recordLabel), recordLabel }
+      : auditedById.get(record.id);
     if (!auditedEntry) fail(`${label} is missing record ${record.id}`, 'SEMANTIC_AUDIT_SCOPE');
-    const { audited, recordLabel } = auditedEntry;
-    requireDigest(audited.record_sha256, `${recordLabel}.record_sha256`);
-    if (audited.record_sha256 !== sha256Json(record)) fail(`${recordLabel}.record_sha256 does not match canonical content`, 'SEMANTIC_AUDIT_CONTENT_MISMATCH');
-    const boundaryReview = validateBoundaryReview(
-      record,
-      audited.boundary_review,
-      `${recordLabel}.boundary_review`,
-      {
-        decisionSourceId: decisionSource?.source_id,
-        requireDecisionSource,
-      },
-    );
-    const senseReviews = requireArray(audited.sense_reviews, `${recordLabel}.sense_reviews`);
-    if (senseReviews.length !== record.senses.length) fail(`${recordLabel}.sense_reviews must cover every sense`, 'SEMANTIC_AUDIT_SCOPE');
-    for (const [senseIndex, sense] of record.senses.entries()) {
-      validateSemanticReviewSense(
-        record,
-        sense,
-        senseReviews[senseIndex],
-        senseIndex,
-        `${recordLabel}.sense_reviews[${senseIndex}]`,
-        boundaryReview,
-        {
-          decisionSourceId: decisionSource?.source_id,
-          requireDecisionSource,
-          requireTopicAnalysis,
-        },
-      );
-    }
+    validateSemanticReviewRecord(record, auditedEntry.audited, recordLabel, {
+      decisionSourceId: decisionSource?.source_id,
+      requireDecisionSource,
+      requireTopicAnalysis,
+      hashCache,
+    });
   }
   const correctedRecordCount = validateSemanticReviewChanges(
     recordInfos,
     baseRecords,
     artifact.changes,
     label,
+    { hashCache },
   );
   return {
     contract_version: artifact.contract_version,
@@ -1882,6 +2163,7 @@ export function validateSemanticDecisionSource(
     baseRecords,
     label = 'semantic decision source',
     batchDecisionSources = [],
+    hashCache,
   } = {},
 ) {
   requireObject(decisionSource, label);
@@ -1907,14 +2189,14 @@ export function validateSemanticDecisionSource(
   if (source.kind !== 'canonical-jsonl-record-values') {
     fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
   }
-  const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
+  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
   requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
   if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
     fail(`${label}.source.canonical_records_sha256 does not match the complete canonical input`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
   const authoredReview = requireObject(decisionSource.authored_review, `${label}.authored_review`);
   requireDigest(decisionSource.authored_review_sha256, `${label}.authored_review_sha256`);
-  if (decisionSource.authored_review_sha256 !== sha256Json(authoredReview)) {
+  if (decisionSource.authored_review_sha256 !== cachedSha256Json(authoredReview, hashCache)) {
     fail(`${label}.authored_review_sha256 does not match the authored review`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
   }
   const authoredMetadata = validateDecisionSourceMetadata(authoredReview, `${label}.authored_review`);
@@ -1922,16 +2204,49 @@ export function validateSemanticDecisionSource(
     || authoredMetadata.contract_version !== SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
     fail(`${label}.authored_review is not bound to this decision source`, 'SEMANTIC_AUDIT_PROVENANCE');
   }
-  const materializedReview = isCompactSemanticDecisionSource(decisionSource)
-    ? materializeSemanticReviewArtifact(recordInfos, authoredReview, {
+  if (!isCompactSemanticDecisionSource(decisionSource)) {
+    validateSemanticReviewArtifact(recordInfos, authoredReview, {
+      baseRecords,
+      label: `${label}.authored_review`,
+      hashCache,
+    });
+    return authoredReview;
+  }
+
+  const authoredReviewLabel = `${label}.authored_review`;
+  validateCompactSemanticReviewEnvelope(
+    recordInfos,
+    authoredReview,
+    authoredReviewLabel,
+    {
       decisionSourceId: decisionSource.source_id,
-      batchDecisionSources,
-    })
-    : authoredReview;
-  validateSemanticReviewArtifact(recordInfos, materializedReview, {
-    baseRecords,
-    label: `${label}.authored_review`,
+      hashCache,
+    },
+  );
+  const materializedReview = materializeSemanticReviewArtifact(recordInfos, authoredReview, {
+    decisionSourceId: decisionSource.source_id,
+    batchDecisionSources,
+    hashCache,
+    onRecord: ({ record, materializedRecord, recordIndex }) => {
+      validateSemanticReviewRecord(
+        record,
+        materializedRecord,
+        `${authoredReviewLabel}.records[${recordIndex}]`,
+        {
+          decisionSourceId: decisionSource.source_id,
+          hashCache,
+        },
+      );
+    },
   });
+  validateSemanticReviewPass(recordInfos, materializedReview, authoredReviewLabel, { hashCache });
+  validateSemanticReviewChanges(
+    recordInfos,
+    baseRecords,
+    materializedReview.changes,
+    authoredReviewLabel,
+    { hashCache },
+  );
   return materializedReview;
 }
 
@@ -1947,6 +2262,7 @@ export function validateSemanticAuditCoverage(
     label = 'semantic audit',
     requireDecisionSource = true,
     requireTopicAnalysis = true,
+    hashCache,
   } = {},
 ) {
   requireObject(artifact, label);
@@ -1958,7 +2274,7 @@ export function validateSemanticAuditCoverage(
   if (artifact.lexical_quality_ruleset_version !== LEXICAL_QUALITY_RULESET_VERSION) {
     fail(`${label}.lexical_quality_ruleset_version is unsupported`, 'SEMANTIC_AUDIT_SCHEMA');
   }
-  const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
+  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
   const source = requireObject(artifact.source, `${label}.source`);
   if (source.kind !== 'canonical-jsonl-record-values') fail(`${label}.source.kind is unsupported`, 'SEMANTIC_AUDIT_PROVENANCE');
   requireDigest(source.canonical_records_sha256, `${label}.source.canonical_records_sha256`);
@@ -1970,12 +2286,13 @@ export function validateSemanticAuditCoverage(
     : artifact.decision_source;
   const coverage = requireObject(artifact.coverage, `${label}.coverage`);
   const review = requireObject(artifact.review, `${label}.review`);
-  const coverageResult = validateSemanticCoverageArtifact(recordInfos, coverage, `${label}.coverage`);
+  const coverageResult = validateSemanticCoverageArtifact(recordInfos, coverage, `${label}.coverage`, { hashCache });
   const reviewResult = validateSemanticReviewArtifact(recordInfos, review, {
     baseRecords,
     label: `${label}.review`,
     requireDecisionSource,
     requireTopicAnalysis,
+    hashCache,
   });
   if (coverage.source.canonical_records_sha256 !== review.source.canonical_records_sha256) {
     fail(`${label} coverage and review source digests differ`, 'SEMANTIC_AUDIT_SOURCE_MISMATCH');
@@ -2012,11 +2329,11 @@ export function validateSemanticAuditCoverage(
 export function buildSemanticTopicEvidence(
   recordInfos,
   artifact,
-  { label = 'semantic audit', requireTopicAnalysis = true } = {},
+  { label = 'semantic audit', requireTopicAnalysis = true, hashCache } = {},
 ) {
   requireObject(artifact, label);
   const review = requireObject(artifact.review, `${label}.review`);
-  const expectedCanonicalDigest = canonicalRecordsSha256(recordInfos);
+  const expectedCanonicalDigest = canonicalDigestFor(recordInfos, hashCache);
   const source = requireObject(review.source, `${label}.review.source`);
   requireDigest(source.canonical_records_sha256, `${label}.review.source.canonical_records_sha256`);
   if (source.canonical_records_sha256 !== expectedCanonicalDigest) {
@@ -2029,12 +2346,20 @@ export function buildSemanticTopicEvidence(
   const decisionSourceId = decisionSource?.source_id;
   if (decisionSourceId !== undefined) requireString(decisionSourceId, `${label}.decision_source.source_id`);
   const reviewedRecords = requireArray(review.records, `${label}.review.records`);
-  const reviewedById = new Map(reviewedRecords.map((reviewed) => [reviewed.record_id, reviewed]));
+  const reviewedRecordsMatchCanonicalOrder = reviewedRecords.length === recordInfos.length
+    && reviewedRecords.every(
+      (reviewed, recordIndex) => reviewed?.record_id === recordOf(recordInfos[recordIndex]).id,
+    );
+  const reviewedById = reviewedRecordsMatchCanonicalOrder
+    ? undefined
+    : new Map(reviewedRecords.map((reviewed) => [reviewed.record_id, reviewed]));
   const bySense = new Map();
 
   for (const [recordIndex, recordInfo] of recordInfos.entries()) {
     const record = recordOf(recordInfo);
-    const reviewed = reviewedById.get(record.id);
+    const reviewed = reviewedRecordsMatchCanonicalOrder
+      ? reviewedRecords[recordIndex]
+      : reviewedById.get(record.id);
     if (!reviewed) fail(`${label}.review is missing record ${record.id}`, 'SEMANTIC_AUDIT_SCOPE');
     const senseReviews = requireArray(reviewed.sense_reviews, `${label}.review.records[${recordIndex}].sense_reviews`);
     for (const [senseIndex, sense] of record.senses.entries()) {

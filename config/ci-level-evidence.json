@@ -1,0 +1,27 @@
+{
+  "contract_version": "ci-level-evidence-v1",
+  "source_head": "f83e68f16430b97d808e42898d91c68f0bc75f38",
+  "source_run": "35679633879",
+  "source_url": "https://github.com/neverworkalone/typewriter/actions/runs/35679633879",
+  "measurement": "fixed remainder derived from exact-head level wall-clock minus the current-canonical corpus baseline; remainder upper bounds rounded up to the next millisecond",
+  "levels": {
+    "fast": {
+      "observed_wall_clock_ms": 20054.33,
+      "corpus_baseline_wall_clock_ms": 183.76,
+      "fixed_remainder_observed_wall_clock_ms": 19870.57,
+      "fixed_remainder_upper_bound_ms": 19871
+    },
+    "normal": {
+      "observed_wall_clock_ms": 78820.24,
+      "corpus_baseline_wall_clock_ms": 616.56,
+      "fixed_remainder_observed_wall_clock_ms": 78203.68,
+      "fixed_remainder_upper_bound_ms": 78204
+    },
+    "deep": {
+      "observed_wall_clock_ms": 172214.82,
+      "corpus_baseline_wall_clock_ms": 733.33,
+      "fixed_remainder_observed_wall_clock_ms": 171481.49,
+      "fixed_remainder_upper_bound_ms": 171482
+    }
+  }
+}

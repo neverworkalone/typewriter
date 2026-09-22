@@ -114,7 +114,7 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
       '--',
       '--sizes=500000,1000000',
       '--sqlite-scale=500000,1000000',
-      '--fixed-level-ms=fast:20000,normal:76600,deep:168339',
+      '--fixed-level-evidence=config/ci-level-evidence.json',
     ],
   );
 });
