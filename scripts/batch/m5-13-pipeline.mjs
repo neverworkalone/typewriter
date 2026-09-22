@@ -1190,7 +1190,7 @@ export async function writeM513PreAdmissionEvidence({
     input: {
       inventory_revision: result.prospective.inventory.revision,
       inventory_sha256: sha256(result.prospective.inventoryBytes),
-      canonical_directory: sourcePath(result.inputs.baseCanonicalDirectory),
+      canonical_directory: sourcePath(CURRENT_CANONICAL_DIRECTORY),
       canonical_directory_sha256: result.inputs.baseCanonicalDigest,
       canonical_snapshot: M5_13_BASE_SUMMARY,
     },
@@ -1231,7 +1231,7 @@ export async function writeM513PreAdmissionEvidence({
       predecessor_admission_sha256: sha256(predecessorAdmission.bytes),
       predecessor_promotion: sourcePath(predecessorPromotionPath),
       predecessor_promotion_sha256: sha256(predecessorPromotion.bytes),
-      canonical_directory: sourcePath(result.inputs.baseCanonicalDirectory),
+      canonical_directory: sourcePath(CURRENT_CANONICAL_DIRECTORY),
       canonical_directory_sha256: result.inputs.baseCanonicalDigest,
       seed: sourcePath(CURRENT_SEED_PATH),
       seed_sha256: sha256(result.inputs.baseSeedBytes),
