@@ -1169,7 +1169,13 @@ async function reconstructBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
   const baseSeed = {
     ...current.value,
     revision: 'm5-11',
-    targets: current.value.targets.filter(({ inventory_id: id }) => !candidateInventoryIds.has(id)),
+    // Reconstruct the immutable M5-11 input even after later batch additions.
+    // Batch-generated seed projections are identified by their durable decision note;
+    // candidate IDs alone would leave later batches in the historical base.
+    targets: current.value.targets.filter((entry) => (
+      !candidateInventoryIds.has(entry.inventory_id)
+      && !entry.decision_note?.includes(' after separate generation ')
+    )),
   };
   const baseSeedBytes = jsonBytes(baseSeed);
   if (sha256(baseSeedBytes) !== M5_12A_BASE_SEED_SHA256) {
