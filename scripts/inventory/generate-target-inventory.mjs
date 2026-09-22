@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_SEED_PATH = path.resolve(
@@ -381,6 +381,7 @@ function promotedCanonicalEntry(recordInfo, seedEntry) {
 
 export async function buildTargetInventory({
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  canonicalContext,
   seedPath = DEFAULT_SEED_PATH,
   promotionPath,
   decisionSourcePath = DEFAULT_DECISION_SOURCE_PATH,
@@ -388,7 +389,9 @@ export async function buildTargetInventory({
   generatedFromCanonicalDirectory = canonicalDirectory,
   canonicalScopeDirectory = canonicalDirectory,
 } = {}) {
-  const canonical = await readCanonicalRecords(canonicalDirectory);
+  const canonical = canonicalContext ?? await loadCanonicalContext({
+    directory: canonicalDirectory,
+  });
   const seed = JSON.parse(await readFile(seedPath, 'utf8'));
   const effectivePromotionPath = promotionPath
     ?? (path.resolve(seedPath) === path.resolve(DEFAULT_SEED_PATH)

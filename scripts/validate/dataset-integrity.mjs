@@ -3,8 +3,11 @@ import path from 'node:path';
 import {
   DEFAULT_CANONICAL_DIRECTORY,
   ValidationError,
-  readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import {
+  createCanonicalContext,
+  loadCanonicalContext,
+} from './canonical-context.mjs';
 import { auditCanonicalLexicalQuality } from './lexical-quality.mjs';
 import {
   buildCanonicalSemanticAudit,
@@ -62,62 +65,52 @@ function relationKey(relation) {
   });
 }
 
-function indexRecords(recordInfos) {
-  const recordsById = new Map();
-  const sensesById = new Map();
-  const candidatesById = new Map();
+function indexRecords(recordInfos, context) {
+  const indexes = context?.records === recordInfos
+    ? context.indexes
+    : createCanonicalContext({ records: recordInfos }).indexes;
 
-  for (const recordInfo of recordInfos) {
-    const { record } = recordInfo;
-
-    if (recordsById.has(record.id)) {
+  for (const issue of indexes.issues ?? []) {
+    if (issue.kind === 'duplicate-record-id') {
       failAt(
-        recordInfo,
-        `duplicate record id ${record.id}; first seen at ${sourceLocation(
-          recordsById.get(record.id),
+        issue.recordInfo,
+        `duplicate record id ${issue.recordId}; first seen at ${sourceLocation(
+          issue.firstRecordInfo,
         )}`,
         'DUPLICATE_RECORD_ID',
       );
     }
-    recordsById.set(record.id, recordInfo);
 
-    if (Object.hasOwn(record, 'candidate_id')) {
-      if (candidatesById.has(record.candidate_id)) {
-        failAt(
-          recordInfo,
-          `duplicate candidate_id ${record.candidate_id}; first seen at ${sourceLocation(
-            candidatesById.get(record.candidate_id),
-          )}`,
-          'DUPLICATE_CANDIDATE_ID',
-        );
-      }
-      candidatesById.set(record.candidate_id, recordInfo);
+    if (issue.kind === 'duplicate-candidate-id') {
+      failAt(
+        issue.recordInfo,
+        `duplicate candidate_id ${issue.candidateId}; first seen at ${sourceLocation(
+          issue.firstRecordInfo,
+        )}`,
+        'DUPLICATE_CANDIDATE_ID',
+      );
     }
 
-    for (const [senseIndex, sense] of record.senses.entries()) {
-      if (sensesById.has(sense.id)) {
-        failAt(
-          recordInfo,
-          `duplicate sense id ${sense.id}; first seen at ${sourceLocation(
-            sensesById.get(sense.id).recordInfo,
-          )}`,
-          'DUPLICATE_SENSE_ID',
-        );
-      }
+    if (issue.kind === 'duplicate-sense-id') {
+      failAt(
+        issue.recordInfo,
+        `duplicate sense id ${issue.senseId}; first seen at ${sourceLocation(
+          issue.firstSenseInfo.recordInfo,
+        )}`,
+        'DUPLICATE_SENSE_ID',
+      );
+    }
 
-      if (!sense.id.startsWith(`${record.id}-`)) {
-        failAt(
-          recordInfo,
-          `sense ${sense.id} does not belong to record ${record.id} (senses[${senseIndex}])`,
-          'SENSE_RECORD_MISMATCH',
-        );
-      }
-
-      sensesById.set(sense.id, { recordInfo, sense, senseIndex });
+    if (issue.kind === 'sense-record-mismatch') {
+      failAt(
+        issue.recordInfo,
+        `sense ${issue.sense.id} does not belong to record ${issue.recordId} (senses[${issue.senseIndex}])`,
+        'SENSE_RECORD_MISMATCH',
+      );
     }
   }
 
-  return { recordsById, sensesById, candidatesById };
+  return indexes;
 }
 
 function validateRoleIdentity(recordInfos) {
@@ -168,8 +161,16 @@ function validateRelations(recordInfos, indexes) {
 
     for (const [senseIndex, sense] of record.senses.entries()) {
       const seenRelations = new Set();
+      const indexedRelationEntries = indexes.relationsBySourceSenseId.get(sense.id);
+      const relationEntryIndexes = indexedRelationEntries === undefined
+        ? []
+        : Array.isArray(indexedRelationEntries)
+          ? indexedRelationEntries
+          : [indexedRelationEntries];
 
-      for (const [relationIndex, relation] of (sense.relations ?? []).entries()) {
+      for (const relationEntryIndex of relationEntryIndexes) {
+        const relationIndex = indexes.relations[relationEntryIndex].relationIndex;
+        const relation = sense.relations[relationIndex];
         const location = relationLocation(sourceInfo, senseIndex, relationIndex);
         const key = relationKey(relation);
 
@@ -272,15 +273,18 @@ export function validatePilotCompleteness(recordInfos) {
 export function validateDatasetRecords(
   recordInfos,
   {
+    context,
     checkPilotCompleteness = false,
     semanticAudit,
     requireSemanticAudit = false,
     semanticAuditBaseRecords,
     requireDecisionSource = true,
     requireTopicAnalysis = true,
+    lexicalQuality,
   } = {},
 ) {
-  const indexes = indexRecords(recordInfos);
+  if (context && !context.derived) context.derived = {};
+  const indexes = indexRecords(recordInfos, context);
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
 
@@ -295,40 +299,59 @@ export function validateDatasetRecords(
         label: 'complete canonical semantic audit',
         requireDecisionSource,
         requireTopicAnalysis,
+        hashCache: context?.semanticAuditCache,
       });
     } catch (error) {
       fail(error.message, error.code);
     }
-    try {
-      topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
-        label: 'complete canonical semantic audit',
-        requireTopicAnalysis,
-      });
-    } catch (error) {
-      fail(error.message, error.code);
+    if (context?.derived?.topicEvidence && context.semanticAudit === semanticAudit) {
+      topicEvidence = context.derived.topicEvidence;
+    } else {
+      try {
+        topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
+          label: 'complete canonical semantic audit',
+          requireTopicAnalysis,
+          hashCache: context?.semanticAuditCache,
+        });
+      } catch (error) {
+        fail(error.message, error.code);
+      }
     }
   } else if (semanticAudit !== undefined) {
-    try {
-      topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
-        label: 'semantic audit',
-        requireTopicAnalysis,
-      });
-    } catch (error) {
-      fail(error.message, error.code);
+    if (context?.derived?.topicEvidence && context.semanticAudit === semanticAudit) {
+      topicEvidence = context.derived.topicEvidence;
+    } else {
+      try {
+        topicEvidence = buildSemanticTopicEvidence(recordInfos, semanticAudit, {
+          label: 'semantic audit',
+          requireTopicAnalysis,
+          hashCache: context?.semanticAuditCache,
+        });
+      } catch (error) {
+        fail(error.message, error.code);
+      }
     }
+  }
+  if (context && topicEvidence && !context.derived.topicEvidence) {
+    context.derived.topicEvidence = topicEvidence;
   }
 
   // The canonical directory is the product boundary.  Every record already
   // in the dictionary, every changed record, and every prospective import must
   // pass the same lexical-quality audit; batch-specific validators may add
   // arithmetic or authorization rules but cannot bypass this call.
-  const lexicalQuality = auditCanonicalLexicalQuality(recordInfos, {
-    scope: 'complete-canonical',
-    throwOnError: false,
-    topicEvidence,
-  });
-  if (lexicalQuality.blocking_finding_count > 0) {
-    const finding = lexicalQuality.blocking_findings[0];
+  const lexicalReport = lexicalQuality ?? context?.derived?.lexicalQuality
+    ?? auditCanonicalLexicalQuality(recordInfos, {
+      scope: 'complete-canonical',
+      throwOnError: false,
+      topicEvidence: topicEvidence ?? context?.derived?.topicEvidence,
+      context,
+    });
+  if (context && !context.derived.lexicalQuality) {
+    context.derived.lexicalQuality = lexicalReport;
+  }
+  if (lexicalReport.blocking_finding_count > 0) {
+    const finding = lexicalReport.blocking_findings[0];
     const recordInfo = recordInfos.find(
       (candidate) => (candidate.record ?? candidate)?.id === finding.record_id,
     );
@@ -349,16 +372,20 @@ export async function validateDatasetDirectory(
   directory = DEFAULT_CANONICAL_DIRECTORY,
   options = {},
 ) {
-  const result = await readCanonicalRecords(directory);
+  const context = options.canonicalContext
+    ?? options.context
+    ?? await loadCanonicalContext({ directory });
+  const result = context;
   const isDefaultCanonical = path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
   const requireSemanticAudit = options.requireSemanticAudit ?? isDefaultCanonical;
-  let semanticAudit = options.semanticAudit;
+  let semanticAudit = options.semanticAudit ?? context.semanticAudit;
   if (requireSemanticAudit && semanticAudit === undefined) {
     if (options.semanticAuditPath) {
       semanticAudit = await readSemanticAuditArtifact(options.semanticAuditPath);
     } else if (isDefaultCanonical) {
       ({ artifact: semanticAudit } = await buildCanonicalSemanticAudit({
         canonicalDirectory: directory,
+        canonicalContext: context,
       }));
     } else {
       fail('complete canonical validation requires semantic-audit coverage', 'SEMANTIC_AUDIT_REQUIRED');
@@ -366,6 +393,7 @@ export async function validateDatasetDirectory(
   }
   const indexes = validateDatasetRecords(result.records, {
     ...options,
+    context,
     semanticAudit,
     requireSemanticAudit,
   });

@@ -284,10 +284,6 @@ export function applyM512ADecisionCorrection(candidate, correction) {
     || correctedRecord.candidate_id !== candidate.candidate_id) {
     fail(`${label}.record must preserve the candidate identity`, 'M5_12A_DECISION_SOURCE_BINDING');
   }
-  const collapsedLemma = candidate.lemma.replace(/\s+/gu, '');
-  if (collapsedLemma !== candidate.lemma && correctedRecord.search_forms.includes(collapsedLemma)) {
-    fail(`${label}.record cannot add a collapsed internal-whitespace alias; use the shared search policy`, 'M5_12A_CORRECTION_SEARCH_POLICY');
-  }
   if (correction.output_record_sha256 !== sha256Json(correctedRecord)) {
     fail(`${label}.output_record_sha256 does not bind the corrected record`, 'M5_12A_DECISION_SOURCE_BINDING');
   }

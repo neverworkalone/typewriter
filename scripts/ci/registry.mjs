@@ -29,16 +29,28 @@ function commandCheck(label, args, testFiles = []) {
   };
 }
 
+function inProcessCheck(label, inProcess) {
+  return {
+    label,
+    inProcess,
+    command: () => ({ executable: '[in-process]', args: [inProcess] }),
+    testFiles: [],
+  };
+}
+
+function globalCanonicalAuditCheck() {
+  return {
+    ...inProcessCheck('Run single-pass global canonical audit', 'global-canonical-audit'),
+    oncePerCanonicalSession: 'global-canonical-audit',
+  };
+}
+
 function npmCheck(label, script, args = [], testFiles = []) {
   return {
     label,
     command: () => npmCommand(script, args),
     testFiles,
   };
-}
-
-function allowDirtyArguments() {
-  return process.env.TYPEWRITER_ALLOW_DIRTY === 'true' ? ['--allow-dirty'] : [];
 }
 
 function testCheck(file, label = `Run ${file}`) {
@@ -52,23 +64,47 @@ function contractCheck(label, script, testFile) {
 export const CI_CATEGORY_ORDER = Object.freeze([
   'canonical',
   'lexical',
-  'batch',
-  'historical',
   'toolchain',
+  'batch',
   'product',
   'artifacts',
 ]);
+
+export const CI_FAST_CATEGORY_ORDER = Object.freeze([
+  'canonical',
+  'lexical',
+  'toolchain',
+]);
+
+export const CI_NORMAL_CATEGORY_ORDER = Object.freeze([
+  ...CI_FAST_CATEGORY_ORDER,
+  ...CI_CATEGORY_ORDER.filter(
+    (categoryName) => !CI_FAST_CATEGORY_ORDER.includes(categoryName),
+  ),
+]);
+export const CI_DEEP_CATEGORY_ORDER = Object.freeze(['historical', 'deep']);
+export const CI_ALL_CATEGORY_ORDER = Object.freeze([
+  ...CI_NORMAL_CATEGORY_ORDER,
+  ...CI_DEEP_CATEGORY_ORDER,
+]);
+
+export const CI_LEVEL_CATEGORY_ORDER = Object.freeze({
+  fast: CI_FAST_CATEGORY_ORDER,
+  normal: CI_NORMAL_CATEGORY_ORDER,
+  all: CI_ALL_CATEGORY_ORDER,
+  deep: CI_DEEP_CATEGORY_ORDER,
+});
 
 export const CI_CATEGORIES = Object.freeze({
   canonical: {
     label: 'Core canonical and dataset validation',
     checks: [
       commandCheck('Validate manifest version', ['scripts/ci/validate-manifest.mjs']),
-      commandCheck('Validate canonical JSONL', ['scripts/validate/canonical-jsonl.mjs']),
+      inProcessCheck('Validate canonical JSONL', 'canonical-jsonl'),
+      globalCanonicalAuditCheck(),
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
-      commandCheck('Validate dataset integrity', ['scripts/validate/dataset-integrity.mjs']),
+      testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
-      commandCheck('Validate M5 target inventory', ['scripts/validate/target-inventory.mjs']),
       testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
       npmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),
@@ -80,7 +116,7 @@ export const CI_CATEGORIES = Object.freeze({
   lexical: {
     label: 'Shared lexical and semantic validation',
     checks: [
-      npmCheck('Validate shared lexical quality and semantic audit', 'validate:lexical'),
+      globalCanonicalAuditCheck(),
       testCheck('tests/lexical-quality.test.mjs', 'Test shared lexical quality'),
       testCheck('tests/relation-admission.test.mjs', 'Test relation admission'),
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
@@ -123,8 +159,6 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
       testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
-      npmCheck('Validate M5-12A exact +722 promotion', 'batch:m5-12a:check'),
-      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A candidate and promotion contract'),
     ],
   },
 
@@ -160,21 +194,18 @@ export const CI_CATEGORIES = Object.freeze({
   toolchain: {
     label: 'Normalization, dictionary build, and integrated audit',
     checks: [
-      commandCheck('Normalize canonical data', ['scripts/normalize/canonical.mjs']),
+      globalCanonicalAuditCheck(),
+      inProcessCheck('Normalize canonical data', 'normalize-canonical'),
       testCheck('tests/normalize-canonical.test.mjs', 'Test canonical normalization'),
       {
-        label: 'Build SQLite dictionary',
-        command: () => nodeCommand(['scripts/build/dictionary.mjs', ...allowDirtyArguments()]),
-        testFiles: [],
+        ...inProcessCheck('Build shared SQLite dictionary artifact', 'shared-dictionary-build'),
       },
       {
-        label: 'Run integrated M2 audit',
-        command: () => nodeCommand(['scripts/verify/m2-pipeline.mjs', ...allowDirtyArguments()]),
-        testFiles: [],
+        ...inProcessCheck('Validate shared SQLite dictionary artifact', 'shared-dictionary-validation'),
       },
+      inProcessCheck('Run integrated M2 audit', 'm2-audit'),
       testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
       testCheck('tests/m2-pipeline.test.mjs', 'Test integrated M2 audit'),
-      testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
     ],
   },
 
@@ -199,10 +230,29 @@ export const CI_CATEGORIES = Object.freeze({
       ]),
     ],
   },
+
+  deep: {
+    label: 'Manual deep current-revision reproducibility validation',
+    checks: [
+      globalCanonicalAuditCheck(),
+      testCheck('tests/m5-12a.test.mjs', 'Test M5-12A admission and promotion contract'),
+      inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
+      testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
+      npmCheck(
+        'Run 500K/1M fast/normal/deep synthetic canonical benchmark',
+        'benchmark:canonical',
+        [
+          '--sizes=500000,1000000',
+          '--sqlite-scale=500000,1000000',
+          '--fixed-level-evidence=config/ci-level-evidence.json',
+        ],
+      ),
+    ],
+  },
 });
 
 export function collectTestOwnership() {
-  return CI_CATEGORY_ORDER.flatMap((categoryName) => (
+  return CI_ALL_CATEGORY_ORDER.flatMap((categoryName) => (
     CI_CATEGORIES[categoryName].checks.flatMap((check) => (
       (check.testFiles ?? []).map((file) => ({
         category: categoryName,

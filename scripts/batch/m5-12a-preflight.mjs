@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { chmod, cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { chmod, copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,6 +25,7 @@ import {
 const execFileAsync = promisify(execFile);
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 const VITE_PATH = path.join(REPOSITORY_DIRECTORY, 'node_modules/.bin/vite');
+const PREFLIGHT_CACHE = new Map();
 
 export class M512APreflightError extends Error {
   constructor(message, code = 'M5_12A_PREFLIGHT_ERROR') {
@@ -75,7 +76,9 @@ async function runProspectiveProductChecks({ canonicalDirectory, outputDirectory
   const previous = new Map(Object.keys(environment).map((key) => [key, process.env[key]]));
   Object.assign(process.env, environment);
   try {
-    await runChecks(CI_CATEGORIES.product.checks, {});
+    await runChecks(CI_CATEGORIES.product.checks, {
+      sharedDictionaryPath: databasePath,
+    });
   } finally {
     for (const [key, value] of previous) {
       if (value === undefined) delete process.env[key];
@@ -84,7 +87,7 @@ async function runProspectiveProductChecks({ canonicalDirectory, outputDirectory
   }
 }
 
-export async function runM512APreflight({
+async function runM512APreflightOnce({
   prospectiveCanonicalDirectory,
   prospectiveCanonicalDigest,
   expectedSummary,
@@ -108,6 +111,7 @@ export async function runM512APreflight({
   }
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-12a-preflight-'));
   const outputDirectory = path.join(temporaryDirectory, 'dist');
+  const sharedProductDatabasePath = path.join(temporaryDirectory, 'dictionary-shared.sqlite');
   const secondDatabasePath = path.join(temporaryDirectory, 'dictionary-second.sqlite');
   const zipPath = path.join(temporaryDirectory, `${path.basename(temporaryDirectory)}_1.0.zip`);
   let firstDatabase;
@@ -127,10 +131,11 @@ export async function runM512APreflight({
     });
 
     const productDatabasePath = path.join(outputDirectory, 'dictionary.sqlite');
+    await copyFile(productDatabasePath, sharedProductDatabasePath);
     await runProspectiveProductChecks({
       canonicalDirectory: prospectiveCanonicalDirectory,
       outputDirectory,
-      databasePath: productDatabasePath,
+      databasePath: sharedProductDatabasePath,
     });
     for (const fileName of ['favicon.ico', 'icon.png']) {
       await rm(path.join(outputDirectory, fileName), { force: true });
@@ -249,4 +254,32 @@ export async function runM512APreflight({
     closeDatabase(secondDatabase);
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
+}
+
+function preflightCacheKey(options) {
+  return JSON.stringify({
+    prospectiveCanonicalDigest: options.prospectiveCanonicalDigest,
+    expectedSummary: options.expectedSummary,
+    candidateSourceDigest: options.candidateSourceDigest,
+    expectedCandidateSourceDigest: options.expectedCandidateSourceDigest,
+    generationPassId: options.generationPassId,
+    verificationPassId: options.verificationPassId,
+    humanReviewClaimed: options.humanReviewClaimed,
+  });
+}
+
+export async function runM512APreflight(options = {}) {
+  const key = preflightCacheKey(options);
+  let resultPromise = PREFLIGHT_CACHE.get(key);
+  if (!resultPromise) {
+    resultPromise = runM512APreflightOnce(options);
+    PREFLIGHT_CACHE.set(key, resultPromise);
+    try {
+      await resultPromise;
+    } catch (error) {
+      PREFLIGHT_CACHE.delete(key);
+      throw error;
+    }
+  }
+  return structuredClone(await resultPromise);
 }

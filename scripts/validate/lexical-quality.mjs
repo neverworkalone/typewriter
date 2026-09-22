@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import { loadCanonicalContext } from './canonical-context.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
 /**
@@ -122,6 +122,19 @@ const WRITER_DOMAIN_TERM_METADATA = Object.freeze({
     inflectional_tails: new Set(['다', '는', '며', '고', '서', '지', '게', '도록', '던']),
   }),
 });
+
+// The token matcher is on the shared global-audit path.  Most gloss tokens do
+// not begin with a configured domain term, so index the immutable term table by
+// its first code point before doing the exact prefix/tail checks below.
+const WRITER_DOMAIN_TERM_ENTRIES_BY_INITIAL = new Map();
+for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
+  for (const term of terms) {
+    const initial = term[0];
+    const entries = WRITER_DOMAIN_TERM_ENTRIES_BY_INITIAL.get(initial) ?? [];
+    entries.push([axis, term]);
+    WRITER_DOMAIN_TERM_ENTRIES_BY_INITIAL.set(initial, entries);
+  }
+}
 
 const WRITER_DOMAIN_EDGE_PUNCTUATION_PATTERN = /[()[\]{}"'“”‘’.,;:!?。！？…]/u;
 
@@ -1001,18 +1014,16 @@ function writerDomainTokenMatches(text) {
     const tokenEnd = tokenStart + tokenMatch[0].length;
     const trimmed = trimDomainToken(text, tokenStart, tokenEnd);
     const token = text.slice(trimmed.start, trimmed.end);
-    for (const [axis, terms] of Object.entries(WRITER_DOMAIN_TERMS)) {
-      for (const term of terms) {
-        if (!token.startsWith(term)) continue;
-        const tail = token.slice(term.length);
-        if (!isAllowedDomainTail(term, tail)) continue;
-        matches.push({
-          axis,
-          term,
-          index: trimmed.start,
-          end: trimmed.start + term.length,
-        });
-      }
+    for (const [axis, term] of WRITER_DOMAIN_TERM_ENTRIES_BY_INITIAL.get(token[0]) ?? []) {
+      if (!token.startsWith(term)) continue;
+      const tail = token.slice(term.length);
+      if (!isAllowedDomainTail(term, tail)) continue;
+      matches.push({
+        axis,
+        term,
+        index: trimmed.start,
+        end: trimmed.start + term.length,
+      });
     }
   }
   return matches;
@@ -1152,6 +1163,7 @@ function recordQualityFindings(record, {
   rejectAnyBroadConnector = false,
   nominalTerms,
   topicEvidence,
+  glossConnectorCache,
 } = {}) {
   const findings = [];
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
@@ -1181,6 +1193,16 @@ function recordQualityFindings(record, {
       findings.push({
         code: 'LEXICAL_SEARCH_FORM_DUPLICATE',
         message: `${label}.search_forms must not contain duplicate normalized forms`,
+      });
+    }
+    const collapsedLemma = record.lemma.replace(/\s+/gu, '');
+    if (
+      collapsedLemma !== record.lemma
+      && normalizedForms.includes(collapsedLemma.normalize('NFC'))
+    ) {
+      findings.push({
+        code: 'LEXICAL_SEARCH_FORM_COLLAPSED_ALIAS',
+        message: `${label}.search_forms must not add a collapsed internal-whitespace alias for the lemma`,
       });
     }
   }
@@ -1253,7 +1275,8 @@ function recordQualityFindings(record, {
         observation: particleFinding,
       });
     }
-    const observations = inspectGlossConnectors(sense.gloss);
+    const observations = glossConnectorCache?.get(sense.gloss)
+      ?? inspectGlossConnectors(sense.gloss);
     if (rejectAnyBroadConnector && observations.length > 0) {
       findings.push({
         code: 'LEXICAL_BROAD_GLOSS',
@@ -1382,40 +1405,55 @@ export function findBulkGlossProjectionFindings(
       .trim();
   };
 
+  const addOwner = (ownersByKey, key, owner) => {
+    const existing = ownersByKey.get(key);
+    if (existing === undefined) {
+      ownersByKey.set(key, owner);
+    } else if (Array.isArray(existing)) {
+      existing.push(owner);
+    } else {
+      ownersByKey.set(key, [existing, owner]);
+    }
+  };
+  const ownerCount = (owners) => (Array.isArray(owners) ? owners.length : 1);
+  const ownerList = (owners) => (Array.isArray(owners) ? owners : [owners]);
+
   for (const recordInfo of recordInfos) {
     const record = recordOf(recordInfo);
     for (const sense of record?.senses ?? []) {
       if (typeof sense.gloss !== 'string') continue;
       const owner = { record_id: record.id, sense_id: sense.id };
-      const glossOwners = ownersByGloss.get(sense.gloss) ?? [];
-      glossOwners.push(owner);
-      ownersByGloss.set(sense.gloss, glossOwners);
+      addOwner(ownersByGloss, sense.gloss, owner);
       const fingerprint = templateFingerprint(record, sense.gloss);
-      const templateOwners = ownersByTemplate.get(fingerprint) ?? [];
-      templateOwners.push(owner);
-      ownersByTemplate.set(fingerprint, templateOwners);
+      addOwner(ownersByTemplate, fingerprint, owner);
     }
   }
-  const exactFindings = [...ownersByGloss.entries()]
-    .filter(([, owners]) => owners.length > maxOccurrences)
-    .map(([gloss, owners]) => ({
+  const exactFindings = [];
+  for (const [gloss, storedOwners] of ownersByGloss.entries()) {
+    if (ownerCount(storedOwners) <= maxOccurrences) continue;
+    const owners = ownerList(storedOwners);
+    exactFindings.push({
       code: 'LEXICAL_BULK_GLOSS_PROJECTION',
       kind: 'exact-gloss',
       gloss,
       owners,
       message: `gloss ${JSON.stringify(gloss)} is reused by ${owners.length} candidate senses; author lemma-specific semantic content before admission`,
-    }));
+    });
+  }
   const exactFindingKeys = new Set(exactFindings.flatMap(({ owners }) => owners.map(({ record_id: recordId, sense_id: senseId }) => `${recordId}:${senseId}`)));
-  const templateFindings = [...ownersByTemplate.entries()]
-    .filter(([, owners]) => owners.length > maxOccurrences)
-    .map(([fingerprint, owners]) => ({
+  const templateFindings = [];
+  for (const [fingerprint, storedOwners] of ownersByTemplate.entries()) {
+    if (ownerCount(storedOwners) <= maxOccurrences) continue;
+    const owners = ownerList(storedOwners);
+    if (!owners.some(({ record_id: recordId, sense_id: senseId }) => !exactFindingKeys.has(`${recordId}:${senseId}`))) continue;
+    templateFindings.push({
       code: 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
       kind: 'parameterized-template',
       fingerprint,
       owners,
       message: `gloss definition template ${JSON.stringify(fingerprint)} is reused by ${owners.length} candidate senses after lemma substitution; author candidate-specific semantic content before admission`,
-    }))
-    .filter(({ owners }) => owners.some(({ record_id: recordId, sense_id: senseId }) => !exactFindingKeys.has(`${recordId}:${senseId}`)));
+    });
+  }
   return [...exactFindings, ...templateFindings];
 }
 
@@ -1435,14 +1473,38 @@ export function validateBulkGlossProjection(recordInfos, options = {}) {
  */
 export function auditCanonicalLexicalQuality(
   recordInfos,
-  { scope = 'complete-canonical', throwOnError = true, topicEvidence } = {},
+  {
+    scope = 'complete-canonical',
+    throwOnError = true,
+    topicEvidence,
+    context,
+  } = {},
 ) {
+  if (context?.derived?.lexicalQuality?.scope === scope) {
+    const cached = context.derived.lexicalQuality;
+    if (throwOnError && cached.blocking_finding_count > 0) {
+      const finding = cached.blocking_findings[0];
+      throw new LexicalQualityError(
+        `${finding.location}: ${finding.message}`,
+        finding.code,
+        finding,
+      );
+    }
+    return cached;
+  }
+
   const normalized = recordInfos.map(recordOf);
-  const nominalTerms = buildNominalTermPositions(recordInfos);
+  if (context && !context.derived) context.derived = {};
+  const nominalTerms = context?.derived?.nominalTerms
+    ?? buildNominalTermPositions(recordInfos);
+  if (context && !context.derived.nominalTerms) {
+    context.derived.nominalTerms = nominalTerms;
+  }
   const findings = [];
   const connectorCounts = Object.fromEntries(CONNECTORS.map((connector) => [connector, 0]));
   const classificationCounts = {};
   let senseCount = 0;
+  const glossConnectorCache = context?.semanticAuditCache?.glossConnectors;
   for (const finding of findBulkGlossProjectionFindings(recordInfos)) {
     const owner = finding.owners[0];
     findings.push({
@@ -1470,6 +1532,7 @@ export function auditCanonicalLexicalQuality(
       mode: 'canonical',
       nominalTerms,
       topicEvidence,
+      glossConnectorCache,
     });
     for (const finding of qualityFindings) {
       const senseMatch = /\.senses\[(\d+)\]/u.exec(finding.message);
@@ -1483,7 +1546,9 @@ export function auditCanonicalLexicalQuality(
     }
     for (const sense of record.senses ?? []) {
       senseCount += 1;
-      for (const observation of inspectGlossConnectors(sense.gloss)) {
+      const observations = glossConnectorCache?.get(sense.gloss)
+        ?? inspectGlossConnectors(sense.gloss);
+      for (const observation of observations) {
         connectorCounts[observation.connector] += 1;
         classificationCounts[observation.classification] = (classificationCounts[observation.classification] ?? 0) + 1;
       }
@@ -1900,21 +1965,33 @@ export const WRITER_DOMAIN_POLICY = Object.freeze({
 
 export async function validateCanonicalLexicalQuality(
   directory = DEFAULT_CANONICAL_DIRECTORY,
+  { canonicalContext } = {},
 ) {
-  const result = await readCanonicalRecords(directory);
+  const context = canonicalContext ?? await loadCanonicalContext({ directory });
+  const result = context;
   let topicEvidence;
   if (path.resolve(directory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY)) {
     const {
       buildCanonicalSemanticAudit,
       buildSemanticTopicEvidence,
     } = await import('./semantic-audit.mjs');
-    const { artifact } = await buildCanonicalSemanticAudit({ canonicalDirectory: directory });
-    topicEvidence = buildSemanticTopicEvidence(result.records, artifact);
+    const { artifact } = context.semanticAudit
+      ? { artifact: context.semanticAudit }
+      : await buildCanonicalSemanticAudit({
+        canonicalDirectory: directory,
+        canonicalContext: context,
+      });
+    topicEvidence = context.derived?.topicEvidence
+      ?? buildSemanticTopicEvidence(result.records, artifact);
+    if (context.derived && !context.derived.topicEvidence) {
+      context.derived.topicEvidence = topicEvidence;
+    }
   }
   return auditCanonicalLexicalQuality(result.records, {
     scope: 'complete-canonical',
     throwOnError: true,
     topicEvidence,
+    context,
   });
 }
 

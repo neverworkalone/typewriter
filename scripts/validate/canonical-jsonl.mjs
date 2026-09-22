@@ -1,4 +1,5 @@
 import { realpathSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -13,6 +14,7 @@ export const DEFAULT_CANONICAL_DIRECTORY = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/canonical',
 );
+const SHARED_CONTEXT_CONTRACT_VERSION = 'canonical-context-v1';
 
 export class ValidationError extends Error {
   constructor(message, code) {
@@ -269,8 +271,9 @@ export function validateCanonicalRecord(
   );
 }
 
-async function readJsonlFile(filePath) {
+async function readJsonlFile(filePath, { onBytes } = {}) {
   const bytes = await readFile(filePath);
+  onBytes?.(bytes);
   const byteLines = splitByteLines(bytes);
 
   // An empty file is allowed while the canonical dataset is being bootstrapped.
@@ -323,27 +326,113 @@ async function readJsonlFile(filePath) {
   return records;
 }
 
+async function readSharedCanonicalContext(directory) {
+  const contextPath = process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH;
+  const contextDirectory = process.env.TYPEWRITER_CANONICAL_CONTEXT_DIRECTORY;
+  if (
+    !contextPath
+      || !contextDirectory
+      || path.resolve(directory) !== path.resolve(contextDirectory)
+  ) {
+    return undefined;
+  }
+
+  let context;
+  try {
+    context = JSON.parse(await readFile(contextPath, 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new ValidationError(
+        `${contextPath}: shared canonical context is not valid JSON (${error.message})`,
+        'SHARED_CONTEXT_JSON',
+      );
+    }
+    throw error;
+  }
+
+  if (context.contract_version !== SHARED_CONTEXT_CONTRACT_VERSION) {
+    throw new ValidationError(
+      `${contextPath}: unsupported shared canonical context contract`,
+      'SHARED_CONTEXT_CONTRACT',
+    );
+  }
+  if (
+    typeof context.canonical_directory !== 'string'
+    || path.resolve(context.canonical_directory) !== path.resolve(contextDirectory)
+  ) {
+    throw new ValidationError(
+      `${contextPath}: shared canonical context directory does not match the default canonical directory`,
+      'SHARED_CONTEXT_DIRECTORY',
+    );
+  }
+  const expectedRevision = process.env.TYPEWRITER_CANONICAL_REVISION;
+  if (!expectedRevision) {
+    throw new ValidationError(
+      `${contextPath}: shared canonical context requires TYPEWRITER_CANONICAL_REVISION`,
+      'SHARED_CONTEXT_REVISION_REQUIRED',
+    );
+  }
+  if (expectedRevision && context.canonical_revision !== expectedRevision) {
+    throw new ValidationError(
+      `${contextPath}: shared canonical context revision does not match the expected current revision`,
+      'SHARED_CONTEXT_REVISION',
+    );
+  }
+  if (typeof context.canonical_revision !== 'string' || !Array.isArray(context.records)) {
+    throw new ValidationError(
+      `${contextPath}: shared canonical context is missing records`,
+      'SHARED_CONTEXT_SHAPE',
+    );
+  }
+
+  return {
+    fileCount: context.file_count ?? 0,
+    canonicalRevision: context.canonical_revision,
+    records: context.records,
+  };
+}
+
 export async function validateCanonicalFile(filePath) {
   const records = await readJsonlFile(filePath);
   return { fileCount: 1, recordCount: records.length };
 }
 
-export async function readCanonicalRecords(directory = DEFAULT_CANONICAL_DIRECTORY) {
+export async function readCanonicalRecords(
+  directory = DEFAULT_CANONICAL_DIRECTORY,
+  { useSharedContext = true } = {},
+) {
+  const sharedContext = useSharedContext
+    ? await readSharedCanonicalContext(directory)
+    : undefined;
+  if (sharedContext) {
+    return sharedContext;
+  }
+
   let files;
 
   try {
     files = await collectJsonlFiles(directory);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return { fileCount: 0, records: [] };
+      return {
+        fileCount: 0,
+        canonicalRevision: createHash('sha256').digest('hex'),
+        records: [],
+      };
     }
 
     if (error.code === 'ENOTDIR') {
       if (directory.endsWith('.jsonl')) {
-        return {
-          fileCount: 1,
-          records: await readJsonlFile(directory),
-        };
+        const digest = createHash('sha256');
+        digest.update(path.basename(directory), 'utf8');
+        digest.update(Buffer.from([0]));
+        const records = await readJsonlFile(directory, {
+          onBytes: (bytes) => {
+            digest.update(bytes);
+            digest.update(Buffer.from([0]));
+          },
+        });
+        return { fileCount: 1, canonicalRevision: digest.digest('hex'), records };
       }
 
       throw new ValidationError(
@@ -357,12 +446,27 @@ export async function readCanonicalRecords(directory = DEFAULT_CANONICAL_DIRECTO
 
   files.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
 
+  const digest = createHash('sha256');
   const records = [];
   for (const filePath of files) {
-    records.push(...(await readJsonlFile(filePath)));
+    digest.update(path.relative(directory, filePath), 'utf8');
+    digest.update(Buffer.from([0]));
+    const fileRecords = await readJsonlFile(filePath, {
+      onBytes: (bytes) => {
+        digest.update(bytes);
+        digest.update(Buffer.from([0]));
+      },
+    });
+    for (const recordInfo of fileRecords) {
+      records.push(recordInfo);
+    }
   }
 
-  return { fileCount: files.length, records };
+  return {
+    fileCount: files.length,
+    canonicalRevision: digest.digest('hex'),
+    records,
+  };
 }
 
 export async function validateCanonicalDirectory(

@@ -16,6 +16,9 @@ const outputDirectory = path.resolve(
 );
 const defaultOutputDirectory = path.join(projectRoot, 'dist');
 const defaultDictionaryPath = path.join(projectRoot, 'dist/dictionary.sqlite');
+const sharedDictionaryPath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH
+  ? path.resolve(process.env.TYPEWRITER_SHARED_DICTIONARY_PATH)
+  : null;
 const sqliteWasmDirectory = path.join(
   projectRoot,
   'node_modules/@sqlite.org/sqlite-wasm/dist',
@@ -54,20 +57,32 @@ async function copyRuntimeAssets() {
     ),
   ]);
 
-  const summary = await buildDictionary({
-    inputDirectory: canonicalDirectory,
-    outputPath: outputDirectory === defaultOutputDirectory
-      ? defaultDictionaryPath
-      : path.join(outputDirectory, 'dictionary.sqlite'),
-    checkPilotCompleteness: true,
-    repositoryDirectory: projectRoot,
-    allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
-  });
+  const outputPath = outputDirectory === defaultOutputDirectory
+    ? defaultDictionaryPath
+    : path.join(outputDirectory, 'dictionary.sqlite');
 
-  console.log(
-    `Product dictionary built: ${summary.recordCount} records, `
-      + `${summary.senseCount} senses, ${summary.relationCount} relations.`,
-  );
+  if (sharedDictionaryPath) {
+    if (sharedDictionaryPath === path.resolve(outputPath)) {
+      throw new Error(
+        'TYPEWRITER_SHARED_DICTIONARY_PATH must be outside the Vite output directory',
+      );
+    }
+    await cp(sharedDictionaryPath, outputPath);
+    console.log(`Product dictionary reused from shared artifact: ${sharedDictionaryPath}`);
+  } else {
+    const summary = await buildDictionary({
+      inputDirectory: canonicalDirectory,
+      outputPath,
+      checkPilotCompleteness: true,
+      repositoryDirectory: projectRoot,
+      allowDirty: process.env.TYPEWRITER_ALLOW_DIRTY === 'true',
+    });
+
+    console.log(
+      `Product dictionary built: ${summary.recordCount} records, `
+        + `${summary.senseCount} senses, ${summary.relationCount} relations.`,
+    );
+  }
 }
 
 function productRuntimeAssets() {

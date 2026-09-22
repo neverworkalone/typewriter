@@ -1,0 +1,35 @@
+{
+  "contract_version": "ci-level-evidence-v1",
+  "source_head": "c87c3013e3ccd7bd9160912ddca1632f1c4ddfa8",
+  "source_runs": {
+    "fast": "35690480989",
+    "normal": "35690480989",
+    "deep": "35690502805"
+  },
+  "source_urls": {
+    "fast": "https://github.com/neverworkalone/typewriter/actions/runs/35690480989",
+    "normal": "https://github.com/neverworkalone/typewriter/actions/runs/35690480989",
+    "deep": "https://github.com/neverworkalone/typewriter/actions/runs/35690502805"
+  },
+  "measurement": "fast and normal fixed remainders derive from exact-head PR level wall-clock minus the current-canonical corpus baseline; deep uses the exact-head ci:all non-benchmark window minus the current-canonical deep corpus baseline; remainder upper bounds are rounded up to the next millisecond",
+  "levels": {
+    "fast": {
+      "observed_wall_clock_ms": 14632.84,
+      "corpus_baseline_wall_clock_ms": 178.65,
+      "fixed_remainder_observed_wall_clock_ms": 14454.19,
+      "fixed_remainder_upper_bound_ms": 14455
+    },
+    "normal": {
+      "observed_wall_clock_ms": 69784.76,
+      "corpus_baseline_wall_clock_ms": 612.92,
+      "fixed_remainder_observed_wall_clock_ms": 69171.84,
+      "fixed_remainder_upper_bound_ms": 69172
+    },
+    "deep": {
+      "observed_wall_clock_ms": 182810.68,
+      "corpus_baseline_wall_clock_ms": 731.73,
+      "fixed_remainder_observed_wall_clock_ms": 182078.95,
+      "fixed_remainder_upper_bound_ms": 182079
+    }
+  }
+}

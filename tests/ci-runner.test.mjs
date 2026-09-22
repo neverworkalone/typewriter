@@ -41,3 +41,26 @@ test('runner stops at the first failed check regardless of check kind', async ()
   assert.deepEqual(executed, ['success', 'failure']);
   assert.equal(sentinel.executed, false);
 });
+
+test('runner does not repeat a shared audit within one canonical session', async () => {
+  const executed = [];
+  const checks = [
+    {
+      label: 'shared audit',
+      oncePerCanonicalSession: 'global-canonical-audit',
+      command: () => ({ executable: 'synthetic', args: ['audit'] }),
+    },
+    {
+      label: 'shared audit duplicate',
+      oncePerCanonicalSession: 'global-canonical-audit',
+      command: () => ({ executable: 'synthetic', args: ['audit-duplicate'] }),
+    },
+  ];
+
+  await runChecks(checks, { completedChecks: new Set() }, {
+    log: () => {},
+    execute: async ({ args }) => executed.push(args[0]),
+  });
+
+  assert.deepEqual(executed, ['audit']);
+});

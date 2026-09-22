@@ -1911,6 +1911,87 @@ function multiSenseProductionReview(record, { relationship = 'distinct', pairDec
   };
 }
 
+test('shared admission regressions keep semantic bindings, search policy, and per-sense coverage merge-blocking', () => {
+  const singleSenseRecord = {
+    id: 'w-common-admission-binding',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-common-admission-binding',
+    lemma: '공통입력결속',
+    search_forms: ['공통입력결속'],
+    senses: [{
+      id: 'w-common-admission-binding-s1',
+      pos: 'noun',
+      gloss: '공통 admission binding regression 의미를 검증한다.',
+    }],
+  };
+  const copiedEvidence = productionReview({
+    candidateRecord: singleSenseRecord,
+    gloss: singleSenseRecord.senses[0].gloss,
+    boundaryDecision: 'atomic',
+  });
+  copiedEvidence.authored_decision.candidate_record_sha256 = '0'.repeat(64);
+  assert.throws(
+    () => validateLexicalSemanticReview(copiedEvidence, {
+      decision: 'included',
+      candidateRecord: singleSenseRecord,
+      catalogCount: 1,
+      requireSemanticEvidence: true,
+      requireIndependentDecisionEvidence: true,
+    }),
+    (error) => error.code === 'LEXICAL_SEMANTIC_BINDING',
+  );
+
+  const whitespaceAliasRecord = {
+    ...singleSenseRecord,
+    id: 'w-common-admission-search-policy',
+    candidate_id: 'w-common-admission-search-policy',
+    lemma: '공통 검색어',
+    search_forms: ['공통 검색어', '공통검색어'],
+    senses: [{
+      id: 'w-common-admission-search-policy-s1',
+      pos: 'noun',
+      gloss: '공통 검색어의 writer-facing 의미를 검증한다.',
+    }],
+  };
+  assert.throws(
+    () => validateLexicalRecord(whitespaceAliasRecord, { mode: 'candidate' }),
+    (error) => error.code === 'LEXICAL_SEARCH_FORM_COLLAPSED_ALIAS',
+  );
+
+  const multiSenseRecord = {
+    ...singleSenseRecord,
+    id: 'w-common-admission-coverage',
+    candidate_id: 'w-common-admission-coverage',
+    lemma: '공통 의미 경계',
+    search_forms: ['공통 의미 경계'],
+    senses: [
+      {
+        id: 'w-common-admission-coverage-s1',
+        pos: 'noun',
+        gloss: '공통 의미 경계의 첫 번째 쓰임을 검증한다.',
+      },
+      {
+        id: 'w-common-admission-coverage-s2',
+        pos: 'noun',
+        gloss: '공통 의미 경계의 두 번째 쓰임을 검증한다.',
+      },
+    ],
+  };
+  const incompleteCoverage = multiSenseProductionReview(multiSenseRecord);
+  incompleteCoverage.authored_decision.sense_evidence.pop();
+  assert.throws(
+    () => validateLexicalSemanticReview(incompleteCoverage, {
+      decision: 'included',
+      candidateRecord: multiSenseRecord,
+      catalogCount: 1,
+      requireSemanticEvidence: true,
+      requireIndependentDecisionEvidence: true,
+    }),
+    /must cover every reviewed sense/u,
+  );
+});
+
 test('the common production review cannot override mechanical duplicate or nested pairs', () => {
   for (const glosses of [
     ['같은 뜻을 설명한다', '같은 뜻을 설명한다'],

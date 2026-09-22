@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from './canonical-jsonl.mjs';
+import { loadCanonicalContext } from './canonical-context.mjs';
 import {
   DEFAULT_SEED_PATH,
   buildTargetInventory,
@@ -456,6 +456,9 @@ export async function validateTargetInventory({
   inventoryPath = DEFAULT_INVENTORY_PATH,
   inventory: suppliedInventory,
   canonicalDirectory = DEFAULT_CANONICAL_DIRECTORY,
+  canonicalContext,
+  semanticAudit,
+  lexicalQuality,
   seedPath = DEFAULT_SEED_PATH,
   promotionPath,
   checkPilotCompleteness = true,
@@ -463,6 +466,7 @@ export async function validateTargetInventory({
   const inventory = suppliedInventory ?? (path.resolve(inventoryPath) === path.resolve(DEFAULT_INVENTORY_PATH)
     ? await buildTargetInventory({
       canonicalDirectory,
+      canonicalContext,
       seedPath,
       ...(promotionPath ? { promotionPath } : {}),
     })
@@ -518,15 +522,25 @@ export async function validateTargetInventory({
     }
   }
 
-  const canonicalResult = await readCanonicalRecords(canonicalDirectory);
+  const context = canonicalContext ?? await loadCanonicalContext({
+    directory: canonicalDirectory,
+  });
+  const canonicalResult = context;
   const requireSemanticAudit = path.resolve(canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  const semanticAudit = requireSemanticAudit
-    ? (await buildCanonicalSemanticAudit({ canonicalDirectory })).artifact
-    : undefined;
+  const effectiveSemanticAudit = semanticAudit ?? context.semanticAudit ?? (
+    requireSemanticAudit
+      ? (await buildCanonicalSemanticAudit({
+        canonicalDirectory,
+        canonicalContext: context,
+      })).artifact
+      : undefined
+  );
   validateDatasetRecords(canonicalResult.records, {
+    context,
     checkPilotCompleteness,
-    semanticAudit,
+    semanticAudit: effectiveSemanticAudit,
     requireSemanticAudit,
+    lexicalQuality,
   });
   const canonicalById = new Map(
     canonicalResult.records.map((recordInfo) => [recordInfo.record.id, recordInfo]),

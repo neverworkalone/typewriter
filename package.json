@@ -78,6 +78,7 @@
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",
+    "benchmark:canonical": "node --max-old-space-size=8192 scripts/benchmark/canonical-validation.mjs",
     "package": "bash pack.sh",
     "package:minify": "bash pack.sh --minify",
     "validate:package": "node scripts/validate-package.mjs",
@@ -85,7 +86,10 @@
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",
     "ci:category": "node scripts/ci/run-category.mjs",
+    "ci:fast": "node scripts/ci/run-category.mjs fast",
+    "ci:normal": "node scripts/ci/run-category.mjs normal",
     "ci:all": "node scripts/ci/run-category.mjs all",
+    "ci:deep": "node scripts/ci/run-category.mjs deep",
     "test": "node --test tests/*.test.mjs && npm run batch:m5-10c:recovery:contract:check && npm run batch:m5-10d:recovery:contract:check",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest"

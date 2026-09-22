@@ -7,6 +7,10 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   ValidationError,
 } from '../validate/canonical-jsonl.mjs';
+import {
+  loadCanonicalContext,
+  markSQLiteBuild,
+} from '../validate/canonical-context.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import {
   BUILD_TOOL_VERSION,
@@ -188,12 +192,20 @@ export async function buildDictionary({
   repositoryDirectory = process.cwd(),
   sourceRevision,
   allowDirty = false,
+  canonicalContext,
+  semanticAudit,
+  normalizedModel,
 } = {}) {
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
 
-  const model = await normalizeCanonicalDirectory(inputDirectory, {
+  const context = canonicalContext ?? await loadCanonicalContext({
+    directory: inputDirectory,
+  });
+  const model = normalizedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness,
+    canonicalContext: context,
+    semanticAudit,
   });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
@@ -213,6 +225,9 @@ export async function buildDictionary({
       .get().version;
     generatedMetadata = metadataEntries(model, {
       ...metadata,
+      ...(context.canonicalRevision
+        ? { canonical_revision: context.canonicalRevision }
+        : {}),
       ...provenance,
       node_version: process.version,
       sqlite_module: 'node:sqlite',
@@ -247,6 +262,7 @@ export async function buildDictionary({
   }
 
   database.close();
+  markSQLiteBuild(context);
 
   return {
     outputPath: resolvedOutputPath,

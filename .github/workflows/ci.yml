@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - master
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,25 +31,14 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Core canonical and dataset validation
-        run: npm run ci:category -- canonical
+      - name: Pull request normal validation (fast checkpoint + continuation)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npm run ci:normal
 
-      - name: Shared lexical and semantic validation
-        run: npm run ci:category -- lexical
+      - name: Master normal validation
+        if: ${{ github.event_name == 'push' }}
+        run: npm run ci:normal
 
-      - name: Batch process and contract validation
-        run: npm run ci:category -- batch
-
-      - name: Historical replay and staged batch validation
-        run: npm run ci:category -- historical
-
-      - name: Normalization, dictionary build, and integrated audit
-        run: npm run ci:category -- toolchain
-
-      # Pre-1.0 CI intentionally ends at the product build. Release verification
-      # remains available for manual runs and future release automation.
-      - name: Product tests and extension build
-        run: npm run ci:category -- product
-
-      - name: Generated-artifact and clean-checkout enforcement
-        run: npm run ci:category -- artifacts
+      - name: Scheduled/manual all validation
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: npm run ci:all

@@ -42,6 +42,23 @@ Read multiple guides only when the actual behavioral impact requires them.
 If a change affects behavior outside its apparent file category, load the
 additional guide or source of truth needed for that impact.
 
+For canonical validation and CI architecture changes, verify that the shared
+context is built from the complete canonical revision, that the global audit
+still runs before SQLite build, and that downstream checks consume the same
+artifact. Verify that current-canonical production gates share the same
+in-process context and that isolated fixture tests do not repeatedly transport
+the full context. Treat reported parse/full-scan/index/build and context
+transport counts as evidence to check against the runner wiring, not as a
+substitute for correctness checks. Independent two-build reproducibility is a
+deep/manual validation path, not a duplicate normal gate. The public CI levels
+must remain nested: `ci:fast` for early feedback, `ci:normal` for the full
+merge-coverage continuation, and `ci:all` for scheduled/manual deep checks
+including the scale benchmark. A pull-request workflow may expose the fast
+checkpoint and continue normal validation in the same process/session; it must
+not run fast and normal as separate fresh processes that duplicate canonical
+parse/index/build work. Changed-only validation may accelerate failure
+feedback but must not become the final correctness gate.
+
 ## Depth by risk
 
 Do not review every changed file at equal depth.

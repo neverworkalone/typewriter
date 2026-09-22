@@ -47,6 +47,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     assert.equal(summary.searchFormCount, 696);
     assert.equal(summary.senseCount, 743);
     assert.equal(summary.relationCount, 467);
+    assert.match(summary.metadata.canonical_revision, /^[0-9a-f]{64}$/);
     assert.equal(summary.metadata.schema_version, '1');
     assert.equal(summary.metadata.normalization_version, '1');
 

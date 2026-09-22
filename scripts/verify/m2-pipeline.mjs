@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_CANONICAL_DIRECTORY,
-  readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
+import { loadCanonicalContext } from '../validate/canonical-context.mjs';
 import { validateDatasetDirectory } from '../validate/dataset-integrity.mjs';
 import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { buildDictionary } from '../build/dictionary.mjs';
@@ -242,17 +242,52 @@ function verifyDatabase(database, model, expected, worktreeState) {
   return snapshot;
 }
 
+export function verifyDictionaryArtifact({
+  databasePath,
+  model,
+  canonicalRecords,
+  expectedWorktreeState,
+}) {
+  const database = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    const expected = expectedRowsFromCanonicalRecords(canonicalRecords);
+    const metadata = getMetadata(database);
+    const snapshot = verifyDatabase(
+      database,
+      model,
+      expected,
+      expectedWorktreeState ?? metadata.worktree_state,
+    );
+    return { metadata, snapshot };
+  } finally {
+    database.close();
+  }
+}
+
 export async function runM2Pipeline({
   inputDirectory = DEFAULT_CANONICAL_DIRECTORY,
   repositoryDirectory = REPOSITORY_DIRECTORY,
   allowDirty = false,
+  canonicalContext,
+  databasePath,
+  model: suppliedModel,
 } = {}) {
-  const canonical = await readCanonicalRecords(inputDirectory);
+  const context = canonicalContext ?? await loadCanonicalContext({
+    directory: inputDirectory,
+  });
+  const canonical = {
+    fileCount: context.fileCount,
+    records: context.records,
+  };
   const dataset = await validateDatasetDirectory(inputDirectory, {
     checkPilotCompleteness: true,
+    canonicalContext: context,
+    semanticAudit: context.semanticAudit,
   });
-  const model = await normalizeCanonicalDirectory(inputDirectory, {
+  const model = suppliedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness: true,
+    canonicalContext: context,
+    semanticAudit: context.semanticAudit,
   });
 
   assertCanonicalModelMatchesRaw(canonical.records, model);
@@ -267,6 +302,29 @@ export async function runM2Pipeline({
     (record) => record.candidate_id !== null,
   ).length);
 
+  if (databasePath) {
+    const verified = verifyDictionaryArtifact({
+      databasePath,
+      model,
+      canonicalRecords: canonical.records,
+    });
+    return {
+      ...dataset,
+      startCount: model.records.filter((record) => record.role === 'start').length,
+      referenceOnlyCount: model.records.filter(
+        (record) => record.role === 'reference-only',
+      ).length,
+      searchFormCount: countSearchForms(model.records),
+      expressionCount: model.records.filter(
+        (record) => record.record_type === 'expression',
+      ).length,
+      normalizationVersion: model.normalization_version,
+      databaseBuilds: 0,
+      sourceRevision: verified.metadata.source_revision,
+      worktreeState: verified.metadata.worktree_state,
+    };
+  }
+
   const temporaryDirectory = await mkdtemp(
     path.join(tmpdir(), 'typewriter-m2-pipeline-'),
   );
@@ -280,6 +338,8 @@ export async function runM2Pipeline({
       checkPilotCompleteness: true,
       repositoryDirectory,
       allowDirty,
+      canonicalContext: context,
+      semanticAudit: context.semanticAudit,
     });
     const second = await buildDictionary({
       inputDirectory,
@@ -287,6 +347,8 @@ export async function runM2Pipeline({
       checkPilotCompleteness: true,
       repositoryDirectory,
       allowDirty,
+      canonicalContext: context,
+      semanticAudit: context.semanticAudit,
     });
     const expected = expectedRowsFromCanonicalRecords(canonical.records);
     const expectedWorktreeState = first.metadata.worktree_state;
@@ -336,8 +398,13 @@ export async function runM2Pipeline({
 }
 
 export async function main() {
+  const canonicalContext = process.env.TYPEWRITER_CANONICAL_CONTEXT_PATH
+    ? await loadCanonicalContext()
+    : undefined;
   const summary = await runM2Pipeline({
     allowDirty: process.argv.includes('--allow-dirty'),
+    canonicalContext,
+    databasePath: process.env.TYPEWRITER_SHARED_DICTIONARY_PATH,
   });
   console.log(
     `M2 audit passed: ${summary.fileCount} canonical file(s) / ${summary.recordCount} record(s) / ${summary.senseCount} sense(s) / ${summary.relationCount} relation(s), with ${summary.databaseBuilds} reproducible SQLite builds.`,
