@@ -614,7 +614,7 @@ async function buildProspectiveWorkspace({ baseCanonicalDirectory, seed, promoti
     generatedFromCanonicalDirectory: baseCanonicalDirectory,
     generatedFromSeedPath: CURRENT_SEED_PATH,
     generatedFromPromotionPath: CURRENT_PROMOTION_LEDGER_PATH,
-    canonicalScopeDirectory: canonicalDirectory,
+    canonicalScopeDirectory: CURRENT_CANONICAL_DIRECTORY,
     outputPath: inventoryPath,
   });
   const inventoryValidation = await validateTargetInventory({
