@@ -159,6 +159,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
       testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
+      testCheck('tests/m5-13.test.mjs', 'Test M5-13 pre-admission boundary'),
     ],
   },
 

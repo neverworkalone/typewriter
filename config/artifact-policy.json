@@ -40,6 +40,7 @@
     "data/batches/m5-10a-wave-a2-preimport-inventory.json",
     "data/batches/m5-11-base-inventory.json",
     "data/batches/m5-12-base-inventory.json",
+    "data/batches/m5-13-base-inventory.json",
     "data/batches/m5-7-preimport-inventory.json",
     "data/batches/m5-9-preimport-inventory.json",
     "data/validation/m5-10-wave-b-semantic-audit.json",
@@ -78,7 +79,11 @@
       "data/batches/m5-12-base-canonical/**",
       "data/batches/m5-12-base-inventory.json",
       "data/batches/m5-12-review.json",
-      "data/batches/m5-12-stage.json"
+      "data/batches/m5-12-stage.json",
+      "data/batches/m5-13-base-canonical/**",
+      "data/batches/m5-13-base-inventory.json",
+      "data/batches/m5-13-review.json",
+      "data/batches/m5-13-stage.json"
     ],
     "contract_path_patterns": [
       {

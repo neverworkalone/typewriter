@@ -159,6 +159,15 @@ verification pass IDs separate, make no human-review claim, and record issue
 #7's 2,000-start checkpoint. Candidate bodies and temporary proposal/review
 projections remain outside the repository.
 
+Issue #99's M5-13 pre-admission boundary is recorded by
+`data/batches/m5-13-stage.json`, `data/batches/m5-13-review.json`, the immutable
+`data/batches/m5-13-base-canonical/` snapshot, and
+`data/batches/m5-13-base-inventory.json`. Its catalog declares 1,100 capacity
+slots for an exact +1,000 target and 100-row reserve, but contains no candidate
+identity or body. The stage is intentionally `HOLD PROCESS` until a separate
+source-bound candidate and editorial decision artifact is supplied; it does not
+mutate canonical, seed, inventory, or promotion history.
+
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event
 for reproducibility, but they do not contain raw drafts, external source text,
