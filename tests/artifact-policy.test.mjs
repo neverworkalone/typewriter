@@ -223,6 +223,29 @@ test('artifact policy requires a registered closed contract for future pre-admis
   }
 });
 
+test('artifact policy rejects future copied canonical and inventory snapshots', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-snapshot-policy-'));
+  const cases = [
+    ['data/batches/m5-14-base-canonical/pilot.jsonl', '{}\n'],
+    ['data/batches/m5-14-base-inventory.json', '{}\n'],
+  ];
+
+  try {
+    for (const [relativePath, contents] of cases) {
+      const filePath = path.join(repositoryDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, contents, 'utf8');
+      await assert.rejects(
+        validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+        (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNCLASSIFIED',
+      );
+      await rm(filePath, { force: true });
+    }
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('durable JSON loading rejects duplicate keys before schema validation', async () => {
   assert.deepEqual(
     parseJsonWithUniqueKeys('{"outer":{"key":1},"items":[{"key":2}]}', 'synthetic fixture'),

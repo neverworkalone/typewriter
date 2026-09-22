@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { CI_CATEGORIES } from '../scripts/ci/registry.mjs';
 import { runChecks } from '../scripts/ci/run-category.mjs';
+import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 
 test('runner stops at the first failed check regardless of check kind', async () => {
   const executed = [];
@@ -63,4 +65,19 @@ test('runner does not repeat a shared audit within one canonical session', async
   });
 
   assert.deepEqual(executed, ['audit']);
+});
+
+test('M5-13 consumes the existing canonical session without another canonical parse', async () => {
+  const check = CI_CATEGORIES.batch.checks.find(
+    (candidate) => candidate.inProcess === 'm5-13-pre-admission',
+  );
+  const canonicalContext = await loadCanonicalContext({ contextPath: null });
+  const metricsBefore = { ...canonicalContext.metrics };
+
+  await runChecks([check], {
+    canonicalContext,
+    completedChecks: new Set(),
+  }, { log: () => {} });
+
+  assert.deepEqual(canonicalContext.metrics, metricsBefore);
 });

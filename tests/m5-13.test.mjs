@@ -10,6 +10,7 @@ import {
   validateM513,
   validateM513Catalog,
 } from '../scripts/batch/validate-m5-13.mjs';
+import { loadCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
 
 test('M5-13 declares capacity slots without pretending they are selected candidates', () => {
@@ -49,7 +50,7 @@ test('M5-13 rejects a catalog row that smuggles an unbound inventory target', ()
   );
 });
 
-test('M5-13 stage validation binds the passed M5-12A base and keeps promotion blocked', async () => {
+test('M5-13 stage validation binds the current canonical authority and keeps promotion blocked', async () => {
   const result = await validateM513();
   assert.equal(result.canonical.start_count, 2000);
   assert.equal(result.target.net_start_increase, 1000);
@@ -59,6 +60,16 @@ test('M5-13 stage validation binds the passed M5-12A base and keeps promotion bl
   assert.equal(result.gate_status, 'fail');
   assert.equal(result.promotion.canonical_mutation, false);
   assert.equal(result.promotion.seed_mutation, false);
+});
+
+test('M5-13 validation consumes a supplied shared canonical context', async () => {
+  const canonicalContext = await loadCanonicalContext({ contextPath: null });
+  const metricsBefore = { ...canonicalContext.metrics };
+
+  const result = await validateM513({ canonicalContext });
+
+  assert.equal(result.canonical.start_count, 2000);
+  assert.deepEqual(canonicalContext.metrics, metricsBefore);
 });
 
 test('M5-13 stage evidence contains no canonical import artifact or review decision', async () => {

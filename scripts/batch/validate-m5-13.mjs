@@ -12,7 +12,6 @@ import {
   serializeTargetInventory,
 } from '../inventory/generate-target-inventory.mjs';
 import { parseJsonWithUniqueKeys } from '../validate/unique-json.mjs';
-import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_13_CATALOG } from './m5-13-catalog.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -21,8 +20,6 @@ const execFileAsync = promisify(execFile);
 const BATCH_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/batches');
 const INVENTORY_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/inventory');
 const CURRENT_CANONICAL_DIRECTORY = path.join(REPOSITORY_DIRECTORY, 'data/canonical');
-const BASE_CANONICAL_DIRECTORY = path.join(BATCH_DIRECTORY, 'm5-13-base-canonical');
-const BASE_INVENTORY_PATH = path.join(BATCH_DIRECTORY, 'm5-13-base-inventory.json');
 const CURRENT_SEED_PATH = path.join(INVENTORY_DIRECTORY, 'm5-target-seed.json');
 const REVIEW_PATH = path.join(BATCH_DIRECTORY, 'm5-13-review.json');
 const STAGE_PATH = path.join(BATCH_DIRECTORY, 'm5-13-stage.json');
@@ -42,7 +39,7 @@ export const M5_13_BASE_SUMMARY = Object.freeze({
 });
 export const M5_13_BASE_CANONICAL_SHA256 =
   '690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df';
-export const M5_13_BASE_INVENTORY_SHA256 =
+export const M5_13_GENERATED_INVENTORY_SHA256 =
   '0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66';
 export const M5_13_BASE_SEED_SHA256 =
   '37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000';
@@ -125,6 +122,39 @@ async function resolveGitTreeForCommit(commit, label) {
   const resolvedCommit = await resolveGitRevision(`${commit}^{commit}`, `${label} commit`);
   assertEqual(resolvedCommit, commit, `${label} commit resolution`, 'CHECKPOINT_PROVENANCE_MISMATCH');
   return resolveGitRevision(`${commit}^{tree}`, `${label} tree`);
+}
+
+async function hashGitCanonicalDirectory(commit, label) {
+  const { stdout: fileList } = await execFileAsync(
+    'git',
+    ['-C', REPOSITORY_DIRECTORY, 'ls-tree', '-r', '--name-only', commit, '--', 'data/canonical'],
+    { encoding: 'utf8' },
+  );
+  const files = fileList
+    .split('\n')
+    .map((filePath) => filePath.trim())
+    .filter((filePath) => filePath.endsWith('.jsonl'))
+    .sort();
+  if (files.length === 0) {
+    fail(`${label} does not contain canonical JSONL`, 'CHECKPOINT_PROVENANCE_MISMATCH');
+  }
+
+  const digest = createHash('sha256');
+  const canonicalPrefix = 'data/canonical/';
+  for (const filePath of files) {
+    const { stdout: bytes } = await execFileAsync(
+      'git',
+      ['-C', REPOSITORY_DIRECTORY, 'show', `${commit}:${filePath}`],
+      { encoding: 'buffer', maxBuffer: 128 * 1024 * 1024 },
+    );
+    digest.update(filePath.startsWith(canonicalPrefix)
+      ? filePath.slice(canonicalPrefix.length)
+      : filePath, 'utf8');
+    digest.update(Buffer.from([0]));
+    digest.update(bytes);
+    digest.update(Buffer.from([0]));
+  }
+  return digest.digest('hex');
 }
 
 export function resolveRepositoryPath(value, label) {
@@ -265,23 +295,35 @@ export async function validateM513({
   currentInventoryPath,
   currentSeedPath = CURRENT_SEED_PATH,
   currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
-  baseCanonicalDirectory = BASE_CANONICAL_DIRECTORY,
-  baseInventoryPath = BASE_INVENTORY_PATH,
+  canonicalContext,
+  verifyCheckpointCanonical,
 } = {}) {
   const stage = await readJson(stagePath, 'M5-13 stage');
   const review = await readJson(reviewPath, 'M5-13 review');
   const currentSeed = await readJson(currentSeedPath, 'current M5 seed');
+  const resolvedCurrentCanonicalDirectory = canonicalContext?.canonicalDirectory
+    ?? path.resolve(currentCanonicalDirectory);
+  if (canonicalContext) {
+    assertEqual(
+      canonicalContext.canonicalDirectory,
+      resolvedCurrentCanonicalDirectory,
+      'shared canonical context directory',
+      'SOURCE_PATH_MISMATCH',
+    );
+  }
   const currentInventory = currentInventoryPath
     ? await readJson(currentInventoryPath, 'current M5 inventory')
     : await buildTargetInventory({
-      canonicalDirectory: currentCanonicalDirectory,
+      canonicalDirectory: resolvedCurrentCanonicalDirectory,
+      canonicalContext,
       seedPath: currentSeedPath,
     });
   const currentInventoryBytes = currentInventoryPath
     ? await readFile(currentInventoryPath)
     : serializeTargetInventory(currentInventory);
-  const currentCanonical = await readCanonicalRecords(currentCanonicalDirectory);
-  const baseCanonical = await readCanonicalRecords(baseCanonicalDirectory);
+  const currentCanonical = canonicalContext
+    ?? await readCanonicalRecords(resolvedCurrentCanonicalDirectory);
+  const shouldVerifyCheckpointCanonical = verifyCheckpointCanonical ?? !canonicalContext;
 
   validateM513Catalog();
 
@@ -289,23 +331,15 @@ export async function validateM513({
   assertEqual(stage.issue, 99, 'stage issue');
   assertEqual(stage.parent_issue, 7, 'parent issue');
   assertEqual(stage.status, 'pre-admission', 'stage status');
-  assertEqual(stage.input.canonical_directory, repositoryRelativePath(baseCanonicalDirectory), 'base canonical path', 'SOURCE_PATH_MISMATCH');
+  assertEqual(stage.input.canonical_directory, repositoryRelativePath(resolvedCurrentCanonicalDirectory), 'canonical path', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.input.canonical_directory_sha256, M5_13_BASE_CANONICAL_SHA256, 'base canonical digest', 'DIGEST_MISMATCH');
-  assertEqual(stage.input.base_inventory_path, repositoryRelativePath(baseInventoryPath), 'base inventory path', 'SOURCE_PATH_MISMATCH');
-  assertEqual(stage.input.base_inventory_sha256, M5_13_BASE_INVENTORY_SHA256, 'base inventory digest', 'DIGEST_MISMATCH');
+  assertEqual(stage.input.inventory_sha256, M5_13_GENERATED_INVENTORY_SHA256, 'inventory digest', 'DIGEST_MISMATCH');
   assertEqual(stage.input.inventory_revision, currentInventory.revision, 'inventory revision');
-  assertEqual(await hashCanonicalDirectory(baseCanonicalDirectory), M5_13_BASE_CANONICAL_SHA256, 'retained base canonical digest', 'DIGEST_MISMATCH');
-  assertEqual(await hashCanonicalDirectory(currentCanonicalDirectory), M5_13_BASE_CANONICAL_SHA256, 'current canonical must remain unchanged', 'UNAUTHORIZED_PROMOTION');
-  assertEqual(canonicalSummary(baseCanonical.records), M5_13_BASE_SUMMARY, 'base canonical summary');
+  assertEqual(currentCanonical.canonicalRevision, M5_13_BASE_CANONICAL_SHA256, 'current canonical must remain unchanged', 'UNAUTHORIZED_PROMOTION');
   assertEqual(canonicalSummary(currentCanonical.records), M5_13_BASE_SUMMARY, 'current canonical summary');
   await assertMissing(CANONICAL_IMPORT_PATH, 'M5-13 canonical import');
 
-  const baseInventory = await readBoundFile({
-    path: stage.input.base_inventory_path,
-    sha256: stage.input.base_inventory_sha256,
-  }, 'stage.input.base_inventory');
-  assertEqual(baseInventory.value.revision, 'm5-12', 'base inventory revision');
-  assertEqual(sha256(currentInventoryBytes), M5_13_BASE_INVENTORY_SHA256, 'current inventory must remain unchanged', 'UNAUTHORIZED_PROMOTION');
+  assertEqual(sha256(currentInventoryBytes), M5_13_GENERATED_INVENTORY_SHA256, 'current inventory must remain unchanged', 'UNAUTHORIZED_PROMOTION');
   assertEqual(currentSeed.revision, 'm5-12', 'current seed revision');
   assertEqual(sha256(await readFile(currentSeedPath)), M5_13_BASE_SEED_SHA256, 'current seed must remain unchanged', 'UNAUTHORIZED_PROMOTION');
 
@@ -376,6 +410,17 @@ export async function validateM513({
     stage.previous_stage.checkpoint_commit,
     'previous checkpoint',
   );
+  if (shouldVerifyCheckpointCanonical) {
+    assertEqual(
+      await hashGitCanonicalDirectory(
+        stage.previous_stage.checkpoint_commit,
+        'previous checkpoint canonical',
+      ),
+      M5_13_BASE_CANONICAL_SHA256,
+      'previous checkpoint canonical digest',
+      'CHECKPOINT_PROVENANCE_MISMATCH',
+    );
+  }
   assertEqual(
     stage.previous_stage.checkpoint_tree,
     checkpointTree,
@@ -399,7 +444,7 @@ export async function validateM513({
   assertEqual(stage.source.predecessor_admission_sha256, M5_13_PREDECESSOR_ADMISSION_SHA256, 'predecessor admission source digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.predecessor_promotion, repositoryRelativePath(PREDECESSOR_PROMOTION_PATH), 'predecessor promotion source path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.predecessor_promotion_sha256, M5_13_PREDECESSOR_PROMOTION_SHA256, 'predecessor promotion source digest binding', 'DIGEST_MISMATCH');
-  assertEqual(stage.source.canonical_directory, repositoryRelativePath(baseCanonicalDirectory), 'source canonical path binding', 'SOURCE_PATH_MISMATCH');
+  assertEqual(stage.source.canonical_directory, repositoryRelativePath(resolvedCurrentCanonicalDirectory), 'source canonical path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.canonical_directory_sha256, M5_13_BASE_CANONICAL_SHA256, 'source canonical digest binding', 'DIGEST_MISMATCH');
   assertEqual(stage.source.seed, repositoryRelativePath(currentSeedPath), 'seed path binding', 'SOURCE_PATH_MISMATCH');
   assertEqual(stage.source.seed_sha256, M5_13_BASE_SEED_SHA256, 'seed digest binding', 'DIGEST_MISMATCH');
