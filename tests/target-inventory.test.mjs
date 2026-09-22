@@ -46,9 +46,9 @@ test('validates the M5 inventory and keeps independent start counts', async () =
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 19);
   assert.equal(summary.plannedStartCount, 3019);
-  assert.equal(summary.heldCount, 93);
+  assert.equal(summary.heldCount, 83);
   assert.equal(summary.rejectedCount, 32);
-  assert.equal(summary.deferredCount, 145);
+  assert.equal(summary.deferredCount, 155);
   assert.equal(summary.duplicateCount, 2);
   assert.equal(summary.inflectedFormCount, 2);
   const inventory = await readInventory();
@@ -58,12 +58,12 @@ test('validates the M5 inventory and keeps independent start counts', async () =
     'canonical',
   );
   assert.deepEqual(summary.reasonCodeCounts, {
-    A: 527,
-    C: 453,
-    E: 433,
-    O: 365,
-    Q: 425,
-    S: 462,
+    A: 555,
+    C: 469,
+    E: 419,
+    O: 303,
+    Q: 441,
+    S: 478,
     X: 354,
   });
   assert.deepEqual(summary.recordTypeCounts, {
