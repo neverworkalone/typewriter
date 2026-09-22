@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import { tmpdir } from 'node:os';
@@ -42,14 +43,48 @@ function formatCommand({ executable, args }) {
     .join(' ');
 }
 
-function processMemorySummary() {
+function updateChildProcessMetrics(processMetrics) {
+  if (!processMetrics?.path) {
+    return;
+  }
+
+  let contents;
+  try {
+    contents = readFileSync(processMetrics.path, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+
+  let peakRssKb = 0;
+  let processCount = 0;
+  for (const line of contents.split('\n')) {
+    if (!line) {
+      continue;
+    }
+    const metrics = JSON.parse(line);
+    processCount += 1;
+    peakRssKb = Math.max(peakRssKb, metrics.peak_rss_kb ?? 0);
+  }
+  processMetrics.childProcessCount = processCount;
+  processMetrics.childPeakRssKb = peakRssKb;
+}
+
+function processMemorySummary(processMetrics) {
   const resourceUsage = process.resourceUsage?.();
-  const peakRssBytes = Number.isFinite(resourceUsage?.maxRSS)
+  const parentPeakRssBytes = Number.isFinite(resourceUsage?.maxRSS)
     ? resourceUsage.maxRSS * 1024
     : process.memoryUsage().rss;
+  const childPeakRssBytes = (processMetrics?.childPeakRssKb ?? 0) * 1024;
+  const peakRssBytes = Math.max(parentPeakRssBytes, childPeakRssBytes);
   return {
     peak_rss_bytes: peakRssBytes,
     peak_rss_mb: Math.round((peakRssBytes / (1024 * 1024)) * 100) / 100,
+    parent_peak_rss_mb: Math.round((parentPeakRssBytes / (1024 * 1024)) * 100) / 100,
+    child_peak_rss_mb: Math.round((childPeakRssBytes / (1024 * 1024)) * 100) / 100,
+    child_process_count: processMetrics?.childProcessCount ?? 0,
   };
 }
 
@@ -59,6 +94,7 @@ function printEvidence({
   categoryNames,
   startedAt,
   canonicalContext,
+  processMetrics,
 }) {
   const summary = contextSummary(canonicalContext);
   console.log(`\n=== ${level} evidence ===`);
@@ -75,7 +111,7 @@ function printEvidence({
       deserialize_count: summary.metrics.canonical_context_deserialize_count ?? 0,
       rehydrate_count: summary.metrics.canonical_context_rehydrate_count ?? 0,
     },
-    process_memory: processMemorySummary(),
+    process_memory: processMemorySummary(processMetrics),
   }, null, 2));
 }
 
@@ -86,10 +122,18 @@ function isFastPrefix(categoryNames, completedCategoryCount) {
     );
 }
 
-async function runCommand({ executable, args }) {
+async function runCommand({ executable, args }, context = {}) {
   return new Promise((resolve, reject) => {
     const childEnvironment = { ...process.env };
     delete childEnvironment.NODE_TEST_CONTEXT;
+    if (context.processMetrics?.path) {
+      childEnvironment.TYPEWRITER_PROCESS_METRICS_PATH = context.processMetrics.path;
+      const metricsModule = path.join(REPOSITORY_DIRECTORY, 'scripts/ci/record-process-metrics.mjs');
+      childEnvironment.NODE_OPTIONS = [
+        childEnvironment.NODE_OPTIONS,
+        `--import=${metricsModule}`,
+      ].filter(Boolean).join(' ');
+    }
     const child = spawn(executable, args, {
       cwd: REPOSITORY_DIRECTORY,
       env: childEnvironment,
@@ -100,9 +144,11 @@ async function runCommand({ executable, args }) {
     child.once('error', reject);
     child.once('exit', (code, signal) => {
       if (code === 0) {
+        updateChildProcessMetrics(context.processMetrics);
         resolve();
         return;
       }
+      updateChildProcessMetrics(context.processMetrics);
       reject(new Error(
         `${executable} exited with ${signal ? `signal ${signal}` : `status ${code}`}`,
       ));
@@ -180,6 +226,11 @@ async function createCanonicalSession() {
     canonicalContext,
     completedChecks: new Set(),
     temporaryDirectory,
+    processMetrics: {
+      path: path.join(temporaryDirectory, 'child-process-metrics.jsonl'),
+      childPeakRssKb: 0,
+      childProcessCount: 0,
+    },
     sharedDictionaryPath: undefined,
     normalizedModel: undefined,
   };
@@ -380,6 +431,7 @@ async function main() {
           categoryNames: CI_LEVEL_CATEGORY_ORDER.fast,
           startedAt,
           canonicalContext: sharedCanonicalSession.canonicalContext,
+          processMetrics: sharedCanonicalSession.processMetrics,
         });
         fastCheckpointPrinted = true;
       }
@@ -390,6 +442,7 @@ async function main() {
       categoryNames,
       startedAt,
       canonicalContext: sharedCanonicalSession.canonicalContext,
+      processMetrics: sharedCanonicalSession.processMetrics,
     });
   } finally {
     await rm(sharedCanonicalSession.temporaryDirectory, {

@@ -85,7 +85,7 @@ Master pushes run `ci:normal`; scheduled and manually dispatched runs run
 `ci:all`. Each final level emits `ci-run-evidence-v1`; the nested checkpoint
 emits `ci-run-checkpoint-v1`. Both include wall-clock time, canonical revision,
 scan and SQLite-build metrics, context transport counts, and peak RSS for the
-runner process.
+runner plus its isolated child processes.
 
 The toolchain stage builds SQLite once after the global audit and passes the
 same temporary database to schema, fidelity, and query verification. The
