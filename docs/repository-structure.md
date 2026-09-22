@@ -166,7 +166,13 @@ Issue #99's M5-13 pre-admission boundary is recorded by
 slots for an exact +1,000 target and 100-row reserve, but contains no candidate
 identity or body. The stage is intentionally `HOLD PROCESS` until a separate
 source-bound candidate and editorial decision artifact is supplied; it does not
-mutate canonical, seed, inventory, or promotion history.
+mutate canonical, seed, inventory, or promotion history. These two pre-admission
+artifacts use the versioned closed contracts
+`lexical-batch-pre-admission-review-v1` and
+`lexical-batch-pre-admission-stage-v1`; future batch stage/review JSON cannot
+fall back to the historical untyped exceptions. Durable JSON loading also
+rejects duplicate object keys before schema validation so digest-bound evidence
+cannot hide overwritten values behind `JSON.parse` last-key-wins behavior.
 
 Self-authored regression fixtures for batch tooling live under
 `tests/fixtures/`. They may bind to a tracked manifest or relation-diff event

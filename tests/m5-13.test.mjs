@@ -10,6 +10,7 @@ import {
   validateM513,
   validateM513Catalog,
 } from '../scripts/batch/validate-m5-13.mjs';
+import { parseJsonWithUniqueKeys } from '../scripts/validate/unique-json.mjs';
 
 test('M5-13 declares capacity slots without pretending they are selected candidates', () => {
   assert.equal(M5_13_CATALOG.length, M5_13_TARGET.selection_slot_count);
@@ -61,9 +62,17 @@ test('M5-13 stage validation binds the passed M5-12A base and keeps promotion bl
 });
 
 test('M5-13 stage evidence contains no canonical import artifact or review decision', async () => {
-  const stage = JSON.parse(await readFile('data/batches/m5-13-stage.json', 'utf8'));
-  const review = JSON.parse(await readFile('data/batches/m5-13-review.json', 'utf8'));
+  const stage = parseJsonWithUniqueKeys(
+    await readFile('data/batches/m5-13-stage.json', 'utf8'),
+    'data/batches/m5-13-stage.json',
+  );
+  const review = parseJsonWithUniqueKeys(
+    await readFile('data/batches/m5-13-review.json', 'utf8'),
+    'data/batches/m5-13-review.json',
+  );
 
+  assert.equal(stage.contract_version, 'lexical-batch-pre-admission-stage-v1');
+  assert.equal(review.contract_version, 'lexical-batch-pre-admission-review-v1');
   assert.equal(stage.gate.decision, 'HOLD PROCESS');
   assert.equal(stage.promotion.canonical_mutation, false);
   assert.equal(review.decision_artifact, null);

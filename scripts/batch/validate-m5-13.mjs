@@ -11,6 +11,7 @@ import {
   buildTargetInventory,
   serializeTargetInventory,
 } from '../inventory/generate-target-inventory.mjs';
+import { parseJsonWithUniqueKeys } from '../validate/unique-json.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_13_CATALOG } from './m5-13-catalog.mjs';
 
@@ -48,7 +49,7 @@ export const M5_13_BASE_SEED_SHA256 =
 export const M5_13_CATALOG_SHA256 =
   '4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f';
 export const M5_13_REVIEW_SHA256 =
-  '2b3b038ced83f7d9f25bfe30402885c3f53ddf44d9c9f0ba7c756adb3924dd94';
+  '948227e9444d9c0a98e999f27ba50b16b19802837e9e9cae50c83d2863a0eed7';
 export const M5_13_PREDECESSOR_ADMISSION_SHA256 =
   '33639ee2e0240703d0882fea6219d87ea0d912bc8453969e05e103faa780bba7';
 export const M5_13_PREDECESSOR_PROMOTION_SHA256 =
@@ -147,7 +148,7 @@ async function readJson(filePath, label) {
     throw error;
   }
   try {
-    return JSON.parse(bytes.toString('utf8'));
+    return parseJsonWithUniqueKeys(bytes, filePath);
   } catch (error) {
     fail(`${label} is not valid JSON: ${error.message}`, 'INVALID_JSON');
   }
@@ -163,7 +164,7 @@ async function readBoundFile(reference, label, { parseJson = true } = {}) {
   return {
     path: filePath,
     bytes,
-    value: parseJson ? JSON.parse(bytes.toString('utf8')) : undefined,
+    value: parseJson ? parseJsonWithUniqueKeys(bytes, filePath) : undefined,
   };
 }
 
