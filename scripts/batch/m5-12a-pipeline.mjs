@@ -1169,7 +1169,15 @@ async function reconstructBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
   const baseSeed = {
     ...current.value,
     revision: 'm5-11',
-    targets: current.value.targets.filter(({ inventory_id: id }) => !candidateInventoryIds.has(id)),
+    // Historical M5-12A replay must remain valid after a later promotion has
+    // appended its own held/deferred rows to the shared seed.  Agent-generated
+    // rows identify their owning generation pass; those rows are not part of
+    // the M5-11 reconstruction even when their inventory IDs are outside the
+    // M5-12A candidate identity set.
+    targets: current.value.targets.filter(({ inventory_id: id, decision_note: decisionNote }) => (
+      !candidateInventoryIds.has(id)
+      && !decisionNote?.includes(' after separate generation ')
+    )),
   };
   const baseSeedBytes = jsonBytes(baseSeed);
   if (sha256(baseSeedBytes) !== M5_12A_BASE_SEED_SHA256) {
