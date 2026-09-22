@@ -10,8 +10,8 @@
     "issue": 99,
     "decision": "APPROVE AUTOMATED BOUNDED",
     "human_editorial_review_complete": false,
-    "generation_pass_id": "m5-13-generation-20260922",
-    "verification_pass_id": "m5-13-agent-semantic-review-20260922-r2"
+    "generation_pass_id": "m5-13-generation-20260922-r3",
+    "verification_pass_id": "m5-13-agent-semantic-review-20260922-r3"
   },
   "target": {
     "net_start_increase": 1000,
@@ -22,7 +22,7 @@
   },
   "base": {
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-    "inventory_sha256": "eb5866abba838cdbb718605307746aad1001697793e2a31b69ad095fbef60632",
+    "inventory_sha256": "15a7869cf33a55aecae57fbff6e9a5157869ad44ff2952d66dd0024941f936ab",
     "inventory_materialization": "on-demand-prospective",
     "seed_sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
     "promotion_ledger_prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
@@ -44,12 +44,12 @@
     "expression_count": 285
   },
   "decisions": {
-    "included": 1000,
+    "included": 1070,
     "corrected": 0,
-    "held": 15,
+    "held": 5,
     "rejected": 5,
-    "deferred": 80,
-    "processed_start_count": 1020,
+    "deferred": 20,
+    "processed_start_count": 1080,
     "imported_start_count": 1000,
     "deferred_denominator_excluded": true
   },
@@ -57,9 +57,9 @@
     "review_mode": "agent-generated",
     "human_editorial_review_complete": false,
     "agent_generated_provenance": true,
-    "generation_pass_id": "m5-13-generation-20260922",
-    "verification_pass_id": "m5-13-agent-semantic-review-20260922-r2",
-    "candidate_source_id": "m5-13-typewriter-authored-identities-20260922-r2",
+    "generation_pass_id": "m5-13-generation-20260922-r3",
+    "verification_pass_id": "m5-13-agent-semantic-review-20260922-r3",
+    "candidate_source_id": "m5-13-typewriter-authored-lexical-units-20260922-r3",
     "candidate_identity_count": 1100,
     "raw_material_excluded": true,
     "source_bound_semantic_decisions": true
@@ -77,54 +77,54 @@
     "issue": 99,
     "batch_id": "m5-13-expansion-20260922",
     "inputs": {
-      "prospective_canonical_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef",
-      "semantic_audit_sha256": "f7b07c06e7f99c345bf3327d75e35d13a4139f854ef7ef2ecf8607772f9dd1a8",
-      "decision_source_sha256": "4ca9037da2719c9cffd6b2649fbadefa510222a5db242dfc24b4b40e37e555f1",
-      "promotion_ledger_prefix_sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0"
+      "prospective_canonical_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff",
+      "semantic_audit_sha256": "e23ba8e6537121ddcdefef7d29ba85db3523bd451e7aa20825e8e6d47eaa4d0f",
+      "decision_source_sha256": "c58ac2c372ab9f480ad8ef19645b6053a62cb729fdb320ce5caef9f1bdeb6788",
+      "promotion_ledger_prefix_sha256": "6b470090c359a55a5aac1ea8fe10e70df3bd08343718f15e99f71bf9e23bafc1"
     },
     "preflight": {
       "contract_version": "lexical-batch-preflight-v1",
       "status": "complete",
-      "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef",
+      "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff",
       "checks": {
         "candidate_source_digest": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "generation_verification_separated": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "truthful_agent_provenance": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "deterministic_sqlite": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "search_product_regression": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "extension_build": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "package_validation": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         },
         "artifact_policy_clean_checkout": {
           "status": "pass",
-          "input_canonical_directory_sha256": "b47f10a5525a2e5947c1788b2b44ed2bac1a36f2ed8e847708c3257940665bef"
+          "input_canonical_directory_sha256": "8a1d5ee17353f3e5b1300045905a17441d60f5b25d0ccd365b80921ea7cc4fff"
         }
       }
     },
     "complete_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",
-      "canonical_records_sha256": "8d1499ffb5bac13cda638d82861eb54a33444a191bb338e6fb724bbfc410dcc2",
+      "canonical_records_sha256": "6520c0b7fa2b37f0aacf0518cef84ae17fe52af908de000715de7ebcea58e472",
       "record_count": 3042,
       "sense_count": 3301,
       "covered_record_count": 3042,
@@ -134,55 +134,55 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "95f5d363890d753396315ab6b8271a5201fc5b30e0efab5259c145511bf119f3",
+  "gate_evidence_sha256": "e44dbc9ff0c2793072e7f2b29690f2c8f0bfa946c9c871efe1f36c71a592bb7b",
   "promotion_ledger_binding": {
     "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
     "append_start": 722,
     "append_count": 1000,
-    "append_sha256": "56fbcdfd28485b0a51f27f3368385951e91d83f79dd203c88a8ed87d21d302b0",
+    "append_sha256": "aa8fd5472103fd2514f085902651497998239d1cbe6244c26ffb2d8965bec596",
     "prefix_event_count": 1722,
-    "prefix_sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0"
+    "prefix_sha256": "6b470090c359a55a5aac1ea8fe10e70df3bd08343718f15e99f71bf9e23bafc1"
   },
   "sources": {
     "candidate_identities": {
-      "source_id": "m5-13-typewriter-authored-identities-20260922-r2",
+      "source_id": "m5-13-typewriter-authored-lexical-units-20260922-r3",
       "path": "scripts/batch/m5-13-candidate-source.mjs",
-      "identity_sha256": "342af15c1d2f06df4d9bb8cb77a1abcd50df626a843e835afca0b3796363150b",
+      "identity_sha256": "ddcbfab38518d91a686706c31f536c5d2d538c6ab6ce1961bdc0c5642dfc4ccb",
       "identity_count": 1100
     },
     "verification": {
-      "source_id": "m5-13-authored-semantic-decisions-20260922-r2",
+      "source_id": "m5-13-authored-semantic-decisions-20260922-r3",
       "path": "data/batches/m5-13-semantic-decisions.json",
-      "sha256": "b7dc97922c379a9227ed53559452dcc679f13e7904d81dcefd9739bf3f53a07b"
+      "sha256": "c67dbfe43931681ebd2e23a1ba4bde05fcf0952bc8bd2ebc141edd1ca4c90f3b"
     },
     "semantic_audit": {
       "source_id": "derived:complete-canonical-audit",
       "path": "derived:complete-canonical-audit",
-      "sha256": "f7b07c06e7f99c345bf3327d75e35d13a4139f854ef7ef2ecf8607772f9dd1a8"
+      "sha256": "e23ba8e6537121ddcdefef7d29ba85db3523bd451e7aa20825e8e6d47eaa4d0f"
     },
     "target_promotions": {
       "source_id": "target_promotions",
       "path": "data/inventory/m5-target-promotions.jsonl",
-      "sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0",
+      "sha256": "6b470090c359a55a5aac1ea8fe10e70df3bd08343718f15e99f71bf9e23bafc1",
       "ledger_binding": {
         "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
         "append_start": 722,
         "append_count": 1000,
-        "append_sha256": "56fbcdfd28485b0a51f27f3368385951e91d83f79dd203c88a8ed87d21d302b0",
+        "append_sha256": "aa8fd5472103fd2514f085902651497998239d1cbe6244c26ffb2d8965bec596",
         "prefix_event_count": 1722,
-        "prefix_sha256": "ee8dec56b784996219f973a6a1a8af6918e1e4bce32cef3c4a036bddc71844a0"
+        "prefix_sha256": "6b470090c359a55a5aac1ea8fe10e70df3bd08343718f15e99f71bf9e23bafc1"
       }
     },
     "base_inventory": {
       "source_id": "derived:on-demand-target-inventory",
       "path": "derived:on-demand-prospective-inventory",
       "materialization": "on-demand",
-      "sha256": "eb5866abba838cdbb718605307746aad1001697793e2a31b69ad095fbef60632"
+      "sha256": "15a7869cf33a55aecae57fbff6e9a5157869ad44ff2952d66dd0024941f936ab"
     },
     "authorization": {
       "source_id": "authorization",
       "path": "external:m5-13-authorization",
-      "sha256": "c1fbe25672f70eb88362a662ec79093a429cbe8205f4ac07e77f69a9c010e400"
+      "sha256": "b70a4ed03d1e69c3fe96b9fb3bf3c016f3435f446c80fd99d590f1aaaa53bbb4"
     }
   },
   "promotion": {
@@ -193,8 +193,8 @@
     "note": "The explicit M5-13 promotion transaction consumes this passing manifest; admission validation itself never mutates canonical data."
   },
   "provenance": {
-    "generation_pass_id": "m5-13-generation-20260922",
-    "verification_pass_id": "m5-13-agent-semantic-review-20260922-r2",
+    "generation_pass_id": "m5-13-generation-20260922-r3",
+    "verification_pass_id": "m5-13-agent-semantic-review-20260922-r3",
     "raw_material_excluded": true,
     "batch_local_quality_fork": false,
     "base_decision_source_id": "canonical-semantic-decision-source-20260914"

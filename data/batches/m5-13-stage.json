@@ -31,7 +31,7 @@
   },
   "input": {
     "inventory_revision": "m5-13",
-    "inventory_sha256": "eb5866abba838cdbb718605307746aad1001697793e2a31b69ad095fbef60632",
+    "inventory_sha256": "28c0cb97638eedb85be2e3c07591f7dc23c63fdc081881e7cb1e040f41898d97",
     "canonical_directory": "data/canonical",
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "canonical_snapshot": {
@@ -51,12 +51,12 @@
     "candidate_identity_count": 1100
   },
   "decisions": {
-    "included_start_count": 1000,
+    "included_start_count": 1070,
     "corrected_start_count": 0,
-    "held_start_count": 15,
+    "held_start_count": 5,
     "rejected_start_count": 5,
-    "deferred_start_count": 80,
-    "processed_start_count": 1020,
+    "deferred_start_count": 20,
+    "processed_start_count": 1080,
     "unreviewed_start_count": 0,
     "unresolved_slot_count": 0
   },
@@ -85,7 +85,7 @@
   },
   "source": {
     "review": "data/batches/m5-13-review.json",
-    "review_sha256": "e16b21354d44fee5041d8df45acc61536a22efcceb188beda541a6e253d0443d",
+    "review_sha256": "99913d9432a301b37386849a87c2a2aa39e521741dddd8d4a65f230ec6a2cf2b",
     "catalog": "scripts/batch/m5-13-catalog.mjs",
     "catalog_count": 1100,
     "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",

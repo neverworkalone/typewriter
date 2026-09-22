@@ -16,30 +16,30 @@
     "catalog_count": 1100,
     "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
     "selection_status": "source-bound-reviewed",
-    "candidate_source_id": "m5-13-typewriter-authored-identities-20260922-r2"
+    "candidate_source_id": "m5-13-typewriter-authored-lexical-units-20260922-r3"
   },
   "decisions": {
-    "included": 1000,
+    "included": 1070,
     "corrected": 0,
-    "held": 15,
+    "held": 5,
     "rejected": 5,
-    "deferred": 80,
-    "processed_start_count": 1020,
+    "deferred": 20,
+    "processed_start_count": 1080,
     "unreviewed_start_count": 0,
     "unresolved_slot_count": 0,
     "imported_start_count": 1000
   },
   "decision_artifact": {
     "path": "data/batches/m5-13-semantic-decisions.json",
-    "source_id": "m5-13-authored-semantic-decisions-20260922-r2",
-    "sha256": "b7dc97922c379a9227ed53559452dcc679f13e7904d81dcefd9739bf3f53a07b",
-    "artifact_sha256": "cb868cae339689d0538781eff08f0da45ce45cfc53658bece7018faa53506c99",
+    "source_id": "m5-13-authored-semantic-decisions-20260922-r3",
+    "sha256": "c67dbfe43931681ebd2e23a1ba4bde05fcf0952bc8bd2ebc141edd1ca4c90f3b",
+    "artifact_sha256": "e1693e92558286fa58869777292b4ea71c3ef5a29334fe2bed18896df685965e",
     "decision_count": 1100
   },
   "timing": {
     "status": "not-recorded",
     "editor_seconds": null,
-    "processed_start_count": 1020,
+    "processed_start_count": 1080,
     "unmeasured_pass_count": null
   },
   "audit": {
