@@ -139,26 +139,60 @@ async function runProductBuild({ sharedDictionaryPath, outputDirectory }) {
   );
 }
 
-function levelBudget(level, wallClockMs) {
-  const budgetMs = {
+function parseFixedLevelCosts(
+  argument = process.argv.find((value) => value.startsWith('--fixed-level-ms=')),
+) {
+  const raw = argument?.slice('--fixed-level-ms='.length);
+  if (raw === undefined || raw === 'none') return undefined;
+  const costs = Object.fromEntries(raw.split(',').map((entry) => {
+    const [level, value] = entry.split(':');
+    const milliseconds = Number(value);
+    if (!['fast', 'normal', 'deep'].includes(level)
+      || !Number.isFinite(milliseconds)
+      || milliseconds < 0) {
+      throw new Error(
+        `--fixed-level-ms must contain fast|normal|deep non-negative millisecond pairs: ${raw}`,
+      );
+    }
+    return [level, milliseconds];
+  }));
+  for (const level of ['fast', 'normal', 'deep']) {
+    if (!Object.hasOwn(costs, level)) {
+      throw new Error(`--fixed-level-ms is missing the ${level} level: ${raw}`);
+    }
+  }
+  return costs;
+}
+
+function composeLevelBudgets(corpusCost, fixedLevelCosts) {
+  const targetWallClockMs = {
     fast: 60_000,
     normal: 180_000,
     deep: 600_000,
-  }[level];
-  return {
-    target_wall_clock_ms: budgetMs,
-    within_target: wallClockMs <= budgetMs,
   };
+  return Object.fromEntries(Object.entries(targetWallClockMs).map(([level, target]) => {
+    const corpusComponentMs = corpusCost[level].wall_clock_ms;
+    const conservativeUpperBoundMs = fixedLevelCosts[level] + corpusComponentMs;
+    return [level, {
+      fixed_level_upper_bound_ms: fixedLevelCosts[level],
+      corpus_component_ms: corpusComponentMs,
+      conservative_upper_bound_ms: Math.round(conservativeUpperBoundMs * 100) / 100,
+      target_wall_clock_ms: target,
+      within_target: conservativeUpperBoundMs <= target,
+    }];
+  }));
 }
 
 export async function benchmarkCanonicalValidation({
   sizes = parseSizes(),
   sqliteScale,
   sqliteScales,
+  fixedLevelCosts,
 } = {}) {
   const selectedSqliteScales = sqliteScales === undefined
     ? (sqliteScale === undefined ? parseOptionalScales() : new Set([sqliteScale]))
     : new Set(sqliteScales);
+  const selectedFixedLevelCosts = fixedLevelCosts ?? parseFixedLevelCosts();
   const root = await mkdtemp(path.join(os.tmpdir(), 'typewriter-canonical-benchmark-'));
   const results = [];
 
@@ -169,7 +203,7 @@ export async function benchmarkCanonicalValidation({
         failure_stage: null,
         error: null,
         sqlite_build_count: 0,
-        levels: {},
+        corpus_cost: {},
       };
       let peakMemory;
       const sampleMemory = () => {
@@ -239,12 +273,11 @@ export async function benchmarkCanonicalValidation({
           sampleMemory();
 
           const fastEnd = now();
-          result.levels.fast = {
-            category_order: CI_LEVEL_CATEGORY_ORDER.fast,
+          result.corpus_cost.fast = {
+            runner_category_order: CI_LEVEL_CATEGORY_ORDER.fast,
             wall_clock_ms: Math.round((fastEnd - totalStart) * 100) / 100,
             canonical_context: 'loaded, indexed, and globally validated once',
             sqlite_build_count: 1,
-            ...levelBudget('fast', fastEnd - totalStart),
           };
 
           const normalStart = now();
@@ -264,14 +297,13 @@ export async function benchmarkCanonicalValidation({
             throw new Error('product build did not reuse the shared SQLite artifact');
           }
           const normalEnd = now();
-          result.levels.normal = {
-            category_order: CI_LEVEL_CATEGORY_ORDER.normal,
+          result.corpus_cost.normal = {
+            runner_category_order: CI_LEVEL_CATEGORY_ORDER.normal,
             wall_clock_ms: Math.round((normalEnd - totalStart) * 100) / 100,
             continuation_ms: Math.round((normalEnd - normalStart) * 100) / 100,
             shared_sqlite_artifact_reused: true,
             product_dictionary_digest_matches: true,
             sqlite_build_count: 0,
-            ...levelBudget('normal', normalEnd - totalStart),
           };
 
           const deepStart = now();
@@ -288,18 +320,23 @@ export async function benchmarkCanonicalValidation({
             throw new Error('independent SQLite build did not reproduce the shared artifact');
           }
           const deepEnd = now();
-          result.levels.deep = {
-            category_order: CI_LEVEL_CATEGORY_ORDER.deep,
+          result.corpus_cost.deep = {
+            runner_category_order: CI_LEVEL_CATEGORY_ORDER.deep,
             wall_clock_ms: Math.round((deepEnd - totalStart) * 100) / 100,
             continuation_ms: Math.round((deepEnd - deepStart) * 100) / 100,
             independent_sqlite_build_count: 1,
             reproducible: true,
-            ...levelBudget('deep', deepEnd - totalStart),
           };
           result.sqlite_build_count = context.metrics.sqlite_build_count;
           result.shared_sqlite_sha256 = sharedDigest;
           result.product_dictionary_sha256 = productDictionaryDigest;
           result.reproducible_sqlite_sha256 = reproducibleDigest;
+          if (selectedFixedLevelCosts) {
+            result.composed_ci_levels = composeLevelBudgets(
+              result.corpus_cost,
+              selectedFixedLevelCosts,
+            );
+          }
         }
 
         result.failure_stage = null;
@@ -325,11 +362,12 @@ export async function benchmarkCanonicalValidation({
     runner_wiring: 'same-process-shared-context-with-level-continuation',
     synthetic_record_shape: 'one reference-only noun sense per record; every record after the first has one near relation to its predecessor',
     sqlite_scales: [...selectedSqliteScales].sort((left, right) => left - right),
-    level_wiring: {
+    corpus_cost_wiring: {
       fast: 'shared canonical load/index/full synthetic validation plus one shared SQLite build',
       normal: 'shared SQLite validation plus product extension consumer',
       deep: 'independent SQLite rebuild and byte-level reproducibility check',
     },
+    fixed_level_costs_ms: selectedFixedLevelCosts ?? null,
     results,
   };
 }

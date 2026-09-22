@@ -241,7 +241,11 @@ export const CI_CATEGORIES = Object.freeze({
       npmCheck(
         'Run 500K/1M fast/normal/deep synthetic canonical benchmark',
         'benchmark:canonical',
-        ['--sizes=500000,1000000', '--sqlite-scale=500000,1000000'],
+        [
+          '--sizes=500000,1000000',
+          '--sqlite-scale=500000,1000000',
+          '--fixed-level-ms=fast:20000,normal:76600,deep:168339',
+        ],
       ),
     ],
   },

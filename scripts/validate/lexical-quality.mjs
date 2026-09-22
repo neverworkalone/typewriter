@@ -1183,6 +1183,16 @@ function recordQualityFindings(record, {
         message: `${label}.search_forms must not contain duplicate normalized forms`,
       });
     }
+    const collapsedLemma = record.lemma.replace(/\s+/gu, '');
+    if (
+      collapsedLemma !== record.lemma
+      && normalizedForms.includes(collapsedLemma.normalize('NFC'))
+    ) {
+      findings.push({
+        code: 'LEXICAL_SEARCH_FORM_COLLAPSED_ALIAS',
+        message: `${label}.search_forms must not add a collapsed internal-whitespace alias for the lemma`,
+      });
+    }
   }
   if (!Array.isArray(record.senses) || record.senses.length === 0) {
     findings.push({ code: 'LEXICAL_SENSES', message: `${label}.senses must contain at least one sense` });

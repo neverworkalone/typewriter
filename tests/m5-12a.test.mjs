@@ -388,7 +388,7 @@ test('M5-12A admission rejects a whitespace alias requested by authored correcti
       identities: result.identities,
       candidateRecords: result.artifacts.candidateRecords,
     }),
-    (error) => error.code === 'M5_12A_CORRECTION_SEARCH_POLICY',
+    (error) => error.code === 'LEXICAL_SEARCH_FORM_COLLAPSED_ALIAS',
   );
 });
 

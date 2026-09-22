@@ -19,7 +19,7 @@ node --test tests/lexical-quality.test.mjs
 npm run ci:fast
 npm run ci:normal
 npm run ci:all
-npm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000
+npm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-ms=fast:20000,normal:76600,deep:168339
 ```
 
 The validator scans only `data/canonical/` and its `.jsonl` files. It does not scan
@@ -109,7 +109,10 @@ counts, SQLite build count, and context transport counts. When SQLite is
 enabled for a scale, the benchmark exercises the level continuation itself:
 `fast` builds one artifact, `normal` validates and consumes that exact artifact
 through the product build, and `deep` performs an independent byte-identical
-SQLite rebuild. Cumulative fast/normal/deep timings are compared with the
-60s/180s/600s targets. Batch and historical replay checks remain against their
-authoritative fixtures and are intentionally not synthesized from generated
-records.
+SQLite rebuild. These are reported as corpus-dependent components, not as
+complete CI-level timings. Supplying `--fixed-level-ms` adds the exact-head
+fixed/category upper bound to each component and emits the conservative
+effective fast/normal/deep budget; the checked-in deep command uses the latest
+20s/76.6s/168.339s evidence. Batch and historical replay checks remain against
+their authoritative fixtures and are included in that fixed/category bound;
+they are intentionally not synthesized from generated records.
