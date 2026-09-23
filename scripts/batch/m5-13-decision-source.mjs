@@ -27,7 +27,7 @@ import { selectReviewedCandidates } from './lexical-selection.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260923-r4';
+export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260923-r5';
 export const M5_13_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-13-semantic-decisions.json',

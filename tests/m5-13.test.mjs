@@ -10,9 +10,11 @@ import {
 } from '../scripts/batch/m5-13-catalog.mjs';
 import {
   M5_13_CANDIDATE_IDENTITIES,
+  M5_13_GENERATION_PASS_ID,
   M5_13_IMPORT_COUNT,
   M5_13_RESERVE_COUNT,
   M5_13_SELECTION_COUNT,
+  M5_13_VERIFICATION_PASS_ID,
   buildM513CandidateRecords,
 } from '../scripts/batch/m5-13-candidate-source.mjs';
 import {
@@ -28,12 +30,9 @@ import {
   buildM513DecisionSource,
   candidateRecordsFromM513DecisionSource,
   readM513DecisionSource,
-  serializeM513DecisionSource,
   validateM513DecisionSource,
 } from '../scripts/batch/m5-13-decision-source.mjs';
 import { selectReviewedCandidates } from '../scripts/batch/lexical-selection.mjs';
-import { inspectWriterDomainEvidence } from '../scripts/validate/lexical-quality.mjs';
-import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import {
   M5_13_BASE_SUMMARY,
   M5_13_FINAL_SUMMARY,
@@ -132,11 +131,25 @@ test('M5-13 producer preserves unit-authored meaning and metadata before shared 
     candidateRecords: candidates,
   });
   assert.equal(decisionSource.source.source_id, M5_13_SEMANTIC_DECISION_SOURCE_ID);
+  assert.equal(decisionSource.source.review.review_pass_id, M5_13_VERIFICATION_PASS_ID);
+  assert.equal(decisionSource.source.provenance.verification_pass_id, M5_13_VERIFICATION_PASS_ID);
+  assert.notEqual(M5_13_VERIFICATION_PASS_ID, M5_13_GENERATION_PASS_ID);
   assert.equal(Object.values(decisionSource.counts).reduce((sum, count) => sum + count, 0), candidates.length);
   assert.equal(decisionSource.selection.selected.length, M5_13_IMPORT_COUNT);
-  assert.equal(decisionSource.selection.reserve.length, M5_13_RESERVE_COUNT);
+  assert.equal(decisionSource.selection.reserve.length + decisionSource.selection.excluded.length, M5_13_RESERVE_COUNT);
   assert.equal(decisionSource.selection.excluded.length,
     decisionSource.counts.held + decisionSource.counts.rejected + decisionSource.counts.deferred);
+  assert.ok(decisionSource.counts.held + decisionSource.counts.rejected > 0);
+  assert.equal(new Set(decisionSource.rows.map(({ decision_rationale: rationale }) => rationale)).size, candidates.length);
+  assert.ok(decisionSource.rows.every(({ decision_rationale: rationale }) => (
+    !rationale.includes('The unit-level meaning and POS fit this single writer-facing lexical item')
+  )));
+  assert.ok(decisionSource.rows.every(({ sense_reviews: senseReviews }) => (
+    !senseReviews[0].boundary_rationale.includes('the observed gloss domains are')
+  )));
+  assert.equal(new Set(decisionSource.rows.map(({ sense_reviews: senseReviews }) => (
+    senseReviews[0].semantic_rationale
+  ))).size, candidates.length);
   assert.deepEqual(decisionSource.counts, sourceFile.source.review.decision_counts);
   const checked = validateM513SemanticSource({
     source: sourceFile.source,
@@ -156,52 +169,24 @@ test('M5-13 producer preserves unit-authored meaning and metadata before shared 
   );
 });
 
-test('M5-13 preserves a separately authored semantic rejection before capacity selection', async () => {
+test('M5-13 keeps an independently authored semantic hold out of admission', async () => {
   const sourceFile = await readM513DecisionSource();
   const candidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
-  const original = validateM513DecisionSource({
+  const reviewed = validateM513DecisionSource({
     source: sourceFile.source,
     sourceBytes: sourceFile.sourceBytes,
     candidateRecords: candidates,
   });
-  const source = structuredClone(sourceFile.source);
-  const candidateId = original.selection.selected[0].candidate_record_id;
-  const decision = source.decisions.find((row) => row.candidate_record_id === candidateId);
-  const identity = M5_13_CANDIDATE_IDENTITIES.find(({ candidate_record_id: id }) => id === candidateId);
-  const candidate = source.candidate_records.find(({ id }) => id === candidateId);
-  candidate.senses[0].gloss = '조리 과정에서 음식의 온도를 높이는 금속 용기.';
-  const sense = candidate.senses[0];
-  const senseReview = decision.sense_reviews[0];
-  const glossSha256 = sha256Json(sense.gloss);
-  const domains = inspectWriterDomainEvidence(sense.gloss);
-
-  decision.candidate_record_sha256 = sha256Json(candidate);
-  decision.decision = 'rejected';
-  decision.gloss_judgment = 'reject';
-  decision.decision_rationale = `${identity.inventory_id} ${candidateId}: the well-formed gloss describes a cooking vessel, not “${identity.lemma}”; reject this semantic mismatch.`;
-  delete decision.selection_rationale;
-  senseReview.boundary_decision = domains.axes.length > 1 ? 'coordinated' : 'atomic';
-  senseReview.boundary_rationale = `${identity.inventory_id} ${candidateId} retains one atomic gloss boundary after the mismatch is rejected.`;
-  senseReview.semantic_rationale = `${candidateId} ${sense.id}: ${glossSha256.slice(0, 12)} describes a cooking vessel and does not fit “${identity.lemma}”; the authored outcome is rejected.`;
-  delete senseReview.review_basis;
-  source.candidate_records_sha256 = sha256Json(source.candidate_records);
-  const counts = Object.fromEntries(['included', 'corrected', 'held', 'rejected', 'deferred'].map((kind) => [
-    kind,
-    source.decisions.filter((row) => row.decision === kind).length,
-  ]));
-  source.review.decision_counts = counts;
-  source.review.counts = counts;
-
-  const authored = serializeM513DecisionSource(source);
-  const checked = validateM513SemanticSource({
-    source: authored.source,
-    sourceBytes: authored.bytes,
-    candidateRecords: source.candidate_records,
-  });
-  assert.equal(checked.counts.rejected, 1);
-  assert.ok(checked.selection.excluded.includes(candidateId));
-  assert.equal(checked.selection.selected.length, M5_13_IMPORT_COUNT);
-  assert.equal(checked.selection.reserve.length, M5_13_RESERVE_COUNT - 1);
+  const candidateId = 'w3133';
+  const decision = reviewed.byCandidateId.get(candidateId);
+  assert.equal(decision.decision, 'held');
+  assert.equal(decision.gloss_judgment, 'needs-context');
+  assert.match(decision.decision_rationale, /인용형/u);
+  assert.equal(decision.review_pass_id, M5_13_VERIFICATION_PASS_ID);
+  assert.ok(reviewed.selection.excluded.includes(candidateId));
+  assert.ok(!reviewed.selection.selected.some(({ candidate_record_id: id }) => id === candidateId));
+  assert.ok(!reviewed.selection.reserve.some(({ candidate_record_id: id }) => id === candidateId));
+  assert.equal(reviewed.selection.selected.length, M5_13_IMPORT_COUNT);
 
   const insufficient = selectReviewedCandidates([
     { candidate_record_id: 'bad-semantic', decision: 'rejected', rank: 1, selection_axis: 'E' },
@@ -230,10 +215,16 @@ test('M5-13 executes producer, semantic audit, selection, prospective canonical,
     assert.equal(result.admission.gate.gate_status, 'pass');
     assert.equal(result.production.production_state.producer_mode, 'live');
     assert.equal(result.semanticAuditCoverage.coverage_complete, true);
+    assert.equal(result.semanticDecisionSource.byCandidateId.get('w3133').decision, 'held');
+    assert.ok(result.semanticDecisionSource.selection.excluded.includes('w3133'));
+    assert.ok(!result.importedRecords.some(({ id }) => id === 'w3133'));
     assert.deepEqual(result.reviewRows.filter(({ decision }) => ['held', 'rejected', 'deferred'].includes(decision)).length,
       result.semanticDecisionSource.counts.held + result.semanticDecisionSource.counts.rejected + result.semanticDecisionSource.counts.deferred);
     assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'selected').length, 1000);
-    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, M5_13_RESERVE_COUNT);
+    assert.deepEqual(
+      result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length,
+      result.semanticDecisionSource.selection.reserve.length,
+    );
     const importedExpressionCount = result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length;
     const prospectiveExpressionCount = result.prospective.canonical.records.filter(({ record, record_type: recordType }) => (
       (record ?? { record_type: recordType }).record_type === 'expression'
