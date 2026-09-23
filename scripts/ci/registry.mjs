@@ -166,6 +166,10 @@ export const CI_CATEGORIES = Object.freeze({
         'm5-14-pre-admission',
         ['tests/m5-13.test.mjs'],
       ),
+      inProcessCheck(
+        'Validate M5-15 pre-admission boundary',
+        'm5-15-pre-admission',
+      ),
     ],
   },
 

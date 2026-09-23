@@ -217,8 +217,8 @@ test('artifact policy rejects role-shaped projections relocated into a future ba
 test('artifact policy requires a registered closed contract for future pre-admission artifacts', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-pre-admission-policy-'));
   const cases = [
-    ['data/batches/m5-15-review.json', { schema_version: '1', status: 'pre-admission' }],
-    ['data/batches/m5-15-stage.json', { schema_version: '1', status: 'pre-admission' }],
+    ['data/batches/m5-16-review.json', { schema_version: '1', status: 'pre-admission' }],
+    ['data/batches/m5-16-stage.json', { schema_version: '1', status: 'pre-admission' }],
     ['data/batches/m5-13-base-inventory.json', { schema_version: '1', status: 'snapshot' }],
     ['data/batches/m5-13-base-canonical/part.jsonl', { schema_version: '1', status: 'snapshot' }],
   ];
