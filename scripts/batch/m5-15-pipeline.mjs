@@ -263,8 +263,9 @@ function assertM4SearchRegressions(database, corpus) {
 
 async function packageProspectiveBuild({ canonicalDirectory, temporaryDirectory, minified, expectedMetadata }) {
   const label = minified ? 'minified' : 'plain';
-  const packageDirectory = path.join(temporaryDirectory, `${label}-package`);
-  const zipPath = path.join(temporaryDirectory, `${label}-package.zip`);
+  const buildDirectory = path.join(temporaryDirectory, label);
+  const packageDirectory = path.join(buildDirectory, 'package');
+  await mkdir(buildDirectory, { recursive: true });
   await mkdir(packageDirectory, { recursive: true });
   await execFileAsync(VITE_PATH, ['build', '--config', path.join(REPOSITORY_DIRECTORY, 'vite.config.js')], {
     cwd: REPOSITORY_DIRECTORY,
@@ -277,6 +278,8 @@ async function packageProspectiveBuild({ canonicalDirectory, temporaryDirectory,
     },
     maxBuffer: 20 * 1024 * 1024,
   });
+  const manifest = JSON.parse((await readFile(path.join(packageDirectory, 'manifest.json'))).toString('utf8'));
+  const zipPath = path.join(buildDirectory, `${label}_${manifest.version}.zip`);
   await Promise.all(['favicon.ico', 'icon.png'].map((fileName) => rm(path.join(packageDirectory, fileName), { force: true })));
   await Promise.all(['Apache-2.0.txt', 'THIRD-PARTY-NOTICES.txt'].map((fileName) => (
     cp(path.join(REPOSITORY_DIRECTORY, fileName), path.join(packageDirectory, fileName))
@@ -327,7 +330,7 @@ async function runM515Preflight({
       minified: false,
       expectedMetadata,
     });
-    const plainDatabasePath = path.join(temporaryDirectory, 'plain-package', 'dictionary.sqlite');
+    const plainDatabasePath = path.join(temporaryDirectory, 'plain', 'package', 'dictionary.sqlite');
     const minifiedPackage = await packageProspectiveBuild({
       canonicalDirectory: prospectiveCanonicalDirectory,
       temporaryDirectory,
