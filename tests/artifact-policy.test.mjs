@@ -576,7 +576,7 @@ test('artifact policy rejects an unregistered decision-source contract version',
   const relativePath = 'data/batches/future-semantic-decisions.json';
   const filePath = path.join(repositoryDirectory, relativePath);
   const value = decisionSourceFixture();
-  value.contract_version = 'lexical-semantic-decision-source-v3';
+  value.contract_version = 'lexical-semantic-decision-source-v4';
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });

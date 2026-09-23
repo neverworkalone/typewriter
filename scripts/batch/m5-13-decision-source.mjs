@@ -8,11 +8,17 @@ import {
   validateLexicalRecord,
   validateTopicAnalysisEvidence,
 } from '../validate/lexical-quality.mjs';
-import { compactAuthoredSemanticDecisionRow } from '../validate/semantic-decision-row.mjs';
+import {
+  AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+  compactAuthoredSemanticDecisionRow,
+  validateAuthoredSemanticReviewBinding,
+} from '../validate/semantic-decision-row.mjs';
 import {
   M5_13_BATCH_ID,
   M5_13_CANDIDATE_IDENTITIES,
   M5_13_CANDIDATE_SOURCE_ID,
+  M5_13_CORRECTION_PASS_ID,
   M5_13_GENERATION_PASS_ID,
   M5_13_GENERATOR_VERSION,
   M5_13_IMPORT_COUNT,
@@ -27,12 +33,12 @@ import { selectReviewedCandidates } from './lexical-selection.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260923-r5';
+export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260923-r6';
 export const M5_13_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-13-semantic-decisions.json',
 );
-export const M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v2';
+export const M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION;
 export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-authored-axis-coverage-selection-v6';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
@@ -163,7 +169,7 @@ export function decisionSenseReviews(candidate, row, label = 'decision') {
   return row.sense_reviews;
 }
 
-function validateDecisionRow(row, { identity, candidate, decisionSourceId } = {}) {
+function validateDecisionRow(row, { identity, candidate, decisionSourceId, reviewPassCandidates } = {}) {
   const label = `decision ${identity.inventory_id}`;
   requireObject(row, label);
   if (row.inventory_id !== identity.inventory_id || row.candidate_record_id !== candidate.id) {
@@ -187,8 +193,8 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId } = {}
     || !row.decision_rationale.includes(candidate.id)) {
     fail(`${label}.decision_rationale must cite the inventory and candidate identity`, 'M5_13_DECISION_SOURCE_BINDING');
   }
-  if (row.review_pass_id !== M5_13_VERIFICATION_PASS_ID) {
-    fail(`${label}.review_pass_id is not bound to the verification pass`, 'M5_13_DECISION_SOURCE_PROVENANCE');
+  if (!reviewPassCandidates.get(row.review_pass_id)?.has(candidate.id)) {
+    fail(`${label}.review_pass_id is not authorized for this candidate`, 'M5_13_DECISION_SOURCE_PROVENANCE');
   }
   if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'M5_13_DECISION_SOURCE_VALUE');
   const expectedJudgment = row.decision === 'rejected'
@@ -198,6 +204,11 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId } = {}
     fail(`${label}.gloss_judgment contradicts its authored decision`, 'M5_13_DECISION_SOURCE_COHERENCE');
   }
   const senseReviews = decisionSenseReviews(candidate, row, label);
+  try {
+    validateAuthoredSemanticReviewBinding(row, candidate);
+  } catch (error) {
+    fail(`${label} semantic evidence binding failed: ${error.message}`, 'M5_13_DECISION_SOURCE_BINDING');
+  }
   for (const [senseIndex, senseReview] of senseReviews.entries()) {
     const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
     const sense = candidate.senses[senseIndex];
@@ -257,6 +268,7 @@ export function validateM513DecisionSource({
   requireObject(source, 'M5-13 semantic decision source');
   if (source.schema_version !== '1'
     || source.contract_version !== M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
+    || source.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION
     || source.kind !== 'separately-authored-semantic-decision-source') {
     fail('M5-13 semantic decision source contract is unsupported', 'M5_13_DECISION_SOURCE_CONTRACT');
   }
@@ -284,6 +296,33 @@ export function validateM513DecisionSource({
     || review.prior_generator_replaced !== true
     || review.prior_generator_verification_pass_id !== M5_13_GENERATION_PASS_ID) {
     fail('M5-13 authored semantic review is incomplete', 'M5_13_DECISION_SOURCE_PROVENANCE');
+  }
+  if (!Array.isArray(review.correction_passes)) {
+    fail('M5-13 correction-pass provenance is missing', 'M5_13_DECISION_SOURCE_PROVENANCE');
+  }
+  const reviewPassCandidates = new Map([
+    [review.review_pass_id, new Set(identities.map(({ candidate_record_id: id }) => id))],
+  ]);
+  const correctionPassCandidateIds = new Map();
+  for (const [index, correctionPassValue] of review.correction_passes.entries()) {
+    const correctionPass = requireObject(correctionPassValue, `M5-13 review.correction_passes[${index}]`);
+    if (correctionPass.review_pass_id !== M5_13_CORRECTION_PASS_ID
+      || correctionPass.prior_review_pass_id !== review.review_pass_id
+      || correctionPass.reviewer !== 'codex-agent'
+      || correctionPass.status !== 'complete'
+      || !Array.isArray(correctionPass.candidate_record_ids)
+      || correctionPass.candidate_record_ids.length === 0
+      || correctionPass.candidate_record_count !== correctionPass.candidate_record_ids.length
+      || typeof correctionPass.method !== 'string'
+      || correctionPass.method.trim().length === 0
+      || new Set(correctionPass.candidate_record_ids).size !== correctionPass.candidate_record_ids.length
+      || correctionPass.candidate_record_ids.some((id) => !identities.some((identity) => identity.candidate_record_id === id))
+      || reviewPassCandidates.has(correctionPass.review_pass_id)) {
+      fail('M5-13 correction pass is not source-bound to unique candidate identities', 'M5_13_DECISION_SOURCE_PROVENANCE');
+    }
+    const candidateIds = new Set(correctionPass.candidate_record_ids);
+    reviewPassCandidates.set(correctionPass.review_pass_id, candidateIds);
+    correctionPassCandidateIds.set(correctionPass.review_pass_id, candidateIds);
   }
   const candidateSource = requireObject(source.candidate_source, 'M5-13 semantic decision source.candidate_source');
   if (candidateSource.source_id !== M5_13_CANDIDATE_SOURCE_ID
@@ -331,9 +370,22 @@ export function validateM513DecisionSource({
     if (seenIds.has(row.candidate_record_id) || seenRanks.has(row.rank)) fail('M5-13 decisions contain duplicate identity or rank', 'M5_13_DECISION_SOURCE_SCOPE');
     seenIds.add(row.candidate_record_id);
     seenRanks.add(row.rank);
-    validateDecisionRow(row, { identity, candidate, decisionSourceId: source.source_id });
+    validateDecisionRow(row, {
+      identity,
+      candidate,
+      decisionSourceId: source.source_id,
+      reviewPassCandidates,
+    });
   }
   if (seenIds.size !== identities.length || seenRanks.size !== M5_13_SELECTION_COUNT) fail('M5-13 selection coverage is incomplete', 'M5_13_DECISION_SOURCE_SCOPE');
+  for (const [reviewPassId, candidateIds] of correctionPassCandidateIds) {
+    const recordedIds = source.decisions
+      .filter((row) => row.review_pass_id === reviewPassId)
+      .map(({ candidate_record_id: id }) => id);
+    if (recordedIds.length !== candidateIds.size || recordedIds.some((id) => !candidateIds.has(id))) {
+      fail(`M5-13 correction pass ${reviewPassId} does not exactly cover its amended candidates`, 'M5_13_DECISION_SOURCE_PROVENANCE');
+    }
+  }
   const counts = expectedDecisionCounts(source.decisions);
   const selectionResult = selectReviewedCandidates(source.decisions, {
     capacity: M5_13_IMPORT_COUNT,

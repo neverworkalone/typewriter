@@ -16,7 +16,11 @@ import {
   validateTopicAnalysisEvidence,
 } from './lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
-import { compactAuthoredSemanticDecisionRow } from './semantic-decision-row.mjs';
+import {
+  AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  compactAuthoredSemanticDecisionRow,
+  validateAuthoredSemanticReviewBinding,
+} from './semantic-decision-row.mjs';
 
 export { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
@@ -613,6 +617,21 @@ function resolveBatchDecision(record, binding, batchDecisionSources) {
   const row = source.byCandidateId.get(binding.candidate_record_id);
   if (!row) {
     fail(`${record.id} is missing its bound authored batch decision row`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISSING');
+  }
+  const sourceContract = source.source?.contract_version;
+  const versionedSemanticDecisionSource = /^lexical-semantic-decision-source-v(?<version>\d+)$/u.exec(sourceContract ?? '');
+  const requiresReviewBinding = versionedSemanticDecisionSource
+    && Number(versionedSemanticDecisionSource.groups.version) >= 3;
+  const reviewBindingContract = source.source?.review_binding_contract_version;
+  if (requiresReviewBinding || reviewBindingContract !== undefined) {
+    if (reviewBindingContract !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION) {
+      fail(`${record.id} authored batch source has an unsupported semantic review binding contract`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+    }
+    try {
+      validateAuthoredSemanticReviewBinding(row, record);
+    } catch (error) {
+      fail(`${record.id} authored semantic review evidence is not bound to the reviewed candidate: ${error.message}`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+    }
   }
   const selectionBindingMatches = Object.hasOwn(binding, 'selection_axis')
     ? row.selection_axis === binding.selection_axis && !Object.hasOwn(binding, 'selection_score')

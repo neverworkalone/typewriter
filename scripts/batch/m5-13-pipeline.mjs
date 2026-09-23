@@ -302,7 +302,7 @@ function validateCandidateIdentityBinding({ identities, candidateRecords, baseRe
   }
 }
 
-function makeSeedEntry(identity, record, decision, selectionStatus) {
+function makeSeedEntry(identity, record, decision, selectionStatus, verificationPassId) {
   const status = selectionStatus === 'reserve' ? 'deferred' : decision;
   return {
     inventory_id: identity.inventory_id,
@@ -315,7 +315,7 @@ function makeSeedEntry(identity, record, decision, selectionStatus) {
     pos: [...new Set(record.senses.map(({ pos }) => pos))],
     sense_profile: record.record_type === 'expression' ? 'expression' : 'single',
     flags: [...new Set([...identity.flags, ...(record.record_type === 'expression' ? ['expression-unit'] : [])])],
-    decision_note: `${identity.inventory_id} semantic_decision=${decision}; selection=${selectionStatus} after separate generation ${M5_13_GENERATION_PASS_ID} and verification ${M5_13_VERIFICATION_PASS_ID}.`,
+    decision_note: `${identity.inventory_id} semantic_decision=${decision}; selection=${selectionStatus} after separate generation ${M5_13_GENERATION_PASS_ID} and verification ${verificationPassId}.`,
   };
 }
 
@@ -328,7 +328,7 @@ function buildSeed(baseSeed, identities, reviewRows, candidateRecords) {
       const identity = identities[index];
       if (existing.has(identity.inventory_id)) fail(`seed already contains ${identity.inventory_id}`, 'SEED_COLLISION');
       existing.add(identity.inventory_id);
-      return makeSeedEntry(identity, candidateRecords[index], row.decision, row.selection_status);
+      return makeSeedEntry(identity, candidateRecords[index], row.decision, row.selection_status, row.verification_pass_id);
     });
   return {
     ...structuredClone(baseSeed),
@@ -361,7 +361,7 @@ function buildPromotionLedger(baseEntries, identities, reviewRows, candidateReco
         decision_row_sha256: decisionRowDigest(sourceRow),
         reason_codes: [identity.axis],
         flags: [...new Set([...identity.flags, ...(record.record_type === 'expression' ? ['expression-unit'] : [])])],
-        decision_note: `${identity.inventory_id} ${row.decision} after separate generation ${M5_13_GENERATION_PASS_ID} and verification ${M5_13_VERIFICATION_PASS_ID}.`,
+        decision_note: `${identity.inventory_id} ${row.decision} after separate generation ${M5_13_GENERATION_PASS_ID} and verification ${sourceRow.review_pass_id}.`,
       };
     });
   return [...structuredClone(baseEntries), ...additions];
@@ -369,6 +369,7 @@ function buildPromotionLedger(baseEntries, identities, reviewRows, candidateReco
 
 function makeProductionSemanticReview(record, identity, decisionRow, semanticDecisionSource, selectionStatus) {
   const sourceId = semanticDecisionSource.source.source_id;
+  const verificationPassId = decisionRow.review_pass_id;
   const senseReviews = decisionSenseReviews(record, decisionRow, `decision ${identity.inventory_id}`);
   const reviewForSense = (sense) => senseReviews.find(({ sense_id: senseId }) => senseId === sense.id);
   const semanticEvidenceForSense = (sense) => {
@@ -430,7 +431,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
     sense_boundary: {
       status: 'pass',
       decision_source_id: sourceId,
-      review_id: `${M5_13_VERIFICATION_PASS_ID}:canonical:${record.id}:boundary`,
+      review_id: `${verificationPassId}:canonical:${record.id}:boundary`,
       method: 'gloss-and-usage-pairwise-v2',
       independence: {
         independent_of_sense_count: true,
@@ -456,7 +457,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
       decision: 'verified',
       observed_pos: record.senses.map(({ pos }) => pos),
       decision_source_id: sourceId,
-      rationale: `${identity.inventory_id} POS was verified in ${M5_13_VERIFICATION_PASS_ID}.`,
+      rationale: `${identity.inventory_id} POS was verified in ${verificationPassId}.`,
     },
     expression: {
       status: 'pass',
@@ -464,7 +465,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
       expected_record_type: record.record_type,
       observed_record_type: record.record_type,
       decision_source_id: sourceId,
-      rationale: `${identity.inventory_id} record type was verified in ${M5_13_VERIFICATION_PASS_ID}.`,
+      rationale: `${identity.inventory_id} record type was verified in ${verificationPassId}.`,
     },
     relation: {
       status: 'pass',
@@ -503,7 +504,7 @@ function buildReviewRows(identities, candidateRecords, semanticDecisionSource) {
       candidate_id: candidate.id,
       candidate_lemma: identity.lemma,
       generation_pass_id: M5_13_GENERATION_PASS_ID,
-      verification_pass_id: M5_13_VERIFICATION_PASS_ID,
+      verification_pass_id: decisionRow.review_pass_id,
       decision: decisionRow.decision,
       selection_status: selectionStatus,
       expected_record_type: identity.record_type,

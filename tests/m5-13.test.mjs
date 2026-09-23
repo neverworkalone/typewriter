@@ -10,6 +10,7 @@ import {
 } from '../scripts/batch/m5-13-catalog.mjs';
 import {
   M5_13_CANDIDATE_IDENTITIES,
+  M5_13_CORRECTION_PASS_ID,
   M5_13_GENERATION_PASS_ID,
   M5_13_IMPORT_COUNT,
   M5_13_RESERVE_COUNT,
@@ -30,6 +31,7 @@ import {
   buildM513DecisionSource,
   candidateRecordsFromM513DecisionSource,
   readM513DecisionSource,
+  serializeM513DecisionSource,
   validateM513DecisionSource,
 } from '../scripts/batch/m5-13-decision-source.mjs';
 import { selectReviewedCandidates } from '../scripts/batch/lexical-selection.mjs';
@@ -133,6 +135,9 @@ test('M5-13 producer preserves unit-authored meaning and metadata before shared 
   assert.equal(decisionSource.source.source_id, M5_13_SEMANTIC_DECISION_SOURCE_ID);
   assert.equal(decisionSource.source.review.review_pass_id, M5_13_VERIFICATION_PASS_ID);
   assert.equal(decisionSource.source.provenance.verification_pass_id, M5_13_VERIFICATION_PASS_ID);
+  assert.deepEqual(decisionSource.source.review.correction_passes.map(({ review_pass_id: id, candidate_record_ids: ids }) => ({ id, ids })), [
+    { id: M5_13_CORRECTION_PASS_ID, ids: ['w2474', 'w2475', 'w2476', 'w2477'] },
+  ]);
   assert.notEqual(M5_13_VERIFICATION_PASS_ID, M5_13_GENERATION_PASS_ID);
   assert.equal(Object.values(decisionSource.counts).reduce((sum, count) => sum + count, 0), candidates.length);
   assert.equal(decisionSource.selection.selected.length, M5_13_IMPORT_COUNT);
@@ -150,6 +155,13 @@ test('M5-13 producer preserves unit-authored meaning and metadata before shared 
   assert.equal(new Set(decisionSource.rows.map(({ sense_reviews: senseReviews }) => (
     senseReviews[0].semantic_rationale
   ))).size, candidates.length);
+  assert.deepEqual(decisionSource.counts, {
+    included: 1054,
+    corrected: 0,
+    held: 46,
+    rejected: 0,
+    deferred: 0,
+  });
   assert.deepEqual(decisionSource.counts, sourceFile.source.review.decision_counts);
   const checked = validateM513SemanticSource({
     source: sourceFile.source,
@@ -194,6 +206,38 @@ test('M5-13 keeps an independently authored semantic hold out of admission', asy
   ], { capacity: 1, coverageField: 'selection_axis' });
   assert.equal(insufficient.status, 'hold');
   assert.equal(insufficient.reason, 'insufficient-qualified-candidates');
+});
+
+test('M5-13 shared preflight rejects adjacent candidate evidence shifted after review', async () => {
+  const sourceFile = await readM513DecisionSource();
+  const candidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
+  const source = structuredClone(sourceFile.source);
+  const first = source.decisions.find(({ candidate_record_id: id }) => id === 'w2476');
+  const second = source.decisions.find(({ candidate_record_id: id }) => id === 'w2477');
+  assert.equal(first.decision, 'included');
+  assert.equal(second.decision, 'included');
+
+  const rationaleBody = (rationale) => rationale.slice(rationale.indexOf(':') + 1).trim();
+  const firstDecisionBody = rationaleBody(first.decision_rationale);
+  const secondDecisionBody = rationaleBody(second.decision_rationale);
+  first.decision_rationale = `${first.decision_rationale.slice(0, first.decision_rationale.indexOf(':') + 1)} ${secondDecisionBody}`;
+  second.decision_rationale = `${second.decision_rationale.slice(0, second.decision_rationale.indexOf(':') + 1)} ${firstDecisionBody}`;
+  [first.sense_reviews[0].semantic_rationale, second.sense_reviews[0].semantic_rationale] = [
+    second.sense_reviews[0].semantic_rationale,
+    first.sense_reviews[0].semantic_rationale,
+  ];
+
+  // Refresh only the outer artifact digest, as a positional importer could;
+  // the authored candidate/sense evidence binding must remain immutable.
+  const serialized = serializeM513DecisionSource(source);
+  assert.throws(
+    () => validateM513DecisionSource({
+      source: serialized.source,
+      sourceBytes: serialized.bytes,
+      candidateRecords: candidates,
+    }),
+    (error) => error.code === 'M5_13_DECISION_SOURCE_BINDING',
+  );
 });
 
 test('M5-13 executes producer, semantic audit, selection, prospective canonical, and admission', async () => {

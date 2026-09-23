@@ -4,6 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseJsonWithUniqueKeys } from './unique-json.mjs';
+import {
+  AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+} from './semantic-decision-row.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -408,10 +412,27 @@ function validateCompactDecisionSource(value, filePath, semantics) {
       filePath,
       `decision ${index}`,
     );
-    for (const field of semantics.batch_decision_required_fields) {
+    const requiredFields = value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
+      ? [...semantics.batch_decision_required_fields, 'review_binding']
+      : semantics.batch_decision_required_fields;
+    for (const field of requiredFields) {
       if (!Object.hasOwn(row, field)) {
         fail(
           `${filePath} decision ${index} is missing compact field ${field}`,
+          'DURABLE_EVIDENCE_POLICY_SHAPE',
+        );
+      }
+    }
+    if (value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
+      const binding = row.review_binding;
+      if (value.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION
+        || binding?.contract_version !== value.review_binding_contract_version
+        || binding.candidate_record_id !== row.candidate_record_id
+        || binding.candidate_record_sha256 !== row.candidate_record_sha256
+        || !Array.isArray(binding.sense_evidence)
+        || binding.sense_evidence.length !== row.sense_reviews.length) {
+        fail(
+          `${filePath} decision ${index} does not contain a candidate- and sense-bound authored review envelope`,
           'DURABLE_EVIDENCE_POLICY_SHAPE',
         );
       }
