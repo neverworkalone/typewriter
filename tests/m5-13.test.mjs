@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { cp, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,20 +11,29 @@ import {
 import {
   M5_13_CANDIDATE_IDENTITIES,
   M5_13_IMPORT_COUNT,
+  M5_13_RESERVE_COUNT,
   M5_13_SELECTION_COUNT,
   buildM513CandidateRecords,
 } from '../scripts/batch/m5-13-candidate-source.mjs';
+import {
+  validateM513SemanticSource,
+} from '../scripts/batch/rebuild-m5-13-semantic-source.mjs';
 import { M5_13_LEXICAL_UNIT_POOL } from '../scripts/batch/m5-13-lexical-units.mjs';
 import {
   buildM513,
 } from '../scripts/batch/m5-13-pipeline.mjs';
 import {
   M5_13_SEMANTIC_DECISION_SOURCE_ID,
+  M5_13_SEMANTIC_DECISION_SOURCE_PATH,
   buildM513DecisionSource,
   candidateRecordsFromM513DecisionSource,
   readM513DecisionSource,
+  serializeM513DecisionSource,
   validateM513DecisionSource,
 } from '../scripts/batch/m5-13-decision-source.mjs';
+import { selectReviewedCandidates } from '../scripts/batch/lexical-selection.mjs';
+import { inspectWriterDomainEvidence } from '../scripts/validate/lexical-quality.mjs';
+import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import {
   M5_13_FINAL_SUMMARY,
   M5_13_TARGET,
@@ -121,19 +131,84 @@ test('M5-13 producer preserves unit-authored meaning and metadata before shared 
     candidateRecords: candidates,
   });
   assert.equal(decisionSource.source.source_id, M5_13_SEMANTIC_DECISION_SOURCE_ID);
-  assert.deepEqual(decisionSource.counts, {
-    included: 1100,
-    corrected: 0,
-    held: 0,
-    rejected: 0,
-    deferred: 0,
-  });
+  assert.equal(Object.values(decisionSource.counts).reduce((sum, count) => sum + count, 0), candidates.length);
   assert.equal(decisionSource.selection.selected.length, M5_13_IMPORT_COUNT);
-  assert.equal(decisionSource.selection.reserve.length, 100);
+  assert.equal(decisionSource.selection.reserve.length, M5_13_RESERVE_COUNT);
+  assert.equal(decisionSource.selection.excluded.length,
+    decisionSource.counts.held + decisionSource.counts.rejected + decisionSource.counts.deferred);
+  assert.deepEqual(decisionSource.counts, sourceFile.source.review.decision_counts);
+  const checked = validateM513SemanticSource({
+    source: sourceFile.source,
+    sourceBytes: sourceFile.sourceBytes,
+    candidateRecords: candidates,
+  });
+  assert.equal(checked.artifactSha256, decisionSource.artifactSha256);
+  const beforeDecisionArtifact = await readFile(M5_13_SEMANTIC_DECISION_SOURCE_PATH);
+  const validationOutput = execFileSync(process.execPath, [
+    'scripts/batch/rebuild-m5-13-semantic-source.mjs',
+  ], { encoding: 'utf8' });
+  assert.match(validationOutput, /"wrote_decisions": false/u);
+  assert.deepEqual(await readFile(M5_13_SEMANTIC_DECISION_SOURCE_PATH), beforeDecisionArtifact);
   assert.throws(
     () => buildM513DecisionSource(),
     (error) => error.code === 'M5_13_DECISION_SOURCE_REGENERATION',
   );
+});
+
+test('M5-13 preserves a separately authored semantic rejection and selects a qualified reserve', async () => {
+  const sourceFile = await readM513DecisionSource();
+  const candidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
+  const original = validateM513DecisionSource({
+    source: sourceFile.source,
+    sourceBytes: sourceFile.sourceBytes,
+    candidateRecords: candidates,
+  });
+  const source = structuredClone(sourceFile.source);
+  const candidateId = original.selection.selected[0].candidate_record_id;
+  const decision = source.decisions.find((row) => row.candidate_record_id === candidateId);
+  const identity = M5_13_CANDIDATE_IDENTITIES.find(({ candidate_record_id: id }) => id === candidateId);
+  const candidate = source.candidate_records.find(({ id }) => id === candidateId);
+  candidate.senses[0].gloss = '조리 과정에서 음식의 온도를 높이는 금속 용기.';
+  const sense = candidate.senses[0];
+  const senseReview = decision.sense_reviews[0];
+  const glossSha256 = sha256Json(sense.gloss);
+  const domains = inspectWriterDomainEvidence(sense.gloss);
+
+  decision.candidate_record_sha256 = sha256Json(candidate);
+  decision.decision = 'rejected';
+  decision.gloss_judgment = 'reject';
+  decision.decision_rationale = `${identity.inventory_id} ${candidateId}: the well-formed gloss describes a cooking vessel, not “${identity.lemma}”; reject this semantic mismatch.`;
+  delete decision.selection_rationale;
+  senseReview.boundary_decision = domains.axes.length > 1 ? 'coordinated' : 'atomic';
+  senseReview.boundary_rationale = `${identity.inventory_id} ${candidateId} retains one atomic gloss boundary after the mismatch is rejected.`;
+  senseReview.semantic_rationale = `${candidateId} ${sense.id}: ${glossSha256.slice(0, 12)} describes a cooking vessel and does not fit “${identity.lemma}”; the authored outcome is rejected.`;
+  delete senseReview.review_basis;
+  source.candidate_records_sha256 = sha256Json(source.candidate_records);
+  const counts = Object.fromEntries(['included', 'corrected', 'held', 'rejected', 'deferred'].map((kind) => [
+    kind,
+    source.decisions.filter((row) => row.decision === kind).length,
+  ]));
+  source.review.decision_counts = counts;
+  source.review.counts = counts;
+
+  const authored = serializeM513DecisionSource(source);
+  const checked = validateM513SemanticSource({
+    source: authored.source,
+    sourceBytes: authored.bytes,
+    candidateRecords: source.candidate_records,
+  });
+  const nextReserve = original.selection.reserve[0].candidate_record_id;
+  assert.equal(checked.counts.rejected, 1);
+  assert.ok(checked.selection.excluded.includes(candidateId));
+  assert.ok(checked.selection.selected.some(({ candidate_record_id: id }) => id === nextReserve));
+  assert.equal(checked.selection.selected.length, M5_13_IMPORT_COUNT);
+
+  const insufficient = selectReviewedCandidates([
+    { candidate_record_id: 'bad-semantic', decision: 'rejected', score: 1, rank: 1 },
+    { candidate_record_id: 'held-for-context', decision: 'held', score: 0.9, rank: 2 },
+  ], { capacity: 1 });
+  assert.equal(insufficient.status, 'hold');
+  assert.equal(insufficient.reason, 'insufficient-qualified-candidates');
 });
 
 test('M5-13 executes producer, semantic audit, selection, prospective canonical, and admission', async () => {
@@ -155,10 +230,10 @@ test('M5-13 executes producer, semantic audit, selection, prospective canonical,
     assert.equal(result.admission.gate.gate_status, 'pass');
     assert.equal(result.production.production_state.producer_mode, 'live');
     assert.equal(result.semanticAuditCoverage.coverage_complete, true);
-    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'held').length, 0);
-    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'rejected').length, 0);
+    assert.deepEqual(result.reviewRows.filter(({ decision }) => ['held', 'rejected', 'deferred'].includes(decision)).length,
+      result.semanticDecisionSource.counts.held + result.semanticDecisionSource.counts.rejected + result.semanticDecisionSource.counts.deferred);
     assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'selected').length, 1000);
-    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, 100);
+    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, M5_13_RESERVE_COUNT);
     assert.deepEqual(result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length, 184);
     assert.deepEqual(await readFile('data/canonical/m5-12a-expansion.jsonl'), beforeCanonical);
     assert.deepEqual(await readFile('data/inventory/m5-target-seed.json'), beforeSeed);

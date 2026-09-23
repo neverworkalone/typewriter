@@ -482,7 +482,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
       status: selectionStatus,
       rank: decisionRow.rank,
       score: decisionRow.score,
-      rationale: decisionRow.selection_rationale,
+      rationale: `${identity.inventory_id}: ${semanticDecisionSource.source.selection.selection_rationale}`,
     },
   };
 }

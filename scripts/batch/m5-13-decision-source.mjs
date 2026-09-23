@@ -33,7 +33,7 @@ export const M5_13_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   'data/batches/m5-13-semantic-decisions.json',
 );
 export const M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v2';
-export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-quality-coverage-selection-v4';
+export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-authored-quality-coverage-selection-v5';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);
@@ -176,13 +176,13 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId } = {}
   if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > M5_13_SELECTION_COUNT) {
     fail(`${label}.rank must be within the complete candidate pool`, 'M5_13_DECISION_SOURCE_VALUE');
   }
-  if (!Number.isFinite(row.score)) fail(`${label}.score must be finite`, 'M5_13_DECISION_SOURCE_VALUE');
+  if (!Number.isFinite(row.score) || row.score < 0 || row.score > 1) {
+    fail(`${label}.score must be an authored value from 0 through 1`, 'M5_13_DECISION_SOURCE_VALUE');
+  }
   requireString(row.decision_rationale, `${label}.decision_rationale`);
-  requireString(row.selection_rationale, `${label}.selection_rationale`);
   if (!row.decision_rationale.includes(identity.inventory_id)
-    || !row.decision_rationale.includes(candidate.id)
-    || !row.selection_rationale.includes(identity.inventory_id)) {
-    fail(`${label} rationale must cite the inventory and candidate identity`, 'M5_13_DECISION_SOURCE_BINDING');
+    || !row.decision_rationale.includes(candidate.id)) {
+    fail(`${label}.decision_rationale must cite the inventory and candidate identity`, 'M5_13_DECISION_SOURCE_BINDING');
   }
   if (row.review_pass_id !== M5_13_VERIFICATION_PASS_ID) {
     fail(`${label}.review_pass_id is not bound to the verification pass`, 'M5_13_DECISION_SOURCE_PROVENANCE');
@@ -292,9 +292,13 @@ export function validateM513DecisionSource({
   if (selection.policy !== M5_13_SEMANTIC_DECISION_SOURCE_POLICY
     || selection.capacity !== M5_13_SELECTION_COUNT
     || selection.imported !== M5_13_IMPORT_COUNT
-    || selection.reserve !== M5_13_RESERVE_COUNT) {
+    || selection.reserve !== M5_13_RESERVE_COUNT
+    || !Array.isArray(selection.score_basis)
+    || selection.score_basis.length === 0
+    || selection.score_basis.some((item) => typeof item !== 'string' || item.trim().length === 0)) {
     fail('M5-13 selection policy drifted', 'M5_13_DECISION_SOURCE_SCOPE');
   }
+  requireString(selection.selection_rationale, 'M5-13 semantic decision source.selection.selection_rationale');
   if (!Buffer.isBuffer(sourceBytes)) fail('M5-13 semantic decision source bytes are required', 'M5_13_DECISION_SOURCE_BINDING');
   const artifactSha256 = requireDigest(source.artifact_sha256, 'M5-13 semantic decision source.artifact_sha256');
   if (artifactSha256 !== sha256Json(sourceForArtifactDigest(source))) {
