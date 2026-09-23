@@ -13,6 +13,7 @@ import {
   M5_13_SELECTION_COUNT,
   buildM513CandidateRecords,
 } from '../scripts/batch/m5-13-candidate-source.mjs';
+import { M5_13_LEXICAL_UNIT_POOL } from '../scripts/batch/m5-13-lexical-units.mjs';
 import {
   buildM513,
 } from '../scripts/batch/m5-13-pipeline.mjs';
@@ -87,9 +88,29 @@ test('M5-13 keeps 1,100 capacity slots separate from authored identities', () =>
   }
 });
 
-test('M5-13 uses the shared producer and a separately authored mixed-outcome decision source', async () => {
-  const sourceFile = await readM513DecisionSource();
+test('M5-13 producer preserves unit-authored meaning and metadata before shared selection', async () => {
   const candidates = buildM513CandidateRecords();
+  assert.equal(candidates.length, M5_13_LEXICAL_UNIT_POOL.length);
+  for (const [index, unit] of M5_13_LEXICAL_UNIT_POOL.entries()) {
+    const identity = M5_13_CANDIDATE_IDENTITIES[index];
+    const candidate = candidates[index];
+    assert.equal(identity.lemma, unit.lemma);
+    assert.equal(identity.record_type, unit.record_type);
+    assert.equal(identity.pos, unit.pos);
+    assert.equal(candidate.lemma, unit.lemma);
+    assert.equal(candidate.record_type, unit.record_type);
+    assert.equal(candidate.senses[0].pos, unit.pos);
+    assert.equal(candidate.senses[0].gloss, unit.writer_gloss);
+  }
+
+  for (const lemma of ['불현듯', '문득']) {
+    const unit = M5_13_LEXICAL_UNIT_POOL.find((candidate) => candidate.lemma === lemma);
+    assert.equal(unit.record_type, 'entry');
+    assert.equal(unit.pos, 'adverb');
+  }
+  assert.equal(M5_13_LEXICAL_UNIT_POOL.some(({ lemma }) => lemma === '기댔다'), false);
+
+  const sourceFile = await readM513DecisionSource();
   const authoredCandidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
   assert.deepEqual(candidates, authoredCandidates);
   assert.equal(candidates.some(({ lemma }) => lemma.includes('에서 읽는')), false);
@@ -101,14 +122,14 @@ test('M5-13 uses the shared producer and a separately authored mixed-outcome dec
   });
   assert.equal(decisionSource.source.source_id, M5_13_SEMANTIC_DECISION_SOURCE_ID);
   assert.deepEqual(decisionSource.counts, {
-    included: 1070,
+    included: 1100,
     corrected: 0,
-    held: 5,
-    rejected: 5,
-    deferred: 20,
+    held: 0,
+    rejected: 0,
+    deferred: 0,
   });
   assert.equal(decisionSource.selection.selected.length, M5_13_IMPORT_COUNT);
-  assert.equal(decisionSource.selection.reserve.length, 70);
+  assert.equal(decisionSource.selection.reserve.length, 100);
   assert.throws(
     () => buildM513DecisionSource(),
     (error) => error.code === 'M5_13_DECISION_SOURCE_REGENERATION',
@@ -134,11 +155,11 @@ test('M5-13 executes producer, semantic audit, selection, prospective canonical,
     assert.equal(result.admission.gate.gate_status, 'pass');
     assert.equal(result.production.production_state.producer_mode, 'live');
     assert.equal(result.semanticAuditCoverage.coverage_complete, true);
-    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'held').length, 5);
-    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'rejected').length, 5);
+    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'held').length, 0);
+    assert.deepEqual(result.reviewRows.filter(({ decision }) => decision === 'rejected').length, 0);
     assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'selected').length, 1000);
-    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, 70);
-    assert.deepEqual(result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length, 140);
+    assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, 100);
+    assert.deepEqual(result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length, 184);
     assert.deepEqual(await readFile('data/canonical/m5-12a-expansion.jsonl'), beforeCanonical);
     assert.deepEqual(await readFile('data/inventory/m5-target-seed.json'), beforeSeed);
     assert.equal(result.semanticDecisionSource.source.artifact_sha256, result.semanticDecisionSource.artifactSha256);

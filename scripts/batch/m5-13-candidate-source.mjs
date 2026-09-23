@@ -13,11 +13,11 @@ export const M5_13_IMPORT_COUNT = 1000;
 export const M5_13_RESERVE_COUNT = 100;
 export const M5_13_FIRST_INVENTORY_NUMBER = 2001;
 export const M5_13_FIRST_CANONICAL_NUMBER = 2081;
-export const M5_13_GENERATION_PASS_ID = 'm5-13-generation-20260922-r3';
-export const M5_13_VERIFICATION_PASS_ID = 'm5-13-agent-semantic-review-20260922-r3';
-export const M5_13_CANDIDATE_SOURCE_ID = 'm5-13-typewriter-authored-lexical-units-20260922-r3';
-export const M5_13_GENERATOR_VERSION = 'shared-lexical-producer-v3';
-export const M5_13_SEMANTIC_REVIEW_VERSION = 'm5-13-authored-semantic-review-v3';
+export const M5_13_GENERATION_PASS_ID = 'm5-13-generation-20260923-r4';
+export const M5_13_VERIFICATION_PASS_ID = 'm5-13-agent-semantic-review-20260923-r4';
+export const M5_13_CANDIDATE_SOURCE_ID = 'm5-13-typewriter-authored-lexical-units-20260922-r4';
+export const M5_13_GENERATOR_VERSION = 'shared-lexical-producer-v4';
+export const M5_13_SEMANTIC_REVIEW_VERSION = 'm5-13-authored-semantic-review-v4';
 export const M5_13_CANDIDATE_SOURCE = Object.freeze(source);
 
 function sourceBasis(unit, catalogRow) {

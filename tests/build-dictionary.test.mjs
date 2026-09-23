@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -134,6 +134,39 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     }
   } finally {
     await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('preserves adverb POS in the canonical-to-SQLite build', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-adverb-build-'));
+  const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  const outputPath = path.join(temporaryDirectory, 'dictionary.sqlite');
+  await mkdir(canonicalDirectory);
+  await writeFile(path.join(canonicalDirectory, 'adverb.jsonl'), `${JSON.stringify({
+    id: 'w990',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w990',
+    lemma: '불현듯',
+    search_forms: ['불현듯'],
+    senses: [{ id: 'w990-s1', pos: 'adverb', gloss: '생각이 뜻밖의 순간에 갑자기 떠오르는 모양.' }],
+  })}\n`);
+
+  try {
+    await buildDictionary({
+      inputDirectory: canonicalDirectory,
+      outputPath,
+      allowDirty: true,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+    });
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    try {
+      assert.equal(database.prepare('SELECT pos FROM senses WHERE id = ?').get('w990-s1').pos, 'adverb');
+    } finally {
+      database.close();
+    }
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
   }
 });
 

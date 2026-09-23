@@ -867,7 +867,7 @@
         "observed_pos": {
           "type": "array",
           "items": {
-            "enum": ["noun", "adjective", "verb", "expression"]
+            "enum": ["noun", "adjective", "verb", "adverb", "expression"]
           }
         },
         "boundary_checks": {

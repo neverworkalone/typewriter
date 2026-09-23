@@ -27,13 +27,13 @@ import { selectReviewedCandidates } from './lexical-selection.mjs';
 
 const REPOSITORY_DIRECTORY = path.resolve(new URL('../..', import.meta.url).pathname);
 
-export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260922-r3';
+export const M5_13_SEMANTIC_DECISION_SOURCE_ID = 'm5-13-authored-semantic-decisions-20260923-r4';
 export const M5_13_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/batches/m5-13-semantic-decisions.json',
 );
 export const M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v2';
-export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-quality-coverage-selection-v3';
+export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-quality-coverage-selection-v4';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);

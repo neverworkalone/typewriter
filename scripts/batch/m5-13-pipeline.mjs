@@ -63,6 +63,7 @@ import {
   decisionSenseReviews,
   M5_13_SEMANTIC_DECISION_SOURCE_PATH,
   M5_13_SEMANTIC_DECISION_SOURCE_ID,
+  M5_13_SEMANTIC_DECISION_SOURCE_POLICY,
   readM513DecisionSource,
   validateM513DecisionSource,
 } from './m5-13-decision-source.mjs';
@@ -103,7 +104,7 @@ export const M5_13_FINAL_SUMMARY = Object.freeze({
   reference_only_count: 42,
   sense_count: 3301,
   relation_count: 487,
-  expression_count: 285,
+  expression_count: 329,
 });
 export const M5_13_FINAL_METADATA = Object.freeze({
   dictionary_version: 'm2-pilot-1',
@@ -118,7 +119,7 @@ export const M5_13_FINAL_METADATA = Object.freeze({
   search_form_count: '3298',
   sense_count: '3301',
   relation_count: '487',
-  expression_count: '285',
+  expression_count: '329',
 });
 export const M5_13_TARGET = Object.freeze({
   net_start_increase: 1000,
@@ -663,7 +664,7 @@ function buildProductionStageEvidence({ artifacts, prospectiveRecords, semanticA
   return {
     candidate_intake: { status: 'complete', source_path: 'external:m5-13-generation', source_bytes: artifacts.proposalBytes, source_sha256: sha256(artifacts.proposalBytes) },
     semantic_review: { status: 'complete', source_path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH), source_bytes: artifacts.semanticDecisionSourceBytes, source_sha256: artifacts.semanticDecisionSourceSha256 },
-    selection: { status: 'complete', source_path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH), source_bytes: artifacts.semanticDecisionSourceBytes, source_sha256: artifacts.semanticDecisionSourceSha256, policy: 'shared-quality-coverage-selection-v3' },
+    selection: { status: 'complete', source_path: sourcePath(M5_13_SEMANTIC_DECISION_SOURCE_PATH), source_bytes: artifacts.semanticDecisionSourceBytes, source_sha256: artifacts.semanticDecisionSourceSha256, policy: M5_13_SEMANTIC_DECISION_SOURCE_POLICY },
     prospective_canonical: { status: 'complete', source_path: 'external:m5-13-prospective-canonical', source_bytes: prospectiveBytes, source_sha256: sha256(prospectiveBytes) },
     audit: { status: 'complete', source_path: 'external:m5-13-semantic-audit', source_bytes: semanticAuditBytes, source_sha256: sha256(semanticAuditBytes) },
     admission: { status: 'complete', source_path: 'external:m5-13-admission', source_bytes: admissionSourceBytes, source_sha256: sha256(admissionSourceBytes), authorization_bytes: authorizationBytes, authorization_ref: 'm5-13-agent-generated-admission-authority', decision: 'admit' },
@@ -1091,6 +1092,7 @@ export async function writeM513PreAdmissionEvidence({
   result,
   reviewPath = path.join(BATCH_DIRECTORY, 'm5-13-review.json'),
   stagePath = path.join(BATCH_DIRECTORY, 'm5-13-stage.json'),
+  persist = true,
 } = {}) {
   if (!result?.admission || result.admission.gate?.gate_status !== 'pass') {
     fail('M5-13 evidence requires a passing shared admission result', 'M5_13_GATE_HOLD');
@@ -1248,8 +1250,10 @@ export async function writeM513PreAdmissionEvidence({
     note: 'M5-13 execution is source-bound and admission-gated. The stage records a prospective +1,000 result and does not mutate canonical, seed, or inventory state until the explicit promotion transaction.',
   };
   const stageBytes = jsonBytes(stage);
-  await writeFile(reviewPath, reviewBytes);
-  await writeFile(stagePath, stageBytes);
+  if (persist) {
+    await writeFile(reviewPath, reviewBytes);
+    await writeFile(stagePath, stageBytes);
+  }
   return { review, stage, reviewBytes, stageBytes };
 }
 
@@ -1298,32 +1302,91 @@ async function writeTempAndRename(targetPath, bytes, temporaryDirectory, label) 
   await rename(tempPath, targetPath);
 }
 
-export async function commitM513PromotionTransaction({ result, currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY, currentSeedPath = CURRENT_SEED_PATH, promotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH, decisionSourcePath = DECISION_SOURCE_PATH, admissionPath = ADMISSION_PATH, promotionPath = PROMOTION_PATH } = {}) {
+export async function commitM513PromotionTransaction({
+  result,
+  currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY,
+  currentSeedPath = CURRENT_SEED_PATH,
+  promotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
+  decisionSourcePath = DECISION_SOURCE_PATH,
+  admissionPath = ADMISSION_PATH,
+  promotionPath = PROMOTION_PATH,
+  canonicalImportPath = CANONICAL_IMPORT_PATH,
+  reviewPath = REVIEW_PATH,
+  stagePath = STAGE_PATH,
+  replaceExistingPromotion = false,
+  reviewBytes,
+  stageBytes,
+} = {}) {
   if (!result || result.admission?.gate?.gate_status !== 'pass') fail('M5-13 promotion requires a passing admission gate', 'M5_13_GATE_HOLD');
   const currentCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
   const currentSeedBytes = await readFile(currentSeedPath);
   const currentLedgerBytes = await readFile(promotionLedgerPath);
   const currentDecisionBytes = await readFile(decisionSourcePath);
-  if (currentCanonicalDigest !== result.inputs.baseCanonicalDigest
+  let supersededProposal;
+  if (replaceExistingPromotion) {
+    if (!Buffer.isBuffer(reviewBytes) || !Buffer.isBuffer(stageBytes)) {
+      fail('M5-13 proposal refresh requires regenerated review and stage evidence', 'PROMOTION_REPLACEMENT_INPUT_REQUIRED');
+    }
+    const priorPromotionFile = await readJson(promotionPath, 'prior M5-13 promotion');
+    const priorAdmissionFile = await readJson(admissionPath, 'prior M5-13 admission');
+    const priorPromotion = priorPromotionFile.value;
+    const priorAdmission = priorAdmissionFile.value;
+    const currentImportBytes = await readFile(canonicalImportPath);
+    const priorLedgerEntries = await readPromotionLedger(promotionLedgerPath);
+    const priorLedgerBinding = priorPromotion.outputs?.target_promotions;
+    if (priorPromotion.status !== 'promoted'
+      || priorAdmission.gate?.gate_status !== 'pass'
+      || priorPromotion.admission_sha256 !== sha256(priorAdmissionFile.bytes)
+      || priorPromotion.outputs?.canonical_directory_sha256 !== currentCanonicalDigest
+      || priorPromotion.outputs?.canonical_import?.sha256 !== sha256(currentImportBytes)
+      || priorPromotion.outputs?.seed?.sha256 !== sha256(currentSeedBytes)
+      || priorPromotion.outputs?.semantic_decision_source?.sha256 !== sha256(currentDecisionBytes)
+      || priorAdmission.base?.canonical_directory_sha256 !== result.inputs.baseCanonicalDigest
+      || sha256(currentSeedBytes) !== sha256(result.inputs.currentSeedBytes)
+      || sha256(serializePromotionLedger(priorLedgerEntries)) !== sha256(result.inputs.currentPromotionLedgerBytes)
+      || sha256(currentDecisionBytes) !== sha256(result.inputs.currentDecisionSourceBytes)) {
+      fail('M5-13 prior promoted proposal does not match the exact admitted state; refusing replacement', 'PROMOTION_REPLACEMENT_MISMATCH');
+    }
+    validatePromotionLedgerPrefix({
+      currentEntries: priorLedgerEntries,
+      expectedPrefixEntries: priorLedgerEntries,
+      baseEntries: priorLedgerEntries.slice(0, BASE_LEDGER_COUNT),
+      binding: priorLedgerBinding,
+      label: 'M5-13 prior promoted proposal ledger',
+    });
+    supersededProposal = {
+      promotion_sha256: sha256(priorPromotionFile.bytes),
+      canonical_directory_sha256: currentCanonicalDigest,
+      admission_sha256: priorPromotion.admission_sha256,
+    };
+  }
+  if ((!replaceExistingPromotion && currentCanonicalDigest !== result.inputs.baseCanonicalDigest)
     || sha256(currentSeedBytes) !== sha256(result.inputs.currentSeedBytes)
     || sha256(currentLedgerBytes) !== sha256(result.inputs.currentPromotionLedgerBytes)
     || sha256(currentDecisionBytes) !== sha256(result.inputs.currentDecisionSourceBytes)) {
     fail('M5-13 current outputs changed after admission build; refusing stale promotion', 'PROMOTION_STALE_INPUT');
   }
-  await assertMissing(CANONICAL_IMPORT_PATH, 'M5-13 canonical import');
-  await assertMissing(admissionPath, 'M5-13 admission evidence');
-  await assertMissing(promotionPath, 'M5-13 promotion evidence');
+  if (!replaceExistingPromotion) {
+    await assertMissing(canonicalImportPath, 'M5-13 canonical import');
+    await assertMissing(admissionPath, 'M5-13 admission evidence');
+    await assertMissing(promotionPath, 'M5-13 promotion evidence');
+  }
   const transactionDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-13-commit-'));
-  const outputPaths = [CANONICAL_IMPORT_PATH, currentSeedPath, promotionLedgerPath, decisionSourcePath, admissionPath, promotionPath];
+  const outputPaths = [canonicalImportPath, currentSeedPath, promotionLedgerPath, decisionSourcePath, admissionPath, promotionPath];
+  if (replaceExistingPromotion) outputPaths.push(reviewPath, stagePath);
   const snapshots = new Map();
   for (const pathname of outputPaths) snapshots.set(pathname, await snapshotOutput(pathname));
   try {
-    await writeTempAndRename(CANONICAL_IMPORT_PATH, result.prospective.importBytes, transactionDirectory, 'canonical-import');
+    await writeTempAndRename(canonicalImportPath, result.prospective.importBytes, transactionDirectory, 'canonical-import');
     await writeTempAndRename(currentSeedPath, result.prospective.seedBytes, transactionDirectory, 'seed');
     await writeTempAndRename(promotionLedgerPath, result.prospective.promotionLedgerBytes, transactionDirectory, 'target-promotions');
     await writeTempAndRename(decisionSourcePath, result.decisionSourceBytes, transactionDirectory, 'decision-source');
     await writeTempAndRename(admissionPath, result.admissionBytes, transactionDirectory, 'admission');
     await writeTempAndRename(promotionPath, jsonBytes(result.promotion), transactionDirectory, 'promotion');
+    if (replaceExistingPromotion) {
+      await writeTempAndRename(reviewPath, reviewBytes, transactionDirectory, 'review');
+      await writeTempAndRename(stagePath, stageBytes, transactionDirectory, 'stage');
+    }
     const finalCanonicalDigest = await hashCanonicalDirectory(currentCanonicalDirectory);
     const finalSeedDigest = sha256(await readFile(currentSeedPath));
     const finalDecisionDigest = sha256(await readFile(decisionSourcePath));
@@ -1334,6 +1397,7 @@ export async function commitM513PromotionTransaction({ result, currentCanonicalD
     const promotion = {
       ...result.promotion,
       status: 'promoted',
+      ...(supersededProposal ? { supersedes_proposal: supersededProposal } : {}),
       post_promotion_audit: buildPostPromotionAudit({ result, canonicalDigest: finalCanonicalDigest, seedDigest: finalSeedDigest, decisionSourceDigest: finalDecisionDigest }),
     };
     await writeTempAndRename(promotionPath, jsonBytes(promotion), transactionDirectory, 'promotion-post-audit');
@@ -1349,6 +1413,28 @@ export async function commitM513PromotionTransaction({ result, currentCanonicalD
 export async function promoteM513(options = {}) {
   const result = await buildM513(options);
   return commitM513PromotionTransaction({ result, ...options });
+}
+
+export async function refreshPromotedM513Proposal(options = {}) {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-m5-13-refresh-'));
+  const baseCanonicalDirectory = path.join(temporaryDirectory, 'canonical');
+  try {
+    await cp(CURRENT_CANONICAL_DIRECTORY, baseCanonicalDirectory, { recursive: true });
+    await rm(path.join(baseCanonicalDirectory, path.basename(CANONICAL_IMPORT_PATH)), { force: true });
+    const baseCanonical = await readCanonicalRecords(baseCanonicalDirectory, { useSharedContext: false });
+    const canonicalContext = createCanonicalContext(baseCanonical, { canonicalDirectory: baseCanonicalDirectory });
+    const result = await buildM513({ ...options, canonicalContext });
+    const evidence = await writeM513PreAdmissionEvidence({ result, persist: false });
+    return await commitM513PromotionTransaction({
+      ...options,
+      result,
+      replaceExistingPromotion: true,
+      reviewBytes: evidence.reviewBytes,
+      stageBytes: evidence.stageBytes,
+    });
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 }
 
 export async function validateM513Final({ currentCanonicalDirectory = CURRENT_CANONICAL_DIRECTORY, currentSeedPath = CURRENT_SEED_PATH, promotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH, decisionSourcePath = DECISION_SOURCE_PATH, admissionPath = ADMISSION_PATH, promotionPath = PROMOTION_PATH, canonicalContext } = {}) {
@@ -1414,6 +1500,10 @@ export async function main(argv = process.argv.slice(2)) {
   }
   if (argv.includes('--promote')) {
     console.log(JSON.stringify(await promoteM513(), null, 2));
+    return;
+  }
+  if (argv.includes('--refresh-promoted-proposal')) {
+    console.log(JSON.stringify(await refreshPromotedM513Proposal(), null, 2));
     return;
   }
   if (argv.includes('--check-final')) {
