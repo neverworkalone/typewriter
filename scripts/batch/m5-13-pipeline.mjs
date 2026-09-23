@@ -412,7 +412,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
       reviewed_record_sha256: reviewedDigest,
       decision: decisionRow.decision,
       selection_rank: decisionRow.rank,
-      selection_score: decisionRow.score,
+      selection_axis: decisionRow.selection_axis,
       rationale: decisionRow.decision_rationale,
       sense_evidence: record.senses.map((sense) => ({
         sense_id: sense.id,
@@ -481,7 +481,7 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
     selection: {
       status: selectionStatus,
       rank: decisionRow.rank,
-      score: decisionRow.score,
+      axis: decisionRow.selection_axis,
       rationale: `${identity.inventory_id}: ${semanticDecisionSource.source.selection.selection_rationale}`,
     },
   };
@@ -544,7 +544,7 @@ function buildProspectiveDecisionSource({ baseDecisionSource, baseRecords, prosp
           candidate_record_sha256: row.candidate_record_sha256,
           decision: row.decision,
           selection_rank: row.rank,
-          selection_score: row.score,
+          selection_axis: row.selection_axis,
           reviewed_record_sha256: sha256Json(record),
         },
       };

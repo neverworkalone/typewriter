@@ -33,7 +33,7 @@ export const M5_13_SEMANTIC_DECISION_SOURCE_PATH = path.join(
   'data/batches/m5-13-semantic-decisions.json',
 );
 export const M5_13_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v2';
-export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-authored-quality-coverage-selection-v5';
+export const M5_13_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-authored-axis-coverage-selection-v6';
 
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const IMPORTABLE = new Set(['included', 'corrected']);
@@ -176,8 +176,11 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId } = {}
   if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > M5_13_SELECTION_COUNT) {
     fail(`${label}.rank must be within the complete candidate pool`, 'M5_13_DECISION_SOURCE_VALUE');
   }
-  if (!Number.isFinite(row.score) || row.score < 0 || row.score > 1) {
-    fail(`${label}.score must be an authored value from 0 through 1`, 'M5_13_DECISION_SOURCE_VALUE');
+  if (Object.hasOwn(row, 'score')) {
+    fail(`${label}.score is a derived ranking proxy; selection must use source-bound axis coverage`, 'M5_13_DECISION_SOURCE_VALUE');
+  }
+  if (row.selection_axis !== identity.axis) {
+    fail(`${label}.selection_axis does not match the source-bound candidate axis`, 'M5_13_DECISION_SOURCE_BINDING');
   }
   requireString(row.decision_rationale, `${label}.decision_rationale`);
   if (!row.decision_rationale.includes(identity.inventory_id)
@@ -293,9 +296,10 @@ export function validateM513DecisionSource({
     || selection.capacity !== M5_13_SELECTION_COUNT
     || selection.imported !== M5_13_IMPORT_COUNT
     || selection.reserve !== M5_13_RESERVE_COUNT
-    || !Array.isArray(selection.score_basis)
-    || selection.score_basis.length === 0
-    || selection.score_basis.some((item) => typeof item !== 'string' || item.trim().length === 0)) {
+    || selection.coverage_field !== 'selection_axis'
+    || !Array.isArray(selection.coverage_basis)
+    || selection.coverage_basis.length === 0
+    || selection.coverage_basis.some((item) => typeof item !== 'string' || item.trim().length === 0)) {
     fail('M5-13 selection policy drifted', 'M5_13_DECISION_SOURCE_SCOPE');
   }
   requireString(selection.selection_rationale, 'M5-13 semantic decision source.selection.selection_rationale');
@@ -333,6 +337,7 @@ export function validateM513DecisionSource({
   const counts = expectedDecisionCounts(source.decisions);
   const selectionResult = selectReviewedCandidates(source.decisions, {
     capacity: M5_13_IMPORT_COUNT,
+    coverageField: selection.coverage_field,
   });
   if (selectionResult.status !== 'pass') {
     fail('M5-13 semantic review produced fewer qualified candidates than the admission capacity', 'M5_13_SELECTION_HOLD');

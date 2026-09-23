@@ -145,7 +145,6 @@
       "candidate_record_sha256",
       "decision",
       "rank",
-      "score",
       "decision_rationale",
       "sense_reviews"
     ],
@@ -175,6 +174,7 @@
       "decision",
       "selection_rank",
       "selection_score",
+      "selection_axis",
       "reviewed_record_sha256"
     ],
     "canonical_batch_binding_required_fields": [
@@ -186,7 +186,6 @@
       "candidate_record_sha256",
       "decision",
       "selection_rank",
-      "selection_score",
       "reviewed_record_sha256"
     ],
     "canonical_batch_binding_field_types": {
@@ -199,6 +198,7 @@
       "decision": "string",
       "selection_rank": "number",
       "selection_score": "number",
+      "selection_axis": "string",
       "reviewed_record_sha256": "string"
     },
     "gate_allowed_fields": [
@@ -682,10 +682,12 @@
           "$.selection": {
             "policy": "string",
             "capacity": "number",
-          "imported": "number",
-          "reserve": "number",
-          "score_basis": "array<string>",
-          "selection_rationale": "string"
+            "imported": "number",
+            "reserve": "number",
+            "score_basis": "array<string>",
+            "coverage_field": "string",
+            "coverage_basis": "array<string>",
+            "selection_rationale": "string"
           },
           "$.decisions.*": {
             "candidate_record_id": "string",
@@ -694,6 +696,7 @@
             "decision": "string",
             "rank": "number",
             "score": "number",
+            "selection_axis": "string",
             "decision_rationale": "string",
             "selection_rationale": "string",
             "review_pass_id": "string",
@@ -840,6 +843,7 @@
           "decision",
           "rank",
           "score",
+          "selection_axis",
           "decision_rationale",
           "selection_rationale",
           "review_pass_id",
@@ -881,8 +885,8 @@
         "nested_allowed_fields": {
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
-          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "selection_rationale"],
-          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews", "correction", "boundary_pairs"],
+          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
+          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "selection_axis", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews", "correction", "boundary_pairs"],
           "$.decisions.*.correction": ["action", "record", "output_record_sha256"],
           "$.decisions.*.correction.record": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.decisions.*.correction.record.senses.*": ["id", "pos", "gloss", "relations"],
@@ -1079,6 +1083,7 @@
             "decision",
             "selection_rank",
             "selection_score",
+            "selection_axis",
             "reviewed_record_sha256"
           ],
           "$.authored_review.records.*.boundary_review": [
@@ -1258,6 +1263,7 @@
             "decision": "string",
             "selection_rank": "number",
             "selection_score": "number",
+            "selection_axis": "string",
             "reviewed_record_sha256": "string"
           },
           "$.authored_review.records.*.boundary_review": {

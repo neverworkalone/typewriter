@@ -40,6 +40,7 @@ export function selectReviewedCandidates(
     decisionField = 'decision',
     scoreField = 'score',
     rankField = 'rank',
+    coverageField,
   } = {},
 ) {
   if (!Array.isArray(rows)) fail('selection rows must be an array', 'LEXICAL_SELECTION_SHAPE');
@@ -68,8 +69,14 @@ export function selectReviewedCandidates(
     if (seenIds.has(id)) fail(`selection contains duplicate identity ${id}`, 'LEXICAL_SELECTION_BINDING');
     seenIds.add(id);
     if (!DECISIONS.has(row[decisionField])) fail(`selection row ${id} has an unsupported semantic decision`, 'LEXICAL_SELECTION_VALUE');
+    if (coverageField !== undefined
+      && (typeof row[coverageField] !== 'string' || row[coverageField].trim().length === 0)) {
+      fail(`selection row ${id} has no source-bound coverage value`, 'LEXICAL_SELECTION_VALUE');
+    }
     if (IMPORTABLE_DECISIONS.has(row[decisionField])) {
-      if (!Number.isFinite(row[scoreField])) fail(`selection row ${id} has no finite semantic score`, 'LEXICAL_SELECTION_VALUE');
+      if (coverageField === undefined && !Number.isFinite(row[scoreField])) {
+        fail(`selection row ${id} has no finite semantic score`, 'LEXICAL_SELECTION_VALUE');
+      }
       qualified.push({ row, index });
     } else {
       excluded.push(id);
@@ -85,6 +92,70 @@ export function selectReviewedCandidates(
       selected: [],
       reserve: qualified.map(({ row }) => row[idField]),
       excluded,
+    };
+  }
+
+  if (coverageField !== undefined) {
+    const groups = new Map();
+    for (const entry of qualified) {
+      const key = entry.row[coverageField];
+      const group = groups.get(key) ?? [];
+      group.push(entry);
+      groups.set(key, group);
+    }
+    const allocations = [...groups.entries()].map(([key, entries]) => {
+      const exact = (capacity * entries.length) / qualified.length;
+      return {
+        key,
+        entries,
+        selectedCount: Math.floor(exact),
+        remainder: exact - Math.floor(exact),
+      };
+    });
+    let remaining = capacity - allocations.reduce((sum, item) => sum + item.selectedCount, 0);
+    for (const allocation of [...allocations].sort((left, right) => (
+      right.remainder - left.remainder || left.key.localeCompare(right.key)
+    ))) {
+      if (remaining === 0) break;
+      if (allocation.selectedCount < allocation.entries.length) {
+        allocation.selectedCount += 1;
+        remaining -= 1;
+      }
+    }
+    if (remaining !== 0) fail('coverage allocation could not fill the requested capacity', 'LEXICAL_SELECTION_VALUE');
+
+    const byRank = (left, right) => (
+      (Number.isFinite(left.row[rankField]) ? left.row[rankField] : Number.MAX_SAFE_INTEGER)
+        - (Number.isFinite(right.row[rankField]) ? right.row[rankField] : Number.MAX_SAFE_INTEGER)
+      || left.row[idField].localeCompare(right.row[idField])
+    );
+    const selectedEntries = [];
+    const selectedIds = new Set();
+    for (const allocation of allocations) {
+      allocation.entries.sort(byRank);
+      for (const entry of allocation.entries.slice(0, allocation.selectedCount)) {
+        selectedEntries.push(entry);
+        selectedIds.add(entry.row[idField]);
+      }
+    }
+    selectedEntries.sort(byRank);
+    const reserveEntries = qualified.filter(({ row }) => !selectedIds.has(row[idField])).sort(byRank);
+    return {
+      status: 'pass',
+      reason: 'capacity-filled-from-qualified-axis-coverage',
+      required_count: capacity,
+      qualified_count: qualified.length,
+      selected: selectedEntries.map(({ row }) => row),
+      reserve: reserveEntries.map(({ row }) => row),
+      excluded,
+      coverage_allocation: allocations
+        .sort((left, right) => left.key.localeCompare(right.key))
+        .map(({ key, entries, selectedCount }) => ({
+          value: key,
+          qualified_count: entries.length,
+          selected_count: selectedCount,
+          reserve_count: entries.length - selectedCount,
+        })),
     };
   }
 

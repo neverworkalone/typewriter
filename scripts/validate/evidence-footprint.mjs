@@ -189,6 +189,7 @@ function semanticFieldOverlap(source, canonicalAuthority, promotionLedger) {
         ['decision', 'decision'],
         ['rank', 'selection_rank'],
         ['score', 'selection_score'],
+        ['selection_axis', 'selection_axis'],
       ],
     },
     {

@@ -614,11 +614,14 @@ function resolveBatchDecision(record, binding, batchDecisionSources) {
   if (!row) {
     fail(`${record.id} is missing its bound authored batch decision row`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISSING');
   }
+  const selectionBindingMatches = Object.hasOwn(binding, 'selection_axis')
+    ? row.selection_axis === binding.selection_axis && !Object.hasOwn(binding, 'selection_score')
+    : row.score === binding.selection_score;
   if (row.candidate_record_id !== record.id
     || row.candidate_record_sha256 !== binding.candidate_record_sha256
     || row.decision !== binding.decision
     || row.rank !== binding.selection_rank
-    || row.score !== binding.selection_score
+    || !selectionBindingMatches
     || sha256Json(compactAuthoredSemanticDecisionRow(row)) !== binding.decision_row_sha256) {
     fail(`${record.id} authored batch decision row drifted from its canonical binding`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
   }

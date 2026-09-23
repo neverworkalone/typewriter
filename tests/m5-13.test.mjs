@@ -155,7 +155,7 @@ test('M5-13 producer preserves unit-authored meaning and metadata before shared 
   );
 });
 
-test('M5-13 preserves a separately authored semantic rejection and selects a qualified reserve', async () => {
+test('M5-13 preserves a separately authored semantic rejection before capacity selection', async () => {
   const sourceFile = await readM513DecisionSource();
   const candidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
   const original = validateM513DecisionSource({
@@ -197,16 +197,15 @@ test('M5-13 preserves a separately authored semantic rejection and selects a qua
     sourceBytes: authored.bytes,
     candidateRecords: source.candidate_records,
   });
-  const nextReserve = original.selection.reserve[0].candidate_record_id;
   assert.equal(checked.counts.rejected, 1);
   assert.ok(checked.selection.excluded.includes(candidateId));
-  assert.ok(checked.selection.selected.some(({ candidate_record_id: id }) => id === nextReserve));
   assert.equal(checked.selection.selected.length, M5_13_IMPORT_COUNT);
+  assert.equal(checked.selection.reserve.length, M5_13_RESERVE_COUNT - 1);
 
   const insufficient = selectReviewedCandidates([
-    { candidate_record_id: 'bad-semantic', decision: 'rejected', score: 1, rank: 1 },
-    { candidate_record_id: 'held-for-context', decision: 'held', score: 0.9, rank: 2 },
-  ], { capacity: 1 });
+    { candidate_record_id: 'bad-semantic', decision: 'rejected', rank: 1, selection_axis: 'E' },
+    { candidate_record_id: 'held-for-context', decision: 'held', rank: 2, selection_axis: 'S' },
+  ], { capacity: 1, coverageField: 'selection_axis' });
   assert.equal(insufficient.status, 'hold');
   assert.equal(insufficient.reason, 'insufficient-qualified-candidates');
 });

@@ -492,6 +492,14 @@ function validateCanonicalBatchBindings(value, filePath, semantics) {
   for (const record of value.authored_review.records) {
     const binding = record.authored_batch_decision;
     if (!binding) continue;
+    const hasSelectionScore = Object.hasOwn(binding, 'selection_score');
+    const hasSelectionAxis = Object.hasOwn(binding, 'selection_axis');
+    if (hasSelectionScore === hasSelectionAxis) {
+      fail(
+        `${filePath} ${record.record_id}.authored_batch_decision must bind either a reviewed selection score or a source-bound coverage axis`,
+        'DURABLE_EVIDENCE_POLICY_SHAPE',
+      );
+    }
     for (const field of required) {
       if (!Object.hasOwn(binding, field)) {
         fail(

@@ -787,9 +787,13 @@ function validateIndependentDecisionEvidence(review, {
       'LEXICAL_SEMANTIC_BINDING',
     );
   }
+  const selection = review.selection;
+  const selectionBindingMatches = Object.hasOwn(authored, 'selection_axis')
+    ? authored.selection_axis === selection.axis && !Object.hasOwn(authored, 'selection_score')
+    : authored.selection_score === selection.score;
   if (authored.decision !== decision
-    || authored.selection_rank !== review.selection.rank
-    || authored.selection_score !== review.selection.score) {
+    || authored.selection_rank !== selection.rank
+    || !selectionBindingMatches) {
     fail(
       `${label}.authored_decision must bind the decision and selection output`,
       'LEXICAL_SELECTION_BINDING',
@@ -1965,8 +1969,10 @@ export function validateLexicalSemanticReview(review, {
   if (!Number.isInteger(selection.rank) || selection.rank < 1 || selection.rank > catalogCount) {
     fail(`${label}.selection.rank must be within the candidate pool`, 'LEXICAL_SELECTION_BINDING');
   }
-  if (!Number.isFinite(selection.score)) {
-    fail(`${label}.selection.score must be finite`, 'LEXICAL_SELECTION_BINDING');
+  const hasScore = Number.isFinite(selection.score);
+  const hasAxis = typeof selection.axis === 'string' && selection.axis.trim().length > 0;
+  if (hasScore === hasAxis) {
+    fail(`${label}.selection must bind exactly one finite score or source-bound coverage axis`, 'LEXICAL_SELECTION_BINDING');
   }
   requireString(selection.rationale, `${label}.selection.rationale`);
   if (inventoryId !== undefined && !selection.rationale.includes(inventoryId)) {
@@ -1989,7 +1995,7 @@ export function validateLexicalSemanticReview(review, {
 
   return {
     selection_rank: selection.rank,
-    selection_score: selection.score,
+    ...(hasAxis ? { selection_axis: selection.axis } : { selection_score: selection.score }),
     sense_count: record.senses.length,
     relation_count: relationCount,
     relation_bindings: relationBindings,
