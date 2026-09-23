@@ -15,8 +15,8 @@ import {
 } from '../validate/semantic-decision-row.mjs';
 import { selectReviewedCandidates } from './lexical-selection.mjs';
 
-const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
-const IMPORTABLE = new Set(['included', 'corrected']);
+const DECISION_COUNT_KEYS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
+const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
 const MAX_CORRECTION_RATE = 0.5;
 
@@ -59,7 +59,7 @@ function candidateIdentityDigest(identities) {
 }
 
 function expectedDecisionCounts(rows) {
-  return Object.fromEntries([...DECISIONS].map((decision) => [
+  return Object.fromEntries(DECISION_COUNT_KEYS.map((decision) => [
     decision,
     rows.filter((row) => row.decision === decision).length,
   ]));
@@ -173,7 +173,6 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId, revie
     corrected: 'fit',
     held: 'needs-context',
     rejected: 'reject',
-    deferred: 'fit',
   }[row.decision];
   if (row.gloss_judgment !== expectedJudgment) {
     fail(`${label}.gloss_judgment contradicts its authored decision`, 'DECISION_SOURCE_COHERENCE', config);
@@ -368,8 +367,8 @@ export function validateAuthoredSemanticDecisionSource({
     }
   }
   const counts = expectedDecisionCounts(source.decisions);
-  // Gloss judgment owns eligibility; decision records whether an eligible row
-  // was selected or retained as a deferred reserve.
+  // Gloss judgment owns eligibility. The selector derives selected and reserve
+  // outcomes from every fit row; authored decisions contain semantic outcomes only.
   const selectionResult = selectReviewedCandidates(source.decisions, {
     capacity: config.importCount,
     coverageField: selection.coverage_field,
@@ -381,22 +380,9 @@ export function validateAuthoredSemanticDecisionSource({
   }
   const imported = selectionResult.selected.length;
   const heldOrRejected = counts.held + counts.rejected;
-  const processed = source.decisions.length - counts.deferred;
-  const deferredIds = source.decisions
-    .filter(({ decision }) => decision === 'deferred')
-    .map(({ candidate_record_id: id }) => id);
-  const reserveIds = selectionResult.reserve.map(({ candidate_record_id: id }) => id);
-  const selectedIds = selectionResult.selected.map(({ candidate_record_id: id }) => id);
-  const importedDecisionIds = source.decisions
-    .filter(({ decision }) => IMPORTABLE.has(decision))
-    .map(({ candidate_record_id: id }) => id);
-  const sameIds = (left, right) => left.length === right.length
-    && left.every((id) => right.includes(id));
-  const selectionDispositionMatches = counts.deferred === 0
-    || (sameIds(deferredIds, reserveIds) && sameIds(importedDecisionIds, selectedIds));
+  const processed = source.decisions.length;
   if (imported !== config.importCount
     || selectionResult.reserve.length + heldOrRejected !== config.reserveCount
-    || !selectionDispositionMatches
     || processed !== counts.included + counts.corrected + heldOrRejected
     || processed <= 0
     || counts.corrected / processed > MAX_CORRECTION_RATE) {

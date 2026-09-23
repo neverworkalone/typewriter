@@ -49,20 +49,38 @@ test('shared lexical selection allocates target capacity proportionally across s
   assert.deepEqual(result.selected.map(({ candidate_record_id: id }) => id), ['a1', 'a2', 'c1']);
 });
 
-test('a semantically fit reserve may be deferred without becoming ineligible', () => {
-  const result = selectReviewedCandidates([
-    { candidate_record_id: 'selected-fit', decision: 'included', gloss_judgment: 'fit', rank: 1, selection_axis: 'S' },
-    { candidate_record_id: 'deferred-fit', decision: 'deferred', gloss_judgment: 'fit', rank: 2, selection_axis: 'S' },
-    { candidate_record_id: 'held-context', decision: 'held', gloss_judgment: 'needs-context', rank: 3, selection_axis: 'S' },
-  ], {
-    capacity: 1,
+test('fit surplus forms the qualified reserve and replaces genuinely held or rejected candidates', () => {
+  const rows = [
+    { candidate_record_id: 'fit-1', decision: 'included', gloss_judgment: 'fit', rank: 1, selection_axis: 'S' },
+    { candidate_record_id: 'fit-2', decision: 'included', gloss_judgment: 'fit', rank: 2, selection_axis: 'S' },
+    { candidate_record_id: 'fit-3', decision: 'included', gloss_judgment: 'fit', rank: 3, selection_axis: 'S' },
+    { candidate_record_id: 'held-context', decision: 'held', gloss_judgment: 'needs-context', rank: 4, selection_axis: 'S' },
+    { candidate_record_id: 'rejected-fit', decision: 'rejected', gloss_judgment: 'reject', rank: 5, selection_axis: 'S' },
+  ];
+  const options = {
+    capacity: 2,
     coverageField: 'selection_axis',
     eligibilityField: 'gloss_judgment',
     eligibilityValue: 'fit',
-  });
+  };
+  const result = selectReviewedCandidates(rows, options);
 
   assert.equal(result.status, 'pass');
-  assert.deepEqual(result.selected.map(({ candidate_record_id: id }) => id), ['selected-fit']);
-  assert.deepEqual(result.reserve.map(({ candidate_record_id: id }) => id), ['deferred-fit']);
-  assert.deepEqual(result.excluded, ['held-context']);
+  assert.equal(result.qualified_count, 3);
+  assert.deepEqual(result.selected.map(({ candidate_record_id: id }) => id), ['fit-1', 'fit-2']);
+  assert.deepEqual(result.reserve.map(({ candidate_record_id: id }) => id), ['fit-3']);
+  assert.deepEqual(result.excluded, ['held-context', 'rejected-fit']);
+
+  for (const ineligibleOutcome of [
+    { decision: 'held', gloss_judgment: 'needs-context' },
+    { decision: 'rejected', gloss_judgment: 'reject' },
+  ]) {
+    const revisedRows = rows.map((row) => (
+      row.candidate_record_id === 'fit-1' ? { ...row, ...ineligibleOutcome } : row
+    ));
+    const replacement = selectReviewedCandidates(revisedRows, options);
+    assert.deepEqual(replacement.selected.map(({ candidate_record_id: id }) => id), ['fit-2', 'fit-3']);
+    assert.deepEqual(replacement.reserve, []);
+    assert.ok(replacement.excluded.includes('fit-1'));
+  }
 });

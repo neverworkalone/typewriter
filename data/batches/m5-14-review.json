@@ -19,12 +19,12 @@
     "candidate_source_id": "m5-14-typewriter-authored-lexical-units-20260923-r1"
   },
   "decisions": {
-    "included": 1000,
+    "included": 1100,
     "corrected": 0,
     "held": 0,
     "rejected": 0,
-    "deferred": 100,
-    "processed_start_count": 1000,
+    "deferred": 0,
+    "processed_start_count": 1100,
     "unreviewed_start_count": 0,
     "unresolved_slot_count": 0,
     "imported_start_count": 1000
@@ -32,14 +32,14 @@
   "decision_artifact": {
     "path": "data/batches/m5-14-semantic-decisions.json",
     "source_id": "m5-14-authored-semantic-decisions-20260923-r1",
-    "sha256": "f5069c2c53552382e55d0d32020c9274e4361c386e8c84d60f8002e058665b6f",
-    "artifact_sha256": "73e9f2afa49ff3649f3c95f3d2b6a69b4f26b476783cd73d3819f96f2f40c865",
+    "sha256": "dabd7d3d13f8dbd2ed6e7fa3dca1c2a1ace233eda08de62ef842cb7dd095f5dc",
+    "artifact_sha256": "22a377cbd1a9dceac15c6a2aba9c775573ae03ccd2f9d03983771a50ffd41eaa",
     "decision_count": 1100
   },
   "timing": {
     "status": "not-recorded",
     "editor_seconds": null,
-    "processed_start_count": 1000,
+    "processed_start_count": 1100,
     "unmeasured_pass_count": null
   },
   "audit": {
@@ -58,5 +58,5 @@
     "admission": "shared lexical admission",
     "batch_local_quality_fork": false
   },
-  "note": "M5-14 consumed 1,100 source-bound candidates through the shared producer, separate semantic verification, explicit selection outcomes, prospective canonical construction, complete audit, and shared admission. No human review is claimed; the 1,000 imported rows and 100 deferred outcomes are retained as authored evidence."
+  "note": "M5-14 consumed 1,100 source-bound candidates through the shared producer, separate semantic verification, selector-derived qualified reserve, prospective canonical construction, complete audit, and shared admission. No human review is claimed; 1,000 fit rows were selected and 100 fit rows remain in the qualified reserve."
 }

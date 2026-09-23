@@ -1172,7 +1172,7 @@ export async function writeM514PreAdmissionEvidence({
       admission: 'shared lexical admission',
       batch_local_quality_fork: false,
     },
-    note: 'M5-14 consumed 1,100 source-bound candidates through the shared producer, separate semantic verification, explicit selection outcomes, prospective canonical construction, complete audit, and shared admission. No human review is claimed; the 1,000 imported rows and 100 deferred outcomes are retained as authored evidence.',
+    note: 'M5-14 consumed 1,100 source-bound candidates through the shared producer, separate semantic verification, selector-derived qualified reserve, prospective canonical construction, complete audit, and shared admission. No human review is claimed; 1,000 fit rows were selected and 100 fit rows remain in the qualified reserve.',
   };
   const reviewBytes = jsonBytes(review);
   const stage = {
@@ -1543,7 +1543,7 @@ export async function main(argv = process.argv.slice(2)) {
     actual: canonicalSummary(result.prospective.canonical.records),
     candidate_count: result.identities.length,
     imported_count: result.importedRecords.length,
-    deferred_count: result.reviewRows.filter(({ decision }) => decision === 'deferred').length,
+    reserve_count: result.semanticDecisionSource.selection.reserve.length,
     canonical_directory_sha256: result.prospective.canonicalDigest,
     decision_source_sha256: sha256(result.decisionSourceBytes),
   }, null, 2));

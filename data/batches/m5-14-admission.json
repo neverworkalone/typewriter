@@ -22,7 +22,7 @@
   },
   "base": {
     "canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
-    "inventory_sha256": "d991de67f988965f69cf7c905cd8ca97049b01a4bf4ff1297e934f5010c2af08",
+    "inventory_sha256": "d3ca5c930037ea2726cce004991b3e8d1b6633c2e195f91d3636eec5df3e87e9",
     "inventory_materialization": "on-demand-prospective",
     "seed_sha256": "5f043b66df7886257cb93141a802d125f8d775d5ef1456fb481a8ac71fd84f68",
     "promotion_ledger_prefix_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
@@ -44,12 +44,12 @@
     "expression_count": 639
   },
   "decisions": {
-    "included": 1000,
+    "included": 1100,
     "corrected": 0,
     "held": 0,
     "rejected": 0,
-    "deferred": 100,
-    "processed_start_count": 1000,
+    "deferred": 0,
+    "processed_start_count": 1100,
     "imported_start_count": 1000,
     "deferred_denominator_excluded": true
   },
@@ -78,9 +78,9 @@
     "batch_id": "m5-14-expansion-20260923",
     "inputs": {
       "prospective_canonical_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d",
-      "semantic_audit_sha256": "39fe0b3bef896f6be48d57ab7ae01082a7cc2ea2dc7e85d2265e6c0262b1cbff",
-      "decision_source_sha256": "6220f093dd97cbb5bf97f9dbad94199df0d89a115ec8875989d02ca77e80bd39",
-      "promotion_ledger_prefix_sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e"
+      "semantic_audit_sha256": "bce05cc381b8b121d119e76b550146bb8a908324fb6f39e4c690eac41a1d3f4b",
+      "decision_source_sha256": "307f858957d5fec19255f730655be314f1ef98d30bbbe12455130a70a0557572",
+      "promotion_ledger_prefix_sha256": "6302a32684b70a7ae9cde549e12832d9750bd523f5e63a956358373db158b338"
     },
     "preflight": {
       "contract_version": "lexical-batch-preflight-v1",
@@ -134,14 +134,14 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "6292455d6f5e601f4f1c5a62fa679aa9ceaa3095d332a6814bfb4ab905ccc918",
+  "gate_evidence_sha256": "752cf69812bfc8dc93e67d92dd196c23def37ab3af40e6e0a3821cdb8b911893",
   "promotion_ledger_binding": {
     "previous_ledger_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
     "append_start": 1722,
     "append_count": 1000,
-    "append_sha256": "1e22aed9f29aac3f43151b28d3b266c61a47485f1962d7a927f0d99402a29c71",
+    "append_sha256": "beac929a9ed9055c7df17c0126c242f23c5bd27f9d2b7745d57223f84cec454e",
     "prefix_event_count": 2722,
-    "prefix_sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e"
+    "prefix_sha256": "6302a32684b70a7ae9cde549e12832d9750bd523f5e63a956358373db158b338"
   },
   "sources": {
     "candidate_identities": {
@@ -153,36 +153,36 @@
     "verification": {
       "source_id": "m5-14-authored-semantic-decisions-20260923-r1",
       "path": "data/batches/m5-14-semantic-decisions.json",
-      "sha256": "f5069c2c53552382e55d0d32020c9274e4361c386e8c84d60f8002e058665b6f"
+      "sha256": "dabd7d3d13f8dbd2ed6e7fa3dca1c2a1ace233eda08de62ef842cb7dd095f5dc"
     },
     "semantic_audit": {
       "source_id": "derived:complete-canonical-audit",
       "path": "derived:complete-canonical-audit",
-      "sha256": "39fe0b3bef896f6be48d57ab7ae01082a7cc2ea2dc7e85d2265e6c0262b1cbff"
+      "sha256": "bce05cc381b8b121d119e76b550146bb8a908324fb6f39e4c690eac41a1d3f4b"
     },
     "target_promotions": {
       "source_id": "target_promotions",
       "path": "data/inventory/m5-target-promotions.jsonl",
-      "sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e",
+      "sha256": "6302a32684b70a7ae9cde549e12832d9750bd523f5e63a956358373db158b338",
       "ledger_binding": {
         "previous_ledger_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
         "append_start": 1722,
         "append_count": 1000,
-        "append_sha256": "1e22aed9f29aac3f43151b28d3b266c61a47485f1962d7a927f0d99402a29c71",
+        "append_sha256": "beac929a9ed9055c7df17c0126c242f23c5bd27f9d2b7745d57223f84cec454e",
         "prefix_event_count": 2722,
-        "prefix_sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e"
+        "prefix_sha256": "6302a32684b70a7ae9cde549e12832d9750bd523f5e63a956358373db158b338"
       }
     },
     "base_inventory": {
       "source_id": "derived:on-demand-target-inventory",
       "path": "derived:on-demand-prospective-inventory",
       "materialization": "on-demand",
-      "sha256": "d991de67f988965f69cf7c905cd8ca97049b01a4bf4ff1297e934f5010c2af08"
+      "sha256": "d3ca5c930037ea2726cce004991b3e8d1b6633c2e195f91d3636eec5df3e87e9"
     },
     "authorization": {
       "source_id": "authorization",
       "path": "external:m5-14-authorization",
-      "sha256": "0d975d395aab95e147f890fee539b83e43d858f4374db2fbb2e644984749a8fb"
+      "sha256": "b3b9d8fc81ca436efad42a9170eb80a5002f4db55fe78f65c3696307daad5128"
     }
   },
   "promotion": {
