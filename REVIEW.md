@@ -165,21 +165,77 @@ threads and review activity needed to understand the current state.
 If the current head has not materially changed outside the fixes, do not
 restart a full first-pass review.
 
-## Two-reviewer approval gate
+## Three-stage review gate
 
-Every PR requires two independent reviews on the exact same HEAD.
+Every PR passes through two independent full reviews followed by a final
+review-of-reviews merge gate.
 
-- Approval state is bound to the HEAD SHA. Any new commit resets it to `0`.
-- The first reviewer reviews normally. If no blocker remains and required
-  validation passes, record `+1` and do not merge.
-- The second reviewer reviews the same HEAD independently. If no blocker
-  remains and required validation passes, record `+2` and merge.
-- If either reviewer finds a blocker, do not approve or merge. After a fix
-  creates a new commit, review restarts from `0`.
-- Both reviewers use the same scope and standards. Do not divide review
-  responsibility or assume another reviewer already covered an area.
+### First reviewer — independent full review
 
-Required sequence: `0 -> +1 -> +2 -> Squash merge`.
+- Perform a complete review under this `REVIEW.md`.
+- Review the reported problem, the validity of the overall approach, the full
+  relevant change, regression risk, tests, validation, and systemic causes of
+  defects.
+- If blockers remain, report them and do not record `+1`.
+- When no blocker remains and required validation passes for the current exact
+  PR HEAD, leave a PR COMMENT:
+  `+1 — First independent review complete at <HEAD SHA>. No blockers remain.`
+- Do not merge.
+
+### Second reviewer — independent full review
+
+- Begin only when the current exact PR HEAD has a valid `+1` record.
+- Perform another complete independent review under this `REVIEW.md`.
+- Do not reduce review scope because the first reviewer recorded `+1`.
+  Independently review the problem, approach, implementation, regression risk,
+  tests, validation, and systemic causes of defects.
+- If blockers remain, report them and do not record `+2`.
+- When no blocker remains and required validation passes for the same exact PR
+  HEAD, leave a PR COMMENT:
+  `+2 — Second independent review complete at <HEAD SHA>. No blockers remain.`
+- Do not merge.
+
+`+1` and `+2` are sequential gate states, not different review depths. Both
+require a complete independent review.
+
+### Third reviewer — review of reviews and merge gate
+
+The third reviewer does not repeat a full review by default.
+
+First determine whether the first and second reviewers reviewed the right
+problem and whether their review direction adequately covered the essential
+risks of the issue and the chosen approach.
+
+If their review direction was incomplete, incorrect, or appears to have missed
+a material risk, inspect the necessary code, data, tests, or artifacts directly
+and report any blockers found.
+
+If their review direction was sound, verify that the work was correctly
+completed according to that direction, that all blockers are resolved, and
+that required validation succeeded for the exact reviewed HEAD. Do not repeat
+the complete diff review merely to duplicate the first two reviews.
+
+When the merge gate is satisfied, squash-merge the PR directly.
+
+### Gate semantics
+
+The valid progression is:
+
+`0 -> +1 -> +2 -> Squash merge`
+
+Both `+1` and `+2` must refer to the same exact PR HEAD and must be recorded
+in that order.
+
+Any new commit makes previous `+1` and `+2` records stale. Review starts
+again from `0` for the new HEAD.
+
+`+1` and `+2` are PR COMMENT records. They are not GitHub review states.
+
+Do not use, request, require, or wait for GitHub `APPROVE`. Do not treat the
+inability to self-approve as a reason to stop the review flow.
+
+The third reviewer does not create an approval record. When the review-of-
+reviews and merge gate are satisfied, squash-merge directly.
 
 ## Stop condition
 
