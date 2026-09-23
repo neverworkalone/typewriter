@@ -90,6 +90,7 @@ export const DEFAULT_SEMANTIC_DECISION_SOURCE_PATH = path.resolve(
 export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-12a-semantic-decisions.json'),
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-13-semantic-decisions.json'),
+  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-14-semantic-decisions.json'),
 ]);
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 

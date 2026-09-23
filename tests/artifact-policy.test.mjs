@@ -117,17 +117,17 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
 
-  assert.equal(artifact.source.canonical_records_sha256, 'f90aba4abf55df4a0742e90cb5fe31ee8b67da8ea914eec58ecc066adf50d7d5');
-  assert.equal(artifact.record_count, 3042);
-  assert.equal(artifact.sense_count, 3301);
+  assert.equal(artifact.source.canonical_records_sha256, '971deeddd8705d1050fe418fab9ef495378b2fdb021b1d09cdb5ccd181de91ad');
+  assert.equal(artifact.record_count, 4042);
+  assert.equal(artifact.sense_count, 4301);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 20793143);
-  assert.equal(sha256(semanticAuditBytes), '27b070c38100880b3bf907317f88bd799dc4cf321ccf03f305fd0d98b968555e');
-  assert.equal(inventoryBytes.length, 2043526);
-  assert.equal(sha256(inventoryBytes), 'b3848451bc03a344eaa39bfd09eb0b7256959d336d6c9adefbe0b4cdca80fe6a');
-  assert.equal(inventory.canonical_snapshot.record_count, 3042);
-  assert.equal(inventory.canonical_snapshot.start_count, 3000);
+  assert.equal(semanticAuditBytes.length, 27269959);
+  assert.equal(sha256(semanticAuditBytes), '9ba0160424134037721aeba60270854280b374e24b0cadf6c3bb85a5d0593f5b');
+  assert.equal(inventoryBytes.length, 2760556);
+  assert.equal(sha256(inventoryBytes), 'a014a3d2855e07cee4e6266d386422486d84960f50356be184c84fdc8f11411c');
+  assert.equal(inventory.canonical_snapshot.record_count, 4042);
+  assert.equal(inventory.canonical_snapshot.start_count, 4000);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
 });
 
@@ -217,8 +217,8 @@ test('artifact policy rejects role-shaped projections relocated into a future ba
 test('artifact policy requires a registered closed contract for future pre-admission artifacts', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-pre-admission-policy-'));
   const cases = [
-    ['data/batches/m5-14-review.json', { schema_version: '1', status: 'pre-admission' }],
-    ['data/batches/m5-14-stage.json', { schema_version: '1', status: 'pre-admission' }],
+    ['data/batches/m5-15-review.json', { schema_version: '1', status: 'pre-admission' }],
+    ['data/batches/m5-15-stage.json', { schema_version: '1', status: 'pre-admission' }],
     ['data/batches/m5-13-base-inventory.json', { schema_version: '1', status: 'snapshot' }],
     ['data/batches/m5-13-base-canonical/part.jsonl', { schema_version: '1', status: 'snapshot' }],
   ];
@@ -242,8 +242,8 @@ test('artifact policy requires a registered closed contract for future pre-admis
 test('artifact policy rejects future copied canonical and inventory snapshots', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-snapshot-policy-'));
   const cases = [
-    ['data/batches/m5-14-base-canonical/pilot.jsonl', '{}\n'],
-    ['data/batches/m5-14-base-inventory.json', '{}\n'],
+    ['data/batches/m5-15-base-canonical/pilot.jsonl', '{}\n'],
+    ['data/batches/m5-15-base-inventory.json', '{}\n'],
   ];
 
   try {

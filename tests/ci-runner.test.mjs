@@ -67,9 +67,9 @@ test('runner does not repeat a shared audit within one canonical session', async
   assert.deepEqual(executed, ['audit']);
 });
 
-test('M5-13 consumes the existing canonical session without another canonical parse', async () => {
+test('M5-14 consumes the existing canonical session without another canonical parse', async () => {
   const check = CI_CATEGORIES.batch.checks.find(
-    (candidate) => candidate.inProcess === 'm5-13-pre-admission',
+    (candidate) => candidate.inProcess === 'm5-14-pre-admission',
   );
   const canonicalContext = await loadCanonicalContext({ contextPath: null });
   const metricsBefore = { ...canonicalContext.metrics };

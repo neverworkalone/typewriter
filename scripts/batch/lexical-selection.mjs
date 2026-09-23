@@ -6,6 +6,7 @@
 
 const IMPORTABLE_DECISIONS = new Set(['included', 'corrected']);
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected', 'deferred']);
+const DISPOSITION_KEYS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 
 export class LexicalSelectionError extends Error {
   constructor(message, code = 'LEXICAL_SELECTION_ERROR') {
@@ -41,16 +42,26 @@ export function selectReviewedCandidates(
     scoreField = 'score',
     rankField = 'rank',
     coverageField,
+    eligibilityField,
+    eligibilityValue,
   } = {},
 ) {
   if (!Array.isArray(rows)) fail('selection rows must be an array', 'LEXICAL_SELECTION_SHAPE');
   requireInteger(capacity, 'selection capacity');
+  if (eligibilityField !== undefined
+    && (typeof eligibilityField !== 'string' || eligibilityField.trim().length === 0
+      || typeof eligibilityValue !== 'string' || eligibilityValue.trim().length === 0)) {
+    fail('selection eligibility field and value must be non-empty strings', 'LEXICAL_SELECTION_VALUE');
+  }
+  const isEligible = (row) => eligibilityField === undefined
+    ? IMPORTABLE_DECISIONS.has(row?.[decisionField])
+    : row?.[eligibilityField] === eligibilityValue;
   if (capacity > rows.length) {
     return {
       status: 'hold',
       reason: 'insufficient-qualified-candidates',
       required_count: capacity,
-      qualified_count: rows.filter((row) => IMPORTABLE_DECISIONS.has(row?.[decisionField])).length,
+      qualified_count: rows.filter(isEligible).length,
       selected: [],
       reserve: [],
       excluded: rows.map((row) => row?.[idField]),
@@ -73,7 +84,7 @@ export function selectReviewedCandidates(
       && (typeof row[coverageField] !== 'string' || row[coverageField].trim().length === 0)) {
       fail(`selection row ${id} has no source-bound coverage value`, 'LEXICAL_SELECTION_VALUE');
     }
-    if (IMPORTABLE_DECISIONS.has(row[decisionField])) {
+    if (isEligible(row)) {
       if (coverageField === undefined && !Number.isFinite(row[scoreField])) {
         fail(`selection row ${id} has no finite semantic score`, 'LEXICAL_SELECTION_VALUE');
       }
@@ -185,4 +196,74 @@ export function selectionOutcomeById(selection, idField = 'candidate_record_id')
     ...selection.reserve.map((row) => [row[idField], 'reserve']),
     ...selection.excluded.map((id) => [id, 'excluded']),
   ]);
+}
+
+/**
+ * Convert a semantic decision plus the independent capacity outcome into the
+ * final batch disposition.  Reserve is a selection outcome, so it becomes a
+ * deferred batch disposition without changing the authored semantic decision.
+ */
+export function selectionDispositionForRow(row, selectionStatus) {
+  const decision = row?.decision;
+  if (!DECISIONS.has(decision)) {
+    fail(`selection row has an unsupported semantic decision ${String(decision)}`, 'LEXICAL_SELECTION_VALUE');
+  }
+  if (selectionStatus === 'reserve') return 'deferred';
+  if (selectionStatus === undefined || ['selected', 'excluded'].includes(selectionStatus)) return decision;
+  fail(`selection row ${row?.candidate_record_id ?? row?.candidate_id ?? '<unknown>'} has an unsupported selection status ${String(selectionStatus)}`, 'LEXICAL_SELECTION_VALUE');
+}
+
+/**
+ * Summarize final batch dispositions while checking any recorded projection
+ * against the shared selector outcome.  The processed denominator excludes
+ * only rows whose final disposition is deferred.
+ */
+export function selectionDispositionSummary(
+  rows,
+  {
+    selection,
+    idField = 'candidate_record_id',
+    selectionStatusField = 'selection_status',
+    finalDecisionField = 'final_decision',
+  } = {},
+) {
+  if (!Array.isArray(rows)) fail('selection disposition rows must be an array', 'LEXICAL_SELECTION_SHAPE');
+  const selectionStatuses = selection?.status === 'pass'
+    ? selectionOutcomeById(selection, idField)
+    : undefined;
+  const dispositions = rows.map((row, index) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) {
+      fail(`selection disposition row ${index} must be an object`, 'LEXICAL_SELECTION_SHAPE');
+    }
+    const id = row[idField];
+    const selectionStatus = selectionStatuses
+      ? selectionStatuses.get(id)
+      : row[selectionStatusField];
+    if (selectionStatuses && !selectionStatuses.has(id)) {
+      fail(`selection disposition row ${id ?? index} is missing from the selector outcome`, 'LEXICAL_SELECTION_BINDING');
+    }
+    const disposition = selectionDispositionForRow(row, selectionStatus);
+    if (Object.hasOwn(row, finalDecisionField) && row[finalDecisionField] !== disposition) {
+      fail(`selection disposition row ${id ?? index}.${finalDecisionField} does not match the selector outcome`, 'LEXICAL_SELECTION_BINDING');
+    }
+    return disposition;
+  });
+  const counts = Object.fromEntries(DISPOSITION_KEYS.map((decision) => [
+    decision,
+    dispositions.filter((disposition) => disposition === decision).length,
+  ]));
+  const processedStartCount = counts.included + counts.corrected + counts.held + counts.rejected;
+  const deferredDenominatorExcluded = processedStartCount + counts.deferred === rows.length;
+  if (!deferredDenominatorExcluded) {
+    fail(
+      `selection disposition denominator does not cover the complete batch: ${JSON.stringify({ ...counts, processedStartCount, total: rows.length })}`,
+      'LEXICAL_SELECTION_DENOMINATOR',
+    );
+  }
+  return {
+    counts,
+    dispositions,
+    processed_start_count: processedStartCount,
+    deferred_denominator_excluded: deferredDenominatorExcluded,
+  };
 }

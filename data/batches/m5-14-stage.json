@@ -1,0 +1,118 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-batch-pre-admission-stage-v1",
+  "stage_id": "m5-14-plus-1000",
+  "issue": 100,
+  "parent_issue": 7,
+  "status": "complete",
+  "predecessor_expansion": {
+    "issue": 99,
+    "artifact": "data/batches/m5-13-admission.json",
+    "artifact_sha256": "ae131f70eea91fb8f4361773c25c15c7f589343d60b5539be72ed70c8e91c7a2",
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED",
+    "actual": {
+      "record_count": 3042,
+      "start_count": 3000,
+      "reference_only_count": 42,
+      "sense_count": 3301,
+      "relation_count": 487,
+      "expression_count": 309
+    }
+  },
+  "previous_stage": {
+    "issue": 99,
+    "status": "complete",
+    "checkpoint_commit": "5b74cde6f89184d2db7acbf9f1c71ec9242a6609",
+    "checkpoint_tree": "b4383f7b4099f67570f463c8cb8324c8060938e9",
+    "checkpoint_pr_head": "a088b1a711e9005df5566601e6e216cc7f75e352",
+    "canonical_records": 3042,
+    "canonical_starts": 3000
+  },
+  "input": {
+    "inventory_revision": "m5-14",
+    "inventory_sha256": "df6530a58b4a6ab19c447e57740e2c290d1eada3d9cde5b1431e7dddc09fccc7",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
+    "canonical_snapshot": {
+      "record_count": 3042,
+      "start_count": 3000,
+      "reference_only_count": 42,
+      "sense_count": 3301,
+      "relation_count": 487,
+      "expression_count": 309
+    }
+  },
+  "target": {
+    "net_start_increase": 1000,
+    "cumulative_start_target": 4000,
+    "candidate_buffer": 100,
+    "selection_slot_count": 1100,
+    "candidate_identity_count": 1100
+  },
+  "decisions": {
+    "included_start_count": 1000,
+    "corrected_start_count": 0,
+    "held_start_count": 0,
+    "rejected_start_count": 0,
+    "deferred_start_count": 100,
+    "processed_start_count": 1000,
+    "unreviewed_start_count": 0,
+    "unresolved_slot_count": 0
+  },
+  "actual": {
+    "canonical_snapshot": {
+      "record_count": 4042,
+      "start_count": 4000,
+      "reference_only_count": 42,
+      "sense_count": 4301,
+      "relation_count": 487,
+      "expression_count": 639
+    },
+    "imported_start_count": 1000
+  },
+  "gate": {
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED",
+    "failures": []
+  },
+  "promotion": {
+    "canonical_mutation": false,
+    "seed_mutation": false,
+    "inventory_mutation": false,
+    "next_stage_created": false,
+    "next_stage_authorized": true
+  },
+  "source": {
+    "candidate_source": "data/batches/m5-14-lexical-unit-source.json",
+    "candidate_source_sha256": "2ca5a55391d5d4a4cc4d01589caa1392986f9332559a8ed692a7f9cb9a1d16fc",
+    "candidate_source_artifact_sha256": "3ffaa46f215c1e78537b92d11e1cce7a757fbb7fcbde5d53e51ef6684515aa54",
+    "semantic_decision_source": "data/batches/m5-14-semantic-decisions.json",
+    "semantic_decision_source_sha256": "dabd7d3d13f8dbd2ed6e7fa3dca1c2a1ace233eda08de62ef842cb7dd095f5dc",
+    "review": "data/batches/m5-14-review.json",
+    "review_sha256": "ed7f03743f6ff713d1c929622cd2244ed1ccf8b03b20c06e2e547f689a8b1024",
+    "catalog": "scripts/batch/m5-14-candidate-source.mjs",
+    "catalog_count": 1100,
+    "catalog_sha256": "7f22a8782c0a86dcc055d0b3f3b753fe8fcd65d123ce367cc8d28064b0445a37",
+    "predecessor_admission": "data/batches/m5-13-admission.json",
+    "predecessor_admission_sha256": "ae131f70eea91fb8f4361773c25c15c7f589343d60b5539be72ed70c8e91c7a2",
+    "predecessor_promotion": "data/batches/m5-13-promotion.json",
+    "predecessor_promotion_sha256": "4018fc19566dfc0165f6dd848dc85436194743fb6840e407ffc36e999e073c84",
+    "predecessor_stage": "data/batches/m5-13-stage.json",
+    "predecessor_stage_sha256": "b5ea73989f2e3f08b69343c95203d1151f304bd3f62b0484973e3a528851a549",
+    "canonical_directory": "data/canonical",
+    "canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
+    "seed": "data/inventory/m5-target-seed.json",
+    "seed_sha256": "5f043b66df7886257cb93141a802d125f8d775d5ef1456fb481a8ac71fd84f68",
+    "previous_stage_commit": "5b74cde6f89184d2db7acbf9f1c71ec9242a6609"
+  },
+  "pipeline": {
+    "candidate_intake": "shared lexical producer",
+    "semantic_review": "shared semantic audit",
+    "selection": "shared lexical admission",
+    "prospective_canonical": "prospective canonical workspace",
+    "audit": "complete source-bound semantic audit",
+    "batch_local_quality_fork": false
+  },
+  "note": "M5-14 execution is source-bound and admission-gated. The stage records a prospective +1,000 result and does not mutate canonical, seed, or inventory state until the explicit promotion transaction."
+}

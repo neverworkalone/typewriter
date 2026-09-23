@@ -9,6 +9,7 @@ import {
 } from './lexical-production-state.mjs';
 import {
   validateBulkGlossProjection,
+  validateLexicalRecord,
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
 
@@ -77,6 +78,184 @@ function semanticReviewInput(entry, index) {
 
 function valuesOf(recordInfos) {
   return recordInfos.map(recordOf);
+}
+
+const LEXICAL_SELECTION_AXES = new Set(['E', 'Q', 'S', 'C', 'A', 'O', 'X']);
+
+/**
+ * Materialize explicit, Typewriter-authored lexical units as candidate
+ * identities and records.  The shared producer binds each identity to the
+ * complete source artifact; it does not invent lexical units or decisions.
+ */
+export function materializeLexicalUnitCandidates({
+  batchId,
+  source,
+  sourceBytes,
+  firstInventoryNumber,
+  firstCanonicalNumber,
+  baseRecords = [],
+  baseSeedTargets = [],
+} = {}) {
+  requireString(batchId, 'candidate_source.batch_id');
+  requireObject(source, 'candidate_source');
+  requireArray(source.units, 'candidate_source.units');
+  requireSourceBytes(sourceBytes, 'candidate_source.source_bytes');
+  requireArray(baseRecords, 'candidate_source.base_records');
+  requireArray(baseSeedTargets, 'candidate_source.base_seed_targets');
+  if (!Number.isInteger(firstInventoryNumber) || firstInventoryNumber < 1) {
+    fail('candidate_source.first_inventory_number must be a positive integer', 'LEXICAL_PRODUCTION_VALUE');
+  }
+  if (!Number.isInteger(firstCanonicalNumber) || firstCanonicalNumber < 1) {
+    fail('candidate_source.first_canonical_number must be a positive integer', 'LEXICAL_PRODUCTION_VALUE');
+  }
+  if (source.contract_version !== 'lexical-candidate-source-v1'
+    || source.kind !== 'typewriter-authored-lexical-unit-source'
+    || typeof source.source_id !== 'string'
+    || !/^[0-9a-f]{64}$/u.test(source.base_canonical_records_sha256)
+    || !/^[0-9a-f]{64}$/u.test(source.base_seed_sha256)
+    || typeof source.artifact_sha256 !== 'string'
+    || !/^[0-9a-f]{64}$/u.test(source.artifact_sha256)) {
+    fail('candidate_source contract, source identity, or artifact digest is invalid', 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+  }
+  const sourceWithoutDigest = structuredClone(source);
+  delete sourceWithoutDigest.artifact_sha256;
+  const artifactSha256 = productionValueSha256(sourceWithoutDigest);
+  if (artifactSha256 !== source.artifact_sha256
+    || source.candidate_count !== source.units.length
+    || source.pool_sha256 !== productionValueSha256(source.units)) {
+    fail('candidate_source artifact or pool digest does not match its authored units', 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+  }
+  let parsedSourceBytes;
+  try {
+    parsedSourceBytes = JSON.parse(Buffer.from(sourceBytes).toString('utf8'));
+  } catch (error) {
+    fail(`candidate_source.source_bytes is not valid JSON: ${error.message}`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+  }
+  if (JSON.stringify(parsedSourceBytes) !== JSON.stringify(source)) {
+    fail('candidate_source.source_bytes do not encode the supplied source artifact', 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+  }
+
+  const observedAxisCounts = Object.fromEntries([...LEXICAL_SELECTION_AXES].map((axis) => [axis, 0]));
+  const seenUnitIds = new Set();
+  const seenLemmas = new Set();
+  const baseTerms = new Map();
+  for (const [index, recordValue] of baseRecords.entries()) {
+    const record = recordOf(recordValue);
+    requireObject(record, `candidate_source.base_records[${index}]`);
+    for (const term of [record.lemma, ...(Array.isArray(record.search_forms) ? record.search_forms : [])]) {
+      if (typeof term === 'string' && term.length > 0) {
+        baseTerms.set(term.normalize('NFC'), `canonical:${record.id ?? index}`);
+      }
+    }
+  }
+  for (const [index, target] of baseSeedTargets.entries()) {
+    requireObject(target, `candidate_source.base_seed_targets[${index}]`);
+    for (const term of [target.lemma, ...(Array.isArray(target.search_forms) ? target.search_forms : [])]) {
+      if (typeof term === 'string' && term.length > 0) {
+        baseTerms.set(term.normalize('NFC'), `seed:${target.inventory_id ?? index}`);
+      }
+    }
+  }
+  const identities = [];
+  const candidateRecords = [];
+  for (const [index, unit] of source.units.entries()) {
+    const label = `candidate_source.units[${index}]`;
+    requireObject(unit, label);
+    for (const field of ['source_unit_id', 'lemma', 'pos', 'source_kind', 'writer_use', 'writer_gloss']) {
+      requireString(unit[field], `${label}.${field}`);
+      if (unit[field] !== unit[field].trim() || unit[field].normalize('NFC') !== unit[field]) {
+        fail(`${label}.${field} must be trimmed NFC text`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+      }
+    }
+    if (seenUnitIds.has(unit.source_unit_id) || seenLemmas.has(unit.lemma)) {
+      fail(`${label} duplicates a source unit identity or lemma`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    const baseOwner = baseTerms.get(unit.lemma.normalize('NFC'));
+    if (baseOwner) {
+      fail(`${label}.lemma collides with ${baseOwner}`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    seenUnitIds.add(unit.source_unit_id);
+    seenLemmas.add(unit.lemma);
+    if (!LEXICAL_SELECTION_AXES.has(unit.axis)) {
+      fail(`${label}.axis is not a supported Typewriter selection axis`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    if (!Array.isArray(unit.flags) || unit.flags.some((flag) => typeof flag !== 'string' || flag.length === 0)) {
+      fail(`${label}.flags must contain non-empty strings`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    if (!['entry', 'expression'].includes(unit.record_type)
+      || (unit.record_type === 'expression') !== (unit.pos === 'expression')) {
+      fail(`${label}.record_type and POS do not describe one supported lexical unit`, 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+    }
+    observedAxisCounts[unit.axis] += 1;
+    const inventoryNumber = firstInventoryNumber + index;
+    const canonicalNumber = firstCanonicalNumber + index;
+    const inventoryId = `m5-${String(inventoryNumber).padStart(4, '0')}`;
+    const candidateRecordId = `w${String(canonicalNumber).padStart(4, '0')}`;
+    const identity = {
+      catalog_index: index,
+      slot_id: `${batchId}-slot-${String(index + 1).padStart(4, '0')}`,
+      inventory_id: inventoryId,
+      candidate_record_id: candidateRecordId,
+      lemma: unit.lemma,
+      axis: unit.axis,
+      flags: [...unit.flags],
+      record_type: unit.record_type,
+      pos: unit.pos,
+      source_kind: unit.source_kind,
+      writer_gloss: unit.writer_gloss,
+      source_basis: {
+        source_id: source.source_id,
+        source_artifact_sha256: source.artifact_sha256,
+        source_unit_id: unit.source_unit_id,
+        source_material: 'Typewriter-authored lexical unit source',
+        identity_kind: 'explicit-lexical-unit',
+        lexical_unit: unit.lemma,
+        writer_use: unit.writer_use,
+        writer_gloss: unit.writer_gloss,
+        source_kind: unit.source_kind,
+        source_position: {
+          source_unit_index: index,
+          catalog_index: index,
+        },
+      },
+    };
+    const candidateRecord = {
+      id: candidateRecordId,
+      record_type: unit.record_type,
+      role: 'start',
+      candidate_id: candidateRecordId,
+      lemma: unit.lemma,
+      search_forms: [unit.lemma],
+      senses: [{
+        id: `${candidateRecordId}-s1`,
+        pos: unit.pos,
+        gloss: unit.writer_gloss,
+      }],
+    };
+    try {
+      validateLexicalRecord(candidateRecord, {
+        label: `${batchId} candidate ${candidateRecordId}`,
+        mode: 'candidate',
+        expectedId: candidateRecordId,
+        expectedLemma: unit.lemma,
+      });
+    } catch (error) {
+      fail(`candidate_source unit ${unit.source_unit_id} failed the shared lexical intake: ${error.message}`, error.code);
+    }
+    identities.push(identity);
+    candidateRecords.push(candidateRecord);
+  }
+  if (source.axis_counts !== undefined
+    && JSON.stringify(observedAxisCounts) !== JSON.stringify(source.axis_counts)) {
+    fail('candidate_source axis counts do not match the authored unit pool', 'LEXICAL_PRODUCTION_SOURCE_BINDING');
+  }
+  return {
+    identities,
+    candidateRecords,
+    sourceSha256: productionBytesSha256(sourceBytes),
+    artifactSha256,
+    axisCounts: observedAxisCounts,
+  };
 }
 
 function createPreAuditPayloads({
