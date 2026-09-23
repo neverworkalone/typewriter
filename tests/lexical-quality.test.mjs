@@ -69,15 +69,15 @@ test('the shared audit covers the complete current canonical dictionary', async 
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
     checkPilotCompleteness: true,
   });
-  assert.equal(result.recordCount, 2042);
+  assert.equal(result.recordCount, 3042);
 
   const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
   const canonical = await readCanonicalRecords(path.resolve('data/canonical'));
   const audit = auditCanonicalLexicalQuality(canonical.records, { throwOnError: false });
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
-  assert.equal(audit.record_count, 2042);
-  assert.equal(audit.sense_count, 2301);
+  assert.equal(audit.record_count, 3042);
+  assert.equal(audit.sense_count, 3301);
 });
 
 test('the shared production boundary rejects bulk gloss projection without a batch allowlist', () => {
@@ -131,6 +131,97 @@ test('the shared production boundary rejects parameterized gloss templates with 
     () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
     (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
   );
+});
+
+test('the shared production boundary rejects scene and action variations on one gloss scaffold', () => {
+  const records = [
+    ['문턱에서 멈춘 때', '말의 속도를 낮추는 말이다'],
+    ['비가 그친 뒤', '시선의 방향을 바꾸는 말이다'],
+    ['낯선 방에 들어선 순간', '인물의 선택을 보여 주는 말이다'],
+    ['누군가를 기다리는 장면', '감각의 여운을 남기는 말이다'],
+  ].map(([scene, action], index) => ({
+    id: `w-scene-action-${index}`,
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: `w-scene-action-${index}`,
+    lemma: `장면어${index}`,
+    search_forms: [`장면어${index}`],
+    senses: [{
+      id: `w-scene-action-${index}-s1`,
+      pos: 'noun',
+      gloss: `‘장면어${index}’이라는 말은 ${scene}에서 ${action}`,
+    }],
+  }));
+
+  const findings = findBulkGlossProjectionFindings(records, { maxOccurrences: 3 });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].code, 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION');
+  assert.equal(findings[0].kind, 'projection-scaffold');
+  assert.equal(findings[0].owners.length, 4);
+  assert.throws(
+    () => validateBulkGlossProjection(records, { maxOccurrences: 3 }),
+    (error) => error.code === 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+  );
+
+  const authoredDefinitions = records.map((record, index) => ({
+    ...record,
+    senses: [{
+      ...record.senses[0],
+      gloss: [
+        '좁은 출입구 앞에 높여 안과 밖의 이동을 가로막는 구조물.',
+        '빗물이 그친 뒤 흙과 식물에서 올라오는 냄새.',
+        '서로 떨어진 장소를 이어 사람이 건너게 만든 구조물.',
+        '손가락으로 눌러 기기를 조작하는 작은 입력 장치.',
+      ][index],
+    }],
+  }));
+  assert.doesNotThrow(() => validateBulkGlossProjection(authoredDefinitions, { maxOccurrences: 3 }));
+});
+
+test('shared candidate admission rejects conjugated verb forms used as dictionary lemmas', () => {
+  const inflected = {
+    id: 'w-inflected-verb-lemma',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-inflected-verb-lemma',
+    lemma: '기댔다',
+    search_forms: ['기댔다'],
+    senses: [{
+      id: 'w-inflected-verb-lemma-s1',
+      pos: 'verb',
+      gloss: '몸의 일부를 다른 물체에 기대어 무게를 실었다.',
+    }],
+  };
+  assert.throws(
+    () => validateLexicalRecord(inflected, { mode: 'candidate' }),
+    (error) => error.code === 'LEXICAL_INFLECTED_VERB_LEMMA',
+  );
+
+  const citationForm = {
+    ...inflected,
+    id: 'w-citation-verb-lemma',
+    candidate_id: 'w-citation-verb-lemma',
+    lemma: '기대다',
+    search_forms: ['기대다'],
+    senses: [{
+      id: 'w-citation-verb-lemma-s1',
+      pos: 'verb',
+      gloss: '몸의 일부를 다른 물체에 대어 무게를 맡기다.',
+    }],
+  };
+  assert.doesNotThrow(() => validateLexicalRecord(citationForm, { mode: 'candidate' }));
+  assert.doesNotThrow(() => validateLexicalRecord({
+    ...citationForm,
+    id: 'w-ida-citation-verb-lemma',
+    candidate_id: 'w-ida-citation-verb-lemma',
+    lemma: '있다',
+    search_forms: ['있다'],
+    senses: [{
+      id: 'w-ida-citation-verb-lemma-s1',
+      pos: 'verb',
+      gloss: '어떤 곳이나 상태에 존재하거나 무엇을 가지고 있다.',
+    }],
+  }, { mode: 'candidate' }));
 });
 
 test('the shared production boundary compares definition cores before appended examples', () => {
@@ -1784,6 +1875,57 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
     },
   };
 }
+
+test('shared semantic admission blocks a source POS that conflicts with independent adverb evidence', () => {
+  const nounCandidate = {
+    id: 'w-adverb-as-noun',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-adverb-as-noun',
+    lemma: '불현듯',
+    search_forms: ['불현듯'],
+    senses: [{
+      id: 'w-adverb-as-noun-s1',
+      pos: 'noun',
+      gloss: '생각이나 느낌이 뜻밖에 갑자기 떠오르는 모양.',
+    }],
+  };
+  const conflictingReview = productionReview({
+    candidateRecord: nounCandidate,
+    gloss: nounCandidate.senses[0].gloss,
+    boundaryDecision: 'atomic',
+  });
+  conflictingReview.pos.observed_pos = ['adverb'];
+  assert.throws(
+    () => validateLexicalSemanticReview(conflictingReview, {
+      decision: 'included',
+      candidateRecord: nounCandidate,
+      catalogCount: 1,
+      requireSemanticEvidence: true,
+      requireIndependentDecisionEvidence: true,
+    }),
+    (error) => error.name === 'AssertionError' && error.message.includes('observed_pos'),
+  );
+
+  const verifiedCandidate = {
+    ...nounCandidate,
+    id: 'w-correct-adverb-source',
+    candidate_id: 'w-correct-adverb-source',
+    senses: [{ ...nounCandidate.senses[0], id: 'w-correct-adverb-source-s1', pos: 'adverb' }],
+  };
+  const verifiedReview = productionReview({
+    candidateRecord: verifiedCandidate,
+    gloss: verifiedCandidate.senses[0].gloss,
+    boundaryDecision: 'atomic',
+  });
+  assert.doesNotThrow(() => validateLexicalSemanticReview(verifiedReview, {
+    decision: 'included',
+    candidateRecord: verifiedCandidate,
+    catalogCount: 1,
+    requireSemanticEvidence: true,
+    requireIndependentDecisionEvidence: true,
+  }));
+});
 
 function multiSenseProductionReview(record, { relationship = 'distinct', pairDecision = 'retain' } = {}) {
   const decisionSourceId = `future-batch:${record.id}:decision-source`;

@@ -309,6 +309,12 @@ function assertTypedRecordArray(value, label) {
   return records;
 }
 
+function isSelectedReviewRow(row) {
+  return row?.selection_status === undefined
+    ? ['included', 'corrected'].includes(row?.decision)
+    : row.selection_status === 'selected';
+}
+
 function assertUniqueTypedRecordIds(records, label) {
   const ids = new Set();
   for (const [index, record] of records.entries()) {
@@ -490,7 +496,7 @@ export function assertAdmissionInputsBoundToProducer(
   }
   const producerDecisionsByRecordId = new Map();
   for (const [index, reviewRow] of semanticReviewOutput.review_rows.entries()) {
-    if (!['included', 'corrected'].includes(reviewRow?.decision)) continue;
+    if (!isSelectedReviewRow(reviewRow)) continue;
     const reviewedRecord = reviewRow.reviewed_record;
     const recordId = reviewedRecord?.id;
     if (typeof recordId !== 'string' || recordId.trim().length === 0) {
@@ -588,8 +594,15 @@ function assertTypedReviewRows(value, label) {
     if (!LEXICAL_PRODUCTION_DECISIONS.includes(reviewRow.decision)) {
       fail(`${rowLabel}.decision is not a supported lexical production decision`, 'LEXICAL_PRODUCTION_STATE_SHAPE');
     }
+    if (reviewRow.selection_status !== undefined
+      && !['selected', 'reserve', 'excluded'].includes(reviewRow.selection_status)) {
+      fail(`${rowLabel}.selection_status is not a supported producer selection status`, 'LEXICAL_PRODUCTION_STATE_SHAPE');
+    }
     assertPayloadObject(reviewRow.semantic_review, `${rowLabel}.semantic_review`);
-    if (['included', 'corrected'].includes(reviewRow.decision)) {
+    if (isSelectedReviewRow(reviewRow)) {
+      if (!['included', 'corrected'].includes(reviewRow.decision)) {
+        fail(`${rowLabel}.selection_status selected requires an included or corrected decision`, 'LEXICAL_PRODUCTION_STATE_SHAPE');
+      }
       assertTypedRecord(reviewRow.reviewed_record, `${rowLabel}.reviewed_record`);
     } else if (Object.hasOwn(reviewRow, 'reviewed_record')) {
       fail(`${rowLabel}.reviewed_record is not allowed for a non-selected decision`, 'LEXICAL_PRODUCTION_STATE_SHAPE');
@@ -642,7 +655,7 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
       // which candidate it reviewed. Batch-specific ID allocation must happen
       // before candidate_intake; this shared contract never permits a new
       // reviewed record to appear under a covered candidate row.
-      if (['included', 'corrected'].includes(row.decision)
+      if (isSelectedReviewRow(row)
         && row.reviewed_record.id !== row.candidate_id) {
         fail(
           `${label}.output.review_rows[${index}].reviewed_record.id must equal candidate_id`,
@@ -657,11 +670,11 @@ function assertPayloadOutputDetails(stageId, input, output, details) {
       );
     }
     const selectedReviewRecords = reviewRows
-      .filter(({ decision }) => ['included', 'corrected'].includes(decision))
+      .filter(isSelectedReviewRow)
       .map(({ reviewed_record: reviewedRecord }) => reviewedRecord);
     if (JSON.stringify(selectedReviewRecords) !== JSON.stringify(reviewedRecords)) {
       fail(
-        `${label}.output.reviewed_records must be exactly the included/corrected review outputs`,
+        `${label}.output.reviewed_records must be exactly the selected review outputs`,
         'LEXICAL_PRODUCTION_STATE_BINDING',
       );
     }

@@ -128,6 +128,25 @@ test('rejects invalid enum values and entry/expression mismatches', async () => 
   );
 });
 
+test('accepts an adverb as the authored POS of an entry', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-adverb-schema-'));
+  const filePath = path.join(temporaryDirectory, 'adverb.jsonl');
+  try {
+    await writeFile(filePath, `${JSON.stringify({
+      id: 'w990',
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'w990',
+      lemma: '불현듯',
+      search_forms: ['불현듯'],
+      senses: [{ id: 'w990-s1', pos: 'adverb', gloss: '생각이 뜻밖의 순간에 갑자기 떠오르는 모양.' }],
+    })}\n`);
+    assert.deepEqual(await validateCanonicalFile(filePath), { fileCount: 1, recordCount: 1 });
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
 test('rejects empty required values', async () => {
   await assert.rejects(
     validateCanonicalFile(

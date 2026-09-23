@@ -22,7 +22,7 @@ export const DEFAULT_INVENTORY_PATH = path.resolve(
 );
 
 const REASON_CODES = Object.freeze(['E', 'Q', 'S', 'C', 'A', 'O', 'X']);
-const PARTS_OF_SPEECH = Object.freeze(['noun', 'adjective', 'verb', 'expression']);
+const PARTS_OF_SPEECH = Object.freeze(['noun', 'adjective', 'verb', 'adverb', 'expression']);
 const RECORD_TYPES = Object.freeze(['entry', 'expression']);
 const ROLES = Object.freeze(['start', 'reference-only']);
 const SOURCES = Object.freeze(['canonical', 'editorial']);

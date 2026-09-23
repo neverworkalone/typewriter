@@ -122,6 +122,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/semantic-audit-decision-source.test.mjs', 'Test semantic audit decision source'),
       testCheck('tests/semantic-corrections.test.mjs', 'Test semantic corrections'),
       testCheck('tests/semantic-decision-source-locality.test.mjs', 'Test semantic decision-source locality'),
+      testCheck('tests/lexical-selection.test.mjs', 'Test shared lexical selection'),
     ],
   },
 

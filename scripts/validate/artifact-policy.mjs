@@ -1,9 +1,15 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseJsonWithUniqueKeys } from './unique-json.mjs';
+import {
+  AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  isGrandfatheredM512ADecisionSource,
+  SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+} from './semantic-decision-row.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -279,7 +285,14 @@ function validateNestedClosedObjects(value, nestedAllowedFields, nestedFieldType
   }
 }
 
-function validateClosedContract(value, filePath, semantics, label, requiredContractName) {
+function validateClosedContract(
+  value,
+  filePath,
+  semantics,
+  label,
+  requiredContractName,
+  { allowExactGrandfatheredVersion = false } = {},
+) {
   const contracts = semantics.closed_contracts ?? {};
   if (requiredContractName) {
     const contract = contracts[requiredContractName];
@@ -289,7 +302,8 @@ function validateClosedContract(value, filePath, semantics, label, requiredContr
         'POLICY_SHAPE',
       );
     }
-    if (!contract.contract_versions.includes(value?.contract_version)) {
+    if (!contract.contract_versions.includes(value?.contract_version)
+      && !allowExactGrandfatheredVersion) {
       fail(
         `${filePath} uses unregistered ${requiredContractName} contract version ${String(value?.contract_version)}`,
         'DURABLE_CONTRACT_UNREGISTERED',
@@ -408,10 +422,27 @@ function validateCompactDecisionSource(value, filePath, semantics) {
       filePath,
       `decision ${index}`,
     );
-    for (const field of semantics.batch_decision_required_fields) {
+    const requiredFields = value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
+      ? [...semantics.batch_decision_required_fields, 'review_binding']
+      : semantics.batch_decision_required_fields;
+    for (const field of requiredFields) {
       if (!Object.hasOwn(row, field)) {
         fail(
           `${filePath} decision ${index} is missing compact field ${field}`,
+          'DURABLE_EVIDENCE_POLICY_SHAPE',
+        );
+      }
+    }
+    if (value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
+      const binding = row.review_binding;
+      if (value.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION
+        || binding?.contract_version !== value.review_binding_contract_version
+        || binding.candidate_record_id !== row.candidate_record_id
+        || binding.candidate_record_sha256 !== row.candidate_record_sha256
+        || !Array.isArray(binding.sense_evidence)
+        || binding.sense_evidence.length !== row.sense_reviews.length) {
+        fail(
+          `${filePath} decision ${index} does not contain a candidate- and sense-bound authored review envelope`,
           'DURABLE_EVIDENCE_POLICY_SHAPE',
         );
       }
@@ -492,6 +523,14 @@ function validateCanonicalBatchBindings(value, filePath, semantics) {
   for (const record of value.authored_review.records) {
     const binding = record.authored_batch_decision;
     if (!binding) continue;
+    const hasSelectionScore = Object.hasOwn(binding, 'selection_score');
+    const hasSelectionAxis = Object.hasOwn(binding, 'selection_axis');
+    if (hasSelectionScore === hasSelectionAxis) {
+      fail(
+        `${filePath} ${record.record_id}.authored_batch_decision must bind either a reviewed selection score or a source-bound coverage axis`,
+        'DURABLE_EVIDENCE_POLICY_SHAPE',
+      );
+    }
     for (const field of required) {
       if (!Object.hasOwn(binding, field)) {
         fail(
@@ -585,7 +624,17 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       // Preserve the gate-specific duplication diagnostics before applying the
       // recursive contract allowlists to the remaining durable containers.
       validateCompactGateArtifact(value, filePath, semantics);
-      validateClosedContract(value, filePath, semantics, 'durable artifact', requiredContractName);
+      const sourceSha256 = createHash('sha256').update(bytes).digest('hex');
+      const isGrandfatheredDecisionSource = requiredContractName === 'decision_source'
+        && isGrandfatheredM512ADecisionSource({
+          source: value,
+          sourcePath: filePath,
+          sourceSha256,
+          artifactSha256: value.artifact_sha256,
+        });
+      validateClosedContract(value, filePath, semantics, 'durable artifact', requiredContractName, {
+        allowExactGrandfatheredVersion: isGrandfatheredDecisionSource,
+      });
       if (requiredContractName === 'decision_source'
         || semantics.batch_decision_contract_versions.includes(value.contract_version)) {
         validateCompactDecisionSource(value, filePath, semantics);

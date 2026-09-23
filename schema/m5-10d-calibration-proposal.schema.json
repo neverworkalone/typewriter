@@ -63,7 +63,7 @@
             "properties": {
               "senses": {
                 "type": "array",
-                "items": { "type": "object", "properties": { "pos": { "enum": ["noun", "adjective", "verb"] } } }
+                "items": { "type": "object", "properties": { "pos": { "enum": ["noun", "adjective", "verb", "adverb"] } } }
               }
             }
           }
@@ -90,7 +90,7 @@
       "required": ["id", "pos", "gloss"],
       "properties": {
         "id": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" },
-        "pos": { "enum": ["noun", "adjective", "verb", "expression"] },
+        "pos": { "enum": ["noun", "adjective", "verb", "adverb", "expression"] },
         "gloss": { "type": "string", "pattern": "\\S" }
       }
     },

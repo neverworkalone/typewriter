@@ -70,7 +70,7 @@
       "required": ["status", "observed_pos", "note"],
       "properties": {
         "status": { "const": "checked" },
-        "observed_pos": { "type": "array", "minItems": 1, "items": { "enum": ["noun", "adjective", "verb", "expression"] } },
+        "observed_pos": { "type": "array", "minItems": 1, "items": { "enum": ["noun", "adjective", "verb", "adverb", "expression"] } },
         "note": { "type": "string", "pattern": "\\S" }
       }
     },
@@ -82,7 +82,7 @@
         "status": { "const": "complete" },
         "observed_sense_count": { "type": "integer", "minimum": 1 },
         "observed_sense_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^cal-m5-10d-[0-9]{3}-s[1-9][0-9]*$" } },
-        "observed_pos": { "type": "array", "minItems": 1, "items": { "enum": ["noun", "adjective", "verb", "expression"] } },
+        "observed_pos": { "type": "array", "minItems": 1, "items": { "enum": ["noun", "adjective", "verb", "adverb", "expression"] } },
         "note": { "type": "string", "pattern": "\\S" }
       }
     },

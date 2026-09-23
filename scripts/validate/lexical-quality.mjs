@@ -22,7 +22,7 @@ export const LEXICAL_TOPIC_EVIDENCE_KIND = 'semantic-review-topic-analysis';
 
 const RECORD_TYPES = Object.freeze(['entry', 'expression']);
 const ROLES = Object.freeze(['start', 'reference-only']);
-const ENTRY_POS = Object.freeze(['noun', 'adjective', 'verb']);
+const ENTRY_POS = Object.freeze(['noun', 'adjective', 'verb', 'adverb']);
 const ALL_POS = Object.freeze([...ENTRY_POS, 'expression']);
 const CONNECTORS = Object.freeze(['이나', '또는', '거나']);
 const SEMANTIC_BOUNDARY_ACTIONS = Object.freeze(['retain', 'split', 'merge', 'rewrite', 'fail']);
@@ -787,9 +787,13 @@ function validateIndependentDecisionEvidence(review, {
       'LEXICAL_SEMANTIC_BINDING',
     );
   }
+  const selection = review.selection;
+  const selectionBindingMatches = Object.hasOwn(authored, 'selection_axis')
+    ? authored.selection_axis === selection.axis && !Object.hasOwn(authored, 'selection_score')
+    : authored.selection_score === selection.score;
   if (authored.decision !== decision
-    || authored.selection_rank !== review.selection.rank
-    || authored.selection_score !== review.selection.score) {
+    || authored.selection_rank !== selection.rank
+    || !selectionBindingMatches) {
     fail(
       `${label}.authored_decision must bind the decision and selection output`,
       'LEXICAL_SELECTION_BINDING',
@@ -1157,6 +1161,17 @@ export function inspectGlossQuality(gloss, { nominalTerms, topicEvidence, senseI
   };
 }
 
+function hasPastTenseEndingBeforeKoreanVerbLemma(lemma) {
+  if (typeof lemma !== 'string' || !lemma.endsWith('다') || lemma === '있다') return false;
+  const stemFinal = Array.from(lemma).at(-2);
+  if (!stemFinal) return false;
+  const syllableIndex = stemFinal.codePointAt(0) - 0xac00;
+  if (syllableIndex < 0 || syllableIndex >= 11172) return false;
+  // A final ㅆ immediately before citation 다 is the general Korean past
+  // ending (e.g. 갔다, 먹었다, 기댔다). 있다 is the common lexical exception.
+  return syllableIndex % 28 === 20;
+}
+
 function recordQualityFindings(record, {
   label = 'record',
   mode = 'canonical',
@@ -1178,6 +1193,16 @@ function recordQualityFindings(record, {
   }
   if (typeof record.lemma !== 'string' || record.lemma.trim().length === 0) {
     findings.push({ code: 'LEXICAL_LEMMA', message: `${label}.lemma must be a non-empty string` });
+  }
+  if (mode === 'candidate'
+    && typeof record.lemma === 'string'
+    && Array.isArray(record.senses)
+    && record.senses.some((sense) => sense?.pos === 'verb')
+    && hasPastTenseEndingBeforeKoreanVerbLemma(record.lemma)) {
+    findings.push({
+      code: 'LEXICAL_INFLECTED_VERB_LEMMA',
+      message: `${label}.lemma is a conjugated Korean verb form, not a dictionary citation form`,
+    });
   }
   if (Array.isArray(record.search_forms)) {
     const normalizedForms = record.search_forms
@@ -1378,6 +1403,7 @@ export function findBulkGlossProjectionFindings(
 ) {
   const ownersByGloss = new Map();
   const ownersByTemplate = new Map();
+  const ownersByProjectionScaffold = new Map();
 
   const lemmaTerms = (lemma) => {
     const terms = new Set([lemma, lemma.replace(/\s+/gu, '')]);
@@ -1404,6 +1430,11 @@ export function findBulkGlossProjectionFindings(
       .replace(/\s+/gu, ' ')
       .trim();
   };
+  const projectionScaffoldFingerprint = (gloss) => (
+    /^['‘].+?['’]이라는 말은 .+?에서 .+ 말이다[.!?]?$/u.test(gloss)
+      ? '{lexeme}이라는 말은 {scene}에서 {definition} 말이다'
+      : null
+  );
 
   const addOwner = (ownersByKey, key, owner) => {
     const existing = ownersByKey.get(key);
@@ -1426,6 +1457,8 @@ export function findBulkGlossProjectionFindings(
       addOwner(ownersByGloss, sense.gloss, owner);
       const fingerprint = templateFingerprint(record, sense.gloss);
       addOwner(ownersByTemplate, fingerprint, owner);
+      const scaffold = projectionScaffoldFingerprint(sense.gloss);
+      if (scaffold) addOwner(ownersByProjectionScaffold, scaffold, owner);
     }
   }
   const exactFindings = [];
@@ -1454,7 +1487,19 @@ export function findBulkGlossProjectionFindings(
       message: `gloss definition template ${JSON.stringify(fingerprint)} is reused by ${owners.length} candidate senses after lemma substitution; author candidate-specific semantic content before admission`,
     });
   }
-  return [...exactFindings, ...templateFindings];
+  const projectionScaffoldFindings = [];
+  for (const [fingerprint, storedOwners] of ownersByProjectionScaffold.entries()) {
+    if (ownerCount(storedOwners) <= maxOccurrences) continue;
+    const owners = ownerList(storedOwners);
+    projectionScaffoldFindings.push({
+      code: 'LEXICAL_PARAMETERIZED_GLOSS_PROJECTION',
+      kind: 'projection-scaffold',
+      fingerprint,
+      owners,
+      message: `glosses reuse the ${JSON.stringify(fingerprint)} definition scaffold across ${owners.length} candidates; varying scene or action text does not supply unit-specific meaning`,
+    });
+  }
+  return [...exactFindings, ...templateFindings, ...projectionScaffoldFindings];
 }
 
 export function validateBulkGlossProjection(recordInfos, options = {}) {
@@ -1645,6 +1690,7 @@ function semanticStatusForDecision(decision) {
  */
 export function validateLexicalSemanticReview(review, {
   decision,
+  selectionStatus,
   candidateRecord,
   reviewedRecord,
   inventoryId,
@@ -1913,15 +1959,20 @@ export function validateLexicalSemanticReview(review, {
   }
 
   const selection = requireObject(review.selection, `${label}.selection`);
-  const expectedSelectionStatus = semanticStatusForDecision(decision);
+  const expectedSelectionStatus = selectionStatus ?? semanticStatusForDecision(decision);
+  if (!['selected', 'reserve', 'excluded', 'included', 'corrected', 'held', 'rejected', 'deferred'].includes(expectedSelectionStatus)) {
+    fail(`${label}.selection.status is unsupported`, 'LEXICAL_SELECTION_BINDING');
+  }
   if (selection.status !== expectedSelectionStatus) {
     fail(`${label}.selection.status must be ${expectedSelectionStatus}`, 'LEXICAL_SELECTION_BINDING');
   }
   if (!Number.isInteger(selection.rank) || selection.rank < 1 || selection.rank > catalogCount) {
     fail(`${label}.selection.rank must be within the candidate pool`, 'LEXICAL_SELECTION_BINDING');
   }
-  if (!Number.isFinite(selection.score)) {
-    fail(`${label}.selection.score must be finite`, 'LEXICAL_SELECTION_BINDING');
+  const hasScore = Number.isFinite(selection.score);
+  const hasAxis = typeof selection.axis === 'string' && selection.axis.trim().length > 0;
+  if (hasScore === hasAxis) {
+    fail(`${label}.selection must bind exactly one finite score or source-bound coverage axis`, 'LEXICAL_SELECTION_BINDING');
   }
   requireString(selection.rationale, `${label}.selection.rationale`);
   if (inventoryId !== undefined && !selection.rationale.includes(inventoryId)) {
@@ -1944,7 +1995,7 @@ export function validateLexicalSemanticReview(review, {
 
   return {
     selection_rank: selection.rank,
-    selection_score: selection.score,
+    ...(hasAxis ? { selection_axis: selection.axis } : { selection_score: selection.score }),
     sense_count: record.senses.length,
     relation_count: relationCount,
     relation_bindings: relationBindings,

@@ -16,7 +16,13 @@ import {
   validateTopicAnalysisEvidence,
 } from './lexical-quality.mjs';
 import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
-import { compactAuthoredSemanticDecisionRow } from './semantic-decision-row.mjs';
+import {
+  AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  compactAuthoredSemanticDecisionRow,
+  isGrandfatheredM512ADecisionSource,
+  SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+  validateAuthoredSemanticReviewBinding,
+} from './semantic-decision-row.mjs';
 
 export { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 
@@ -83,7 +89,9 @@ export const DEFAULT_SEMANTIC_DECISION_SOURCE_PATH = path.resolve(
 );
 export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-12a-semantic-decisions.json'),
+  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/m5-13-semantic-decisions.json'),
 ]);
+const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 
 export class SemanticAuditError extends Error {
   constructor(message, code = 'SEMANTIC_AUDIT_ERROR') {
@@ -568,6 +576,7 @@ export async function readAuthoredBatchDecisionSources(
     }
     sources.push({
       source,
+      sourcePath: path.relative(REPOSITORY_DIRECTORY, path.resolve(sourcePath)).split(path.sep).join('/'),
       sourceBytes,
       sourceSha256: sha256Bytes(sourceBytes),
       artifactSha256: source.artifact_sha256,
@@ -588,6 +597,7 @@ function normalizeBatchDecisionSources(batchDecisionSources = []) {
       sourceSha256: entry?.sourceSha256
         ?? (entry?.sourceBytes ? sha256Bytes(entry.sourceBytes) : undefined),
       artifactSha256: entry?.artifactSha256 ?? source?.artifact_sha256,
+      sourcePath: entry?.sourcePath,
       byCandidateId: entry?.byCandidateId instanceof Map
         ? entry.byCandidateId
         : new Map(rows.map((row) => [row.candidate_record_id, row])),
@@ -613,11 +623,32 @@ function resolveBatchDecision(record, binding, batchDecisionSources) {
   if (!row) {
     fail(`${record.id} is missing its bound authored batch decision row`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISSING');
   }
+  const sourceContract = source.source?.contract_version;
+  const isGrandfathered = isGrandfatheredM512ADecisionSource({
+    source: source.source,
+    sourcePath: source.sourcePath,
+    sourceSha256: source.sourceSha256,
+    artifactSha256: source.artifactSha256,
+  });
+  if (!isGrandfathered) {
+    if (sourceContract !== SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
+      || source.source?.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION) {
+      fail(`${record.id} authored batch source must use the source-bound semantic decision contract`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+    }
+    try {
+      validateAuthoredSemanticReviewBinding(row, record);
+    } catch (error) {
+      fail(`${record.id} authored semantic review evidence is not bound to the reviewed candidate: ${error.message}`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
+    }
+  }
+  const selectionBindingMatches = Object.hasOwn(binding, 'selection_axis')
+    ? row.selection_axis === binding.selection_axis && !Object.hasOwn(binding, 'selection_score')
+    : row.score === binding.selection_score;
   if (row.candidate_record_id !== record.id
     || row.candidate_record_sha256 !== binding.candidate_record_sha256
     || row.decision !== binding.decision
     || row.rank !== binding.selection_rank
-    || row.score !== binding.selection_score
+    || !selectionBindingMatches
     || sha256Json(compactAuthoredSemanticDecisionRow(row)) !== binding.decision_row_sha256) {
     fail(`${record.id} authored batch decision row drifted from its canonical binding`, 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH');
   }

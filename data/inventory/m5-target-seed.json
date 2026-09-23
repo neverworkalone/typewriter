@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "inventory_id": "m5-core-5k",
-  "revision": "m5-12",
+  "revision": "m5-13",
   "targets": [
     {
       "inventory_id": "m5-001",
@@ -26090,6 +26090,2128 @@
         "expression-unit"
       ],
       "decision_note": "m5-1866 deferred after separate generation m5-12a-generation-20260920 and verification m5-12a-agent-semantic-review-20260920-r4."
+    },
+    {
+      "inventory_id": "m5-2153",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "악의",
+      "search_forms": [
+        "악의"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2153 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2154",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "질투심",
+      "search_forms": [
+        "질투심"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2154 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2155",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "미움",
+      "search_forms": [
+        "미움"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2155 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2156",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "미운 정",
+      "search_forms": [
+        "미운 정"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2156 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2157",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "싫증",
+      "search_forms": [
+        "싫증"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2157 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2158",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "싫증남",
+      "search_forms": [
+        "싫증남"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2158 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2159",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "권태감",
+      "search_forms": [
+        "권태감"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2159 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2160",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "무기력",
+      "search_forms": [
+        "무기력"
+      ],
+      "reason_codes": [
+        "E"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "mood-range"
+      ],
+      "decision_note": "m5-2160 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2172",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "깊이",
+      "search_forms": [
+        "깊이"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2172 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2173",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "넓이",
+      "search_forms": [
+        "넓이"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2173 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2203",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "속도",
+      "search_forms": [
+        "속도"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2203 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2208",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "호흡",
+      "search_forms": [
+        "호흡"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2208 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2209",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "농담",
+      "search_forms": [
+        "농담"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2209 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2311",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "단절",
+      "search_forms": [
+        "단절"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2311 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2312",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "잔여",
+      "search_forms": [
+        "잔여"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2312 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2313",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "잔차",
+      "search_forms": [
+        "잔차"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2313 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2314",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "흔들림",
+      "search_forms": [
+        "흔들림"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2314 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2315",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "정돈",
+      "search_forms": [
+        "정돈"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2315 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2316",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "뒤섞임",
+      "search_forms": [
+        "뒤섞임"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2316 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2317",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "배치",
+      "search_forms": [
+        "배치"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2317 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2318",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "배경",
+      "search_forms": [
+        "배경"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2318 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2319",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "전경",
+      "search_forms": [
+        "전경"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2319 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2320",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "초점",
+      "search_forms": [
+        "초점"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2320 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2345",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "저림",
+      "search_forms": [
+        "저림"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2345 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2398",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "목소리의 떨림",
+      "search_forms": [
+        "목소리의 떨림"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2398 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2454",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "귀가 먹먹함",
+      "search_forms": [
+        "귀가 먹먹함"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2454 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2473",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "손끝의 저림",
+      "search_forms": [
+        "손끝의 저림"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2473 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2474",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "손끝의 온도",
+      "search_forms": [
+        "손끝의 온도"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2474 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2475",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "발바닥의 감각",
+      "search_forms": [
+        "발바닥의 감각"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2475 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2476",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "발목의 긴장",
+      "search_forms": [
+        "발목의 긴장"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2476 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2477",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "피부의 소름",
+      "search_forms": [
+        "피부의 소름"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2477 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2478",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "살갗의 떨림",
+      "search_forms": [
+        "살갗의 떨림"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2478 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2479",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "몸속의 진동",
+      "search_forms": [
+        "몸속의 진동"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2479 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2480",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "몸에 밴 냄새",
+      "search_forms": [
+        "몸에 밴 냄새"
+      ],
+      "reason_codes": [
+        "S"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "sensory-transfer"
+      ],
+      "decision_note": "m5-2480 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2500",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "가게",
+      "search_forms": [
+        "가게"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2500 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2559",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "늦은 정류장",
+      "search_forms": [
+        "늦은 정류장"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2559 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2576",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "돌아온 마을",
+      "search_forms": [
+        "돌아온 마을"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2576 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2579",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "지나간 축제",
+      "search_forms": [
+        "지나간 축제"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2579 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2633",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "골목 안쪽",
+      "search_forms": [
+        "골목 안쪽"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2633 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2634",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "시장 입구",
+      "search_forms": [
+        "시장 입구"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2634 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2635",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "역 앞",
+      "search_forms": [
+        "역 앞"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2635 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2636",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "학교 뒤",
+      "search_forms": [
+        "학교 뒤"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2636 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2637",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "병원 옆",
+      "search_forms": [
+        "병원 옆"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2637 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2638",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "공원 한쪽",
+      "search_forms": [
+        "공원 한쪽"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2638 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2639",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "집 앞",
+      "search_forms": [
+        "집 앞"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2639 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2640",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "집 뒤",
+      "search_forms": [
+        "집 뒤"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "scene-expansion"
+      ],
+      "decision_note": "m5-2640 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2643",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "뛰다",
+      "search_forms": [
+        "뛰다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2643 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2649",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "물러나다",
+      "search_forms": [
+        "물러나다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2649 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2652",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "받아들이다",
+      "search_forms": [
+        "받아들이다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2652 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2662",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "넘기다",
+      "search_forms": [
+        "넘기다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2662 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2668",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "밝히다",
+      "search_forms": [
+        "밝히다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2668 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2672",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "기울이다",
+      "search_forms": [
+        "기울이다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2672 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2684",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "흐르다",
+      "search_forms": [
+        "흐르다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2684 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2688",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "가라앉다",
+      "search_forms": [
+        "가라앉다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2688 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2696",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "풀리다",
+      "search_forms": [
+        "풀리다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2696 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2699",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "풀어내다",
+      "search_forms": [
+        "풀어내다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2699 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2701",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "풀다",
+      "search_forms": [
+        "풀다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2701 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2724",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "통과하다",
+      "search_forms": [
+        "통과하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2724 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2727",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "나오다",
+      "search_forms": [
+        "나오다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2727 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2796",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "꿈꾸다",
+      "search_forms": [
+        "꿈꾸다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2796 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2811",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "믿다",
+      "search_forms": [
+        "믿다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2811 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2812",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "망각하다",
+      "search_forms": [
+        "망각하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2812 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2813",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "되새기다",
+      "search_forms": [
+        "되새기다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2813 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2814",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "새겨두다",
+      "search_forms": [
+        "새겨두다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2814 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2815",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "기다려주다",
+      "search_forms": [
+        "기다려주다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2815 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2816",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "돌아봐주다",
+      "search_forms": [
+        "돌아봐주다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2816 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2817",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "다가와주다",
+      "search_forms": [
+        "다가와주다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2817 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2818",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "떠나가다",
+      "search_forms": [
+        "떠나가다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2818 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2819",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "떠나보내다",
+      "search_forms": [
+        "떠나보내다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2819 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2820",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "마중 나가다",
+      "search_forms": [
+        "마중 나가다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "action-direction",
+        "expression-unit"
+      ],
+      "decision_note": "m5-2820 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2884",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "도시락",
+      "search_forms": [
+        "도시락"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2884 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2953",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "자물통",
+      "search_forms": [
+        "자물통"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2953 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2954",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "보관함",
+      "search_forms": [
+        "보관함"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2954 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2955",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "금고",
+      "search_forms": [
+        "금고"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2955 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2956",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "열쇠고리",
+      "search_forms": [
+        "열쇠고리"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2956 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2957",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "앞치마",
+      "search_forms": [
+        "앞치마"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2957 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2958",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "장화끈",
+      "search_forms": [
+        "장화끈"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2958 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2959",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "가죽끈",
+      "search_forms": [
+        "가죽끈"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2959 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2960",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "양말",
+      "search_forms": [
+        "양말"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "direct-boundary"
+      ],
+      "decision_note": "m5-2960 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2967",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "창가에 서다",
+      "search_forms": [
+        "창가에 서다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-2967 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2969",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "어둠을 헤치다",
+      "search_forms": [
+        "어둠을 헤치다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-2969 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2978",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "그림자가 길어지다",
+      "search_forms": [
+        "그림자가 길어지다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-2978 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2982",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "숨이 가빠지다",
+      "search_forms": [
+        "숨이 가빠지다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-2982 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3007",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "떠날 준비를 하다",
+      "search_forms": [
+        "떠날 준비를 하다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3007 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3013",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "기척을 듣다",
+      "search_forms": [
+        "기척을 듣다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3013 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3020",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "거울을 마주보다",
+      "search_forms": [
+        "거울을 마주보다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3020 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3031",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "손길을 내어주다",
+      "search_forms": [
+        "손길을 내어주다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3031 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3043",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "마음을 놓아주다",
+      "search_forms": [
+        "마음을 놓아주다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3043 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3044",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "마음을 받아들이다",
+      "search_forms": [
+        "마음을 받아들이다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3044 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3053",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "말에 밴다",
+      "search_forms": [
+        "말에 밴다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3053 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3059",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "소리에 잠기다",
+      "search_forms": [
+        "소리에 잠기다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3059 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3061",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "빈자리를 지키다",
+      "search_forms": [
+        "빈자리를 지키다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3061 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3067",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "다시 돌아보다",
+      "search_forms": [
+        "다시 돌아보다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3067 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3088",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "expression",
+      "lemma": "기억을 보관하다",
+      "search_forms": [
+        "기억을 보관하다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3088 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3095",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "다음을 기약하다",
+      "search_forms": [
+        "다음을 기약하다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3095 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3096",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "오늘을 견디다",
+      "search_forms": [
+        "오늘을 견디다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3096 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3097",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "어제를 돌아보다",
+      "search_forms": [
+        "어제를 돌아보다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3097 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3098",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "내일을 기다리다",
+      "search_forms": [
+        "내일을 기다리다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3098 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3099",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "곁을 지키다",
+      "search_forms": [
+        "곁을 지키다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3099 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-3100",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "expression",
+      "lemma": "곁을 떠나다",
+      "search_forms": [
+        "곁을 떠나다"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "expression"
+      ],
+      "sense_profile": "expression",
+      "flags": [
+        "direct-boundary",
+        "expression-unit"
+      ],
+      "decision_note": "m5-3100 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
     }
   ]
 }

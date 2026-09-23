@@ -89,13 +89,17 @@
         "pattern": "data/batches/*-promotion.json",
         "contract": "promotion_manifest"
       },
-      {
-        "pattern": "data/batches/*-semantic-decisions.json",
-        "contract": "decision_source"
-      },
-      {
-        "pattern": "data/batches/m5-13-review.json",
-        "contract": "pre_admission_review"
+    {
+      "pattern": "data/batches/*-semantic-decisions.json",
+      "contract": "decision_source"
+    },
+    {
+      "pattern": "data/batches/m5-13-lexical-unit-source.json",
+      "contract": "candidate_source"
+    },
+    {
+      "pattern": "data/batches/m5-13-review.json",
+      "contract": "pre_admission_review"
       },
       {
         "pattern": "data/batches/m5-13-stage.json",
@@ -133,7 +137,7 @@
       "input_canonical_directory_sha256"
     ],
     "batch_decision_contract_versions": [
-      "lexical-semantic-decision-source-v2"
+      "lexical-semantic-decision-source-v3"
     ],
     "batch_decision_required_fields": [
       "candidate_record_id",
@@ -141,7 +145,6 @@
       "candidate_record_sha256",
       "decision",
       "rank",
-      "score",
       "decision_rationale",
       "sense_reviews"
     ],
@@ -171,6 +174,7 @@
       "decision",
       "selection_rank",
       "selection_score",
+      "selection_axis",
       "reviewed_record_sha256"
     ],
     "canonical_batch_binding_required_fields": [
@@ -182,7 +186,6 @@
       "candidate_record_sha256",
       "decision",
       "selection_rank",
-      "selection_score",
       "reviewed_record_sha256"
     ],
     "canonical_batch_binding_field_types": {
@@ -195,6 +198,7 @@
       "decision": "string",
       "selection_rank": "number",
       "selection_score": "number",
+      "selection_axis": "string",
       "reviewed_record_sha256": "string"
     },
     "gate_allowed_fields": [
@@ -299,6 +303,7 @@
           "$.base": {
             "canonical_directory_sha256": "string",
             "inventory_sha256": "string",
+            "inventory_materialization": "string",
             "seed_sha256": "string",
             "promotion_ledger_prefix_sha256": "string",
             "summary": "object"
@@ -416,6 +421,12 @@
             "prefix_event_count": "number",
             "prefix_sha256": "string"
           },
+          "$.sources.base_inventory": {
+            "source_id": "string",
+            "path": "string",
+            "materialization": "string",
+            "sha256": "string"
+          },
           "$.promotion": {
             "canonical_mutation": "boolean",
             "seed_mutation": "boolean",
@@ -434,7 +445,7 @@
         "nested_allowed_fields": {
           "$.authorization": ["kind", "issue", "decision", "human_editorial_review_complete", "generation_pass_id", "verification_pass_id"],
           "$.target": ["net_start_increase", "cumulative_start_target", "candidate_buffer", "selection_slot_count", "candidate_identity_count"],
-          "$.base": ["canonical_directory_sha256", "inventory_sha256", "seed_sha256", "promotion_ledger_prefix_sha256", "summary"],
+          "$.base": ["canonical_directory_sha256", "inventory_sha256", "inventory_materialization", "seed_sha256", "promotion_ledger_prefix_sha256", "summary"],
           "$.base.summary": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
           "$.actual": ["record_count", "start_count", "reference_only_count", "sense_count", "relation_count", "expression_count"],
           "$.decisions": ["included", "corrected", "held", "rejected", "deferred", "processed_start_count", "imported_start_count", "deferred_denominator_excluded"],
@@ -452,7 +463,7 @@
           "$.sources.semantic_audit": ["source_id", "path", "sha256"],
           "$.sources.target_promotions": ["source_id", "path", "sha256", "ledger_binding"],
           "$.sources.target_promotions.ledger_binding": ["previous_ledger_sha256", "append_start", "append_count", "append_sha256", "prefix_event_count", "prefix_sha256"],
-          "$.sources.base_inventory": ["source_id", "path", "sha256"],
+          "$.sources.base_inventory": ["source_id", "path", "materialization", "sha256"],
           "$.sources.authorization": ["source_id", "path", "sha256"],
           "$.promotion": ["canonical_mutation", "seed_mutation", "inventory_mutation", "semantic_decision_source_mutation", "note"],
           "$.provenance": ["generation_pass_id", "verification_pass_id", "raw_material_excluded", "batch_local_quality_fork", "base_decision_source_id"]
@@ -615,11 +626,12 @@
       },
       "decision_source": {
         "contract_versions": [
-          "lexical-semantic-decision-source-v2"
+          "lexical-semantic-decision-source-v3"
         ],
         "allowed_fields": [
           "schema_version",
           "contract_version",
+          "review_binding_contract_version",
           "kind",
           "source_id",
           "authoring_mode",
@@ -638,6 +650,7 @@
         "field_types": {
           "schema_version": "string",
           "contract_version": "string",
+          "review_binding_contract_version": "string",
           "kind": "string",
           "source_id": "string",
           "authoring_mode": "string",
@@ -673,7 +686,10 @@
             "capacity": "number",
             "imported": "number",
             "reserve": "number",
-            "score_basis": "array<string>"
+            "score_basis": "array<string>",
+            "coverage_field": "string",
+            "coverage_basis": "array<string>",
+            "selection_rationale": "string"
           },
           "$.decisions.*": {
             "candidate_record_id": "string",
@@ -682,11 +698,13 @@
             "decision": "string",
             "rank": "number",
             "score": "number",
+            "selection_axis": "string",
             "decision_rationale": "string",
             "selection_rationale": "string",
             "review_pass_id": "string",
             "gloss_judgment": "string",
             "sense_reviews": "array<object>",
+            "review_binding": "object",
             "correction": "object",
             "boundary_pairs": "array<object>"
           },
@@ -715,6 +733,19 @@
             "target_sense": "string",
             "type": "string",
             "note": "string"
+          },
+          "$.decisions.*.review_binding": {
+            "contract_version": "string",
+            "candidate_record_id": "string",
+            "candidate_record_sha256": "string",
+            "decision_evidence_sha256": "string",
+            "sense_evidence": "array<object>"
+          },
+          "$.decisions.*.review_binding.sense_evidence.*": {
+            "sense_id": "string",
+            "sense_sha256": "string",
+            "gloss_sha256": "string",
+            "evidence_sha256": "string"
           },
           "$.decisions.*.boundary_pairs.*": {
             "left_sense_id": "string",
@@ -783,7 +814,17 @@
             "admission_rule": "string",
             "prior_generator_replaced": "boolean",
             "prior_generator_verification_pass_id": "string",
+            "correction_passes": "array<object>",
             "counts": "object"
+          },
+          "$.review.correction_passes.*": {
+            "review_pass_id": "string",
+            "prior_review_pass_id": "string",
+            "reviewer": "string",
+            "status": "string",
+            "candidate_record_count": "number",
+            "candidate_record_ids": "array<string>",
+            "method": "string"
           },
           "$.review.decision_counts": {
             "included": "number",
@@ -828,11 +869,13 @@
           "decision",
           "rank",
           "score",
+          "selection_axis",
           "decision_rationale",
           "selection_rationale",
           "review_pass_id",
           "gloss_judgment",
           "sense_reviews",
+          "review_binding",
           "correction",
           "boundary_pairs"
         ],
@@ -848,6 +891,28 @@
           "relation_ids",
           "no_relation_rationale",
           "review_basis"
+        ],
+        "review_binding_allowed_fields": [
+          "contract_version",
+          "candidate_record_id",
+          "candidate_record_sha256",
+          "decision_evidence_sha256",
+          "sense_evidence"
+        ],
+        "review_binding_sense_allowed_fields": [
+          "sense_id",
+          "sense_sha256",
+          "gloss_sha256",
+          "evidence_sha256"
+        ],
+        "correction_pass_allowed_fields": [
+          "review_pass_id",
+          "prior_review_pass_id",
+          "reviewer",
+          "status",
+          "candidate_record_count",
+          "candidate_record_ids",
+          "method"
         ],
         "review_basis_allowed_fields": [
           "topic_analysis",
@@ -869,8 +934,10 @@
         "nested_allowed_fields": {
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
-          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis"],
-          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews", "correction", "boundary_pairs"],
+          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
+          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "selection_axis", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews", "review_binding", "correction", "boundary_pairs"],
+          "$.decisions.*.review_binding": ["contract_version", "candidate_record_id", "candidate_record_sha256", "decision_evidence_sha256", "sense_evidence"],
+          "$.decisions.*.review_binding.sense_evidence.*": ["sense_id", "sense_sha256", "gloss_sha256", "evidence_sha256"],
           "$.decisions.*.correction": ["action", "record", "output_record_sha256"],
           "$.decisions.*.correction.record": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.decisions.*.correction.record.senses.*": ["id", "pos", "gloss", "relations"],
@@ -880,12 +947,72 @@
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analyses.*": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
-          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "prior_generator_replaced", "prior_generator_verification_pass_id", "counts"],
+          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "prior_generator_replaced", "prior_generator_verification_pass_id", "correction_passes", "counts"],
+          "$.review.correction_passes.*": ["review_pass_id", "prior_review_pass_id", "reviewer", "status", "candidate_record_count", "candidate_record_ids", "method"],
           "$.review.decision_counts": ["included", "corrected", "held", "rejected", "deferred"],
           "$.review.counts": ["included", "corrected", "held", "rejected", "deferred"],
           "$.candidate_records.*": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.candidate_records.*.senses.*": ["id", "pos", "gloss", "relations"],
           "$.candidate_records.*.senses.*.relations.*": ["target", "target_sense", "type", "note"]
+        }
+      },
+      "candidate_source": {
+        "contract_versions": [
+          "lexical-candidate-source-v1"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "authoring_mode",
+          "base_canonical_records_sha256",
+          "base_seed_sha256",
+          "pool_sha256",
+          "axis_counts",
+          "candidate_count",
+          "units",
+          "artifact_sha256"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "source_id": "string",
+          "authoring_mode": "string",
+          "base_canonical_records_sha256": "string",
+          "base_seed_sha256": "string",
+          "pool_sha256": "string",
+          "axis_counts": "object",
+          "candidate_count": "number",
+          "units": "array<object>",
+          "artifact_sha256": "string"
+        },
+        "nested_field_types": {
+          "$.axis_counts": {
+            "E": "number",
+            "Q": "number",
+            "S": "number",
+            "C": "number",
+            "A": "number",
+            "O": "number",
+            "X": "number"
+          },
+          "$.units.*": {
+            "source_unit_id": "string",
+            "lemma": "string",
+            "axis": "string",
+            "flags": "array<string>",
+            "record_type": "string",
+            "pos": "string",
+            "source_kind": "string",
+            "writer_use": "string",
+            "writer_gloss": "string"
+          }
+        },
+        "nested_allowed_fields": {
+          "$.axis_counts": ["E", "Q", "S", "C", "A", "O", "X"],
+          "$.units.*": ["source_unit_id", "lemma", "axis", "flags", "record_type", "pos", "source_kind", "writer_use", "writer_gloss"]
         }
       },
       "canonical_decision_source": {
@@ -1008,6 +1135,7 @@
             "decision",
             "selection_rank",
             "selection_score",
+            "selection_axis",
             "reviewed_record_sha256"
           ],
           "$.authored_review.records.*.boundary_review": [
@@ -1187,6 +1315,7 @@
             "decision": "string",
             "selection_rank": "number",
             "selection_score": "number",
+            "selection_axis": "string",
             "reviewed_record_sha256": "string"
           },
           "$.authored_review.records.*.boundary_review": {
@@ -1329,7 +1458,7 @@
           "human_editorial_review_complete": "boolean",
           "candidate_pool": "object",
           "decisions": "object",
-          "decision_artifact": "null",
+          "decision_artifact": "object",
           "timing": "object",
           "audit": "object",
           "source_policy": "object",
@@ -1344,7 +1473,15 @@
             "reserve_count",
             "catalog_count",
             "catalog_sha256",
-            "selection_status"
+            "selection_status",
+            "candidate_source_id"
+          ],
+          "$.decision_artifact": [
+            "path",
+            "source_id",
+            "sha256",
+            "artifact_sha256",
+            "decision_count"
           ],
           "$.decisions": [
             "included",
@@ -1388,7 +1525,15 @@
             "reserve_count": "integer",
             "catalog_count": "integer",
             "catalog_sha256": "string",
-            "selection_status": "string"
+            "selection_status": "string",
+            "candidate_source_id": "string"
+          },
+          "$.decision_artifact": {
+            "path": "string",
+            "source_id": "string",
+            "sha256": "string",
+            "artifact_sha256": "string",
+            "decision_count": "integer"
           },
           "$.decisions": {
             "included": "integer",

@@ -29,7 +29,8 @@ function sha256(bytes) {
 function decisionSourceFixture({ candidateRecords = [], decisions = [] } = {}) {
   return {
     schema_version: '1',
-    contract_version: 'lexical-semantic-decision-source-v2',
+    contract_version: 'lexical-semantic-decision-source-v3',
+    review_binding_contract_version: 'source-bound-semantic-review-v1',
     kind: 'separately-authored-semantic-decision-source',
     source_id: 'future-source',
     authoring_mode: 'agent-authored-decision',
@@ -48,7 +49,7 @@ function decisionSourceFixture({ candidateRecords = [], decisions = [] } = {}) {
 }
 
 function decisionRowFixture(overrides = {}) {
-  return {
+  const row = {
     candidate_record_id: 'w1001',
     inventory_id: 'm5-12a-w001',
     candidate_record_sha256: 'a'.repeat(64),
@@ -62,6 +63,19 @@ function decisionRowFixture(overrides = {}) {
     sense_reviews: [],
     ...overrides,
   };
+  row.review_binding ??= {
+    contract_version: 'source-bound-semantic-review-v1',
+    candidate_record_id: row.candidate_record_id,
+    candidate_record_sha256: row.candidate_record_sha256,
+    decision_evidence_sha256: 'd'.repeat(64),
+    sense_evidence: row.sense_reviews.map((senseReview, index) => ({
+      sense_id: senseReview.sense_id ?? `w1001-s${index + 1}`,
+      sense_sha256: 'e'.repeat(64),
+      gloss_sha256: 'f'.repeat(64),
+      evidence_sha256: '0'.repeat(64),
+    })),
+  };
+  return row;
 }
 
 function candidateRecordFixture({ multiSense = false, relation = false } = {}) {
@@ -103,17 +117,17 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
 
-  assert.equal(artifact.source.canonical_records_sha256, '9243dc74cdcc96f7c140979377006c2197d1cc261e97beebbba772c2e4341de8');
-  assert.equal(artifact.record_count, 2042);
-  assert.equal(artifact.sense_count, 2301);
+  assert.equal(artifact.source.canonical_records_sha256, 'f90aba4abf55df4a0742e90cb5fe31ee8b67da8ea914eec58ecc066adf50d7d5');
+  assert.equal(artifact.record_count, 3042);
+  assert.equal(artifact.sense_count, 3301);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 14337098);
-  assert.equal(sha256(semanticAuditBytes), '80d519b2da976305a6d6dbe7955bf74598ac4cd7e8cac79579323ef250a5e1bf');
-  assert.equal(inventoryBytes.length, 1338554);
-  assert.equal(sha256(inventoryBytes), '0d3058ecd005189ceb5f413d9e2422269d861af39ee7de00ddbb12abdbe95a66');
-  assert.equal(inventory.canonical_snapshot.record_count, 2042);
-  assert.equal(inventory.canonical_snapshot.start_count, 2000);
+  assert.equal(semanticAuditBytes.length, 20793143);
+  assert.equal(sha256(semanticAuditBytes), '27b070c38100880b3bf907317f88bd799dc4cf321ccf03f305fd0d98b968555e');
+  assert.equal(inventoryBytes.length, 2043526);
+  assert.equal(sha256(inventoryBytes), 'b3848451bc03a344eaa39bfd09eb0b7256959d336d6c9adefbe0b4cdca80fe6a');
+  assert.equal(inventory.canonical_snapshot.record_count, 3042);
+  assert.equal(inventory.canonical_snapshot.start_count, 3000);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
 });
 
@@ -205,6 +219,8 @@ test('artifact policy requires a registered closed contract for future pre-admis
   const cases = [
     ['data/batches/m5-14-review.json', { schema_version: '1', status: 'pre-admission' }],
     ['data/batches/m5-14-stage.json', { schema_version: '1', status: 'pre-admission' }],
+    ['data/batches/m5-13-base-inventory.json', { schema_version: '1', status: 'snapshot' }],
+    ['data/batches/m5-13-base-canonical/part.jsonl', { schema_version: '1', status: 'snapshot' }],
   ];
 
   try {
@@ -372,13 +388,14 @@ test('artifact policy rejects alternate full-record keys in a promotion ledger',
   }
 });
 
-test('artifact policy rejects alternate decision-row envelopes in the v2 source', async () => {
+test('artifact policy rejects alternate decision-row envelopes in a source-bound source', async () => {
   const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-decision-policy-'));
   const relativePath = 'data/batches/future-semantic-decisions.json';
   const filePath = path.join(repositoryDirectory, relativePath);
   const value = {
     schema_version: '1',
-    contract_version: 'lexical-semantic-decision-source-v2',
+    contract_version: 'lexical-semantic-decision-source-v3',
+    review_binding_contract_version: 'source-bound-semantic-review-v1',
     kind: 'separately-authored-semantic-decision-source',
     source_id: 'future-source',
     authoring_mode: 'agent-authored-decision',
@@ -397,6 +414,13 @@ test('artifact policy rejects alternate decision-row envelopes in the v2 source'
       score: 1,
       decision_rationale: 'future decision',
       sense_reviews: [],
+      review_binding: {
+        contract_version: 'source-bound-semantic-review-v1',
+        candidate_record_id: 'w1001',
+        candidate_record_sha256: 'a'.repeat(64),
+        decision_evidence_sha256: 'd'.repeat(64),
+        sense_evidence: [],
+      },
       candidate_record: { id: 'w1001', lemma: 'duplicate body' },
     }],
     review: {},
@@ -414,6 +438,53 @@ test('artifact policy rejects alternate decision-row envelopes in the v2 source'
         tracked: [relativePath],
       }),
       (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_EVIDENCE_POLICY_SHAPE',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy rejects any future v2 batch decision source', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-v2-downgrade-policy-'));
+  const relativePath = 'data/batches/m5-14-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const value = decisionSourceFixture({ decisions: [decisionRowFixture()] });
+  value.contract_version = 'lexical-semantic-decision-source-v2';
+  delete value.review_binding_contract_version;
+  delete value.decisions[0].review_binding;
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, `${JSON.stringify(value)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
+    );
+  } finally {
+    await rm(repositoryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('artifact policy grandfathering accepts only the exact historical M5-12A source bytes', async () => {
+  const repositoryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-v2-grandfather-policy-'));
+  const relativePath = 'data/batches/m5-12a-semantic-decisions.json';
+  const filePath = path.join(repositoryDirectory, relativePath);
+  const historicalBytes = await readFile(path.resolve(relativePath));
+
+  try {
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, historicalBytes);
+    await assert.doesNotReject(validateArtifactPolicy({
+      repositoryDirectory,
+      tracked: [relativePath],
+    }));
+
+    const alteredSource = JSON.parse(historicalBytes.toString('utf8'));
+    alteredSource.source_id = 'm5-12a-altered-source';
+    await writeFile(filePath, `${JSON.stringify(alteredSource)}\n`, 'utf8');
+    await assert.rejects(
+      validateArtifactPolicy({ repositoryDirectory, tracked: [relativePath] }),
+      (error) => error instanceof ArtifactPolicyError && error.code === 'DURABLE_CONTRACT_UNREGISTERED',
     );
   } finally {
     await rm(repositoryDirectory, { recursive: true, force: true });
@@ -574,7 +645,7 @@ test('artifact policy rejects an unregistered decision-source contract version',
   const relativePath = 'data/batches/future-semantic-decisions.json';
   const filePath = path.join(repositoryDirectory, relativePath);
   const value = decisionSourceFixture();
-  value.contract_version = 'lexical-semantic-decision-source-v3';
+  value.contract_version = 'lexical-semantic-decision-source-v4';
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });

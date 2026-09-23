@@ -208,7 +208,7 @@
         "observed_sense_count": { "type": "integer", "minimum": 0 },
         "observed_pos": {
           "type": "array",
-          "items": { "enum": ["noun", "adjective", "verb", "expression"] }
+          "items": { "enum": ["noun", "adjective", "verb", "adverb", "expression"] }
         },
         "boundary_evidence": { "$ref": "#/$defs/boundaryEvidenceSet" },
         "unreviewed_note": { "type": "string", "pattern": "\\S" }
