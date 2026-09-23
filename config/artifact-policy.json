@@ -102,6 +102,10 @@
       "contract": "candidate_source"
     },
     {
+      "pattern": "data/batches/m5-15-lexical-unit-source.json",
+      "contract": "candidate_source"
+    },
+    {
       "pattern": "data/batches/m5-13-review.json",
       "contract": "pre_admission_review"
       },
@@ -115,6 +119,14 @@
       },
       {
         "pattern": "data/batches/m5-14-stage.json",
+        "contract": "pre_admission_stage"
+      },
+      {
+        "pattern": "data/batches/m5-15-review.json",
+        "contract": "pre_admission_review"
+      },
+      {
+        "pattern": "data/batches/m5-15-stage.json",
         "contract": "pre_admission_stage"
       },
       {

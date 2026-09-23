@@ -5,8 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import {
+  DEFAULT_CANONICAL_DIRECTORY,
+  readCanonicalRecords,
+} from '../scripts/validate/canonical-jsonl.mjs';
 import { rebuildSemanticEvidence } from '../scripts/validate/rebuild-semantic-evidence.mjs';
 import {
+  DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS,
   buildCanonicalSemanticAudit,
   buildSemanticAuditFromDecisionSource,
   compactSemanticDecisionSource,
@@ -14,6 +19,7 @@ import {
   materializeSemanticReviewArtifact,
   SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+  readAuthoredBatchDecisionSources,
   sha256Json,
   validateSemanticAuditCoverage,
 } from '../scripts/validate/semantic-audit.mjs';
@@ -405,12 +411,74 @@ test('M5 canonical rows dereference batch authority without copying authored nar
   );
 });
 
+test('the shared canonical audit resolves M5-15 batch authority and rejects missing or mismatched sources', async () => {
+  assert.ok(DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS.some(
+    (sourcePath) => path.basename(sourcePath) === 'm5-15-semantic-decisions.json',
+  ));
+
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
+  const recordInfo = canonical.records.find(({ record }) => record.id === 'w4281');
+  assert.ok(recordInfo, 'M5-15 canonical regression record is present');
+  const batchDecisionSources = await readAuthoredBatchDecisionSources();
+  const m515Source = batchDecisionSources.find(
+    ({ source }) => source.source_id === 'm5-15-authored-semantic-decisions-20260923-r1',
+  );
+  assert.ok(m515Source, 'the shared source loader includes M5-15');
+
+  const row = m515Source.byCandidateId.get(recordInfo.record.id);
+  assert.ok(row, 'M5-15 source contains the canonical record decision');
+  const binding = {
+    source_id: m515Source.source.source_id,
+    source_sha256: m515Source.sourceSha256,
+    artifact_sha256: m515Source.artifactSha256,
+    decision_row_sha256: sha256Json(compactAuthoredSemanticDecisionRow(row)),
+    candidate_record_id: row.candidate_record_id,
+    candidate_record_sha256: row.candidate_record_sha256,
+    decision: row.decision,
+    selection_rank: row.rank,
+    selection_axis: row.selection_axis,
+    reviewed_record_sha256: row.candidate_record_sha256,
+  };
+  const fullAudit = makeSemanticAudit([recordInfo], { artifactId: 'm5-15-batch-binding-regression' });
+  const authoredReview = structuredClone(fullAudit.review);
+  authoredReview.records[0].authored_batch_decision = binding;
+  const compactReview = compactSemanticReviewArtifact(authoredReview);
+  const decisionSource = {
+    schema_version: '1',
+    contract_version: COMPACT_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+    kind: 'separately-authored-semantic-decision-source',
+    source_id: fullAudit.review.decision_source.source_id,
+    authoring_mode: 'separately-authored',
+    scope: 'complete-canonical',
+    source: structuredClone(fullAudit.source),
+    authored_review_sha256: sha256Json(compactReview),
+    authored_review: compactReview,
+  };
+  const buildAudit = (sources) => buildSemanticAuditFromDecisionSource(
+    [recordInfo],
+    decisionSource,
+    { batchDecisionSources: sources },
+  );
+
+  assert.doesNotThrow(() => buildAudit(batchDecisionSources));
+  assert.throws(
+    () => buildAudit(batchDecisionSources.filter(({ source }) => source.source_id !== m515Source.source.source_id)),
+    (error) => error.code === 'SEMANTIC_AUDIT_BATCH_SOURCE_MISSING',
+  );
+  assert.throws(
+    () => buildAudit(batchDecisionSources.map((source) => source === m515Source
+      ? { ...source, sourceSha256: '0'.repeat(64) }
+      : source)),
+    (error) => error.code === 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH',
+  );
+});
+
 test('the exact grandfathered M5-12A v2 source still replays through the shared semantic audit', async () => {
   const { artifact } = await buildCanonicalSemanticAudit({
     artifactId: 'm5-12a-grandfathered-replay-regression',
   });
 
-  assert.equal(artifact.record_count, 4042);
-  assert.equal(artifact.review.records.length, 4042);
+  assert.equal(artifact.record_count, 5042);
+  assert.equal(artifact.review.records.length, 5042);
   assert.ok(artifact.review.records.some((review) => review.record_id === 'w1279'));
 });
