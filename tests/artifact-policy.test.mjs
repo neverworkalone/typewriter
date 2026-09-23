@@ -117,17 +117,17 @@ test('current semantic audit and target inventory are deterministic in-memory pr
   const { artifact } = await buildCanonicalSemanticAudit();
   const inventory = await buildTargetInventory();
 
-  assert.equal(artifact.source.canonical_records_sha256, '971deeddd8705d1050fe418fab9ef495378b2fdb021b1d09cdb5ccd181de91ad');
-  assert.equal(artifact.record_count, 4042);
-  assert.equal(artifact.sense_count, 4301);
+  assert.equal(artifact.record_count, 5042);
+  assert.equal(artifact.source.canonical_records_sha256, '8130ca9b28c849664b6e848fe71e1a377031942ed653efbb2da89b1a8e76e3f0');
+  assert.equal(artifact.sense_count, 5301);
   const semanticAuditBytes = serializeSemanticAuditArtifact(artifact);
   const inventoryBytes = serializeTargetInventory(inventory);
-  assert.equal(semanticAuditBytes.length, 27269959);
-  assert.equal(sha256(semanticAuditBytes), '9ba0160424134037721aeba60270854280b374e24b0cadf6c3bb85a5d0593f5b');
-  assert.equal(inventoryBytes.length, 2760556);
-  assert.equal(sha256(inventoryBytes), 'a014a3d2855e07cee4e6266d386422486d84960f50356be184c84fdc8f11411c');
-  assert.equal(inventory.canonical_snapshot.record_count, 4042);
-  assert.equal(inventory.canonical_snapshot.start_count, 4000);
+  assert.equal(semanticAuditBytes.length, 33894372);
+  assert.equal(sha256(semanticAuditBytes), '6a0ff958a4d09875562ed58723ca3f818280113a8de1bb90f856476546044727');
+  assert.equal(inventoryBytes.length, 3493538);
+  assert.equal(sha256(inventoryBytes), '5d49692c282a49f68feb31de42bc96afcf18ee439d846a6efab66822ca740969');
+  assert.equal(inventory.canonical_snapshot.record_count, 5042);
+  assert.equal(inventory.canonical_snapshot.start_count, 5000);
   assert.equal(inventory.canonical_snapshot.reference_only_count, 42);
 });
 
