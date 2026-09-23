@@ -1,0 +1,202 @@
+{
+  "schema_version": "2",
+  "contract_version": "lexical-batch-admission-v2",
+  "artifact_id": "m5-14-admission-20260923",
+  "issue": 100,
+  "parent_issue": 7,
+  "batch_id": "m5-14-expansion-20260923",
+  "authorization": {
+    "kind": "owner-authorized-agent-generated-admission",
+    "issue": 100,
+    "decision": "APPROVE AUTOMATED BOUNDED",
+    "human_editorial_review_complete": false,
+    "generation_pass_id": "m5-14-generation-20260923-r1",
+    "verification_pass_id": "m5-14-agent-semantic-review-20260923-r1"
+  },
+  "target": {
+    "net_start_increase": 1000,
+    "cumulative_start_target": 4000,
+    "candidate_buffer": 100,
+    "selection_slot_count": 1100,
+    "candidate_identity_count": 1100
+  },
+  "base": {
+    "canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
+    "inventory_sha256": "04d116e581c713bff55a67b6a749e1a6ce3c1f2f4965e95a947896cc18dc630d",
+    "inventory_materialization": "on-demand-prospective",
+    "seed_sha256": "5f043b66df7886257cb93141a802d125f8d775d5ef1456fb481a8ac71fd84f68",
+    "promotion_ledger_prefix_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
+    "summary": {
+      "record_count": 3042,
+      "start_count": 3000,
+      "reference_only_count": 42,
+      "sense_count": 3301,
+      "relation_count": 487,
+      "expression_count": 309
+    }
+  },
+  "actual": {
+    "record_count": 4042,
+    "start_count": 4000,
+    "reference_only_count": 42,
+    "sense_count": 4301,
+    "relation_count": 487,
+    "expression_count": 639
+  },
+  "decisions": {
+    "included": 1000,
+    "corrected": 0,
+    "held": 0,
+    "rejected": 0,
+    "deferred": 100,
+    "processed_start_count": 1000,
+    "imported_start_count": 1000,
+    "deferred_denominator_excluded": true
+  },
+  "verification": {
+    "review_mode": "agent-generated",
+    "human_editorial_review_complete": false,
+    "agent_generated_provenance": true,
+    "generation_pass_id": "m5-14-generation-20260923-r1",
+    "verification_pass_id": "m5-14-agent-semantic-review-20260923-r1",
+    "candidate_source_id": "m5-14-typewriter-authored-lexical-units-20260923-r1",
+    "candidate_identity_count": 1100,
+    "raw_material_excluded": true,
+    "source_bound_semantic_decisions": true
+  },
+  "gate": {
+    "contract_version": "lexical-batch-gate-v2",
+    "policy": "agent-generated",
+    "gate_status": "pass",
+    "decision": "APPROVE AUTOMATED BOUNDED"
+  },
+  "gate_evidence": {
+    "schema_version": "2",
+    "contract_version": "lexical-batch-gate-evidence-v2",
+    "artifact_id": "m5-14-gate-evidence-20260923",
+    "issue": 100,
+    "batch_id": "m5-14-expansion-20260923",
+    "inputs": {
+      "prospective_canonical_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d",
+      "semantic_audit_sha256": "2784811ad091278ca9bf6d284433ba7807ff6bc9174581d7c126cd27e83909da",
+      "decision_source_sha256": "7b902475b75eb0513058c9db0aac644d59ab8bb24b4a33a1edf73e7ef132a04b",
+      "promotion_ledger_prefix_sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3"
+    },
+    "preflight": {
+      "contract_version": "lexical-batch-preflight-v1",
+      "status": "complete",
+      "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d",
+      "checks": {
+        "candidate_source_digest": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "generation_verification_separated": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "truthful_agent_provenance": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "deterministic_sqlite": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "search_product_regression": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "extension_build": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "package_validation": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        },
+        "artifact_policy_clean_checkout": {
+          "status": "pass",
+          "input_canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d"
+        }
+      }
+    },
+    "complete_audit": {
+      "contract_version": "lexical-semantic-audit-v3",
+      "scope": "complete-canonical",
+      "canonical_records_sha256": "971deeddd8705d1050fe418fab9ef495378b2fdb021b1d09cdb5ccd181de91ad",
+      "record_count": 4042,
+      "sense_count": 4301,
+      "covered_record_count": 4042,
+      "covered_sense_count": 4301,
+      "coverage_complete": true,
+      "review_complete": true,
+      "corrected_record_count": 0
+    }
+  },
+  "gate_evidence_sha256": "cfde56d8e9c32e66f6b0bf31344e741807882262efca42b57ea78d16639956f2",
+  "promotion_ledger_binding": {
+    "previous_ledger_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
+    "append_start": 1722,
+    "append_count": 1000,
+    "append_sha256": "9fc0a6a0d5b8e4e570fb5196fd26594053ad0458a036e6af460325b74f6efea7",
+    "prefix_event_count": 2722,
+    "prefix_sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3"
+  },
+  "sources": {
+    "candidate_identities": {
+      "source_id": "m5-14-typewriter-authored-lexical-units-20260923-r1",
+      "path": "scripts/batch/m5-14-candidate-source.mjs",
+      "identity_sha256": "7e3e9c5800b127b24da59ed50192e5c3e82e2c7552c5c5cfdde2027fcc000c5f",
+      "identity_count": 1100
+    },
+    "verification": {
+      "source_id": "m5-14-authored-semantic-decisions-20260923-r1",
+      "path": "data/batches/m5-14-semantic-decisions.json",
+      "sha256": "7e2279bfab7f2bd054e4d3835e6381ce5639a36f98db29edffef0edc9a4cacf5"
+    },
+    "semantic_audit": {
+      "source_id": "derived:complete-canonical-audit",
+      "path": "derived:complete-canonical-audit",
+      "sha256": "2784811ad091278ca9bf6d284433ba7807ff6bc9174581d7c126cd27e83909da"
+    },
+    "target_promotions": {
+      "source_id": "target_promotions",
+      "path": "data/inventory/m5-target-promotions.jsonl",
+      "sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3",
+      "ledger_binding": {
+        "previous_ledger_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
+        "append_start": 1722,
+        "append_count": 1000,
+        "append_sha256": "9fc0a6a0d5b8e4e570fb5196fd26594053ad0458a036e6af460325b74f6efea7",
+        "prefix_event_count": 2722,
+        "prefix_sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3"
+      }
+    },
+    "base_inventory": {
+      "source_id": "derived:on-demand-target-inventory",
+      "path": "derived:on-demand-prospective-inventory",
+      "materialization": "on-demand",
+      "sha256": "04d116e581c713bff55a67b6a749e1a6ce3c1f2f4965e95a947896cc18dc630d"
+    },
+    "authorization": {
+      "source_id": "authorization",
+      "path": "external:m5-14-authorization",
+      "sha256": "d10069acd87ec6bc69e706895c2ecc562d437889683446102f7837adc0a6f7bd"
+    }
+  },
+  "promotion": {
+    "canonical_mutation": false,
+    "seed_mutation": false,
+    "inventory_mutation": false,
+    "semantic_decision_source_mutation": false,
+    "note": "The explicit M5-14 promotion transaction consumes this passing manifest; admission validation itself never mutates canonical data."
+  },
+  "provenance": {
+    "generation_pass_id": "m5-14-generation-20260923-r1",
+    "verification_pass_id": "m5-14-agent-semantic-review-20260923-r1",
+    "raw_material_excluded": true,
+    "batch_local_quality_fork": false,
+    "base_decision_source_id": "canonical-semantic-decision-source-20260914"
+  }
+}
