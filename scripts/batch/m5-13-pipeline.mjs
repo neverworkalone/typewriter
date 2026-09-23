@@ -1322,7 +1322,6 @@ export async function commitM513PromotionTransaction({
   const currentSeedBytes = await readFile(currentSeedPath);
   const currentLedgerBytes = await readFile(promotionLedgerPath);
   const currentDecisionBytes = await readFile(decisionSourcePath);
-  let supersededProposal;
   if (replaceExistingPromotion) {
     if (!Buffer.isBuffer(reviewBytes) || !Buffer.isBuffer(stageBytes)) {
       fail('M5-13 proposal refresh requires regenerated review and stage evidence', 'PROMOTION_REPLACEMENT_INPUT_REQUIRED');
@@ -1354,11 +1353,6 @@ export async function commitM513PromotionTransaction({
       binding: priorLedgerBinding,
       label: 'M5-13 prior promoted proposal ledger',
     });
-    supersededProposal = {
-      promotion_sha256: sha256(priorPromotionFile.bytes),
-      canonical_directory_sha256: currentCanonicalDigest,
-      admission_sha256: priorPromotion.admission_sha256,
-    };
   }
   if ((!replaceExistingPromotion && currentCanonicalDigest !== result.inputs.baseCanonicalDigest)
     || sha256(currentSeedBytes) !== sha256(result.inputs.currentSeedBytes)
@@ -1397,7 +1391,6 @@ export async function commitM513PromotionTransaction({
     const promotion = {
       ...result.promotion,
       status: 'promoted',
-      ...(supersededProposal ? { supersedes_proposal: supersededProposal } : {}),
       post_promotion_audit: buildPostPromotionAudit({ result, canonicalDigest: finalCanonicalDigest, seedDigest: finalSeedDigest, decisionSourceDigest: finalDecisionDigest }),
     };
     await writeTempAndRename(promotionPath, jsonBytes(promotion), transactionDirectory, 'promotion-post-audit');
