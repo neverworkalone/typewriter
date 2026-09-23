@@ -31,7 +31,7 @@
   },
   "input": {
     "inventory_revision": "m5-13",
-    "inventory_sha256": "c02ccf299b5f93407eecec575210ef6d8c24dfcc5edc712090f4e8fecdebcfbd",
+    "inventory_sha256": "b01c0e8dc02608372b92817b07fc301dda727cd882799c8408b9e2bd6695097d",
     "canonical_directory": "data/canonical",
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
     "canonical_snapshot": {
@@ -67,7 +67,7 @@
       "reference_only_count": 42,
       "sense_count": 3301,
       "relation_count": 487,
-      "expression_count": 329
+      "expression_count": 317
     },
     "imported_start_count": 1000
   },
@@ -85,7 +85,7 @@
   },
   "source": {
     "review": "data/batches/m5-13-review.json",
-    "review_sha256": "f513c7cdacee34419b2be962f08fe0fc7118e64d67e8edeb56495675d0643a6e",
+    "review_sha256": "a2ddc23393caf564d98edfbb4ec45e7491d911aacb650d19806e600bf09a3d7d",
     "catalog": "scripts/batch/m5-13-catalog.mjs",
     "catalog_count": 1100,
     "catalog_sha256": "4345f110be4252fa62c85487ffd6541966f8af5e5160d3077da43de7896a3d6f",
