@@ -48,3 +48,21 @@ test('shared lexical selection allocates target capacity proportionally across s
   ]);
   assert.deepEqual(result.selected.map(({ candidate_record_id: id }) => id), ['a1', 'a2', 'c1']);
 });
+
+test('a semantically fit reserve may be deferred without becoming ineligible', () => {
+  const result = selectReviewedCandidates([
+    { candidate_record_id: 'selected-fit', decision: 'included', gloss_judgment: 'fit', rank: 1, selection_axis: 'S' },
+    { candidate_record_id: 'deferred-fit', decision: 'deferred', gloss_judgment: 'fit', rank: 2, selection_axis: 'S' },
+    { candidate_record_id: 'held-context', decision: 'held', gloss_judgment: 'needs-context', rank: 3, selection_axis: 'S' },
+  ], {
+    capacity: 1,
+    coverageField: 'selection_axis',
+    eligibilityField: 'gloss_judgment',
+    eligibilityValue: 'fit',
+  });
+
+  assert.equal(result.status, 'pass');
+  assert.deepEqual(result.selected.map(({ candidate_record_id: id }) => id), ['selected-fit']);
+  assert.deepEqual(result.reserve.map(({ candidate_record_id: id }) => id), ['deferred-fit']);
+  assert.deepEqual(result.excluded, ['held-context']);
+});

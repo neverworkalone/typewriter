@@ -41,16 +41,26 @@ export function selectReviewedCandidates(
     scoreField = 'score',
     rankField = 'rank',
     coverageField,
+    eligibilityField,
+    eligibilityValue,
   } = {},
 ) {
   if (!Array.isArray(rows)) fail('selection rows must be an array', 'LEXICAL_SELECTION_SHAPE');
   requireInteger(capacity, 'selection capacity');
+  if (eligibilityField !== undefined
+    && (typeof eligibilityField !== 'string' || eligibilityField.trim().length === 0
+      || typeof eligibilityValue !== 'string' || eligibilityValue.trim().length === 0)) {
+    fail('selection eligibility field and value must be non-empty strings', 'LEXICAL_SELECTION_VALUE');
+  }
+  const isEligible = (row) => eligibilityField === undefined
+    ? IMPORTABLE_DECISIONS.has(row?.[decisionField])
+    : row?.[eligibilityField] === eligibilityValue;
   if (capacity > rows.length) {
     return {
       status: 'hold',
       reason: 'insufficient-qualified-candidates',
       required_count: capacity,
-      qualified_count: rows.filter((row) => IMPORTABLE_DECISIONS.has(row?.[decisionField])).length,
+      qualified_count: rows.filter(isEligible).length,
       selected: [],
       reserve: [],
       excluded: rows.map((row) => row?.[idField]),
@@ -73,7 +83,7 @@ export function selectReviewedCandidates(
       && (typeof row[coverageField] !== 'string' || row[coverageField].trim().length === 0)) {
       fail(`selection row ${id} has no source-bound coverage value`, 'LEXICAL_SELECTION_VALUE');
     }
-    if (IMPORTABLE_DECISIONS.has(row[decisionField])) {
+    if (isEligible(row)) {
       if (coverageField === undefined && !Number.isFinite(row[scoreField])) {
         fail(`selection row ${id} has no finite semantic score`, 'LEXICAL_SELECTION_VALUE');
       }

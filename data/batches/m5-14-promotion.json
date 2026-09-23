@@ -6,7 +6,7 @@
   "parent_issue": 7,
   "batch_id": "m5-14-expansion-20260923",
   "status": "promoted",
-  "admission_sha256": "b4f395e0a3a38c6c7fa23a9e74f5e5514dd78e517a5272e4aa57c42140d5ba41",
+  "admission_sha256": "1832d0e42fd5467e546bff7895db822f6746e6e6559ba5249e157444d66bc89b",
   "preflight": {
     "contract_version": "lexical-batch-preflight-v1",
     "status": "complete",
@@ -46,7 +46,7 @@
       }
     }
   },
-  "gate_evidence_sha256": "cfde56d8e9c32e66f6b0bf31344e741807882262efca42b57ea78d16639956f2",
+  "gate_evidence_sha256": "6292455d6f5e601f4f1c5a62fa679aa9ceaa3095d332a6814bfb4ab905ccc918",
   "outputs": {
     "canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d",
     "canonical_import": {
@@ -56,7 +56,7 @@
     },
     "seed": {
       "path": "data/inventory/m5-target-seed.json",
-      "sha256": "85605633c32743f709c5db8e36b00e5b0ee3047487800ba25c4fbe187b5a95e7",
+      "sha256": "166550d9562099c5e509cc314101d2e81e38abb4864f01e982db819aaf1d09e1",
       "target_count": 1371
     },
     "target_promotions": {
@@ -64,19 +64,19 @@
       "previous_ledger_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
       "append_start": 1722,
       "append_count": 1000,
-      "append_sha256": "9fc0a6a0d5b8e4e570fb5196fd26594053ad0458a036e6af460325b74f6efea7",
+      "append_sha256": "1e22aed9f29aac3f43151b28d3b266c61a47485f1962d7a927f0d99402a29c71",
       "prefix_event_count": 2722,
-      "prefix_sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3"
+      "prefix_sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e"
     },
     "inventory": {
       "path": "data/inventory/m5-target-inventory.json",
       "materialization": "on-demand",
-      "sha256": "04d116e581c713bff55a67b6a749e1a6ce3c1f2f4965e95a947896cc18dc630d",
+      "sha256": "d991de67f988965f69cf7c905cd8ca97049b01a4bf4ff1297e934f5010c2af08",
       "entry_count": 4435
     },
     "semantic_decision_source": {
       "path": "data/validation/canonical-semantic-decision-source.json",
-      "sha256": "7b902475b75eb0513058c9db0aac644d59ab8bb24b4a33a1edf73e7ef132a04b",
+      "sha256": "6220f093dd97cbb5bf97f9dbad94199df0d89a115ec8875989d02ca77e80bd39",
       "source_id": "canonical-semantic-decision-source-20260914",
       "canonical_records_sha256": "971deeddd8705d1050fe418fab9ef495378b2fdb021b1d09cdb5ccd181de91ad"
     }
@@ -100,18 +100,18 @@
     "policy": "agent-generated",
     "transaction": "m5-14-post-promotion-digest-and-audit-check",
     "canonical_directory_sha256": "d8cd8d95d9738b6f7f3ecaf8627a0016cf5c77afd615ec6e6ab4a4298c25618d",
-    "seed_sha256": "85605633c32743f709c5db8e36b00e5b0ee3047487800ba25c4fbe187b5a95e7",
-    "promotion_ledger_prefix_sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3",
+    "seed_sha256": "166550d9562099c5e509cc314101d2e81e38abb4864f01e982db819aaf1d09e1",
+    "promotion_ledger_prefix_sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e",
     "promotion_ledger_binding": {
       "previous_ledger_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
       "append_start": 1722,
       "append_count": 1000,
-      "append_sha256": "9fc0a6a0d5b8e4e570fb5196fd26594053ad0458a036e6af460325b74f6efea7",
+      "append_sha256": "1e22aed9f29aac3f43151b28d3b266c61a47485f1962d7a927f0d99402a29c71",
       "prefix_event_count": 2722,
-      "prefix_sha256": "1e989abafa22e54ca7913dde722d955b0b43daf115343c247c6a46c49b14fde3"
+      "prefix_sha256": "27500c0747fd20c7b186f4975fc7fd3c98481e1964b5f7c3172031edac749e2e"
     },
-    "semantic_decision_source_sha256": "7b902475b75eb0513058c9db0aac644d59ab8bb24b4a33a1edf73e7ef132a04b",
-    "semantic_audit_sha256": "2784811ad091278ca9bf6d284433ba7807ff6bc9174581d7c126cd27e83909da",
+    "semantic_decision_source_sha256": "6220f093dd97cbb5bf97f9dbad94199df0d89a115ec8875989d02ca77e80bd39",
+    "semantic_audit_sha256": "39fe0b3bef896f6be48d57ab7ae01082a7cc2ea2dc7e85d2265e6c0262b1cbff",
     "semantic_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",

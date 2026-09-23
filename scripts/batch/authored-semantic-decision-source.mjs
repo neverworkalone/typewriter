@@ -168,9 +168,13 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId, revie
     fail(`${label}.review_pass_id is not authorized for this candidate`, 'DECISION_SOURCE_PROVENANCE', config);
   }
   if (!GLOSS_JUDGMENTS.has(row.gloss_judgment)) fail(`${label}.gloss_judgment is unsupported`, 'DECISION_SOURCE_VALUE', config);
-  const expectedJudgment = row.decision === 'rejected'
-    ? 'reject'
-    : IMPORTABLE.has(row.decision) ? 'fit' : 'needs-context';
+  const expectedJudgment = {
+    included: 'fit',
+    corrected: 'fit',
+    held: 'needs-context',
+    rejected: 'reject',
+    deferred: 'fit',
+  }[row.decision];
   if (row.gloss_judgment !== expectedJudgment) {
     fail(`${label}.gloss_judgment contradicts its authored decision`, 'DECISION_SOURCE_COHERENCE', config);
   }
@@ -364,9 +368,13 @@ export function validateAuthoredSemanticDecisionSource({
     }
   }
   const counts = expectedDecisionCounts(source.decisions);
+  // Gloss judgment owns eligibility; decision records whether an eligible row
+  // was selected or retained as a deferred reserve.
   const selectionResult = selectReviewedCandidates(source.decisions, {
     capacity: config.importCount,
     coverageField: selection.coverage_field,
+    eligibilityField: 'gloss_judgment',
+    eligibilityValue: 'fit',
   });
   if (selectionResult.status !== 'pass') {
     fail(`${config.label} semantic review produced fewer qualified candidates than the admission capacity`, 'SELECTION_HOLD', config);
@@ -374,10 +382,21 @@ export function validateAuthoredSemanticDecisionSource({
   const imported = selectionResult.selected.length;
   const heldOrRejected = counts.held + counts.rejected;
   const processed = source.decisions.length - counts.deferred;
-  const expectedDeferred = identities.length - imported - selectionResult.reserve.length - heldOrRejected;
+  const deferredIds = source.decisions
+    .filter(({ decision }) => decision === 'deferred')
+    .map(({ candidate_record_id: id }) => id);
+  const reserveIds = selectionResult.reserve.map(({ candidate_record_id: id }) => id);
+  const selectedIds = selectionResult.selected.map(({ candidate_record_id: id }) => id);
+  const importedDecisionIds = source.decisions
+    .filter(({ decision }) => IMPORTABLE.has(decision))
+    .map(({ candidate_record_id: id }) => id);
+  const sameIds = (left, right) => left.length === right.length
+    && left.every((id) => right.includes(id));
+  const selectionDispositionMatches = counts.deferred === 0
+    || (sameIds(deferredIds, reserveIds) && sameIds(importedDecisionIds, selectedIds));
   if (imported !== config.importCount
-    || selectionResult.reserve.length + heldOrRejected + counts.deferred !== config.reserveCount
-    || counts.deferred !== expectedDeferred
+    || selectionResult.reserve.length + heldOrRejected !== config.reserveCount
+    || !selectionDispositionMatches
     || processed !== counts.included + counts.corrected + heldOrRejected
     || processed <= 0
     || counts.corrected / processed > MAX_CORRECTION_RATE) {
