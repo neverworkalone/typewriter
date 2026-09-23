@@ -31,7 +31,7 @@
   },
   "input": {
     "inventory_revision": "m5-14",
-    "inventory_sha256": "d3ca5c930037ea2726cce004991b3e8d1b6633c2e195f91d3636eec5df3e87e9",
+    "inventory_sha256": "df6530a58b4a6ab19c447e57740e2c290d1eada3d9cde5b1431e7dddc09fccc7",
     "canonical_directory": "data/canonical",
     "canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
     "canonical_snapshot": {
@@ -51,12 +51,12 @@
     "candidate_identity_count": 1100
   },
   "decisions": {
-    "included_start_count": 1100,
+    "included_start_count": 1000,
     "corrected_start_count": 0,
     "held_start_count": 0,
     "rejected_start_count": 0,
-    "deferred_start_count": 0,
-    "processed_start_count": 1100,
+    "deferred_start_count": 100,
+    "processed_start_count": 1000,
     "unreviewed_start_count": 0,
     "unresolved_slot_count": 0
   },
@@ -90,7 +90,7 @@
     "semantic_decision_source": "data/batches/m5-14-semantic-decisions.json",
     "semantic_decision_source_sha256": "dabd7d3d13f8dbd2ed6e7fa3dca1c2a1ace233eda08de62ef842cb7dd095f5dc",
     "review": "data/batches/m5-14-review.json",
-    "review_sha256": "b2b15c8f37de4f803d630a9b54aad2fb57a759ccff64f048302e1fb930f2516f",
+    "review_sha256": "ed7f03743f6ff713d1c929622cd2244ed1ccf8b03b20c06e2e547f689a8b1024",
     "catalog": "scripts/batch/m5-14-candidate-source.mjs",
     "catalog_count": 1100,
     "catalog_sha256": "7f22a8782c0a86dcc055d0b3f3b753fe8fcd65d123ce367cc8d28064b0445a37",

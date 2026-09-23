@@ -34,7 +34,11 @@ import {
   inspectWriterDomainEvidence,
 } from '../validate/lexical-quality.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
-import { selectionOutcomeById } from './lexical-selection.mjs';
+import {
+  selectionDispositionForRow,
+  selectionDispositionSummary,
+  selectionOutcomeById,
+} from './lexical-selection.mjs';
 import { productionSourceBytes } from './lexical-production-state.mjs';
 import { compareRelationSnapshots } from './relation-diff.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
@@ -91,7 +95,6 @@ const PREDECESSOR_ADMISSION_PATH = path.join(BATCH_DIRECTORY, 'm5-13-admission.j
 const PREDECESSOR_PROMOTION_PATH = path.join(BATCH_DIRECTORY, 'm5-13-promotion.json');
 const M5_14_AGENT_REVIEW_MODE = 'agent-generated';
 const M5_14_GATE_DECISION = 'APPROVE AUTOMATED BOUNDED';
-const ALL_DECISIONS = ['included', 'corrected', 'held', 'rejected', 'deferred'];
 const BASE_LEDGER_COUNT = 1722;
 const BASE_COMMIT = '5b74cde6f89184d2db7acbf9f1c71ec9242a6609';
 const BASE_TREE = 'b4383f7b4099f67570f463c8cb8324c8060938e9';
@@ -463,6 +466,7 @@ function buildReviewRows(identities, candidateRecords, semanticDecisionSource) {
     const selectionStatus = selectionStatuses.get(candidate.id);
     if (!selectionStatus) fail(`M5-14 selection is missing for ${candidate.id}`, 'M5_14_SELECTION_SCOPE');
     const reviewedRecord = selectionStatus === 'selected' ? structuredClone(candidate) : undefined;
+    const finalDecision = selectionDispositionForRow(decisionRow, selectionStatus);
     return {
       slot_id: identity.slot_id,
       inventory_id: identity.inventory_id,
@@ -472,6 +476,7 @@ function buildReviewRows(identities, candidateRecords, semanticDecisionSource) {
       generation_pass_id: M5_14_GENERATION_PASS_ID,
       verification_pass_id: decisionRow.review_pass_id,
       decision: decisionRow.decision,
+      final_decision: finalDecision,
       selection_status: selectionStatus,
       expected_record_type: identity.record_type,
       semantic_review: makeProductionSemanticReview(
@@ -639,8 +644,9 @@ function buildProductionStageEvidence({ artifacts, prospectiveRecords, semanticA
 }
 
 function buildGate({ identities, reviewRows, production, semanticAuditCoverage, finalSummary, relation, preflight, candidateSourceDigest, generationPassId, verificationPassId }) {
-  const decisions = Object.fromEntries(ALL_DECISIONS.map((decision) => [decision, reviewRows.filter((row) => row.decision === decision).length]));
-  const processed = identities.length - decisions.deferred;
+  const disposition = selectionDispositionSummary(reviewRows, { idField: 'candidate_id' });
+  const decisions = disposition.counts;
+  const processed = disposition.processed_start_count;
   const imported = reviewRows.filter((row) => row.selection_status === 'selected').length;
   const preflightPassed = (name) => preflight?.checks?.[name]?.status === 'pass'
     && preflight.checks[name].input_canonical_directory_sha256 === preflight.input_canonical_directory_sha256;
@@ -652,7 +658,7 @@ function buildGate({ identities, reviewRows, production, semanticAuditCoverage, 
     imported_start_count: imported === M5_14_IMPORT_COUNT,
     reserve_count: identities.length - imported === M5_14_RESERVE_COUNT,
     processed_denominator: processed === decisions.included + decisions.corrected + decisions.held + decisions.rejected,
-    deferred_excluded_from_denominator: decisions.deferred === identities.length - processed,
+    deferred_excluded_from_denominator: disposition.deferred_denominator_excluded,
     authored_outcomes_preserved: decisions.included + decisions.corrected + decisions.held + decisions.rejected + decisions.deferred === identities.length,
     canonical_lexical_collisions: true,
     candidate_lexical_collisions: true,
@@ -682,7 +688,8 @@ function buildGate({ identities, reviewRows, production, semanticAuditCoverage, 
 }
 
 function buildAdmission({ inputs, artifacts, prospective, semanticAudit, semanticAuditCoverage, preflight, gate, decisionSourceBytes, promotionLedgerBytes, promotionLedgerBinding, baseDecisionSource, production }) {
-  const decisions = Object.fromEntries(ALL_DECISIONS.map((decision) => [decision, artifacts.reviewRows.filter((row) => row.decision === decision).length]));
+  const disposition = selectionDispositionSummary(artifacts.reviewRows, { idField: 'candidate_id' });
+  const decisions = disposition.counts;
   const importedRecords = artifacts.reviewRows.filter(({ selection_status: selectionStatus }) => selectionStatus === 'selected').map(({ reviewed_record: record }) => record);
   const gateEvidence = {
     schema_version: '2',
@@ -726,9 +733,9 @@ function buildAdmission({ inputs, artifacts, prospective, semanticAudit, semanti
     actual: canonicalSummary(prospective.canonical.records),
     decisions: {
       ...decisions,
-      processed_start_count: decisions.included + decisions.corrected + decisions.held + decisions.rejected,
+      processed_start_count: disposition.processed_start_count,
       imported_start_count: importedRecords.length,
-      deferred_denominator_excluded: true,
+      deferred_denominator_excluded: disposition.deferred_denominator_excluded,
     },
     verification: {
       review_mode: M5_14_AGENT_REVIEW_MODE,
@@ -1111,11 +1118,9 @@ export async function writeM514PreAdmissionEvidence({
   const predecessorAdmission = result.inputs.predecessorAdmission;
   const predecessorPromotion = result.inputs.predecessorPromotion;
   const predecessorStage = result.inputs.predecessorStage;
-  const counts = Object.fromEntries(ALL_DECISIONS.map((decision) => [
-    decision,
-    result.reviewRows.filter((row) => row.decision === decision).length,
-  ]));
-  const processed = counts.included + counts.corrected + counts.held + counts.rejected;
+  const disposition = selectionDispositionSummary(result.reviewRows, { idField: 'candidate_id' });
+  const counts = disposition.counts;
+  const processed = disposition.processed_start_count;
   const review = {
     schema_version: '1',
     contract_version: 'lexical-batch-pre-admission-review-v1',

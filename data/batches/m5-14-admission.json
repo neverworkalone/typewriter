@@ -22,7 +22,7 @@
   },
   "base": {
     "canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
-    "inventory_sha256": "d3ca5c930037ea2726cce004991b3e8d1b6633c2e195f91d3636eec5df3e87e9",
+    "inventory_sha256": "df6530a58b4a6ab19c447e57740e2c290d1eada3d9cde5b1431e7dddc09fccc7",
     "inventory_materialization": "on-demand-prospective",
     "seed_sha256": "5f043b66df7886257cb93141a802d125f8d775d5ef1456fb481a8ac71fd84f68",
     "promotion_ledger_prefix_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
@@ -44,12 +44,12 @@
     "expression_count": 639
   },
   "decisions": {
-    "included": 1100,
+    "included": 1000,
     "corrected": 0,
     "held": 0,
     "rejected": 0,
-    "deferred": 0,
-    "processed_start_count": 1100,
+    "deferred": 100,
+    "processed_start_count": 1000,
     "imported_start_count": 1000,
     "deferred_denominator_excluded": true
   },
@@ -177,7 +177,7 @@
       "source_id": "derived:on-demand-target-inventory",
       "path": "derived:on-demand-prospective-inventory",
       "materialization": "on-demand",
-      "sha256": "d3ca5c930037ea2726cce004991b3e8d1b6633c2e195f91d3636eec5df3e87e9"
+      "sha256": "df6530a58b4a6ab19c447e57740e2c290d1eada3d9cde5b1431e7dddc09fccc7"
     },
     "authorization": {
       "source_id": "authorization",

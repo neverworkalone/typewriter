@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { selectReviewedCandidates } from '../scripts/batch/lexical-selection.mjs';
+import {
+  selectionDispositionSummary,
+  selectionOutcomeById,
+  selectReviewedCandidates,
+} from '../scripts/batch/lexical-selection.mjs';
 
 test('shared lexical selection rejects a top-ranked semantic failure and admits a qualified reserve', () => {
   const result = selectReviewedCandidates([
@@ -70,6 +74,31 @@ test('fit surplus forms the qualified reserve and replaces genuinely held or rej
   assert.deepEqual(result.selected.map(({ candidate_record_id: id }) => id), ['fit-1', 'fit-2']);
   assert.deepEqual(result.reserve.map(({ candidate_record_id: id }) => id), ['fit-3']);
   assert.deepEqual(result.excluded, ['held-context', 'rejected-fit']);
+
+  const selectionStatuses = selectionOutcomeById(result);
+  const finalRows = rows.map((row) => ({
+    ...row,
+    selection_status: selectionStatuses.get(row.candidate_record_id),
+    final_decision: selectionStatuses.get(row.candidate_record_id) === 'reserve'
+      ? 'deferred'
+      : row.decision,
+  }));
+  const disposition = selectionDispositionSummary(finalRows);
+  assert.deepEqual(disposition.counts, {
+    included: 2,
+    corrected: 0,
+    held: 1,
+    rejected: 1,
+    deferred: 1,
+  });
+  assert.equal(disposition.processed_start_count, 4);
+  assert.equal(disposition.deferred_denominator_excluded, true);
+  assert.throws(
+    () => selectionDispositionSummary(finalRows.map((row) => (
+      row.candidate_record_id === 'fit-3' ? { ...row, final_decision: 'included' } : row
+    ))),
+    /final_decision does not match the selector outcome/,
+  );
 
   for (const ineligibleOutcome of [
     { decision: 'held', gloss_judgment: 'needs-context' },

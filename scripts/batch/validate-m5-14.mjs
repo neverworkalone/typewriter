@@ -35,6 +35,7 @@ import {
   readM514DecisionSource,
   validateM514DecisionSource,
 } from './m5-14-decision-source.mjs';
+import { selectionDispositionSummary } from './lexical-selection.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -143,13 +144,6 @@ export function validateM514Catalog(catalog = M5_14_CATALOG) {
   return catalog;
 }
 
-function decisionCounts(rows) {
-  return Object.fromEntries(['included', 'corrected', 'held', 'rejected', 'deferred'].map((decision) => [
-    decision,
-    rows.filter((row) => row.decision === decision).length,
-  ]));
-}
-
 function validateReviewArtifact(review, decisionSource, decisionSourceBytes) {
   if (!review || typeof review !== 'object') fail('M5-14 review artifact must be an object', 'REVIEW_SHAPE_ERROR');
   assertEqual(review.issue, 100, 'review issue');
@@ -164,12 +158,10 @@ function validateReviewArtifact(review, decisionSource, decisionSourceBytes) {
   assertEqual(review.candidate_pool.reserve_count, M5_14_RESERVE_COUNT, 'reserve capacity');
   assertEqual(review.candidate_pool.candidate_source_id, M5_14_CANDIDATE_SOURCE_ID, 'candidate source ID');
   assertEqual(review.candidate_pool.selection_status, 'source-bound-reviewed', 'selection status');
+  const disposition = selectionDispositionSummary(decisionSource.rows, { selection: decisionSource.selection });
   assertEqual(review.decisions, {
-    ...decisionSource.counts,
-    processed_start_count: decisionSource.counts.included
-      + decisionSource.counts.corrected
-      + decisionSource.counts.held
-      + decisionSource.counts.rejected,
+    ...disposition.counts,
+    processed_start_count: disposition.processed_start_count,
     unreviewed_start_count: 0,
     unresolved_slot_count: 0,
     imported_start_count: M5_14_IMPORT_COUNT,
@@ -190,13 +182,14 @@ function validateStageArtifact(stage, review, decisionSource, currentDirectory) 
   assertEqual(stage.target, M5_14_TARGET, 'stage target');
   assertEqual(stage.actual.canonical_snapshot, M5_14_FINAL_SUMMARY, 'prospective canonical summary');
   assertEqual(stage.actual.imported_start_count, M5_14_IMPORT_COUNT, 'stage imported count');
+  const disposition = selectionDispositionSummary(decisionSource.rows, { selection: decisionSource.selection });
   assertEqual(stage.decisions, {
-    included_start_count: decisionSource.counts.included,
-    corrected_start_count: decisionSource.counts.corrected,
-    held_start_count: decisionSource.counts.held,
-    rejected_start_count: decisionSource.counts.rejected,
-    deferred_start_count: decisionSource.counts.deferred,
-    processed_start_count: M5_14_SELECTION_COUNT - decisionSource.counts.deferred,
+    included_start_count: disposition.counts.included,
+    corrected_start_count: disposition.counts.corrected,
+    held_start_count: disposition.counts.held,
+    rejected_start_count: disposition.counts.rejected,
+    deferred_start_count: disposition.counts.deferred,
+    processed_start_count: disposition.processed_start_count,
     unreviewed_start_count: 0,
     unresolved_slot_count: 0,
   }, 'stage decisions');
@@ -267,6 +260,7 @@ export async function validateM514({
   validateReviewArtifact(review, decisionSource, sourceFile.sourceBytes);
   const stageFile = await readJson(stagePath, 'M5-14 stage');
   validateStageArtifact(stageFile.value, review, decisionSource, resolvedDirectory);
+  const disposition = selectionDispositionSummary(decisionSource.rows, { selection: decisionSource.selection });
   const inventory = currentInventoryPath
     ? (await readJson(currentInventoryPath, 'current M5 inventory')).value
     : await buildTargetInventory({ canonicalDirectory: resolvedDirectory, canonicalContext, seedPath: currentSeedPath });
@@ -293,7 +287,7 @@ export async function validateM514({
     current_canonical_directory_sha256: currentDigest,
     current_inventory_revision: inventory.revision,
     candidate_count: candidateRecords.length,
-    decisions: decisionSource.counts,
+    decisions: disposition.counts,
     gate_status: stageFile.value.gate.gate_status,
     promoted: Boolean(promotion),
   };
