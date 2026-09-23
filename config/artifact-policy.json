@@ -682,9 +682,10 @@
           "$.selection": {
             "policy": "string",
             "capacity": "number",
-            "imported": "number",
-            "reserve": "number",
-            "score_basis": "array<string>"
+          "imported": "number",
+          "reserve": "number",
+          "score_basis": "array<string>",
+          "selection_rationale": "string"
           },
           "$.decisions.*": {
             "candidate_record_id": "string",
@@ -880,7 +881,7 @@
         "nested_allowed_fields": {
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
-          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis"],
+          "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "selection_rationale"],
           "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "sense_reviews", "correction", "boundary_pairs"],
           "$.decisions.*.correction": ["action", "record", "output_record_sha256"],
           "$.decisions.*.correction.record": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
