@@ -1,0 +1,62 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-batch-pre-admission-review-v1",
+  "artifact_id": "m5-15-review-20260923",
+  "issue": 101,
+  "batch_id": "m5-15-expansion-20260923",
+  "status": "complete",
+  "review_mode": "agent-generated",
+  "editorial_review_complete": false,
+  "human_editorial_review_complete": false,
+  "candidate_pool": {
+    "selection_slot_count": 1100,
+    "candidate_identity_count": 1100,
+    "import_target": 1000,
+    "reserve_count": 100,
+    "catalog_count": 1100,
+    "catalog_sha256": "78fbaffd7d7efb4fa68252cba18e2e09a572ee88c6c5042cc8fd09a04f55c2a0",
+    "selection_status": "source-bound-reviewed",
+    "candidate_source_id": "m5-15-typewriter-authored-lexical-units-20260923-r1"
+  },
+  "decisions": {
+    "included": 1000,
+    "corrected": 0,
+    "held": 0,
+    "rejected": 0,
+    "deferred": 100,
+    "processed_start_count": 1000,
+    "unreviewed_start_count": 0,
+    "unresolved_slot_count": 0,
+    "imported_start_count": 1000
+  },
+  "decision_artifact": {
+    "path": "data/batches/m5-15-semantic-decisions.json",
+    "source_id": "m5-15-authored-semantic-decisions-20260923-r1",
+    "sha256": "01698848d7f2d8f3704429c41a934e7e81997bc25c46ca7c1a16b2dc2084e366",
+    "artifact_sha256": "4ce0a9040953a7bcac521e901e102b240c2f1c06ed60a2104a5794a7f036ff70",
+    "decision_count": 1100
+  },
+  "timing": {
+    "status": "not-recorded",
+    "editor_seconds": null,
+    "processed_start_count": 1000,
+    "unmeasured_pass_count": null
+  },
+  "audit": {
+    "status": "complete",
+    "independent": true,
+    "open_blocker_count": 0
+  },
+  "source_policy": {
+    "candidate_bodies": "typewriter-authored-source-bound-candidate-contract",
+    "raw_external_material": "not-adopted",
+    "canonical_mutation": "admission-gated"
+  },
+  "admission_path": {
+    "producer": "shared lexical producer",
+    "semantic_audit": "shared semantic audit",
+    "admission": "shared lexical admission",
+    "batch_local_quality_fork": false
+  },
+  "note": "M5-15 consumed 1,100 source-bound candidates through the shared producer, separate semantic verification, selector-derived qualified reserve, prospective canonical construction, complete audit, and shared admission. No human review is claimed; 1,000 fit rows were selected and 100 fit rows remain in the qualified reserve."
+}
