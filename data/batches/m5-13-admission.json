@@ -22,7 +22,7 @@
   },
   "base": {
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-    "inventory_sha256": "c5001f756f786406bbfb6cfb17f5ef6d86dd4ff7f89afc75998cbef3f8591978",
+    "inventory_sha256": "c02ccf299b5f93407eecec575210ef6d8c24dfcc5edc712090f4e8fecdebcfbd",
     "inventory_materialization": "on-demand-prospective",
     "seed_sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
     "promotion_ledger_prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
@@ -78,9 +78,9 @@
     "batch_id": "m5-13-expansion-20260922",
     "inputs": {
       "prospective_canonical_sha256": "fbc7672e5b25c15034996d3662c2332a098af6066f5a4e13b36c6c9d86614298",
-      "semantic_audit_sha256": "7683086b5553fcfbe1f33e4ed48240dd3b5fb6b91a84ce528641f17c001cafe1",
-      "decision_source_sha256": "8a785fad800cc8c78a8bab797bb32385c176ce79473c3824ff3a248bc65872b0",
-      "promotion_ledger_prefix_sha256": "c947be9a1d87db43e72588b170dac5dcce8e8043ec766f1b1fab45721d29b190"
+      "semantic_audit_sha256": "ea5a8da2fb7e1f9766c7a796b6d959bac8b483236d24011a51fd5cad7521b62a",
+      "decision_source_sha256": "06c1638787c499d88047bc6a175cfead714bb81a649ff6829bfcbab4ae5b7c41",
+      "promotion_ledger_prefix_sha256": "b1572838b7698ef47df21ecafdd7b3b6ecd677ab3d92270f1a9bd053b179b809"
     },
     "preflight": {
       "contract_version": "lexical-batch-preflight-v1",
@@ -134,14 +134,14 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "1130064a1b68df698cb21e1b9c3f2d1cccd2da667d84e166418e2683fef10483",
+  "gate_evidence_sha256": "7af0dde80581dd56d6112085a3ee365cedb2b0f920112649c849753bcdeb0da5",
   "promotion_ledger_binding": {
     "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
     "append_start": 722,
     "append_count": 1000,
-    "append_sha256": "b02eb8f2f3dea805f82884dfada7bf2230eca5e81e8c2d9f80978d0640ed34e8",
+    "append_sha256": "bdd352497741215ac9b50e880c3ca161d13b181f3433e05d95b750e1cdcc3786",
     "prefix_event_count": 1722,
-    "prefix_sha256": "c947be9a1d87db43e72588b170dac5dcce8e8043ec766f1b1fab45721d29b190"
+    "prefix_sha256": "b1572838b7698ef47df21ecafdd7b3b6ecd677ab3d92270f1a9bd053b179b809"
   },
   "sources": {
     "candidate_identities": {
@@ -153,36 +153,36 @@
     "verification": {
       "source_id": "m5-13-authored-semantic-decisions-20260923-r4",
       "path": "data/batches/m5-13-semantic-decisions.json",
-      "sha256": "be206257d76ada99f54d28f8e13ae5874b1ed8b6661b8955afb49790f717a91f"
+      "sha256": "c93ed09b1da026249ceaa362d0bddd92d4e6df442353f3e7a017a48e5f7a1015"
     },
     "semantic_audit": {
       "source_id": "derived:complete-canonical-audit",
       "path": "derived:complete-canonical-audit",
-      "sha256": "7683086b5553fcfbe1f33e4ed48240dd3b5fb6b91a84ce528641f17c001cafe1"
+      "sha256": "ea5a8da2fb7e1f9766c7a796b6d959bac8b483236d24011a51fd5cad7521b62a"
     },
     "target_promotions": {
       "source_id": "target_promotions",
       "path": "data/inventory/m5-target-promotions.jsonl",
-      "sha256": "c947be9a1d87db43e72588b170dac5dcce8e8043ec766f1b1fab45721d29b190",
+      "sha256": "b1572838b7698ef47df21ecafdd7b3b6ecd677ab3d92270f1a9bd053b179b809",
       "ledger_binding": {
         "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
         "append_start": 722,
         "append_count": 1000,
-        "append_sha256": "b02eb8f2f3dea805f82884dfada7bf2230eca5e81e8c2d9f80978d0640ed34e8",
+        "append_sha256": "bdd352497741215ac9b50e880c3ca161d13b181f3433e05d95b750e1cdcc3786",
         "prefix_event_count": 1722,
-        "prefix_sha256": "c947be9a1d87db43e72588b170dac5dcce8e8043ec766f1b1fab45721d29b190"
+        "prefix_sha256": "b1572838b7698ef47df21ecafdd7b3b6ecd677ab3d92270f1a9bd053b179b809"
       }
     },
     "base_inventory": {
       "source_id": "derived:on-demand-target-inventory",
       "path": "derived:on-demand-prospective-inventory",
       "materialization": "on-demand",
-      "sha256": "c5001f756f786406bbfb6cfb17f5ef6d86dd4ff7f89afc75998cbef3f8591978"
+      "sha256": "c02ccf299b5f93407eecec575210ef6d8c24dfcc5edc712090f4e8fecdebcfbd"
     },
     "authorization": {
       "source_id": "authorization",
       "path": "external:m5-13-authorization",
-      "sha256": "da46a7eba77f9f000e0102fe568053dd78248bf79a9bb6dc6660f385b3c2c872"
+      "sha256": "fb2f87d0e6d6524db842c4eba05a0ac3390ab77ed0aca8615b997a4ef0214b5e"
     }
   },
   "promotion": {
