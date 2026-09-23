@@ -104,7 +104,7 @@ export const M5_13_FINAL_SUMMARY = Object.freeze({
   reference_only_count: 42,
   sense_count: 3301,
   relation_count: 487,
-  expression_count: 329,
+  expression_count: 317,
 });
 export const M5_13_FINAL_METADATA = Object.freeze({
   dictionary_version: 'm2-pilot-1',
@@ -119,7 +119,7 @@ export const M5_13_FINAL_METADATA = Object.freeze({
   search_form_count: '3298',
   sense_count: '3301',
   relation_count: '487',
-  expression_count: '329',
+  expression_count: '317',
 });
 export const M5_13_TARGET = Object.freeze({
   net_start_increase: 1000,

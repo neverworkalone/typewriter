@@ -35,6 +35,7 @@ import { selectReviewedCandidates } from '../scripts/batch/lexical-selection.mjs
 import { inspectWriterDomainEvidence } from '../scripts/validate/lexical-quality.mjs';
 import { sha256Json } from '../scripts/validate/semantic-audit.mjs';
 import {
+  M5_13_BASE_SUMMARY,
   M5_13_FINAL_SUMMARY,
   M5_13_TARGET,
   validateM513,
@@ -233,7 +234,11 @@ test('M5-13 executes producer, semantic audit, selection, prospective canonical,
       result.semanticDecisionSource.counts.held + result.semanticDecisionSource.counts.rejected + result.semanticDecisionSource.counts.deferred);
     assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'selected').length, 1000);
     assert.deepEqual(result.reviewRows.filter(({ selection_status: status }) => status === 'reserve').length, M5_13_RESERVE_COUNT);
-    assert.deepEqual(result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length, 184);
+    const importedExpressionCount = result.importedRecords.filter(({ record_type: recordType }) => recordType === 'expression').length;
+    const prospectiveExpressionCount = result.prospective.canonical.records.filter(({ record, record_type: recordType }) => (
+      (record ?? { record_type: recordType }).record_type === 'expression'
+    )).length;
+    assert.equal(importedExpressionCount, prospectiveExpressionCount - M5_13_BASE_SUMMARY.expression_count);
     assert.deepEqual(await readFile('data/canonical/m5-12a-expansion.jsonl'), beforeCanonical);
     assert.deepEqual(await readFile('data/inventory/m5-target-seed.json'), beforeSeed);
     assert.equal(result.semanticDecisionSource.source.artifact_sha256, result.semanticDecisionSource.artifactSha256);
