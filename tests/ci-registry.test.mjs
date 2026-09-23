@@ -69,12 +69,12 @@ test('toolchain builds SQLite only after the shared global audit', () => {
   );
 });
 
-test('M5-14 pre-admission validation is owned by the shared in-process session', () => {
-  const m514Check = CI_CATEGORIES.batch.checks.find(
-    (check) => check.inProcess === 'm5-14-pre-admission',
+test('M5-15 pre-admission validation owns the current shared in-process session', () => {
+  const m515Check = CI_CATEGORIES.batch.checks.find(
+    (check) => check.inProcess === 'm5-15-pre-admission',
   );
-  assert.ok(m514Check);
-  assert.deepEqual(m514Check.testFiles, ['tests/m5-13.test.mjs']);
+  assert.ok(m515Check);
+  assert.deepEqual(m515Check.testFiles, ['tests/m5-13.test.mjs']);
 });
 
 test('CI levels are nested and deep owns the scale benchmark', () => {
