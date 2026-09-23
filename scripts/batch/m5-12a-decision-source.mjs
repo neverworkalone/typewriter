@@ -392,6 +392,7 @@ function validateDecisionRow(row, {
 export function validateM512ADecisionSource({
   source,
   sourceBytes,
+  sourcePath,
   identities = M5_12A_CANDIDATE_IDENTITIES,
   candidateRecords,
 } = {}) {
@@ -505,6 +506,7 @@ export function validateM512ADecisionSource({
   }
   return {
     source,
+    sourcePath,
     sourceBytes,
     sourceSha256: sourceBytesSha256,
     artifactSha256,
@@ -524,5 +526,12 @@ export async function readM512ADecisionSource(
   } catch (error) {
     fail(`M5-12A semantic decision source is not valid JSON: ${error.message}`, 'M5_12A_DECISION_SOURCE_JSON');
   }
-  return { source, sourceBytes };
+  return {
+    source,
+    sourceBytes,
+    sourcePath: path.relative(
+      REPOSITORY_DIRECTORY,
+      path.resolve(decisionSourcePath),
+    ).split(path.sep).join('/'),
+  };
 }

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parseJsonWithUniqueKeys } from './unique-json.mjs';
 import {
   AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  isGrandfatheredM512ADecisionSource,
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
 } from './semantic-decision-row.mjs';
 
@@ -283,7 +285,14 @@ function validateNestedClosedObjects(value, nestedAllowedFields, nestedFieldType
   }
 }
 
-function validateClosedContract(value, filePath, semantics, label, requiredContractName) {
+function validateClosedContract(
+  value,
+  filePath,
+  semantics,
+  label,
+  requiredContractName,
+  { allowExactGrandfatheredVersion = false } = {},
+) {
   const contracts = semantics.closed_contracts ?? {};
   if (requiredContractName) {
     const contract = contracts[requiredContractName];
@@ -293,7 +302,8 @@ function validateClosedContract(value, filePath, semantics, label, requiredContr
         'POLICY_SHAPE',
       );
     }
-    if (!contract.contract_versions.includes(value?.contract_version)) {
+    if (!contract.contract_versions.includes(value?.contract_version)
+      && !allowExactGrandfatheredVersion) {
       fail(
         `${filePath} uses unregistered ${requiredContractName} contract version ${String(value?.contract_version)}`,
         'DURABLE_CONTRACT_UNREGISTERED',
@@ -614,7 +624,17 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       // Preserve the gate-specific duplication diagnostics before applying the
       // recursive contract allowlists to the remaining durable containers.
       validateCompactGateArtifact(value, filePath, semantics);
-      validateClosedContract(value, filePath, semantics, 'durable artifact', requiredContractName);
+      const sourceSha256 = createHash('sha256').update(bytes).digest('hex');
+      const isGrandfatheredDecisionSource = requiredContractName === 'decision_source'
+        && isGrandfatheredM512ADecisionSource({
+          source: value,
+          sourcePath: filePath,
+          sourceSha256,
+          artifactSha256: value.artifact_sha256,
+        });
+      validateClosedContract(value, filePath, semantics, 'durable artifact', requiredContractName, {
+        allowExactGrandfatheredVersion: isGrandfatheredDecisionSource,
+      });
       if (requiredContractName === 'decision_source'
         || semantics.batch_decision_contract_versions.includes(value.contract_version)) {
         validateCompactDecisionSource(value, filePath, semantics);

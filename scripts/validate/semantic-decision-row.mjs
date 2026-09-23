@@ -19,6 +19,27 @@ const RECONSTRUCTIBLE_DECISION_FIELDS = Object.freeze([
 
 export const AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION = 'source-bound-semantic-review-v1';
 export const SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION = 'lexical-semantic-decision-source-v3';
+export const GRANDFATHERED_M5_12A_DECISION_SOURCE = Object.freeze({
+  path: 'data/batches/m5-12a-semantic-decisions.json',
+  source_id: 'm5-12a-authored-semantic-decisions-20260920-r4',
+  contract_version: 'lexical-semantic-decision-source-v2',
+  artifact_sha256: 'da9b12da6b276ce221b44fde17e0582597fd940be3324465a809fc4c316eff5b',
+  file_sha256: '720348e78becee62249ed4761cf154a8c794b10c1ff2609d95d90daa811d4edf',
+});
+
+export function isGrandfatheredM512ADecisionSource({
+  source,
+  sourcePath,
+  sourceSha256,
+  artifactSha256,
+} = {}) {
+  return sourcePath === GRANDFATHERED_M5_12A_DECISION_SOURCE.path
+    && source?.source_id === GRANDFATHERED_M5_12A_DECISION_SOURCE.source_id
+    && source?.contract_version === GRANDFATHERED_M5_12A_DECISION_SOURCE.contract_version
+    && (artifactSha256 ?? source?.artifact_sha256)
+      === GRANDFATHERED_M5_12A_DECISION_SOURCE.artifact_sha256
+    && sourceSha256 === GRANDFATHERED_M5_12A_DECISION_SOURCE.file_sha256;
+}
 
 function sha256Json(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');

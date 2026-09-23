@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { rebuildSemanticEvidence } from '../scripts/validate/rebuild-semantic-evidence.mjs';
 import {
+  buildCanonicalSemanticAudit,
   buildSemanticAuditFromDecisionSource,
   compactSemanticDecisionSource,
   compactSemanticReviewArtifact,
@@ -348,6 +349,47 @@ test('M5 canonical rows dereference batch authority without copying authored nar
     (error) => error.code === 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH',
   );
 
+  const downgradedRow = structuredClone(row);
+  delete downgradedRow.review_binding;
+  const downgradedSourceContent = {
+    ...batchSourceContent,
+    contract_version: 'lexical-semantic-decision-source-v2',
+    artifact_sha256: 'c'.repeat(64),
+    decisions: [downgradedRow],
+  };
+  delete downgradedSourceContent.review_binding_contract_version;
+  const downgradedBytes = Buffer.from(JSON.stringify(downgradedSourceContent), 'utf8');
+  const downgradedSourceSha256 = createHash('sha256').update(downgradedBytes).digest('hex');
+  const downgradedBatchSource = {
+    source: downgradedSourceContent,
+    sourceBytes: downgradedBytes,
+    sourceSha256: downgradedSourceSha256,
+    artifactSha256: downgradedSourceContent.artifact_sha256,
+    sourcePath: 'data/batches/m5-14-semantic-decisions.json',
+    byCandidateId: new Map([[record.id, downgradedRow]]),
+  };
+  const downgradedBinding = {
+    ...binding,
+    source_sha256: downgradedSourceSha256,
+    artifact_sha256: downgradedSourceContent.artifact_sha256,
+    decision_row_sha256: sha256Json(compactAuthoredSemanticDecisionRow(downgradedRow)),
+  };
+  const downgradedReview = structuredClone(fullAudit.review);
+  downgradedReview.records[0].authored_batch_decision = downgradedBinding;
+  const downgradedCompactReview = compactSemanticReviewArtifact(downgradedReview);
+  const downgradedDecisionSource = {
+    ...decisionSource,
+    authored_review_sha256: sha256Json(downgradedCompactReview),
+    authored_review: downgradedCompactReview,
+  };
+  assert.throws(
+    () => buildSemanticAuditFromDecisionSource(infos, downgradedDecisionSource, {
+      batchDecisionSources: [downgradedBatchSource],
+    }),
+    (error) => error.code === 'SEMANTIC_AUDIT_BATCH_SOURCE_MISMATCH',
+    'a future v2 source cannot bypass semantic review binding validation',
+  );
+
   const duplicatedReview = structuredClone(compactReview);
   duplicatedReview.records[0].boundary_review = structuredClone(fullAudit.review.records[0].boundary_review);
   const duplicatedSource = {
@@ -361,4 +403,14 @@ test('M5 canonical rows dereference batch authority without copying authored nar
     }),
     (error) => error.code === 'SEMANTIC_AUDIT_REDUNDANT_AUTHORITY',
   );
+});
+
+test('the exact grandfathered M5-12A v2 source still replays through the shared semantic audit', async () => {
+  const { artifact } = await buildCanonicalSemanticAudit({
+    artifactId: 'm5-12a-grandfathered-replay-regression',
+  });
+
+  assert.equal(artifact.record_count, 3042);
+  assert.equal(artifact.review.records.length, 3042);
+  assert.ok(artifact.review.records.some((review) => review.record_id === 'w1279'));
 });

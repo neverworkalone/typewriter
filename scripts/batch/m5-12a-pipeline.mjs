@@ -1630,6 +1630,7 @@ export async function buildM512A({
   const semanticDecisionSource = validateM512ADecisionSource({
     source: semanticDecisionSourceFile.source,
     sourceBytes: semanticDecisionSourceFile.sourceBytes,
+    sourcePath: semanticDecisionSourceFile.sourcePath,
     identities,
     candidateRecords,
   });
