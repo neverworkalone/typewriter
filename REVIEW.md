@@ -8,6 +8,10 @@ to determine whether the defect can recur.
 
 ## Context-efficient review flow
 
+This flow is the default for the first and second full-review stages. The third
+reviewer uses the dedicated review-of-reviews flow below and descends into
+patches or source only when the prior reviews leave a material question.
+
 Use this order:
 
 1. Read PR metadata, current head SHA, and the active issue.
@@ -165,21 +169,145 @@ threads and review activity needed to understand the current state.
 If the current head has not materially changed outside the fixes, do not
 restart a full first-pass review.
 
-## Two-reviewer approval gate
+## Three-stage review gate
 
-Every PR requires two independent reviews on the exact same HEAD.
+Every PR passes through two independent full reviews followed by a final
+review-of-reviews merge gate.
 
-- Approval state is bound to the HEAD SHA. Any new commit resets it to `0`.
-- The first reviewer reviews normally. If no blocker remains and required
-  validation passes, record `+1` and do not merge.
-- The second reviewer reviews the same HEAD independently. If no blocker
-  remains and required validation passes, record `+2` and merge.
-- If either reviewer finds a blocker, do not approve or merge. After a fix
-  creates a new commit, review restarts from `0`.
-- Both reviewers use the same scope and standards. Do not divide review
-  responsibility or assume another reviewer already covered an area.
+The valid progression is:
 
-Required sequence: `0 -> +1 -> +2 -> Squash merge`.
+`0 -> +1 -> +2 -> Squash merge`
+
+`+1` and `+2` are sequential gate records, not different review depths and
+not GitHub approval states. Both full-review stages use the same review scope
+and standards.
+
+### Review independence
+
+Independence is a review-process property, not a GitHub-account property.
+
+- The first and second reviews must run as separate reviewer stages, runs, or
+  contexts.
+- The same GitHub account may record both stages, but one review pass must not
+  produce both `+1` and `+2`.
+- The second reviewer may confirm that a valid `+1` exists for the current
+  HEAD before starting, but must not use the first review's conclusions to
+  reduce scope or substitute for its own analysis.
+- The second reviewer should complete its independent analysis before using the
+  first review record for comparison or follow-up context.
+
+### Required review record
+
+A clean first or second review must leave a structured GitHub review
+`COMMENT` anchored to the exact reviewed HEAD.
+
+The record is evidence for the third reviewer, not merely a pass marker. Keep
+it concise, but include enough information to show what was actually reviewed:
+
+- gate marker: `+1` or `+2`;
+- exact HEAD SHA;
+- active issue or requirement reviewed;
+- review coverage: the behavioral areas, data paths, system boundaries, or
+  invariants actually checked;
+- approach assessment: whether the implementation addresses the real problem
+  with an appropriate design rather than only patching symptoms;
+- key risks or possible blind spots explicitly checked;
+- blockers found during the review and how their fixes were verified, or an
+  explicit statement that none were found;
+- exact-head tests, CI, or other required validation relied on;
+- review boundaries or remaining uncertainty, including properties trusted to
+  deterministic validation rather than manually repeated;
+- final statement that no blocker remains for that exact HEAD.
+
+Prefer review coverage such as
+`producer -> semantic review -> selection -> admission -> regression wiring`
+over a long list of filenames. The record should explain which risks and
+reasoning were checked, not merely which files were opened.
+
+A marker-only comment such as `+1 — No blockers remain` is not a valid gate
+record because it does not provide enough evidence for review-of-reviews.
+
+Do not use, request, require, or wait for GitHub `APPROVE`. Do not treat the
+inability to self-approve as a reason to stop the review flow.
+
+### First reviewer — independent full review
+
+- Perform a complete review under this `REVIEW.md`.
+- Review the reported problem, the validity of the overall approach, the full
+  relevant change, regression risk, tests, validation, and systemic causes of
+  defects.
+- If blockers remain, report them and do not record `+1`.
+- When no blocker remains and required validation passes for the current exact
+  PR HEAD, leave the structured exact-head review `COMMENT` described above
+  with gate marker `+1`.
+- Do not merge.
+
+### Second reviewer — independent full review
+
+- Begin only when the current exact PR HEAD has a valid `+1` record.
+- Perform another complete independent review under this `REVIEW.md`.
+- Do not reduce review scope because the first reviewer recorded `+1`.
+  Independently review the problem, approach, implementation, regression risk,
+  tests, validation, and systemic causes of defects.
+- If blockers remain, report them and do not record `+2`.
+- When no blocker remains and required validation passes for the same exact PR
+  HEAD, leave the structured exact-head review `COMMENT` described above
+  with gate marker `+2`.
+- Do not merge.
+
+### Third reviewer — review of reviews and merge gate
+
+The third reviewer does not repeat a full diff review by default. This section
+takes precedence over the full-review flow above for the third stage.
+
+Start with:
+
+1. the active issue and acceptance criteria;
+2. the current exact HEAD and complete changed-file surface;
+3. the structured `+1` and `+2` review records for that same HEAD;
+4. blocker threads and fix history relevant to those records;
+5. required exact-head CI or validation status.
+
+Review the reviews before reviewing the code.
+
+Determine whether the two independent reviews:
+
+- identified the real problem and evaluated the chosen approach rather than
+  only the reported symptom;
+- covered the material behavioral and architectural risks of the changed
+  surface;
+- forced systemic fixes and regression guards where recurrence was possible;
+- independently checked plausible blind spots instead of sharing the same
+  unsupported assumption;
+- verified blocker resolution and required exact-head validation.
+
+If the records are missing, marker-only, materially ambiguous, inconsistent, or
+show a coverage gap, inspect the necessary patch, source, data, tests, or
+artifacts directly. Expand only far enough to resolve the questionable review
+direction or uncovered risk. Report blockers and do not merge while a material
+question remains.
+
+If the review direction is sound and the records provide sufficient evidence,
+do not reread the complete diff merely to duplicate the first two reviews.
+Verify that the final implementation and validation correspond to the reviewed
+direction, that all blockers are resolved, and that required validation passed
+for the exact HEAD.
+
+When the merge gate is satisfied, squash-merge the PR directly. The third
+reviewer does not create an approval record.
+
+### Exact-head gate semantics
+
+Both `+1` and `+2` must refer to the same exact PR HEAD and must be recorded
+in that order.
+
+Any new commit makes previous `+1` and `+2` records stale and returns the
+gate state to `0`.
+
+Resetting the gate does not require rereading unchanged hunks. For a follow-up
+review after fixes, each reviewer may use its own previously reviewed HEAD as
+the baseline and apply the `Follow-up review` rules above, while still
+producing a new structured gate record bound to the new exact HEAD.
 
 ## Stop condition
 
