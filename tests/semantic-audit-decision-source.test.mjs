@@ -410,7 +410,7 @@ test('the exact grandfathered M5-12A v2 source still replays through the shared 
     artifactId: 'm5-12a-grandfathered-replay-regression',
   });
 
-  assert.equal(artifact.record_count, 3042);
-  assert.equal(artifact.review.records.length, 3042);
+  assert.equal(artifact.record_count, 4042);
+  assert.equal(artifact.review.records.length, 4042);
   assert.ok(artifact.review.records.some((review) => review.record_id === 'w1279'));
 });

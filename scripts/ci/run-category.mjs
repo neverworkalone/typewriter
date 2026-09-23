@@ -27,7 +27,7 @@ import { normalizeCanonicalDirectory } from '../normalize/canonical.mjs';
 import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
-import { validateM513 } from '../batch/validate-m5-13.mjs';
+import { validateM514 } from '../batch/validate-m5-14.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -306,8 +306,8 @@ async function runInProcessCheck(name, context) {
     return;
   }
 
-  if (name === 'm5-13-pre-admission') {
-    console.log(JSON.stringify(await validateM513({ canonicalContext }), null, 2));
+  if (name === 'm5-14-pre-admission') {
+    console.log(JSON.stringify(await validateM514({ canonicalContext }), null, 2));
     return;
   }
 
