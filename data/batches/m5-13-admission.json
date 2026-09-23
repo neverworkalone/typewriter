@@ -22,7 +22,7 @@
   },
   "base": {
     "canonical_directory_sha256": "690592c89c578096fc65585f24489f1095fc16d495cc02dee4da94de057d38df",
-    "inventory_sha256": "6c10d709f20cd922b7e3bf7696e3ea4f6077f2ca1091bfc2a5f39a47f8eea7c0",
+    "inventory_sha256": "275f0caf7f6fa3b33e242ca5920040132b3618ddc817c65d6a1b59c864e2e440",
     "inventory_materialization": "on-demand-prospective",
     "seed_sha256": "37ed9af967f6dfb41b5bf1cc0024c3aa34e41a1ebac0290ae95ae8a8af9f8000",
     "promotion_ledger_prefix_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
@@ -44,9 +44,9 @@
     "expression_count": 309
   },
   "decisions": {
-    "included": 1053,
+    "included": 1054,
     "corrected": 0,
-    "held": 47,
+    "held": 46,
     "rejected": 0,
     "deferred": 0,
     "processed_start_count": 1100,
@@ -77,54 +77,54 @@
     "issue": 99,
     "batch_id": "m5-13-expansion-20260922",
     "inputs": {
-      "prospective_canonical_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf",
-      "semantic_audit_sha256": "2940e9acb9d3291e9f6e9e5696000efaf09a0c5750fe9e9ed31707416ab5a439",
-      "decision_source_sha256": "9198cf8e7ee2df37c0bd4da25dfe8c9ca8e29b104246dd76041b3c38fa2d0f13",
-      "promotion_ledger_prefix_sha256": "74187376affe263bb21e679a93259e913538ed1c5176f634d71bdf26e9959f18"
+      "prospective_canonical_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
+      "semantic_audit_sha256": "1e83baa539376c50f24f37afee4270cb2e6c858d41bc5257404c3473da5cb081",
+      "decision_source_sha256": "b3ed2b829ef86af8809accf7efd3c9770c4f9678862015428b9ce1a34ad0ab83",
+      "promotion_ledger_prefix_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248"
     },
     "preflight": {
       "contract_version": "lexical-batch-preflight-v1",
       "status": "complete",
-      "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf",
+      "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119",
       "checks": {
         "candidate_source_digest": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "generation_verification_separated": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "truthful_agent_provenance": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "deterministic_sqlite": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "search_product_regression": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "extension_build": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "package_validation": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         },
         "artifact_policy_clean_checkout": {
           "status": "pass",
-          "input_canonical_directory_sha256": "8523c76e4b88ef5bb84c3a3d9daee3f9652ff39b51d432a4cdf783e295d3b3bf"
+          "input_canonical_directory_sha256": "df9a95ad7bb6b44914dd8090905019e38525c9023c97cdf2557b04b23087f119"
         }
       }
     },
     "complete_audit": {
       "contract_version": "lexical-semantic-audit-v3",
       "scope": "complete-canonical",
-      "canonical_records_sha256": "e9c4800229956976e7f135fbf9bb077696cc0428556150eaf6dc290a63f7814d",
+      "canonical_records_sha256": "f90aba4abf55df4a0742e90cb5fe31ee8b67da8ea914eec58ecc066adf50d7d5",
       "record_count": 3042,
       "sense_count": 3301,
       "covered_record_count": 3042,
@@ -134,14 +134,14 @@
       "corrected_record_count": 0
     }
   },
-  "gate_evidence_sha256": "c5200863c472b502f50cb80e25fb2af1204e753461b5e52f91f5afa8f97b4533",
+  "gate_evidence_sha256": "8cd5f3f9ed1dc4db58dfee8c61aef1408ff66189708b73155be9c279693eb1d3",
   "promotion_ledger_binding": {
     "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
     "append_start": 722,
     "append_count": 1000,
-    "append_sha256": "18397a29f8d5e6f0268a99f78d19d7d351d6282aaaa50c65e31310f69355b4e7",
+    "append_sha256": "83d4e659f62eb0541345c1289aaea8f24cbe044b544ae5c727d2541b2bb40ac2",
     "prefix_event_count": 1722,
-    "prefix_sha256": "74187376affe263bb21e679a93259e913538ed1c5176f634d71bdf26e9959f18"
+    "prefix_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248"
   },
   "sources": {
     "candidate_identities": {
@@ -151,38 +151,38 @@
       "identity_count": 1100
     },
     "verification": {
-      "source_id": "m5-13-authored-semantic-decisions-20260923-r5",
+      "source_id": "m5-13-authored-semantic-decisions-20260923-r6",
       "path": "data/batches/m5-13-semantic-decisions.json",
-      "sha256": "4251484a4365c59a9398d1fbee4313ab244557047826db0d63744b5af07dbb96"
+      "sha256": "b3e238b8715c46ed813e4faacac442ad66333b206c245c202d72a00c08ad5bf1"
     },
     "semantic_audit": {
       "source_id": "derived:complete-canonical-audit",
       "path": "derived:complete-canonical-audit",
-      "sha256": "2940e9acb9d3291e9f6e9e5696000efaf09a0c5750fe9e9ed31707416ab5a439"
+      "sha256": "1e83baa539376c50f24f37afee4270cb2e6c858d41bc5257404c3473da5cb081"
     },
     "target_promotions": {
       "source_id": "target_promotions",
       "path": "data/inventory/m5-target-promotions.jsonl",
-      "sha256": "74187376affe263bb21e679a93259e913538ed1c5176f634d71bdf26e9959f18",
+      "sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248",
       "ledger_binding": {
         "previous_ledger_sha256": "35b0ee53ba199d1ecbd14cbca160db1928ece6989f70642572b35478ca94a39a",
         "append_start": 722,
         "append_count": 1000,
-        "append_sha256": "18397a29f8d5e6f0268a99f78d19d7d351d6282aaaa50c65e31310f69355b4e7",
+        "append_sha256": "83d4e659f62eb0541345c1289aaea8f24cbe044b544ae5c727d2541b2bb40ac2",
         "prefix_event_count": 1722,
-        "prefix_sha256": "74187376affe263bb21e679a93259e913538ed1c5176f634d71bdf26e9959f18"
+        "prefix_sha256": "39e5366a3b576874188f63dc47a065a7efaf801120fac0ce0b3df6c2a6293248"
       }
     },
     "base_inventory": {
       "source_id": "derived:on-demand-target-inventory",
       "path": "derived:on-demand-prospective-inventory",
       "materialization": "on-demand",
-      "sha256": "6c10d709f20cd922b7e3bf7696e3ea4f6077f2ca1091bfc2a5f39a47f8eea7c0"
+      "sha256": "275f0caf7f6fa3b33e242ca5920040132b3618ddc817c65d6a1b59c864e2e440"
     },
     "authorization": {
       "source_id": "authorization",
       "path": "external:m5-13-authorization",
-      "sha256": "c5ea686b02d49ad6fffaa3f90f52560d8f1dc443f61119e8f18b464430705362"
+      "sha256": "026bdae54cf52e8bf25b3f7171b9b58987ad15fb28bc3c9040b75e0632931fa6"
     }
   },
   "promotion": {

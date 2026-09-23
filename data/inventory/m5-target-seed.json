@@ -26596,27 +26596,6 @@
       "decision_note": "m5-2345 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
     },
     {
-      "inventory_id": "m5-2395",
-      "status": "held",
-      "planned_role": "start",
-      "record_type": "entry",
-      "lemma": "빠른 숨",
-      "search_forms": [
-        "빠른 숨"
-      ],
-      "reason_codes": [
-        "S"
-      ],
-      "pos": [
-        "noun"
-      ],
-      "sense_profile": "single",
-      "flags": [
-        "sensory-transfer"
-      ],
-      "decision_note": "m5-2395 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
-    },
-    {
       "inventory_id": "m5-2398",
       "status": "held",
       "planned_role": "start",
@@ -27371,6 +27350,27 @@
         "action-direction"
       ],
       "decision_note": "m5-2796 semantic_decision=held; selection=excluded after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+    },
+    {
+      "inventory_id": "m5-2811",
+      "status": "deferred",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "믿다",
+      "search_forms": [
+        "믿다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [
+        "action-direction"
+      ],
+      "decision_note": "m5-2811 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
     },
     {
       "inventory_id": "m5-2812",
