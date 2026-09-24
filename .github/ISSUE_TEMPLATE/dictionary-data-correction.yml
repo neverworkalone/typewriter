@@ -1,0 +1,52 @@
+name: Dictionary or data correction
+description: Report a possible typo, sense, relation, or provenance issue in Typewriter data.
+title: "[Data] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the issue in your own words and link to public references. Do not paste dictionary definitions, examples, API responses, scraped text, or unpublished writing. A report does not grant redistribution rights or authorize a data change.
+  - type: input
+    id: affected_record
+    attributes:
+      label: Search term or record ID
+      description: Include the word or expression you searched for. Add a record ID if you know it.
+      placeholder: Korean word or expression
+    validations:
+      required: true
+  - type: dropdown
+    id: concern_type
+    attributes:
+      label: Type of concern
+      options:
+        - Typo or formatting
+        - Sense or part of speech
+        - Relation or relation type
+        - Attribution or rights
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: explanation
+    attributes:
+      label: What should we review?
+      description: Explain the concern in your own words. Do not quote a reference source.
+      placeholder: Describe what seems wrong or missing.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Public references
+      description: Link to sources and include the publisher, version, or terms when known. Do not paste source text.
+      placeholder: Links and brief notes only.
+    validations:
+      required: false
+  - type: textarea
+    id: writer_context
+    attributes:
+      label: Writer context (optional)
+      description: Explain why this distinction may matter in writing. Do not include private or unpublished writing.
+      render: text
+    validations:
+      required: false

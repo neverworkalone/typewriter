@@ -5,6 +5,13 @@
 - Audited source revision: `0c8a66cd7a85d1aaed30aaf977b45ceec9f03de8` (master after MO-1 / #150)
 - Repository visibility: private; this audit does not change it.
 
+## Status after MO-3 triage
+
+GitHub issue #152 is closed, but the current tree has no record-level clearance
+allowlist for the canonical corpus. DATA-LICENSE.md continues to hold the current
+corpus and data-bearing artifacts from redistribution. The hold is controlled by
+rights evidence and release approval, not by issue status.
+
 ## Owner decision
 
 The owner selected this licensing model:
@@ -12,7 +19,7 @@ The owner selected this licensing model:
 | Material | Decision | Scope |
 | --- | --- | --- |
 | Typewriter source code | Apache-2.0 | Original code only; third-party components retain their own licenses. |
-| Documentation | CC BY 4.0 | Original `docs/`, `AGENTS.md`, `REVIEW.md`, `README.md`, and original explanatory/policy prose; embedded data, third-party content, and marks are excluded. |
+| Documentation | CC BY 4.0 | Original docs/, AGENTS.md, REVIEW.md, README.md, CONTRIBUTING.md, SECURITY.md, and explanatory policy prose; embedded data, third-party content, and marks are excluded. |
 | Dictionary data | CC BY 4.0 | Only records with established redistribution rights. No NC, AI-training, competition, or other field-of-use limits. |
 | Brand | All Rights Reserved | Typewriter and Never Work Alone names, logos, icons, and visual identity. |
 
@@ -78,7 +85,7 @@ explicitly directed that untraceable records be treated as blockers. Accordingly
 this audit does **not** clear any current canonical record for redistribution and
 does not approve restricted or raw third-party content for publication.
 
-### MO-3 actions assigned to #152
+### MO-3 release conditions (originally assigned to #152)
 
 1. Produce a record-level disposition for every entry in all current
    `data/canonical/*.jsonl` files, keyed by canonical record ID. For each record,
@@ -99,19 +106,22 @@ does not approve restricted or raw third-party content for publication.
    audit. Current-file cleanup alone is insufficient if the material remains in
    a reachable commit or GitHub-hosted artifact.
 
-Until those actions pass, the entire current canonical corpus and every generated
-artifact containing it remain held from redistribution. `DATA-LICENSE.md` records
-the selected CC BY 4.0 policy but makes no grant over the held corpus.
+The entire current canonical corpus and every generated artifact containing
+it remain held from redistribution until the required record-level review has
+evidence-backed completion and the release gate approves an exact dataset
+revision. DATA-LICENSE.md records the selected CC BY 4.0 policy but makes no
+grant over the held corpus. Closing #152 does not itself clear the hold.
 
 ## Documentation, brand, and public wording
 
 The owner selected CC BY 4.0 for original project documentation, including
-`docs/`, `AGENTS.md`, `REVIEW.md`, `README.md`, and the explanatory text in the
+docs/, AGENTS.md, REVIEW.md, README.md, CONTRIBUTING.md, SECURITY.md, and the
 license-policy files. The license map excludes embedded canonical data,
 third-party material, and brand assets from that grant. Where such content occurs
-in a document, #152 must verify its source and remove, replace, or explicitly mark
-it before public release. The current README remains held until #153 rewrites its
-private/proprietary product claims.
+in a document, the public-release gate must verify its source and remove,
+replace, or explicitly mark it before release. #153 replaced the README's former
+private/proprietary repository claim; embedded uncleared data remains excluded
+from the documentation grant.
 
 The owner confirmed that the current logo and icons were directly created and
 owned by the Typewriter owner. They remain All Rights Reserved under `BRAND.md`.
@@ -121,7 +131,9 @@ standalone identity or to imply endorsement.
 The public-facing license statement can therefore say: **Typewriter source code
 is Apache-2.0; original project documentation is CC BY 4.0; data is CC BY 4.0 only
 after item-level rights clearance; Typewriter and Never Work Alone brand assets
-are All Rights Reserved.** It must retain the data hold until #152 closes it.
+are All Rights Reserved.** Retain the data hold until record-level rights
+clearance is evidenced and the release gate approves distribution; #152's closure
+does not itself clear the data.
 
 ## Gate result
 
@@ -131,21 +143,23 @@ to its MO-2 license or an explicit hold/exception:
 | MO-1 path group | MO-2 disposition |
 | --- | --- |
 | Application, build, schema, test, CI, root software/configuration, extension manifest, `.gitignore`, and future `web/` source | Apache-2.0 for original Typewriter software; third-party components retain their licenses. |
-| `docs/`, `AGENTS.md`, `REVIEW.md`, and original project documentation | CC BY 4.0 for original prose; embedded data, third-party content, and brand assets are excluded. Current README text remains held for #153 rewrite. |
-| Canonical, inventory, batch, validation, SQLite, and product data artifacts | CC BY 4.0 only after item-level clearance; the current corpus and data-bearing artifacts remain held for #152. |
+| docs/, AGENTS.md, REVIEW.md, README.md, CONTRIBUTING.md, SECURITY.md, and original project documentation | CC BY 4.0 for original prose; embedded data, third-party content, and brand assets are excluded. The README states product availability and license boundaries. |
+| Canonical, inventory, batch, validation, SQLite, and product data artifacts | CC BY 4.0 only after item-level clearance; the current corpus and data-bearing artifacts remain held pending record-level rights evidence and release approval. |
 | Public logo, icons, and brand identity | All Rights Reserved; owner confirmed direct creation and ownership. |
 | License maps, data license, brand policy, and third-party notices | Shipped with the extension package; source-code/data/brand boundaries remain distinct. Third-party license text retains its own terms. |
-| GitHub discussions, history, Actions logs/artifacts, transient or unapproved output | Outside the repository grants and held for the #152 surface/history audit; data-bearing outputs also inherit the data hold. |
+| GitHub discussions, history, Actions logs/artifacts, transient or unapproved output | Outside the repository grants; exact release refs and hosted surfaces require a verified audit and release approval. Data-bearing outputs also inherit the data hold. |
 
 - Code license: finalized as Apache-2.0.
 - Documentation license: finalized as CC BY 4.0 for original documentation text.
 - Data license: finalized as CC BY 4.0 for records with proven redistribution
-  rights; the current corpus has no cleared allowlist and remains held for #152.
+  rights; the current corpus has no cleared allowlist and remains held pending
+  record-level rights evidence and release approval.
 - Brand policy: finalized as All Rights Reserved; owner confirmed direct creation
   and ownership of current logo and icons.
 - Third-party runtime notices: SQLite Apache-2.0 and Vue/Vue runtime MIT covered.
 - Restricted or raw third-party material: none approved for publication.
-- Provenance blockers: assigned to #152 with corpus-wide record-level disposition,
-  remove/rewrite, rebuild, and reachable-history actions.
+- Provenance release conditions: record-level disposition, remove/rewrite,
+  rebuild, and reachable-history actions remain required. #152 is closed, but its
+  issue state does not establish that these conditions have been met.
 - Public visibility: unchanged; public cutover remains gated by #157 in the #149
   execution plan.

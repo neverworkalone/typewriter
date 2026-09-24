@@ -21,11 +21,11 @@ components; they do not change those components' licenses.
 ## Documentation
 
 Original project documentation is licensed under the Creative Commons Attribution
-4.0 International license (CC BY 4.0). This covers `docs/`, `AGENTS.md`,
-`REVIEW.md`, `README.md`, and original explanatory or policy text in
-`LICENSE.md`, `DATA-LICENSE.md`, and `BRAND.md`. Embedded canonical data,
-third-party material and license texts, trademarks, and brand artwork are
-excluded and retain their separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md)
+4.0 International license (CC BY 4.0). This covers docs/, AGENTS.md, REVIEW.md,
+README.md, CONTRIBUTING.md, SECURITY.md, and original explanatory or policy text in
+LICENSE.md, DATA-LICENSE.md, and BRAND.md. Embedded canonical data, third-party
+material and license texts, trademarks, and brand artwork are excluded and retain
+their separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md)
 and [`BRAND.md`](BRAND.md).
 
 ## Dictionary data
@@ -52,4 +52,5 @@ package carries the applicable licenses and notices in
 
 GitHub issues, pull requests, review discussions, Actions logs, and other
 GitHub-hosted surfaces are not relicensed by this repository notice. Their
-publication status is handled by the MO-3 audit in #152.
+publication must pass the applicable repository-release gate. Closing an issue
+does not itself grant rights or clear material for publication.
