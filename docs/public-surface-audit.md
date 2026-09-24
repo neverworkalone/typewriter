@@ -29,13 +29,12 @@ and the prior record-level license/provenance findings in
 No secret rotation was indicated by the completed secret scans. This does not
 resolve the historical personal-email metadata or the corpus provenance hold.
 
-## Systemic checks added
+## Checks and one-time audit
 
-- CI installs Gitleaks v8.30.1 from its pinned release archive, verifies the
-  archive SHA-256, and scans both the checked-out tracked tree and all history
-  available to the checkout on pull requests and pushes to `master`. The checked
-  in Gitleaks configuration extends its default secret rules with a generalized
-  personal home-path rule, so those paths are checked across history too.
+- Gitleaks v8.30.1 was run once for this audit against the current tracked tree
+  and all locally reachable history, with a personal-home-path rule in addition
+  to its default secret checks. It reported no findings. This one-time result is
+  audit evidence and does not run in CI.
 - `npm run validate:public-surface` scans tracked text files for absolute
   personal home paths on macOS, Linux, and Windows. Findings report relative
   filenames and path categories without printing matched path values.
@@ -51,15 +50,14 @@ resolve the historical personal-email metadata or the corpus provenance hold.
 - Focused validator, metadata, and CI workflow tests: 13 passed.
 - `npm run validate:public-surface`: passed on 545 tracked files in the staged
   deliverable.
-- `npm run validate:commit-metadata`: passed after commit; the one new audit
-  commit uses GitHub no-reply author and committer addresses.
-- Gitleaks v8.30.1 with the checked-in custom rule: no findings in the 545-file
-  committed tree (about 72.42 MB) or full locally reachable history (443
-  commits, about 307.79 MB). A synthetic home-path fixture was detected with
-  its value redacted.
+- `npm run validate:commit-metadata`: passed; both audit branch commits use
+  GitHub no-reply author and committer addresses.
+- One-time Gitleaks v8.30.1 scan at audit head `ee93712a173edb6d55803f58c4e2aead34ad6dba`,
+  with the audit's custom rule: no findings in the 545-file tree (about 72.42
+  MB) or locally reachable history (443 commits, about 307.79 MB). A synthetic
+  home-path fixture was detected with its value redacted.
 - `git diff --check`: passed. `actionlint` is unavailable in this environment;
-  the workflow regression test checks the pinned scanner, checksum, tree scan,
-  and full-history scan steps structurally.
+  the workflow regression test verifies that Gitleaks is absent from CI.
 - No history rewrite was performed, so post-rewrite clean-clone validation is
   pending with the blockers above.
 

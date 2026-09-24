@@ -150,11 +150,7 @@ test('workflows keep normal and deep CI responsibilities separate', async () => 
   assert.match(workflow, /actions\/checkout@v7/u);
   assert.match(workflow, /actions\/setup-node@v7/u);
   assert.match(workflow, /node-version: 22\.13\.x/u);
-  assert.match(workflow, /name: Install pinned Gitleaks/u);
-  assert.match(workflow, /gitleaks_8\.30\.1_linux_x64\.tar\.gz/u);
-  assert.match(workflow, /551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb/u);
-  assert.match(workflow, /gitleaks dir --no-banner --redact=100/u);
-  assert.match(workflow, /gitleaks git --no-banner --redact=100 --log-opts=--all/u);
+  assert.doesNotMatch(workflow, /Gitleaks|gitleaks/u);
   assert.doesNotMatch(workflow, /^\s+schedule:/mu);
   assert.doesNotMatch(workflow, /^\s+workflow_dispatch:/mu);
   assert.doesNotMatch(workflow, /npm run ci:fast/u);
