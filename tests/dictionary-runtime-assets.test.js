@@ -27,15 +27,26 @@ describe('product dictionary runtime assets', () => {
     expect(workerSource).toContain("case 'metadata'");
   });
 
-  it('copies only the worker protocol and pinned runtime through the product build config', async () => {
-    const viteConfig = await readFile(path.join(repositoryRoot, 'vite.config.js'), 'utf8');
+  it('builds the same runtime assets and dictionary for extension and web', async () => {
+    const [extensionConfig, webConfig, runtimePlugin] = await Promise.all([
+      readFile(path.join(repositoryRoot, 'vite.config.js'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'vite.web.config.js'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'scripts/build/product-runtime-plugin.mjs'), 'utf8'),
+    ]);
 
-    expect(viteConfig).toContain("src/runtime/dictionary-worker.mjs");
-    expect(viteConfig).toContain("src/runtime/protocol.js");
-    expect(viteConfig).toContain("src/runtime/query-adapter.js");
-    expect(viteConfig).toContain("src/runtime/search-query.js");
-    expect(viteConfig).toContain("node_modules/@sqlite.org/sqlite-wasm/dist");
-    expect(viteConfig).toContain("dist/dictionary.sqlite");
-    expect(viteConfig).toContain("path.join(vendorDirectory, 'sqlite3.wasm')");
+    expect(extensionConfig).toContain('createProductRuntimeAssets({');
+    expect(webConfig).toContain('createProductRuntimeAssets({');
+    expect(webConfig).toContain("?? '/typewriter/'");
+    expect(webConfig).toContain("path.join(webRoot, 'public')");
+    expect(runtimePlugin).toContain("src/runtime/dictionary-worker.mjs");
+    expect(runtimePlugin).toContain("src/runtime/protocol.js");
+    expect(runtimePlugin).toContain("src/runtime/query-adapter.js");
+    expect(runtimePlugin).toContain("src/runtime/search-query.js");
+    expect(runtimePlugin).toContain("node_modules/@sqlite.org/sqlite-wasm/dist");
+    expect(runtimePlugin).toContain("path.join(runtimeDirectory, 'dictionary-worker.mjs')");
+    expect(runtimePlugin).toContain("path.join(vendorDirectory, 'sqlite3.wasm')");
+    expect(runtimePlugin).toContain("'THIRD-PARTY-NOTICES.txt'");
+    expect(runtimePlugin).toContain('PRODUCT_LEGAL_FILES.map');
+    expect(runtimePlugin).toContain('buildDictionary({');
   });
 });

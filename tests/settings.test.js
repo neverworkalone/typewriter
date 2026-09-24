@@ -54,4 +54,22 @@ describe('settings storage', () => {
       background: 'fog',
     });
   });
+
+  it('uses browser local storage when the extension storage adapter is disabled', async () => {
+    const entries = new Map();
+    const fallbackStorage = {
+      getItem: (key) => entries.get(key) ?? null,
+      setItem: (key, value) => entries.set(key, value),
+    };
+    const store = createSettingsStore({ storage: null, fallbackStorage });
+
+    expect(await store.load()).toEqual(DEFAULT_SETTINGS);
+    await store.save({ ...DEFAULT_SETTINGS, association: true, background: 'fog' });
+    expect(await store.load()).toEqual({
+      ...DEFAULT_SETTINGS,
+      association: true,
+      background: 'fog',
+    });
+    expect(entries.get(SETTINGS_STORAGE_KEY)).toContain('"association":true');
+  });
 });

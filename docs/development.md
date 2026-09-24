@@ -66,9 +66,24 @@ dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
 
 npm test runs the current normal CI gate and is equivalent to
 npm run ci:normal. The category registry selects the active validation and test
-suite instead of running every historical test file as one unfiltered glob. Use
-npm run test:unit for Vue unit tests. Product/package verification runs through
+suite instead of running every historical test file as one unfiltered glob. The
+normal gate includes the product output contract checks. Use npm run test:unit
+for Vue unit tests. Product/package verification runs through
 npm run test:mv3:package.
+
+The browser-based runtime check is an optional debugging tool for web-page or
+runtime issues; it does not run in `npm test` or CI. Build both products, install
+Chromium once, then run the check:
+
+```sh
+npm run build
+npm run build:web
+npx playwright install chromium
+npm run test:web:integration
+```
+
+On Linux systems missing browser libraries, install them with
+`npx playwright install --with-deps chromium`.
 
 The product popup and options page use only extension-local assets and the
 storage permission. When Chrome for Testing is available, the product CFT check
@@ -213,11 +228,12 @@ commands themselves should pass.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It checks out
-the revision under review, installs the pinned dependency with `npm ci`, selects
-Node.js 22.13.x, and runs `npm run ci:normal` in one process. The normal runner
-emits the `ci:fast` checkpoint and then continues with the remaining normal checks;
-the fast checkpoint is not started as a second GitHub Actions workflow.
+`.github/workflows/ci.yml` runs on pull requests and pushes to `master`. It
+checks out the revision under review, installs the pinned dependencies with
+`npm ci --ignore-scripts --no-audit --no-fund`, selects Node.js 22.13.x, then
+runs `npm run ci:normal` in one process. The normal runner emits the `ci:fast`
+checkpoint and then continues with the remaining normal checks; the fast
+checkpoint is not started as a second GitHub Actions workflow.
 
 `.github/workflows/deep.yml` owns scheduled and manual full validation. It runs
 `npm run ci:all`, which includes normal validation followed by historical replay,

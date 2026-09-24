@@ -4,6 +4,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  settingsHref: {
+    type: String,
+    default: 'options.html',
+  },
 });
 
 defineEmits(['open-settings']);
@@ -15,7 +19,7 @@ defineEmits(['open-settings']);
     <footer class="product-footer">
       <span>Typewriter</span>
       <a
-        href="options.html"
+        :href="settingsHref"
         data-settings-link
         @click.prevent="$emit('open-settings')"
       >설정</a>

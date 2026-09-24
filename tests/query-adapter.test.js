@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   DictionaryRuntime,
   DictionaryRuntimeError,
+  resolveDictionaryWorkerUrl,
 } from '../src/runtime/query-adapter.js';
 import {
   createSuccessResponse,
@@ -59,6 +60,15 @@ function respond(worker, request, result) {
 }
 
 describe('DictionaryRuntime', () => {
+  it('resolves the worker from the web base path rather than the entry chunk directory', () => {
+    expect(resolveDictionaryWorkerUrl('runtime/dictionary-worker.mjs', {
+      baseUrl: '/typewriter/',
+      pageUrl: 'https://neverworkalone.github.io/typewriter/',
+    }).href).toBe(
+      'https://neverworkalone.github.io/typewriter/runtime/dictionary-worker.mjs',
+    );
+  });
+
   it('reuses the shared baseline corpus for exact browser query requests', async () => {
     let worker;
     const baselineQueries = expectedBrowserQueries(searchRegressionCorpus);
