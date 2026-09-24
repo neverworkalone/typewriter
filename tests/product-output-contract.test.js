@@ -22,10 +22,7 @@ async function createValidProductOutputFixture(root) {
   await Promise.all([
     writeFile(path.join(extensionOutput, 'dictionary.sqlite'), database),
     writeFile(path.join(webOutput, 'dictionary.sqlite'), database),
-    writeFile(
-      path.join(webAssets, 'index.js'),
-      PRODUCT_LEGAL_FILES.map((fileName) => `fetch('./${fileName}')`).join('\n'),
-    ),
+    writeFile(path.join(webAssets, 'index.js'), 'void 0;'),
     ...PRODUCT_LEGAL_FILES.flatMap((fileName) => {
       const source = Buffer.from(`source: ${fileName}`);
       return [
@@ -48,7 +45,7 @@ async function withProductOutputFixture(run) {
 }
 
 describe('product output contract validator', () => {
-  it('accepts matching product outputs and legal links', async () => {
+  it('accepts matching outputs with packaged legal files even without visible links', async () => {
     await withProductOutputFixture(async (root) => {
       await expect(validateProductOutputContract({ root })).resolves.toBeUndefined();
     });
@@ -63,6 +60,26 @@ describe('product output contract validator', () => {
 
       await expect(validateProductOutputContract({ root })).rejects.toThrow(
         'extension and web products must copy the same CI-built SQLite artifact',
+      );
+    });
+  });
+
+  it('rejects a web legal file that differs from its repository source', async () => {
+    await withProductOutputFixture(async (root) => {
+      await writeFile(path.join(root, 'dist-web', PRODUCT_LEGAL_FILES[0]), 'changed');
+
+      await expect(validateProductOutputContract({ root })).rejects.toThrow(
+        `dist-web/${PRODUCT_LEGAL_FILES[0]} must match its source`,
+      );
+    });
+  });
+
+  it('still requires a built web JavaScript bundle', async () => {
+    await withProductOutputFixture(async (root) => {
+      await rm(path.join(root, 'dist-web', 'assets', 'index.js'));
+
+      await expect(validateProductOutputContract({ root })).rejects.toThrow(
+        'web JavaScript bundle must exist',
       );
     });
   });

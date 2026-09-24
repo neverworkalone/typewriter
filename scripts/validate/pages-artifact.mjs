@@ -11,9 +11,10 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const PAGES_BASE_PATH = '/typewriter/';
 const ASSET_PATTERN = /^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/u;
-const ALLOWED_DIRECTORIES = new Set(['assets', 'runtime', 'runtime/vendor']);
+const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'runtime', 'runtime/vendor']);
 const ALLOWED_FILES = new Set([
   'index.html',
+  'about/index.html',
   'favicon.svg',
   'dictionary.sqlite',
   'runtime/dictionary-worker.mjs',
@@ -136,49 +137,52 @@ function assertRequiredFiles(files) {
 }
 
 async function validateHtmlAssetPaths(outputDirectory, files) {
-  const html = await readFile(path.join(outputDirectory, 'index.html'), 'utf8');
-  const references = [...html.matchAll(/\b(?:src|href)="([^"]+)"/gu)]
-    .map(([, reference]) => reference);
   const fileSet = new Set(files);
 
-  if (!references.includes(PAGES_BASE_PATH + 'favicon.svg')) {
-    fail(
-      'Pages index.html must resolve favicon.svg under ' + PAGES_BASE_PATH,
-      'PAGES_ARTIFACT_BASE_PATH',
-    );
-  }
+  for (const htmlPath of ['index.html', 'about/index.html']) {
+    const html = await readFile(path.join(outputDirectory, htmlPath), 'utf8');
+    const references = [...html.matchAll(/\b(?:src|href)="([^"]+)"/gu)]
+      .map(([, reference]) => reference);
 
-  for (const reference of references) {
-    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/iu.test(reference)) {
-      fail('Pages index.html must not load remote assets: ' + reference, 'PAGES_ARTIFACT_REMOTE_ASSET');
-    }
-    if (reference.startsWith('/') && !reference.startsWith(PAGES_BASE_PATH)) {
+    if (!references.includes(PAGES_BASE_PATH + 'favicon.svg')) {
       fail(
-        'Pages index.html contains an absolute path outside ' + PAGES_BASE_PATH + ': ' + reference,
+        `Pages ${htmlPath} must resolve favicon.svg under ${PAGES_BASE_PATH}`,
         'PAGES_ARTIFACT_BASE_PATH',
       );
     }
-    if (reference.startsWith(PAGES_BASE_PATH)) {
-      const pathname = new URL(reference, 'https://typewriter.invalid').pathname;
-      const relativePath = pathname.slice(PAGES_BASE_PATH.length);
-      if (!fileSet.has(relativePath)) {
+
+    for (const reference of references) {
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/iu.test(reference)) {
+        fail(`Pages ${htmlPath} must not load remote assets: ${reference}`, 'PAGES_ARTIFACT_REMOTE_ASSET');
+      }
+      if (reference.startsWith('/') && !reference.startsWith(PAGES_BASE_PATH)) {
         fail(
-          'Pages index.html references a missing artifact file: ' + relativePath,
-          'PAGES_ARTIFACT_HTML_REFERENCE',
+          `Pages ${htmlPath} contains an absolute path outside ${PAGES_BASE_PATH}: ${reference}`,
+          'PAGES_ARTIFACT_BASE_PATH',
         );
       }
+      if (reference.startsWith(PAGES_BASE_PATH)) {
+        const pathname = new URL(reference, 'https://typewriter.invalid').pathname;
+        const relativePath = pathname.slice(PAGES_BASE_PATH.length);
+        if (!fileSet.has(relativePath)) {
+          fail(
+            `Pages ${htmlPath} references a missing artifact file: ${relativePath}`,
+            'PAGES_ARTIFACT_HTML_REFERENCE',
+          );
+        }
+      }
     }
-  }
 
-  if (!references.some((reference) => (
-    reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.js')
-  ))) {
-    fail('Pages index.html must load a JavaScript bundle under the Pages base path.', 'PAGES_ARTIFACT_BASE_PATH');
-  }
-  if (!references.some((reference) => (
-    reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.css')
-  ))) {
-    fail('Pages index.html must load a CSS bundle under the Pages base path.', 'PAGES_ARTIFACT_BASE_PATH');
+    if (!references.some((reference) => (
+      reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.js')
+    ))) {
+      fail(`Pages ${htmlPath} must load a JavaScript bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
+    }
+    if (!references.some((reference) => (
+      reference.startsWith(PAGES_BASE_PATH + 'assets/') && reference.endsWith('.css')
+    ))) {
+      fail(`Pages ${htmlPath} must load a CSS bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
+    }
   }
 }
 

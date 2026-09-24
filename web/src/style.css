@@ -49,26 +49,27 @@ a {
   text-decoration: none;
 }
 
-.site-navigation,
-.release-links {
+.site-navigation {
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
-.site-navigation a,
-.release-links a,
-.site-footer a {
+.site-navigation a {
   color: #615b55;
   font-size: 13px;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
 
-.site-navigation a:hover,
-.release-links a:hover,
-.site-footer a:hover {
+.site-navigation a:hover {
   color: #7e433e;
+}
+
+.site-navigation a[aria-current="page"] {
+  color: #7e433e;
+  font-weight: 650;
+  text-decoration: none;
 }
 
 .hero {
@@ -103,6 +104,7 @@ a {
 }
 
 .search-stage {
+  margin: 42px 0 82px;
   padding: 25px;
   border: 1px solid #e3ded8;
   border-radius: 18px;
@@ -110,7 +112,14 @@ a {
   box-shadow: 0 18px 48px rgba(52, 44, 36, 0.07);
 }
 
-.search-stage .dictionary-panel {
+.search-stage-title {
+  margin: 0 0 20px;
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
+
+.web-app .search-stage .dictionary-panel {
   width: 100%;
   max-width: none;
   gap: 14px;
@@ -197,9 +206,7 @@ a {
 }
 
 .example-searches button:focus-visible,
-.site-navigation a:focus-visible,
-.release-links a:focus-visible,
-.site-footer a:focus-visible {
+.site-navigation a:focus-visible {
   outline: 2px solid #7e433e;
   outline-offset: 3px;
   border-radius: 3px;
@@ -212,8 +219,7 @@ a {
   padding: 115px 10px 91px;
 }
 
-.section-heading h2,
-.release-section h2 {
+.section-heading h2 {
   margin: 13px 0 0;
   font-size: clamp(25px, 4vw, 34px);
   font-weight: 600;
@@ -229,8 +235,7 @@ a {
   padding-top: 3px;
 }
 
-.about-copy p,
-.release-section > p:not(.eyebrow) {
+.about-copy p {
   margin: 0;
   color: #6f6a66;
   font-size: 14px;
@@ -272,31 +277,6 @@ a {
   font-size: 12px;
   line-height: 1.8;
   word-break: keep-all;
-}
-
-.release-section {
-  padding: 46px 0 52px;
-  border-top: 1px solid #e1ddda;
-}
-
-.release-section h2 {
-  margin-bottom: 13px;
-  font-size: clamp(23px, 3.7vw, 30px);
-}
-
-.release-section > p:not(.eyebrow) {
-  max-width: 730px;
-}
-
-.release-links {
-  flex-wrap: wrap;
-  gap: 19px;
-  margin-top: 20px;
-}
-
-.release-links a {
-  color: #7e433e;
-  font-weight: 650;
 }
 
 .site-footer {
@@ -461,6 +441,10 @@ a {
 
   .hero {
     padding: 58px 0 29px;
+  }
+
+  .search-stage {
+    margin: 28px 0 58px;
   }
 
   .hero-description {

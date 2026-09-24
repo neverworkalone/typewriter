@@ -17,12 +17,14 @@ async function createArtifact(t, {
   sourceRevision = SOURCE_REVISION,
   canonicalRevision = CANONICAL_REVISION,
   basePath = '/typewriter/',
+  aboutBasePath = basePath,
   worktreeState = 'clean',
 } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-pages-artifact-'));
   t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
   const outputDirectory = path.join(temporaryDirectory, 'site');
   await mkdir(path.join(outputDirectory, 'assets'), { recursive: true });
+  await mkdir(path.join(outputDirectory, 'about'), { recursive: true });
   await mkdir(path.join(outputDirectory, 'runtime/vendor'), { recursive: true });
 
   const jsAsset = 'assets/index-12345678.js';
@@ -32,6 +34,12 @@ async function createArtifact(t, {
     '<link rel="icon" href="' + basePath + 'favicon.svg">'
       + '<link rel="stylesheet" href="' + basePath + cssAsset + '">'
       + '<script type="module" src="' + basePath + jsAsset + '"></script>',
+  );
+  await writeFile(
+    path.join(outputDirectory, 'about/index.html'),
+    '<link rel="icon" href="' + aboutBasePath + 'favicon.svg">'
+      + '<link rel="stylesheet" href="' + aboutBasePath + cssAsset + '">'
+      + '<script type="module" src="' + aboutBasePath + jsAsset + '"></script>',
   );
   await writeFile(path.join(outputDirectory, 'favicon.svg'), '<svg></svg>');
   await writeFile(path.join(outputDirectory, jsAsset), 'void 0;');
@@ -102,6 +110,33 @@ test('rejects extension manifests and any other unapproved artifact files', asyn
 
 test('rejects an artifact that uses the site root instead of the repository Pages base path', async (t) => {
   const { outputDirectory } = await createArtifact(t, { basePath: '/' });
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_BASE_PATH' },
+  );
+});
+
+test('requires the product introduction entrypoint in the Pages artifact', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await rm(path.join(outputDirectory, 'about/index.html'));
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_REQUIRED_FILE' },
+  );
+});
+
+test('validates the product introduction asset paths against the repository Pages base path', async (t) => {
+  const { outputDirectory } = await createArtifact(t, { aboutBasePath: '/' });
   await assert.rejects(
     validatePagesArtifact({
       outputDirectory,

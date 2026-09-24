@@ -42,13 +42,4 @@ export async function validateProductOutputContract({
   const bundles = (await readdir(webAssets))
     .filter((fileName) => fileName.endsWith('.js'));
   assert.ok(bundles.length > 0, 'web JavaScript bundle must exist');
-  const bundle = (await Promise.all(bundles.map((fileName) => (
-    readFile(path.join(webAssets, fileName), 'utf8')
-  )))).join('\n');
-  for (const fileName of PRODUCT_LEGAL_FILES) {
-    assert.ok(
-      bundle.includes(`./${fileName}`),
-      `web product must expose a local link to ${fileName}`,
-    );
-  }
 }
