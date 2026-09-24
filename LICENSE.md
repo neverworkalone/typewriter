@@ -44,8 +44,8 @@ license is granted by the source-code or data licenses.
 
 ## Third-party components
 
-Third-party components are governed by their respective licenses. The product
-package carries the applicable licenses and notices in
+Third-party components are governed by their respective licenses. Generated
+extension and web product outputs include the applicable licenses and notices in
 [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt) and
 [`Apache-2.0.txt`](Apache-2.0.txt).
 

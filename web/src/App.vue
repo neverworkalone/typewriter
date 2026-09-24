@@ -485,9 +485,11 @@ onBeforeUnmount(() => {
         현재 사전 corpus는 출처별 재배포 권리 확인이 끝나지 않아 공개 배포가 보류되어 있습니다.
       </p>
       <div class="release-links">
-        <a href="https://github.com/neverworkalone/typewriter/blob/master/LICENSE.md">라이선스 안내</a>
-        <a href="https://github.com/neverworkalone/typewriter/blob/master/DATA-LICENSE.md">데이터 라이선스</a>
-        <a href="https://github.com/neverworkalone/typewriter/blob/master/BRAND.md">브랜드 정책</a>
+        <a href="./LICENSE.md">소프트웨어 라이선스 안내</a>
+        <a href="./Apache-2.0.txt">Apache 2.0 전문</a>
+        <a href="./THIRD-PARTY-NOTICES.txt">제3자 라이선스 고지</a>
+        <a href="./DATA-LICENSE.md">데이터 라이선스</a>
+        <a href="./BRAND.md">브랜드 정책</a>
         <a href="https://github.com/neverworkalone/typewriter">저장소</a>
       </div>
     </section>

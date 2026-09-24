@@ -45,6 +45,8 @@ describe('product dictionary runtime assets', () => {
     expect(runtimePlugin).toContain("node_modules/@sqlite.org/sqlite-wasm/dist");
     expect(runtimePlugin).toContain("path.join(runtimeDirectory, 'dictionary-worker.mjs')");
     expect(runtimePlugin).toContain("path.join(vendorDirectory, 'sqlite3.wasm')");
+    expect(runtimePlugin).toContain("'THIRD-PARTY-NOTICES.txt'");
+    expect(runtimePlugin).toContain('PRODUCT_LEGAL_FILES.map');
     expect(runtimePlugin).toContain('buildDictionary({');
   });
 });

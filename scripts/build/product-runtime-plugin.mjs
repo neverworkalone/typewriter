@@ -3,6 +3,14 @@ import path from 'node:path';
 
 import { buildDictionary } from './dictionary.mjs';
 
+const PRODUCT_LEGAL_FILES = Object.freeze([
+  'Apache-2.0.txt',
+  'LICENSE.md',
+  'DATA-LICENSE.md',
+  'BRAND.md',
+  'THIRD-PARTY-NOTICES.txt',
+]);
+
 export function createProductRuntimeAssets({
   projectRoot,
   canonicalDirectory,
@@ -45,6 +53,10 @@ export function createProductRuntimeAssets({
         path.join(sqliteWasmDirectory, 'sqlite3.wasm'),
         path.join(vendorDirectory, 'sqlite3.wasm'),
       ),
+      ...PRODUCT_LEGAL_FILES.map((fileName) => cp(
+        path.join(projectRoot, fileName),
+        path.join(outputDirectory, fileName),
+      )),
     ]);
 
     const outputPath = path.join(outputDirectory, 'dictionary.sqlite');

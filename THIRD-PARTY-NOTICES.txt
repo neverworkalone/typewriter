@@ -1,4 +1,5 @@
-The Typewriter product package includes the following runtime dependencies.
+Generated Typewriter extension and web products include the following runtime
+dependencies.
 
 @sqlite.org/sqlite-wasm 3.53.0-build1
 License: Apache-2.0
@@ -10,7 +11,7 @@ package-lock.json. The package wraps SQLite Wasm and ships the SQLite WebAssembl
 runtime and JavaScript bindings. SQLite's core is public domain; this notice covers
 the separately licensed npm wrapper package. The complete Apache-2.0 license text
 is included next to this notice as `Apache-2.0.txt` and is copied into the
-generated product package. The pinned npm package does not provide a separate
+generated product outputs. The pinned npm package does not provide a separate
 NOTICE file.
 
 Vue 3.5.42
@@ -22,8 +23,8 @@ License: MIT
 Source: https://github.com/vuejs/core
 Package: https://www.npmjs.com/package/vue/v/3.5.42
 
-Vue and its runtime packages are bundled into the generated extension JavaScript.
-Their complete MIT license text follows.
+Vue and its runtime packages are bundled into generated extension and web
+JavaScript. Their complete MIT license text follows.
 
 The MIT License (MIT)
 
