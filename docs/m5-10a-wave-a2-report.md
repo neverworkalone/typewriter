@@ -169,7 +169,7 @@ npm run validate:search
 npm run batch:m5-10a:calibration:check
 npm run batch:m5-10a:process:check
 npm run batch:m5-10a:repair:check
-npm run batch:m5-10a:wave-a2:check -- --staged=/private/tmp/typewriter-m5-10a-wave-a2-reviewed.jsonl
+npm run batch:m5-10a:wave-a2:check -- --staged=/tmp/typewriter-m5-10a-wave-a2-reviewed.jsonl
 npm run verify:m2
 npm run build:dictionary
 npm run package

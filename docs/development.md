@@ -64,9 +64,11 @@ runner.
 `runtime/` SQLite WASM worker assets after the Vite bundle. If the worktree is
 dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.
 
-`npm run test` remains the Node.js test command for the M2 toolchain. The product
-build does not replace the M2 data audit; product/package verification runs through
-`npm run test:mv3:package`.
+npm test runs the current normal CI gate and is equivalent to
+npm run ci:normal. The category registry selects the active validation and test
+suite instead of running every historical test file as one unfiltered glob. Use
+npm run test:unit for Vue unit tests. Product/package verification runs through
+npm run test:mv3:package.
 
 The product popup and options page use only extension-local assets and the
 storage permission. When Chrome for Testing is available, the product CFT check

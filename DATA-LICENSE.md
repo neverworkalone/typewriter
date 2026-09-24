@@ -28,10 +28,13 @@ extension or web bundles containing the data, and batch, inventory, or validatio
 artifacts that reproduce uncleared lexical content.
 
 The hold is not an added license restriction. It records that Typewriter has not
-established authority to license those items yet. MO-3 (#152) must document each
-record's disposition and remove or independently rewrite any record whose source
-or rights cannot be established before publication.
+established authority to license those items yet. Before release, each included
+record needs a documented source and redistribution-rights disposition. Records
+without a verifiable basis must remain excluded or be independently rewritten and
+re-admitted using a source process with recorded rights. Closing issue #152 does
+not itself provide clearance or lift this hold.
 
 Third-party material, where retained with a valid basis, remains under its
 original license and notices. Public-domain material is not relicensed by this
-notice. Current records remain held until MO-3 (#152) completes the rights review.
+notice. Current records remain held until record-level rights review has
+evidence-backed completion and the applicable release gate approves distribution.
