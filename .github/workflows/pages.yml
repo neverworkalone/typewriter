@@ -1,0 +1,101 @@
+name: GitHub Pages
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      release_commit_sha:
+        description: Enter the exact SHA recorded with APPROVE PUBLIC CUTOVER in closed issue #157. Leave empty to build and validate only.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and validate Pages artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.x
+          cache: npm
+
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build web product at the repository Pages path
+        run: npm run build:web
+        env:
+          TYPEWRITER_WEB_BASE_PATH: /typewriter/
+
+      - name: Validate artifact allowlist and provenance
+        run: npm run validate:pages-artifact
+        env:
+          TYPEWRITER_EXPECTED_SOURCE_REVISION: ${{ github.sha }}
+
+      - name: Check requested release SHA
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_commit_sha != '' }}
+        env:
+          RELEASE_COMMIT_SHA: ${{ inputs.release_commit_sha }}
+        run: |
+          if [[ ! "$RELEASE_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Enter the approved full 40-character release SHA."
+            exit 1
+          fi
+          if [[ "$RELEASE_COMMIT_SHA" != "$GITHUB_SHA" ]]; then
+            echo "::error::The release SHA must match the exact commit checked out by this run."
+            exit 1
+          fi
+
+      - name: Verify MO-8 approval for this exact commit
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.release_commit_sha != '' && inputs.release_commit_sha == github.sha }}
+        run: node scripts/validate/pages-release-approval.mjs
+        env:
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PAGES_RELEASE_APPROVER: ${{ vars.PAGES_RELEASE_APPROVER }}
+          RELEASE_COMMIT_SHA: ${{ inputs.release_commit_sha }}
+
+      - name: Upload approved Pages artifact
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.release_commit_sha != '' && inputs.release_commit_sha == github.sha }}
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: dist-web
+          retention-days: 1
+
+  deploy:
+    name: Deploy approved Pages artifact
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.release_commit_sha != '' && inputs.release_commit_sha == github.sha }}
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      actions: read
+      id-token: write
+      pages: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1

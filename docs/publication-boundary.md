@@ -128,6 +128,14 @@ explicitly allowlisted for the site. It must not include `manifest.json`, Chrome
 package files, tests, M5 evidence, raw sources, or unapproved files from the extension
 root `public/` directory.
 
+The exact Pages file set, repository base paths, SQLite integrity, and Git and
+canonical revision bindings are checked by scripts/validate/pages-artifact.mjs.
+Pull request and master-push builds keep the generated site on the ephemeral
+runner. The Pages artifact is uploaded only after a manual master-branch run
+verifies that closed issue #157 records the exact approval decision and release
+SHA from the configured PAGES_RELEASE_APPROVER, whose account must also close the
+issue. This workflow does not change repository visibility.
+
 ## Change control
 
 Update this boundary when the repository gains a new top-level area, data role,
