@@ -11,7 +11,8 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const PAGES_BASE_PATH = '/typewriter/';
 const ASSET_PATTERN = /^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/u;
-const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'runtime', 'runtime/vendor']);
+const CHUNK_PATTERN = /^chunks\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8}\.js$/u;
+const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'chunks', 'runtime', 'runtime/vendor']);
 const ALLOWED_FILES = new Set([
   'index.html',
   'about/index.html',
@@ -42,7 +43,9 @@ function fail(message, code) {
 }
 
 function isAllowedFile(relativePath) {
-  return ALLOWED_FILES.has(relativePath) || ASSET_PATTERN.test(relativePath);
+  return ALLOWED_FILES.has(relativePath)
+    || ASSET_PATTERN.test(relativePath)
+    || CHUNK_PATTERN.test(relativePath);
 }
 
 function currentGitRevision(repositoryDirectory) {

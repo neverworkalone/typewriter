@@ -25,25 +25,30 @@ async function createArtifact(t, {
   const outputDirectory = path.join(temporaryDirectory, 'site');
   await mkdir(path.join(outputDirectory, 'assets'), { recursive: true });
   await mkdir(path.join(outputDirectory, 'about'), { recursive: true });
+  await mkdir(path.join(outputDirectory, 'chunks'), { recursive: true });
   await mkdir(path.join(outputDirectory, 'runtime/vendor'), { recursive: true });
 
   const jsAsset = 'assets/index-12345678.js';
   const cssAsset = 'assets/index-abcdefgh.css';
+  const chunkAsset = 'chunks/style-87654321.js';
   await writeFile(
     path.join(outputDirectory, 'index.html'),
     '<link rel="icon" href="' + basePath + 'favicon.svg">'
       + '<link rel="stylesheet" href="' + basePath + cssAsset + '">'
+      + '<link rel="modulepreload" href="' + basePath + chunkAsset + '">'
       + '<script type="module" src="' + basePath + jsAsset + '"></script>',
   );
   await writeFile(
     path.join(outputDirectory, 'about/index.html'),
     '<link rel="icon" href="' + aboutBasePath + 'favicon.svg">'
       + '<link rel="stylesheet" href="' + aboutBasePath + cssAsset + '">'
+      + '<link rel="modulepreload" href="' + aboutBasePath + chunkAsset + '">'
       + '<script type="module" src="' + aboutBasePath + jsAsset + '"></script>',
   );
   await writeFile(path.join(outputDirectory, 'favicon.svg'), '<svg></svg>');
   await writeFile(path.join(outputDirectory, jsAsset), 'void 0;');
   await writeFile(path.join(outputDirectory, cssAsset), 'body{}');
+  await writeFile(path.join(outputDirectory, chunkAsset), 'void 0;');
 
   for (const fileName of PRODUCT_LEGAL_FILES) {
     await writeFile(
@@ -97,6 +102,20 @@ test('accepts an exact allowlisted Pages artifact with current clean provenance'
 test('rejects extension manifests and any other unapproved artifact files', async (t) => {
   const { outputDirectory } = await createArtifact(t);
   await writeFile(path.join(outputDirectory, 'manifest.json'), '{}');
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_FILE' },
+  );
+});
+
+test('rejects shared chunks that do not match the hashed Vite output pattern', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await writeFile(path.join(outputDirectory, 'chunks/unapproved.js'), 'void 0;');
   await assert.rejects(
     validatePagesArtifact({
       outputDirectory,
