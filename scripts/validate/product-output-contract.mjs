@@ -4,8 +4,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const extensionOutput = path.join(repositoryRoot, 'dist');
-const webOutput = path.join(repositoryRoot, 'dist-web');
 
 export const PRODUCT_LEGAL_FILES = Object.freeze([
   'Apache-2.0.txt',
@@ -15,7 +13,11 @@ export const PRODUCT_LEGAL_FILES = Object.freeze([
   'THIRD-PARTY-NOTICES.txt',
 ]);
 
-export async function validateProductOutputContract() {
+export async function validateProductOutputContract({
+  root = repositoryRoot,
+  extensionOutput = path.join(root, 'dist'),
+  webOutput = path.join(root, 'dist-web'),
+} = {}) {
   const [extensionDatabase, webDatabase] = await Promise.all([
     readFile(path.join(extensionOutput, 'dictionary.sqlite')),
     readFile(path.join(webOutput, 'dictionary.sqlite')),
@@ -28,7 +30,7 @@ export async function validateProductOutputContract() {
 
   for (const fileName of PRODUCT_LEGAL_FILES) {
     const [source, extensionCopy, webCopy] = await Promise.all([
-      readFile(path.join(repositoryRoot, fileName)),
+      readFile(path.join(root, fileName)),
       readFile(path.join(extensionOutput, fileName)),
       readFile(path.join(webOutput, fileName)),
     ]);
