@@ -79,15 +79,14 @@ See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](d
 Requirements: Node.js 22.13 or newer and npm. From a clean clone:
 
     npm ci --ignore-scripts --no-audit --no-fund
-    npm run ci:normal
     npm test
     npm run build
     TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
 
-The normal CI command runs repository validation and its fast checkpoint. The
-test command runs the Node test suite and batch contract checks. The build creates
-the extension files in dist/. The package command creates and validates an
-extension ZIP.
+The default test command runs the normal CI gate, including repository
+validation, the current regression and unit tests, and the product build. It is
+equivalent to npm run ci:normal. The build command creates extension files in
+dist/, and the package command creates and validates an extension ZIP.
 
 Build and package commands are useful for local engineering checks, but the
 resulting files contain the current held dictionary corpus. Do not publish,

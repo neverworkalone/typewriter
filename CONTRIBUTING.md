@@ -30,7 +30,6 @@ more useful to writers while preserving clear editorial and licensing boundaries
    For code changes, install dependencies and run normal CI and the test suite:
 
        npm ci --ignore-scripts --no-audit --no-fund
-       npm run ci:normal
        npm test
 
    For documentation-only changes, check changed links and run git diff --check.
