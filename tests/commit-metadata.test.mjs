@@ -2,10 +2,30 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  commitRange,
   findUnapprovedCommitEmails,
   isGitHubNoReplyAddress,
   parseCommitMetadata,
 } from '../scripts/validate/commit-metadata.mjs';
+
+test('pull request metadata range excludes GitHub generated merge commit', () => {
+  const calls = [];
+  const range = commitRange({
+    GITHUB_EVENT_NAME: 'pull_request',
+    GITHUB_BASE_REF: 'master',
+  }, (...args) => {
+    calls.push(args);
+    if (args[0] === 'merge-base') return 'base-sha';
+    if (args[0] === 'rev-parse' && args[1] === 'HEAD^2') return 'pull-request-head-sha';
+    throw new Error('unexpected git invocation');
+  });
+
+  assert.equal(range, 'base-sha..pull-request-head-sha');
+  assert.deepEqual(calls, [
+    ['merge-base', 'HEAD', 'origin/master'],
+    ['rev-parse', 'HEAD^2'],
+  ]);
+});
 
 test('GitHub no-reply commit addresses are accepted', () => {
   assert.equal(isGitHubNoReplyAddress('2526178+genonfire@users.noreply.github.com'), true);

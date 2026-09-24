@@ -43,18 +43,29 @@ export function findUnapprovedCommitEmails(commits) {
   return findings;
 }
 
-function firstParentRange() {
+function firstParentRange(runGit = git) {
   try {
-    return `${git('rev-parse', 'HEAD^')}..HEAD`;
+    return `${runGit('rev-parse', 'HEAD^')}..HEAD`;
   } catch {
     return 'HEAD';
   }
 }
 
-export function commitRange(environment = process.env) {
+export function commitRange(environment = process.env, runGit = git) {
   if (environment.GITHUB_BASE_REF) {
     const baseRef = `origin/${environment.GITHUB_BASE_REF}`;
-    return `${git('merge-base', 'HEAD', baseRef)}..HEAD`;
+    const mergeBase = runGit('merge-base', 'HEAD', baseRef);
+    if (environment.GITHUB_EVENT_NAME === 'pull_request') {
+      try {
+        // actions/checkout defaults to GitHub's temporary PR merge commit.
+        // Check the PR branch tip, not the generated merge commit's author.
+        const pullRequestHead = runGit('rev-parse', 'HEAD^2');
+        return `${mergeBase}..${pullRequestHead}`;
+      } catch {
+        // Keep working if a caller checks out the PR head directly.
+      }
+    }
+    return `${mergeBase}..HEAD`;
   }
 
   if (
@@ -66,10 +77,10 @@ export function commitRange(environment = process.env) {
   }
 
   try {
-    const upstream = git('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}');
-    return `${git('merge-base', 'HEAD', upstream)}..HEAD`;
+    const upstream = runGit('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}');
+    return `${runGit('merge-base', 'HEAD', upstream)}..HEAD`;
   } catch {
-    return firstParentRange();
+    return firstParentRange(runGit);
   }
 }
 

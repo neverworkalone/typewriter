@@ -40,21 +40,22 @@ resolve the historical personal-email metadata or the corpus provenance hold.
   personal home paths on macOS, Linux, and Windows. Findings report relative
   filenames and path categories without printing matched path values.
 - `npm run validate:commit-metadata` checks new commits in the CI change range
-  and requires GitHub no-reply author and committer addresses. Findings report
-  commit IDs and roles, not the address values.
+  and requires GitHub no-reply author and committer addresses. On pull-request
+  events it excludes GitHub's synthetic merge commit and inspects the PR branch
+  tip. Findings report commit IDs and roles, not the address values.
 - Both validators and focused regression tests are registered in the normal CI
   artifact/clean-checkout category.
 
 ## Validation evidence
 
-- Focused validator, metadata, and CI workflow tests: 12 passed.
+- Focused validator, metadata, and CI workflow tests: 13 passed.
 - `npm run validate:public-surface`: passed on 545 tracked files in the staged
   deliverable.
 - `npm run validate:commit-metadata`: passed after commit; the one new audit
   commit uses GitHub no-reply author and committer addresses.
 - Gitleaks v8.30.1 with the checked-in custom rule: no findings in the 545-file
-  committed tree (about 72.4 MB) or the full locally reachable history (442
-  commits, about 307.8 MB). A synthetic home-path fixture was detected with
+  committed tree (about 72.42 MB) or full locally reachable history (443
+  commits, about 307.79 MB). A synthetic home-path fixture was detected with
   its value redacted.
 - `git diff --check`: passed. `actionlint` is unavailable in this environment;
   the workflow regression test checks the pinned scanner, checksum, tree scan,
