@@ -45,6 +45,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  settingsHref: {
+    type: String,
+    default: 'options.html',
+  },
   interactive: {
     type: Boolean,
     default: true,
@@ -379,6 +383,7 @@ defineExpose({ focusSearch });
       />
       <ProductFooter
         :compact="compact"
+        :settings-href="settingsHref"
         @open-settings="emit('open-settings')"
       />
     </div>
@@ -390,6 +395,7 @@ defineExpose({ focusSearch });
     >
       <ProductFooter
         :compact="compact"
+        :settings-href="settingsHref"
         @open-settings="emit('open-settings')"
       />
     </div>
@@ -416,6 +422,7 @@ defineExpose({ focusSearch });
       >다시 시도</button>
       <ProductFooter
         :compact="compact"
+        :settings-href="settingsHref"
         @open-settings="emit('open-settings')"
       />
     </div>

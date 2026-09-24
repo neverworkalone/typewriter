@@ -42,12 +42,23 @@ function requireString(value, name) {
   return value;
 }
 
-export function resolveDictionaryWorkerUrl(workerPath = 'runtime/dictionary-worker.mjs') {
+export function resolveDictionaryWorkerUrl(
+  workerPath = 'runtime/dictionary-worker.mjs',
+  { baseUrl, pageUrl } = {},
+) {
   if (typeof chrome !== 'undefined' && typeof chrome.runtime?.getURL === 'function') {
     return chrome.runtime.getURL(workerPath);
   }
 
-  return new URL(workerPath, import.meta.url);
+  const configuredBaseUrl = baseUrl
+    ?? import.meta.env?.BASE_URL
+    ?? '/';
+  const documentUrl = pageUrl
+    ?? globalThis.location?.href
+    ?? import.meta.url;
+  const applicationBaseUrl = new URL(configuredBaseUrl, documentUrl);
+
+  return new URL(workerPath, applicationBaseUrl);
 }
 
 export function createDefaultDictionaryWorker(workerPath) {

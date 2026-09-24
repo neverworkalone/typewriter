@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "dev:web": "vite --config vite.web.config.js",
+    "build:web": "vite build --config vite.web.config.js",
     "validate": "node scripts/validate/canonical-jsonl.mjs && node scripts/validate/dataset-integrity.mjs && node scripts/validate/target-inventory.mjs && node scripts/validate/rule-inventory.mjs && npm run validate:lexical",
     "validate:lexical": "node scripts/validate/lexical-quality.mjs && node scripts/validate/semantic-audit.mjs",
     "validate:semantic-audit": "node scripts/validate/semantic-audit.mjs",

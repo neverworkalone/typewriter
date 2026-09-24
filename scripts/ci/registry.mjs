@@ -223,6 +223,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),
       npmCheck('Run product unit tests', 'test:unit'),
       npmCheck('Build product extension', 'build'),
+      npmCheck('Build Typewriter Web', 'build:web'),
     ],
   },
 
