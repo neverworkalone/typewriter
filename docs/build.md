@@ -120,23 +120,17 @@ unknown files, extension-only assets, remote page assets, incorrect base paths,
 changed legal files, and dictionaries whose verified Git or canonical revision
 differs from the checked-out source.
 
-Pull requests and pushes to master build and validate on an ephemeral runner. They
-do not upload a Pages artifact. Upload and deployment require a manual workflow run
-from master with the exact release SHA recorded in the final approval comment on
-closed issue #157. The workflow checks that the final comment is authored by
-the configured PAGES_RELEASE_APPROVER, that the same account closed #157, and that
-GitHub reports an OWNER, MEMBER, or COLLABORATOR association. Set the
-PAGES_RELEASE_APPROVER repository variable to the designated GitHub login. The
-comment must contain the exact lines Decision: APPROVE PUBLIC CUTOVER and
-Release commit: <full SHA>; quoted, negated, conflicting, or HOLD decisions fail
-closed. The Pages artifact is retained for one day and is uploaded only after that
-check passes.
+Pull requests build and validate on an ephemeral runner, but never upload or deploy
+Pages. Every push to `master` builds and validates the artifact for that exact
+commit, uploads it only after validation succeeds, then deploys it to the
+`github-pages` environment. The deployment job depends on the successful build and
+uses only Pages, OIDC, and Actions read permissions. Configure the repository Pages
+publishing source to GitHub Actions and allow `master` in the `github-pages`
+environment's deployment branch policy.
 
-The deployment job uses the github-pages environment and only Pages, OIDC, and
-Actions read permissions. Configure that environment with a required reviewer and
-set the repository Pages publishing source to GitHub Actions before the first
-approved deployment. A successful build or deployment does not change repository
-visibility; issue #157 remains the public cutover authority.
+Issue #157 remains historical MO public-cutover evidence. Its approval comments
+and the `PAGES_RELEASE_APPROVER` variable are not part of steady-state Pages
+deployment.
 
 ## Product release package
 
