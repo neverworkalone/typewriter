@@ -151,6 +151,7 @@ async function runM512APreflightOnce({
     const packageResult = validatePackage({
       projectRoot: REPOSITORY_DIRECTORY,
       packageDir: outputDirectory,
+      canonicalDirectory: prospectiveCanonicalDirectory,
       zipPath,
       expectedMetadata,
     });

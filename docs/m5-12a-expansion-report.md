@@ -12,8 +12,8 @@ admission transaction; it does not introduce a batch-local quality policy.
 | candidate identity capacity | 802 |
 | imported starts | 722 |
 | reserve | 80 |
-| included | 700 |
-| corrected | 22 |
+| included | 722 |
+| corrected | 0 |
 | held | 30 |
 | rejected | 20 |
 | deferred | 30 |
@@ -41,11 +41,24 @@ claim is made. Every selected sense has source-bound POS, expression, boundary,
 relation, and explicit no-relation evidence. The prospective semantic decision
 source covers all 2,042 records and 2,301 senses with zero open findings.
 
-The fixed gate passed with zero candidate/canonical lexical collisions, a
-2.85% correction rate over the 772 processed rows, zero admitted relation
-tuples/noise events, complete audit coverage, and no canonical mutation before
-the promotion transaction. The base relation snapshot and prospective
-snapshot both contain 487 tuples.
+The retained final r4 decision source and admission manifest agree on 722
+included, 0 corrected, 30 held, 20 rejected, and 30 deferred decisions. The
+fixed gate passed with zero candidate/canonical lexical collisions and a
+0/772 (0%) correction rate. No relation tuple was added: the base relation
+snapshot and prospective snapshot both contain 487 tuples. This replaces the
+earlier 700/22 split and 2.85% rate in this report; the immutable final
+decision, admission, and promotion artifacts are unchanged.
+
+The candidate identity reserve of 80 is planning capacity. The 30 deferred
+rows are the final capacity disposition and are excluded from the processed
+denominator; the two numbers describe different boundaries.
+
+The semantic decision artifact is bound at SHA-256
+`720348e78becee62249ed4761cf154a8c794b10c1ff2609d95d90daa811d4edf`;
+the admission manifest is bound at
+`33639ee2e0240703d0882fea6219d87ea0d912bc8453969e05e103faa780bba7`.
+The source and gate designate this as agent-generated review, so human-editor
+time is not measured and is not reported as zero.
 
 Promotion outputs are bound in:
 

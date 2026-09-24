@@ -37,14 +37,6 @@ const EXPECTED_METADATA = Object.freeze({
   normalization_version: '1',
   build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
   build_tool_version: '1',
-  record_count: '2042',
-  start_count: '2000',
-  reference_only_count: '42',
-  candidate_count: '2000',
-  search_form_count: '2298',
-  sense_count: '2301',
-  relation_count: '487',
-  expression_count: '145',
 });
 
 const CODE_FILE_PATTERN = /\.(?:css|html|js|json|mjs)$/i;
@@ -109,6 +101,50 @@ function listFiles(root, current = root) {
     }
   }
   return files;
+}
+
+function expectedMetadataForCanonical(canonicalDirectory) {
+  if (!existsSync(canonicalDirectory)) {
+    throw new Error(`Canonical directory is missing: ${canonicalDirectory}`);
+  }
+  const canonicalFiles = listFiles(canonicalDirectory)
+    .filter((file) => file.endsWith('.jsonl'))
+    .sort();
+  if (canonicalFiles.length === 0) {
+    throw new Error(`No canonical JSONL files found in ${canonicalDirectory}`);
+  }
+
+  const records = canonicalFiles.flatMap((file) => readFileSync(
+    path.join(canonicalDirectory, file),
+    'utf8',
+  ).split(/\r?\n/u)
+    .filter((line) => line.trim())
+    .map((line) => JSON.parse(line)));
+  const relationCount = records.reduce(
+    (total, record) => total + (record.senses ?? []).reduce(
+      (senseTotal, sense) => senseTotal + (sense.relations ?? []).length,
+      0,
+    ),
+    0,
+  );
+
+  return {
+    ...EXPECTED_METADATA,
+    record_count: String(records.length),
+    start_count: String(records.filter((record) => record.role === 'start').length),
+    reference_only_count: String(records.filter((record) => record.role === 'reference-only').length),
+    candidate_count: String(records.filter((record) => typeof record.candidate_id === 'string').length),
+    search_form_count: String(records.reduce(
+      (total, record) => total + (record.search_forms ?? []).length,
+      0,
+    )),
+    sense_count: String(records.reduce(
+      (total, record) => total + (record.senses ?? []).length,
+      0,
+    )),
+    relation_count: String(relationCount),
+    expression_count: String(records.filter((record) => record.record_type === 'expression').length),
+  };
 }
 
 function missingAndExtra(expected, actual) {
@@ -323,7 +359,8 @@ function validateLegalFiles(packageDir, files) {
 export function validatePackageDirectory({
   packageDir,
   projectRoot = path.resolve(packageDir, '..'),
-  expectedMetadata = EXPECTED_METADATA,
+  canonicalDirectory = path.join(projectRoot, 'data/canonical'),
+  expectedMetadata = undefined,
 }) {
   const errors = [];
   const actualFiles = existsSync(packageDir) ? listFiles(packageDir) : [];
@@ -352,7 +389,23 @@ export function validatePackageDirectory({
   errors.push(...validateRemoteCode(packageDir, actualFiles));
   errors.push(...validateFileModes(packageDir, actualFiles));
   errors.push(...validateRuntimeAssets(packageDir, actualFiles));
-  errors.push(...validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata }));
+  if (actualFiles.includes('dictionary.sqlite')) {
+    let dictionaryMetadata = expectedMetadata;
+    if (!dictionaryMetadata) {
+      try {
+        dictionaryMetadata = expectedMetadataForCanonical(canonicalDirectory);
+      } catch (error) {
+        errors.push(`Current canonical metadata could not be derived: ${error.message}`);
+      }
+    }
+    if (dictionaryMetadata) {
+      errors.push(...validateDictionaryMetadata({
+        packageDir,
+        projectRoot,
+        expectedMetadata: dictionaryMetadata,
+      }));
+    }
+  }
   errors.push(...validateLegalFiles(packageDir, actualFiles));
 
   const expectedFiles = new Set(REQUIRED_PRODUCT_FILES);
@@ -435,10 +488,16 @@ export function validatePackageZip({ packageDir, zipPath, packageFiles, manifest
 export function validatePackage({
   projectRoot,
   packageDir,
+  canonicalDirectory,
   zipPath = null,
-  expectedMetadata = EXPECTED_METADATA,
+  expectedMetadata = undefined,
 }) {
-  const directoryResult = validatePackageDirectory({ packageDir, projectRoot, expectedMetadata });
+  const directoryResult = validatePackageDirectory({
+    packageDir,
+    projectRoot,
+    canonicalDirectory,
+    expectedMetadata,
+  });
   const errors = [...directoryResult.errors];
   let zipResult = { errors: [], zipFiles: [] };
 
