@@ -110,6 +110,27 @@ TYPEWRITER_ALLOW_DIRTY=true npm run build
 The generated product database and runtime assets are build output; canonical JSONL
 remains the editable source of truth.
 
+## GitHub Pages build and deployment
+
+The Pages workflow builds the separate web source under web/ at the repository path
+/typewriter/. The command npm run validate:pages-artifact rejects unknown files,
+extension-only assets, remote index assets, incorrect base paths, changed legal
+files, and dictionaries whose verified Git or canonical revision differs from the
+checked-out source.
+
+Pull requests and pushes to master build and validate on an ephemeral runner. They
+do not upload a Pages artifact. Upload and deployment require a manual workflow run
+from master with the exact release SHA recorded in the final approval comment on
+closed issue #157. The workflow checks that the comment says APPROVE PUBLIC CUTOVER
+and includes the same SHA; HOLD PUBLIC CUTOVER blocks deployment. The Pages artifact
+is retained for one day and is uploaded only after that check passes.
+
+The deployment job uses the github-pages environment and only Pages, OIDC, and
+Actions read permissions. Configure that environment with a required reviewer and
+set the repository Pages publishing source to GitHub Actions before the first
+approved deployment. A successful build or deployment does not change repository
+visibility; issue #157 remains the public cutover authority.
+
 ## Product release package
 
 `npm run package` creates the default non-minified Chrome release package. The

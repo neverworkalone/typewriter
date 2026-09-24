@@ -232,6 +232,8 @@ export const CI_CATEGORIES = Object.freeze({
     label: 'Generated-artifact and clean-checkout enforcement',
     checks: [
       testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
+      testCheck('tests/pages-artifact.test.mjs', 'Test Pages artifact publication boundary'),
+      testCheck('tests/pages-release-approval.test.mjs', 'Test Pages release approval gate'),
       testCheck('tests/validate-package.test.mjs', 'Test package validation'),
       commandCheck('Enforce generated-artifact policy and clean checkout', [
         'scripts/validate/artifact-policy.mjs',
