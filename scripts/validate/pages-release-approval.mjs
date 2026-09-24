@@ -10,6 +10,8 @@ export class PagesReleaseApprovalError extends Error {
   }
 }
 
+const TRUSTED_AUTHOR_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+
 function fail(message, code) {
   throw new PagesReleaseApprovalError(message, code);
 }
@@ -55,13 +57,77 @@ async function fetchAllComments(url, options) {
     comments.push(...page.value);
     pageUrl = page.nextPage;
   }
-  return comments;
+  return comments.sort((left, right) => (left.id ?? 0) - (right.id ?? 0));
+}
+
+function decisionLinesOutsideMarkdownFences(body) {
+  const lines = [];
+  let insideFence = false;
+  const backtickFence = String.fromCharCode(96).repeat(3);
+
+  for (const line of body.split(/\r?\n/u)) {
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith(backtickFence) || trimmed.startsWith('~~~')) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (!insideFence) lines.push(line);
+  }
+  return lines;
+}
+
+function verifyDecisionComment(comment, releaseRevision, approverLogin) {
+  if (!comment || typeof comment.body !== 'string') {
+    fail('The final #157 comment must contain a structured release decision.', 'PAGES_RELEASE_APPROVAL_MISSING');
+  }
+
+  const commentLogin = comment.user?.login?.toLowerCase();
+  if (commentLogin !== approverLogin.toLowerCase()
+    || !TRUSTED_AUTHOR_ASSOCIATIONS.has(comment.author_association)) {
+    fail(
+      'The final #157 decision must be authored by the configured approver with a trusted repository association.',
+      'PAGES_RELEASE_APPROVER_MISMATCH',
+    );
+  }
+
+  const lines = decisionLinesOutsideMarkdownFences(comment.body);
+  const decisionLines = lines.filter((line) => (
+    line.includes('APPROVE PUBLIC CUTOVER') || line.includes('HOLD PUBLIC CUTOVER')
+  ));
+  if (decisionLines.length !== 1 || decisionLines[0] !== 'Decision: APPROVE PUBLIC CUTOVER') {
+    fail(
+      'The final #157 comment must contain exactly one unquoted Decision: APPROVE PUBLIC CUTOVER line.',
+      'PAGES_RELEASE_APPROVAL_FORMAT',
+    );
+  }
+
+  const releaseLines = lines.filter((line) => line.includes('Release commit:'));
+  if (releaseLines.length !== 1) {
+    fail(
+      'The final #157 comment must contain exactly one Release commit: line.',
+      'PAGES_RELEASE_APPROVAL_FORMAT',
+    );
+  }
+  const releaseMatch = /^Release commit: ([0-9a-f]{40})$/u.exec(releaseLines[0]);
+  if (!releaseMatch) {
+    fail(
+      'The final #157 comment must use the exact Release commit: <full SHA> format.',
+      'PAGES_RELEASE_APPROVAL_FORMAT',
+    );
+  }
+  if (releaseMatch[1] !== releaseRevision) {
+    fail(
+      'The #157 decision does not approve this exact release SHA.',
+      'PAGES_RELEASE_APPROVAL_MISSING',
+    );
+  }
 }
 
 export async function verifyPagesReleaseApproval({
   repository,
   token,
   releaseRevision,
+  approverLogin,
   apiUrl = 'https://api.github.com',
   fetchImpl = fetch,
 } = {}) {
@@ -74,7 +140,11 @@ export async function verifyPagesReleaseApproval({
   if (!/^[0-9a-f]{40}$/u.test(releaseRevision || '')) {
     fail('the approved release revision must be a full Git SHA.', 'PAGES_RELEASE_APPROVAL_INPUT');
   }
+  if (!/^[A-Za-z0-9_.-]+$/u.test(approverLogin || '')) {
+    fail('PAGES_RELEASE_APPROVER must name one GitHub account.', 'PAGES_RELEASE_APPROVAL_INPUT');
+  }
 
+  const expectedApprover = approverLogin.trim();
   const base = apiUrl.replace(/\/+$/u, '');
   const options = { token, fetchImpl };
   const issueResult = await fetchJson(
@@ -84,23 +154,20 @@ export async function verifyPagesReleaseApproval({
   if (issueResult.value.state !== 'closed') {
     fail('MO-8 issue #157 is not closed; Pages deployment remains blocked.', 'PAGES_RELEASE_APPROVAL_MISSING');
   }
-
-  const comments = await fetchAllComments(
-    base + '/repos/' + repository + '/issues/157/comments?per_page=100',
-    options,
-  );
-  const finalComment = comments.at(-1)?.body;
-  if (typeof finalComment !== 'string'
-    || !finalComment.includes('APPROVE PUBLIC CUTOVER')
-    || finalComment.includes('HOLD PUBLIC CUTOVER')
-    || !finalComment.includes(releaseRevision)) {
+  if (issueResult.value.closed_by?.login?.toLowerCase() !== expectedApprover.toLowerCase()) {
     fail(
-      'The final #157 comment must record APPROVE PUBLIC CUTOVER and the exact release SHA.',
-      'PAGES_RELEASE_APPROVAL_MISSING',
+      'MO-8 issue #157 must be closed by the configured Pages release approver.',
+      'PAGES_RELEASE_APPROVER_MISMATCH',
     );
   }
 
-  return { issueNumber: 157, releaseRevision };
+  const comments = await fetchAllComments(
+    base + '/repos/' + repository + '/issues/157/comments?per_page=100&sort=created&direction=asc',
+    options,
+  );
+  verifyDecisionComment(comments.at(-1), releaseRevision, expectedApprover);
+
+  return { issueNumber: 157, releaseRevision, approverLogin: expectedApprover };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -108,6 +175,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     repository: process.env.GITHUB_REPOSITORY,
     token: process.env.GITHUB_TOKEN,
     releaseRevision: process.env.RELEASE_COMMIT_SHA,
+    approverLogin: process.env.PAGES_RELEASE_APPROVER,
     apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
   });
   console.log(

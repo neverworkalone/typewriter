@@ -121,9 +121,14 @@ checked-out source.
 Pull requests and pushes to master build and validate on an ephemeral runner. They
 do not upload a Pages artifact. Upload and deployment require a manual workflow run
 from master with the exact release SHA recorded in the final approval comment on
-closed issue #157. The workflow checks that the comment says APPROVE PUBLIC CUTOVER
-and includes the same SHA; HOLD PUBLIC CUTOVER blocks deployment. The Pages artifact
-is retained for one day and is uploaded only after that check passes.
+closed issue #157. The workflow checks that the final comment is authored by
+the configured PAGES_RELEASE_APPROVER, that the same account closed #157, and that
+GitHub reports an OWNER, MEMBER, or COLLABORATOR association. Set the
+PAGES_RELEASE_APPROVER repository variable to the designated GitHub login. The
+comment must contain the exact lines Decision: APPROVE PUBLIC CUTOVER and
+Release commit: <full SHA>; quoted, negated, conflicting, or HOLD decisions fail
+closed. The Pages artifact is retained for one day and is uploaded only after that
+check passes.
 
 The deployment job uses the github-pages environment and only Pages, OIDC, and
 Actions read permissions. Configure that environment with a required reviewer and
