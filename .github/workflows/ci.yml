@@ -28,8 +28,5 @@ jobs:
       - name: Install pinned dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Install Chromium for product runtime checks
-        run: npx playwright install --with-deps chromium
-
       - name: Normal validation (fast checkpoint + continuation)
         run: npm run ci:normal

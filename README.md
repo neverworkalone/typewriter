@@ -79,17 +79,15 @@ See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](d
 Requirements: Node.js 22.13 or newer and npm. From a clean clone:
 
     npm ci --ignore-scripts --no-audit --no-fund
-    npx playwright install chromium
     npm test
     npm run build
     TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
 
-The Playwright command installs the Chromium browser used by the normal CI
-product-runtime integration test. The default test command runs the normal CI
-gate, including repository validation, regression and unit tests, product
-builds, and browser runtime parity. It is equivalent to npm run ci:normal. The
-build command creates extension files in dist/, and the package command creates
-and validates an extension ZIP.
+The default test command runs the normal CI gate, including repository
+validation, regression and unit tests, product builds, and product output
+contract checks. It is equivalent to npm run ci:normal. The build command creates
+extension files in dist/, and the package command creates and validates an
+extension ZIP.
 
 To build the separate GitHub Pages web candidate locally, run
 `npm run build:web`. It writes `dist-web/` for the repository base path
@@ -97,6 +95,11 @@ To build the separate GitHub Pages web candidate locally, run
 as the extension. The output includes the product license texts and third-party
 notices linked from the web product. It contains the current canonical corpus
 and remains subject to the data redistribution hold described above.
+
+The optional Chromium runtime check is for debugging web-page or runtime issues;
+it is not part of `npm test` or CI. After building both products, install
+Chromium once with `npx playwright install chromium`, then run
+`npm run test:web:integration`.
 
 Build and package commands are useful for local engineering checks, but the
 resulting files contain the current held dictionary corpus. Do not publish,

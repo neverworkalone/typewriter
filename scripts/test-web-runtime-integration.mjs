@@ -1,22 +1,19 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { chromium } from 'playwright';
+import {
+  PRODUCT_LEGAL_FILES,
+  validateProductOutputContract,
+} from './validate/product-output-contract.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const extensionOutput = path.join(repositoryRoot, 'dist');
 const webOutput = path.join(repositoryRoot, 'dist-web');
-const legalFiles = [
-  'Apache-2.0.txt',
-  'LICENSE.md',
-  'DATA-LICENSE.md',
-  'BRAND.md',
-  'THIRD-PARTY-NOTICES.txt',
-];
 const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
@@ -33,42 +30,6 @@ const contentTypes = new Map([
 
 function isInside(directory, filePath) {
   return filePath === directory || filePath.startsWith(directory + path.sep);
-}
-
-async function validateProductOutputs() {
-  const [extensionDatabase, webDatabase] = await Promise.all([
-    readFile(path.join(extensionOutput, 'dictionary.sqlite')),
-    readFile(path.join(webOutput, 'dictionary.sqlite')),
-  ]);
-  assert.deepEqual(
-    extensionDatabase,
-    webDatabase,
-    'extension and web products must copy the same CI-built SQLite artifact',
-  );
-
-  for (const fileName of legalFiles) {
-    const [source, extensionCopy, webCopy] = await Promise.all([
-      readFile(path.join(repositoryRoot, fileName)),
-      readFile(path.join(extensionOutput, fileName)),
-      readFile(path.join(webOutput, fileName)),
-    ]);
-    assert.deepEqual(extensionCopy, source, `dist/${fileName} must match its source`);
-    assert.deepEqual(webCopy, source, `dist-web/${fileName} must match its source`);
-  }
-
-  const webAssets = path.join(webOutput, 'assets');
-  const bundles = (await readdir(webAssets))
-    .filter((fileName) => fileName.endsWith('.js'));
-  assert.ok(bundles.length > 0, 'web JavaScript bundle must exist');
-  const bundle = (await Promise.all(bundles.map((fileName) => (
-    readFile(path.join(webAssets, fileName), 'utf8')
-  )))).join('\n');
-  for (const fileName of legalFiles) {
-    assert.ok(
-      bundle.includes(`./${fileName}`),
-      `web product must expose a local link to ${fileName}`,
-    );
-  }
 }
 
 function serveWebOutput() {
@@ -168,7 +129,7 @@ async function waitForRecord(page, recordId) {
 }
 
 async function main() {
-  await validateProductOutputs();
+  await validateProductOutputContract();
 
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'typewriter-web-integration-'));
   const extensionFixture = path.join(temporaryRoot, 'extension');
@@ -233,8 +194,8 @@ async function main() {
         const response = await fetch(anchor.href);
         return { fileName, found: true, status: response.status };
       }))
-    ), legalFiles);
-    assert.deepEqual(legalAccess, legalFiles.map((fileName) => ({
+    ), PRODUCT_LEGAL_FILES);
+    assert.deepEqual(legalAccess, PRODUCT_LEGAL_FILES.map((fileName) => ({
       fileName,
       found: true,
       status: 200,

@@ -224,7 +224,7 @@ export const CI_CATEGORIES = Object.freeze({
       npmCheck('Run product unit tests', 'test:unit'),
       npmCheck('Build product extension', 'build'),
       npmCheck('Build Typewriter Web', 'build:web'),
-      npmCheck('Test browser product runtime parity', 'test:web:integration'),
+      npmCheck('Validate built product output contracts', 'validate:product-outputs'),
     ],
   },
 
