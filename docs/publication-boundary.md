@@ -130,13 +130,14 @@ visible links on either page. It must not include `manifest.json`, Chrome-only p
 files, tests, M5 evidence, raw sources, or unapproved files from the extension root
 `public/` directory.
 
-The exact Pages file set, repository base paths, SQLite integrity, and Git and
-canonical revision bindings are checked by scripts/validate/pages-artifact.mjs.
-Pull request and master-push builds keep the generated site on the ephemeral
-runner. The Pages artifact is uploaded only after a manual master-branch run
-verifies that closed issue #157 records the exact approval decision and release
-SHA from the configured PAGES_RELEASE_APPROVER, whose account must also close the
-issue. This workflow does not change repository visibility.
+The exact Pages file set, repository base paths, SQLite integrity, legal files, and
+Git and canonical revision bindings are checked by
+scripts/validate/pages-artifact.mjs. Pull request builds keep the generated site
+on the ephemeral runner and never upload or deploy it. Each push to `master`
+uploads the artifact only after validation succeeds, then a dependent deployment job
+publishes that validated artifact to GitHub Pages. Issue #157 remains historical
+MO public-cutover evidence and is not a steady-state deployment prerequisite. This
+workflow does not change repository visibility.
 
 ## Change control
 
