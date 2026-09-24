@@ -133,7 +133,7 @@ async function waitForRuntimeReady(page, label) {
 }
 
 async function search(page, term) {
-  const searchBox = page.getByLabel('검색어');
+  const searchBox = page.getByRole('textbox', { name: '검색어', exact: true });
   await searchBox.fill(term);
   await searchBox.press('Enter');
   await page.waitForFunction((expectedTerm) => {
