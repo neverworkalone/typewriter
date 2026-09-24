@@ -22,11 +22,10 @@ components; they do not change those components' licenses.
 
 Original project documentation is licensed under the Creative Commons Attribution
 4.0 International license (CC BY 4.0). This covers docs/, AGENTS.md, REVIEW.md,
-README.md, CONTRIBUTING.md, SECURITY.md, and original explanatory or policy text in
-LICENSE.md, DATA-LICENSE.md, and BRAND.md. Embedded canonical data, third-party
-material and license texts, trademarks, and brand artwork are excluded and retain
-their separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md)
-and [`BRAND.md`](BRAND.md).
+README.md, and original explanatory or policy text in LICENSE.md,
+DATA-LICENSE.md, and BRAND.md. Embedded canonical data, third-party material and
+license texts, trademarks, and brand artwork are excluded and retain their
+separate terms. See [`DATA-LICENSE.md`](DATA-LICENSE.md) and [`BRAND.md`](BRAND.md).
 
 ## Dictionary data
 

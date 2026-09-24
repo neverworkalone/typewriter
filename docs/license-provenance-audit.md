@@ -19,7 +19,7 @@ The owner selected this licensing model:
 | Material | Decision | Scope |
 | --- | --- | --- |
 | Typewriter source code | Apache-2.0 | Original code only; third-party components retain their own licenses. |
-| Documentation | CC BY 4.0 | Original docs/, AGENTS.md, REVIEW.md, README.md, CONTRIBUTING.md, SECURITY.md, and explanatory policy prose; embedded data, third-party content, and marks are excluded. |
+| Documentation | CC BY 4.0 | Original docs/, AGENTS.md, REVIEW.md, README.md, and explanatory policy prose; embedded data, third-party content, and marks are excluded. |
 | Dictionary data | CC BY 4.0 | Only records with established redistribution rights. No NC, AI-training, competition, or other field-of-use limits. |
 | Brand | All Rights Reserved | Typewriter and Never Work Alone names, logos, icons, and visual identity. |
 
@@ -115,10 +115,10 @@ grant over the held corpus. Closing #152 does not itself clear the hold.
 ## Documentation, brand, and public wording
 
 The owner selected CC BY 4.0 for original project documentation, including
-docs/, AGENTS.md, REVIEW.md, README.md, CONTRIBUTING.md, SECURITY.md, and the
-license-policy files. The license map excludes embedded canonical data,
-third-party material, and brand assets from that grant. Where such content occurs
-in a document, the public-release gate must verify its source and remove,
+docs/, AGENTS.md, REVIEW.md, README.md, and the license-policy files. The license
+map excludes embedded canonical data, third-party material, and brand assets from
+that grant. Where such content occurs in a document, the public-release gate must
+verify its source and remove,
 replace, or explicitly mark it before release. #153 replaced the README's former
 private/proprietary repository claim; embedded uncleared data remains excluded
 from the documentation grant.
@@ -143,7 +143,7 @@ to its MO-2 license or an explicit hold/exception:
 | MO-1 path group | MO-2 disposition |
 | --- | --- |
 | Application, build, schema, test, CI, root software/configuration, extension manifest, `.gitignore`, and future `web/` source | Apache-2.0 for original Typewriter software; third-party components retain their licenses. |
-| docs/, AGENTS.md, REVIEW.md, README.md, CONTRIBUTING.md, SECURITY.md, and original project documentation | CC BY 4.0 for original prose; embedded data, third-party content, and brand assets are excluded. The README states product availability and license boundaries. |
+| docs/, AGENTS.md, REVIEW.md, README.md, and original project documentation | CC BY 4.0 for original prose; embedded data, third-party content, and brand assets are excluded. The README states product availability and license boundaries. |
 | Canonical, inventory, batch, validation, SQLite, and product data artifacts | CC BY 4.0 only after item-level clearance; the current corpus and data-bearing artifacts remain held pending record-level rights evidence and release approval. |
 | Public logo, icons, and brand identity | All Rights Reserved; owner confirmed direct creation and ownership. |
 | License maps, data license, brand policy, and third-party notices | Shipped with the extension package; source-code/data/brand boundaries remain distinct. Third-party license text retains its own terms. |

@@ -116,17 +116,3 @@ assets:
 A file being present in Git, build output, or a package does not mean its content
 is cleared for reuse. The [license overview](LICENSE.md) describes the file
 boundaries and exclusions.
-
-## Contributing
-
-Code and documentation contributions should follow
-[CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md), and [REVIEW.md](REVIEW.md).
-To suggest a lexical correction or report a data concern, use the
-[dictionary data correction form](https://github.com/neverworkalone/typewriter/issues/new?template=dictionary-data-correction.yml).
-Please describe the issue in your own words and link to references; do not paste
-dictionary definitions, examples, or other restricted source text.
-
-## Security
-
-Please report vulnerabilities privately. See [SECURITY.md](SECURITY.md) for the
-reporting path.
