@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -76,7 +77,12 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/vendor/sqlite3.mjs', '// fixture sqlite loader\n'],
       ['runtime/vendor/sqlite3.wasm', Buffer.from([0x00, 0x61, 0x73, 0x6d])],
       ['Apache-2.0.txt', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'],
-      ['THIRD-PARTY-NOTICES.txt', '@sqlite.org/sqlite-wasm 3.53.0-build1\nApache-2.0.txt'],
+      ['DATA-LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'DATA-LICENSE.md'), 'utf8')],
+      ['BRAND.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'BRAND.md'), 'utf8')],
+      ['THIRD-PARTY-NOTICES.txt', readFileSync(
+        path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'),
+        'utf8',
+      )],
     ]);
     for (const [relativePath, contents] of packageFiles) {
       const filePath = path.join(packageDirectory, relativePath);
@@ -122,6 +128,19 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.deepEqual(matchingPackage.errors, []);
+
+    const noticesPath = path.join(packageDirectory, 'THIRD-PARTY-NOTICES.txt');
+    await writeFile(noticesPath, '@sqlite.org/sqlite-wasm 3.53.0-build1\nApache-2.0.txt');
+    const missingVueNotice = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(missingVueNotice.errors.some((error) => /does not identify Vue 3\.5\.42/.test(error)));
+    await writeFile(noticesPath, readFileSync(
+      path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'),
+      'utf8',
+    ));
 
     const additionalStart = {
       record_type: 'entry',

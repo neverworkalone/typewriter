@@ -28,6 +28,8 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/vendor/sqlite3.mjs',
   'runtime/vendor/sqlite3.wasm',
   'Apache-2.0.txt',
+  'DATA-LICENSE.md',
+  'BRAND.md',
   'THIRD-PARTY-NOTICES.txt',
 ]);
 
@@ -340,7 +342,63 @@ function validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata 
   return errors;
 }
 
-function validateLegalFiles(packageDir, files) {
+function validateVueRuntimeNotice(projectRoot, notice) {
+  const errors = [];
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+  const packageLockPath = path.join(projectRoot, 'package-lock.json');
+  if (!existsSync(packageJsonPath) || !existsSync(packageLockPath)) {
+    return ['Vue runtime notice cannot be checked without package.json and package-lock.json.'];
+  }
+
+  const packageJson = readJson(packageJsonPath);
+  const packageLock = readJson(packageLockPath);
+  if (!packageJson.dependencies?.vue) {
+    errors.push('Vue must be declared as a direct runtime dependency.');
+    return errors;
+  }
+
+  const vueVersion = packageLock.packages?.['node_modules/vue']?.version;
+  const vuePackages = [
+    'vue',
+    '@vue/runtime-core',
+    '@vue/runtime-dom',
+    '@vue/reactivity',
+    '@vue/shared',
+  ];
+  if (!vueVersion) {
+    errors.push('package-lock.json does not pin the Vue runtime dependency.');
+    return errors;
+  }
+
+  for (const packageName of vuePackages) {
+    const lockedPackage = packageLock.packages?.[`node_modules/${packageName}`];
+    if (!lockedPackage || lockedPackage.version !== vueVersion || lockedPackage.license !== 'MIT') {
+      errors.push(`Locked ${packageName} must be Vue ${vueVersion} under MIT.`);
+      continue;
+    }
+    if (!notice.includes(`${packageName} ${vueVersion}`) && packageName !== 'vue') {
+      errors.push(`THIRD-PARTY-NOTICES.txt does not identify ${packageName} ${vueVersion}.`);
+    }
+  }
+
+  if (!notice.includes(`Vue ${vueVersion}`)) {
+    errors.push(`THIRD-PARTY-NOTICES.txt does not identify Vue ${vueVersion}.`);
+  }
+
+  const vueLicensePath = path.join(projectRoot, 'node_modules/vue/LICENSE');
+  if (!existsSync(vueLicensePath)) {
+    errors.push('The locked Vue MIT license text is unavailable from node_modules/vue/LICENSE.');
+  } else {
+    const vueLicense = readFileSync(vueLicensePath, 'utf8').trim();
+    if (!notice.includes(vueLicense)) {
+      errors.push('THIRD-PARTY-NOTICES.txt does not include the full locked Vue MIT license text.');
+    }
+  }
+
+  return errors;
+}
+
+function validateLegalFiles(packageDir, files, projectRoot) {
   const errors = [];
   if (!files.includes('Apache-2.0.txt') || !files.includes('THIRD-PARTY-NOTICES.txt')) {
     return errors;
@@ -353,6 +411,7 @@ function validateLegalFiles(packageDir, files) {
   if (!notice.includes('@sqlite.org/sqlite-wasm 3.53.0-build1') || !notice.includes('Apache-2.0.txt')) {
     errors.push('THIRD-PARTY-NOTICES.txt does not describe the packaged SQLite WASM dependency.');
   }
+  errors.push(...validateVueRuntimeNotice(projectRoot, notice));
   return errors;
 }
 
@@ -406,7 +465,7 @@ export function validatePackageDirectory({
       }));
     }
   }
-  errors.push(...validateLegalFiles(packageDir, actualFiles));
+  errors.push(...validateLegalFiles(packageDir, actualFiles, projectRoot));
 
   const expectedFiles = new Set(REQUIRED_PRODUCT_FILES);
   expectedFiles.add('manifest.json');
