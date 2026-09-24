@@ -229,6 +229,10 @@ export const CI_CATEGORIES = Object.freeze({
   artifacts: {
     label: 'Generated-artifact and clean-checkout enforcement',
     checks: [
+      testCheck('tests/publication-surface.test.mjs', 'Test public-surface path guard'),
+      testCheck('tests/commit-metadata.test.mjs', 'Test commit metadata guard'),
+      npmCheck('Validate tracked public-surface paths', 'validate:public-surface'),
+      npmCheck('Validate new commit author metadata', 'validate:commit-metadata'),
       testCheck('tests/artifact-policy.test.mjs', 'Test artifact policy'),
       testCheck('tests/validate-package.test.mjs', 'Test package validation'),
       commandCheck('Enforce generated-artifact policy and clean checkout', [

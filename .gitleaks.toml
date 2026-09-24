@@ -1,0 +1,10 @@
+title = "Typewriter publication-surface scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "personal-local-home-path"
+description = "Personal absolute home-directory paths"
+regex = '''(?:^|[^\p{L}\p{N}_])/(?:Users|home)/[^\s/"'<>`]+(?:/[^\s"'<>`]*)?|(?:^|[^\p{L}\p{N}_])[A-Z]:\\Users\\[^\\\s"'<>`]+(?:\\[^\s"'<>`]*)?'''
+tags = ["privacy", "path"]
