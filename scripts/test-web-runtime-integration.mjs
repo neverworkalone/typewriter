@@ -128,6 +128,17 @@ async function waitForRecord(page, recordId) {
   ), recordId, { timeout: 30000 });
 }
 
+async function assertNoHorizontalOverflow(page, label) {
+  const dimensions = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  assert.ok(
+    dimensions.documentWidth <= dimensions.viewportWidth,
+    `${label} overflows horizontally: ${dimensions.documentWidth}px in a ${dimensions.viewportWidth}px viewport`,
+  );
+}
+
 async function main() {
   await validateProductOutputContract();
 
@@ -188,18 +199,17 @@ async function main() {
 
     const legalAccess = await webPage.evaluate(async (fileNames) => (
       Promise.all(fileNames.map(async (fileName) => {
-        const anchor = [...document.querySelectorAll('a[href]')]
-          .find((candidate) => candidate.getAttribute('href') === `./${fileName}`);
-        if (!anchor) return { fileName, found: false, status: null };
-        const response = await fetch(anchor.href);
-        return { fileName, found: true, status: response.status };
+        const response = await fetch(`./${fileName}`);
+        const visibleLink = [...document.querySelectorAll('a[href]')]
+          .some((anchor) => anchor.getAttribute('href') === `./${fileName}`);
+        return { fileName, visibleLink, status: response.status };
       }))
     ), PRODUCT_LEGAL_FILES);
     assert.deepEqual(legalAccess, PRODUCT_LEGAL_FILES.map((fileName) => ({
       fileName,
-      found: true,
+      visibleLink: false,
       status: 200,
-    })), 'web legal links must resolve to packaged product files');
+    })), 'web must package legal files without requiring visible links');
 
     for (const term of ['담담하다', '담담', '쓰다', '마음이 놓이다']) {
       const popupSnapshot = await search(extensionPage, term);
@@ -246,6 +256,38 @@ async function main() {
     await webPage.goForward();
     await waitForRecord(webPage, 'r008');
     assert.equal(new URL(webPage.url()).searchParams.get('target'), 'r008');
+
+    await webPage.setViewportSize({ width: 390, height: 844 });
+    await assertNoHorizontalOverflow(webPage, 'dictionary page at mobile width');
+    await webPage.setViewportSize({ width: 1280, height: 800 });
+
+    await webPage.getByRole('link', { name: '제품 소개' }).click();
+    await webPage.waitForURL(`${webOrigin}/typewriter/about/`);
+    assert.ok(requests.has('/typewriter/'));
+    assert.ok(requests.has('/typewriter/about/'));
+    assert.equal(await webPage.locator('[data-product-surface]').getAttribute('data-product-surface'), 'web-about');
+    assert.equal(await webPage.locator('[data-dictionary-panel]').count(), 0);
+
+    const aboutPage = await context.newPage();
+    const aboutResponse = await aboutPage.goto(`${webOrigin}/typewriter/about/`, { waitUntil: 'load' });
+    assert.equal(aboutResponse?.status(), 200, 'product introduction must load directly');
+    await aboutPage.locator('[data-product-surface="web-about"]').waitFor();
+    const aboutLinks = await aboutPage.locator('.site-navigation a').evaluateAll((links) => (
+      Object.fromEntries(links.map((link) => [link.textContent.trim(), new URL(link.href).pathname]))
+    ));
+    assert.deepEqual(aboutLinks, {
+      '제품 소개': '/typewriter/about/',
+      GitHub: '/neverworkalone/typewriter',
+    });
+    const aboutReload = await aboutPage.reload({ waitUntil: 'load' });
+    assert.equal(aboutReload?.status(), 200, 'product introduction must survive a direct reload');
+    await aboutPage.locator('[data-product-surface="web-about"]').waitFor();
+    assert.equal(await aboutPage.locator('[data-dictionary-panel]').count(), 0);
+    await aboutPage.setViewportSize({ width: 390, height: 844 });
+    await assertNoHorizontalOverflow(aboutPage, 'product introduction page at mobile width');
+    await aboutPage.getByRole('link', { name: 'Typewriter 홈' }).click();
+    await aboutPage.waitForURL(`${webOrigin}/typewriter/`);
+    await waitForRuntimeReady(aboutPage, 'web');
 
     assert.ok(requests.has('/typewriter/runtime/dictionary-worker.mjs'));
     assert.ok(requests.has('/typewriter/runtime/vendor/sqlite3.wasm'));

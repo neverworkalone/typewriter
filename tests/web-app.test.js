@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import DictionaryPanel from '../src/components/DictionaryPanel.vue';
 import PopupApp from '../src/popup/App.vue';
+import AboutApp from '../web/src/AboutApp.vue';
 import WebApp from '../web/src/App.vue';
 import { ERROR_CODES } from '../src/runtime/protocol.js';
 import { DEFAULT_SETTINGS } from '../src/ui/settings.js';
@@ -179,7 +180,7 @@ describe('Typewriter Web product surface', () => {
     expect(visibleIdentity(web)).toEqual({ records: ['w237'], senses: ['w237-s2'] });
   });
 
-  it('adapts settings to browser storage and presents clear product and licensing context', async () => {
+  it('keeps dictionary use on the main page and presents product context separately', async () => {
     const saves = [];
     const settingsStore = {
       load: async () => ({ ...DEFAULT_SETTINGS }),
@@ -192,13 +193,39 @@ describe('Typewriter Web product surface', () => {
       runtime: makeRuntime(),
       settingsStore,
     });
+    const about = mountWithProps(AboutApp);
 
-    expect(web.querySelector('#hero-title').textContent.replace(/\s+/gu, ''))
+    expect(web.querySelector('.search-stage-title')?.textContent.trim())
+      .toBe('머릿속에 맴도는 말을 찾아보세요.');
+    expect(web.querySelector('.runtime-note')).toBeNull();
+    expect(web.querySelector('.example-searches')).toBeNull();
+    expect(web.querySelector('.search-stage .dictionary-panel')).not.toBeNull();
+    expect(web.querySelector('.about-section')).toBeNull();
+    expect(web.querySelector('.principles')).toBeNull();
+    expect(web.querySelector('.release-section')).toBeNull();
+    expect(web.textContent).not.toContain('한 단어에서, 다른 결로.');
+    expect(web.textContent).not.toContain('OPEN SOURCE');
+    expect(web.querySelector('a[href*="LICENSE.md"]')).toBeNull();
+    expect(web.querySelectorAll('a[href="https://github.com/neverworkalone/typewriter"]'))
+      .toHaveLength(1);
+    expect(new URL(web.querySelector('.site-wordmark').getAttribute('href'), window.location.href).pathname)
+      .toMatch(/\/$/u);
+    expect(new URL(web.querySelector('.site-navigation a').getAttribute('href'), window.location.href).pathname)
+      .toMatch(/\/about\/$/u);
+
+    expect(about.querySelector('#hero-title').textContent.replace(/\s+/gu, ''))
       .toBe('작가를위한,말의결을찾는사전.');
-    expect(web.textContent).toContain('문장 생성이나 AI 다시쓰기를 하지 않습니다.');
-    expect(web.textContent).toContain('재배포 권리 확인이 끝나지 않아 공개 배포가 보류되어 있습니다.');
-    expect(web.querySelector('a[href*="DATA-LICENSE.md"]')).not.toBeNull();
-    expect(web.querySelector('a[href*="LICENSE.md"]')).not.toBeNull();
+    expect(about.textContent).toContain('한 단어에서, 다른 결로.');
+    expect(about.textContent).toContain('문장 생성이나 AI 다시쓰기를 하지 않습니다.');
+    expect(about.textContent).toContain('관계를 구분해 보여 줍니다');
+    expect(about.textContent).toContain('검색은 브라우저 안에서');
+    expect(about.querySelector('.dictionary-panel')).toBeNull();
+    expect(about.querySelector('[aria-label="검색어"]')).toBeNull();
+    expect(about.querySelector('a[href*="LICENSE.md"]')).toBeNull();
+    expect(about.querySelector('.site-navigation a[aria-current="page"]')?.textContent.trim())
+      .toBe('제품 소개');
+    expect(about.querySelectorAll('a[href="https://github.com/neverworkalone/typewriter"]'))
+      .toHaveLength(1);
 
     web.querySelector('[data-settings-link]').click();
     await flush();
@@ -275,10 +302,22 @@ describe('Typewriter Web product surface', () => {
 
   it('keeps web source and assets separate from the Chrome Extension public tree', async () => {
     const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-    const [webSource, webConfig, html] = await Promise.all([
+    const [
+      webSource,
+      webConfig,
+      html,
+      aboutHtml,
+      webFavicon,
+      extensionFavicon,
+      extensionIcon16,
+    ] = await Promise.all([
       readFile(path.join(repositoryRoot, 'web/src/App.vue'), 'utf8'),
       readFile(path.join(repositoryRoot, 'vite.web.config.js'), 'utf8'),
       readFile(path.join(repositoryRoot, 'web/index.html'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'web/about/index.html'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'web/public/favicon.ico')),
+      readFile(path.join(repositoryRoot, 'public/favicon.ico')),
+      readFile(path.join(repositoryRoot, 'public/icon16.png')),
     ]);
 
     expect(webSource).toContain("from '../../src/components/DictionaryPanel.vue'");
@@ -287,6 +326,17 @@ describe('Typewriter Web product surface', () => {
     expect(webSource).not.toContain('chrome.');
     expect(webConfig).toContain("root: webRoot");
     expect(webConfig).toContain("path.join(webRoot, 'public')");
+    expect(html).toContain('href="/favicon.ico"');
+    expect(aboutHtml).toContain('href="/favicon.ico"');
+    expect(html).not.toContain('favicon.svg');
+    expect(aboutHtml).not.toContain('favicon.svg');
+    expect(webFavicon).toEqual(extensionFavicon);
+    const faviconImageOffset = extensionFavicon.readUInt32LE(18);
+    const faviconImageLength = extensionFavicon.readUInt32LE(14);
+    expect(extensionFavicon.subarray(
+      faviconImageOffset,
+      faviconImageOffset + faviconImageLength,
+    )).toEqual(extensionIcon16);
     expect(html).not.toContain('manifest.json');
     expect(html).not.toContain('options.html');
   });

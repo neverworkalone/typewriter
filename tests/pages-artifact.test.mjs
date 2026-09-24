@@ -17,25 +17,38 @@ async function createArtifact(t, {
   sourceRevision = SOURCE_REVISION,
   canonicalRevision = CANONICAL_REVISION,
   basePath = '/typewriter/',
+  aboutBasePath = basePath,
   worktreeState = 'clean',
 } = {}) {
   const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'typewriter-pages-artifact-'));
   t.after(() => rm(temporaryDirectory, { recursive: true, force: true }));
   const outputDirectory = path.join(temporaryDirectory, 'site');
   await mkdir(path.join(outputDirectory, 'assets'), { recursive: true });
+  await mkdir(path.join(outputDirectory, 'about'), { recursive: true });
+  await mkdir(path.join(outputDirectory, 'chunks'), { recursive: true });
   await mkdir(path.join(outputDirectory, 'runtime/vendor'), { recursive: true });
 
   const jsAsset = 'assets/index-12345678.js';
   const cssAsset = 'assets/index-abcdefgh.css';
+  const chunkAsset = 'chunks/style-87654321.js';
   await writeFile(
     path.join(outputDirectory, 'index.html'),
-    '<link rel="icon" href="' + basePath + 'favicon.svg">'
+    '<link rel="icon" href="' + basePath + 'favicon.ico">'
       + '<link rel="stylesheet" href="' + basePath + cssAsset + '">'
+      + '<link rel="modulepreload" href="' + basePath + chunkAsset + '">'
       + '<script type="module" src="' + basePath + jsAsset + '"></script>',
   );
-  await writeFile(path.join(outputDirectory, 'favicon.svg'), '<svg></svg>');
+  await writeFile(
+    path.join(outputDirectory, 'about/index.html'),
+    '<link rel="icon" href="' + aboutBasePath + 'favicon.ico">'
+      + '<link rel="stylesheet" href="' + aboutBasePath + cssAsset + '">'
+      + '<link rel="modulepreload" href="' + aboutBasePath + chunkAsset + '">'
+      + '<script type="module" src="' + aboutBasePath + jsAsset + '"></script>',
+  );
+  await writeFile(path.join(outputDirectory, 'favicon.ico'), await readFile(path.join(REPOSITORY_DIRECTORY, 'public/favicon.ico')));
   await writeFile(path.join(outputDirectory, jsAsset), 'void 0;');
   await writeFile(path.join(outputDirectory, cssAsset), 'body{}');
+  await writeFile(path.join(outputDirectory, chunkAsset), 'void 0;');
 
   for (const fileName of PRODUCT_LEGAL_FILES) {
     await writeFile(
@@ -100,8 +113,49 @@ test('rejects extension manifests and any other unapproved artifact files', asyn
   );
 });
 
+test('rejects shared chunks that do not match the hashed Vite output pattern', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await writeFile(path.join(outputDirectory, 'chunks/unapproved.js'), 'void 0;');
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_FILE' },
+  );
+});
+
 test('rejects an artifact that uses the site root instead of the repository Pages base path', async (t) => {
   const { outputDirectory } = await createArtifact(t, { basePath: '/' });
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_BASE_PATH' },
+  );
+});
+
+test('requires the product introduction entrypoint in the Pages artifact', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await rm(path.join(outputDirectory, 'about/index.html'));
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_REQUIRED_FILE' },
+  );
+});
+
+test('validates the product introduction asset paths against the repository Pages base path', async (t) => {
+  const { outputDirectory } = await createArtifact(t, { aboutBasePath: '/' });
   await assert.rejects(
     validatePagesArtifact({
       outputDirectory,
@@ -132,7 +186,7 @@ test('rejects a dictionary bound to a different Git source revision', async (t) 
 test('rejects symlinks in the Pages artifact tree', async (t) => {
   const { outputDirectory } = await createArtifact(t);
   await symlink(
-    path.join(outputDirectory, 'favicon.svg'),
+    path.join(outputDirectory, 'favicon.ico'),
     path.join(outputDirectory, 'assets/alias.svg'),
   );
   await assert.rejects(
@@ -204,6 +258,20 @@ test('rejects hard links in the Pages artifact tree', async (t) => {
       expectedCanonicalRevision: CANONICAL_REVISION,
     }),
     { code: 'PAGES_ARTIFACT_HARDLINK' },
+  );
+});
+
+test('rejects a favicon that differs from the Chrome Extension brand asset', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await writeFile(path.join(outputDirectory, 'favicon.ico'), 'changed');
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_FAVICON' },
   );
 });
 

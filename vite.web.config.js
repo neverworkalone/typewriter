@@ -43,7 +43,10 @@ export default defineConfig({
     target: 'es2022',
     minify: shouldMinify ? 'esbuild' : false,
     rollupOptions: {
-      input: path.join(webRoot, 'index.html'),
+      input: {
+        main: path.join(webRoot, 'index.html'),
+        about: path.join(webRoot, 'about/index.html'),
+      },
       output: {
         format: 'es',
         entryFileNames: 'assets/[name]-[hash].js',

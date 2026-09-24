@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import DictionaryPanel from '../../src/components/DictionaryPanel.vue';
 import ToggleControl from '../../src/components/ToggleControl.vue';
+import SiteFooter from './components/SiteFooter.vue';
+import SiteHeader from './components/SiteHeader.vue';
 import { SearchSession } from '../../src/domain/index.js';
 import { DictionaryRuntime } from '../../src/runtime/query-adapter.js';
 import {
@@ -33,7 +35,6 @@ const runtime = props.runtime || (props.session ? null : new DictionaryRuntime()
 const session = props.session || new SearchSession({ runtime });
 const settingsStore = props.settingsStore || createSettingsStore({ storage: null });
 
-const examples = ['담담하다', '마음이 놓이다', '쓰다', '시작하다'];
 const query = ref('');
 const searchState = ref(session.state);
 const settings = ref({ ...DEFAULT_SETTINGS });
@@ -52,7 +53,6 @@ let restoringBrowserHistory = false;
 let suppressInitialHistoryEntry = false;
 let navigationPending = false;
 let previousFocus = null;
-const webHomeHref = import.meta.env?.BASE_URL || './';
 
 const records = computed(() => (
   searchState.value.status === 'ready'
@@ -385,25 +385,10 @@ onBeforeUnmount(() => {
     :data-runtime-write-blocked="runtimeStatus?.write_blocked"
     :data-runtime-persisted-write-count="runtimeStatus?.persisted_write_count"
   >
-    <header class="site-header">
-      <a class="site-wordmark" :href="webHomeHref" aria-label="Typewriter 홈">TYPEWRITER</a>
-      <nav class="site-navigation" aria-label="주요 메뉴">
-        <a href="#about">제품 소개</a>
-        <a href="https://github.com/neverworkalone/typewriter">GitHub</a>
-      </nav>
-    </header>
-
-    <section class="hero" aria-labelledby="hero-title">
-      <p class="eyebrow">KOREAN WRITER'S DICTIONARY</p>
-      <h1 id="hero-title">
-        작가를 위한,<br />말의 결을<span class="hero-mobile-break" aria-hidden="true"></span> 찾는 사전.
-      </h1>
-      <p class="hero-description">
-        문장을 쓰다가 다른 말을 찾을 때, 뜻을 바꾸거나 그대로 두면서 다음 단어를 탐색해 보세요.
-      </p>
-    </section>
+    <SiteHeader />
 
     <section class="search-stage" aria-label="Typewriter 사전 검색">
+      <h1 class="search-stage-title">머릿속에 맴도는 말을 찾아보세요.</h1>
       <DictionaryPanel
         ref="dictionaryPanel"
         :query="query"
@@ -426,78 +411,9 @@ onBeforeUnmount(() => {
         @retry="retry"
         @open-settings="openSettings"
       />
-      <p class="runtime-note">
-        검색과 관계 탐색은 canonical data에서 결정적으로 만든 SQLite 사전을 브라우저에서 읽어 처리합니다.
-        외부 사전이나 AI 서비스에 검색어를 보내지 않습니다.
-      </p>
-      <div class="example-searches" aria-label="검색 예시">
-        <span>이런 말을 찾아보세요</span>
-        <button v-for="example in examples" :key="example" type="button" @click="search(example)">
-          {{ example }}
-        </button>
-      </div>
     </section>
 
-    <section id="about" class="about-section" aria-labelledby="about-title">
-      <div class="section-heading">
-        <p class="eyebrow">WORDS LEAD TO OTHER WORDS</p>
-        <h2 id="about-title">한 단어에서, 다른 결로.</h2>
-      </div>
-      <div class="about-copy">
-        <p>
-          Typewriter는 문장을 대신 쓰거나 고쳐 주지 않습니다. 단어와 표현, 장면과 감각 사이의 관계를
-          보여 주어 작가가 다음 말을 고를 수 있도록 돕습니다.
-        </p>
-        <p>
-          모든 관계는 어떤 결인지 표시합니다. 바로 바꾸어 쓸 수 있는 말부터 분위기와 장면을 나누는 말까지,
-          사전의 편집 판단을 그대로 살펴볼 수 있습니다.
-        </p>
-        <p>
-          일반 유의어 목록처럼 모든 말을 서로 바꾸어 쓸 수 있다고 다루지 않고, 각 연결이 뜻풀이인지
-          분위기나 장면의 연상인지 구분합니다.
-        </p>
-      </div>
-    </section>
-
-    <section class="principles" aria-label="Typewriter의 원칙">
-      <article>
-        <span class="principle-number">01</span>
-        <h3>사람이 문장을 씁니다</h3>
-        <p>Typewriter는 문장 생성이나 AI 다시쓰기를 하지 않습니다.</p>
-      </article>
-      <article>
-        <span class="principle-number">02</span>
-        <h3>관계를 구분해 보여 줍니다</h3>
-        <p>직접 바꿔 쓸 말과 분위기·장면·감각의 연상을 구별합니다.</p>
-      </article>
-      <article>
-        <span class="principle-number">03</span>
-        <h3>검색은 브라우저 안에서</h3>
-        <p>사전 조회에 외부 사전 API나 AI 서비스 연결을 사용하지 않습니다.</p>
-      </article>
-    </section>
-
-    <section class="release-section" aria-labelledby="release-title">
-      <p class="eyebrow">OPEN SOURCE · EDITORIAL DATA</p>
-      <h2 id="release-title">코드와 데이터의 경계를 투명하게.</h2>
-      <p>
-        소프트웨어, 사전 데이터, 이름과 시각 자산에는 서로 다른 재사용 조건이 적용됩니다.
-        현재 사전 corpus는 출처별 재배포 권리 확인이 끝나지 않아 공개 배포가 보류되어 있습니다.
-      </p>
-      <div class="release-links">
-        <a href="./LICENSE.md">소프트웨어 라이선스 안내</a>
-        <a href="./Apache-2.0.txt">Apache 2.0 전문</a>
-        <a href="./THIRD-PARTY-NOTICES.txt">제3자 라이선스 고지</a>
-        <a href="./DATA-LICENSE.md">데이터 라이선스</a>
-        <a href="./BRAND.md">브랜드 정책</a>
-        <a href="https://github.com/neverworkalone/typewriter">저장소</a>
-      </div>
-    </section>
-
-    <footer class="site-footer">
-      <span>Typewriter — 작가를 위한, 말의 결을 찾는 사전.</span>
-      <a href="https://github.com/neverworkalone/typewriter">Chrome Extension · 개발 중인 prototype</a>
-    </footer>
+    <SiteFooter />
 
     <div
       v-if="settingsOpen"

@@ -113,10 +113,12 @@ remains the editable source of truth.
 ## GitHub Pages build and deployment
 
 The Pages workflow builds the separate web source under web/ at the repository path
-/typewriter/. The command npm run validate:pages-artifact rejects unknown files,
-extension-only assets, remote index assets, incorrect base paths, changed legal
-files, and dictionaries whose verified Git or canonical revision differs from the
-checked-out source.
+/typewriter/. It emits a dictionary page at `/typewriter/` and a product introduction
+page at `/typewriter/about/`; both pages load directly from the Pages artifact and
+share the site navigation. The command `npm run validate:pages-artifact` rejects
+unknown files, extension-only assets, remote page assets, incorrect base paths,
+changed legal files, and dictionaries whose verified Git or canonical revision
+differs from the checked-out source.
 
 Pull requests and pushes to master build and validate on an ephemeral runner. They
 do not upload a Pages artifact. Upload and deployment require a manual workflow run

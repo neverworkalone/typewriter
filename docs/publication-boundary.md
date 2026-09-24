@@ -121,12 +121,14 @@ visibility.
 ## Pages boundary
 
 GitHub Pages must use a custom Actions workflow and a separate `web/` source tree.
-The existing `docs/` stays the development/design/audit authority. A Pages artifact
-may contain only the built web entrypoint, shared runtime/worker, SQLite WASM assets,
-and a database generated from the MO-approved canonical revision, plus other files
-explicitly allowlisted for the site. It must not include `manifest.json`, Chrome-only
-package files, tests, M5 evidence, raw sources, or unapproved files from the extension
-root `public/` directory.
+The existing `docs/` stays the development/design/audit authority. The Pages artifact
+contains the dictionary entrypoint and the product introduction entrypoint at
+`about/index.html`, with the shared runtime/worker, SQLite WASM assets, and a database
+generated from the MO-approved canonical revision, plus other files explicitly
+allowlisted for the site. Required legal files remain in the artifact without needing
+visible links on either page. It must not include `manifest.json`, Chrome-only package
+files, tests, M5 evidence, raw sources, or unapproved files from the extension root
+`public/` directory.
 
 The exact Pages file set, repository base paths, SQLite integrity, and Git and
 canonical revision bindings are checked by scripts/validate/pages-artifact.mjs.
