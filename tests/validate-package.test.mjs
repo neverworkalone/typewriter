@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +17,132 @@ const REPOSITORY_DIRECTORY = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
+
+test('derives dictionary metadata from the supplied canonical directory and rejects a stale package', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-package-canonical-metadata-'));
+  const packageDirectory = path.join(temporaryDirectory, 'dist');
+  const canonicalDirectory = path.join(temporaryDirectory, 'prospective-canonical');
+  const canonicalFile = path.join(canonicalDirectory, 'fixture.jsonl');
+  const databasePath = path.join(packageDirectory, 'dictionary.sqlite');
+  try {
+    await mkdir(canonicalDirectory, { recursive: true });
+    await mkdir(path.join(packageDirectory, 'runtime/vendor'), { recursive: true });
+
+    const records = [
+      {
+        record_type: 'entry',
+        role: 'start',
+        candidate_id: 'candidate-1',
+        search_forms: ['alpha'],
+        senses: [{ relations: [] }],
+      },
+      {
+        record_type: 'entry',
+        role: 'reference-only',
+        candidate_id: null,
+        search_forms: ['beta'],
+        senses: [{ relations: [] }],
+      },
+      {
+        record_type: 'expression',
+        role: 'start',
+        candidate_id: 'candidate-2',
+        search_forms: ['gamma', 'gamma phrase'],
+        senses: [{ relations: [{}] }],
+      },
+    ];
+    const serializedRecords = records.map((record) => JSON.stringify(record)).join('\n');
+    await writeFile(canonicalFile, `${serializedRecords}\n`);
+
+    const manifest = {
+      manifest_version: 3,
+      version: '1.0',
+      permissions: ['storage'],
+      action: { default_popup: 'popup.html' },
+      options_ui: { page: 'options.html' },
+      content_security_policy: {
+        extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+      },
+    };
+    const packageFiles = new Map([
+      ['manifest.json', JSON.stringify(manifest)],
+      ['popup.html', '<main>fixture popup</main>'],
+      ['options.html', '<main>fixture options</main>'],
+      ['logo.png', 'fixture logo'],
+      ['runtime/dictionary-worker.mjs', '// fixture worker\n'],
+      ['runtime/protocol.js', '// fixture protocol\n'],
+      ['runtime/query-adapter.js', '// fixture adapter\n'],
+      ['runtime/search-query.js', '// fixture search\n'],
+      ['runtime/vendor/sqlite3.mjs', '// fixture sqlite loader\n'],
+      ['runtime/vendor/sqlite3.wasm', Buffer.from([0x00, 0x61, 0x73, 0x6d])],
+      ['Apache-2.0.txt', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'],
+      ['THIRD-PARTY-NOTICES.txt', '@sqlite.org/sqlite-wasm 3.53.0-build1\nApache-2.0.txt'],
+    ]);
+    for (const [relativePath, contents] of packageFiles) {
+      const filePath = path.join(packageDirectory, relativePath);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, contents);
+      await chmod(filePath, 0o644);
+    }
+
+    const metadata = {
+      dictionary_version: 'm2-pilot-1',
+      schema_version: '1',
+      normalization_version: '1',
+      build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
+      build_tool_version: '1',
+      record_count: '3',
+      start_count: '2',
+      reference_only_count: '1',
+      candidate_count: '2',
+      search_form_count: '4',
+      sense_count: '3',
+      relation_count: '1',
+      expression_count: '1',
+      source_revision: execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+        cwd: REPOSITORY_DIRECTORY,
+        encoding: 'utf8',
+      }).trim(),
+      source_revision_source: 'git-head',
+      source_revision_verified: 'true',
+      worktree_state: 'clean',
+      node_version: process.version,
+      sqlite_version: '3.53.0',
+    };
+    const database = new DatabaseSync(databasePath);
+    database.exec('CREATE TABLE metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL); PRAGMA user_version = 1;');
+    const insertMetadata = database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');
+    for (const [key, value] of Object.entries(metadata)) insertMetadata.run(key, value);
+    database.close();
+    await chmod(databasePath, 0o644);
+
+    const matchingPackage = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.deepEqual(matchingPackage.errors, []);
+
+    const additionalStart = {
+      record_type: 'entry',
+      role: 'start',
+      candidate_id: 'candidate-3',
+      search_forms: ['delta'],
+      senses: [{ relations: [] }],
+    };
+    await writeFile(canonicalFile, `${serializedRecords}\n${JSON.stringify(additionalStart)}\n`);
+    const stalePackage = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(stalePackage.errors.includes(
+      'Dictionary metadata record_count must be "4", received "3".',
+    ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
 
 test('collects manifest entrypoints without treating wildcard resources as files', () => {
   const files = collectManifestFiles({
