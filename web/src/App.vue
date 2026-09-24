@@ -35,7 +35,6 @@ const runtime = props.runtime || (props.session ? null : new DictionaryRuntime()
 const session = props.session || new SearchSession({ runtime });
 const settingsStore = props.settingsStore || createSettingsStore({ storage: null });
 
-const examples = ['담담하다', '마음이 놓이다', '쓰다', '시작하다'];
 const query = ref('');
 const searchState = ref(session.state);
 const settings = ref({ ...DEFAULT_SETTINGS });
@@ -389,7 +388,7 @@ onBeforeUnmount(() => {
     <SiteHeader />
 
     <section class="search-stage" aria-label="Typewriter 사전 검색">
-      <h1 class="search-stage-title">사전에서 다음 말을 찾아보세요</h1>
+      <h1 class="search-stage-title">머릿속에 맴도는 말을 찾아보세요.</h1>
       <DictionaryPanel
         ref="dictionaryPanel"
         :query="query"
@@ -412,16 +411,6 @@ onBeforeUnmount(() => {
         @retry="retry"
         @open-settings="openSettings"
       />
-      <p class="runtime-note">
-        검색과 관계 탐색은 canonical data에서 결정적으로 만든 SQLite 사전을 브라우저에서 읽어 처리합니다.
-        외부 사전이나 AI 서비스에 검색어를 보내지 않습니다.
-      </p>
-      <div class="example-searches" aria-label="검색 예시">
-        <span>이런 말을 찾아보세요</span>
-        <button v-for="example in examples" :key="example" type="button" @click="search(example)">
-          {{ example }}
-        </button>
-      </div>
     </section>
 
     <SiteFooter />

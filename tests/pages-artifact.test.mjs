@@ -33,19 +33,19 @@ async function createArtifact(t, {
   const chunkAsset = 'chunks/style-87654321.js';
   await writeFile(
     path.join(outputDirectory, 'index.html'),
-    '<link rel="icon" href="' + basePath + 'favicon.svg">'
+    '<link rel="icon" href="' + basePath + 'favicon.ico">'
       + '<link rel="stylesheet" href="' + basePath + cssAsset + '">'
       + '<link rel="modulepreload" href="' + basePath + chunkAsset + '">'
       + '<script type="module" src="' + basePath + jsAsset + '"></script>',
   );
   await writeFile(
     path.join(outputDirectory, 'about/index.html'),
-    '<link rel="icon" href="' + aboutBasePath + 'favicon.svg">'
+    '<link rel="icon" href="' + aboutBasePath + 'favicon.ico">'
       + '<link rel="stylesheet" href="' + aboutBasePath + cssAsset + '">'
       + '<link rel="modulepreload" href="' + aboutBasePath + chunkAsset + '">'
       + '<script type="module" src="' + aboutBasePath + jsAsset + '"></script>',
   );
-  await writeFile(path.join(outputDirectory, 'favicon.svg'), '<svg></svg>');
+  await writeFile(path.join(outputDirectory, 'favicon.ico'), await readFile(path.join(REPOSITORY_DIRECTORY, 'public/favicon.ico')));
   await writeFile(path.join(outputDirectory, jsAsset), 'void 0;');
   await writeFile(path.join(outputDirectory, cssAsset), 'body{}');
   await writeFile(path.join(outputDirectory, chunkAsset), 'void 0;');
@@ -186,7 +186,7 @@ test('rejects a dictionary bound to a different Git source revision', async (t) 
 test('rejects symlinks in the Pages artifact tree', async (t) => {
   const { outputDirectory } = await createArtifact(t);
   await symlink(
-    path.join(outputDirectory, 'favicon.svg'),
+    path.join(outputDirectory, 'favicon.ico'),
     path.join(outputDirectory, 'assets/alias.svg'),
   );
   await assert.rejects(
@@ -258,6 +258,20 @@ test('rejects hard links in the Pages artifact tree', async (t) => {
       expectedCanonicalRevision: CANONICAL_REVISION,
     }),
     { code: 'PAGES_ARTIFACT_HARDLINK' },
+  );
+});
+
+test('rejects a favicon that differs from the Chrome Extension brand asset', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  await writeFile(path.join(outputDirectory, 'favicon.ico'), 'changed');
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_FAVICON' },
   );
 });
 

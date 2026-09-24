@@ -167,45 +167,6 @@ a {
   min-height: 122px;
 }
 
-.runtime-note {
-  margin: 14px 0 0;
-  color: #817a73;
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.example-searches {
-  display: flex;
-  min-height: 34px;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 18px;
-}
-
-.example-searches > span {
-  margin-right: 3px;
-  color: #817a73;
-  font-size: 12px;
-}
-
-.example-searches button {
-  min-height: 31px;
-  padding: 4px 11px;
-  border: 1px solid #e5e0da;
-  border-radius: 999px;
-  background: #fff;
-  color: #514b46;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.example-searches button:hover {
-  border-color: #bc938d;
-  color: #7e433e;
-}
-
-.example-searches button:focus-visible,
 .site-navigation a:focus-visible {
   outline: 2px solid #7e433e;
   outline-offset: 3px;

@@ -195,6 +195,10 @@ describe('Typewriter Web product surface', () => {
     });
     const about = mountWithProps(AboutApp);
 
+    expect(web.querySelector('.search-stage-title')?.textContent.trim())
+      .toBe('머릿속에 맴도는 말을 찾아보세요.');
+    expect(web.querySelector('.runtime-note')).toBeNull();
+    expect(web.querySelector('.example-searches')).toBeNull();
     expect(web.querySelector('.search-stage .dictionary-panel')).not.toBeNull();
     expect(web.querySelector('.about-section')).toBeNull();
     expect(web.querySelector('.principles')).toBeNull();
@@ -298,10 +302,13 @@ describe('Typewriter Web product surface', () => {
 
   it('keeps web source and assets separate from the Chrome Extension public tree', async () => {
     const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-    const [webSource, webConfig, html] = await Promise.all([
+    const [webSource, webConfig, html, aboutHtml, webFavicon, extensionFavicon] = await Promise.all([
       readFile(path.join(repositoryRoot, 'web/src/App.vue'), 'utf8'),
       readFile(path.join(repositoryRoot, 'vite.web.config.js'), 'utf8'),
       readFile(path.join(repositoryRoot, 'web/index.html'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'web/about/index.html'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'web/public/favicon.ico')),
+      readFile(path.join(repositoryRoot, 'public/favicon.ico')),
     ]);
 
     expect(webSource).toContain("from '../../src/components/DictionaryPanel.vue'");
@@ -310,6 +317,11 @@ describe('Typewriter Web product surface', () => {
     expect(webSource).not.toContain('chrome.');
     expect(webConfig).toContain("root: webRoot");
     expect(webConfig).toContain("path.join(webRoot, 'public')");
+    expect(html).toContain('href="/favicon.ico"');
+    expect(aboutHtml).toContain('href="/favicon.ico"');
+    expect(html).not.toContain('favicon.svg');
+    expect(aboutHtml).not.toContain('favicon.svg');
+    expect(webFavicon).toEqual(extensionFavicon);
     expect(html).not.toContain('manifest.json');
     expect(html).not.toContain('options.html');
   });

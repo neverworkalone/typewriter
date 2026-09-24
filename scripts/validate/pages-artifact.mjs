@@ -16,7 +16,7 @@ const ALLOWED_DIRECTORIES = new Set(['about', 'assets', 'chunks', 'runtime', 'ru
 const ALLOWED_FILES = new Set([
   'index.html',
   'about/index.html',
-  'favicon.svg',
+  'favicon.ico',
   'dictionary.sqlite',
   'runtime/dictionary-worker.mjs',
   'runtime/protocol.js',
@@ -147,9 +147,9 @@ async function validateHtmlAssetPaths(outputDirectory, files) {
     const references = [...html.matchAll(/\b(?:src|href)="([^"]+)"/gu)]
       .map(([, reference]) => reference);
 
-    if (!references.includes(PAGES_BASE_PATH + 'favicon.svg')) {
+    if (!references.includes(PAGES_BASE_PATH + 'favicon.ico')) {
       fail(
-        `Pages ${htmlPath} must resolve favicon.svg under ${PAGES_BASE_PATH}`,
+        `Pages ${htmlPath} must resolve favicon.ico under ${PAGES_BASE_PATH}`,
         'PAGES_ARTIFACT_BASE_PATH',
       );
     }
@@ -186,6 +186,19 @@ async function validateHtmlAssetPaths(outputDirectory, files) {
     ))) {
       fail(`Pages ${htmlPath} must load a CSS bundle under the Pages base path.`, 'PAGES_ARTIFACT_BASE_PATH');
     }
+  }
+}
+
+async function validateFavicon(repositoryDirectory, outputDirectory) {
+  const [source, shipped] = await Promise.all([
+    readFile(path.join(repositoryDirectory, 'public/favicon.ico')),
+    readFile(path.join(outputDirectory, 'favicon.ico')),
+  ]);
+  if (!source.equals(shipped)) {
+    fail(
+      'favicon.ico in the Pages artifact must match public/favicon.ico.',
+      'PAGES_ARTIFACT_FAVICON',
+    );
   }
 }
 
@@ -265,6 +278,7 @@ export async function validatePagesArtifact({
 
   assertRequiredFiles(fileInventory.files);
   await validateHtmlAssetPaths(resolvedOutputDirectory, fileInventory.files);
+  await validateFavicon(resolvedRepositoryDirectory, resolvedOutputDirectory);
   await validateLegalFiles(resolvedRepositoryDirectory, resolvedOutputDirectory);
   const metadata = readDatabaseMetadata(path.join(resolvedOutputDirectory, 'dictionary.sqlite'));
   assertDatabaseMetadata(metadata, expectedGitRevision, expectedCanonicalDigest);
