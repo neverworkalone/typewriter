@@ -79,14 +79,17 @@ See the [editorial model](docs/editorial-model.md), [lexical quality pipeline](d
 Requirements: Node.js 22.13 or newer and npm. From a clean clone:
 
     npm ci --ignore-scripts --no-audit --no-fund
+    npx playwright install chromium
     npm test
     npm run build
     TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package
 
-The default test command runs the normal CI gate, including repository
-validation, the current regression and unit tests, and the product build. It is
-equivalent to npm run ci:normal. The build command creates extension files in
-dist/, and the package command creates and validates an extension ZIP.
+The Playwright command installs the Chromium browser used by the normal CI
+product-runtime integration test. The default test command runs the normal CI
+gate, including repository validation, regression and unit tests, product
+builds, and browser runtime parity. It is equivalent to npm run ci:normal. The
+build command creates extension files in dist/, and the package command creates
+and validates an extension ZIP.
 
 To build the separate GitHub Pages web candidate locally, run
 `npm run build:web`. It writes `dist-web/` for the repository base path
