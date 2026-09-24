@@ -302,13 +302,22 @@ describe('Typewriter Web product surface', () => {
 
   it('keeps web source and assets separate from the Chrome Extension public tree', async () => {
     const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-    const [webSource, webConfig, html, aboutHtml, webFavicon, extensionFavicon] = await Promise.all([
+    const [
+      webSource,
+      webConfig,
+      html,
+      aboutHtml,
+      webFavicon,
+      extensionFavicon,
+      extensionIcon16,
+    ] = await Promise.all([
       readFile(path.join(repositoryRoot, 'web/src/App.vue'), 'utf8'),
       readFile(path.join(repositoryRoot, 'vite.web.config.js'), 'utf8'),
       readFile(path.join(repositoryRoot, 'web/index.html'), 'utf8'),
       readFile(path.join(repositoryRoot, 'web/about/index.html'), 'utf8'),
       readFile(path.join(repositoryRoot, 'web/public/favicon.ico')),
       readFile(path.join(repositoryRoot, 'public/favicon.ico')),
+      readFile(path.join(repositoryRoot, 'public/icon16.png')),
     ]);
 
     expect(webSource).toContain("from '../../src/components/DictionaryPanel.vue'");
@@ -322,6 +331,12 @@ describe('Typewriter Web product surface', () => {
     expect(html).not.toContain('favicon.svg');
     expect(aboutHtml).not.toContain('favicon.svg');
     expect(webFavicon).toEqual(extensionFavicon);
+    const faviconImageOffset = extensionFavicon.readUInt32LE(18);
+    const faviconImageLength = extensionFavicon.readUInt32LE(14);
+    expect(extensionFavicon.subarray(
+      faviconImageOffset,
+      faviconImageOffset + faviconImageLength,
+    )).toEqual(extensionIcon16);
     expect(html).not.toContain('manifest.json');
     expect(html).not.toContain('options.html');
   });
