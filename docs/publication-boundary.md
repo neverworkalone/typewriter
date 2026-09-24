@@ -14,9 +14,11 @@ confirmed. Unknown rights, provenance, privacy, or security conditions remain
 blockers. The repository must stay private until the MO-8 release gate explicitly
 approves a specific release commit.
 
-This inventory reflects the tracked tree at `f3822cf` (the M5 final-audit merge,
-2026-09-24). The current tree has no tracked SQLite database, extension package,
-or Pages artifact. Recheck it against the exact release commit before publication.
+The path inventory was first checked against the tracked tree at `f3822cf` (the M5
+final-audit merge, 2026-09-24). MO-2 / #151 has since finalized the license model;
+the rows below record that decision and the remaining #152 holds. The current tree
+has no tracked SQLite database, extension package, or Pages artifact. Recheck the
+inventory against the exact release commit before publication.
 
 ## Classification states
 
@@ -33,24 +35,24 @@ or Pages artifact. Recheck it against the exact release commit before publicatio
 
 | Path / role | State | Owner and origin | Source role and external material | Privacy, rights, and required action |
 | --- | --- | --- | --- | --- |
-| `src/`, `scripts/`, `schema/`, `tests/`, `config/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project code and authored validation fixtures; check any file-level third-party content | Application, build, schema, validation, and test source. Fixtures may reproduce project data or historical decisions. | Final source-code license is pending #151. Check fixtures and scripts for copied source text, external outputs, local paths, or credentials in #151/#152. |
-| `popup.html`, `options.html`, `pack.py`, `pack.sh`, `package.json`, `package-lock.json`, `vite.config.js`, `vitest.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project; lockfile identifies third-party packages | Extension entrypoints and build/dependency metadata; SQLite WASM is a pinned runtime dependency. | Apply the final code license; audit shipped dependency licenses and required notices in #151. Do not treat a lockfile as a license audit. |
-| `.github/` (currently `.github/workflows/`) | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project automation | CI workflow source; runs may produce logs and artifacts hosted separately by GitHub. | Final code license pending. Audit workflow permissions and all retained Actions logs/artifacts under #152; only approved Pages artifacts may be deployed later. |
-| `docs/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project documentation and editorial/process records | Development, design, data-policy, review, M5 reports, and audit evidence. This remains the documentation authority; it is not the Pages source tree. | Documentation license pending #151. Check third-party excerpts, source/provenance claims, personal details, and local paths in #151/#152. Keep historical evidence in scope regardless of size. |
-| `AGENTS.md`, `REVIEW.md` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project process documentation | Repository instructions and review policy. | Intended to remain useful to contributors. Review for private-only paths, credentials, personal data, and license terms before release; preserve canonical/admission safeguards. |
-| `data/canonical/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter-curated lexical records; any per-record external influence still needs verification | Canonical source of truth for words, senses, expressions, and relations; these records feed generated SQLite. | Data license and redistribution rights are unresolved until #151 completes provenance review. The records do not by themselves establish rights for every externally informed item; unresolved items stay out of any public clone or product. |
-| `data/inventory/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter editorial planning and promotion decisions | Target selection, classification, hold/reject/defer state, and promotion history; not canonical build input. | Review whether candidate identities or editorial planning disclose private material. Confirm data/evidence licensing and source independence in #151/#152. |
-| `data/batches/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter M5 process evidence; includes generated measurements, authored decisions, and historical canonical snapshots | Manifests, digests, review decisions, relation evidence, and frozen historical inputs; some files duplicate canonical records for reproducibility. | Audit both evidence text and embedded snapshots for provenance, redistribution rights, external-source residue, local paths, and sensitive metadata. Do not exempt files as “only evidence” or because they are large. |
-| `data/validation/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter-authored semantic decisions and validation inputs | Durable decisions and source-bound audit inputs; validation projections may be reproducible from these sources. | Confirm authorship, data rights, and privacy in #151/#152. Keep unresolved source or redistribution questions as blockers. |
-| `public/manifest.json` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter extension manifest | Product metadata and permissions for the Chrome Extension. | Publish with the final code license; verify metadata, permissions, and URLs during #152/#153. |
-| `public/logo.png`, `public/icon*.png`, `public/favicon.ico` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter / Never Work Alone brand assets; exact asset ownership to confirm | Logo, icons, and visual identity used by the extension and future web surface. | Keep brand ownership separate from code/data licensing. #151 must establish the brand policy and intended display/reuse permissions before release. |
-| `THIRD-PARTY-NOTICES.txt`, `Apache-2.0.txt` | `PUBLIC-WITH-SEPARATE-LICENSE` | Third-party SQLite WASM notice and Apache-2.0 license text | License and notice for pinned `@sqlite.org/sqlite-wasm` 3.53.0-build1. | Preserve the applicable upstream license and complete notices in every distributed package. Reconcile notices with the actual dependency tree in #151. |
-| `README.md` | `PURGE-BEFORE-PUBLIC` | Typewriter project; current text includes owner-authored repository policy | Public project entrypoint, but the current copy says the repository is private and proprietary. | Rewrite for the final license/data/brand model in #153 before publication. Retain neither contradictory private/proprietary claims nor unsupported rights claims. |
-| `LICENSE.md` | `PURGE-BEFORE-PUBLIC` | Never Work Alone proprietary license | Current repository-wide proprietary terms conflict with the planned open-source/open-data release direction in #149. | Replace only after #151 resolves license and provenance decisions. Do not expose this current license as if it were the final public license. |
-| `.gitignore` | `PUBLIC` | Typewriter project repository configuration | Ignore rules for local and generated files. | Keep the rules; still audit the actual tracked tree and history. Ignore rules are not proof that secrets or generated files were never committed. |
-| Transient `dist/`, `artifacts/`, local SQLite files, and unapproved extension archives | `PURGE-BEFORE-PUBLIC` | Generated locally from canonical data and pinned dependencies | Build/package outputs, not editable sources of truth; none are tracked at the boundary revision. | Do not commit or attach scratch outputs. Remove any such item from reachable GitHub refs if found. Their contained data inherits its own licensing obligations. |
-| Allowlisted Pages artifact and approved extension release package, including `dictionary.sqlite` | `PUBLIC-WITH-SEPARATE-LICENSE` | Deterministic build from the approved canonical revision and pinned dependencies | Generated distribution surface; SQLite contains the licensed canonical data and the package may contain third-party runtime files. | Publish only after #151 licenses the data and dependencies, #152 clears the surface, and #156 validates an explicit artifact allowlist. Record the canonical revision and preserve required notices. |
-| Future `web/` source and `vite.web.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Planned Typewriter web product source; not present at this boundary revision | Separate Pages source and presentation layer over the shared runtime. | Keep it separate from `docs/` and extension `public/`. Apply final code/data/brand terms and the MO-1 artifact boundary when introduced by #155. |
+| `src/`, `scripts/`, `schema/`, `tests/`, `config/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project code and authored validation fixtures; check any file-level third-party content | Application, build, schema, validation, and test source. Fixtures may reproduce project data or historical decisions. | Original Typewriter software/configuration is Apache-2.0 under #151. Fixture material that reproduces uncleared data remains held under the data boundary. #152 audits source text, paths, and credentials. |
+| `popup.html`, `options.html`, `pack.py`, `pack.sh`, `package.json`, `package-lock.json`, `vite.config.js`, `vitest.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project; lockfile identifies third-party packages | Extension entrypoints and build/dependency metadata; SQLite WASM is a pinned runtime dependency. | Original software/configuration is Apache-2.0. Third-party packages retain their own licenses; shipped dependency terms are recorded in `THIRD-PARTY-NOTICES.txt`. |
+| `.github/` (currently `.github/workflows/`) | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project automation | CI workflow source; runs may produce logs and artifacts hosted separately by GitHub. | Original workflow source is Apache-2.0. Audit workflow permissions and retained Actions logs/artifacts under #152; only approved Pages artifacts may be deployed later. |
+| `docs/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project documentation and editorial/process records | Development, design, data-policy, review, M5 reports, and audit evidence. This remains the documentation authority; it is not the Pages source tree. | Original documentation text is CC BY 4.0. Embedded canonical data, third-party material, and marks are excluded. #152 checks provenance claims, excerpts, personal details, and local paths. |
+| `AGENTS.md`, `REVIEW.md` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project process documentation | Repository instructions and review policy. | Original process documentation is CC BY 4.0. Review private-only paths, credentials, and personal data under #152; preserve canonical/admission safeguards. |
+| `data/canonical/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter-curated lexical records; any per-record external influence still needs verification | Canonical source of truth for words, senses, expressions, and relations; these records feed generated SQLite. | Selected license is CC BY 4.0 only for individually cleared records. The entire current corpus remains held; #152 must resolve every record and remove/rewrite untraceable items. |
+| `data/inventory/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter editorial planning and promotion decisions | Target selection, classification, hold/reject/defer state, and promotion history; not canonical build input. | CC BY 4.0 applies only to cleared items. Hold any item reproducing uncleared lexical content; #152 also checks private planning data and metadata. |
+| `data/batches/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter M5 process evidence; includes generated measurements, authored decisions, and historical canonical snapshots | Manifests, digests, review decisions, relation evidence, and frozen historical inputs; some files duplicate canonical records for reproducibility. | CC BY 4.0 applies only to cleared evidence. Historical snapshots and embedded lexical content remain held until #152 resolves, removes, or rewrites them. |
+| `data/validation/` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter-authored semantic decisions and validation inputs | Durable decisions and source-bound audit inputs; validation projections may be reproducible from these sources. | CC BY 4.0 applies only to cleared items. Untraceable or data-bearing validation inputs remain held for #152. |
+| `public/manifest.json` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter extension manifest | Product metadata and permissions for the Chrome Extension. | Original manifest/configuration is Apache-2.0. Verify metadata, permissions, and URLs during #152/#153. |
+| `public/logo.png`, `public/icon*.png`, `public/favicon.ico` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter / Never Work Alone brand assets | Logo, icons, and visual identity used by the extension and future web surface. | The owner confirmed direct creation and ownership. All Rights Reserved under `BRAND.md`; no artwork or mark reuse grant is made. |
+| `THIRD-PARTY-NOTICES.txt`, `Apache-2.0.txt` | `PUBLIC-WITH-SEPARATE-LICENSE` | Third-party SQLite WASM and Vue runtime notices; Apache-2.0 license text | Notices cover `@sqlite.org/sqlite-wasm` 3.53.0-build1 and bundled Vue 3.5.42 runtime modules. | Preserve the upstream terms and complete notices in each package. #151's package validator compares shipped legal files with repository sources. |
+| `README.md` | `PURGE-BEFORE-PUBLIC` | Typewriter project; current text includes owner-authored repository policy | Public project entrypoint, but the current copy says the repository is private and proprietary. | Current content remains held until rewritten under #153. Original project documentation is CC BY 4.0 after the public-user journey and license wording are corrected. |
+| `LICENSE.md`, `DATA-LICENSE.md`, `BRAND.md` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter license and policy notices | Defines code, data, documentation, and brand boundaries. | Their original explanatory text is CC BY 4.0; the grants and exclusions in each file govern the corresponding material. Embedded third-party license texts and brand assets are excluded. |
+| `.gitignore` | `PUBLIC-WITH-SEPARATE-LICENSE` | Typewriter project repository configuration | Ignore rules for local and generated files. | Original repository configuration is Apache-2.0. Ignore rules are not proof that secrets or generated files were never committed; #152 scans history. |
+| Transient `dist/`, `artifacts/`, local SQLite files, and unapproved extension archives | `PURGE-BEFORE-PUBLIC` | Generated locally from canonical data and pinned dependencies | Build/package outputs, not editable sources of truth; none are tracked at the boundary revision. | Do not commit or attach scratch outputs. Any output containing the current uncleared corpus remains held; remove publication blockers from reachable GitHub refs under #152. |
+| Allowlisted Pages artifact and approved extension release package, including `dictionary.sqlite` | `PUBLIC-WITH-SEPARATE-LICENSE` | Deterministic build from the approved canonical revision and pinned dependencies | Generated distribution surface; SQLite contains canonical data and the package contains third-party runtime files. | Publish only after #152 clears data/history and #156 validates the artifact allowlist. Packages carry `LICENSE.md`, `DATA-LICENSE.md`, `BRAND.md`, and third-party notices. Record the canonical revision. |
+| Future `web/` source and `vite.web.config.js` | `PUBLIC-WITH-SEPARATE-LICENSE` | Planned Typewriter web product source; not present at this boundary revision | Separate Pages source and presentation layer over the shared runtime. | Original web software/configuration is Apache-2.0; data requires item-level CC BY 4.0 clearance; brand remains All Rights Reserved. Keep it separate from `docs/` and extension `public/`. |
 
 The root-file groupings above cover every tracked root entry at the boundary revision;
 the path list was checked with `git ls-tree` and `git ls-files`. No generated SQLite
@@ -63,7 +65,7 @@ the Git tree.
 
 | Surface | State | Required action before public visibility |
 | --- | --- | --- |
-| Issues, issue comments, PR bodies/comments, review submissions/comments, attachments | `PURGE-BEFORE-PUBLIC` | Audit every open and closed item. Remove or redact only specific material that contains private data, credentials, restricted source content, or an unapproved attachment. Preserve safe project discussion. |
+| Issues, issue comments, PR bodies/comments, review submissions/comments, attachments | `PURGE-BEFORE-PUBLIC` | These surfaces are outside the repository license grants. Audit every open and closed item; remove or redact specific private data, credentials, restricted source content, or unapproved attachments. Preserve safe project discussion. |
 | Commit metadata, branches, tags, releases, release assets | `PURGE-BEFORE-PUBLIC` | Audit names, authorship metadata, reachable content, assets, and obsolete refs. Rewrite or delete only refs/items that retain a publication blocker; verify the final public ref set. |
 | Actions logs and artifacts | `PURGE-BEFORE-PUBLIC` | Review retained logs/artifacts for secrets, private paths, unlicensed data, and unapproved build output. Remove or expire offending items and audit the final retained set. |
 | Repository discovery metadata (description, topics, badges, public links) | `PUBLIC` | Confirm the text and links describe the approved product and point only to reviewed public surfaces. Do not enable Pages or change visibility as part of MO-1. |
@@ -88,23 +90,17 @@ that this boundary has held across Git history or GitHub-hosted surfaces.
 
 ## Open blockers carried to later MO issues
 
-1. **MO-2 (#151):** choose and install the code, data, documentation, and brand
-   terms only after auditing actual ownership, provenance, redistribution rights,
-   and third-party obligations. The proprietary `LICENSE.md` remains the current
-   repository license until #151/#153 replace it.
-2. **MO-2 (#151):** establish whether all 5,000 canonical starts, 42 reference-only
+1. **MO-3 (#152):** establish whether all 5,000 canonical starts, 42 reference-only
    records, 5,301 senses, 487 relations, inventory entries, evidence text, and
    historical snapshots can be redistributed. These are counts from the M5 final
-   audit, not a provenance clearance.
-3. **MO-2 (#151):** reconcile any external dictionary/API/corpus/LLM use and required
-   attribution against the source records, editorial evidence, package contents,
-   and history. Unknown or untraceable material is not approved for release.
-4. **MO-2 (#151):** confirm ownership and allowed use of every logo/icon/brand asset;
-   ensure the SQLite WASM dependency notice is complete for all distributed outputs.
-5. **MO-3 (#152):** audit the complete Git history, current tree, commit metadata,
+   audit, not a provenance clearance; the current corpus remains held.
+2. **MO-3 (#152):** reconcile external dictionary/API/corpus/LLM use and required
+   attribution against source records, editorial evidence, package contents, and
+   history. Unknown or untraceable material is not approved for release.
+3. **MO-3 (#152):** audit the complete Git history, current tree, commit metadata,
    GitHub discussions/reviews/attachments, refs, releases, and retained Actions
    logs/artifacts. This matrix does not claim those surfaces have been scanned.
-6. **MO-3 (#152):** investigate and remediate any personal metadata, local path,
+4. **MO-3 (#152):** investigate and remediate any personal metadata, local path,
    credential, raw external material, or license-incompatible historical content.
 
 These blockers are intentionally explicit. MO-1 does not decide final licenses,

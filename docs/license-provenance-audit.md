@@ -12,7 +12,7 @@ The owner selected this licensing model:
 | Material | Decision | Scope |
 | --- | --- | --- |
 | Typewriter source code | Apache-2.0 | Original code only; third-party components retain their own licenses. |
-| Documentation | CC BY 4.0 | Original `docs/` text; embedded data, third-party content, and marks are excluded. |
+| Documentation | CC BY 4.0 | Original `docs/`, `AGENTS.md`, `REVIEW.md`, `README.md`, and original explanatory/policy prose; embedded data, third-party content, and marks are excluded. |
 | Dictionary data | CC BY 4.0 | Only records with established redistribution rights. No NC, AI-training, competition, or other field-of-use limits. |
 | Brand | All Rights Reserved | Typewriter and Never Work Alone names, logos, icons, and visual identity. |
 
@@ -25,8 +25,11 @@ not apply a data license to records whose provenance is unresolved.
 The previous `LICENSE.md` asserted a blanket proprietary license over code,
 documentation, and data. It has been replaced by a scope-specific license map.
 `Apache-2.0.txt` supplies the full Apache-2.0 terms for Typewriter source code and
-the SQLite WASM wrapper notice in extension packages. `DATA-LICENSE.md` limits
-CC BY 4.0 to data whose rights have been cleared; `BRAND.md` reserves brand use.
+the SQLite WASM wrapper notice in extension packages. The package also carries
+`LICENSE.md`, which states the Typewriter code grant, `DATA-LICENSE.md`, which
+limits CC BY 4.0 to data whose rights have been cleared, and `BRAND.md`, which
+reserves brand use. Package validation compares these legal files byte-for-byte
+with their repository sources.
 
 | Package in product | Locked version | License | Distribution note |
 | --- | --- | --- | --- |
@@ -102,10 +105,13 @@ the selected CC BY 4.0 policy but makes no grant over the held corpus.
 
 ## Documentation, brand, and public wording
 
-The owner selected CC BY 4.0 for original `docs/` text. The license map excludes
-embedded canonical data, third-party material, and brand assets from that grant.
-Where such content occurs in a document, #152 must verify its source and remove,
-replace, or explicitly mark it before public release.
+The owner selected CC BY 4.0 for original project documentation, including
+`docs/`, `AGENTS.md`, `REVIEW.md`, `README.md`, and the explanatory text in the
+license-policy files. The license map excludes embedded canonical data,
+third-party material, and brand assets from that grant. Where such content occurs
+in a document, #152 must verify its source and remove, replace, or explicitly mark
+it before public release. The current README remains held until #153 rewrites its
+private/proprietary product claims.
 
 The owner confirmed that the current logo and icons were directly created and
 owned by the Typewriter owner. They remain All Rights Reserved under `BRAND.md`.
@@ -118,6 +124,18 @@ after item-level rights clearance; Typewriter and Never Work Alone brand assets
 are All Rights Reserved.** It must retain the data hold until #152 closes it.
 
 ## Gate result
+
+The MO-1 path matrix in `docs/publication-boundary.md` now assigns each path group
+to its MO-2 license or an explicit hold/exception:
+
+| MO-1 path group | MO-2 disposition |
+| --- | --- |
+| Application, build, schema, test, CI, root software/configuration, extension manifest, `.gitignore`, and future `web/` source | Apache-2.0 for original Typewriter software; third-party components retain their licenses. |
+| `docs/`, `AGENTS.md`, `REVIEW.md`, and original project documentation | CC BY 4.0 for original prose; embedded data, third-party content, and brand assets are excluded. Current README text remains held for #153 rewrite. |
+| Canonical, inventory, batch, validation, SQLite, and product data artifacts | CC BY 4.0 only after item-level clearance; the current corpus and data-bearing artifacts remain held for #152. |
+| Public logo, icons, and brand identity | All Rights Reserved; owner confirmed direct creation and ownership. |
+| License maps, data license, brand policy, and third-party notices | Shipped with the extension package; source-code/data/brand boundaries remain distinct. Third-party license text retains its own terms. |
+| GitHub discussions, history, Actions logs/artifacts, transient or unapproved output | Outside the repository grants and held for the #152 surface/history audit; data-bearing outputs also inherit the data hold. |
 
 - Code license: finalized as Apache-2.0.
 - Documentation license: finalized as CC BY 4.0 for original documentation text.

@@ -76,7 +76,8 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/search-query.js', '// fixture search\n'],
       ['runtime/vendor/sqlite3.mjs', '// fixture sqlite loader\n'],
       ['runtime/vendor/sqlite3.wasm', Buffer.from([0x00, 0x61, 0x73, 0x6d])],
-      ['Apache-2.0.txt', 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'],
+      ['Apache-2.0.txt', readFileSync(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), 'utf8')],
+      ['LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8')],
       ['DATA-LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'DATA-LICENSE.md'), 'utf8')],
       ['BRAND.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'BRAND.md'), 'utf8')],
       ['THIRD-PARTY-NOTICES.txt', readFileSync(
@@ -128,6 +129,30 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.deepEqual(matchingPackage.errors, []);
+
+    const licensePath = path.join(packageDirectory, 'LICENSE.md');
+    const validLicense = readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8');
+    const alteredLicenseContents = validLicense.replace('Apache\nLicense 2.0', 'MIT\nLicense');
+    assert.notEqual(alteredLicenseContents, validLicense);
+    await writeFile(licensePath, alteredLicenseContents);
+    const alteredLicense = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(alteredLicense.errors.includes(
+      'Packaged legal file differs from the repository source: LICENSE.md.',
+    ));
+
+    await rm(licensePath);
+    const missingLicense = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(missingLicense.errors.includes('Legal package file is missing from the project or package: LICENSE.md.'));
+    await writeFile(licensePath, validLicense);
+    await chmod(licensePath, 0o644);
 
     const noticesPath = path.join(packageDirectory, 'THIRD-PARTY-NOTICES.txt');
     await writeFile(noticesPath, '@sqlite.org/sqlite-wasm 3.53.0-build1\nApache-2.0.txt');

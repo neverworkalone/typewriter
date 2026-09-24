@@ -13,6 +13,9 @@ const FORBIDDEN_PACKAGE_PATHS = [
 
 const LEGAL_FILES = new Set([
   'Apache-2.0.txt',
+  'LICENSE.md',
+  'DATA-LICENSE.md',
+  'BRAND.md',
   'THIRD-PARTY-NOTICES.txt',
 ]);
 
@@ -28,6 +31,7 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/vendor/sqlite3.mjs',
   'runtime/vendor/sqlite3.wasm',
   'Apache-2.0.txt',
+  'LICENSE.md',
   'DATA-LICENSE.md',
   'BRAND.md',
   'THIRD-PARTY-NOTICES.txt',
@@ -402,6 +406,17 @@ function validateLegalFiles(packageDir, files, projectRoot) {
   const errors = [];
   if (!files.includes('Apache-2.0.txt') || !files.includes('THIRD-PARTY-NOTICES.txt')) {
     return errors;
+  }
+  for (const file of LEGAL_FILES) {
+    const sourcePath = path.join(projectRoot, file);
+    const packagedPath = path.join(packageDir, file);
+    if (!existsSync(sourcePath) || !existsSync(packagedPath)) {
+      errors.push(`Legal package file is missing from the project or package: ${file}.`);
+      continue;
+    }
+    if (!readFileSync(sourcePath).equals(readFileSync(packagedPath))) {
+      errors.push(`Packaged legal file differs from the repository source: ${file}.`);
+    }
   }
   const license = readFileSync(path.join(packageDir, 'Apache-2.0.txt'), 'utf8');
   const notice = readFileSync(path.join(packageDir, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
