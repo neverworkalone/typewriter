@@ -12,6 +12,7 @@ import {
   validateCanonicalSurfaceFormProjection,
 } from '../scripts/validate/surface-form-projection.mjs';
 import {
+  buildOrReuseSurfaceFormProjection,
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
   loadSurfaceFormReviewManifest,
@@ -324,7 +325,7 @@ test('strict common admission requires the 없다 adjective class independent of
   context.derived.surfaceFormExceptionManifest = exceptionManifest;
   context.derived.surfaceFormReviewManifest = reviewManifest();
   assert.throws(
-    () => validateDatasetRecords([recordInfo], {
+    () => validateDatasetRecords(context.records, {
       context,
       lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
       requireSurfaceFormProjection: true,
@@ -340,7 +341,7 @@ test('strict common admission requires the 없다 adjective class independent of
       sense_id: `${record.id}-s1`,
     }],
   };
-  validateDatasetRecords([recordInfo], {
+  validateDatasetRecords(context.records, {
     context,
     lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
     requireSurfaceFormProjection: true,
@@ -348,6 +349,83 @@ test('strict common admission requires the 없다 adjective class independent of
   const projection = context.derived.surfaceFormProjection;
   assert.ok(rowsForForm(projection, '상관없는').some(({ record_id }) => record_id === record.id));
   assert.deepEqual(rowsForForm(projection, '상관없은'), []);
+});
+
+test('strict common admission requires and applies the 있다 adjective class', () => {
+  const record = entry('w9951', '맛있다', 'adjective');
+  const recordInfo = { record, filePath: 'future-canonical.jsonl', lineNumber: 1 };
+  const context = createCanonicalContext({ records: [recordInfo], fileCount: 1 }, {
+    canonicalDirectory: path.join(repositoryRoot, 'future-itda-fixture'),
+  });
+  const exceptionManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    exceptions: [],
+  };
+  context.derived.surfaceFormExceptionManifest = exceptionManifest;
+  context.derived.surfaceFormReviewManifest = reviewManifest();
+
+  assert.throws(
+    () => validateDatasetRecords(context.records, {
+      context,
+      lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+      requireSurfaceFormProjection: true,
+    }),
+    (error) => error.code === 'MISSING_EXCEPTION_CLASS',
+  );
+
+  context.derived.surfaceFormExceptionManifest = {
+    ...exceptionManifest,
+    exceptions: [{
+      class_id: 'm6-2-itda-present-adnominal',
+      record_id: record.id,
+      sense_id: `${record.id}-s1`,
+    }],
+  };
+  validateDatasetRecords(context.records, {
+    context,
+    lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+    requireSurfaceFormProjection: true,
+  });
+  const projection = context.derived.surfaceFormProjection;
+  assert.ok(rowsForForm(projection, '맛있는').some(({ record_id }) => record_id === record.id));
+  assert.deepEqual(rowsForForm(projection, '맛있은'), []);
+  const reusedProjection = buildOrReuseSurfaceFormProjection(context.records, {
+    context,
+    exceptionManifest: context.derived.surfaceFormExceptionManifest,
+    reviewManifest: context.derived.surfaceFormReviewManifest,
+    requireClassDispositions: true,
+    requireCollisionReview: true,
+  });
+  assert.strictEqual(reusedProjection, projection);
+  assert.equal(context.metrics.surface_form_projection_build_count, 1);
+});
+
+test('synthetic corpora above production size do not inherit the production review manifest', () => {
+  const records = Array.from({ length: 5_001 }, (_, index) => {
+    const id = `r${String(index + 1).padStart(5, '0')}`;
+    return {
+      id,
+      record_type: 'entry',
+      role: 'reference-only',
+      lemma: `synthetic-${String(index + 1).padStart(5, '0')}`,
+      search_forms: [`synthetic-${String(index + 1).padStart(5, '0')}`],
+      senses: [{
+        id: `${id}-s1`,
+        pos: 'noun',
+        gloss: `synthetic benchmark record ${index + 1}`,
+        relations: [],
+      }],
+    };
+  });
+  const recordInfos = records.map((record, index) => ({
+    record,
+    filePath: 'synthetic-benchmark.jsonl',
+    lineNumber: index + 1,
+  }));
+  assert.doesNotThrow(() => validateDatasetRecords(recordInfos, {
+    requireTopicAnalysis: false,
+  }));
 });
 
 test('dedicated projection validator loads and enforces the review manifest', async () => {

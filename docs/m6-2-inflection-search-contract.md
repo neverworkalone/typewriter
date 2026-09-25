@@ -63,7 +63,7 @@ canonical sense whose `pos` is supported by the rule. The fixed rule slots are:
 | `verb-present-adnominal-neun` | `verb` | Present adnominal `-는` | `바라보다 → 바라보는` |
 | `verb-past-adnominal-eun` | `verb` | Completed/past adnominal `-(으)ㄴ` | `먹다 → 먹은` |
 | `adjective-present-adnominal-eun` | `adjective` | Present adnominal `-(으)ㄴ` | `예쁘다 → 예쁜` |
-| `adjective-present-adnominal-neun-exception` | registered `adjective` senses ending in `없다` | Present adnominal `-는` | `거침없다 → 거침없는` |
+| `adjective-present-adnominal-neun-exception` | registered `adjective` senses ending in `없다` or `있다` | Present adnominal `-는` | `거침없다 → 거침없는`, `맛있다 → 맛있는` |
 | `predicate-future-adnominal-eul` | `verb`, `adjective` | Prospective adnominal `-(으)ㄹ` | `달다 → 달` |
 | `predicate-plain-past-coda-bearing` | `verb`, `adjective` | Regular plain past for a coda-bearing stem | `먹다 → 먹었다`, `잡다 → 잡았다` |
 | `predicate-plain-past-open-a` | `verb`, `adjective` | Required `ㅏ + 았` contraction for other open-final `ㅏ` stems | `바라다 → 바랐다` |
@@ -123,9 +123,10 @@ sense-bound supported irregular class, an explicit regular classification, or
 an explicit exclusion. Other unsupported open-vowel past forms also require an
 explicit sense-bound exclusion. Unknown classes never fall back to generic
 open-vowel past attachment. Strict admission also requires adjective senses
-ending in `없다` to carry the present-adnominal class or explicitly exclude all
-generated forms for that sense, regardless of whether validation runs on the default
-canonical directory or a prospective dataset. The collision audit binds all
+ending in `없다` or `있다` to carry their respective present-adnominal class
+(`m6-2-eopda-present-adnominal` or `m6-2-itda-present-adnominal`) or explicitly
+exclude all generated forms for that sense, regardless of whether validation runs
+on the default canonical directory or a prospective dataset. The collision audit binds all
 exact/generated and generated/generated candidates, including expression
 records, to the reviewed M6-3 manifest. The contract fixtures exercise the current-corpus
 `ㄷ` irregular (`듣다 → 들었다`), `ㅂ` irregular adjective

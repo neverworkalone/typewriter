@@ -41,6 +41,7 @@ const EXCEPTION_CLASS_IDS = new Set([
   'm6-3-reu-irregular-adjective',
   'm6-2-si-irregular-verb',
   'm6-2-eopda-present-adnominal',
+  'm6-2-itda-present-adnominal',
   'm6-3-open-eu-past',
   'm6-3-shortened-didida-lemma',
 ]);
@@ -324,7 +325,10 @@ function formsForRule({ record, sense, classId, ruleId }) {
   }
 
   if (ruleId === SURFACE_FORM_RULE_IDS.adjectivePresentAdnominalEun) {
-    if (classId === 'm6-2-eopda-present-adnominal') return null;
+    if (
+      classId === 'm6-2-eopda-present-adnominal'
+      || classId === 'm6-2-itda-present-adnominal'
+    ) return null;
     if (classId === 'm6-2-b-irregular-adjective') {
       return [removeFinalCoda(stem, 'ㅂ') + '운'];
     }
@@ -335,7 +339,10 @@ function formsForRule({ record, sense, classId, ruleId }) {
   }
 
   if (ruleId === SURFACE_FORM_RULE_IDS.adjectivePresentAdnominalNeunException) {
-    if (classId !== 'm6-2-eopda-present-adnominal') return null;
+    if (
+      classId !== 'm6-2-eopda-present-adnominal'
+      && classId !== 'm6-2-itda-present-adnominal'
+    ) return null;
     return [stem + '는'];
   }
 
@@ -470,7 +477,10 @@ function ruleIdsForSense(record, sense, classId) {
 
   if (sense.pos === 'adjective') {
     return [
-      classId === 'm6-2-eopda-present-adnominal'
+      (
+        classId === 'm6-2-eopda-present-adnominal'
+        || classId === 'm6-2-itda-present-adnominal'
+      )
         ? SURFACE_FORM_RULE_IDS.adjectivePresentAdnominalNeunException
         : SURFACE_FORM_RULE_IDS.adjectivePresentAdnominalEun,
       SURFACE_FORM_RULE_IDS.predicateFutureAdnominalEul,
@@ -588,6 +598,7 @@ function validateManifestBindings(records, manifest, requireTargets) {
       'm6-3-reu-irregular-adjective': sense.pos === 'adjective' && stem.endsWith('르'),
       'm6-2-si-irregular-verb': sense.pos === 'verb' && final?.parts.coda === FINAL_INDEX.get('ㅅ'),
       'm6-2-eopda-present-adnominal': sense.pos === 'adjective' && record.lemma.endsWith('없다'),
+      'm6-2-itda-present-adnominal': sense.pos === 'adjective' && record.lemma.endsWith('있다'),
       'm6-3-open-eu-past': ['verb', 'adjective'].includes(sense.pos)
         && final?.parts.coda === 0 && VOWELS[final.parts.vowel] === 'ㅡ',
       'm6-3-shortened-didida-lemma': sense.pos === 'verb' && record.lemma === '내딛다',
@@ -949,6 +960,18 @@ function validateClassDispositionCoverage(
           'MISSING_EXCEPTION_CLASS',
         );
       }
+      if (
+        sense.pos === 'adjective'
+        && record.lemma.endsWith('있다')
+        && exceptionClass !== 'm6-2-itda-present-adnominal'
+        && !fullyExcluded
+      ) {
+        throw new SurfaceFormProjectionError(
+          'An adjective ending in 있다 requires its present-adnominal class or an explicit exclusion of all generated forms: '
+            + record.id + '/' + sense.id + '.',
+          'MISSING_EXCEPTION_CLASS',
+        );
+      }
       if (fullyExcluded) continue;
       if (!record.lemma.endsWith('다') || record.lemma.includes(' ')) continue;
 
@@ -1271,4 +1294,50 @@ export function buildSurfaceFormProjection(
     },
     collisions,
   };
+}
+
+export function buildOrReuseSurfaceFormProjection(
+  records,
+  {
+    context,
+    exceptionManifest,
+    reviewManifest,
+    requireExceptionTargets = false,
+    requireClassDispositions = false,
+    requireCollisionReview = false,
+  } = {},
+) {
+  const cache = context?.derived?.surfaceFormProjectionCache;
+  const cacheMatches = records === context?.records
+    && context?.derived?.surfaceFormProjection
+    && cache?.exceptionManifest === exceptionManifest
+    && cache?.reviewManifest === reviewManifest
+    && (!requireExceptionTargets || cache.requireExceptionTargets)
+    && (!requireClassDispositions || cache.requireClassDispositions)
+    && (!requireCollisionReview || cache.requireCollisionReview);
+  if (cacheMatches) return context.derived.surfaceFormProjection;
+
+  const projection = buildSurfaceFormProjection(records, {
+    exceptionManifest,
+    reviewManifest,
+    requireExceptionTargets,
+    requireClassDispositions,
+    requireCollisionReview,
+  });
+  if (records === context?.records) {
+    context.derived ??= {};
+    context.derived.surfaceFormProjection = projection;
+    context.derived.surfaceFormProjectionCache = {
+      exceptionManifest,
+      reviewManifest,
+      requireExceptionTargets,
+      requireClassDispositions,
+      requireCollisionReview,
+    };
+    if (context.metrics) {
+      context.metrics.surface_form_projection_build_count =
+        (context.metrics.surface_form_projection_build_count ?? 0) + 1;
+    }
+  }
+  return projection;
 }

@@ -281,14 +281,21 @@ export async function runM2Pipeline({
   canonicalContext,
   databasePath,
   model: suppliedModel,
+  requireSurfaceFormClassifications,
+  requireSurfaceFormCollisionReview,
 } = {}) {
   const context = canonicalContext ?? await loadCanonicalContext({
     directory: inputDirectory,
   });
-  if (context.records.length < 5_000) {
-    // Historical M2 fixtures predate the M6 exception map and reuse canonical
-    // IDs for unrelated records. Keep this compatibility audit focused on the
-    // data pipeline; the full canonical audit validates the production manifests.
+  const isDefaultCanonicalDirectory = path.resolve(context.canonicalDirectory)
+    === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const requireClassDispositions = requireSurfaceFormClassifications
+    ?? isDefaultCanonicalDirectory;
+  const requireCollisionReview = requireSurfaceFormCollisionReview
+    ?? requireClassDispositions;
+  if (!requireClassDispositions) {
+    // Historical fixtures and synthetic corpora are not the current production
+    // revision. Keep their compatibility audit independent of production manifests.
     context.derived ??= {};
     context.derived.surfaceFormExceptionManifest = {
       schema_version: 1,
@@ -313,8 +320,8 @@ export async function runM2Pipeline({
     canonicalContext: context,
     semanticAudit: context.semanticAudit,
     requireSurfaceFormProjection: true,
-    requireSurfaceFormClassifications: context.records.length >= 5_000,
-    requireSurfaceFormCollisionReview: context.records.length >= 5_000,
+    requireSurfaceFormClassifications: requireClassDispositions,
+    requireSurfaceFormCollisionReview: requireCollisionReview,
   });
   const model = suppliedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness: true,
@@ -378,6 +385,8 @@ export async function runM2Pipeline({
       allowDirty,
       canonicalContext: context,
       semanticAudit: context.semanticAudit,
+      requireSurfaceFormClassifications: requireClassDispositions,
+      requireSurfaceFormCollisionReview: requireCollisionReview,
     });
     const second = await buildDictionary({
       inputDirectory,
@@ -387,6 +396,8 @@ export async function runM2Pipeline({
       allowDirty,
       canonicalContext: context,
       semanticAudit: context.semanticAudit,
+      requireSurfaceFormClassifications: requireClassDispositions,
+      requireSurfaceFormCollisionReview: requireCollisionReview,
     });
     const expected = expectedRowsFromCanonicalRecords(canonical.records, surfaceProjection.rows);
     const expectedWorktreeState = first.metadata.worktree_state;

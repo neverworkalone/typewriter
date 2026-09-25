@@ -7,8 +7,9 @@ import {
   contextSummary,
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
+import { DEFAULT_CANONICAL_DIRECTORY } from '../validate/canonical-jsonl.mjs';
 import {
-  buildSurfaceFormProjection,
+  buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
   loadSurfaceFormReviewManifest,
   SURFACE_FORM_PROJECTION_VERSION,
@@ -17,6 +18,8 @@ import {
 export async function validateSharedDictionary({
   databasePath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH,
   canonicalContext,
+  requireSurfaceFormClassifications,
+  requireSurfaceFormCollisionReview,
 } = {}) {
   if (!databasePath) {
     throw new Error('TYPEWRITER_SHARED_DICTIONARY_PATH is required for shared artifact validation');
@@ -56,17 +59,23 @@ export async function validateSharedDictionary({
     const exceptionManifest = context.derived.surfaceFormExceptionManifest
       ?? await loadSurfaceFormExceptionManifest();
     context.derived.surfaceFormExceptionManifest = exceptionManifest;
+    const requireExceptionTargets = path.resolve(context.canonicalDirectory)
+      === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+    const requireClassDispositions = requireSurfaceFormClassifications
+      ?? requireExceptionTargets;
+    const requireCollisionReview = requireSurfaceFormCollisionReview
+      ?? requireClassDispositions;
     const reviewManifest = context.derived.surfaceFormReviewManifest
-      ?? await loadSurfaceFormReviewManifest();
-    context.derived.surfaceFormReviewManifest = reviewManifest;
-    const surfaceProjection = buildSurfaceFormProjection(context.records, {
+      ?? (requireClassDispositions ? await loadSurfaceFormReviewManifest() : undefined);
+    if (reviewManifest) context.derived.surfaceFormReviewManifest = reviewManifest;
+    const surfaceProjection = buildOrReuseSurfaceFormProjection(context.records, {
+      context,
       exceptionManifest,
       reviewManifest,
-      requireExceptionTargets: true,
-      requireClassDispositions: true,
-      requireCollisionReview: true,
+      requireExceptionTargets,
+      requireClassDispositions,
+      requireCollisionReview,
     });
-    context.derived.surfaceFormProjection = surfaceProjection;
     if (metadata.surface_form_projection_version !== SURFACE_FORM_PROJECTION_VERSION) {
       throw new Error('shared SQLite surface_form_projection_version does not match the supported projection');
     }

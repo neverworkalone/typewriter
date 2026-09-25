@@ -16,7 +16,7 @@ import {
   validateSemanticAuditCoverage,
 } from './semantic-audit.mjs';
 import {
-  buildSurfaceFormProjection,
+  buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifestSync,
   loadSurfaceFormReviewManifestSync,
 } from '../inflection/surface-form-projection.mjs';
@@ -298,24 +298,21 @@ export function validateDatasetRecords(
 
   const isDefaultCanonicalDirectory = context?.canonicalDirectory
     && path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  // Apply the shared admission invariant to the full canonical corpus. Small
-  // validator fixtures often reuse canonical IDs for unrelated records, so
-  // they can opt in explicitly without inheriting the production exception map.
-  const isCompleteCanonicalScale = recordInfos.length >= 5_000;
-  if (requireSurfaceFormProjection || isDefaultCanonicalDirectory || isCompleteCanonicalScale) {
+  if (requireSurfaceFormProjection || isDefaultCanonicalDirectory) {
     try {
       const exceptionManifest = context?.derived?.surfaceFormExceptionManifest
         ?? loadSurfaceFormExceptionManifestSync();
       if (context) context.derived.surfaceFormExceptionManifest = exceptionManifest;
       const requireExceptionTargets = Boolean(isDefaultCanonicalDirectory);
       const requireClassDispositions = requireSurfaceFormClassifications
-        ?? (requireSurfaceFormProjection || isDefaultCanonicalDirectory || isCompleteCanonicalScale);
+        ?? (requireSurfaceFormProjection || isDefaultCanonicalDirectory);
       const requireCollisionReview = requireSurfaceFormCollisionReview
         ?? requireClassDispositions;
       const reviewManifest = context?.derived?.surfaceFormReviewManifest
         ?? (requireClassDispositions ? loadSurfaceFormReviewManifestSync() : undefined);
       if (context && reviewManifest) context.derived.surfaceFormReviewManifest = reviewManifest;
-      const surfaceProjection = buildSurfaceFormProjection(recordInfos, {
+      const surfaceProjection = buildOrReuseSurfaceFormProjection(recordInfos, {
+        context,
         exceptionManifest,
         reviewManifest,
         requireExceptionTargets,

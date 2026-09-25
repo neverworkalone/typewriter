@@ -117,7 +117,10 @@ function listFiles(root, current = root) {
   return files;
 }
 
-function expectedMetadataForCanonical(canonicalDirectory) {
+function expectedMetadataForCanonical(
+  canonicalDirectory,
+  { requireSurfaceFormClassifications } = {},
+) {
   if (!existsSync(canonicalDirectory)) {
     throw new Error(`Canonical directory is missing: ${canonicalDirectory}`);
   }
@@ -143,7 +146,8 @@ function expectedMetadataForCanonical(canonicalDirectory) {
   );
   const requireExceptionTargets = path.resolve(canonicalDirectory)
     === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-  const requireClassDispositions = requireExceptionTargets || records.length >= 5_000;
+  const requireClassDispositions = requireSurfaceFormClassifications
+    ?? requireExceptionTargets;
   const surfaceProjection = buildSurfaceFormProjection(records, {
     exceptionManifest: readJson(DEFAULT_SURFACE_FORM_EXCEPTION_MANIFEST),
     reviewManifest: requireClassDispositions
@@ -482,6 +486,7 @@ export function validatePackageDirectory({
   projectRoot = path.resolve(packageDir, '..'),
   canonicalDirectory = path.join(projectRoot, 'data/canonical'),
   expectedMetadata = undefined,
+  requireSurfaceFormClassifications,
 }) {
   const errors = [];
   const actualFiles = existsSync(packageDir) ? listFiles(packageDir) : [];
@@ -515,7 +520,9 @@ export function validatePackageDirectory({
     let expectedGeneratedSurfaceForms = null;
     if (!dictionaryMetadata) {
       try {
-        const canonicalExpectation = expectedMetadataForCanonical(canonicalDirectory);
+        const canonicalExpectation = expectedMetadataForCanonical(canonicalDirectory, {
+          requireSurfaceFormClassifications,
+        });
         expectedGeneratedSurfaceForms = canonicalExpectation.generatedSurfaceForms;
         dictionaryMetadata = Object.fromEntries(
           Object.entries(canonicalExpectation).filter(([key]) => key !== 'generatedSurfaceForms'),
@@ -618,12 +625,14 @@ export function validatePackage({
   canonicalDirectory,
   zipPath = null,
   expectedMetadata = undefined,
+  requireSurfaceFormClassifications,
 }) {
   const directoryResult = validatePackageDirectory({
     packageDir,
     projectRoot,
     canonicalDirectory,
     expectedMetadata,
+    requireSurfaceFormClassifications,
   });
   const errors = [...directoryResult.errors];
   let zipResult = { errors: [], zipFiles: [] };

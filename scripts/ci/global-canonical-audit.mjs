@@ -10,7 +10,7 @@ import {
 } from '../validate/semantic-audit.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import {
-  buildSurfaceFormProjection,
+  buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
   loadSurfaceFormReviewManifest,
 } from '../inflection/surface-form-projection.mjs';
@@ -58,7 +58,8 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
   const surfaceFormReviewManifest = context.derived.surfaceFormReviewManifest
     ?? await loadSurfaceFormReviewManifest();
   context.derived.surfaceFormReviewManifest = surfaceFormReviewManifest;
-  const surfaceFormProjection = buildSurfaceFormProjection(context.records, {
+  const surfaceFormProjection = buildOrReuseSurfaceFormProjection(context.records, {
+    context,
     exceptionManifest: surfaceFormExceptionManifest,
     reviewManifest: surfaceFormReviewManifest,
     requireExceptionTargets: true,

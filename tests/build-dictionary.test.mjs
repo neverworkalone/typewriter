@@ -147,6 +147,49 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
   }
 });
 
+test('builds a large synthetic noun corpus without binding it to the current surface review', async () => {
+  const outputDirectory = await createOutputDirectory();
+  const canonicalDirectory = path.join(outputDirectory, 'canonical');
+  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+
+  try {
+    await mkdir(canonicalDirectory);
+    const records = Array.from({ length: 5_001 }, (_, index) => {
+      const id = `r${String(index + 1).padStart(6, '0')}`;
+      const lemma = `synthetic-${String(index + 1).padStart(6, '0')}`;
+      return {
+        id,
+        record_type: 'entry',
+        role: 'reference-only',
+        lemma,
+        search_forms: [lemma],
+        senses: [{
+          id: `${id}-s1`,
+          pos: 'noun',
+          gloss: `synthetic benchmark record ${index + 1}`,
+          relations: [],
+        }],
+      };
+    });
+    await writeFile(
+      path.join(canonicalDirectory, 'records.jsonl'),
+      `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
+    );
+
+    const summary = await buildDictionary({
+      inputDirectory: canonicalDirectory,
+      outputPath,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: true,
+    });
+
+    assert.equal(summary.recordCount, records.length);
+    assert.equal(summary.generatedSurfaceFormCount, 0);
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
 test('preserves adverb POS in the canonical-to-SQLite build', async () => {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-adverb-build-'));
   const canonicalDirectory = path.join(temporaryDirectory, 'canonical');
