@@ -127,13 +127,17 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
   );
 });
 
-test('workflows keep normal and deep CI responsibilities separate', async () => {
+test('CI and Pages workflows keep their trigger responsibilities separate', async () => {
   const workflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/ci.yml'),
     'utf8',
   );
   const deepWorkflow = await readFile(
     path.resolve(TEST_DIRECTORY, '../.github/workflows/deep.yml'),
+    'utf8',
+  );
+  const pagesWorkflow = await readFile(
+    path.resolve(TEST_DIRECTORY, '../.github/workflows/pages.yml'),
     'utf8',
   );
   const readme = await readFile(
@@ -166,6 +170,9 @@ test('workflows keep normal and deep CI responsibilities separate', async () => 
   assert.match(deepWorkflow, /node-version: 22\.13\.x/u);
   assert.doesNotMatch(deepWorkflow, /^\s+pull_request:/mu);
   assert.doesNotMatch(deepWorkflow, /^\s+push:/mu);
+
+  const pagesEvents = pagesWorkflow.split('\non:\n')[1]?.split('\npermissions:\n')[0]?.trim();
+  assert.equal(pagesEvents, 'push:\n    branches:\n      - master');
 
   assert.match(
     readme,

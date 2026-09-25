@@ -38,9 +38,12 @@ The current M3/M4 boundary is deliberately narrow:
 - A missing relation is an editorial question. The corpus can record that gap but
   cannot supply a target without Typewriter editorial evidence.
 
-The inflected query `담담했다` remains a pending unsupported-policy case rather
-than a baseline result: the current exact runtime reports no match, and Typewriter
-does not infer Korean morphology solely to produce a more specific label.
+The M4 fixture retains `담담했다` as a pending, exact-only runtime observation:
+the M4 runtime reports no match. M6-2 has since resolved the policy by including
+the plain past form `-하다 → -했다`; the runtime will remain no-match until M6-3
+implements the generated projection. Keep this historical M4 case intact and
+use the separate [M6-2 contract fixture](../tests/fixtures/search-regressions/m6-2-inflection-contract.json)
+for the new expected behavior.
 
 These rules preserve the existing Editorial Model v1 relation types. A `direct`
 relation is not promoted above `near`, `mood`, or association relations by the

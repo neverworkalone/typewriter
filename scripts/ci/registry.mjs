@@ -222,6 +222,7 @@ export const CI_CATEGORIES = Object.freeze({
     checks: [
       testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
       testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),
+      testCheck('tests/m6-2-inflection-contract.test.mjs', 'Test M6-2 inflection search contract'),
       npmCheck('Run product unit tests', 'test:unit'),
       npmCheck('Build product extension', 'build'),
       npmCheck('Build Typewriter Web', 'build:web'),

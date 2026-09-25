@@ -1,0 +1,341 @@
+{
+  "schema_version": 1,
+  "contract_id": "m6-2-inflection-search-v1",
+  "source": {
+    "issue": 174,
+    "repository_commit": "b5de2d32d2d0ce02feca8eb244baff3c95845ca5",
+    "baseline_id": "m6-1-5k-quality-baseline-v1",
+    "canonical_revision": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9"
+  },
+  "inventory": {
+    "predicate_sense_counts": {
+      "verb": 658,
+      "adjective": 309
+    },
+    "predicate_record_counts": {
+      "verb": 569,
+      "adjective": 254
+    },
+    "entry_predicate_record_count": 820,
+    "single_token_entry_predicate_record_count": 818,
+    "open_stem_predicate_record_count": 666,
+    "open_stem_final_vowel_counts": {
+      "ㅏ": 340,
+      "ㅡ": 27,
+      "ㅣ": 176,
+      "ㅗ": 33,
+      "ㅔ": 4,
+      "ㅐ": 41,
+      "ㅜ": 27,
+      "ㅟ": 4,
+      "ㅓ": 12,
+      "ㅞ": 1,
+      "ㅚ": 1
+    },
+    "open_stem_past_class_counts": {
+      "hada": 303,
+      "open_a_other": 37,
+      "open_o_boda": 26,
+      "open_o_oda": 7,
+      "open_o_other": 0,
+      "other_open_vowel": 293
+    },
+    "mixed_pos_record_ids": ["w237", "w310", "w548"],
+    "multiword_record_ids": ["w2814", "w883"],
+    "spelling_features": {
+      "ends_hada": 303,
+      "ends_reuda": 23,
+      "stem_final_coda_l": 40,
+      "stem_final_coda_d_verb": 15,
+      "stem_final_coda_b_adjective": 17,
+      "stem_final_coda_b_verb": 15,
+      "stem_final_coda_s_verb": 7,
+      "stem_final_coda_h_adjective": 2,
+      "stem_final_coda_h_verb": 8
+    }
+  },
+  "supported_rule_ids": [
+    "verb-present-adnominal-neun",
+    "verb-past-adnominal-eun",
+    "adjective-present-adnominal-eun",
+    "adjective-present-adnominal-neun-exception",
+    "predicate-future-adnominal-eul",
+    "predicate-plain-past-coda-bearing",
+    "predicate-plain-past-open-a",
+    "predicate-plain-past-hada",
+    "predicate-plain-past-open-o-boda",
+    "predicate-plain-past-required-oda",
+    "predicate-plain-past-registered-exception"
+  ],
+  "plain_past_policy": {
+    "priority_order": [
+      "predicate-plain-past-registered-exception",
+      "predicate-plain-past-hada",
+      "predicate-plain-past-coda-bearing",
+      "predicate-plain-past-open-a",
+      "predicate-plain-past-required-oda",
+      "predicate-plain-past-open-o-boda"
+    ],
+    "coda_bearing": {"rule_id": "predicate-plain-past-coda-bearing", "attachment": "append 았다 after final stem vowel ㅏ or ㅗ; otherwise append 었다"},
+    "open_a": {"rule_id": "predicate-plain-past-open-a", "contracted_form": "required", "attachment": "merge final open ㅏ with 았 by adding coda ㅆ to that stem syllable"},
+    "hada": {"rule_id": "predicate-plain-past-hada", "lemma_suffix": "하다", "surface_suffix": "했다"},
+    "open_o_boda": {"rule_id": "predicate-plain-past-open-o-boda", "lemma_suffix": "보다", "uncontracted_form": "supported", "uncontracted_attachment": "append 았다 to the stem", "contracted_form": "supported", "contracted_attachment": "replace the final open ㅗ nucleus with ㅘ, then add coda ㅆ"},
+    "open_o_oda": {"rule_id": "predicate-plain-past-required-oda", "lemma_suffix": "오다", "contracted_form": "required", "contracted_attachment": "replace the final open ㅗ nucleus with ㅘ, then add coda ㅆ", "uncontracted_form": "unsupported"},
+    "other_open_stem_vowels": "unsupported unless registered as a sense-bound exception"
+  },
+  "cases": [
+    {
+      "id": "required-present-verb-baraboneun",
+      "query": "바라보는",
+      "classification": "positive",
+      "rule_ids": ["verb-present-adnominal-neun"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w202", "lemma": "바라보다", "sense_ids": ["w202-s1"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "regular-past-adnominal-verb-ilgeun",
+      "query": "읽은",
+      "classification": "positive",
+      "rule_ids": ["verb-past-adnominal-eun"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w238", "lemma": "읽다", "sense_ids": ["w238-s1"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "regular-present-adjective-yeoteun",
+      "query": "옅은",
+      "classification": "positive",
+      "rule_ids": ["adjective-present-adnominal-eun"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w965", "lemma": "옅다", "sense_ids": ["w965-s1", "w965-s2"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "regular-past-verb-jabatda",
+      "query": "잡았다",
+      "classification": "positive",
+      "rule_ids": ["predicate-plain-past-coda-bearing"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w194", "lemma": "잡다", "sense_ids": ["w194-s1", "w194-s2"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "required-past-verb-meogeotda",
+      "query": "먹었다",
+      "classification": "synthetic-positive",
+      "rule_ids": ["predicate-plain-past-coda-bearing"],
+      "corpus_binding": "example-target-absent-at-contract-snapshot",
+      "expected_candidates": [
+        {"record_id": null, "lemma": "먹다", "sense_ids": [], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "required-present-adjective-yeppeun",
+      "query": "예쁜",
+      "classification": "synthetic-positive",
+      "rule_ids": ["adjective-present-adnominal-eun"],
+      "corpus_binding": "example-target-absent-at-contract-snapshot",
+      "expected_candidates": [
+        {"record_id": null, "lemma": "예쁘다", "sense_ids": [], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "synthetic-required-open-o-past-watda",
+      "query": "왔다",
+      "classification": "synthetic-positive",
+      "rule_ids": ["predicate-plain-past-required-oda"],
+      "corpus_binding": "example-target-absent-at-contract-snapshot",
+      "expected_candidates": [
+        {"record_id": null, "lemma": "오다", "sense_ids": [], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "synthetic-optional-open-o-past-boatda",
+      "query": "보았다",
+      "classification": "synthetic-positive",
+      "rule_ids": ["predicate-plain-past-open-o-boda"],
+      "corpus_binding": "example-target-absent-at-contract-snapshot",
+      "expected_candidates": [
+        {"record_id": null, "lemma": "보다", "sense_ids": [], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "synthetic-optional-open-o-past-bwatda",
+      "query": "봤다",
+      "classification": "synthetic-positive",
+      "rule_ids": ["predicate-plain-past-open-o-boda"],
+      "corpus_binding": "example-target-absent-at-contract-snapshot",
+      "expected_candidates": [
+        {"record_id": null, "lemma": "보다", "sense_ids": [], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "pending-m4-hada-past-damdamaetda",
+      "query": "담담했다",
+      "classification": "positive",
+      "rule_ids": ["predicate-plain-past-hada"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w026", "lemma": "담담하다", "sense_ids": ["w026-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "required-open-a-past-baratda",
+      "query": "바랐다",
+      "classification": "positive",
+      "rule_ids": ["predicate-plain-past-open-a"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w217", "lemma": "바라다", "sense_ids": ["w217-s1"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "optional-open-o-past-baraboatda",
+      "query": "바라보았다",
+      "classification": "positive",
+      "rule_ids": ["predicate-plain-past-open-o-boda"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w202", "lemma": "바라보다", "sense_ids": ["w202-s1"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "optional-open-o-past-barabwotda",
+      "query": "바라봤다",
+      "classification": "positive",
+      "rule_ids": ["predicate-plain-past-open-o-boda"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w202", "lemma": "바라보다", "sense_ids": ["w202-s1"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "required-open-o-past-dagaowatda",
+      "query": "다가왔다",
+      "classification": "positive",
+      "rule_ids": ["predicate-plain-past-required-oda"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w1090", "lemma": "다가오다", "sense_ids": ["w1090-s1", "w1090-s2"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "registered-b-irregular-gamtanseureoun",
+      "query": "감탄스러운",
+      "classification": "positive-exception",
+      "rule_ids": ["adjective-present-adnominal-eun"],
+      "exception_id": "m6-2-b-irregular-adjective",
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w529", "lemma": "감탄스럽다", "sense_ids": ["w529-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "registered-h-irregular-huibbuyeon",
+      "query": "희뿌연",
+      "classification": "positive-exception",
+      "rule_ids": ["adjective-present-adnominal-eun"],
+      "exception_id": "m6-2-h-irregular-adjective",
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w690", "lemma": "희뿌옇다", "sense_ids": ["w690-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "registered-eu-irregular-sseotda",
+      "query": "썼다",
+      "classification": "positive-exception",
+      "rule_ids": ["predicate-plain-past-registered-exception"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w237", "lemma": "쓰다", "sense_ids": ["w237-s1", "w237-s2", "w237-s3"], "pos": "verb", "rule_ids": ["predicate-plain-past-registered-exception"], "exception_id": "m6-2-eu-irregular-predicate"},
+        {"record_id": "w237", "lemma": "쓰다", "sense_ids": ["w237-s4"], "pos": "adjective", "rule_ids": ["predicate-plain-past-registered-exception"], "exception_id": "m6-2-eu-irregular-predicate"}
+      ]
+    },
+    {
+      "id": "registered-reu-irregular-bulleotda",
+      "query": "불렀다",
+      "classification": "positive-exception",
+      "rule_ids": ["predicate-plain-past-registered-exception"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w198", "lemma": "부르다", "sense_ids": ["w198-s1"], "pos": "verb", "rule_ids": ["predicate-plain-past-registered-exception"], "exception_id": "m6-2-reu-irregular-verb"}
+      ]
+    },
+    {
+      "id": "registered-si-irregular-ieotda",
+      "query": "이었다",
+      "classification": "positive-exception",
+      "rule_ids": ["predicate-plain-past-registered-exception"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w1130", "lemma": "잇다", "sense_ids": ["w1130-s1"], "pos": "verb", "rule_ids": ["predicate-plain-past-registered-exception"], "exception_id": "m6-2-si-irregular-verb"}
+      ]
+    },
+    {
+      "id": "registered-eopda-adnominal-geochimeomneun",
+      "query": "거침없는",
+      "classification": "positive-exception",
+      "rule_ids": ["adjective-present-adnominal-neun-exception"],
+      "exception_id": "m6-2-eopda-present-adnominal",
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w404", "lemma": "거침없다", "sense_ids": ["w404-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "registered-eopda-adnominal-bojalgeoseomneun",
+      "query": "보잘것없는",
+      "classification": "positive-exception",
+      "rule_ids": ["adjective-present-adnominal-neun-exception"],
+      "exception_id": "m6-2-eopda-present-adnominal",
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w879", "lemma": "보잘것없다", "sense_ids": ["w879-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "ambiguous-present-verb-sseuneun",
+      "query": "쓰는",
+      "classification": "ambiguous",
+      "rule_ids": ["verb-present-adnominal-neun"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w237", "lemma": "쓰다", "sense_ids": ["w237-s1", "w237-s2", "w237-s3"], "pos": "verb"},
+        {"record_id": "w2783", "lemma": "쓸다", "sense_ids": ["w2783-s1"], "pos": "verb"}
+      ]
+    },
+    {
+      "id": "ambiguous-d-irregular-past-deureotda",
+      "query": "들었다",
+      "classification": "ambiguous",
+      "rule_ids": ["predicate-plain-past-coda-bearing", "predicate-plain-past-registered-exception"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "w201", "lemma": "듣다", "sense_ids": ["w201-s1", "w201-s2"], "pos": "verb", "rule_ids": ["predicate-plain-past-registered-exception"], "exception_id": "m6-2-d-irregular-verb"},
+        {"record_id": "w2797", "lemma": "들다", "sense_ids": ["w2797-s1"], "pos": "verb", "rule_ids": ["predicate-plain-past-coda-bearing"]}
+      ]
+    },
+    {
+      "id": "collision-curated-form-dal",
+      "query": "달",
+      "classification": "collision",
+      "rule_ids": ["predicate-future-adnominal-eul"],
+      "corpus_binding": "canonical",
+      "generated_candidate_record_ids": ["w935"],
+      "expected_match_kind": "exact-search-form",
+      "expected_candidates": [
+        {"record_id": "w935", "lemma": "달다", "sense_ids": ["w935-s1"], "pos": "adjective"}
+      ]
+    },
+    {"id": "unsupported-connective-barabomyeo", "query": "바라보며", "classification": "unsupported", "unsupported_reason": "ending-not-in-supported-slots", "corpus_binding": "canonical-base-with-unsupported-ending", "expected_candidates": [], "base_record_id": "w202"},
+    {"id": "unsupported-multiword-predicate-momeul-gidaeneun", "query": "몸을 기대는", "classification": "unsupported", "unsupported_reason": "multiword-predicate-not-tokenized", "corpus_binding": "canonical-base-excluded-from-generation", "expected_candidates": [], "base_record_id": "w2814"},
+    {"id": "unsupported-uncontracted-open-o-past-oatda", "query": "오았다", "classification": "unsupported", "unsupported_reason": "mandatory-o-contraction", "corpus_binding": "contract-only-rejected-alternative", "expected_candidates": []},
+    {"id": "unsupported-unregistered-open-i-past-gidarotda", "query": "기다렸다", "classification": "unsupported", "unsupported_reason": "open-vowel-class-not-registered", "corpus_binding": "canonical-base-with-unregistered-open-vowel-past", "base_record_id": "w184", "expected_candidates": []}
+  ]
+}
