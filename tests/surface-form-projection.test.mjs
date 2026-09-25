@@ -155,6 +155,7 @@ test('future predicate senses receive every supported decision or an explicit ex
   validateDatasetRecords(recordInfos, {
     context,
     lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+    requireSurfaceFormProjection: true,
   });
   assert.deepEqual(context.derived.surfaceFormProjection.rows, projection.rows);
 });
@@ -269,6 +270,7 @@ test('unknown or misbound irregular exception classes fail closed', () => {
     () => validateDatasetRecords([recordInfo], {
       context,
       lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+      requireSurfaceFormProjection: true,
     }),
     (error) => error.code === 'EXCEPTION_CLASS_TARGET_MISMATCH',
   );

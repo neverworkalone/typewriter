@@ -285,6 +285,7 @@ export function validateDatasetRecords(
     requireDecisionSource = true,
     requireTopicAnalysis = true,
     lexicalQuality,
+    requireSurfaceFormProjection = false,
   } = {},
 ) {
   if (context && !context.derived) context.derived = {};
@@ -292,20 +293,27 @@ export function validateDatasetRecords(
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
 
-  try {
-    const exceptionManifest = context?.derived?.surfaceFormExceptionManifest
-      ?? loadSurfaceFormExceptionManifestSync();
-    if (context) context.derived.surfaceFormExceptionManifest = exceptionManifest;
-    const requireExceptionTargets = context?.canonicalDirectory
-      && path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
-    const surfaceProjection = context?.derived?.surfaceFormProjection
-      ?? buildSurfaceFormProjection(recordInfos, {
-        exceptionManifest,
-        requireExceptionTargets,
-      });
-    if (context) context.derived.surfaceFormProjection = surfaceProjection;
-  } catch (error) {
-    fail(error.message, error.code ?? 'SURFACE_FORM_PROJECTION_INVALID');
+  const isDefaultCanonicalDirectory = context?.canonicalDirectory
+    && path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  // Apply the shared admission invariant to the full canonical corpus. Small
+  // validator fixtures often reuse canonical IDs for unrelated records, so
+  // they can opt in explicitly without inheriting the production exception map.
+  const isCompleteCanonicalScale = recordInfos.length >= 5_000;
+  if (requireSurfaceFormProjection || isDefaultCanonicalDirectory || isCompleteCanonicalScale) {
+    try {
+      const exceptionManifest = context?.derived?.surfaceFormExceptionManifest
+        ?? loadSurfaceFormExceptionManifestSync();
+      if (context) context.derived.surfaceFormExceptionManifest = exceptionManifest;
+      const requireExceptionTargets = Boolean(isDefaultCanonicalDirectory);
+      const surfaceProjection = context?.derived?.surfaceFormProjection
+        ?? buildSurfaceFormProjection(recordInfos, {
+          exceptionManifest,
+          requireExceptionTargets,
+        });
+      if (context) context.derived.surfaceFormProjection = surfaceProjection;
+    } catch (error) {
+      fail(error.message, error.code ?? 'SURFACE_FORM_PROJECTION_INVALID');
+    }
   }
 
   let topicEvidence;
