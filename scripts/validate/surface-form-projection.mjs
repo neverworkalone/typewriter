@@ -13,13 +13,21 @@ export async function validateCanonicalSurfaceFormProjection({
   canonicalContext,
   directory = DEFAULT_CANONICAL_DIRECTORY,
   exceptionManifest,
+  reviewManifest,
+  reviewManifestPath,
   requireExceptionTargets = true,
+  requireClassDispositions = true,
+  requireCollisionReview = true,
 } = {}) {
   const context = canonicalContext ?? await loadCanonicalContext({ directory });
   const manifest = exceptionManifest ?? await loadSurfaceFormExceptionManifest();
+  const review = reviewManifest ?? await loadSurfaceFormReviewManifest(reviewManifestPath);
   return buildSurfaceFormProjection(context.records, {
     exceptionManifest: manifest,
+    reviewManifest: review,
     requireExceptionTargets,
+    requireClassDispositions,
+    requireCollisionReview,
   });
 }
 

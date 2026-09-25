@@ -122,9 +122,12 @@ each new sense with a risk-final coda (`ㄷ`, `ㅂ`, `ㅅ`, or `ㅎ`) needs a
 sense-bound supported irregular class, an explicit regular classification, or
 an explicit exclusion. Other unsupported open-vowel past forms also require an
 explicit sense-bound exclusion. Unknown classes never fall back to generic
-open-vowel past attachment. The collision audit binds all exact/generated and
-generated/generated candidates, including expression records, to the reviewed
-M6-3 manifest. The contract fixtures exercise the current-corpus
+open-vowel past attachment. Strict admission also requires adjective senses
+ending in `없다` to carry the present-adnominal class or explicitly exclude all
+generated forms for that sense, regardless of whether validation runs on the default
+canonical directory or a prospective dataset. The collision audit binds all
+exact/generated and generated/generated candidates, including expression
+records, to the reviewed M6-3 manifest. The contract fixtures exercise the current-corpus
 `ㄷ` irregular (`듣다 → 들었다`), `ㅂ` irregular adjective
 (`감탄스럽다 → 감탄스러운`), `ㅎ` irregular adjective (`희뿌옇다 → 희뿌연`),
 `ㅡ` irregular (`쓰다 → 썼다`), `르` irregular (`부르다 → 불렀다`), `ㅅ`

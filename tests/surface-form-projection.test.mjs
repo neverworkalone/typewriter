@@ -9,6 +9,9 @@ import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 import { createCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mjs';
 import {
+  validateCanonicalSurfaceFormProjection,
+} from '../scripts/validate/surface-form-projection.mjs';
+import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
   loadSurfaceFormReviewManifest,
@@ -143,6 +146,21 @@ test('the complete 5K canonical domain has deterministic declared projection cov
   );
   assert.ok(projection.coverage.generated_surface_form_count > 0);
   assert.ok(projection.coverage.excluded_rule_count > 0);
+
+  for (const [recordId, senseId, forms] of [
+    ['w3592', 'w3592-s1', ['돌아누운', '돌아누울', '돌아누웠다']],
+    ['w441', 'w441-s1', ['애달팠다']],
+    ['w596', 'w596-s1', ['가냘팠다']],
+  ]) {
+    for (const form of forms) {
+      assert.ok(
+        rowsForForm(projection, form).some(
+          (row) => row.record_id === recordId && row.sense_id === senseId,
+        ),
+        `${recordId}/${senseId} generates reviewed form ${form}`,
+      );
+    }
+  }
 
   for (const searchCase of contract.cases.filter(({ corpus_binding }) => corpus_binding === 'canonical')) {
     const actual = rowsForForm(projection, searchCase.query)
@@ -290,6 +308,82 @@ test('risk-coda predicate senses require explicit regular or supported irregular
   for (const form of ['닫은', '닫을', '닫았다']) {
     assert.ok(rowsForForm(regularProjection, form).some(({ record_id }) => record_id === regular.id));
   }
+});
+
+test('strict common admission requires the 없다 adjective class independent of its directory', () => {
+  const record = entry('w9950', '상관없다', 'adjective');
+  const recordInfo = { record, filePath: 'future-canonical.jsonl', lineNumber: 1 };
+  const context = createCanonicalContext({ records: [recordInfo], fileCount: 1 }, {
+    canonicalDirectory: path.join(repositoryRoot, 'future-eopda-fixture'),
+  });
+  const exceptionManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    exceptions: [],
+  };
+  context.derived.surfaceFormExceptionManifest = exceptionManifest;
+  context.derived.surfaceFormReviewManifest = reviewManifest();
+  assert.throws(
+    () => validateDatasetRecords([recordInfo], {
+      context,
+      lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+      requireSurfaceFormProjection: true,
+    }),
+    (error) => error.code === 'MISSING_EXCEPTION_CLASS',
+  );
+
+  context.derived.surfaceFormExceptionManifest = {
+    ...exceptionManifest,
+    exceptions: [{
+      class_id: 'm6-2-eopda-present-adnominal',
+      record_id: record.id,
+      sense_id: `${record.id}-s1`,
+    }],
+  };
+  validateDatasetRecords([recordInfo], {
+    context,
+    lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+    requireSurfaceFormProjection: true,
+  });
+  const projection = context.derived.surfaceFormProjection;
+  assert.ok(rowsForForm(projection, '상관없는').some(({ record_id }) => record_id === record.id));
+  assert.deepEqual(rowsForForm(projection, '상관없은'), []);
+});
+
+test('dedicated projection validator loads and enforces the review manifest', async () => {
+  const records = [entry('w9960', '듣다', 'verb'), entry('w9961', '들다', 'verb')];
+  const context = { records };
+  const exceptionManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    exceptions: [{
+      class_id: 'm6-2-d-irregular-verb',
+      record_id: 'w9960',
+      sense_id: 'w9960-s1',
+    }],
+  };
+  await assert.rejects(
+    () => validateCanonicalSurfaceFormProjection({
+      canonicalContext: context,
+      exceptionManifest,
+      reviewManifestPath: path.join(repositoryRoot, 'missing-surface-form-review.json'),
+      requireExceptionTargets: false,
+    }),
+    (error) => error.code === 'SURFACE_FORM_REVIEW_MANIFEST_UNAVAILABLE',
+  );
+
+  const unreviewed = buildSurfaceFormProjection(records, { exceptionManifest });
+  const changedReview = reviewManifest([], reviewCollisionsFrom(unreviewed.collisions));
+  changedReview.reviewed_collisions.ambiguous_generated = [];
+  await assert.rejects(
+    () => validateCanonicalSurfaceFormProjection({
+      canonicalContext: context,
+      exceptionManifest,
+      reviewManifest: changedReview,
+      requireExceptionTargets: false,
+    }),
+    (error) => error.code === 'SURFACE_FORM_COLLISION_REVIEW_MISMATCH',
+  );
 });
 
 test('new exact entry and expression collisions fail until their candidates are reviewed', () => {

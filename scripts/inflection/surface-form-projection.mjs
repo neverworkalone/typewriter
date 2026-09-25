@@ -602,22 +602,6 @@ function validateManifestBindings(records, manifest, requireTargets) {
     exceptionsBySense.set(key, entry.class_id);
   }
 
-  if (requireTargets) {
-    for (const [recordId, record] of recordsById) {
-      if (record.role !== 'start' || record.record_type !== 'entry') continue;
-      for (const sense of record.senses) {
-        if (sense.pos !== 'adjective' || !record.lemma.endsWith('없다')) continue;
-        if (!exceptionsBySense.has(sourceKey(recordId, sense.id))) {
-          throw new SurfaceFormProjectionError(
-            'An adjective ending in 없다 requires a registered present-adnominal class: '
-              + recordId + '/' + sense.id + '.',
-            'MISSING_EXCEPTION_CLASS',
-          );
-        }
-      }
-    }
-  }
-
   return exceptionsBySense;
 }
 
@@ -716,7 +700,7 @@ function validateReviewManifestBindings(
 
     const stem = record.lemma.endsWith('다') ? record.lemma.slice(0, -1) : '';
     const validTarget = entry.class_id === 'm6-3-predicate-excluded'
-      ? record.lemma.endsWith('다') && !record.lemma.includes(' ')
+      ? record.lemma.endsWith('다')
       : entry.class_id === 'm6-3-open-vowel-past-excluded'
         ? record.lemma.endsWith('다')
           && !record.lemma.includes(' ')
@@ -948,11 +932,25 @@ function validateClassDispositionCoverage(
   for (const { record } of eligible) {
     for (const sense of record.senses) {
       if (sense.pos !== 'verb' && sense.pos !== 'adjective') continue;
-      if (!record.lemma.endsWith('다') || record.lemma.includes(' ')) continue;
       const key = sourceKey(record.id, sense.id);
       const exceptionClass = exceptionsBySense.get(key) ?? null;
       const disposition = dispositionsBySense.get(key);
-      if (disposition?.class_id === 'm6-3-predicate-excluded') continue;
+      const fullyExcluded = disposition?.class_id === 'm6-3-predicate-excluded';
+
+      if (
+        sense.pos === 'adjective'
+        && record.lemma.endsWith('없다')
+        && exceptionClass !== 'm6-2-eopda-present-adnominal'
+        && !fullyExcluded
+      ) {
+        throw new SurfaceFormProjectionError(
+          'An adjective ending in 없다 requires its present-adnominal class or an explicit exclusion of all generated forms: '
+            + record.id + '/' + sense.id + '.',
+          'MISSING_EXCEPTION_CLASS',
+        );
+      }
+      if (fullyExcluded) continue;
+      if (!record.lemma.endsWith('다') || record.lemma.includes(' ')) continue;
 
       const riskClass = expectedRegularRiskClass(record, sense);
       if (
