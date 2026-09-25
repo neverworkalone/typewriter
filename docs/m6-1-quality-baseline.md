@@ -118,6 +118,12 @@ Coverage and correctness are separate. No relation-density target or reverse-edg
 | Distinct exact start keys | 5,251 |
 | Cross-record exact-key collision groups | 0 |
 | Multi-result exact keys | 0 |
+| Writer-facing exact-query population | 5,251 |
+| Exact queries with at least two record/sense candidates | 336 |
+| Ambiguous queries with multiple start records | 0 |
+| Ambiguous queries with multiple senses in one record only | 336 |
+| Candidate options across ambiguous queries | 686 |
+| Writer-facing options per exact query | {"1":4915,"2":323,"3":12,"4":1} |
 
 | Exhaustive runtime key check | Count |
 | --- | --- |
@@ -167,17 +173,18 @@ M4 corpus m4-search-regressions (schema 2, 12 cases):
 | Direct relation sample | min(60, current direct-tuple count); census when the current count is 60 or less. Current population: 22. |
 | Other relation samples | min(20, current tuple count for that type); census when a type has fewer than 20 tuples. Report all eight canonical relation types separately; a type with zero tuples is coverage evidence, not a pass on correctness. |
 | Relation-gap sample | min(80, current relation-empty start count). Strata: record_type × first-sense POS; first sense follows canonical order. Allocation: Set each initial quota to min(10, stratum population). Allocate remaining slots to remaining capacities with the Hamilton largest-remainder method: floor each exact proportional quota, then give leftover slots by descending fractional remainder, breaking ties by stratum UTF-8 byte order. If a stratum reaches capacity, repeat over the remaining capacities. |
-| Ambiguous-query sample | min(40, available ambiguous query count); at least 20 cases are required to evaluate a ranking change. |
+| Ambiguous-query sample | min(40, writer-facing ambiguous exact-query count); at least 20 cases are required to evaluate a ranking change. |
+| Ranking candidate population | exact query whose ordered writer-facing candidate list has at least two record/sense options. One candidate per start record when it has zero or one sense; one candidate per sense when a start record has multiple senses. Preserve runtime record order and canonical sense order, matching DictionaryPanel exact-mode candidateOptions. Population metric: metrics.search.writer_facing_candidate_population.ambiguous_query_count. |
 | Writer-task sample | 100 tasks from 10 writers, 10 tasks each. Fill the assigned slots before reviewing outcomes. If a slot is unfilled, HOLD; do not replace a result after seeing its outcome. |
 | Writer-task participant allocation | Assign five participants to pattern A and five to pattern B before collection. Pattern A per participant: 3 direct replacement, 2 sense choice, 2 expression exploration, 2 relation exploration, 1 no-data/policy boundary. Pattern B: 3 direct replacement, 2 sense choice, 1 expression exploration, 3 relation exploration, 1 no-data/policy boundary. |
 | Writer-task source | Writer-authored needs and Typewriter-authored prompts; do not retain the writers’ original sentences in Git. |
 
-| Sample family | Stratum | Stable unit ID |
-| --- | --- | --- |
-| relation_tuple | JSON.stringify(["relation", type]) | JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type]) |
-| relation_gap_record | JSON.stringify([record_type, first_sense.pos]) | canonical record.id |
-| ambiguous_query | ambiguous-exact-query | exact runtime-normalized query string, preserving its codepoints |
-| writer_task | task_intent | opaque_task_id assigned before outcome collection; never derived from writer text |
+| Sample family | Stratum | Stable unit ID | Eligible population |
+| --- | --- | --- | --- |
+| relation_tuple | JSON.stringify(["relation", type]) | JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type]) | one canonical directed relation tuple |
+| relation_gap_record | JSON.stringify([record_type, first_sense.pos]) | canonical record.id | start record with no outgoing relation on any sense |
+| ambiguous_query | exact-writer-facing-candidate-query | exact runtime-normalized query string, preserving its codepoints | runtime exact-query result expands to at least two ordered (start record, sense) candidate options in interactive DictionaryPanel exact mode |
+| writer_task | task_intent | opaque_task_id assigned before outcome collection; never derived from writer text | preassigned writer task in one of the fixed intent slots |
 
 | Writer-task intent | Tasks |
 | --- | --- |
@@ -196,7 +203,7 @@ Each canonical review case receives 2 independent judgments. A designated editor
 | relation-usefulness-and-type-honesty | NOT_MEASURED | Up to 20 stable-hash directed tuples per non-direct type; report each type separately. Keep direct relations under their stricter gate. | For every non-empty relation type, at least 80% of its sample is both writer-useful and correctly typed, sense-bound, and directed; zero critical POS or sense-boundary errors. | {"accepted_rate_per_type":0.8,"critical_errors":0} |
 | relation-coverage-and-gaps | MEASURED_NO_DENSITY_GATE | Up to 80 relation-empty starts, stratified by record type and first-sense POS, plus the relation-exploration writer tasks. | Review every selected gap and disposition it. At least 80% of writer tasks whose stated need is relation exploration reach one relevant result; record remaining high-demand gaps explicitly. | {"reviewed_gap_sample":1,"relation_exploration_task_success":0.8} |
 | search-reachability-and-boundaries | PASS | Exhaustive unique start keys plus the shared M4 regression corpus. Pending cases remain pending until an explicit policy decision. | 100% of start lemmas and curated search forms resolve to their expected start IDs; zero unexpected results, missing results, or reference-only leaks; all non-pending M4 cases retain their expected results and policy boundaries. | {"exact_key_reachability":1,"unexpected_results":0,"missing_results":0,"reference_only_leaks":0} |
-| ranking-and-order-usefulness | NOT_APPLICABLE | Stable-hash sample up to 40 ambiguous queries. N/A while no multi-result case is exposed; a ranking change with fewer than 20 cases is HOLD. | For a ranking change, at least 80% of the top results match the adjudicated writer choice across at least 20 ambiguous tasks; preserve deterministic tie-breaking and exact-match tiers. | {"writer_preferred_top_result":0.8,"minimum_ambiguous_tasks":20} |
+| ranking-and-order-usefulness | NOT_MEASURED | Stable-hash sample up to 40 exact queries with at least two writer-facing (record, sense) candidates. N/A only when no such case is exposed; a ranking change with fewer than 20 cases is HOLD. | For a ranking or sense-order change, at least 80% of the top writer-facing candidates match the adjudicated writer choice across at least 20 ambiguous exact-query tasks; preserve deterministic record and sense ordering. | {"writer_preferred_top_candidate":0.8,"minimum_ambiguous_tasks":20} |
 | writer-task-usefulness | NOT_MEASURED | 100 tasks from 10 writers, ten tasks each, with the fixed intent counts above. | At least 80 of 100 tasks produce a result the writer says they would use or deliberately adapt; every intent and any POS/record-type slice with at least 10 tasks scores at least 70%; zero critical misleading-result cases. | {"overall_success_rate":0.8,"minimum_slice_success_rate":0.7,"critical_misleading_results":0} |
 
 | Overall decision | Semantics |

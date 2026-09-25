@@ -15,7 +15,9 @@ import {
   M6_1_QUALITY_GATES,
   renderBaselineReport,
   selectStableHashSample,
+  summarizeWriterFacingCandidatePopulation,
 } from '../scripts/validate/m6-1-quality-baseline.mjs';
+import { expandExactSearchCandidates } from '../src/domain/exact-search-candidates.js';
 
 const relation = (target, target_sense, type = 'direct') => ({
   target,
@@ -104,6 +106,16 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
       }],
     }),
   ];
+  const writerFacingCandidatePopulation = summarizeWriterFacingCandidatePopulation(records, [
+    { key: '길', normalized_query: '길', status: 'ready', matches: [{ id: 'w001', role: 'start' }] },
+    { key: '잇다', normalized_query: '잇다', status: 'ready', matches: [{ id: 'w002', role: 'start' }] },
+    { key: '공유', normalized_query: '공유', status: 'ready', matches: [
+      { id: 'w002', role: 'start' },
+      { id: 'w003', role: 'start' },
+    ] },
+    { key: '자리', normalized_query: '자리', status: 'ready', matches: [{ id: 'w003', role: 'start' }] },
+    { key: '이미지', normalized_query: '이미지', status: 'ready', matches: [{ id: 'w003', role: 'start' }] },
+  ]);
 
   const metrics = deriveM6QualityBaselineMetrics({
     records,
@@ -112,6 +124,7 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
     regressionCorpus: fixture,
     regressionSha256: 'fixture-digest',
     reachability: { key_count: 4, matched_key_count: 4 },
+    writerFacingCandidatePopulation,
   });
 
   assert.deepEqual(metrics.canonical.record_type_counts_by_role, {
@@ -150,13 +163,18 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
   assert.equal(metrics.search.starts_with_non_lemma_search_form, 2);
   assert.equal(metrics.search.cross_record_search_form_collision_group_count, 1);
   assert.equal(metrics.search.cross_record_exact_key_collision_group_count, 1);
+  assert.equal(metrics.search.writer_facing_candidate_population.ambiguous_query_count, 2);
+  assert.deepEqual(metrics.search.writer_facing_candidate_population.ambiguous_query_counts_by_kind, {
+    'single-polysemous-start-record': 1,
+    'multiple-start-records': 1,
+  });
   assert.equal(metrics.search.regression_corpus.baseline_case_count, 1);
   assert.deepEqual(metrics.search.regression_corpus.pending_case_ids, ['pending-morphology']);
   assert.deepEqual(metrics.search.regression_corpus.expected_actual_mismatch_case_ids, ['pending-morphology']);
 });
 
 test('M6-1 gate contract keeps prospective editorial thresholds explicit', () => {
-  assert.equal(M6_1_QUALITY_GATES.contract_version, 'm6-1-quality-gates-v1');
+  assert.equal(M6_1_QUALITY_GATES.contract_version, 'm6-1-quality-gates-v2');
   assert.equal(M6_1_QUALITY_GATES.sampling.writer_tasks.task_count, 100);
   assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'direct-substitutability').threshold.accepted_rate, 0.95);
   assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'relation-usefulness-and-type-honesty').threshold.accepted_rate_per_type, 0.8);
@@ -242,10 +260,11 @@ test('M6-1 sampling identities and stable-hash selection are frozen', () => {
     record_type: 'entry',
     senses: [{ pos: 'noun', relations: [] }, { pos: 'verb', relations: [] }],
   }), { stratum: '["entry","noun"]', stable_unit_id: 'w003' });
-  assert.deepEqual(makeAmbiguousQuerySamplingUnit('e\u0301'), {
-    stratum: 'ambiguous-exact-query',
-    stable_unit_id: 'e\u0301',
+  assert.deepEqual(makeAmbiguousQuerySamplingUnit('é', 2), {
+    stratum: 'exact-writer-facing-candidate-query',
+    stable_unit_id: 'é',
   });
+  assert.throws(() => makeAmbiguousQuerySamplingUnit('é', 2));
   assert.deepEqual(makeWriterTaskSamplingUnit('sense_choice', 'task-007'), {
     stratum: 'sense_choice',
     stable_unit_id: 'task-007',
@@ -262,6 +281,55 @@ test('M6-1 sampling identities and stable-hash selection are frozen', () => {
     selectStableHashSample([...candidates].reverse(), { limit: 3, seed: 'm6-1-quality-benchmark-v1' }),
     sample,
   );
+});
+
+test('one polysemous exact result is an ambiguous writer-facing ranking case', () => {
+  const polysemousRecord = record({
+    id: 'w010',
+    lemma: 'é',
+    senses: [
+      { id: 'w010-s1', pos: 'noun', gloss: '첫 뜻' },
+      { id: 'w010-s2', pos: 'noun', gloss: '둘째 뜻' },
+    ],
+  });
+  const candidates = expandExactSearchCandidates([polysemousRecord]);
+  assert.deepEqual(candidates.map(({ key, recordId, senseId, isSenseChoice }) => ({
+    key,
+    recordId,
+    senseId,
+    isSenseChoice,
+  })), [
+    { key: 'w010:w010-s1', recordId: 'w010', senseId: 'w010-s1', isSenseChoice: true },
+    { key: 'w010:w010-s2', recordId: 'w010', senseId: 'w010-s2', isSenseChoice: true },
+  ]);
+
+  const population = summarizeWriterFacingCandidatePopulation([polysemousRecord], [
+    {
+      key: 'é',
+      normalized_query: 'é',
+      status: 'ready',
+      matches: [{ id: 'w010', role: 'start' }],
+    },
+    {
+      key: 'é',
+      normalized_query: 'é',
+      status: 'ready',
+      matches: [{ id: 'w010', role: 'start' }],
+    },
+  ]);
+  assert.deepEqual(population, {
+    exact_query_count: 1,
+    candidate_options_per_exact_query: { '2': 1 },
+    ambiguous_query_count: 1,
+    ambiguous_query_candidate_option_count: 2,
+    ambiguous_query_counts_by_kind: { 'single-polysemous-start-record': 1 },
+    maximum_candidate_options: 2,
+  });
+  assert.deepEqual(makeAmbiguousQuerySamplingUnit('é', 2), {
+    stratum: 'exact-writer-facing-candidate-query',
+    stable_unit_id: 'é',
+  });
+  assert.throws(() => makeAmbiguousQuerySamplingUnit('é', 1));
 });
 
 test('M6-1 relation-gap allocation freezes Hamilton remainders and UTF-8 tie-breaks', () => {
@@ -316,6 +384,12 @@ test('M6-1 report checker detects stale generated content', () => {
     regressionCorpus: fixture,
     regressionSha256: 'fixture-digest',
     reachability,
+    writerFacingCandidatePopulation: summarizeWriterFacingCandidatePopulation(records, [{
+      key: '길',
+      normalized_query: '길',
+      status: 'ready',
+      matches: [{ id: 'w001', role: 'start' }],
+    }]),
   });
   const snapshot = {
     source: { repository_commit: 'commit', canonical_revision: 'canonical-digest' },

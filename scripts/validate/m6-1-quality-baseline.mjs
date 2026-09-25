@@ -16,6 +16,8 @@ import {
   readCanonicalRecords,
 } from './canonical-jsonl.mjs';
 import { createCanonicalContext } from './canonical-context.mjs';
+import { expandExactSearchCandidates } from '../../src/domain/exact-search-candidates.js';
+import { normalizeSearchInput } from '../../src/runtime/search-query.js';
 import {
   assertValidSearchRegressionCorpus,
   readSearchRegressionCorpus,
@@ -41,7 +43,7 @@ const DEFAULT_REGRESSION_PATH = path.join(
 );
 
 export const M6_1_QUALITY_GATES = Object.freeze({
-  contract_version: 'm6-1-quality-gates-v1',
+  contract_version: 'm6-1-quality-gates-v2',
   policy: 'Freeze these thresholds before collecting M6 quality evidence. A changed threshold requires a new contract version and must be recorded before the next sample is reviewed.',
   overall_decision: {
     pass: 'Every applicable dimension passes and every required sample is complete.',
@@ -67,18 +69,22 @@ export const M6_1_QUALITY_GATES = Object.freeze({
       relation_tuple: {
         stratum: 'JSON.stringify(["relation", type])',
         stable_unit_id: 'JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type])',
+        eligibility: 'one canonical directed relation tuple',
       },
       relation_gap_record: {
         stratum: 'JSON.stringify([record_type, first_sense.pos])',
         stable_unit_id: 'canonical record.id',
+        eligibility: 'start record with no outgoing relation on any sense',
       },
       ambiguous_query: {
-        stratum: 'ambiguous-exact-query',
+        stratum: 'exact-writer-facing-candidate-query',
         stable_unit_id: 'exact runtime-normalized query string, preserving its codepoints',
+        eligibility: 'runtime exact-query result expands to at least two ordered (start record, sense) candidate options in interactive DictionaryPanel exact mode',
       },
       writer_task: {
         stratum: 'task_intent',
         stable_unit_id: 'opaque_task_id assigned before outcome collection; never derived from writer text',
+        eligibility: 'preassigned writer task in one of the fixed intent slots',
       },
     },
     relation_direct: {
@@ -113,10 +119,11 @@ export const M6_1_QUALITY_GATES = Object.freeze({
       selection: 'Fill the assigned slots before reviewing outcomes. If a slot is unfilled, HOLD; do not replace a result after seeing its outcome.',
     },
     ranking: {
-      unit: 'ambiguous query returning at least two start records',
-      sample_size: 'min(40, available ambiguous query count)',
+      unit: 'exact query whose ordered writer-facing candidate list has at least two record/sense options',
+      candidate_expansion: 'One candidate per start record when it has zero or one sense; one candidate per sense when a start record has multiple senses. Preserve runtime record order and canonical sense order, matching DictionaryPanel exact-mode candidateOptions.',
+      population_metric: 'metrics.search.writer_facing_candidate_population.ambiguous_query_count',
+      sample_size: 'min(40, writer-facing ambiguous exact-query count)',
       minimum_for_a_ranking_change: 20,
-      current_population: 0,
     },
   },
   dimensions: [
@@ -162,11 +169,11 @@ export const M6_1_QUALITY_GATES = Object.freeze({
     },
     {
       id: 'ranking-and-order-usefulness',
-      baseline_status: 'NOT_APPLICABLE',
-      baseline: 'Exact keys currently have no cross-record collisions, so writer usefulness of a multi-result order is not measured.',
-      pass: 'For a ranking change, at least 80% of the top results match the adjudicated writer choice across at least 20 ambiguous tasks; preserve deterministic tie-breaking and exact-match tiers.',
-      threshold: { writer_preferred_top_result: 0.8, minimum_ambiguous_tasks: 20 },
-      sample: 'Stable-hash sample up to 40 ambiguous queries. N/A while no multi-result case is exposed; a ranking change with fewer than 20 cases is HOLD.',
+      baseline_status: 'NOT_MEASURED',
+      baseline: 'The current exact-search UI exposes ordered record/sense candidate choices, including sense choices within one polysemous record; writer preference for that order has not been measured.',
+      pass: 'For a ranking or sense-order change, at least 80% of the top writer-facing candidates match the adjudicated writer choice across at least 20 ambiguous exact-query tasks; preserve deterministic record and sense ordering.',
+      threshold: { writer_preferred_top_candidate: 0.8, minimum_ambiguous_tasks: 20 },
+      sample: 'Stable-hash sample up to 40 exact queries with at least two writer-facing (record, sense) candidates. N/A only when no such case is exposed; a ranking change with fewer than 20 cases is HOLD.',
     },
     {
       id: 'writer-task-usefulness',
@@ -227,12 +234,75 @@ export function makeRelationGapSamplingUnit(record) {
   };
 }
 
-export function makeAmbiguousQuerySamplingUnit(normalizedExactQuery) {
+export function makeAmbiguousQuerySamplingUnit(normalizedExactQuery, candidateCount) {
   assert.equal(typeof normalizedExactQuery, 'string');
   assert.ok(normalizedExactQuery.length > 0);
+  assert.ok(Number.isInteger(candidateCount) && candidateCount >= 2);
+  const normalizedInput = normalizeSearchInput(normalizedExactQuery);
+  assert.equal(normalizedInput.unsupportedReason, null);
+  assert.equal(normalizedInput.normalizedQuery, normalizedExactQuery);
   return {
-    stratum: 'ambiguous-exact-query',
+    stratum: 'exact-writer-facing-candidate-query',
     stable_unit_id: normalizedExactQuery,
+  };
+}
+
+export function summarizeWriterFacingCandidatePopulation(records, queryRows) {
+  assert.ok(Array.isArray(records));
+  assert.ok(Array.isArray(queryRows));
+  const startRecordsById = new Map(records
+    .filter(({ role }) => role === 'start')
+    .map((record) => [record.id, record]));
+  const exactQueries = new Map();
+
+  for (const row of queryRows) {
+    if (row.status !== 'ready') continue;
+    assert.equal(typeof row.normalized_query, 'string');
+    assert.ok(row.normalized_query.length > 0);
+    const matchedRecords = (row.matches ?? [])
+      .filter(({ role }) => role === 'start')
+      .map(({ id }) => {
+        const record = startRecordsById.get(id);
+        assert.ok(record, `runtime exact query ${JSON.stringify(row.normalized_query)} returned an unknown start ${id}`);
+        return record;
+      });
+    const candidates = expandExactSearchCandidates(matchedRecords);
+    const candidateSignature = candidates.map(({ recordId, senseId }) => [recordId, senseId]);
+    const existing = exactQueries.get(row.normalized_query);
+    if (existing) {
+      assert.deepEqual(
+        existing.candidate_signature,
+        candidateSignature,
+        `normalized exact query ${JSON.stringify(row.normalized_query)} must resolve to one ordered candidate list`,
+      );
+      continue;
+    }
+    exactQueries.set(row.normalized_query, {
+      candidate_count: candidates.length,
+      candidate_signature: candidateSignature,
+      matched_record_count: matchedRecords.length,
+      query_kind: matchedRecords.length > 1
+        ? 'multiple-start-records'
+        : candidates.length > 1
+          ? 'single-polysemous-start-record'
+          : 'single-candidate',
+    });
+  }
+
+  const querySummaries = [...exactQueries.values()];
+  const ambiguousQueries = [...exactQueries.entries()]
+    .filter(([, { candidate_count }]) => candidate_count > 1)
+    .map(([normalized_query, summary]) => ({
+      ...summary,
+      ...makeAmbiguousQuerySamplingUnit(normalized_query, summary.candidate_count),
+    }));
+  return {
+    exact_query_count: querySummaries.length,
+    candidate_options_per_exact_query: countBy(querySummaries.map(({ candidate_count }) => String(candidate_count))),
+    ambiguous_query_count: ambiguousQueries.length,
+    ambiguous_query_candidate_option_count: ambiguousQueries.reduce((sum, { candidate_count }) => sum + candidate_count, 0),
+    ambiguous_query_counts_by_kind: countBy(ambiguousQueries.map(({ query_kind }) => query_kind)),
+    maximum_candidate_options: Math.max(0, ...querySummaries.map(({ candidate_count }) => candidate_count)),
   };
 }
 
@@ -469,6 +539,7 @@ export function deriveM6QualityBaselineMetrics({
   regressionCorpus,
   regressionSha256,
   reachability,
+  writerFacingCandidatePopulation,
 }) {
   const byId = new Map(records.map((record) => [record.id, record]));
   const starts = records.filter(({ role }) => role === 'start');
@@ -640,6 +711,7 @@ export function deriveM6QualityBaselineMetrics({
         .filter((ids) => ids.size > 1).length,
       multi_result_exact_key_count: [...allStartKeys.values()]
         .filter((ids) => ids.size > 1).length,
+      writer_facing_candidate_population: writerFacingCandidatePopulation,
       exhaustive_runtime_reachability: reachability,
       regression_corpus: regressionMetrics,
     },
@@ -677,12 +749,16 @@ async function measureRuntimeReachability({ records, canonical, repositoryDirect
       const response = findRecordsBySearchTerm(database, key);
       return {
         key,
+        normalized_query: response.normalizedQuery,
         status: response.status,
         matches: response.matches.map(({ id, role }) => ({ id, role })),
       };
     });
 
-    return evaluateSearchReachability(expectedRows, actualRows);
+    return {
+      reachability: evaluateSearchReachability(expectedRows, actualRows),
+      writerFacingCandidatePopulation: summarizeWriterFacingCandidatePopulation(records, actualRows),
+    };
   } finally {
     database?.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -699,7 +775,7 @@ async function readBaselineInputs() {
   });
   const regressionBytes = await readFile(DEFAULT_REGRESSION_PATH);
   const regressionCorpus = await readSearchRegressionCorpus(DEFAULT_REGRESSION_PATH);
-  const reachability = await measureRuntimeReachability({
+  const runtimeMeasurements = await measureRuntimeReachability({
     records,
     canonical: canonicalContext,
     repositoryDirectory: REPOSITORY_DIRECTORY,
@@ -711,7 +787,8 @@ async function readBaselineInputs() {
     records,
     regressionCorpus,
     regressionSha256,
-    reachability,
+    reachability: runtimeMeasurements.reachability,
+    writerFacingCandidatePopulation: runtimeMeasurements.writerFacingCandidatePopulation,
   };
 }
 
@@ -730,6 +807,7 @@ async function buildSnapshot({ sourceCommit, inputs }) {
     regressionCorpus: inputs.regressionCorpus,
     regressionSha256: inputs.regressionSha256,
     reachability: inputs.reachability,
+    writerFacingCandidatePopulation: inputs.writerFacingCandidatePopulation,
   });
 
   return {
@@ -789,6 +867,7 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
   const search = metrics.search;
   const reachability = search.exhaustive_runtime_reachability;
   const regression = search.regression_corpus;
+  const writerCandidates = search.writer_facing_candidate_population;
   const roles = Object.keys(canonical.record_type_counts_by_role);
   const posTypes = [...new Set(Object.values(canonical.pos_by_role)
     .flatMap(({ sense_count }) => Object.keys(sense_count)))].sort();
@@ -821,6 +900,7 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
     name,
     identity.stratum,
     identity.stable_unit_id,
+    identity.eligibility,
   ]);
   const writerIntents = Object.entries(gates.sampling.writer_tasks.task_intents);
   const recordSenseProfiles = (role) => Object.entries(
@@ -909,6 +989,12 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
       ['Distinct exact start keys', formatCount(search.exact_key_count)],
       ['Cross-record exact-key collision groups', formatCount(search.cross_record_exact_key_collision_group_count)],
       ['Multi-result exact keys', formatCount(search.multi_result_exact_key_count)],
+      ['Writer-facing exact-query population', formatCount(writerCandidates.exact_query_count)],
+      ['Exact queries with at least two record/sense candidates', formatCount(writerCandidates.ambiguous_query_count)],
+      ['Ambiguous queries with multiple start records', formatCount(writerCandidates.ambiguous_query_counts_by_kind['multiple-start-records'] ?? 0)],
+      ['Ambiguous queries with multiple senses in one record only', formatCount(writerCandidates.ambiguous_query_counts_by_kind['single-polysemous-start-record'] ?? 0)],
+      ['Candidate options across ambiguous queries', formatCount(writerCandidates.ambiguous_query_candidate_option_count)],
+      ['Writer-facing options per exact query', compactJson(writerCandidates.candidate_options_per_exact_query)],
     ]),
     '',
     markdownTable(['Exhaustive runtime key check', 'Count'], [
@@ -946,12 +1032,13 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
       ['Other relation samples', `${gates.sampling.relation_other_types.per_type_sample_size} ${gates.sampling.relation_other_types.minimum_types_reported}`],
       ['Relation-gap sample', `${gates.sampling.relation_gaps.sample_size}. Strata: ${gates.sampling.relation_gaps.strata} Allocation: ${gates.sampling.relation_gaps.allocation}`],
       ['Ambiguous-query sample', `${gates.sampling.ranking.sample_size}; at least ${gates.sampling.ranking.minimum_for_a_ranking_change} cases are required to evaluate a ranking change.`],
+      ['Ranking candidate population', `${gates.sampling.ranking.unit}. ${gates.sampling.ranking.candidate_expansion} Population metric: ${gates.sampling.ranking.population_metric}.`],
       ['Writer-task sample', `${formatCount(writerTasks.task_count)} tasks from ${formatCount(writerTasks.participants)} writers, ${formatCount(writerTasks.tasks_per_participant)} tasks each. ${writerTasks.selection}`],
       ['Writer-task participant allocation', writerTasks.participant_allocation],
       ['Writer-task source', writerTasks.source],
     ]),
     '',
-    markdownTable(['Sample family', 'Stratum', 'Stable unit ID'], samplingFamilies),
+    markdownTable(['Sample family', 'Stratum', 'Stable unit ID', 'Eligible population'], samplingFamilies),
     '',
     markdownTable(['Writer-task intent', 'Tasks'], writerIntents),
     '',

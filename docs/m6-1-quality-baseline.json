@@ -168,6 +168,21 @@
       "exact_key_count": 5251,
       "cross_record_exact_key_collision_group_count": 0,
       "multi_result_exact_key_count": 0,
+      "writer_facing_candidate_population": {
+        "exact_query_count": 5251,
+        "candidate_options_per_exact_query": {
+          "1": 4915,
+          "2": 323,
+          "3": 12,
+          "4": 1
+        },
+        "ambiguous_query_count": 336,
+        "ambiguous_query_candidate_option_count": 686,
+        "ambiguous_query_counts_by_kind": {
+          "single-polysemous-start-record": 336
+        },
+        "maximum_candidate_options": 4
+      },
       "exhaustive_runtime_reachability": {
         "key_count": 5251,
         "matched_key_count": 5251,
@@ -223,7 +238,7 @@
     }
   },
   "quality_gates": {
-    "contract_version": "m6-1-quality-gates-v1",
+    "contract_version": "m6-1-quality-gates-v2",
     "policy": "Freeze these thresholds before collecting M6 quality evidence. A changed threshold requires a new contract version and must be recorded before the next sample is reviewed.",
     "overall_decision": {
       "pass": "Every applicable dimension passes and every required sample is complete.",
@@ -248,19 +263,23 @@
       "candidate_identity": {
         "relation_tuple": {
           "stratum": "JSON.stringify([\"relation\", type])",
-          "stable_unit_id": "JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type])"
+          "stable_unit_id": "JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type])",
+          "eligibility": "one canonical directed relation tuple"
         },
         "relation_gap_record": {
           "stratum": "JSON.stringify([record_type, first_sense.pos])",
-          "stable_unit_id": "canonical record.id"
+          "stable_unit_id": "canonical record.id",
+          "eligibility": "start record with no outgoing relation on any sense"
         },
         "ambiguous_query": {
-          "stratum": "ambiguous-exact-query",
-          "stable_unit_id": "exact runtime-normalized query string, preserving its codepoints"
+          "stratum": "exact-writer-facing-candidate-query",
+          "stable_unit_id": "exact runtime-normalized query string, preserving its codepoints",
+          "eligibility": "runtime exact-query result expands to at least two ordered (start record, sense) candidate options in interactive DictionaryPanel exact mode"
         },
         "writer_task": {
           "stratum": "task_intent",
-          "stable_unit_id": "opaque_task_id assigned before outcome collection; never derived from writer text"
+          "stable_unit_id": "opaque_task_id assigned before outcome collection; never derived from writer text",
+          "eligibility": "preassigned writer task in one of the fixed intent slots"
         }
       },
       "relation_direct": {
@@ -295,10 +314,11 @@
         "selection": "Fill the assigned slots before reviewing outcomes. If a slot is unfilled, HOLD; do not replace a result after seeing its outcome."
       },
       "ranking": {
-        "unit": "ambiguous query returning at least two start records",
-        "sample_size": "min(40, available ambiguous query count)",
-        "minimum_for_a_ranking_change": 20,
-        "current_population": 0
+        "unit": "exact query whose ordered writer-facing candidate list has at least two record/sense options",
+        "candidate_expansion": "One candidate per start record when it has zero or one sense; one candidate per sense when a start record has multiple senses. Preserve runtime record order and canonical sense order, matching DictionaryPanel exact-mode candidateOptions.",
+        "population_metric": "metrics.search.writer_facing_candidate_population.ambiguous_query_count",
+        "sample_size": "min(40, writer-facing ambiguous exact-query count)",
+        "minimum_for_a_ranking_change": 20
       }
     },
     "dimensions": [
@@ -362,14 +382,14 @@
       },
       {
         "id": "ranking-and-order-usefulness",
-        "baseline_status": "NOT_APPLICABLE",
-        "baseline": "Exact keys currently have no cross-record collisions, so writer usefulness of a multi-result order is not measured.",
-        "pass": "For a ranking change, at least 80% of the top results match the adjudicated writer choice across at least 20 ambiguous tasks; preserve deterministic tie-breaking and exact-match tiers.",
+        "baseline_status": "NOT_MEASURED",
+        "baseline": "The current exact-search UI exposes ordered record/sense candidate choices, including sense choices within one polysemous record; writer preference for that order has not been measured.",
+        "pass": "For a ranking or sense-order change, at least 80% of the top writer-facing candidates match the adjudicated writer choice across at least 20 ambiguous exact-query tasks; preserve deterministic record and sense ordering.",
         "threshold": {
-          "writer_preferred_top_result": 0.8,
+          "writer_preferred_top_candidate": 0.8,
           "minimum_ambiguous_tasks": 20
         },
-        "sample": "Stable-hash sample up to 40 ambiguous queries. N/A while no multi-result case is exposed; a ranking change with fewer than 20 cases is HOLD."
+        "sample": "Stable-hash sample up to 40 exact queries with at least two writer-facing (record, sense) candidates. N/A only when no such case is exposed; a ranking change with fewer than 20 cases is HOLD."
       },
       {
         "id": "writer-task-usefulness",
