@@ -22,6 +22,18 @@ frequency score, an LLM score, or a claim that one relation type is semantically
 better than another. `direct`, `near`, `mood`, and association relations remain
 their canonical editorial types.
 
+## M6-2 generated surface-form tier
+
+The [M6-2 contract](m6-2-inflection-search-contract.md) defines a future
+`generated-surface-form` tier below every result from the current lemma and
+curated `search_forms` path, including current NFC/trim-normalized results. If
+one record is reached by both paths, the current exact/search-form match is
+retained once with its current provenance. Distinct generated record/sense
+candidates are preserved in deterministic record and canonical sense order.
+
+This is a contract only: the M4 runtime remains exact-only until M6-3 adds the
+projection and shared Extension/Web query behavior.
+
 If one record is returned through more than one path, the best path is retained
 once. Within a tier, the runtime keeps the deterministic SQLite source order; the
 stable record ID is the final defensive tie-break. The Node helper and the
