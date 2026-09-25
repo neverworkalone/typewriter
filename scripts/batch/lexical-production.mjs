@@ -1,4 +1,7 @@
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import {
+  validateHistoricalLexicalAddition,
+  validateLexicalAddition,
+} from './lexical-admission.mjs';
 import {
   createLexicalProductionPayload,
   createLexicalProductionRun,
@@ -487,6 +490,7 @@ export function validateLexicalProduction({
   productionStateSources,
   productionPayloads,
   allowReplay = false,
+  historicalReplay = false,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -495,10 +499,16 @@ export function validateLexicalProduction({
   prospectiveLabel = 'production prospective canonical records',
   requireIndependentDecisionEvidence = true,
 } = {}) {
-  if (allowReplay === true) {
+  if (allowReplay === true && historicalReplay !== true) {
     fail(
       'generic lexical production never accepts replay; use an explicit historical validator boundary',
       'LEXICAL_PRODUCTION_REPLAY_FORBIDDEN',
+    );
+  }
+  if (historicalReplay === true && allowReplay !== true) {
+    fail(
+      'historical lexical production requires an explicit allowReplay: true opt-in',
+      'LEXICAL_PRODUCTION_REPLAY_OPT_IN_REQUIRED',
     );
   }
   if (typeof batchId !== 'string' || batchId.trim().length === 0) {
@@ -720,7 +730,7 @@ export function validateLexicalProduction({
 
   let admission;
   try {
-    admission = validateLexicalAddition({
+    const admissionOptions = {
       batchId,
       candidateRecords: candidates,
       reviewedRecords: [...selectedRecords, ...correctionRecords],
@@ -739,7 +749,10 @@ export function validateLexicalProduction({
       candidateLabel,
       reviewedLabel,
       prospectiveLabel,
-    });
+    };
+    admission = historicalReplay
+      ? validateHistoricalLexicalAddition({ ...admissionOptions, allowReplay: true })
+      : validateLexicalAddition(admissionOptions);
   } catch (error) {
     fail(`production admission failed: ${error.message}`, error.code);
   }

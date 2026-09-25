@@ -54,7 +54,7 @@ import {
   resolveRepositoryPath,
 } from './validate-m5-11.mjs';
 import { validateRelationDiff, summarizeRelationDiff } from './relation-diff.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateHistoricalLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import {
   auditCanonicalLexicalQuality,
@@ -1431,12 +1431,13 @@ function validateImportedRecords(
   if (semanticAudit === undefined) {
     fail('M5-11 reviewed import requires a separately authored prospective semantic audit', 'MISSING_SEMANTIC_AUDIT');
   }
-  validateLexicalAddition({
+  validateHistoricalLexicalAddition({
     batchId: M5_11_BATCH_ID,
     baseRecords: baseRecordInfos,
     reviewedRecords: importedRecordInfos,
     prospectiveRecords: prospectiveRecordInfos,
     semanticAudit,
+    allowReplay: true,
     productionState,
     productionStateSources,
     productionPayloads,
@@ -1501,6 +1502,8 @@ function validateM511SharedProduction({
     stageEvidence: productionStageEvidence,
     productionState,
     productionStateSources,
+    allowReplay: true,
+    historicalReplay: true,
     checkPilotCompleteness,
     catalogCount: catalog.length,
     expectedSelectedCount: expectedImportedCount,
@@ -1826,12 +1829,13 @@ export async function runM511ProspectiveVerification({
     if (semanticAudit === undefined) {
       fail('M5-11 prospective verification requires the pre-written semantic audit', 'MISSING_SEMANTIC_AUDIT');
     }
-    const lexicalAdmission = validateLexicalAddition({
+    const lexicalAdmission = validateHistoricalLexicalAddition({
       batchId: M5_11_BATCH_ID,
       baseRecords: baseRecordInfos,
       reviewedRecords: importedRecords,
       prospectiveRecords: canonical.records,
       semanticAudit,
+      allowReplay: true,
       productionState,
       productionStateSources,
       productionPayloads,
