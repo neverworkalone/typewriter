@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref } from 'vue';
 
+import { expandExactSearchCandidates } from '../domain/exact-search-candidates.js';
 import { SEARCH_MODES, SEARCH_STATUS } from '../domain/search-state.js';
 import { SEARCH_UNSUPPORTED_REASONS } from '../runtime/search-query.js';
 import { DEFAULT_SETTINGS, getBackgroundPreset } from '../ui/settings.js';
@@ -121,24 +122,14 @@ const candidateOptions = computed(() => {
     return [];
   }
 
-  return props.records.flatMap((record) => {
-    const senses = Array.isArray(record.senses) ? record.senses : [];
-    if (senses.length > 1) {
-      return senses.map((sense, senseIndex) => ({
-        key: `${record.id}:${sense.id}`,
-        recordId: record.id,
-        senseId: sense.id,
-        label: definitionLabel(record, sense, senseIndex),
-      }));
-    }
-
-    return [{
-      key: `${record.id}:${senses[0]?.id || 'record'}`,
-      recordId: record.id,
-      senseId: senses[0]?.id ?? null,
-      label: record.lemma,
-    }];
-  });
+  return expandExactSearchCandidates(props.records).map((candidate) => ({
+    key: candidate.key,
+    recordId: candidate.recordId,
+    senseId: candidate.senseId,
+    label: candidate.isSenseChoice
+      ? definitionLabel(candidate.record, candidate.sense, candidate.senseIndex)
+      : candidate.record.lemma,
+  }));
 });
 
 const candidateListEnabled = computed(() => candidateOptions.value.length > 1);

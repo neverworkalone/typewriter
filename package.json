@@ -24,6 +24,7 @@
     "inventory:generate": "node scripts/inventory/generate-target-inventory.mjs",
     "validate:inventory": "node scripts/validate/target-inventory.mjs",
     "validate:rules": "node scripts/validate/rule-inventory.mjs",
+    "baseline:m6-1": "node scripts/validate/m6-1-quality-baseline.mjs --check",
     "batch:validate": "node scripts/batch/validate-batch.mjs",
     "batch:import": "node scripts/batch/import-reviewed-batch.mjs",
     "batch:diff": "node scripts/batch/relation-diff.mjs",
