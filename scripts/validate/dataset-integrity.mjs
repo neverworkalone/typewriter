@@ -15,6 +15,10 @@ import {
   readSemanticAuditArtifact,
   validateSemanticAuditCoverage,
 } from './semantic-audit.mjs';
+import {
+  buildSurfaceFormProjection,
+  loadSurfaceFormExceptionManifestSync,
+} from '../inflection/surface-form-projection.mjs';
 
 const EXPECTED_PILOT_CANDIDATE_IDS = Object.freeze(
   Array.from({ length: 300 }, (_, index) => `w${String(index + 1).padStart(3, '0')}`),
@@ -287,6 +291,22 @@ export function validateDatasetRecords(
   const indexes = indexRecords(recordInfos, context);
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
+
+  try {
+    const exceptionManifest = context?.derived?.surfaceFormExceptionManifest
+      ?? loadSurfaceFormExceptionManifestSync();
+    if (context) context.derived.surfaceFormExceptionManifest = exceptionManifest;
+    const requireExceptionTargets = context?.canonicalDirectory
+      && path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+    const surfaceProjection = context?.derived?.surfaceFormProjection
+      ?? buildSurfaceFormProjection(recordInfos, {
+        exceptionManifest,
+        requireExceptionTargets,
+      });
+    if (context) context.derived.surfaceFormProjection = surfaceProjection;
+  } catch (error) {
+    fail(error.message, error.code ?? 'SURFACE_FORM_PROJECTION_INVALID');
+  }
 
   let topicEvidence;
   if (requireSemanticAudit) {

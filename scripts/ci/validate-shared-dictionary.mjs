@@ -7,6 +7,11 @@ import {
   contextSummary,
   loadCanonicalContext,
 } from '../validate/canonical-context.mjs';
+import {
+  buildSurfaceFormProjection,
+  loadSurfaceFormExceptionManifest,
+  SURFACE_FORM_PROJECTION_VERSION,
+} from '../inflection/surface-form-projection.mjs';
 
 export async function validateSharedDictionary({
   databasePath = process.env.TYPEWRITER_SHARED_DICTIONARY_PATH,
@@ -28,8 +33,8 @@ export async function validateSharedDictionary({
       throw new Error(`shared SQLite foreign-key check failed: ${JSON.stringify(foreignKeys)}`);
     }
     const userVersion = database.prepare('PRAGMA user_version').get().user_version;
-    if (userVersion !== 1) {
-      throw new Error(`shared SQLite schema version must be 1, received ${userVersion}`);
+    if (userVersion !== 2) {
+      throw new Error(`shared SQLite schema version must be 2, received ${userVersion}`);
     }
     const metadata = Object.fromEntries(
       database.prepare('SELECT key, value FROM metadata ORDER BY key').all()
@@ -47,12 +52,51 @@ export async function validateSharedDictionary({
     if (metadata.canonical_revision !== context.canonicalRevision) {
       throw new Error('shared SQLite metadata canonical_revision does not match canonical context');
     }
+    const exceptionManifest = context.derived.surfaceFormExceptionManifest
+      ?? await loadSurfaceFormExceptionManifest();
+    context.derived.surfaceFormExceptionManifest = exceptionManifest;
+    const surfaceProjection = context.derived.surfaceFormProjection
+      ?? buildSurfaceFormProjection(context.records, {
+        exceptionManifest,
+        requireExceptionTargets: true,
+      });
+    context.derived.surfaceFormProjection = surfaceProjection;
+    if (metadata.surface_form_projection_version !== SURFACE_FORM_PROJECTION_VERSION) {
+      throw new Error('shared SQLite surface_form_projection_version does not match the supported projection');
+    }
+    const actualSurfaceRows = database.prepare(
+      `SELECT generated_surface_forms.form,
+              generated_surface_forms.record_id,
+              generated_surface_forms.sense_id,
+              generated_surface_forms.rule_id
+       FROM generated_surface_forms
+       INNER JOIN senses
+         ON senses.id = generated_surface_forms.sense_id
+        AND senses.record_id = generated_surface_forms.record_id
+       ORDER BY generated_surface_forms.record_id, senses.position,
+                generated_surface_forms.form, generated_surface_forms.rule_id`,
+    ).all();
+    if (JSON.stringify(actualSurfaceRows) !== JSON.stringify(surfaceProjection.rows)) {
+      throw new Error('shared SQLite generated surface forms do not match the canonical projection');
+    }
+    if (metadata.generated_surface_form_count !== String(surfaceProjection.rows.length)) {
+      throw new Error('shared SQLite generated_surface_form_count does not match canonical projection');
+    }
+    if (metadata.surface_form_eligible_sense_count !== String(surfaceProjection.coverage.eligible_sense_count)) {
+      throw new Error('shared SQLite surface_form_eligible_sense_count does not match canonical projection');
+    }
+    if (metadata.surface_form_exclusion_count !== String(surfaceProjection.exclusions.length)) {
+      throw new Error('shared SQLite surface_form_exclusion_count does not match canonical projection');
+    }
     return {
       database_path: path.resolve(databasePath),
       sqlite_user_version: userVersion,
       record_count: Number(metadata.record_count),
       sense_count: Number(metadata.sense_count),
       relation_count: Number(metadata.relation_count),
+      generated_surface_form_count: actualSurfaceRows.length,
+      surface_form_eligible_sense_count: surfaceProjection.coverage.eligible_sense_count,
+      surface_form_exclusion_count: surfaceProjection.exclusions.length,
       sqlite_build_count: context.metrics.sqlite_build_count ?? 0,
       context: contextSummary(context),
     };

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 
 import {
   collectManifestFiles,
@@ -94,10 +95,14 @@ test('derives dictionary metadata from the supplied canonical directory and reje
 
     const metadata = {
       dictionary_version: 'm2-pilot-1',
-      schema_version: '1',
+      schema_version: '2',
       normalization_version: '1',
-      build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
+      build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v2',
       build_tool_version: '1',
+      surface_form_projection_version: '1',
+      generated_surface_form_count: '0',
+      surface_form_eligible_sense_count: '0',
+      surface_form_exclusion_count: '0',
       record_count: '3',
       start_count: '2',
       reference_only_count: '1',
@@ -117,7 +122,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       sqlite_version: '3.53.0',
     };
     const database = new DatabaseSync(databasePath);
-    database.exec('CREATE TABLE metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL); PRAGMA user_version = 1;');
+    database.exec(`PRAGMA user_version = 2; ${SQLITE_SCHEMA_SQL}`);
     const insertMetadata = database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');
     for (const [key, value] of Object.entries(metadata)) insertMetadata.run(key, value);
     database.close();

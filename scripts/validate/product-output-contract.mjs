@@ -15,8 +15,12 @@ export const PRODUCT_LEGAL_FILES = Object.freeze([
 
 export async function validateProductOutputContract({
   root = repositoryRoot,
-  extensionOutput = path.join(root, 'dist'),
-  webOutput = path.join(root, 'dist-web'),
+  extensionOutput = path.resolve(
+    process.env.TYPEWRITER_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist'),
+  ),
+  webOutput = path.resolve(
+    process.env.TYPEWRITER_WEB_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist-web'),
+  ),
 } = {}) {
   const [extensionDatabase, webDatabase] = await Promise.all([
     readFile(path.join(extensionOutput, 'dictionary.sqlite')),

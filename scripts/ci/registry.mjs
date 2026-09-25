@@ -102,6 +102,7 @@ export const CI_CATEGORIES = Object.freeze({
       commandCheck('Validate manifest version', ['scripts/ci/validate-manifest.mjs']),
       inProcessCheck('Validate canonical JSONL', 'canonical-jsonl'),
       globalCanonicalAuditCheck(),
+      npmCheck('Validate M6-3 surface-form projection coverage', 'validate:surface-forms'),
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
       testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
@@ -221,6 +222,7 @@ export const CI_CATEGORIES = Object.freeze({
     label: 'Product tests and extension build',
     checks: [
       testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
+      testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
       testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),
       testCheck('tests/m6-2-inflection-contract.test.mjs', 'Test M6-2 inflection search contract'),
       npmCheck('Run product unit tests', 'test:unit'),

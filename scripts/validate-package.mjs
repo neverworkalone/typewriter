@@ -2,6 +2,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import {
+  buildSurfaceFormProjection,
+  DEFAULT_SURFACE_FORM_EXCEPTION_MANIFEST,
+  SURFACE_FORM_PROJECTION_VERSION,
+} from './inflection/surface-form-projection.mjs';
+import { DEFAULT_CANONICAL_DIRECTORY } from './validate/canonical-jsonl.mjs';
 
 const FORBIDDEN_PACKAGE_PATHS = [
   /^(src|tests|node_modules|\.git)(\/|$)/,
@@ -39,10 +45,11 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
 
 const EXPECTED_METADATA = Object.freeze({
   dictionary_version: 'm2-pilot-1',
-  schema_version: '1',
+  schema_version: '2',
   normalization_version: '1',
-  build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
+  build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v2',
   build_tool_version: '1',
+  surface_form_projection_version: SURFACE_FORM_PROJECTION_VERSION,
 });
 
 const CODE_FILE_PATTERN = /\.(?:css|html|js|json|mjs)$/i;
@@ -133,6 +140,11 @@ function expectedMetadataForCanonical(canonicalDirectory) {
     ),
     0,
   );
+  const surfaceProjection = buildSurfaceFormProjection(records, {
+    exceptionManifest: readJson(DEFAULT_SURFACE_FORM_EXCEPTION_MANIFEST),
+    requireExceptionTargets: path.resolve(canonicalDirectory)
+      === path.resolve(DEFAULT_CANONICAL_DIRECTORY),
+  });
 
   return {
     ...EXPECTED_METADATA,
@@ -150,6 +162,10 @@ function expectedMetadataForCanonical(canonicalDirectory) {
     )),
     relation_count: String(relationCount),
     expression_count: String(records.filter((record) => record.record_type === 'expression').length),
+    generated_surface_form_count: String(surfaceProjection.rows.length),
+    surface_form_eligible_sense_count: String(surfaceProjection.coverage.eligible_sense_count),
+    surface_form_exclusion_count: String(surfaceProjection.exclusions.length),
+    generatedSurfaceForms: surfaceProjection.rows,
   };
 }
 
@@ -290,7 +306,12 @@ function readCurrentHead(projectRoot) {
   }
 }
 
-function validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata = EXPECTED_METADATA }) {
+function validateDictionaryMetadata({
+  packageDir,
+  projectRoot,
+  expectedMetadata = EXPECTED_METADATA,
+  expectedGeneratedSurfaceForms = null,
+}) {
   const errors = [];
   const databasePath = path.join(packageDir, 'dictionary.sqlite');
   if (!existsSync(databasePath)) return errors;
@@ -330,8 +351,26 @@ function validateDictionaryMetadata({ packageDir, projectRoot, expectedMetadata 
     }
 
     const userVersion = database.prepare('PRAGMA user_version').get()?.user_version;
-    if (userVersion !== 1) {
-      errors.push(`Dictionary SQLite user_version must be 1, received ${JSON.stringify(userVersion)}.`);
+    if (userVersion !== 2) {
+      errors.push(`Dictionary SQLite user_version must be 2, received ${JSON.stringify(userVersion)}.`);
+    }
+    const generatedSurfaceForms = database.prepare(
+      `SELECT generated_surface_forms.form,
+              generated_surface_forms.record_id,
+              generated_surface_forms.sense_id,
+              generated_surface_forms.rule_id
+       FROM generated_surface_forms
+       INNER JOIN senses
+         ON senses.id = generated_surface_forms.sense_id
+        AND senses.record_id = generated_surface_forms.record_id
+       ORDER BY generated_surface_forms.record_id, senses.position,
+                generated_surface_forms.form, generated_surface_forms.rule_id`,
+    ).all();
+    if (metadata.generated_surface_form_count !== String(generatedSurfaceForms.length)) {
+      errors.push('Dictionary generated_surface_form_count does not match its SQLite table.');
+    }
+    if (expectedGeneratedSurfaceForms && JSON.stringify(generatedSurfaceForms) !== JSON.stringify(expectedGeneratedSurfaceForms)) {
+      errors.push('Dictionary generated surface forms do not match the supplied canonical projection.');
     }
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
     if (integrity !== 'ok') {
@@ -465,9 +504,14 @@ export function validatePackageDirectory({
   errors.push(...validateRuntimeAssets(packageDir, actualFiles));
   if (actualFiles.includes('dictionary.sqlite')) {
     let dictionaryMetadata = expectedMetadata;
+    let expectedGeneratedSurfaceForms = null;
     if (!dictionaryMetadata) {
       try {
-        dictionaryMetadata = expectedMetadataForCanonical(canonicalDirectory);
+        const canonicalExpectation = expectedMetadataForCanonical(canonicalDirectory);
+        expectedGeneratedSurfaceForms = canonicalExpectation.generatedSurfaceForms;
+        dictionaryMetadata = Object.fromEntries(
+          Object.entries(canonicalExpectation).filter(([key]) => key !== 'generatedSurfaceForms'),
+        );
       } catch (error) {
         errors.push(`Current canonical metadata could not be derived: ${error.message}`);
       }
@@ -477,6 +521,7 @@ export function validatePackageDirectory({
         packageDir,
         projectRoot,
         expectedMetadata: dictionaryMetadata,
+        expectedGeneratedSurfaceForms,
       }));
     }
   }

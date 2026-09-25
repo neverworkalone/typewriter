@@ -9,6 +9,10 @@ import {
   buildSemanticTopicEvidence,
 } from '../validate/semantic-audit.mjs';
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
+import {
+  buildSurfaceFormProjection,
+  loadSurfaceFormExceptionManifest,
+} from '../inflection/surface-form-projection.mjs';
 
 export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
   const context = canonicalContext ?? await loadCanonicalContext();
@@ -47,6 +51,15 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
     lexicalQuality,
     checkPilotCompleteness: true,
   });
+  const surfaceFormExceptionManifest = context.derived.surfaceFormExceptionManifest
+    ?? await loadSurfaceFormExceptionManifest();
+  context.derived.surfaceFormExceptionManifest = surfaceFormExceptionManifest;
+  const surfaceFormProjection = context.derived.surfaceFormProjection
+    ?? buildSurfaceFormProjection(context.records, {
+      exceptionManifest: surfaceFormExceptionManifest,
+      requireExceptionTargets: true,
+    });
+  context.derived.surfaceFormProjection = surfaceFormProjection;
 
   return {
     contract_version: 'global-canonical-audit-v1',
@@ -60,6 +73,11 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
       semantic_audit_complete: true,
       target_inventory_revision: inventory.revision,
       target_inventory_entry_count: inventory.inventoryEntryCount,
+      surface_form_eligible_sense_count: surfaceFormProjection.coverage.eligible_sense_count,
+      generated_surface_form_count: surfaceFormProjection.coverage.generated_surface_form_count,
+      surface_form_exclusion_count: surfaceFormProjection.coverage.excluded_rule_count,
+      surface_form_exact_collision_count: surfaceFormProjection.coverage.exact_collision_form_count,
+      surface_form_ambiguous_form_count: surfaceFormProjection.coverage.ambiguous_generated_form_count,
     },
   };
 }

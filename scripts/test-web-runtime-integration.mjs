@@ -12,8 +12,12 @@ import {
 } from './validate/product-output-contract.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const extensionOutput = path.join(repositoryRoot, 'dist');
-const webOutput = path.join(repositoryRoot, 'dist-web');
+const extensionOutput = path.resolve(
+  process.env.TYPEWRITER_BUILD_OUTPUT_DIRECTORY ?? path.join(repositoryRoot, 'dist'),
+);
+const webOutput = path.resolve(
+  process.env.TYPEWRITER_WEB_BUILD_OUTPUT_DIRECTORY ?? path.join(repositoryRoot, 'dist-web'),
+);
 const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
@@ -140,7 +144,11 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function main() {
-  await validateProductOutputContract();
+  await validateProductOutputContract({
+    root: repositoryRoot,
+    extensionOutput,
+    webOutput,
+  });
 
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'typewriter-web-integration-'));
   const extensionFixture = path.join(temporaryRoot, 'extension');
@@ -211,11 +219,31 @@ async function main() {
       status: 200,
     })), 'web must package legal files without requiring visible links');
 
-    for (const term of ['담담하다', '담담', '쓰다', '마음이 놓이다']) {
+    for (const term of [
+      '담담하다',
+      '담담',
+      '쓰다',
+      '마음이 놓이다',
+      '바라보는',
+      '썼다',
+      '들었다',
+      '바라봤다',
+      '달',
+    ]) {
       const popupSnapshot = await search(extensionPage, term);
       const webSnapshot = await search(webPage, term);
       assert.deepEqual(webSnapshot, popupSnapshot, `${term} product parity`);
     }
+
+    const popupInflectionCollision = await search(extensionPage, '들었다');
+    const webInflectionCollision = await search(webPage, '들었다');
+    assert.deepEqual(popupInflectionCollision.recordIds, ['w201', 'w2797']);
+    assert.deepEqual(popupInflectionCollision.candidateSenseIds, [
+      'w201-s1',
+      'w201-s2',
+      'w2797-s1',
+    ]);
+    assert.deepEqual(webInflectionCollision, popupInflectionCollision);
 
     const popupPolysemy = await search(extensionPage, '쓰다');
     const webPolysemy = await search(webPage, '쓰다');

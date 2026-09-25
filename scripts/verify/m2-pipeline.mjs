@@ -41,7 +41,7 @@ function countSearchForms(records) {
   );
 }
 
-function expectedRowsFromNormalizedModel(model) {
+function expectedRowsFromNormalizedModel(model, generatedSurfaceForms) {
   const records = model.records.map((record) => ({
     id: record.id,
     record_type: record.record_type,
@@ -92,10 +92,11 @@ function expectedRowsFromNormalizedModel(model) {
       left.source_sense_id.localeCompare(right.source_sense_id, 'en')
       || left.position - right.position
     )),
+    generated_surface_forms: generatedSurfaceForms,
   };
 }
 
-function expectedRowsFromCanonicalRecords(canonicalRecords) {
+function expectedRowsFromCanonicalRecords(canonicalRecords, generatedSurfaceForms) {
   const records = canonicalRecords.map((recordInfo) => recordInfo.record);
   const rows = {
     records: records.map((record) => ({
@@ -133,6 +134,7 @@ function expectedRowsFromCanonicalRecords(canonicalRecords) {
         }))
       ))
     )),
+    generated_surface_forms: generatedSurfaceForms,
   };
 
   return {
@@ -149,18 +151,19 @@ function expectedRowsFromCanonicalRecords(canonicalRecords) {
       left.source_sense_id.localeCompare(right.source_sense_id, 'en')
       || left.position - right.position
     )),
+    generated_surface_forms: generatedSurfaceForms,
   };
 }
 
-export function assertCanonicalModelMatchesRaw(canonicalRecords, model) {
+export function assertCanonicalModelMatchesRaw(canonicalRecords, model, generatedSurfaceForms = []) {
   assert.deepEqual(
-    expectedRowsFromNormalizedModel(model),
-    expectedRowsFromCanonicalRecords(canonicalRecords),
+    expectedRowsFromNormalizedModel(model, generatedSurfaceForms),
+    expectedRowsFromCanonicalRecords(canonicalRecords, generatedSurfaceForms),
     'normalized model must preserve canonical logical fields',
   );
 }
 
-function expectedMetadata(model) {
+function expectedMetadata(model, surfaceProjection) {
   return {
     record_count: String(model.records.length),
     start_count: String(model.records.filter((record) => record.role === 'start').length),
@@ -178,6 +181,9 @@ function expectedMetadata(model) {
     expression_count: String(
       model.records.filter((record) => record.record_type === 'expression').length,
     ),
+    generated_surface_form_count: String(surfaceProjection.rows.length),
+    surface_form_eligible_sense_count: String(surfaceProjection.coverage.eligible_sense_count),
+    surface_form_exclusion_count: String(surfaceProjection.exclusions.length),
   };
 }
 
@@ -210,9 +216,10 @@ function assertRepresentativeQueries(database, model) {
 
 function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
   assert.equal(metadata.dictionary_version, 'm2-pilot-1');
-  assert.equal(metadata.schema_version, '1');
+  assert.equal(metadata.schema_version, '2');
   assert.equal(metadata.normalization_version, '1');
-  assert.equal(metadata.build_contract, 'canonical-jsonl -> normalized-v1 -> sqlite-v1');
+  assert.equal(metadata.build_contract, 'canonical-jsonl -> normalized-v1 -> sqlite-v2');
+  assert.equal(metadata.surface_form_projection_version, '1');
   assert.equal(metadata.build_tool_version, '1');
   assert.equal(metadata.node_version, process.version);
   assert.equal(metadata.sqlite_module, 'node:sqlite');
@@ -226,15 +233,16 @@ function assertProvenanceMetadata(metadata, expectedWorktreeState = undefined) {
   }
 }
 
-function verifyDatabase(database, model, expected, worktreeState) {
+function verifyDatabase(database, model, expected, surfaceProjection, worktreeState) {
   const snapshot = readLogicalDatabaseSnapshot(database);
   assert.deepEqual(snapshot.rows.records, expected.records);
   assert.deepEqual(snapshot.rows.search_forms, expected.search_forms);
   assert.deepEqual(snapshot.rows.senses, expected.senses);
   assert.deepEqual(snapshot.rows.relations, expected.relations);
+  assert.deepEqual(snapshot.rows.generated_surface_forms, surfaceProjection.rows);
 
   const metadata = getMetadata(database);
-  for (const [key, value] of Object.entries(expectedMetadata(model))) {
+  for (const [key, value] of Object.entries(expectedMetadata(model, surfaceProjection))) {
     assert.equal(metadata[key], value, `metadata ${key}`);
   }
   assertProvenanceMetadata(metadata, worktreeState);
@@ -246,16 +254,18 @@ export function verifyDictionaryArtifact({
   databasePath,
   model,
   canonicalRecords,
+  surfaceProjection,
   expectedWorktreeState,
 }) {
   const database = new DatabaseSync(databasePath, { readOnly: true });
   try {
-    const expected = expectedRowsFromCanonicalRecords(canonicalRecords);
+    const expected = expectedRowsFromCanonicalRecords(canonicalRecords, surfaceProjection.rows);
     const metadata = getMetadata(database);
     const snapshot = verifyDatabase(
       database,
       model,
       expected,
+      surfaceProjection,
       expectedWorktreeState ?? metadata.worktree_state,
     );
     return { metadata, snapshot };
@@ -301,12 +311,18 @@ export async function runM2Pipeline({
   assert.equal(dataset.candidateCount, model.records.filter(
     (record) => record.candidate_id !== null,
   ).length);
+  const surfaceProjection = context.derived.surfaceFormProjection;
+  if (!surfaceProjection) {
+    throw new Error('Canonical dataset validation did not derive the surface-form projection.');
+  }
+  assertCanonicalModelMatchesRaw(canonical.records, model, surfaceProjection.rows);
 
   if (databasePath) {
     const verified = verifyDictionaryArtifact({
       databasePath,
       model,
       canonicalRecords: canonical.records,
+      surfaceProjection,
     });
     return {
       ...dataset,
@@ -350,7 +366,7 @@ export async function runM2Pipeline({
       canonicalContext: context,
       semanticAudit: context.semanticAudit,
     });
-    const expected = expectedRowsFromCanonicalRecords(canonical.records);
+    const expected = expectedRowsFromCanonicalRecords(canonical.records, surfaceProjection.rows);
     const expectedWorktreeState = first.metadata.worktree_state;
 
     const firstDatabase = new DatabaseSync(firstPath, { readOnly: true });
@@ -362,12 +378,14 @@ export async function runM2Pipeline({
         firstDatabase,
         model,
         expected,
+        surfaceProjection,
         expectedWorktreeState,
       );
       secondSnapshot = verifyDatabase(
         secondDatabase,
         model,
         expected,
+        surfaceProjection,
         expectedWorktreeState,
       );
     } finally {
