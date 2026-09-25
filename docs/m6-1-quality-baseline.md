@@ -2,31 +2,24 @@
 
 ## Decision
 
-The M6 starting snapshot is the accepted 5K canonical dictionary at `master`
-commit `296289cef9109729d63ad1f8ced791a13d74617c`. Its canonical-content digest
-is `8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9`.
-The measured counts reconcile with the M5-16 handoff.
+This issue records the accepted issue-start canonical dictionary, its measured
+search behavior, and the prospective quality gates for M6 evidence. The
+snapshot is a measurement of the current curated corpus; it does not establish
+writer satisfaction, full-corpus relation correctness, or useful ranking where
+the product exposes no ambiguous result.
 
-The strongest measured result is exact search reachability: every distinct
-canonical start key is reachable in a temporary SQLite build, with no missing
-or unexpected result and no `reference-only` leak. The largest measured gap is
-relation coverage: only 336 of 5,000 starts have any outgoing relation. That is
-a coverage fact, not a finding that the other records are wrong or need a
-relation. The current snapshot does not establish writer satisfaction,
-full-corpus relation correctness, or useful ranking among multiple results.
-
-This issue fixes the baseline and prospective gates. It authorizes no 10K
-expansion, morphology, bulk relation generation, or ranking redesign.
-The completion boundary is M6-2 planning/implementation only.
+The completion boundary is M6-2 planning and implementation. This issue does
+not authorize corpus expansion, morphology, bulk relation generation, or
+ranking redesign.
 
 ## Reproduction
 
 `docs/m6-1-quality-baseline.json` is the machine-readable snapshot. It binds the
-canonical JSONL digest and the current M4 search regression fixture digest. The
-checker reloads the canonical JSONL without a shared cached context, builds a
+canonical JSONL digest and the M4 search regression fixture digest. The
+checker reloads canonical JSONL without a shared cached context, builds a
 temporary SQLite database, checks all distinct start lemmas and search forms,
-and compares the derived metrics and gate contract with the committed snapshot.
-The temporary database is deleted after the run.
+and compares the derived metrics, gate contract, and generated report with the
+committed artifacts. The temporary database is deleted after the run.
 
 ```sh
 npm run baseline:m6-1
@@ -34,184 +27,210 @@ node --test tests/m6-1-quality-baseline.test.mjs
 ```
 
 The snapshot is tied to the issue-start canonical digest. If a later M6 change
-changes canonical data, preserve this version as historical evidence and create
-a new versioned baseline instead of rewriting this one.
+changes canonical data, preserve this version as historical evidence and
+create a new versioned baseline instead of rewriting it.
 
-## Canonical inventory
+## Measured snapshot
 
-| Measure | Count | Notes |
-| --- | ---: | --- |
-| Canonical records | 5,042 | All record types and roles |
-| Search starts | 5,000 | Includes entries and expressions |
-| Reference-only records | 42 | Not free-search starts |
-| All senses | 5,301 | 5,259 on starts and 42 on reference-only records |
-| Directed relation tuples | 487 | Sense-bound; no symmetry is assumed |
-| Expression records | 1,154 | 1,153 starts and one reference-only record |
+### Snapshot identity
 
-Start record type and sense profile:
+| Field | Value |
+| --- | --- |
+| Issue-start repository commit | 296289cef9109729d63ad1f8ced791a13d74617c |
+| Canonical content digest | 8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9 |
+| Canonical JSONL files | 13 |
+| M4 regression fixture SHA-256 | e2ce9f4ee8812dbb532d4cb78ee725b417f138070ccf013ee78c647c08296598 |
 
-| Start profile | Count |
-| --- | ---: |
-| Entry records | 3,847 |
-| Expression records | 1,153 |
-| Single-sense starts | 4,754 |
-| Two-sense starts | 234 |
-| Three-sense starts | 11 |
-| Four-sense starts | 1 |
-| Polysemous starts | 246 |
+### Canonical inventory
 
-The POS table counts senses and starts with at least one sense of that POS.
-Record counts can overlap because a polysemous record may contain more than one
-POS.
+| Measure | Count |
+| --- | --- |
+| Canonical records | 5,042 |
+| Search starts | 5,000 |
+| Reference-only records | 42 |
+| All senses | 5,301 |
+| Start senses | 5,259 |
+| Reference-only senses | 42 |
+| Expression records | 1,154 |
+| Directed relation tuples | 487 |
 
-| POS | Start senses | Starts containing POS |
-| --- | ---: | ---: |
-| Noun | 3,113 | 3,023 |
-| Verb | 658 | 569 |
-| Adjective | 309 | 254 |
-| Adverb | 4 | 4 |
-| Expression | 1,175 | 1,153 |
+| Role | Record type | Count |
+| --- | --- | --- |
+| start | entry | 3,847 |
+| start | expression | 1,153 |
+| reference-only | entry | 41 |
+| reference-only | expression | 1 |
 
-The 42 reference-only records have 41 entry records and one expression record;
-their senses are 41 nouns and one expression, and all 42 are single-sense.
+| Role | Records by sense count | Single-sense | Polysemous |
+| --- | --- | --- | --- |
+| start | 1 sense(s): 4,754; 2 sense(s): 234; 3 sense(s): 11; 4 sense(s): 1 | 4,754 | 246 |
+| reference-only | 1 sense(s): 42 | 42 | 0 |
 
-Every start includes its lemma in `search_forms`. There are 251 additional
-curated search-form values across 248 starts. The 5,251 start search-form
-values are distinct across records, so the current snapshot has no exact-key
-collision that returns multiple start records.
+POS sense counts and records containing that POS by role. Record counts can overlap.
 
-## Relation coverage and relation correctness
+| POS | start senses | start records | reference-only senses | reference-only records |
+| --- | --- | --- | --- | --- |
+| Adjective | 309 | 254 | 5 | 5 |
+| Adverb | 4 | 4 | 0 | 0 |
+| Expression | 1,175 | 1,153 | 1 | 1 |
+| Noun | 3,113 | 3,023 | 27 | 27 |
+| Verb | 658 | 569 | 9 | 9 |
 
-Coverage is reported independently of correctness:
+### Relation coverage, type, and direction
 
 | Start record type | Relation-bearing | Relation-empty | Total |
-| --- | ---: | ---: | ---: |
-| Entry | 317 | 3,530 | 3,847 |
-| Expression | 19 | 1,134 | 1,153 |
-| **Total** | **336 (6.72%)** | **4,664 (93.28%)** | **5,000** |
+| --- | --- | --- | --- |
+| entry | 317 | 3,530 | 3,847 |
+| expression | 19 | 1,134 | 1,153 |
+| Total | 336 (6.72%) | 4,664 (93.28%) | 5,000 |
 
-The 487 directed tuples by canonical type are:
+| Relation type | Directed tuples | Target roles |
+| --- | --- | --- |
+| action | 35 | reference-only: 2, start: 33 |
+| antonym | 51 | start: 51 |
+| association | 47 | reference-only: 3, start: 44 |
+| direct | 22 | reference-only: 20, start: 2 |
+| mood | 81 | reference-only: 2, start: 79 |
+| near | 111 | reference-only: 13, start: 98 |
+| scene | 44 | reference-only: 3, start: 41 |
+| sensory | 96 | reference-only: 9, start: 87 |
 
-| Relation type | Directed tuples |
-| --- | ---: |
-| `direct` | 22 |
-| `near` | 111 |
-| `antonym` | 51 |
-| `mood` | 81 |
-| `scene` | 44 |
-| `sensory` | 96 |
-| `action` | 35 |
-| `association` | 47 |
+| Direction measure | Counts |
+| --- | --- |
+| Source roles | start: 487 |
+| Target roles | reference-only: 52, start: 435 |
+| Source role → target role | start->reference-only: 52, start->start: 435 |
+| Source POS | {"adjective":78,"expression":25,"noun":312,"verb":72} |
+| Tuples with a same-type, same-sense reverse | 86 |
 
-All 487 tuples originate on `start` records. Their targets are 435 `start`
-records and 52 `reference-only` records. Eighty-six tuples have a reverse tuple
-with the same type and sense binding. The remaining direction patterns are not
-automatically defects: a relation is an authored direction, not an implied
-undirected edge.
+Coverage and correctness are separate. No relation-density target or reverse-edge requirement is inferred from these counts.
 
-The M5-15 global semantic audit covers all 5,042 records and 5,301 senses with
-zero open blockers. That establishes audit coverage and canonical consistency;
-it is not a new human usefulness review of every relation. M5-16's focused
-writer-facing sample reviewed nine cases with zero open blockers. M5 candidate
-noise results used different stage-specific denominators, and M5-12A through
-M5-15 admitted no new relation tuples. Those figures remain historical process
-evidence and do not estimate correctness of the 487 current tuples. Relation
-correctness and writer usefulness are therefore marked **not measured** for
-this 5K baseline.
+### Search reachability and regression evidence
 
-## Search reachability and known gaps
+| Search-form measure | Count |
+| --- | --- |
+| Start form values | 5,251 |
+| Distinct start form values | 5,251 |
+| Starts containing their lemma as a form | 5,000 |
+| Starts with an alternate form | 248 |
+| Alternate form values | 251 |
+| Cross-record form collision groups | 0 |
+| Distinct exact start keys | 5,251 |
+| Cross-record exact-key collision groups | 0 |
+| Multi-result exact keys | 0 |
 
-The issue-start runtime build checked every distinct exact lemma or curated
-search form:
-
-| Check | Result |
-| --- | ---: |
-| Distinct start keys checked | 5,251 |
-| Keys returning the expected start records | 5,251 |
+| Exhaustive runtime key check | Count |
+| --- | --- |
+| Keys queried | 5,251 |
+| Expected keys reachable | 5,251 |
 | Missing expected results | 0 |
 | Unexpected results | 0 |
-| `reference-only` results from free search | 0 |
-| Cross-record exact-key collision groups | 0 |
+| Unexpected keys | 0 |
+| Reference-only leaks | 0 |
+| Unsupported canonical keys | 0 |
+| Mismatched keys | 0 |
 
-The shared M4 regression corpus has 12 cases: 10 baseline cases match their
-recorded expectations, and two remain pending. It contains four exact-lemma
-cases, one exact-search-form case, two normalization cases, one no-data case,
-three unsupported-policy cases, and one editorial-gap case.
+M4 corpus m4-search-regressions (schema 2, 12 cases):
 
-The pending cases preserve unresolved policy rather than failed baseline gates:
+| Input class | Cases |
+| --- | --- |
+| editorial-gap | 1 |
+| exact-lemma | 4 |
+| exact-search-form | 1 |
+| no-data | 1 |
+| normalization-candidate | 2 |
+| unsupported | 3 |
 
-- `m4-unsupported-inflected-form`: `담담했다` currently returns no match; M4
-  leaves morphology classification pending.
-- `m4-editorial-gap-record-without-relations`: `마당` is searchable but has no
-  relation; whether a useful relation is missing remains an editorial question.
+| Evaluation | Cases |
+| --- | --- |
+| baseline | 10 |
+| pending | 2 |
 
-Other specific boundaries already represented include the blocked
-free-searching of a reference-only target, exact expression spacing, NFC,
-surrounding-whitespace trimming, and a no-data query. The remaining search and
-relation evidence gaps are:
+| Recorded actual status | Cases |
+| --- | --- |
+| no-match | 2 |
+| ready | 8 |
+| unsupported | 2 |
 
-- There is no current writer-task success rate.
-- Direct relations are only 22 of 487 tuples, and their whole-corpus
-  substitutability has not been independently sampled.
-- The 4,664 relation-empty starts have not been sampled for writer demand; low
-  coverage alone does not authorize filling them.
-- No multi-result exact key exists, so ranking usefulness is not exercised.
-- The two pending M4 cases require explicit future policy/editorial decisions.
+| Regression disposition | Value |
+| --- | --- |
+| Baseline cases matching recorded expectations | 10/10 |
+| Pending case IDs | m4-editorial-gap-record-without-relations, m4-unsupported-inflected-form |
+| Expected/actual mismatch IDs retained as pending | m4-editorial-gap-record-without-relations, m4-unsupported-inflected-form |
 
-## Frozen benchmark and 1.0 gates
+### Frozen benchmark and quality gates
 
-The machine-readable gate contract is embedded in the JSON snapshot as
-`m6-1-quality-gates-v1`. Thresholds below are prospective policy floors, not
-claims measured from the 5K corpus. They are frozen before M6 evidence
-collection; changing them requires a new version before the next sample is
-reviewed.
+| Sampling rule | Contract |
+| --- | --- |
+| Stable seed | m6-1-quality-benchmark-v1 |
+| Stable hash | input: seed + U+0000 + stratum + U+0000 + stable_unit_id; encoding: UTF-8 bytes of the exact strings; digest: lowercase SHA-256 hexadecimal; order: digest ascending; ties compare stable_unit_id UTF-8 bytes ascending; normalization: none; do not trim, NFC-normalize, or locale-sort sample identifiers |
+| Direct relation sample | min(60, current direct-tuple count); census when the current count is 60 or less. Current population: 22. |
+| Other relation samples | min(20, current tuple count for that type); census when a type has fewer than 20 tuples. Report all eight canonical relation types separately; a type with zero tuples is coverage evidence, not a pass on correctness. |
+| Relation-gap sample | min(80, current relation-empty start count). Strata: record_type × first-sense POS; first sense follows canonical order. Allocation: Set each initial quota to min(10, stratum population). Allocate remaining slots to remaining capacities with the Hamilton largest-remainder method: floor each exact proportional quota, then give leftover slots by descending fractional remainder, breaking ties by stratum UTF-8 byte order. If a stratum reaches capacity, repeat over the remaining capacities. |
+| Ambiguous-query sample | min(40, available ambiguous query count); at least 20 cases are required to evaluate a ranking change. |
+| Writer-task sample | 100 tasks from 10 writers, 10 tasks each. Fill the assigned slots before reviewing outcomes. If a slot is unfilled, HOLD; do not replace a result after seeing its outcome. |
+| Writer-task participant allocation | Assign five participants to pattern A and five to pattern B before collection. Pattern A per participant: 3 direct replacement, 2 sense choice, 2 expression exploration, 2 relation exploration, 1 no-data/policy boundary. Pattern B: 3 direct replacement, 2 sense choice, 1 expression exploration, 3 relation exploration, 1 no-data/policy boundary. |
+| Writer-task source | Writer-authored needs and Typewriter-authored prompts; do not retain the writers’ original sentences in Git. |
 
-| Dimension | Sampling rule | PASS threshold |
+| Sample family | Stratum | Stable unit ID |
 | --- | --- | --- |
-| Canonical integrity | Exhaustive schema, integrity, and semantic audit | 100% of changed records and senses covered; zero blocking findings |
-| Direct substitutability | Up to 60 directed `direct` tuples; the current 22 are a census | At least 95% judged substitutable in the recorded sense and direction; zero critical POS/sense errors |
-| Other relation usefulness and type honesty | Up to 20 tuples per non-direct type; report all eight types separately | At least 80% per type are writer-useful and correctly typed, sense-bound, and directed; zero critical errors |
-| Relation coverage and gaps | Up to 80 relation-empty starts, stratified by record type and first-sense POS; 25 relation-exploration writer tasks | Review and disposition the gap sample; at least 80% of relation-exploration tasks reach one relevant result. No corpus-density quota. |
-| Search reachability and boundaries | Exhaust every unique start key plus the shared M4 corpus | 100% expected key reachability; zero missing/unexpected results or role leaks; all non-pending M4 cases retain their contract |
-| Ranking and order usefulness | Up to 40 ambiguous queries; at least 20 required for a ranking change | At least 80% of top results match the adjudicated writer choice; retain deterministic ordering and exact-match tiers |
-| Writer-task usefulness | 100 tasks from 10 writers, 10 tasks each | At least 80/100 useful outcomes; each intent and any POS/record-type slice with 10+ cases is at least 70%; zero critical misleading results |
+| relation_tuple | JSON.stringify(["relation", type]) | JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type]) |
+| relation_gap_record | JSON.stringify([record_type, first_sense.pos]) | canonical record.id |
+| ambiguous_query | ambiguous-exact-query | exact runtime-normalized query string, preserving its codepoints |
+| writer_task | task_intent | opaque_task_id assigned before outcome collection; never derived from writer text |
 
-The 100 writer tasks are split before collection: 30 direct replacement, 20
-sense choice, 15 expression exploration, 25 relation exploration, and 10
-no-data or policy-boundary tasks. Each canonical review case receives two
-independent judgments; a designated editorial decision owner adjudicates
-disagreements. For relation-empty records, allocate ten per non-empty
-`record_type × first-sense POS` stratum (or census a smaller stratum), then
-allocate remaining slots proportionally by largest remainder. Within each
-stratum and relation type, select the lowest SHA-256 values of
-`seed + NUL + stratum + NUL + stable_unit_id`, using the fixed seed
-`m6-1-quality-benchmark-v1`.
+| Writer-task intent | Tasks |
+| --- | --- |
+| direct_replacement | 30 |
+| sense_choice | 20 |
+| expression_exploration | 15 |
+| relation_exploration | 25 |
+| no_data_or_policy_boundary | 10 |
 
-An overall **PASS** requires every applicable dimension to pass with complete
-evidence. Any failed threshold, missing sample, or unresolved reviewer
-disagreement is **HOLD**. **N/A** is allowed only when the current product and
-the proposed change expose no cases for that dimension; missing evidence is
-never N/A. Dimensions are not averaged. Ranking is N/A at this baseline because
-there are no ambiguous exact keys; a ranking change with fewer than 20 relevant
-cases is HOLD.
+Each canonical review case receives 2 independent judgments. A designated editorial decision owner adjudicates disagreements before the case is counted. Keep case IDs, structured outcomes, and source digests. Do not commit writer sentences, raw query context, or external source text.
 
-## M5 risks retained
+| Quality dimension | Baseline status | Sample | PASS condition | Machine threshold |
+| --- | --- | --- | --- | --- |
+| canonical-integrity | PASS | Exhaustive validators and semantic audit. | All canonical/schema/integrity/semantic-audit checks pass; every changed record and sense is covered; zero blocking findings. | {"covered_records":1,"covered_senses":1,"blocking_findings":0} |
+| direct-substitutability | NOT_MEASURED | Stable-hash sample up to 60 directed tuples; current population of 22 is a census. | At least 95% of sampled direct tuples are judged substitutable in the recorded sense and direction; zero critical POS or sense-boundary errors. | {"accepted_rate":0.95,"critical_errors":0} |
+| relation-usefulness-and-type-honesty | NOT_MEASURED | Up to 20 stable-hash directed tuples per non-direct type; report each type separately. Keep direct relations under their stricter gate. | For every non-empty relation type, at least 80% of its sample is both writer-useful and correctly typed, sense-bound, and directed; zero critical POS or sense-boundary errors. | {"accepted_rate_per_type":0.8,"critical_errors":0} |
+| relation-coverage-and-gaps | MEASURED_NO_DENSITY_GATE | Up to 80 relation-empty starts, stratified by record type and first-sense POS, plus the relation-exploration writer tasks. | Review every selected gap and disposition it. At least 80% of writer tasks whose stated need is relation exploration reach one relevant result; record remaining high-demand gaps explicitly. | {"reviewed_gap_sample":1,"relation_exploration_task_success":0.8} |
+| search-reachability-and-boundaries | PASS | Exhaustive unique start keys plus the shared M4 regression corpus. Pending cases remain pending until an explicit policy decision. | 100% of start lemmas and curated search forms resolve to their expected start IDs; zero unexpected results, missing results, or reference-only leaks; all non-pending M4 cases retain their expected results and policy boundaries. | {"exact_key_reachability":1,"unexpected_results":0,"missing_results":0,"reference_only_leaks":0} |
+| ranking-and-order-usefulness | NOT_APPLICABLE | Stable-hash sample up to 40 ambiguous queries. N/A while no multi-result case is exposed; a ranking change with fewer than 20 cases is HOLD. | For a ranking change, at least 80% of the top results match the adjudicated writer choice across at least 20 ambiguous tasks; preserve deterministic tie-breaking and exact-match tiers. | {"writer_preferred_top_result":0.8,"minimum_ambiguous_tasks":20} |
+| writer-task-usefulness | NOT_MEASURED | 100 tasks from 10 writers, ten tasks each, with the fixed intent counts above. | At least 80 of 100 tasks produce a result the writer says they would use or deliberately adapt; every intent and any POS/record-type slice with at least 10 tasks scores at least 70%; zero critical misleading-result cases. | {"overall_success_rate":0.8,"minimum_slice_success_rate":0.7,"critical_misleading_results":0} |
 
-- Relation proposals had different stage-specific noise denominators. Keep
-  those stage results separate; do not present an aggregate as the current
-  relation correctness rate.
-- The M5-16 report's 6,199.055 seconds of measured editor-time components are a
-  partial lower bound. M5-3 was partial, M5-5 and M5-9 had unmeasured follow-up
-  work, and Wave B producer time is not editor time. M5-11 through M5-15 mark
-  human time `not-required`, not zero.
-- M5 reached 5K under its accepted automated bounded gate. This baseline does
-  not revisit those M5 decisions or claim an unmeasured human-time total.
+| Overall decision | Semantics |
+| --- | --- |
+| pass | Every applicable dimension passes and every required sample is complete. |
+| hold | Any dimension fails, required evidence is missing, or a reviewer disagreement remains unadjudicated. |
+| not_applicable | Use only when the current product and the proposed change expose no cases for that dimension. A missing sample is HOLD, not N/A. |
+| combine | Do not average dimensions or let a strong result in one dimension offset a failure in another. |
 
-No canonical data was added or changed to improve a metric.
+### M5 inherited risks and scope
+
+| Risk | Source | Recorded measure | Disposition |
+| --- | --- | --- | --- |
+| relation-candidate-noise-is-stage-specific | docs/m5-16-final-audit-report.md | 9 | Keep each M5 proposal denominator with its stage. The stage-specific candidate noise rates do not measure the correctness of all 487 current canonical tuples. |
+| editor-time-is-incomplete | docs/m5-16-final-audit-report.md | 6199.055 | This is a partial lower bound, not total M5 editor time; do not treat agent-gated stages as zero human time. |
+| m5-10k-and-morphology-not-authorized | https://github.com/neverworkalone/typewriter/issues/173 | — | M6-1 authorizes M6-2 planning/implementation only. It authorizes no 10K expansion, morphology, bulk relation generation, or ranking architecture. |
+
+## Interpretation and limits
+
+Search reachability, corpus coverage, relation correctness, and writer
+usefulness are separate measures. A searchable record without a relation is
+not by itself an editorial defect. A directed relation is authored as a
+direction and does not imply a reverse edge. Historical M5 candidate-noise
+rates retain their stage-specific denominators and do not estimate the
+correctness of the current canonical relation set.
+
+Pending M4 cases preserve unresolved morphology and editorial-gap policy.
+They are recorded as pending evidence rather than silently treated as either
+passing or failing this baseline.
+
+No canonical data was changed to improve a baseline metric.
 
 ## Validation
 
-On the issue branch, run the M6 baseline checker, the focused metric tests,
-current normal CI, and the existing search regression validator/tests. No
-browser-only boundary changes are in scope, so Chrome for Testing is not
-required.
+Run the M6 baseline checker, its focused tests, current normal CI, and the
+existing search regression validator/tests. This change does not affect a
+browser-only boundary, so Chrome for Testing is not required.

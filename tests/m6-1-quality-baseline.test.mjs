@@ -2,8 +2,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  allocateRelationGapQuotas,
+  assertBaselineReportMatches,
+  assertBaselineSnapshotMatches,
+  assertSearchReachabilityPass,
   deriveM6QualityBaselineMetrics,
+  evaluateSearchReachability,
+  makeAmbiguousQuerySamplingUnit,
+  makeRelationGapSamplingUnit,
+  makeRelationSamplingUnit,
+  makeWriterTaskSamplingUnit,
   M6_1_QUALITY_GATES,
+  renderBaselineReport,
+  selectStableHashSample,
 } from '../scripts/validate/m6-1-quality-baseline.mjs';
 
 const relation = (target, target_sense, type = 'direct') => ({
@@ -149,4 +160,175 @@ test('M6-1 gate contract keeps prospective editorial thresholds explicit', () =>
   assert.equal(M6_1_QUALITY_GATES.sampling.writer_tasks.task_count, 100);
   assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'direct-substitutability').threshold.accepted_rate, 0.95);
   assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'relation-usefulness-and-type-honesty').threshold.accepted_rate_per_type, 0.8);
+});
+
+test('M6-1 reachability evaluator covers missing, unexpected, and reference-only results', () => {
+  const expected = [{ key: '길', expected_ids: ['w001'] }];
+  const passing = evaluateSearchReachability(expected, [{
+    key: '길',
+    status: 'ready',
+    matches: [{ id: 'w001', role: 'start' }],
+  }]);
+  assert.deepEqual(passing, {
+    key_count: 1,
+    matched_key_count: 1,
+    missing_expected_result_count: 0,
+    unexpected_result_count: 0,
+    unexpected_key_count: 0,
+    reference_only_leak_count: 0,
+    unsupported_key_count: 0,
+    mismatched_key_count: 0,
+    mismatched_keys: [],
+  });
+  assert.doesNotThrow(() => assertSearchReachabilityPass(passing));
+
+  const missing = evaluateSearchReachability(expected, []);
+  assert.equal(missing.missing_expected_result_count, 1);
+  assert.throws(() => assertSearchReachabilityPass(missing), /all expected records must be returned/);
+
+  const unexpected = evaluateSearchReachability(expected, [{
+    key: '길',
+    status: 'ready',
+    matches: [
+      { id: 'w001', role: 'start' },
+      { id: 'w999', role: 'start' },
+    ],
+  }]);
+  assert.equal(unexpected.unexpected_result_count, 1);
+  assert.throws(() => assertSearchReachabilityPass(unexpected), /unexpected records/);
+
+  const leakedReference = evaluateSearchReachability(expected, [{
+    key: '길',
+    status: 'ready',
+    matches: [
+      { id: 'w001', role: 'start' },
+      { id: 'r001', role: 'reference-only' },
+    ],
+  }]);
+  assert.equal(leakedReference.reference_only_leak_count, 1);
+  assert.throws(() => assertSearchReachabilityPass(leakedReference), /reference-only records/);
+
+  const unexpectedKey = evaluateSearchReachability(expected, [
+    { key: '길', status: 'ready', matches: [{ id: 'w001', role: 'start' }] },
+    { key: '숨은키', status: 'ready', matches: [{ id: 'w002', role: 'start' }] },
+  ]);
+  assert.equal(unexpectedKey.unexpected_key_count, 1);
+  assert.throws(() => assertSearchReachabilityPass(unexpectedKey), /unregistered exact keys/);
+});
+
+test('M6-1 snapshot equality rejects any derived metric drift', () => {
+  const baseline = { metrics: { canonical: { start_count: 5000 } } };
+  assert.doesNotThrow(() => assertBaselineSnapshotMatches(baseline, structuredClone(baseline)));
+  assert.throws(() => assertBaselineSnapshotMatches(
+    baseline,
+    { metrics: { canonical: { start_count: 5001 } } },
+  ), /differs from the current canonical data/);
+});
+
+test('M6-1 sampling identities and stable-hash selection are frozen', () => {
+  assert.deepEqual(makeRelationSamplingUnit({
+    source_record_id: 'w001',
+    source_sense_id: 'w001-s1',
+    target_record_id: 'w002',
+    target_sense_id: 'w002-s1',
+    type: 'near',
+  }), {
+    stratum: '["relation","near"]',
+    stable_unit_id: '["w001","w001-s1","w002","w002-s1","near"]',
+  });
+  assert.deepEqual(makeRelationGapSamplingUnit({
+    id: 'w003',
+    role: 'start',
+    record_type: 'entry',
+    senses: [{ pos: 'noun', relations: [] }, { pos: 'verb', relations: [] }],
+  }), { stratum: '["entry","noun"]', stable_unit_id: 'w003' });
+  assert.deepEqual(makeAmbiguousQuerySamplingUnit('e\u0301'), {
+    stratum: 'ambiguous-exact-query',
+    stable_unit_id: 'e\u0301',
+  });
+  assert.deepEqual(makeWriterTaskSamplingUnit('sense_choice', 'task-007'), {
+    stratum: 'sense_choice',
+    stable_unit_id: 'task-007',
+  });
+
+  const sample = selectStableHashSample(
+    ['a', 'b', 'c', 'd', '가', '나'].map((stable_unit_id) => ({ stratum: 'fixture', stable_unit_id })),
+    { limit: 3, seed: 'm6-1-quality-benchmark-v1' },
+  );
+  assert.deepEqual(sample.map(({ stable_unit_id }) => stable_unit_id), ['나', 'a', 'b']);
+  const candidates = ['a', 'b', 'c', 'd', '가', '나']
+    .map((stable_unit_id) => ({ stratum: 'fixture', stable_unit_id }));
+  assert.deepEqual(
+    selectStableHashSample([...candidates].reverse(), { limit: 3, seed: 'm6-1-quality-benchmark-v1' }),
+    sample,
+  );
+});
+
+test('M6-1 relation-gap allocation freezes Hamilton remainders and UTF-8 tie-breaks', () => {
+  assert.deepEqual(allocateRelationGapQuotas({
+    '["entry","noun"]': 11,
+    '["entry","verb"]': 11,
+  }, 21), {
+    '["entry","noun"]': 11,
+    '["entry","verb"]': 10,
+  });
+  const unicodeBmpStratum = '\uE000';
+  const unicodeAstralStratum = '😀';
+  assert.deepEqual(allocateRelationGapQuotas({
+    [unicodeAstralStratum]: 11,
+    [unicodeBmpStratum]: 11,
+  }, 21), {
+    [unicodeBmpStratum]: 11,
+    [unicodeAstralStratum]: 10,
+  });
+  assert.deepEqual(allocateRelationGapQuotas({
+    '["entry","noun"]': 100,
+    '["entry","verb"]': 50,
+    '["expression","expression"]': 50,
+  }, 80), {
+    '["entry","noun"]': 36,
+    '["entry","verb"]': 22,
+    '["expression","expression"]': 22,
+  });
+});
+
+test('M6-1 report checker detects stale generated content', () => {
+  const records = [record({
+    id: 'w001',
+    lemma: '길',
+    senses: [{ id: 'w001-s1', pos: 'noun', gloss: '길의 뜻', relations: [] }],
+  })];
+  const reachability = {
+    key_count: 1,
+    matched_key_count: 1,
+    missing_expected_result_count: 0,
+    unexpected_result_count: 0,
+    unexpected_key_count: 0,
+    reference_only_leak_count: 0,
+    unsupported_key_count: 0,
+    mismatched_key_count: 0,
+    mismatched_keys: [],
+  };
+  const metrics = deriveM6QualityBaselineMetrics({
+    records,
+    canonicalRevision: 'canonical-digest',
+    canonicalFileCount: 1,
+    regressionCorpus: fixture,
+    regressionSha256: 'fixture-digest',
+    reachability,
+  });
+  const snapshot = {
+    source: { repository_commit: 'commit', canonical_revision: 'canonical-digest' },
+    metrics,
+    quality_gates: M6_1_QUALITY_GATES,
+    inherited_m5_risks: [],
+  };
+  const template = '# Report\n\n{{M6_1_GENERATED_SNAPSHOT}}\n';
+  const generated = renderBaselineReport(template, snapshot);
+  assert.doesNotThrow(() => assertBaselineReportMatches(template, generated, snapshot));
+  assert.throws(() => assertBaselineReportMatches(
+    template,
+    generated.replace('| Canonical records | 1 |', '| Canonical records | 2 |'),
+    snapshot,
+  ), /differs from its machine-readable baseline/);
 });

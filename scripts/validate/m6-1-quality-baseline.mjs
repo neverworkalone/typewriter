@@ -27,6 +27,14 @@ const DEFAULT_OUTPUT_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'docs/m6-1-quality-baseline.json',
 );
+const DEFAULT_REPORT_PATH = path.join(
+  REPOSITORY_DIRECTORY,
+  'docs/m6-1-quality-baseline.md',
+);
+const DEFAULT_REPORT_TEMPLATE_PATH = path.join(
+  SCRIPT_DIRECTORY,
+  'm6-1-quality-baseline.template.md',
+);
 const DEFAULT_REGRESSION_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'tests/fixtures/search-regressions/m4-baseline.json',
@@ -48,7 +56,31 @@ export const M6_1_QUALITY_GATES = Object.freeze({
   },
   sampling: {
     stable_seed: 'm6-1-quality-benchmark-v1',
-    hash: 'Sort candidates by SHA-256(seed + NUL + stratum + NUL + stable_unit_id), then take the first allocated rows.',
+    stable_hash: {
+      input: 'seed + U+0000 + stratum + U+0000 + stable_unit_id',
+      encoding: 'UTF-8 bytes of the exact strings',
+      digest: 'lowercase SHA-256 hexadecimal',
+      order: 'digest ascending; ties compare stable_unit_id UTF-8 bytes ascending',
+      normalization: 'none; do not trim, NFC-normalize, or locale-sort sample identifiers',
+    },
+    candidate_identity: {
+      relation_tuple: {
+        stratum: 'JSON.stringify(["relation", type])',
+        stable_unit_id: 'JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type])',
+      },
+      relation_gap_record: {
+        stratum: 'JSON.stringify([record_type, first_sense.pos])',
+        stable_unit_id: 'canonical record.id',
+      },
+      ambiguous_query: {
+        stratum: 'ambiguous-exact-query',
+        stable_unit_id: 'exact runtime-normalized query string, preserving its codepoints',
+      },
+      writer_task: {
+        stratum: 'task_intent',
+        stable_unit_id: 'opaque_task_id assigned before outcome collection; never derived from writer text',
+      },
+    },
     relation_direct: {
       unit: 'directed relation tuple',
       sample_size: 'min(60, current direct-tuple count); census when the current count is 60 or less.',
@@ -63,7 +95,7 @@ export const M6_1_QUALITY_GATES = Object.freeze({
       unit: 'start record with no outgoing relation on any sense',
       sample_size: 'min(80, current relation-empty start count)',
       strata: 'record_type × first-sense POS; first sense follows canonical order.',
-      allocation: 'Allocate 10 per non-empty stratum or census that stratum when it has fewer than 10. Allocate remaining slots proportionally to each stratum remaining population using largest remainders; break ties by the lexical stratum key.',
+      allocation: 'Set each initial quota to min(10, stratum population). Allocate remaining slots to remaining capacities with the Hamilton largest-remainder method: floor each exact proportional quota, then give leftover slots by descending fractional remainder, breaking ties by stratum UTF-8 byte order. If a stratum reaches capacity, repeat over the remaining capacities.',
     },
     writer_tasks: {
       task_count: 100,
@@ -77,6 +109,8 @@ export const M6_1_QUALITY_GATES = Object.freeze({
         no_data_or_policy_boundary: 10,
       },
       source: 'Writer-authored needs and Typewriter-authored prompts; do not retain the writers’ original sentences in Git.',
+      participant_allocation: 'Assign five participants to pattern A and five to pattern B before collection. Pattern A per participant: 3 direct replacement, 2 sense choice, 2 expression exploration, 2 relation exploration, 1 no-data/policy boundary. Pattern B: 3 direct replacement, 2 sense choice, 1 expression exploration, 3 relation exploration, 1 no-data/policy boundary.',
+      selection: 'Fill the assigned slots before reviewing outcomes. If a slot is unfilled, HOLD; do not replace a result after seeing its outcome.',
     },
     ranking: {
       unit: 'ambiguous query returning at least two start records',
@@ -153,6 +187,155 @@ function countBy(values) {
   )));
 }
 
+function compareUtf8(left, right) {
+  return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
+}
+
+export function makeRelationSamplingUnit({
+  source_record_id,
+  source_sense_id,
+  target_record_id,
+  target_sense_id,
+  type,
+}) {
+  assert.equal(typeof source_record_id, 'string');
+  assert.equal(typeof source_sense_id, 'string');
+  assert.equal(typeof target_record_id, 'string');
+  assert.equal(typeof type, 'string');
+  assert.ok(target_sense_id === null || target_sense_id === undefined || typeof target_sense_id === 'string');
+  return {
+    stratum: JSON.stringify(['relation', type]),
+    stable_unit_id: JSON.stringify([
+      source_record_id,
+      source_sense_id,
+      target_record_id,
+      target_sense_id ?? null,
+      type,
+    ]),
+  };
+}
+
+export function makeRelationGapSamplingUnit(record) {
+  assert.equal(typeof record?.id, 'string');
+  assert.equal(record.role, 'start');
+  assert.equal(typeof record?.record_type, 'string');
+  assert.equal(typeof record?.senses?.[0]?.pos, 'string');
+  assert.ok(record.senses.every((sense) => (sense.relations ?? []).length === 0));
+  return {
+    stratum: JSON.stringify([record.record_type, record.senses[0].pos]),
+    stable_unit_id: record.id,
+  };
+}
+
+export function makeAmbiguousQuerySamplingUnit(normalizedExactQuery) {
+  assert.equal(typeof normalizedExactQuery, 'string');
+  assert.ok(normalizedExactQuery.length > 0);
+  return {
+    stratum: 'ambiguous-exact-query',
+    stable_unit_id: normalizedExactQuery,
+  };
+}
+
+export function makeWriterTaskSamplingUnit(taskIntent, opaqueTaskId) {
+  assert.equal(typeof taskIntent, 'string');
+  assert.equal(typeof opaqueTaskId, 'string');
+  assert.ok(Object.hasOwn(M6_1_QUALITY_GATES.sampling.writer_tasks.task_intents, taskIntent));
+  assert.ok(opaqueTaskId.length > 0);
+  return {
+    stratum: taskIntent,
+    stable_unit_id: opaqueTaskId,
+  };
+}
+
+export function selectStableHashSample(units, { limit, seed = M6_1_QUALITY_GATES.sampling.stable_seed }) {
+  assert.ok(Array.isArray(units));
+  assert.ok(Number.isInteger(limit) && limit >= 0);
+  assert.equal(typeof seed, 'string');
+  const seen = new Set();
+  const ranked = units.map((unit) => {
+    assert.equal(typeof unit?.stratum, 'string');
+    assert.equal(typeof unit?.stable_unit_id, 'string');
+    const uniqueKey = JSON.stringify([unit.stratum, unit.stable_unit_id]);
+    assert.ok(!seen.has(uniqueKey), `duplicate sample unit ${uniqueKey}`);
+    seen.add(uniqueKey);
+    const hash = createHash('sha256')
+      .update(`${seed}\u0000${unit.stratum}\u0000${unit.stable_unit_id}`, 'utf8')
+      .digest('hex');
+    return { unit, hash };
+  });
+  ranked.sort((left, right) => (
+    left.hash < right.hash ? -1
+      : left.hash > right.hash ? 1
+        : compareUtf8(left.unit.stable_unit_id, right.unit.stable_unit_id)
+  ));
+  return ranked.slice(0, Math.min(limit, ranked.length)).map(({ unit }) => unit);
+}
+
+export function allocateRelationGapQuotas(stratumCounts, requestedSampleSize, { minimumPerStratum = 10 } = {}) {
+  assert.ok(stratumCounts && typeof stratumCounts === 'object' && !Array.isArray(stratumCounts));
+  assert.ok(Number.isInteger(requestedSampleSize) && requestedSampleSize >= 0);
+  assert.ok(Number.isInteger(minimumPerStratum) && minimumPerStratum >= 0);
+  const entries = Object.entries(stratumCounts).sort(([left], [right]) => compareUtf8(left, right));
+  for (const [stratum, count] of entries) {
+    assert.equal(typeof stratum, 'string');
+    assert.ok(Number.isInteger(count) && count >= 0);
+  }
+  const totalPopulation = entries.reduce((total, [, count]) => total + count, 0);
+  const target = Math.min(requestedSampleSize, totalPopulation);
+  const quotas = Object.fromEntries(entries.map(([stratum, count]) => [
+    stratum,
+    Math.min(minimumPerStratum, count),
+  ]));
+  let allocated = Object.values(quotas).reduce((total, count) => total + count, 0);
+  if (allocated > target) {
+    throw new RangeError('minimum per-stratum allocation exceeds the requested sample size');
+  }
+
+  let remainingSlots = target - allocated;
+  const capacities = entries.map(([stratum, count]) => ({
+    stratum,
+    capacity: count - quotas[stratum],
+  })).filter(({ capacity }) => capacity > 0);
+  const remainingCapacity = capacities.reduce((total, { capacity }) => total + capacity, 0);
+  if (remainingSlots === 0 || remainingCapacity === 0) return quotas;
+
+  const remainders = [];
+  for (const { stratum, capacity } of capacities) {
+    const numerator = remainingSlots * capacity;
+    const floor = Math.floor(numerator / remainingCapacity);
+    quotas[stratum] += floor;
+    allocated += floor;
+    remainders.push({ stratum, remainder: numerator % remainingCapacity, capacity });
+  }
+  remainingSlots = target - allocated;
+  remainders.sort((left, right) => (
+    right.remainder - left.remainder || compareUtf8(left.stratum, right.stratum)
+  ));
+  for (const candidate of remainders) {
+    if (remainingSlots === 0) break;
+    if (quotas[candidate.stratum] >= stratumCounts[candidate.stratum]) continue;
+    quotas[candidate.stratum] += 1;
+    remainingSlots -= 1;
+  }
+  assert.equal(remainingSlots, 0, 'largest-remainder allocation must use the full sample');
+  return quotas;
+}
+
+export function selectRelationGapSample(records, sampleSize = 80) {
+  const grouped = new Map();
+  for (const record of records) {
+    const unit = { ...makeRelationGapSamplingUnit(record), record_id: record.id };
+    const units = grouped.get(unit.stratum) ?? [];
+    units.push(unit);
+    grouped.set(unit.stratum, units);
+  }
+  const counts = Object.fromEntries([...grouped.entries()].map(([stratum, units]) => [stratum, units.length]));
+  const quotas = allocateRelationGapQuotas(counts, sampleSize);
+  return Object.entries(quotas)
+    .sort(([left], [right]) => compareUtf8(left, right))
+    .flatMap(([stratum, limit]) => selectStableHashSample(grouped.get(stratum) ?? [], { limit }));
+}
+
 function relationTupleKey({ sourceRecordId, sourceSenseId, targetRecordId, targetSenseId, type }) {
   return JSON.stringify([sourceRecordId, sourceSenseId, targetRecordId, targetSenseId ?? null, type]);
 }
@@ -192,6 +375,91 @@ function summarizeRegressionCorpus(corpus, corpusSha256) {
     expected_actual_mismatch_case_ids: mismatches.map(({ id }) => id).sort(),
     baseline_multi_result_case_count: baselineCases.filter(({ actual }) => actual.result_ids.length > 1).length,
   };
+}
+
+export function evaluateSearchReachability(expectedRows, actualRows) {
+  assert.ok(Array.isArray(expectedRows));
+  assert.ok(Array.isArray(actualRows));
+  const expectedByKey = new Map(expectedRows.map((row) => [row.key, row]));
+  const actualByKey = new Map(actualRows.map((row) => [row.key, row]));
+  assert.equal(expectedByKey.size, expectedRows.length, 'expected exact keys must be unique');
+  assert.equal(actualByKey.size, actualRows.length, 'actual exact keys must be unique');
+
+  const mismatches = [];
+  let matchedKeyCount = 0;
+  let missingExpectedCount = 0;
+  let unexpectedResultCount = 0;
+  let referenceOnlyLeakCount = 0;
+  let unsupportedKeyCount = 0;
+
+  for (const expectedRow of expectedRows) {
+    const actualRow = actualByKey.get(expectedRow.key);
+    const status = actualRow?.status ?? 'missing';
+    const matches = actualRow?.matches ?? [];
+    const expectedIds = expectedRow.expected_ids;
+    const actualIds = matches.map(({ id }) => id);
+    const expectedIdSet = new Set(expectedIds);
+    const missing = expectedIds.filter((id) => !actualIds.includes(id));
+    const unexpected = actualIds.filter((id) => !expectedIdSet.has(id));
+    const roleLeaks = matches.filter(({ role }) => role !== 'start');
+
+    if (status === 'ready' && actualIds.length > 0) matchedKeyCount += 1;
+    if (status === 'unsupported') unsupportedKeyCount += 1;
+    missingExpectedCount += missing.length;
+    unexpectedResultCount += unexpected.length;
+    referenceOnlyLeakCount += roleLeaks.length;
+
+    if (status !== 'ready' || !equalArray(actualIds, expectedIds)) {
+      mismatches.push({
+        key: expectedRow.key,
+        expected_ids: expectedIds,
+        actual_ids: actualIds,
+        actual_status: status,
+      });
+    }
+  }
+
+  const unexpectedKeyCount = actualRows.filter(({ key }) => !expectedByKey.has(key)).length;
+  for (const { key, status, matches = [] } of actualRows) {
+    if (!expectedByKey.has(key)) {
+      mismatches.push({
+        key,
+        expected_ids: [],
+        actual_ids: matches.map(({ id }) => id),
+        actual_status: status,
+      });
+    }
+  }
+
+  return {
+    key_count: expectedByKey.size,
+    matched_key_count: matchedKeyCount,
+    missing_expected_result_count: missingExpectedCount,
+    unexpected_result_count: unexpectedResultCount,
+    unexpected_key_count: unexpectedKeyCount,
+    reference_only_leak_count: referenceOnlyLeakCount,
+    unsupported_key_count: unsupportedKeyCount,
+    mismatched_key_count: mismatches.length,
+    mismatched_keys: mismatches.slice(0, 20),
+  };
+}
+
+export function assertSearchReachabilityPass(reachability) {
+  assert.equal(reachability.missing_expected_result_count, 0, 'all expected records must be returned');
+  assert.equal(reachability.reference_only_leak_count, 0, 'free search must not expose reference-only records');
+  assert.equal(reachability.unexpected_result_count, 0, 'queries must not return unexpected records');
+  assert.equal(reachability.unexpected_key_count, 0, 'the runtime must not expose unregistered exact keys');
+  assert.equal(reachability.unsupported_key_count, 0, 'canonical start keys must not be classified as unsupported');
+  assert.equal(reachability.matched_key_count, reachability.key_count, 'every expected exact key must be reachable');
+  assert.equal(reachability.mismatched_key_count, 0, 'all exact-key status and ordering must match the canonical mapping');
+}
+
+export function assertBaselineSnapshotMatches(existing, computed) {
+  assert.deepStrictEqual(
+    existing,
+    computed,
+    'M6-1 baseline differs from the current canonical data, search regression corpus, or gate contract',
+  );
 }
 
 export function deriveM6QualityBaselineMetrics({
@@ -401,46 +669,20 @@ async function measureRuntimeReachability({ records, canonical, repositoryDirect
       canonicalContext: canonical,
     });
     database = new DatabaseSync(databasePath, { readOnly: true });
-    const mismatches = [];
-    let matchedKeyCount = 0;
-    let missingExpectedCount = 0;
-    let unexpectedResultCount = 0;
-    let referenceOnlyLeakCount = 0;
-    let unsupportedKeyCount = 0;
-
-    for (const [key, expectedIdsSet] of expectedByKey.entries()) {
-      const expectedIds = [...expectedIdsSet].sort();
+    const expectedRows = [...expectedByKey.entries()].map(([key, expectedIds]) => ({
+      key,
+      expected_ids: [...expectedIds].sort(),
+    }));
+    const actualRows = expectedRows.map(({ key }) => {
       const response = findRecordsBySearchTerm(database, key);
-      const actualIds = response.matches.map(({ id }) => id);
-      const unexpected = actualIds.filter((id) => !expectedIdsSet.has(id));
-      const missing = expectedIds.filter((id) => !actualIds.includes(id));
-      const roleLeaks = response.matches.filter(({ role }) => role !== 'start');
-      if (response.status === 'ready' && actualIds.length > 0) matchedKeyCount += 1;
-      if (response.status === 'unsupported') unsupportedKeyCount += 1;
-      missingExpectedCount += missing.length;
-      unexpectedResultCount += unexpected.length;
-      referenceOnlyLeakCount += roleLeaks.length;
+      return {
+        key,
+        status: response.status,
+        matches: response.matches.map(({ id, role }) => ({ id, role })),
+      };
+    });
 
-      if (response.status !== 'ready' || !equalArray(actualIds, expectedIds)) {
-        mismatches.push({
-          key,
-          expected_ids: expectedIds,
-          actual_ids: actualIds,
-          actual_status: response.status,
-        });
-      }
-    }
-
-    return {
-      key_count: expectedByKey.size,
-      matched_key_count: matchedKeyCount,
-      missing_expected_result_count: missingExpectedCount,
-      unexpected_result_count: unexpectedResultCount,
-      reference_only_leak_count: referenceOnlyLeakCount,
-      unsupported_key_count: unsupportedKeyCount,
-      mismatched_key_count: mismatches.length,
-      mismatched_keys: mismatches.slice(0, 20),
-    };
+    return evaluateSearchReachability(expectedRows, actualRows);
   } finally {
     database?.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -506,6 +748,7 @@ async function buildSnapshot({ sourceCommit, inputs }) {
       {
         id: 'relation-candidate-noise-is-stage-specific',
         source: 'docs/m5-16-final-audit-report.md',
+        focused_editorial_sample_case_count: 9,
         disposition: 'Keep each M5 proposal denominator with its stage. The stage-specific candidate noise rates do not measure the correctness of all 487 current canonical tuples.',
       },
       {
@@ -523,12 +766,242 @@ async function buildSnapshot({ sourceCommit, inputs }) {
   };
 }
 
+function escapeTableValue(value) {
+  return String(value ?? '—').replaceAll('|', '\\|').replaceAll('\n', '<br>');
+}
+
+function markdownTable(headers, rows) {
+  return [
+    `| ${headers.map(escapeTableValue).join(' | ')} |`,
+    `| ${headers.map(() => '---').join(' | ')} |`,
+    ...rows.map((row) => `| ${row.map(escapeTableValue).join(' | ')} |`),
+  ].join('\n');
+}
+
+const compactJson = (value) => JSON.stringify(value ?? {});
+const percent = (value, total) => total === 0 ? 'N/A' : `${((value / total) * 100).toFixed(2)}%`;
+const formatCount = (value) => typeof value === 'number' ? new Intl.NumberFormat('en-US').format(value) : value;
+
+export function renderBaselineSnapshotMarkdown(snapshot) {
+  const { metrics, source, quality_gates: gates, inherited_m5_risks: risks } = snapshot;
+  const canonical = metrics.canonical;
+  const relations = metrics.relations;
+  const search = metrics.search;
+  const reachability = search.exhaustive_runtime_reachability;
+  const regression = search.regression_corpus;
+  const roles = Object.keys(canonical.record_type_counts_by_role);
+  const posTypes = [...new Set(Object.values(canonical.pos_by_role)
+    .flatMap(({ sense_count }) => Object.keys(sense_count)))].sort();
+  const relationRecordTypes = [...new Set([
+    ...Object.keys(relations.start_coverage.relation_bearing_by_record_type),
+    ...Object.keys(relations.start_coverage.relation_empty_by_record_type),
+  ])].sort();
+  const relationCoverageRows = relationRecordTypes.map((type) => [
+    type,
+    relations.start_coverage.relation_bearing_by_record_type[type] ?? 0,
+    relations.start_coverage.relation_empty_by_record_type[type] ?? 0,
+    (relations.start_coverage.relation_bearing_by_record_type[type] ?? 0)
+      + (relations.start_coverage.relation_empty_by_record_type[type] ?? 0),
+  ]);
+  relationCoverageRows.push([
+    'Total',
+    `${formatCount(relations.start_coverage.relation_bearing_count)} (${percent(relations.start_coverage.relation_bearing_count, canonical.start_count)})`,
+    `${formatCount(relations.start_coverage.relation_empty_count)} (${percent(relations.start_coverage.relation_empty_count, canonical.start_count)})`,
+    formatCount(canonical.start_count),
+  ]);
+  const relationTypes = Object.keys(relations.directed_tuples_by_type);
+  const dimensions = gates.dimensions.map((dimension) => [
+    dimension.id,
+    dimension.baseline_status,
+    dimension.sample,
+    dimension.pass,
+    compactJson(dimension.threshold),
+  ]);
+  const samplingFamilies = Object.entries(gates.sampling.candidate_identity).map(([name, identity]) => [
+    name,
+    identity.stratum,
+    identity.stable_unit_id,
+  ]);
+  const writerIntents = Object.entries(gates.sampling.writer_tasks.task_intents);
+  const recordSenseProfiles = (role) => Object.entries(
+    canonical.records_by_sense_count_and_role[role] ?? {},
+  ).map(([senseCount, recordCount]) => `${senseCount} sense(s): ${formatCount(recordCount)}`).join('; ');
+  const writerTasks = gates.sampling.writer_tasks;
+
+  return [
+    '### Snapshot identity',
+    '',
+    markdownTable(['Field', 'Value'], [
+      ['Issue-start repository commit', source.repository_commit],
+      ['Canonical content digest', source.canonical_revision],
+      ['Canonical JSONL files', formatCount(canonical.file_count)],
+      ['M4 regression fixture SHA-256', regression.fixture_sha256],
+    ]),
+    '',
+    '### Canonical inventory',
+    '',
+    markdownTable(['Measure', 'Count'], [
+      ['Canonical records', formatCount(canonical.record_count)],
+      ['Search starts', formatCount(canonical.start_count)],
+      ['Reference-only records', formatCount(canonical.reference_only_count)],
+      ['All senses', formatCount(canonical.total_sense_count)],
+      ['Start senses', formatCount(canonical.start_sense_count)],
+      ['Reference-only senses', formatCount(canonical.reference_only_sense_count)],
+      ['Expression records', formatCount(canonical.expression_record_count)],
+      ['Directed relation tuples', formatCount(relations.directed_tuple_count)],
+    ]),
+    '',
+    markdownTable(['Role', 'Record type', 'Count'], Object.entries(canonical.record_type_counts_by_role)
+      .flatMap(([role, typeCounts]) => Object.entries(typeCounts)
+        .map(([type, count]) => [role, type, formatCount(count)]))),
+    '',
+    markdownTable(['Role', 'Records by sense count', 'Single-sense', 'Polysemous'], roles.map((role) => [
+      role,
+      recordSenseProfiles(role),
+      formatCount(canonical.single_sense_record_count_by_role[role]),
+      formatCount(canonical.polysemous_record_count_by_role[role]),
+    ])),
+    '',
+    'POS sense counts and records containing that POS by role. Record counts can overlap.',
+    '',
+    markdownTable(['POS', ...roles.flatMap((role) => [`${role} senses`, `${role} records`])], posTypes.map((pos) => [
+      `${pos[0].toUpperCase()}${pos.slice(1)}`,
+      ...roles.flatMap((role) => [
+        formatCount(canonical.pos_by_role[role]?.sense_count[pos] ?? 0),
+        formatCount(canonical.pos_by_role[role]?.records_with_pos[pos] ?? 0),
+      ]),
+    ])),
+    '',
+    '### Relation coverage, type, and direction',
+    '',
+    markdownTable(['Start record type', 'Relation-bearing', 'Relation-empty', 'Total'], relationCoverageRows
+      .map((row) => [row[0], ...row.slice(1).map(formatCount)])),
+    '',
+    markdownTable(['Relation type', 'Directed tuples', 'Target roles'], relationTypes.map((type) => [
+      type,
+      formatCount(relations.directed_tuples_by_type[type]),
+      Object.entries(relations.directed_tuples_by_type_and_target_role[type])
+        .map(([role, count]) => `${role}: ${formatCount(count)}`).join(', '),
+    ])),
+    '',
+    markdownTable(['Direction measure', 'Counts'], [
+      ['Source roles', Object.entries(relations.source_role_counts)
+        .map(([role, count]) => `${role}: ${formatCount(count)}`).join(', ')],
+      ['Target roles', Object.entries(relations.target_role_counts)
+        .map(([role, count]) => `${role}: ${formatCount(count)}`).join(', ')],
+      ['Source role → target role', Object.entries(relations.source_to_target_role_counts)
+        .map(([rolesValue, count]) => `${rolesValue}: ${formatCount(count)}`).join(', ')],
+      ['Source POS', compactJson(relations.directed_tuples_by_source_pos)],
+      ['Tuples with a same-type, same-sense reverse', formatCount(relations.tuples_with_matching_reverse_same_type)],
+    ]),
+    '',
+    'Coverage and correctness are separate. No relation-density target or reverse-edge requirement is inferred from these counts.',
+    '',
+    '### Search reachability and regression evidence',
+    '',
+    markdownTable(['Search-form measure', 'Count'], [
+      ['Start form values', formatCount(search.start_search_form_value_count)],
+      ['Distinct start form values', formatCount(search.distinct_start_search_form_value_count)],
+      ['Starts containing their lemma as a form', formatCount(search.starts_with_lemma_in_search_forms)],
+      ['Starts with an alternate form', formatCount(search.starts_with_non_lemma_search_form)],
+      ['Alternate form values', formatCount(search.non_lemma_search_form_value_count)],
+      ['Cross-record form collision groups', formatCount(search.cross_record_search_form_collision_group_count)],
+      ['Distinct exact start keys', formatCount(search.exact_key_count)],
+      ['Cross-record exact-key collision groups', formatCount(search.cross_record_exact_key_collision_group_count)],
+      ['Multi-result exact keys', formatCount(search.multi_result_exact_key_count)],
+    ]),
+    '',
+    markdownTable(['Exhaustive runtime key check', 'Count'], [
+      ['Keys queried', formatCount(reachability.key_count)],
+      ['Expected keys reachable', formatCount(reachability.matched_key_count)],
+      ['Missing expected results', formatCount(reachability.missing_expected_result_count)],
+      ['Unexpected results', formatCount(reachability.unexpected_result_count)],
+      ['Unexpected keys', formatCount(reachability.unexpected_key_count)],
+      ['Reference-only leaks', formatCount(reachability.reference_only_leak_count)],
+      ['Unsupported canonical keys', formatCount(reachability.unsupported_key_count)],
+      ['Mismatched keys', formatCount(reachability.mismatched_key_count)],
+    ]),
+    '',
+    `M4 corpus ${regression.fixture_id} (schema ${regression.schema_version}, ${regression.case_count} cases):`,
+    '',
+    markdownTable(['Input class', 'Cases'], Object.entries(regression.input_class_counts)),
+    '',
+    markdownTable(['Evaluation', 'Cases'], Object.entries(regression.evaluation_counts)),
+    '',
+    markdownTable(['Recorded actual status', 'Cases'], Object.entries(regression.actual_status_counts)),
+    '',
+    markdownTable(['Regression disposition', 'Value'], [
+      ['Baseline cases matching recorded expectations', `${regression.baseline_cases_matching_recorded_expectations}/${regression.baseline_case_count}`],
+      ['Pending case IDs', regression.pending_case_ids.join(', ') || 'none'],
+      ['Expected/actual mismatch IDs retained as pending', regression.expected_actual_mismatch_case_ids.join(', ') || 'none'],
+    ]),
+    '',
+    '### Frozen benchmark and quality gates',
+    '',
+    markdownTable(['Sampling rule', 'Contract'], [
+      ['Stable seed', gates.sampling.stable_seed],
+      ['Stable hash', Object.entries(gates.sampling.stable_hash)
+        .map(([field, value]) => `${field}: ${value}`).join('; ')],
+      ['Direct relation sample', `${gates.sampling.relation_direct.sample_size} Current population: ${formatCount(gates.sampling.relation_direct.current_population)}.`],
+      ['Other relation samples', `${gates.sampling.relation_other_types.per_type_sample_size} ${gates.sampling.relation_other_types.minimum_types_reported}`],
+      ['Relation-gap sample', `${gates.sampling.relation_gaps.sample_size}. Strata: ${gates.sampling.relation_gaps.strata} Allocation: ${gates.sampling.relation_gaps.allocation}`],
+      ['Ambiguous-query sample', `${gates.sampling.ranking.sample_size}; at least ${gates.sampling.ranking.minimum_for_a_ranking_change} cases are required to evaluate a ranking change.`],
+      ['Writer-task sample', `${formatCount(writerTasks.task_count)} tasks from ${formatCount(writerTasks.participants)} writers, ${formatCount(writerTasks.tasks_per_participant)} tasks each. ${writerTasks.selection}`],
+      ['Writer-task participant allocation', writerTasks.participant_allocation],
+      ['Writer-task source', writerTasks.source],
+    ]),
+    '',
+    markdownTable(['Sample family', 'Stratum', 'Stable unit ID'], samplingFamilies),
+    '',
+    markdownTable(['Writer-task intent', 'Tasks'], writerIntents),
+    '',
+    `Each canonical review case receives ${formatCount(gates.review_protocol.independent_reviewers_per_canonical_case)} independent judgments. ${gates.review_protocol.disagreement} ${gates.review_protocol.retained_evidence}`,
+    '',
+    markdownTable(['Quality dimension', 'Baseline status', 'Sample', 'PASS condition', 'Machine threshold'], dimensions.map((row) => [
+      ...row.slice(0, 4),
+      row[4],
+    ])),
+    '',
+    markdownTable(['Overall decision', 'Semantics'], Object.entries(gates.overall_decision)),
+    '',
+    '### M5 inherited risks and scope',
+    '',
+    markdownTable(['Risk', 'Source', 'Recorded measure', 'Disposition'], risks.map((risk) => [
+      risk.id,
+      risk.source,
+      risk.measured_editor_seconds_lower_bound ?? risk.focused_editorial_sample_case_count ?? '—',
+      risk.disposition,
+    ])),
+  ].join('\n');
+}
+
+export function renderBaselineReport(template, snapshot) {
+  const marker = '{{M6_1_GENERATED_SNAPSHOT}}';
+  assert.equal(template.split(marker).length - 1, 1, 'baseline report template must contain one generated snapshot marker');
+  return template.replace(marker, renderBaselineSnapshotMarkdown(snapshot)).replace(/\s*$/u, '\n');
+}
+
+export function assertBaselineReportMatches(template, existingReport, snapshot) {
+  assert.equal(
+    existingReport,
+    renderBaselineReport(template, snapshot),
+    'M6-1 Markdown report differs from its machine-readable baseline snapshot or report template',
+  );
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const mode = parseMode(argv);
   const inputs = await readBaselineInputs();
-  const existing = mode === 'check'
-    ? JSON.parse(await readFile(DEFAULT_OUTPUT_PATH, 'utf8'))
-    : undefined;
+  const existing = await readFile(DEFAULT_OUTPUT_PATH, 'utf8')
+    .then((source) => JSON.parse(source))
+    .catch((error) => {
+      if (mode === 'write' && error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+  if (mode === 'write' && existing
+    && existing.source?.canonical_revision !== inputs.canonical.canonicalRevision) {
+    throw new Error('M6-1 source canonical revision changed; preserve this snapshot and create a new version.');
+  }
   const sourceCommit = existing?.source?.repository_commit
     ?? execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: REPOSITORY_DIRECTORY,
@@ -538,13 +1011,19 @@ export async function main(argv = process.argv.slice(2)) {
 
   if (mode === 'write') {
     await writeFile(DEFAULT_OUTPUT_PATH, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
-    console.log(`Wrote ${path.relative(REPOSITORY_DIRECTORY, DEFAULT_OUTPUT_PATH)} from ${snapshot.source.canonical_revision}.`);
+    const template = await readFile(DEFAULT_REPORT_TEMPLATE_PATH, 'utf8');
+    const report = renderBaselineReport(template, snapshot);
+    await writeFile(DEFAULT_REPORT_PATH, report, 'utf8');
+    console.log(`Wrote baseline JSON and report for ${snapshot.source.canonical_revision}.`);
     return snapshot;
   }
 
-  assert.deepEqual(existing, snapshot, 'M6-1 baseline differs from the current canonical data, search regression corpus, or gate contract');
+  assertBaselineSnapshotMatches(existing, snapshot);
   const reachability = snapshot.metrics.search.exhaustive_runtime_reachability;
-  assert.equal(reachability.mismatched_key_count, 0, 'canonical search keys must all resolve to their expected start records');
+  assertSearchReachabilityPass(reachability);
+  const template = await readFile(DEFAULT_REPORT_TEMPLATE_PATH, 'utf8');
+  const report = await readFile(DEFAULT_REPORT_PATH, 'utf8');
+  assertBaselineReportMatches(template, report, snapshot);
   console.log(
     `M6-1 baseline matches ${snapshot.source.canonical_revision}: `
     + `${snapshot.metrics.canonical.start_count} starts, `

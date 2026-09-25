@@ -173,6 +173,7 @@
         "matched_key_count": 5251,
         "missing_expected_result_count": 0,
         "unexpected_result_count": 0,
+        "unexpected_key_count": 0,
         "reference_only_leak_count": 0,
         "unsupported_key_count": 0,
         "mismatched_key_count": 0,
@@ -237,7 +238,31 @@
     },
     "sampling": {
       "stable_seed": "m6-1-quality-benchmark-v1",
-      "hash": "Sort candidates by SHA-256(seed + NUL + stratum + NUL + stable_unit_id), then take the first allocated rows.",
+      "stable_hash": {
+        "input": "seed + U+0000 + stratum + U+0000 + stable_unit_id",
+        "encoding": "UTF-8 bytes of the exact strings",
+        "digest": "lowercase SHA-256 hexadecimal",
+        "order": "digest ascending; ties compare stable_unit_id UTF-8 bytes ascending",
+        "normalization": "none; do not trim, NFC-normalize, or locale-sort sample identifiers"
+      },
+      "candidate_identity": {
+        "relation_tuple": {
+          "stratum": "JSON.stringify([\"relation\", type])",
+          "stable_unit_id": "JSON.stringify([source_record_id, source_sense_id, target_record_id, target_sense_id ?? null, type])"
+        },
+        "relation_gap_record": {
+          "stratum": "JSON.stringify([record_type, first_sense.pos])",
+          "stable_unit_id": "canonical record.id"
+        },
+        "ambiguous_query": {
+          "stratum": "ambiguous-exact-query",
+          "stable_unit_id": "exact runtime-normalized query string, preserving its codepoints"
+        },
+        "writer_task": {
+          "stratum": "task_intent",
+          "stable_unit_id": "opaque_task_id assigned before outcome collection; never derived from writer text"
+        }
+      },
       "relation_direct": {
         "unit": "directed relation tuple",
         "sample_size": "min(60, current direct-tuple count); census when the current count is 60 or less.",
@@ -252,7 +277,7 @@
         "unit": "start record with no outgoing relation on any sense",
         "sample_size": "min(80, current relation-empty start count)",
         "strata": "record_type × first-sense POS; first sense follows canonical order.",
-        "allocation": "Allocate 10 per non-empty stratum or census that stratum when it has fewer than 10. Allocate remaining slots proportionally to each stratum remaining population using largest remainders; break ties by the lexical stratum key."
+        "allocation": "Set each initial quota to min(10, stratum population). Allocate remaining slots to remaining capacities with the Hamilton largest-remainder method: floor each exact proportional quota, then give leftover slots by descending fractional remainder, breaking ties by stratum UTF-8 byte order. If a stratum reaches capacity, repeat over the remaining capacities."
       },
       "writer_tasks": {
         "task_count": 100,
@@ -265,7 +290,9 @@
           "relation_exploration": 25,
           "no_data_or_policy_boundary": 10
         },
-        "source": "Writer-authored needs and Typewriter-authored prompts; do not retain the writers’ original sentences in Git."
+        "source": "Writer-authored needs and Typewriter-authored prompts; do not retain the writers’ original sentences in Git.",
+        "participant_allocation": "Assign five participants to pattern A and five to pattern B before collection. Pattern A per participant: 3 direct replacement, 2 sense choice, 2 expression exploration, 2 relation exploration, 1 no-data/policy boundary. Pattern B: 3 direct replacement, 2 sense choice, 1 expression exploration, 3 relation exploration, 1 no-data/policy boundary.",
+        "selection": "Fill the assigned slots before reviewing outcomes. If a slot is unfilled, HOLD; do not replace a result after seeing its outcome."
       },
       "ranking": {
         "unit": "ambiguous query returning at least two start records",
@@ -362,6 +389,7 @@
     {
       "id": "relation-candidate-noise-is-stage-specific",
       "source": "docs/m5-16-final-audit-report.md",
+      "focused_editorial_sample_case_count": 9,
       "disposition": "Keep each M5 proposal denominator with its stage. The stage-specific candidate noise rates do not measure the correctness of all 487 current canonical tuples."
     },
     {
