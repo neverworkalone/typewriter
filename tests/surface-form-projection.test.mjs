@@ -11,6 +11,7 @@ import { validateDatasetRecords } from '../scripts/validate/dataset-integrity.mj
 import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
+  loadSurfaceFormReviewManifest,
 } from '../scripts/inflection/surface-form-projection.mjs';
 import {
   findRecordsBySearchTerm,
@@ -80,16 +81,47 @@ function rowsForForm(projection, form) {
   return projection.rows.filter((row) => row.form === form);
 }
 
+function reviewManifest(dispositions = [], reviewedCollisions = {}) {
+  return {
+    schema_version: 1,
+    contract_id: 'm6-3-surface-form-review-v1',
+    source_issue: 175,
+    dispositions,
+    reviewed_collisions: {
+      exact_generated: reviewedCollisions.exact_generated ?? [],
+      ambiguous_generated: reviewedCollisions.ambiguous_generated ?? [],
+    },
+  };
+}
+
+function reviewCollisionsFrom(collisions) {
+  return {
+    exact_generated: collisions.exactCollisions.map((collision) => ({
+      ...collision,
+      reason: 'Exact lookup keeps precedence while every generated candidate remains indexed.',
+    })),
+    ambiguous_generated: collisions.ambiguousGeneratedForms.map(({ form, candidates }) => ({
+      form,
+      candidates,
+      reason: 'Retain every listed sense-bound candidate without selecting one.',
+    })),
+  };
+}
+
 test('the complete 5K canonical domain has deterministic declared projection coverage', async () => {
-  const [canonical, contract, exceptionManifest] = await Promise.all([
+  const [canonical, contract, exceptionManifest, review] = await Promise.all([
     readCanonicalRecords(canonicalDirectory, { useSharedContext: false }),
     readFile(contractPath, 'utf8').then(JSON.parse),
     loadSurfaceFormExceptionManifest(),
+    loadSurfaceFormReviewManifest(),
   ]);
   const records = canonical.records.map(({ record }) => record);
   const projection = buildSurfaceFormProjection(records, {
     exceptionManifest,
+    reviewManifest: review,
     requireExceptionTargets: true,
+    requireClassDispositions: true,
+    requireCollisionReview: true,
   });
   const declaredPredicateSenseCount = contract.inventory.predicate_sense_counts.verb
     + contract.inventory.predicate_sense_counts.adjective;
@@ -100,6 +132,15 @@ test('the complete 5K canonical domain has deterministic declared projection cov
     projection.coverage.expected_rule_decision_count,
   );
   assert.equal(projection.coverage.exception_binding_count, exceptionManifest.exceptions.length);
+  assert.equal(projection.coverage.class_disposition_count, review.dispositions.length);
+  assert.equal(
+    projection.coverage.exact_collision_form_count,
+    review.reviewed_collisions.exact_generated.length,
+  );
+  assert.equal(
+    projection.coverage.ambiguous_generated_form_count,
+    review.reviewed_collisions.ambiguous_generated.length,
+  );
   assert.ok(projection.coverage.generated_surface_form_count > 0);
   assert.ok(projection.coverage.excluded_rule_count > 0);
 
@@ -120,13 +161,42 @@ test('the complete 5K canonical domain has deterministic declared projection cov
   }
 });
 
-test('future predicate senses receive every supported decision or an explicit exclusion', async () => {
+test('future predicate senses require an explicit open-vowel exclusion at admission', async () => {
   const exceptionManifest = await loadSurfaceFormExceptionManifest();
   const records = [
     entry('w9901', '먹다', 'verb'),
     entry('w9902', '기다리다', 'verb'),
   ];
-  const projection = buildSurfaceFormProjection(records, { exceptionManifest });
+  const recordInfos = records.map((record, index) => ({
+    record,
+    filePath: 'future-canonical.jsonl',
+    lineNumber: index + 1,
+  }));
+  const context = createCanonicalContext({ records: recordInfos, fileCount: 1 }, {
+    canonicalDirectory: path.join(repositoryRoot, 'future-canonical-fixture'),
+  });
+  assert.throws(
+    () => validateDatasetRecords(recordInfos, {
+      context,
+      lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+      requireSurfaceFormProjection: true,
+    }),
+    (error) => error.code === 'MISSING_PLAIN_PAST_DISPOSITION',
+  );
+
+  const review = reviewManifest([{
+    class_id: 'm6-3-open-vowel-past-excluded',
+    record_id: 'w9902',
+    sense_id: 'w9902-s1',
+    reason: 'Plain past is unsupported for this open-vowel class; retain other applicable rules.',
+  }]);
+  context.derived.surfaceFormReviewManifest = review;
+  validateDatasetRecords(recordInfos, {
+    context,
+    lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
+    requireSurfaceFormProjection: true,
+  });
+  const projection = context.derived.surfaceFormProjection;
   const forms = new Set(projection.rows.map(({ form, record_id }) => `${record_id}/${form}`));
 
   for (const form of ['먹는', '먹은', '먹을', '먹었다']) {
@@ -137,27 +207,144 @@ test('future predicate senses receive every supported decision or an explicit ex
     record_id: 'w9902',
     sense_id: 'w9902-s1',
     rule_id: 'predicate-plain-past-registered-exception',
-    reason: 'open-vowel-class-not-registered',
+    reason: 'Plain past is unsupported for this open-vowel class; retain other applicable rules.',
   }]);
   assert.equal(
     projection.coverage.complete_rule_decision_count,
     projection.coverage.expected_rule_decision_count,
   );
+});
 
-  const recordInfos = records.map((record, index) => ({
-    record,
-    filePath: 'future-canonical.jsonl',
-    lineNumber: index + 1,
-  }));
-  const context = createCanonicalContext({ records: recordInfos, fileCount: 1 }, {
-    canonicalDirectory: path.join(repositoryRoot, 'future-canonical-fixture'),
+test('risk-coda predicate senses require explicit regular or supported irregular classes', async () => {
+  const exceptionManifest = await loadSurfaceFormExceptionManifest();
+  assert.throws(
+    () => buildSurfaceFormProjection([entry('w9919', '먹다', 'verb')], {
+      exceptionManifest,
+      requireClassDispositions: true,
+      requireCollisionReview: true,
+    }),
+    (error) => error.code === 'SURFACE_FORM_REVIEW_MANIFEST_REQUIRED',
+  );
+  const missing = entry('w9920', '싣다', 'verb');
+  assert.throws(
+    () => buildSurfaceFormProjection([missing], {
+      exceptionManifest,
+      reviewManifest: reviewManifest(),
+      requireClassDispositions: true,
+    }),
+    (error) => error.code === 'MISSING_PREDICATE_CLASS_DISPOSITION',
+  );
+
+  const irregularManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    source_issue: 174,
+    exceptions: [{
+      class_id: 'm6-2-d-irregular-verb',
+      record_id: missing.id,
+      sense_id: `${missing.id}-s1`,
+    }],
+  };
+  const irregular = buildSurfaceFormProjection([missing], {
+    exceptionManifest: irregularManifest,
+    reviewManifest: reviewManifest(),
+    requireClassDispositions: true,
   });
-  validateDatasetRecords(recordInfos, {
-    context,
-    lexicalQuality: { blocking_finding_count: 0, blocking_findings: [] },
-    requireSurfaceFormProjection: true,
+  for (const form of ['실은', '실을', '실었다']) {
+    assert.ok(rowsForForm(irregular, form).some(({ record_id }) => record_id === missing.id));
+  }
+
+  const excluded = buildSurfaceFormProjection([missing], {
+    exceptionManifest: {
+      schema_version: 1,
+      contract_id: 'm6-2-inflection-exceptions-v1',
+      exceptions: [],
+    },
+    reviewManifest: reviewManifest([{
+      class_id: 'm6-3-predicate-excluded',
+      record_id: missing.id,
+      sense_id: `${missing.id}-s1`,
+      reason: 'Predicate class has not been reviewed; exclude all generated forms.',
+    }]),
+    requireClassDispositions: true,
   });
-  assert.deepEqual(context.derived.surfaceFormProjection.rows, projection.rows);
+  assert.deepEqual(rowsForForm(excluded, '싣은'), []);
+  assert.equal(excluded.exclusions.length, 4);
+
+  const regular = entry('w9921', '닫다', 'verb');
+  const regularReview = reviewManifest([{
+    class_id: 'm6-3-regular-d-verb',
+    record_id: regular.id,
+    sense_id: `${regular.id}-s1`,
+    reason: 'Reviewed as regular despite final ㄷ; retain regular rule outputs.',
+  }]);
+  const regularProjection = buildSurfaceFormProjection([regular], {
+    exceptionManifest: {
+      schema_version: 1,
+      contract_id: 'm6-2-inflection-exceptions-v1',
+      exceptions: [],
+    },
+    reviewManifest: regularReview,
+    requireClassDispositions: true,
+  });
+  for (const form of ['닫은', '닫을', '닫았다']) {
+    assert.ok(rowsForForm(regularProjection, form).some(({ record_id }) => record_id === regular.id));
+  }
+});
+
+test('new exact entry and expression collisions fail until their candidates are reviewed', () => {
+  const exceptionManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    exceptions: [],
+  };
+  const generated = entry('w9930', '먹다', 'verb');
+  const exactEntry = entry('w9931', '식물', 'noun', ['먹는']);
+  const exactExpression = {
+    id: 'w9932',
+    record_type: 'expression',
+    role: 'start',
+    candidate_id: 'w9932',
+    lemma: '먹는',
+    search_forms: [],
+    senses: [{ id: 'w9932-s1', pos: 'expression', gloss: 'fixture', relations: [] }],
+  };
+  for (const exactRecord of [exactEntry, exactExpression]) {
+    assert.throws(
+      () => buildSurfaceFormProjection([generated, exactRecord], {
+        exceptionManifest,
+        reviewManifest: reviewManifest(),
+        requireClassDispositions: true,
+        requireCollisionReview: true,
+      }),
+      (error) => error.code === 'SURFACE_FORM_COLLISION_REVIEW_MISMATCH',
+    );
+  }
+});
+
+test('approved generated ambiguity preserves every reviewed sense candidate', async () => {
+  const records = [entry('w9940', '듣다', 'verb'), entry('w9941', '들다', 'verb')];
+  const exceptionManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    exceptions: [{
+      class_id: 'm6-2-d-irregular-verb',
+      record_id: 'w9940',
+      sense_id: 'w9940-s1',
+    }],
+  };
+  const candidateProjection = buildSurfaceFormProjection(records, { exceptionManifest });
+  const reviewed = reviewManifest([], reviewCollisionsFrom(candidateProjection.collisions));
+  const projection = buildSurfaceFormProjection(records, {
+    exceptionManifest,
+    reviewManifest: reviewed,
+    requireClassDispositions: true,
+    requireCollisionReview: true,
+  });
+  assert.deepEqual(
+    rowsForForm(projection, '들었다').map(({ record_id, sense_id }) => `${record_id}/${sense_id}`),
+    ['w9940/w9940-s1', 'w9941/w9941-s1'],
+  );
 });
 
 test('shared search keeps generated ambiguity, exact precedence, sense scope, and normalization', async () => {

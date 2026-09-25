@@ -6,6 +6,7 @@ import { loadCanonicalContext } from './canonical-context.mjs';
 import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
+  loadSurfaceFormReviewManifest,
 } from '../inflection/surface-form-projection.mjs';
 
 export async function validateCanonicalSurfaceFormProjection({

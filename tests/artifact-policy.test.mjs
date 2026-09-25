@@ -155,6 +155,13 @@ test('artifact policy classifies projections before they can become tracked data
   assert.deepEqual(sourceContract.generated, []);
   assert.deepEqual(sourceContract.unclassified, []);
 
+  const projectionReview = classifyTrackedArtifacts(
+    ['data/validation/m6-3-surface-form-review.json'],
+    options,
+  );
+  assert.deepEqual(projectionReview.generated, []);
+  assert.deepEqual(projectionReview.unclassified, []);
+
   const unclassified = classifyTrackedArtifacts(
     ['data/validation/future-derived-envelope.json'],
     options,

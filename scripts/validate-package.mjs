@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   buildSurfaceFormProjection,
   DEFAULT_SURFACE_FORM_EXCEPTION_MANIFEST,
+  DEFAULT_SURFACE_FORM_REVIEW_MANIFEST,
   SURFACE_FORM_PROJECTION_VERSION,
 } from './inflection/surface-form-projection.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from './validate/canonical-jsonl.mjs';
@@ -140,10 +141,17 @@ function expectedMetadataForCanonical(canonicalDirectory) {
     ),
     0,
   );
+  const requireExceptionTargets = path.resolve(canonicalDirectory)
+    === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const requireClassDispositions = requireExceptionTargets || records.length >= 5_000;
   const surfaceProjection = buildSurfaceFormProjection(records, {
     exceptionManifest: readJson(DEFAULT_SURFACE_FORM_EXCEPTION_MANIFEST),
-    requireExceptionTargets: path.resolve(canonicalDirectory)
-      === path.resolve(DEFAULT_CANONICAL_DIRECTORY),
+    reviewManifest: requireClassDispositions
+      ? readJson(DEFAULT_SURFACE_FORM_REVIEW_MANIFEST)
+      : undefined,
+    requireExceptionTargets,
+    requireClassDispositions,
+    requireCollisionReview: requireClassDispositions,
   });
 
   return {

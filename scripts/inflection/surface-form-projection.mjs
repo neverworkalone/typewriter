@@ -10,6 +10,10 @@ export const DEFAULT_SURFACE_FORM_EXCEPTION_MANIFEST = path.resolve(
   SCRIPT_DIRECTORY,
   '../../data/validation/m6-2-inflection-exceptions.json',
 );
+export const DEFAULT_SURFACE_FORM_REVIEW_MANIFEST = path.resolve(
+  SCRIPT_DIRECTORY,
+  '../../data/validation/m6-3-surface-form-review.json',
+);
 export const SURFACE_FORM_PROJECTION_VERSION = '1';
 
 export const SURFACE_FORM_RULE_IDS = Object.freeze({
@@ -40,6 +44,27 @@ const EXCEPTION_CLASS_IDS = new Set([
   'm6-3-open-eu-past',
   'm6-3-shortened-didida-lemma',
 ]);
+const REGULAR_RISK_CODA_CLASS_IDS = new Map([
+  ['ㄷ', { verb: 'm6-3-regular-d-verb', adjective: 'm6-3-regular-d-adjective' }],
+  ['ㅂ', { verb: 'm6-3-regular-b-verb', adjective: 'm6-3-regular-b-adjective' }],
+  ['ㅅ', { verb: 'm6-3-regular-s-verb', adjective: 'm6-3-regular-s-adjective' }],
+  ['ㅎ', { verb: 'm6-3-regular-h-verb', adjective: 'm6-3-regular-h-adjective' }],
+]);
+const REVIEW_DISPOSITION_CLASS_IDS = new Set([
+  ...[...REGULAR_RISK_CODA_CLASS_IDS.values()].flatMap(Object.values),
+  'm6-3-open-vowel-past-excluded',
+  'm6-3-predicate-excluded',
+]);
+const EMPTY_SURFACE_FORM_REVIEW_MANIFEST = Object.freeze({
+  schema_version: 1,
+  contract_id: 'm6-3-surface-form-review-v1',
+  source_issue: 175,
+  dispositions: Object.freeze([]),
+  reviewed_collisions: Object.freeze({
+    exact_generated: Object.freeze([]),
+    ambiguous_generated: Object.freeze([]),
+  }),
+});
 
 const HANGUL_BASE = 0xac00;
 const HANGUL_COUNT = 11172;
@@ -460,6 +485,18 @@ function sourceKey(recordId, senseId) {
   return recordId + '\u0000' + senseId;
 }
 
+function finalCodaForPredicate(record) {
+  if (!record?.lemma?.endsWith('다') || record.lemma.includes(' ')) return null;
+  const stem = record.lemma.slice(0, -1);
+  const final = finalParts(stem);
+  return final ? FINAL_CONSONANTS[final.parts.coda] : null;
+}
+
+function expectedRegularRiskClass(record, sense) {
+  const coda = finalCodaForPredicate(record);
+  return REGULAR_RISK_CODA_CLASS_IDS.get(coda)?.[sense.pos] ?? null;
+}
+
 function compareStrings(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -584,6 +621,122 @@ function validateManifestBindings(records, manifest, requireTargets) {
   return exceptionsBySense;
 }
 
+function validateReviewManifestBindings(
+  records,
+  manifest,
+  exceptionsBySense,
+  requireTargets,
+) {
+  if (
+    !manifest
+    || manifest.schema_version !== 1
+    || manifest.contract_id !== 'm6-3-surface-form-review-v1'
+    || manifest.source_issue !== 175
+    || !Array.isArray(manifest.dispositions)
+    || !manifest.reviewed_collisions
+    || !Array.isArray(manifest.reviewed_collisions.exact_generated)
+    || !Array.isArray(manifest.reviewed_collisions.ambiguous_generated)
+  ) {
+    throw new SurfaceFormProjectionError(
+      'The M6-3 surface-form review manifest has an invalid envelope.',
+      'INVALID_SURFACE_FORM_REVIEW_MANIFEST',
+    );
+  }
+
+  const recordsById = new Map(records.map((recordInfo) => {
+    const record = recordOf(recordInfo);
+    return [record.id, record];
+  }));
+  const dispositionsBySense = new Map();
+  for (const entry of manifest.dispositions) {
+    if (
+      !entry
+      || typeof entry.record_id !== 'string'
+      || typeof entry.sense_id !== 'string'
+      || typeof entry.class_id !== 'string'
+      || typeof entry.reason !== 'string'
+      || entry.reason.trim().length === 0
+    ) {
+      throw new SurfaceFormProjectionError(
+        'Every review disposition requires class_id, record_id, sense_id, and a reason.',
+        'INVALID_SURFACE_FORM_DISPOSITION',
+      );
+    }
+    if (!REVIEW_DISPOSITION_CLASS_IDS.has(entry.class_id)) {
+      throw new SurfaceFormProjectionError(
+        'Unknown surface-form review class: ' + entry.class_id + '.',
+        'UNKNOWN_SURFACE_FORM_REVIEW_CLASS',
+      );
+    }
+
+    const key = sourceKey(entry.record_id, entry.sense_id);
+    if (dispositionsBySense.has(key)) {
+      throw new SurfaceFormProjectionError(
+        'Duplicate review disposition for ' + entry.record_id + '/' + entry.sense_id + '.',
+        'DUPLICATE_SURFACE_FORM_DISPOSITION',
+      );
+    }
+    if (exceptionsBySense.has(key)) {
+      throw new SurfaceFormProjectionError(
+        'A sense cannot have both an exception class and a review disposition: '
+          + entry.record_id + '/' + entry.sense_id + '.',
+        'CONFLICTING_SURFACE_FORM_CLASSIFICATION',
+      );
+    }
+
+    const record = recordsById.get(entry.record_id);
+    if (!record) {
+      if (requireTargets) {
+        throw new SurfaceFormProjectionError(
+          'Review disposition references missing record ' + entry.record_id + '.',
+          'MISSING_SURFACE_FORM_REVIEW_RECORD',
+        );
+      }
+      continue;
+    }
+    const sense = record.senses.find(({ id }) => id === entry.sense_id);
+    if (!sense) {
+      throw new SurfaceFormProjectionError(
+        'Review disposition references missing sense ' + entry.sense_id + '.',
+        'MISSING_SURFACE_FORM_REVIEW_SENSE',
+      );
+    }
+    if (record.role !== 'start' || record.record_type !== 'entry') {
+      throw new SurfaceFormProjectionError(
+        'Review dispositions may only target searchable entry records.',
+        'INVALID_SURFACE_FORM_REVIEW_TARGET',
+      );
+    }
+    if (sense.pos !== 'verb' && sense.pos !== 'adjective') {
+      throw new SurfaceFormProjectionError(
+        'Review dispositions may only target predicate senses.',
+        'INVALID_SURFACE_FORM_REVIEW_TARGET',
+      );
+    }
+
+    const stem = record.lemma.endsWith('다') ? record.lemma.slice(0, -1) : '';
+    const validTarget = entry.class_id === 'm6-3-predicate-excluded'
+      ? record.lemma.endsWith('다') && !record.lemma.includes(' ')
+      : entry.class_id === 'm6-3-open-vowel-past-excluded'
+        ? record.lemma.endsWith('다')
+          && !record.lemma.includes(' ')
+          && isOpenFinal(stem)
+          && plainPastRuleId(record, null)
+            === SURFACE_FORM_RULE_IDS.predicatePlainPastRegisteredException
+        : expectedRegularRiskClass(record, sense) === entry.class_id;
+    if (!validTarget) {
+      throw new SurfaceFormProjectionError(
+        'Review class ' + entry.class_id + ' does not match '
+          + record.id + '/' + sense.id + '.',
+        'SURFACE_FORM_REVIEW_CLASS_TARGET_MISMATCH',
+      );
+    }
+    dispositionsBySense.set(key, entry);
+  }
+
+  return dispositionsBySense;
+}
+
 function allRelevantRecords(records) {
   return records
     .map((recordInfo) => ({ info: recordInfo, record: recordOf(recordInfo) }))
@@ -626,17 +779,31 @@ function exclusionReason(record, classId, ruleId) {
 
 function exactFormsIndex(records) {
   const index = new Map();
-  for (const { record } of allRelevantRecords(records)) {
+  for (const recordInfo of records) {
+    const record = recordOf(recordInfo);
+    if (record?.role !== 'start') continue;
     for (const [field, value] of [
       ['lemma', record.lemma],
       ...(record.search_forms ?? []).map((form) => ['search-form', form]),
     ]) {
-      const current = index.get(value) ?? [];
-      current.push({ record_id: record.id, field });
+      const current = index.get(value) ?? new Map();
+      const candidate = {
+        record_id: record.id,
+        record_type: record.record_type,
+        field,
+      };
+      current.set(record.id + '\u0000' + record.record_type + '\u0000' + field, candidate);
       index.set(value, current);
     }
   }
-  return index;
+  return new Map([...index.entries()].map(([form, candidates]) => [
+    form,
+    [...candidates.values()].sort((left, right) => (
+      compareStrings(left.record_id, right.record_id)
+      || compareStrings(left.record_type, right.record_type)
+      || compareStrings(left.field, right.field)
+    )),
+  ]));
 }
 
 function collisionAudit(records, rows) {
@@ -644,35 +811,35 @@ function collisionAudit(records, rows) {
   const generatedByForm = new Map();
   for (const row of rows) {
     const candidates = generatedByForm.get(row.form) ?? new Map();
-    const senseIds = candidates.get(row.record_id) ?? new Set();
-    senseIds.add(row.sense_id);
-    candidates.set(row.record_id, senseIds);
+    const key = sourceKey(row.record_id, row.sense_id);
+    candidates.set(key, {
+      record_id: row.record_id,
+      sense_id: row.sense_id,
+      rule_id: row.rule_id,
+    });
     generatedByForm.set(row.form, candidates);
   }
 
   const exactCollisions = [];
   const ambiguousGeneratedForms = [];
-  for (const [form, candidates] of generatedByForm) {
+  for (const [form, candidateMap] of generatedByForm) {
+    const candidates = [...candidateMap.values()].sort((left, right) => (
+      compareStrings(left.record_id, right.record_id)
+      || compareStrings(left.sense_id, right.sense_id)
+      || compareStrings(left.rule_id, right.rule_id)
+    ));
     if (exact.has(form)) {
       exactCollisions.push({
         form,
         exact_candidates: exact.get(form),
-        generated_candidates: [...candidates.entries()].flatMap(([recordId, senseIds]) => (
-          [...senseIds].map((senseId) => ({ record_id: recordId, sense_id: senseId }))
-        )),
+        generated_candidates: candidates,
       });
     }
-    const candidateCount = [...candidates.values()].reduce(
-      (count, senseIds) => count + senseIds.size,
-      0,
-    );
-    if (candidateCount > 1) {
+    if (candidates.length > 1) {
       ambiguousGeneratedForms.push({
         form,
-        candidate_count: candidateCount,
-        candidates: [...candidates.entries()].flatMap(([recordId, senseIds]) => (
-          [...senseIds].map((senseId) => ({ record_id: recordId, sense_id: senseId }))
-        )),
+        candidate_count: candidates.length,
+        candidates,
       });
     }
   }
@@ -680,6 +847,140 @@ function collisionAudit(records, rows) {
   exactCollisions.sort((left, right) => compareStrings(left.form, right.form));
   ambiguousGeneratedForms.sort((left, right) => compareStrings(left.form, right.form));
   return { exactCollisions, ambiguousGeneratedForms };
+}
+
+function compareExactCandidates(left, right) {
+  return compareStrings(left.record_id, right.record_id)
+    || compareStrings(left.record_type, right.record_type)
+    || compareStrings(left.field, right.field);
+}
+
+function compareGeneratedCandidates(left, right) {
+  return compareStrings(left.record_id, right.record_id)
+    || compareStrings(left.sense_id, right.sense_id)
+    || compareStrings(left.rule_id, right.rule_id);
+}
+
+function validateCollisionReview(manifest, actual) {
+  const reviewed = manifest.reviewed_collisions;
+  const exactSeen = new Set();
+  const ambiguousSeen = new Set();
+  for (const entry of reviewed.exact_generated) {
+    if (
+      !entry
+      || typeof entry.form !== 'string'
+      || typeof entry.reason !== 'string'
+      || entry.reason.trim().length === 0
+      || !Array.isArray(entry.exact_candidates)
+      || !Array.isArray(entry.generated_candidates)
+    ) {
+      throw new SurfaceFormProjectionError(
+        'Every exact/generated collision review requires a form, candidates, and a reason.',
+        'INVALID_COLLISION_REVIEW',
+      );
+    }
+    if (exactSeen.has(entry.form)) {
+      throw new SurfaceFormProjectionError(
+        'Duplicate exact/generated collision review for ' + entry.form + '.',
+        'DUPLICATE_COLLISION_REVIEW',
+      );
+    }
+    exactSeen.add(entry.form);
+  }
+  for (const entry of reviewed.ambiguous_generated) {
+    if (
+      !entry
+      || typeof entry.form !== 'string'
+      || typeof entry.reason !== 'string'
+      || entry.reason.trim().length === 0
+      || !Array.isArray(entry.candidates)
+    ) {
+      throw new SurfaceFormProjectionError(
+        'Every generated ambiguity review requires a form, candidates, and a reason.',
+        'INVALID_COLLISION_REVIEW',
+      );
+    }
+    if (ambiguousSeen.has(entry.form)) {
+      throw new SurfaceFormProjectionError(
+        'Duplicate generated ambiguity review for ' + entry.form + '.',
+        'DUPLICATE_COLLISION_REVIEW',
+      );
+    }
+    ambiguousSeen.add(entry.form);
+  }
+
+  const expectedExact = reviewed.exact_generated.map((entry) => ({
+    form: entry.form,
+    exact_candidates: [...entry.exact_candidates].sort(compareExactCandidates),
+    generated_candidates: [...entry.generated_candidates].sort(compareGeneratedCandidates),
+  })).sort((left, right) => compareStrings(left.form, right.form));
+  const actualExact = actual.exactCollisions.map((entry) => ({
+    form: entry.form,
+    exact_candidates: [...entry.exact_candidates].sort(compareExactCandidates),
+    generated_candidates: [...entry.generated_candidates].sort(compareGeneratedCandidates),
+  }));
+  const expectedAmbiguous = reviewed.ambiguous_generated.map((entry) => ({
+    form: entry.form,
+    candidates: [...entry.candidates].sort(compareGeneratedCandidates),
+  })).sort((left, right) => compareStrings(left.form, right.form));
+  const actualAmbiguous = actual.ambiguousGeneratedForms.map((entry) => ({
+    form: entry.form,
+    candidates: [...entry.candidates].sort(compareGeneratedCandidates),
+  }));
+  if (
+    JSON.stringify(expectedExact) !== JSON.stringify(actualExact)
+    || JSON.stringify(expectedAmbiguous) !== JSON.stringify(actualAmbiguous)
+  ) {
+    throw new SurfaceFormProjectionError(
+      'Generated collisions differ from the reviewed exact/generated and generated/generated candidate sets.',
+      'SURFACE_FORM_COLLISION_REVIEW_MISMATCH',
+    );
+  }
+}
+
+function validateClassDispositionCoverage(
+  eligible,
+  exceptionsBySense,
+  dispositionsBySense,
+  requireClassDispositions,
+) {
+  if (!requireClassDispositions) return;
+  for (const { record } of eligible) {
+    for (const sense of record.senses) {
+      if (sense.pos !== 'verb' && sense.pos !== 'adjective') continue;
+      if (!record.lemma.endsWith('다') || record.lemma.includes(' ')) continue;
+      const key = sourceKey(record.id, sense.id);
+      const exceptionClass = exceptionsBySense.get(key) ?? null;
+      const disposition = dispositionsBySense.get(key);
+      if (disposition?.class_id === 'm6-3-predicate-excluded') continue;
+
+      const riskClass = expectedRegularRiskClass(record, sense);
+      if (
+        riskClass
+        && !exceptionClass
+        && disposition?.class_id !== riskClass
+      ) {
+        throw new SurfaceFormProjectionError(
+          'Predicate sense with a risk coda requires an explicit regular class, supported exception, or exclusion: '
+            + record.id + '/' + sense.id + '.',
+          'MISSING_PREDICATE_CLASS_DISPOSITION',
+        );
+      }
+
+      if (
+        !exceptionClass
+        && plainPastRuleId(record, null)
+          === SURFACE_FORM_RULE_IDS.predicatePlainPastRegisteredException
+        && disposition?.class_id !== 'm6-3-open-vowel-past-excluded'
+      ) {
+        throw new SurfaceFormProjectionError(
+          'Unsupported open-vowel past requires an explicit sense-bound exclusion: '
+            + record.id + '/' + sense.id + '.',
+          'MISSING_PLAIN_PAST_DISPOSITION',
+        );
+      }
+    }
+  }
 }
 
 export async function loadSurfaceFormExceptionManifest(
@@ -726,11 +1027,58 @@ export function loadSurfaceFormExceptionManifestSync(
   }
 }
 
+export async function loadSurfaceFormReviewManifest(
+  filePath = DEFAULT_SURFACE_FORM_REVIEW_MANIFEST,
+) {
+  let content;
+  try {
+    content = await readFile(filePath, 'utf8');
+  } catch (error) {
+    throw new SurfaceFormProjectionError(
+      'Could not read M6-3 surface-form review manifest: ' + error.message,
+      'SURFACE_FORM_REVIEW_MANIFEST_UNAVAILABLE',
+    );
+  }
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    throw new SurfaceFormProjectionError(
+      'M6-3 surface-form review manifest is invalid JSON: ' + error.message,
+      'INVALID_SURFACE_FORM_REVIEW_MANIFEST',
+    );
+  }
+}
+
+export function loadSurfaceFormReviewManifestSync(
+  filePath = DEFAULT_SURFACE_FORM_REVIEW_MANIFEST,
+) {
+  let content;
+  try {
+    content = readFileSync(filePath, 'utf8');
+  } catch (error) {
+    throw new SurfaceFormProjectionError(
+      'Could not read M6-3 surface-form review manifest: ' + error.message,
+      'SURFACE_FORM_REVIEW_MANIFEST_UNAVAILABLE',
+    );
+  }
+  try {
+    return JSON.parse(content);
+  } catch (error) {
+    throw new SurfaceFormProjectionError(
+      'M6-3 surface-form review manifest is invalid JSON: ' + error.message,
+      'INVALID_SURFACE_FORM_REVIEW_MANIFEST',
+    );
+  }
+}
+
 export function buildSurfaceFormProjection(
   records,
   {
     exceptionManifest,
+    reviewManifest,
     requireExceptionTargets = false,
+    requireClassDispositions = false,
+    requireCollisionReview = false,
   } = {},
 ) {
   if (!Array.isArray(records)) {
@@ -739,24 +1087,62 @@ export function buildSurfaceFormProjection(
   if (!exceptionManifest) {
     throw new SurfaceFormProjectionError('An M6-2 exception manifest is required.');
   }
+  if (!reviewManifest && (requireClassDispositions || requireCollisionReview)) {
+    throw new SurfaceFormProjectionError(
+      'Strict surface-form admission requires the M6-3 review manifest.',
+      'SURFACE_FORM_REVIEW_MANIFEST_REQUIRED',
+    );
+  }
+  const activeReviewManifest = reviewManifest ?? EMPTY_SURFACE_FORM_REVIEW_MANIFEST;
 
   const exceptionsBySense = validateManifestBindings(
     records,
     exceptionManifest,
     requireExceptionTargets,
   );
+  const dispositionsBySense = validateReviewManifestBindings(
+    records,
+    activeReviewManifest,
+    exceptionsBySense,
+    requireExceptionTargets,
+  );
   const rowsByKey = new Map();
   const exclusions = [];
   const decisions = new Map();
   const eligible = allRelevantRecords(records);
+  validateClassDispositionCoverage(
+    eligible,
+    exceptionsBySense,
+    dispositionsBySense,
+    requireClassDispositions,
+  );
 
   for (const { record } of eligible) {
     for (const sense of record.senses) {
       if (sense.pos !== 'verb' && sense.pos !== 'adjective') continue;
-      const classId = exceptionsBySense.get(sourceKey(record.id, sense.id)) ?? null;
+      const key = sourceKey(record.id, sense.id);
+      const classId = exceptionsBySense.get(key) ?? null;
+      const disposition = dispositionsBySense.get(key);
       const ruleIds = ruleIdsForSense(record, sense, classId);
 
+      if (disposition?.class_id === 'm6-3-predicate-excluded') {
+        for (const ruleId of ruleIds) {
+          addExclusion(exclusions, record, sense, ruleId, disposition.reason);
+          addDecision(decisions, record, sense, ruleId, 'excluded');
+        }
+        continue;
+      }
+
       for (const ruleId of ruleIds) {
+        if (
+          disposition?.class_id === 'm6-3-open-vowel-past-excluded'
+          && ruleId === plainPastRuleId(record, classId)
+        ) {
+          addExclusion(exclusions, record, sense, ruleId, disposition.reason);
+          addDecision(decisions, record, sense, ruleId, 'excluded');
+          continue;
+        }
+
         if (
           record.lemma.includes(' ')
           || !record.lemma.endsWith('다')
@@ -854,6 +1240,7 @@ export function buildSurfaceFormProjection(
   }
 
   const collisions = collisionAudit(records, rows);
+  if (requireCollisionReview) validateCollisionReview(activeReviewManifest, collisions);
   return {
     rows: rows.map(({ form, record_id, sense_id, rule_id }) => ({
       form,
@@ -880,6 +1267,7 @@ export function buildSurfaceFormProjection(
       complete_rule_decision_count: decisions.size,
       expected_rule_decision_count: expectedDecisionCount,
       exception_binding_count: exceptionsBySense.size,
+      class_disposition_count: dispositionsBySense.size,
       exact_collision_form_count: collisions.exactCollisions.length,
       ambiguous_generated_form_count: collisions.ambiguousGeneratedForms.length,
     },

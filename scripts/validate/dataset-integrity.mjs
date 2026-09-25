@@ -18,6 +18,7 @@ import {
 import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifestSync,
+  loadSurfaceFormReviewManifestSync,
 } from '../inflection/surface-form-projection.mjs';
 
 const EXPECTED_PILOT_CANDIDATE_IDS = Object.freeze(
@@ -286,6 +287,8 @@ export function validateDatasetRecords(
     requireTopicAnalysis = true,
     lexicalQuality,
     requireSurfaceFormProjection = false,
+    requireSurfaceFormClassifications,
+    requireSurfaceFormCollisionReview,
   } = {},
 ) {
   if (context && !context.derived) context.derived = {};
@@ -305,11 +308,20 @@ export function validateDatasetRecords(
         ?? loadSurfaceFormExceptionManifestSync();
       if (context) context.derived.surfaceFormExceptionManifest = exceptionManifest;
       const requireExceptionTargets = Boolean(isDefaultCanonicalDirectory);
-      const surfaceProjection = context?.derived?.surfaceFormProjection
-        ?? buildSurfaceFormProjection(recordInfos, {
-          exceptionManifest,
-          requireExceptionTargets,
-        });
+      const requireClassDispositions = requireSurfaceFormClassifications
+        ?? (requireSurfaceFormProjection || isDefaultCanonicalDirectory || isCompleteCanonicalScale);
+      const requireCollisionReview = requireSurfaceFormCollisionReview
+        ?? requireClassDispositions;
+      const reviewManifest = context?.derived?.surfaceFormReviewManifest
+        ?? (requireClassDispositions ? loadSurfaceFormReviewManifestSync() : undefined);
+      if (context && reviewManifest) context.derived.surfaceFormReviewManifest = reviewManifest;
+      const surfaceProjection = buildSurfaceFormProjection(recordInfos, {
+        exceptionManifest,
+        reviewManifest,
+        requireExceptionTargets,
+        requireClassDispositions,
+        requireCollisionReview,
+      });
       if (context) context.derived.surfaceFormProjection = surfaceProjection;
     } catch (error) {
       fail(error.message, error.code ?? 'SURFACE_FORM_PROJECTION_INVALID');

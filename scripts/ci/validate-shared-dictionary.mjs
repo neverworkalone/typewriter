@@ -10,6 +10,7 @@ import {
 import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
+  loadSurfaceFormReviewManifest,
   SURFACE_FORM_PROJECTION_VERSION,
 } from '../inflection/surface-form-projection.mjs';
 
@@ -55,11 +56,16 @@ export async function validateSharedDictionary({
     const exceptionManifest = context.derived.surfaceFormExceptionManifest
       ?? await loadSurfaceFormExceptionManifest();
     context.derived.surfaceFormExceptionManifest = exceptionManifest;
-    const surfaceProjection = context.derived.surfaceFormProjection
-      ?? buildSurfaceFormProjection(context.records, {
-        exceptionManifest,
-        requireExceptionTargets: true,
-      });
+    const reviewManifest = context.derived.surfaceFormReviewManifest
+      ?? await loadSurfaceFormReviewManifest();
+    context.derived.surfaceFormReviewManifest = reviewManifest;
+    const surfaceProjection = buildSurfaceFormProjection(context.records, {
+      exceptionManifest,
+      reviewManifest,
+      requireExceptionTargets: true,
+      requireClassDispositions: true,
+      requireCollisionReview: true,
+    });
     context.derived.surfaceFormProjection = surfaceProjection;
     if (metadata.surface_form_projection_version !== SURFACE_FORM_PROJECTION_VERSION) {
       throw new Error('shared SQLite surface_form_projection_version does not match the supported projection');

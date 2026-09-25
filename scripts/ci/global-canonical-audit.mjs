@@ -12,6 +12,7 @@ import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
+  loadSurfaceFormReviewManifest,
 } from '../inflection/surface-form-projection.mjs';
 
 export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
@@ -54,11 +55,16 @@ export async function runGlobalCanonicalAudit({ canonicalContext } = {}) {
   const surfaceFormExceptionManifest = context.derived.surfaceFormExceptionManifest
     ?? await loadSurfaceFormExceptionManifest();
   context.derived.surfaceFormExceptionManifest = surfaceFormExceptionManifest;
-  const surfaceFormProjection = context.derived.surfaceFormProjection
-    ?? buildSurfaceFormProjection(context.records, {
-      exceptionManifest: surfaceFormExceptionManifest,
-      requireExceptionTargets: true,
-    });
+  const surfaceFormReviewManifest = context.derived.surfaceFormReviewManifest
+    ?? await loadSurfaceFormReviewManifest();
+  context.derived.surfaceFormReviewManifest = surfaceFormReviewManifest;
+  const surfaceFormProjection = buildSurfaceFormProjection(context.records, {
+    exceptionManifest: surfaceFormExceptionManifest,
+    reviewManifest: surfaceFormReviewManifest,
+    requireExceptionTargets: true,
+    requireClassDispositions: true,
+    requireCollisionReview: true,
+  });
   context.derived.surfaceFormProjection = surfaceFormProjection;
 
   return {

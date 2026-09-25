@@ -288,13 +288,20 @@ export async function runM2Pipeline({
   if (context.records.length < 5_000) {
     // Historical M2 fixtures predate the M6 exception map and reuse canonical
     // IDs for unrelated records. Keep this compatibility audit focused on the
-    // data pipeline; the full canonical audit validates the production map.
+    // data pipeline; the full canonical audit validates the production manifests.
     context.derived ??= {};
     context.derived.surfaceFormExceptionManifest = {
       schema_version: 1,
       contract_id: 'm6-2-inflection-exceptions-v1',
       source_issue: 174,
       exceptions: [],
+    };
+    context.derived.surfaceFormReviewManifest = {
+      schema_version: 1,
+      contract_id: 'm6-3-surface-form-review-v1',
+      source_issue: 175,
+      dispositions: [],
+      reviewed_collisions: { exact_generated: [], ambiguous_generated: [] },
     };
   }
   const canonical = {
@@ -306,6 +313,8 @@ export async function runM2Pipeline({
     canonicalContext: context,
     semanticAudit: context.semanticAudit,
     requireSurfaceFormProjection: true,
+    requireSurfaceFormClassifications: context.records.length >= 5_000,
+    requireSurfaceFormCollisionReview: context.records.length >= 5_000,
   });
   const model = suppliedModel ?? await normalizeCanonicalDirectory(inputDirectory, {
     checkPilotCompleteness: true,

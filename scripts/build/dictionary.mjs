@@ -20,6 +20,7 @@ import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
 import {
   buildSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
+  loadSurfaceFormReviewManifest,
   SURFACE_FORM_PROJECTION_VERSION,
 } from '../inflection/surface-form-projection.mjs';
 
@@ -228,13 +229,19 @@ export async function buildDictionary({
     canonicalContext: context,
     semanticAudit,
   });
-  const exceptionManifest = canonicalContext?.derived?.surfaceFormExceptionManifest
+  const exceptionManifest = context.derived?.surfaceFormExceptionManifest
     ?? await loadSurfaceFormExceptionManifest();
   const requireExceptionTargets = path.resolve(inputDirectory)
     === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const requireClassDispositions = requireExceptionTargets || model.records.length >= 5_000;
+  const reviewManifest = context.derived?.surfaceFormReviewManifest
+    ?? (requireClassDispositions ? await loadSurfaceFormReviewManifest() : undefined);
   const surfaceFormProjection = buildSurfaceFormProjection(model.records, {
     exceptionManifest,
+    reviewManifest,
     requireExceptionTargets,
+    requireClassDispositions,
+    requireCollisionReview: requireClassDispositions,
   });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,

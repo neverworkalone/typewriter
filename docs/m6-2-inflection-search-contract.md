@@ -118,9 +118,13 @@ does not authorize an irregular form by itself. Irregular or exceptional
 alternations must have an explicit, reviewed rule-class entry bound to the
 canonical `record_id` and `sense_id`; forms not covered by a regular attachment
 or registered class get no projection row. Future admission must fail closed:
-each new sense is classified under an applicable supported class or receives
-an explicit exclusion reason, and unknown classes never fall back to generic
-open-vowel past attachment. The contract fixtures exercise the current-corpus
+each new sense with a risk-final coda (`ㄷ`, `ㅂ`, `ㅅ`, or `ㅎ`) needs a
+sense-bound supported irregular class, an explicit regular classification, or
+an explicit exclusion. Other unsupported open-vowel past forms also require an
+explicit sense-bound exclusion. Unknown classes never fall back to generic
+open-vowel past attachment. The collision audit binds all exact/generated and
+generated/generated candidates, including expression records, to the reviewed
+M6-3 manifest. The contract fixtures exercise the current-corpus
 `ㄷ` irregular (`듣다 → 들었다`), `ㅂ` irregular adjective
 (`감탄스럽다 → 감탄스러운`), `ㅎ` irregular adjective (`희뿌옇다 → 희뿌연`),
 `ㅡ` irregular (`쓰다 → 썼다`), `르` irregular (`부르다 → 불렀다`), `ㅅ`
@@ -180,14 +184,21 @@ canonical `search_forms`, with one row per supported form/sense mapping:
 generated_surface_forms(form, record_id, sense_id, rule_id)
 ```
 
-The table is built from canonical JSONL, regular rule code, and a checked-in
-exception-class manifest at
-`data/validation/m6-2-inflection-exceptions.json`. That manifest binds only
-exceptional classes to canonical `(record_id, sense_id)` pairs; it does not store
-lexical records or duplicate generated forms. Index `form` for lookup and
-preserve deterministic source order. Keep record and sense foreign-key checks
-fail-closed. Do not add generated surface forms to canonical JSONL, create
-per-form records, or change canonical schema for this contract.
+The table is built from canonical JSONL, regular rule code, and two checked-in
+M6 manifests. `data/validation/m6-2-inflection-exceptions.json` binds supported
+irregular classes to canonical `(record_id, sense_id)` pairs.
+`data/validation/m6-3-surface-form-review.json` binds regular classifications for
+risk codas and explicit past-form exclusions to the same sense identity, and
+records the reviewed exact/generated and generated/generated collision
+candidate sets. Neither manifest stores lexical records or duplicate generated
+forms. A missing or changed disposition fails shared admission. A new, changed,
+or removed collision candidate set must be reviewed in the M6-3 manifest before
+admission succeeds. Exact candidates include every `role: start` entry and
+expression lemma/search form; generated candidates retain their sense and rule
+identity. Index `form` for lookup and preserve deterministic source order. Keep
+record and sense foreign-key checks fail-closed. Do not add generated surface
+forms to canonical JSONL, create per-form records, or change canonical schema
+for this contract.
 
 The shared query adapter must return the same generated provenance and candidate
 set in Extension and Web. A generated match must identify its `rule_id` and
