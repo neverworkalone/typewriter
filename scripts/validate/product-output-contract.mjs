@@ -13,15 +13,16 @@ export const PRODUCT_LEGAL_FILES = Object.freeze([
   'THIRD-PARTY-NOTICES.txt',
 ]);
 
-export async function validateProductOutputContract({
-  root = repositoryRoot,
-  extensionOutput = path.resolve(
-    process.env.TYPEWRITER_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist'),
-  ),
-  webOutput = path.resolve(
-    process.env.TYPEWRITER_WEB_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist-web'),
-  ),
-} = {}) {
+export async function validateProductOutputContract(options = {}) {
+  const root = options.root ?? repositoryRoot;
+  const extensionOutput = path.resolve(options.extensionOutput
+    ?? (path.resolve(root) === repositoryRoot
+      ? process.env.TYPEWRITER_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist')
+      : path.join(root, 'dist')));
+  const webOutput = path.resolve(options.webOutput
+    ?? (path.resolve(root) === repositoryRoot
+      ? process.env.TYPEWRITER_WEB_BUILD_OUTPUT_DIRECTORY ?? path.join(root, 'dist-web')
+      : path.join(root, 'dist-web')));
   const [extensionDatabase, webDatabase] = await Promise.all([
     readFile(path.join(extensionOutput, 'dictionary.sqlite')),
     readFile(path.join(webOutput, 'dictionary.sqlite')),
