@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { contractOpenOVowelWithAt } from '../scripts/inflection/contract.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -187,17 +188,52 @@ test('M6-2 contract is pinned to the reproduced M6-1 canonical snapshot', () => 
       uncontracted_form: 'supported',
       uncontracted_attachment: 'append 았다 to the stem',
       contracted_form: 'supported',
-      contracted_attachment: 'merge final open ㅗ with 았 by adding coda ㅆ to that stem syllable',
+      contracted_attachment: 'replace the final open ㅗ nucleus with ㅘ, then add coda ㅆ',
     },
     open_o_oda: {
       rule_id: 'predicate-plain-past-required-oda',
       lemma_suffix: '오다',
       contracted_form: 'required',
-      contracted_attachment: 'merge final open ㅗ with 았 by adding coda ㅆ to that stem syllable',
+      contracted_attachment: 'replace the final open ㅗ nucleus with ㅘ, then add coda ㅆ',
       uncontracted_form: 'unsupported',
     },
     other_open_stem_vowels: 'unsupported unless registered as a sense-bound exception',
   });
+});
+
+test('open ㅗ past contraction replaces the vowel nucleus before adding ㅆ', () => {
+  assert.equal(contractOpenOVowelWithAt('보'), '봤');
+  assert.equal(contractOpenOVowelWithAt('오'), '왔');
+  assert.equal(contractOpenOVowelWithAt('바라보'), '바라봤');
+  assert.equal(contractOpenOVowelWithAt('다가오'), '다가왔');
+  assert.equal(contractOpenOVowelWithAt('가'), null);
+  assert.equal(contractOpenOVowelWithAt('봄'), null);
+  assert.equal(contractOpenOVowelWithAt(''), null);
+  assert.equal(contractOpenOVowelWithAt(null), null);
+
+  const contractedCases = new Map(
+    contract.cases.map((searchCase) => [searchCase.query, searchCase]),
+  );
+  for (const query of ['봤다', '바라봤다']) {
+    const searchCase = contractedCases.get(query);
+    const candidate = searchCase.expected_candidates[0];
+    assert.deepEqual(searchCase.rule_ids, ['predicate-plain-past-open-o-boda']);
+    assert.equal(contractOpenOVowelWithAt(candidate.lemma.slice(0, -1)) + '다', query);
+  }
+  for (const query of ['보았다', '바라보았다']) {
+    const searchCase = contractedCases.get(query);
+    const candidate = searchCase.expected_candidates[0];
+    assert.deepEqual(searchCase.rule_ids, ['predicate-plain-past-open-o-boda']);
+    assert.equal(candidate.lemma.slice(0, -1) + '았다', query);
+  }
+  for (const query of ['왔다', '다가왔다']) {
+    const searchCase = contractedCases.get(query);
+    const candidate = searchCase.expected_candidates[0];
+    assert.deepEqual(searchCase.rule_ids, ['predicate-plain-past-required-oda']);
+    assert.equal(contractOpenOVowelWithAt(candidate.lemma.slice(0, -1)) + '다', query);
+  }
+  assert.deepEqual(contractedCases.get('오았다').expected_candidates, []);
+  assert.equal(contractedCases.get('오았다').unsupported_reason, 'mandatory-o-contraction');
 });
 
 test('canonical positive and ambiguous cases bind to all licensed start senses', () => {

@@ -95,12 +95,15 @@ Apply the regular endings as follows:
   바랐다`). The `-하다` class emits `-했다` (`담담하다 → 담담했다`). For
   `-보다`, both `보았다` and `봤다` are supported: the uncontracted form appends
   `았다`, while the contracted form adds coda `ㅆ` to the final open `보`
-  syllable. This also yields `바라보았다` and `바라봤다` for `바라보다`. For
-  `-오다`, contraction is required and the uncontracted form is unsupported;
-  add coda `ㅆ` to the final open `오` syllable (`다가오다 → 다가왔다`; `오았다`
-  is rejected). Other open-final vowel classes have no generic plain-past rule;
-  they require a reviewed, sense-bound exception entry before a past form is
-  projected.
+  syllable after changing its vowel nucleus from `ㅗ` to `ㅘ`. This also yields
+  `바라보았다` and `바라봤다` for `바라보다`. For `-오다`, contraction is
+  required and the uncontracted form is unsupported; change the final open `오`
+  nucleus from `ㅗ` to `ㅘ`, then add coda `ㅆ` (`다가오다 → 다가왔다`; `오았다`
+  is rejected). Both classes use the same checked primitive in
+  `scripts/inflection/contract.mjs`; their policy differs only in whether the
+  uncontracted surface is also emitted. Other open-final vowel classes have no
+  generic plain-past rule; they require a reviewed, sense-bound exception entry
+  before a past form is projected.
 
 Past-class precedence is: registered sense-bound exception, `-하다`, regular
 coda-bearing, open-final `ㅏ`, required-contracted `-오다`, then optional
@@ -190,6 +193,9 @@ The shared query adapter must return the same generated provenance and candidate
 set in Extension and Web. A generated match must identify its `rule_id` and
 matching sense IDs. Exact matches keep the current record-wide sense behavior;
 generated matches expose only the senses licensed by the matching POS/rule.
+The open-`ㅗ` contraction primitive in `scripts/inflection/contract.mjs` is
+executable contract code for the M6-3 generator to reuse; it changes the nucleus
+to `ㅘ` before adding coda `ㅆ` and returns no result for other stem endings.
 
 ## Future lexical admission
 

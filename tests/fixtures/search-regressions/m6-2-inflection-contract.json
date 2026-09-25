@@ -79,8 +79,8 @@
     "coda_bearing": {"rule_id": "predicate-plain-past-coda-bearing", "attachment": "append 았다 after final stem vowel ㅏ or ㅗ; otherwise append 었다"},
     "open_a": {"rule_id": "predicate-plain-past-open-a", "contracted_form": "required", "attachment": "merge final open ㅏ with 았 by adding coda ㅆ to that stem syllable"},
     "hada": {"rule_id": "predicate-plain-past-hada", "lemma_suffix": "하다", "surface_suffix": "했다"},
-    "open_o_boda": {"rule_id": "predicate-plain-past-open-o-boda", "lemma_suffix": "보다", "uncontracted_form": "supported", "uncontracted_attachment": "append 았다 to the stem", "contracted_form": "supported", "contracted_attachment": "merge final open ㅗ with 았 by adding coda ㅆ to that stem syllable"},
-    "open_o_oda": {"rule_id": "predicate-plain-past-required-oda", "lemma_suffix": "오다", "contracted_form": "required", "contracted_attachment": "merge final open ㅗ with 았 by adding coda ㅆ to that stem syllable", "uncontracted_form": "unsupported"},
+    "open_o_boda": {"rule_id": "predicate-plain-past-open-o-boda", "lemma_suffix": "보다", "uncontracted_form": "supported", "uncontracted_attachment": "append 았다 to the stem", "contracted_form": "supported", "contracted_attachment": "replace the final open ㅗ nucleus with ㅘ, then add coda ㅆ"},
+    "open_o_oda": {"rule_id": "predicate-plain-past-required-oda", "lemma_suffix": "오다", "contracted_form": "required", "contracted_attachment": "replace the final open ㅗ nucleus with ㅘ, then add coda ㅆ", "uncontracted_form": "unsupported"},
     "other_open_stem_vowels": "unsupported unless registered as a sense-bound exception"
   },
   "cases": [
