@@ -237,13 +237,22 @@ async function main() {
 
     const popupInflectionCollision = await search(extensionPage, '들었다');
     const webInflectionCollision = await search(webPage, '들었다');
-    assert.deepEqual(popupInflectionCollision.recordIds, ['w201', 'w2797']);
+    assert.deepEqual(popupInflectionCollision.recordIds, ['w201']);
     assert.deepEqual(popupInflectionCollision.candidateSenseIds, [
       'w201-s1',
       'w201-s2',
       'w2797-s1',
     ]);
     assert.deepEqual(webInflectionCollision, popupInflectionCollision);
+    for (const page of [extensionPage, webPage]) {
+      await page.locator('[role="option"][data-sense-id="w2797-s1"]').click();
+      await waitForRecord(page, 'w2797');
+    }
+    const popupSelectedInflectionCollision = await snapshot(extensionPage);
+    const webSelectedInflectionCollision = await snapshot(webPage);
+    assert.deepEqual(popupSelectedInflectionCollision.recordIds, ['w2797']);
+    assert.deepEqual(popupSelectedInflectionCollision.visibleSenseIds, ['w2797-s1']);
+    assert.deepEqual(webSelectedInflectionCollision, popupSelectedInflectionCollision);
 
     const popupPolysemy = await search(extensionPage, '쓰다');
     const webPolysemy = await search(webPage, '쓰다');
