@@ -1,9 +1,6 @@
 import {
-  createSearchMatch,
-  createSearchResponse,
+  createSearchResponseFromRows,
   normalizeSearchInput,
-  SEARCH_MATCH_FIELDS,
-  SEARCH_UNSUPPORTED_REASONS,
 } from '../../src/runtime/search-query.js';
 
 function findSearchRows(database, term) {
@@ -27,6 +24,27 @@ function findSearchRows(database, term) {
     .map((row) => ({ ...row }));
 }
 
+function findGeneratedSurfaceRows(database, term) {
+  return database
+    .prepare(
+      "SELECT records.id, records.record_type, records.role, "
+      + "records.candidate_id, records.lemma, "
+      + "'generated-surface-form' AS match_field, "
+      + "generated_surface_forms.form AS match_value, "
+      + "generated_surface_forms.rule_id AS rule_id, "
+      + "generated_surface_forms.sense_id AS sense_id, "
+      + "senses.position AS sense_position "
+      + "FROM generated_surface_forms "
+      + "INNER JOIN records ON records.id = generated_surface_forms.record_id "
+      + "INNER JOIN senses ON senses.id = generated_surface_forms.sense_id "
+      + "AND senses.record_id = generated_surface_forms.record_id "
+      + "WHERE records.role = 'start' AND generated_surface_forms.form = ? "
+      + "ORDER BY records.id, senses.position, generated_surface_forms.rule_id",
+    )
+    .all(term)
+    .map((row) => ({ ...row }));
+}
+
 function hasReferenceOnlyMatch(database, term) {
   return Boolean(database
     .prepare(`
@@ -43,34 +61,16 @@ function hasReferenceOnlyMatch(database, term) {
 export function findRecordsBySearchTerm(database, rawQuery) {
   const input = normalizeSearchInput(rawQuery);
   if (input.unsupportedReason) {
-    return createSearchResponse(input);
+    return createSearchResponseFromRows(input);
   }
 
-  const rows = findSearchRows(database, input.normalizedQuery);
-  const seen = new Set();
-  const matches = [];
-
-  for (const row of rows) {
-    if (seen.has(row.id)) {
-      continue;
-    }
-    seen.add(row.id);
-    matches.push(createSearchMatch(row, {
-      field: row.match_field === 'lemma'
-        ? SEARCH_MATCH_FIELDS.lemma
-        : SEARCH_MATCH_FIELDS.searchForm,
-      value: row.match_value,
-      normalizationRules: input.normalizationRules,
-    }));
-  }
-
-  if (matches.length === 0 && hasReferenceOnlyMatch(database, input.normalizedQuery)) {
-    return createSearchResponse(input, [], {
-      reason: SEARCH_UNSUPPORTED_REASONS.referenceOnly,
-    });
-  }
-
-  return createSearchResponse(input, matches);
+  const exactRows = findSearchRows(database, input.normalizedQuery);
+  const generatedRows = findGeneratedSurfaceRows(database, input.normalizedQuery);
+  return createSearchResponseFromRows(input, {
+    exactRows,
+    generatedRows,
+    hasReferenceOnlyMatch: hasReferenceOnlyMatch(database, input.normalizedQuery),
+  });
 }
 
 export function findRecordsByExactTerm(database, term) {
@@ -190,6 +190,22 @@ export function readLogicalDatabaseSnapshot(database) {
                   target_sense_id, type, note
            FROM relations
            ORDER BY source_sense_id, position`,
+        )
+        .all(),
+    ),
+    generated_surface_forms: plainRows(
+      database
+        .prepare(
+          `SELECT generated_surface_forms.form,
+                  generated_surface_forms.record_id,
+                  generated_surface_forms.sense_id,
+                  generated_surface_forms.rule_id
+           FROM generated_surface_forms
+           INNER JOIN senses
+             ON senses.id = generated_surface_forms.sense_id
+            AND senses.record_id = generated_surface_forms.record_id
+           ORDER BY generated_surface_forms.record_id, senses.position,
+                    generated_surface_forms.form, generated_surface_forms.rule_id`,
         )
         .all(),
     ),

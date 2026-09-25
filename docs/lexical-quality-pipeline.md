@@ -47,7 +47,9 @@ The shared implementation is:
 - `scripts/validate/apply-semantic-corrections.mjs` — consumes a separately
   authored correction manifest, validates explicit boundary/POS/expression/
   relation decisions, and rebuilds the complete audit without manufacturing
-  semantic pass rationales;
+  semantic pass rationales. Current-canonical corrections use live strict
+  admission; replaying an immutable historical snapshot requires the explicit
+  `--historical-replay=true` option;
 - `scripts/validate/dataset-integrity.mjs` — invokes the lexical audit for every
   canonical validation, including `npm run validate` and CI.
 

@@ -154,6 +154,7 @@ function createMetrics({ fileCount, source = 'canonical-jsonl' }) {
     canonical_context_serialize_count: 0,
     canonical_context_deserialize_count: 0,
     canonical_context_rehydrate_count: 0,
+    surface_form_projection_build_count: 0,
   };
 }
 

@@ -132,6 +132,7 @@ test('semantic correction promotion reconstructs prospective canonical from the 
       correctionManifestPath: CORRECTION_MANIFEST_PATH,
       ...evidence,
       amendExisting: true,
+      historicalReplay: true,
     });
     const prospective = await readCanonicalRecords(canonicalDirectory);
     assert.equal(result.inputRevision, 'base');

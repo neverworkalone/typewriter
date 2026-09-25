@@ -5,11 +5,8 @@ import {
   RUNTIME_PROTOCOL_VERSION,
 } from './protocol.js';
 import {
-  createSearchMatch,
-  createSearchResponse,
+  createSearchResponseFromRows,
   normalizeSearchInput,
-  SEARCH_MATCH_FIELDS,
-  SEARCH_UNSUPPORTED_REASONS,
 } from './search-query.js';
 
 let databasePromise;
@@ -241,6 +238,23 @@ function findSearchRows(database, term) {
   `, [term, term]);
 }
 
+function findGeneratedSurfaceRows(database, term) {
+  const sql = "SELECT records.id, records.record_type, records.role, "
+    + "records.candidate_id, records.lemma, "
+    + "'generated-surface-form' AS match_field, "
+    + "generated_surface_forms.form AS match_value, "
+    + "generated_surface_forms.rule_id AS rule_id, "
+    + "generated_surface_forms.sense_id AS sense_id, "
+    + "senses.position AS sense_position "
+    + "FROM generated_surface_forms "
+    + "INNER JOIN records ON records.id = generated_surface_forms.record_id "
+    + "INNER JOIN senses ON senses.id = generated_surface_forms.sense_id "
+    + "AND senses.record_id = generated_surface_forms.record_id "
+    + "WHERE records.role = 'start' AND generated_surface_forms.form = ? "
+    + "ORDER BY records.id, senses.position, generated_surface_forms.rule_id";
+  return rows(database, sql, [term]);
+}
+
 function hasReferenceOnlyMatch(database, term) {
   return rows(database, `
     SELECT records.id
@@ -256,33 +270,16 @@ function hasReferenceOnlyMatch(database, term) {
 function findSearchResult(database, rawQuery) {
   const input = normalizeSearchInput(rawQuery);
   if (input.unsupportedReason) {
-    return createSearchResponse(input);
+    return createSearchResponseFromRows(input);
   }
 
-  const seen = new Set();
-  const matches = [];
-  for (const row of findSearchRows(database, input.normalizedQuery)) {
-    if (seen.has(row.id)) {
-      continue;
-    }
-
-    seen.add(row.id);
-    matches.push(createSearchMatch(row, {
-      field: row.match_field === 'lemma'
-        ? SEARCH_MATCH_FIELDS.lemma
-        : SEARCH_MATCH_FIELDS.searchForm,
-      value: row.match_value,
-      normalizationRules: input.normalizationRules,
-    }));
-  }
-
-  if (matches.length === 0 && hasReferenceOnlyMatch(database, input.normalizedQuery)) {
-    return createSearchResponse(input, [], {
-      reason: SEARCH_UNSUPPORTED_REASONS.referenceOnly,
-    });
-  }
-
-  return createSearchResponse(input, matches);
+  const exactRows = findSearchRows(database, input.normalizedQuery);
+  const generatedRows = findGeneratedSurfaceRows(database, input.normalizedQuery);
+  return createSearchResponseFromRows(input, {
+    exactRows,
+    generatedRows,
+    hasReferenceOnlyMatch: hasReferenceOnlyMatch(database, input.normalizedQuery),
+  });
 }
 
 function getMetadata(database) {

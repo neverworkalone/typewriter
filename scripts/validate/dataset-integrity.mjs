@@ -15,6 +15,11 @@ import {
   readSemanticAuditArtifact,
   validateSemanticAuditCoverage,
 } from './semantic-audit.mjs';
+import {
+  buildOrReuseSurfaceFormProjection,
+  loadSurfaceFormExceptionManifestSync,
+  loadSurfaceFormReviewManifestSync,
+} from '../inflection/surface-form-projection.mjs';
 
 const EXPECTED_PILOT_CANDIDATE_IDS = Object.freeze(
   Array.from({ length: 300 }, (_, index) => `w${String(index + 1).padStart(3, '0')}`),
@@ -281,12 +286,44 @@ export function validateDatasetRecords(
     requireDecisionSource = true,
     requireTopicAnalysis = true,
     lexicalQuality,
+    requireSurfaceFormProjection = false,
+    requireSurfaceFormClassifications,
+    requireSurfaceFormCollisionReview,
   } = {},
 ) {
   if (context && !context.derived) context.derived = {};
   const indexes = indexRecords(recordInfos, context);
   validateRoleIdentity(recordInfos);
   validateRelations(recordInfos, indexes);
+
+  const isDefaultCanonicalDirectory = context?.canonicalDirectory
+    && path.resolve(context.canonicalDirectory) === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  if (requireSurfaceFormProjection || isDefaultCanonicalDirectory) {
+    try {
+      const exceptionManifest = context?.derived?.surfaceFormExceptionManifest
+        ?? loadSurfaceFormExceptionManifestSync();
+      if (context) context.derived.surfaceFormExceptionManifest = exceptionManifest;
+      const requireExceptionTargets = Boolean(isDefaultCanonicalDirectory);
+      const requireClassDispositions = requireSurfaceFormClassifications
+        ?? (requireSurfaceFormProjection || isDefaultCanonicalDirectory);
+      const requireCollisionReview = requireSurfaceFormCollisionReview
+        ?? requireClassDispositions;
+      const reviewManifest = context?.derived?.surfaceFormReviewManifest
+        ?? (requireClassDispositions ? loadSurfaceFormReviewManifestSync() : undefined);
+      if (context && reviewManifest) context.derived.surfaceFormReviewManifest = reviewManifest;
+      const surfaceProjection = buildOrReuseSurfaceFormProjection(recordInfos, {
+        context,
+        exceptionManifest,
+        reviewManifest,
+        requireExceptionTargets,
+        requireClassDispositions,
+        requireCollisionReview,
+      });
+      if (context) context.derived.surfaceFormProjection = surfaceProjection;
+    } catch (error) {
+      fail(error.message, error.code ?? 'SURFACE_FORM_PROJECTION_INVALID');
+    }
+  }
 
   let topicEvidence;
   if (requireSemanticAudit) {

@@ -9,12 +9,14 @@ export const SEARCH_MATCH_KINDS = Object.freeze({
   exactLemma: 'exact-lemma',
   exactSearchForm: 'exact-search-form',
   normalized: 'normalized',
+  generatedSurfaceForm: 'generated-surface-form',
 });
 
 export const SEARCH_MATCH_PRIORITIES = Object.freeze({
   exactLemma: 0,
   exactSearchForm: 1,
   normalized: 2,
+  generatedSurfaceForm: 3,
   legacyExact: 0,
   unknown: Number.POSITIVE_INFINITY,
 });
@@ -22,6 +24,7 @@ export const SEARCH_MATCH_PRIORITIES = Object.freeze({
 export const SEARCH_MATCH_FIELDS = Object.freeze({
   lemma: 'lemma',
   searchForm: 'search-form',
+  generatedSurfaceForm: 'generated-surface-form',
 });
 
 export const SEARCH_NORMALIZATION_RULES = Object.freeze({
@@ -78,6 +81,9 @@ function matchPriority(match = {}) {
   }
   if (match.kind === SEARCH_MATCH_KINDS.normalized) {
     return SEARCH_MATCH_PRIORITIES.normalized;
+  }
+  if (match.kind === SEARCH_MATCH_KINDS.generatedSurfaceForm) {
+    return SEARCH_MATCH_PRIORITIES.generatedSurfaceForm;
   }
   if (match.kind === SEARCH_MATCH_KINDS.exact) {
     return SEARCH_MATCH_PRIORITIES.legacyExact;
@@ -216,6 +222,122 @@ export function createSearchMatch(summary, {
       normalizationRules: rules,
     },
   };
+}
+
+export function createGeneratedSurfaceMatch(summary, {
+  value,
+  senseMatches = [],
+  normalizationRules = [],
+} = {}) {
+  const {
+    match_field: ignoredField,
+    match_value: ignoredValue,
+    match_priority: ignoredPriority,
+    sense_id: ignoredSenseId,
+    sense_position: ignoredSensePosition,
+    rule_id: ignoredRuleId,
+    ...record
+  } = summary;
+  const normalizedSenseMatches = [];
+  const seen = new Set();
+  for (const senseMatch of senseMatches) {
+    if (
+      !senseMatch
+      || typeof senseMatch.senseId !== 'string'
+      || typeof senseMatch.ruleId !== 'string'
+    ) {
+      throw new TypeError('Generated surface matches require sense and rule IDs.');
+    }
+    const key = senseMatch.senseId + '\u0000' + senseMatch.ruleId;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    normalizedSenseMatches.push({
+      senseId: senseMatch.senseId,
+      ruleId: senseMatch.ruleId,
+    });
+  }
+
+  const senseIds = [...new Set(normalizedSenseMatches.map(({ senseId }) => senseId))];
+  const ruleIds = [...new Set(normalizedSenseMatches.map(({ ruleId }) => ruleId))];
+  if (senseIds.length === 0 || ruleIds.length === 0) {
+    throw new TypeError('Generated surface matches must license at least one sense.');
+  }
+
+  return {
+    ...record,
+    match: {
+      kind: SEARCH_MATCH_KINDS.generatedSurfaceForm,
+      field: SEARCH_MATCH_FIELDS.generatedSurfaceForm,
+      value: value ?? ignoredValue ?? null,
+      normalizationRules: [...normalizationRules],
+      ruleId: ruleIds.length === 1 ? ruleIds[0] : null,
+      ruleIds,
+      senseIds,
+      senseMatches: normalizedSenseMatches,
+    },
+  };
+}
+
+export function createSearchResponseFromRows(input, {
+  exactRows = [],
+  generatedRows = [],
+  hasReferenceOnlyMatch = false,
+} = {}) {
+  if (input.unsupportedReason) {
+    return createSearchResponse(input);
+  }
+
+  const exactMatches = [];
+  const exactRecordIds = new Set();
+  for (const row of exactRows) {
+    if (exactRecordIds.has(row.id)) continue;
+    exactRecordIds.add(row.id);
+    exactMatches.push(createSearchMatch(row, {
+      field: row.match_field === 'lemma'
+        ? SEARCH_MATCH_FIELDS.lemma
+        : SEARCH_MATCH_FIELDS.searchForm,
+      value: row.match_value,
+      normalizationRules: input.normalizationRules,
+    }));
+  }
+
+  const generatedByRecord = new Map();
+  for (const row of generatedRows) {
+    if (exactRecordIds.has(row.id)) continue;
+    let group = generatedByRecord.get(row.id);
+    if (!group) {
+      const {
+        match_field: ignoredField,
+        match_value: ignoredValue,
+        match_priority: ignoredPriority,
+        sense_id: ignoredSenseId,
+        sense_position: ignoredSensePosition,
+        rule_id: ignoredRuleId,
+        ...summary
+      } = row;
+      group = { summary, senseMatches: [] };
+      generatedByRecord.set(row.id, group);
+    }
+    group.senseMatches.push({
+      senseId: row.sense_id,
+      ruleId: row.rule_id,
+    });
+  }
+
+  const generatedMatches = [...generatedByRecord.values()].map(({ summary, senseMatches }) => (
+    createGeneratedSurfaceMatch(summary, {
+      value: input.normalizedQuery,
+      senseMatches,
+      normalizationRules: input.normalizationRules,
+    })
+  ));
+  const matches = [...exactMatches, ...generatedMatches];
+  if (matches.length === 0 && hasReferenceOnlyMatch) {
+    return createSearchResponse(input, [], {
+      reason: SEARCH_UNSUPPORTED_REASONS.referenceOnly,
+    });
+  }
+  return createSearchResponse(input, matches);
 }
 
 export function createSearchResponse(input, matches = [], { reason = null } = {}) {

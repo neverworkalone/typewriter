@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateHistoricalLexicalAddition } from './lexical-admission.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { hashCanonicalDirectory } from './validate-m5-8-process.mjs';
 import { M5_11_CATALOG } from './m5-11-catalog.mjs';
@@ -270,6 +270,8 @@ export async function buildM511({
       prospectiveRecords: combinedRecords,
       semanticAudit,
       stageEvidence: productionStageEvidence,
+      allowReplay: true,
+      historicalReplay: true,
       checkPilotCompleteness: true,
       catalogCount: M5_11_CATALOG.length,
       expectedSelectedCount: IMPORTED_RECORD_COUNT,
@@ -284,7 +286,7 @@ export async function buildM511({
   if (!productionState || !productionStageSources) {
     throw new Error('M5-11 build requires the shared lexical producer to complete admission after validation');
   }
-  validateLexicalAddition({
+  validateHistoricalLexicalAddition({
     batchId: M5_11_BATCH_ID,
     candidateRecords,
     baseRecords: canonical.records,
@@ -295,6 +297,7 @@ export async function buildM511({
     })),
     prospectiveRecords: combinedRecords,
     semanticAudit,
+    allowReplay: true,
     productionState,
     productionStateSources: productionStageSources,
     productionPayloads,

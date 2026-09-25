@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { BuildError, buildDictionary } from '../scripts/build/dictionary.mjs';
 import {
   findRecordsByExactTerm,
+  findRecordsBySearchTerm,
   getMetadata,
   getRecord,
   getSenseRelations,
@@ -48,8 +49,9 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     assert.equal(summary.senseCount, 743);
     assert.equal(summary.relationCount, 467);
     assert.match(summary.metadata.canonical_revision, /^[0-9a-f]{64}$/);
-    assert.equal(summary.metadata.schema_version, '1');
+    assert.equal(summary.metadata.schema_version, '2');
     assert.equal(summary.metadata.normalization_version, '1');
+    assert.equal(summary.metadata.generated_surface_form_count, String(summary.generatedSurfaceFormCount));
 
     const database = new DatabaseSync(outputPath, { readOnly: true });
     try {
@@ -57,6 +59,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       assert.equal(countRows(database, 'search_forms'), 696);
       assert.equal(countRows(database, 'senses'), 743);
       assert.equal(countRows(database, 'relations'), 467);
+      assert.equal(countRows(database, 'generated_surface_forms'), summary.generatedSurfaceFormCount);
       assert.deepEqual(getMetadata(database), summary.metadata);
 
       assert.deepEqual(findRecordsByExactTerm(database, '담담'), [
@@ -78,6 +81,12 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
       assert.deepEqual(findRecordsByExactTerm(database, '환희'), []);
       assert.equal(getRecord(database, 'w579'), null);
       assert.deepEqual(findRecordsByExactTerm(database, '숨이 트이다'), []);
+
+      const generated = findRecordsBySearchTerm(database, '바라보는');
+      assert.equal(generated.status, 'ready');
+      assert.deepEqual(generated.matches.map(({ id }) => id), ['w202']);
+      assert.deepEqual(generated.matches[0].match.senseIds, ['w202-s1']);
+      assert.deepEqual(generated.matches[0].match.ruleIds, ['verb-present-adnominal-neun']);
 
       const polysemousRecord = getRecord(database, 'w237');
       assert.equal(polysemousRecord.senses.length, 4);
@@ -106,6 +115,7 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
         .all()
         .map(({ name }) => name);
       assert.deepEqual(indexes.filter((name) => name.startsWith('idx_')), [
+        'idx_generated_surface_forms_form',
         'idx_records_lemma',
         'idx_relations_source_position',
         'idx_relations_target',
@@ -132,6 +142,49 @@ test('builds a read-only SQLite dictionary with representative lookups', async (
     } finally {
       reopened.close();
     }
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('builds a large synthetic noun corpus without binding it to the current surface review', async () => {
+  const outputDirectory = await createOutputDirectory();
+  const canonicalDirectory = path.join(outputDirectory, 'canonical');
+  const outputPath = path.join(outputDirectory, 'dictionary.sqlite');
+
+  try {
+    await mkdir(canonicalDirectory);
+    const records = Array.from({ length: 5_001 }, (_, index) => {
+      const id = `r${String(index + 1).padStart(6, '0')}`;
+      const lemma = `synthetic-${String(index + 1).padStart(6, '0')}`;
+      return {
+        id,
+        record_type: 'entry',
+        role: 'reference-only',
+        lemma,
+        search_forms: [lemma],
+        senses: [{
+          id: `${id}-s1`,
+          pos: 'noun',
+          gloss: `synthetic benchmark record ${index + 1}`,
+          relations: [],
+        }],
+      };
+    });
+    await writeFile(
+      path.join(canonicalDirectory, 'records.jsonl'),
+      `${records.map((record) => JSON.stringify(record)).join('\n')}\n`,
+    );
+
+    const summary = await buildDictionary({
+      inputDirectory: canonicalDirectory,
+      outputPath,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: true,
+    });
+
+    assert.equal(summary.recordCount, records.length);
+    assert.equal(summary.generatedSurfaceFormCount, 0);
   } finally {
     await rm(outputDirectory, { recursive: true, force: true });
   }

@@ -28,7 +28,10 @@ import {
   sha256Json,
   serializeSemanticDecisionSource,
 } from './semantic-audit.mjs';
-import { validateLexicalAddition } from '../batch/lexical-admission.mjs';
+import {
+  validateHistoricalLexicalAddition,
+  validateLexicalAddition,
+} from '../batch/lexical-admission.mjs';
 import {
   createLexicalProductionPayload,
   createLexicalProductionRun,
@@ -552,6 +555,7 @@ function validateCorrectionWithLiveProducer({
   baseRecords,
   prospectiveRecords,
   semanticAudit,
+  historicalReplay = false,
 }) {
   const {
     batchId,
@@ -601,7 +605,7 @@ function validateCorrectionWithLiveProducer({
     base_canonical_records_sha256: manifest.base_canonical_records_sha256,
     prospective_canonical_records_sha256: manifest.prospective_canonical_records_sha256,
   });
-  const admission = validateLexicalAddition({
+  const admissionOptions = {
     batchId,
     candidateRecords,
     reviewedRecords,
@@ -625,7 +629,10 @@ function validateCorrectionWithLiveProducer({
     candidateLabel: 'semantic correction candidate records',
     reviewedLabel: 'semantic correction reviewed records',
     prospectiveLabel: 'semantic correction prospective canonical records',
-  });
+  };
+  const admission = historicalReplay
+    ? validateHistoricalLexicalAddition({ ...admissionOptions, allowReplay: true })
+    : validateLexicalAddition(admissionOptions);
   return {
     batchId,
     status: admission.production_state?.stages?.at(-1)?.admission_status,
@@ -885,6 +892,7 @@ export async function applyCorrections({
   coverageOutputPath,
   auditOutputPath,
   amendExisting = false,
+  historicalReplay = false,
 } = {}) {
   if (!correctionManifestPath) fail('apply-semantic-corrections requires --corrections=<path>');
   const [manifest, decisionSource, canonical, boundaryDecisions] = await Promise.all([
@@ -963,6 +971,7 @@ export async function applyCorrections({
       baseRecords,
       prospectiveRecords,
       semanticAudit,
+      historicalReplay,
     });
     const preparedBoundaryDecisions = prepareBoundaryDecisions(
       boundaryDecisions,
@@ -1033,6 +1042,7 @@ if (isMainModule) {
     decisionSourcePath: args['decision-source'] ?? DEFAULT_SEMANTIC_DECISION_SOURCE_PATH,
     correctionManifestPath: args.corrections,
     amendExisting: args['amend-existing'] === 'true',
+    historicalReplay: args['historical-replay'] === 'true',
     boundaryDecisionsPath: args['boundary-decisions'] ?? DEFAULT_SEMANTIC_BOUNDARY_DECISIONS_PATH,
     reviewOutputPath: args.review,
     coverageOutputPath: args.coverage,

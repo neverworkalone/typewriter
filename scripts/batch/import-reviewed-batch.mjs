@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   assertImportArtifactPath,
+  validateHistoricalBatch,
   validateBatch,
 } from './validate-batch.mjs';
 
@@ -26,16 +27,20 @@ export async function writeReviewedBatchImport({
   inventoryPath,
   canonicalDirectory,
   productionStateSources,
+  historicalReplay = false,
 } = {}) {
   assertImportArtifactPath(outputPath, canonicalDirectory);
-  const summary = await validateBatch({
+  const validationOptions = {
     manifestPath,
     stagedRecordsPath,
     semanticAuditPath,
     inventoryPath,
     canonicalDirectory,
     productionStateSources,
-  });
+  };
+  const summary = historicalReplay
+    ? await validateHistoricalBatch({ ...validationOptions, allowReplay: true })
+    : await validateBatch(validationOptions);
 
   const records = summary.stagedRecords
     .map(({ record }) => record)
@@ -78,6 +83,7 @@ export async function main(argv = process.argv.slice(2)) {
     outputPath: args.output,
     inventoryPath: args.inventory,
     canonicalDirectory: args['canonical-dir'],
+    historicalReplay: args['historical-replay'] === 'true',
   });
   console.log(
     `Wrote ${summary.outputRecordCount} reviewed canonical record(s) to ${summary.outputPath}. Canonical input was not modified.`,

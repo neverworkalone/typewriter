@@ -16,7 +16,7 @@ import {
   DEFAULT_CANONICAL_DIRECTORY,
   readCanonicalRecords,
 } from '../validate/canonical-jsonl.mjs';
-import { validateLexicalAddition } from './lexical-admission.mjs';
+import { validateHistoricalLexicalAddition } from './lexical-admission.mjs';
 import { productionSourceBytes } from './lexical-production-state.mjs';
 import {
   buildTargetInventory,
@@ -483,12 +483,13 @@ async function buildProspectiveState({
       audit: result.sources?.semantic_audit?.bytes,
       admission: result.sources?.authorization?.bytes ?? result.sources?.reviewed_import?.bytes,
     };
-    validateLexicalAddition({
+    validateHistoricalLexicalAddition({
       batchId: M5_11_BATCH_ID,
       baseRecords: baseCanonical.records,
       reviewedRecords: result.imported_records,
       prospectiveRecords: canonical.records,
       semanticAudit,
+      allowReplay: true,
       productionState: result.production_state,
       productionStateSources,
       checkPilotCompleteness: true,

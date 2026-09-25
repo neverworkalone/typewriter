@@ -297,6 +297,24 @@ async function createIdBoundaryFixture() {
   };
 }
 
+async function makeHistoricalReplayFixture(fixture) {
+  const manifest = await readManifest(fixture.manifestPath);
+  const replayStages = Object.fromEntries(manifest.production_state.stages.map((stage) => [stage.id, {
+    status: 'complete',
+    source_path: stage.source_path,
+    source_bytes: fixture.productionStateSources[stage.id],
+    ...(stage.id === 'selection' ? { policy: stage.policy } : {}),
+    ...(stage.id === 'admission' ? { authorization_ref: stage.authorization_ref } : {}),
+  }]));
+  const replay = produceLexicalProductionState({
+    batchId: manifest.batch_id,
+    stages: replayStages,
+  });
+  manifest.production_state = replay.state;
+  await writeFile(fixture.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  return { ...fixture, productionStateSources: replay.sources };
+}
+
 test('uses the batch JSON Schema conditional rules as the executable manifest contract', () => {
   assert.equal(validateBatchManifest(createManifest()).batch_id, 'm5-2-fixture');
 
@@ -358,16 +376,18 @@ test('uses the batch JSON Schema conditional rules as the executable manifest co
 
 test('validates and imports variable-width IDs at the w999 to w1000 boundary', async () => {
   const fixture = await createIdBoundaryFixture();
+  const replayFixture = await makeHistoricalReplayFixture(fixture);
   const outputPath = path.join(fixture.directory, 'canonical-import.jsonl');
 
   try {
-    const summary = await validateBatch(fixture);
+    const summary = await validateHistoricalBatch({ ...replayFixture, allowReplay: true });
     assert.equal(summary.stagedRecordCount, 1);
     assert.equal(summary.manifest.records[0].canonical_id, 'w1000');
 
     const imported = await writeReviewedBatchImport({
-      ...fixture,
+      ...replayFixture,
       outputPath,
+      historicalReplay: true,
     });
     assert.equal(imported.outputRecordCount, 1);
     const importedRecords = await readCanonicalRecords(outputPath);
@@ -388,11 +408,12 @@ test('validates and imports variable-width IDs at the w999 to w1000 boundary', a
 
 test('validates a reviewed target plus reference closure and writes only an external import artifact', async () => {
   const fixture = await createFixture();
+  const replayFixture = await makeHistoricalReplayFixture(fixture);
   const outputPath = path.join(fixture.directory, 'canonical-import.jsonl');
 
   try {
-    const before = await readCanonicalRecords(fixture.canonicalDirectory);
-    const summary = await validateBatch(fixture);
+    const before = await readCanonicalRecords(replayFixture.canonicalDirectory);
+    const summary = await validateHistoricalBatch({ ...replayFixture, allowReplay: true });
 
     assert.equal(summary.manifest.batch_id, 'm5-2-fixture');
     assert.equal(summary.canonicalRecordCount, 620);
@@ -407,8 +428,9 @@ test('validates a reviewed target plus reference closure and writes only an exte
     });
 
     const imported = await writeReviewedBatchImport({
-      ...fixture,
+      ...replayFixture,
       outputPath,
+      historicalReplay: true,
     });
     assert.equal(imported.outputRecordCount, 2);
     const importedRecords = await readCanonicalRecords(outputPath);
@@ -417,7 +439,7 @@ test('validates a reviewed target plus reference closure and writes only an exte
       ['r052', 'w579'],
     );
 
-    const after = await readCanonicalRecords(fixture.canonicalDirectory);
+    const after = await readCanonicalRecords(replayFixture.canonicalDirectory);
     assert.equal(after.records.length, before.records.length);
     assert.equal(after.records.some(({ record }) => record.id === 'w579'), false);
   } finally {
@@ -439,7 +461,8 @@ test('accepts a reviewed record with zero relations when no closure is needed', 
       records: [records[0]],
     }));
 
-    const summary = await validateBatch(fixture);
+    const replayFixture = await makeHistoricalReplayFixture(fixture);
+    const summary = await validateHistoricalBatch({ ...replayFixture, allowReplay: true });
     assert.equal(summary.stagedRecordCount, 1);
     assert.equal(summary.referenceClosureCount, 0);
     assert.equal(summary.counts.corrected, 1);

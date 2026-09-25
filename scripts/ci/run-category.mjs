@@ -306,6 +306,54 @@ async function runInProcessCheck(name, context) {
     return;
   }
 
+  if (name === 'surface-form-projection') {
+    const projection = canonicalContext.derived.surfaceFormProjection;
+    const projectionCache = canonicalContext.derived.surfaceFormProjectionCache;
+    if (!projection || !projectionCache) {
+      throw new Error('Global canonical validation did not derive a reusable surface-form projection.');
+    }
+    if (
+      !projectionCache.requireExceptionTargets
+      || !projectionCache.requireClassDispositions
+      || !projectionCache.requireCollisionReview
+    ) {
+      throw new Error('The current-canonical surface-form projection was not derived in strict mode.');
+    }
+    if (canonicalContext.metrics.surface_form_projection_build_count !== 1) {
+      throw new Error(
+        'The current-canonical surface-form projection must be derived exactly once per CI session.',
+      );
+    }
+    if (
+      projection.coverage.complete_rule_decision_count
+      !== projection.coverage.expected_rule_decision_count
+    ) {
+      throw new Error('The current-canonical surface-form projection has incomplete rule coverage.');
+    }
+    console.log(JSON.stringify({
+      projection_build_count: canonicalContext.metrics.surface_form_projection_build_count,
+      ...projection.coverage,
+    }, null, 2));
+    return;
+  }
+
+  if (name === 'surface-form-projection-reuse') {
+    if (!canonicalContext.derived.surfaceFormProjection) {
+      throw new Error('SQLite and M2 validation lost the shared surface-form projection.');
+    }
+    if (canonicalContext.metrics.surface_form_projection_build_count !== 1) {
+      throw new Error(
+        'SQLite build, SQLite validation, and M2 audit must reuse the single canonical projection.',
+      );
+    }
+    console.log(JSON.stringify({
+      projection_build_count: canonicalContext.metrics.surface_form_projection_build_count,
+      generated_surface_form_count:
+        canonicalContext.derived.surfaceFormProjection.coverage.generated_surface_form_count,
+    }, null, 2));
+    return;
+  }
+
   if (name === 'm5-15-pre-admission') {
     console.log(JSON.stringify(await validateM515({ canonicalContext }), null, 2));
     return;

@@ -62,11 +62,31 @@ test('toolchain builds SQLite only after the shared global audit', () => {
   assert.equal(toolchainChecks[0].inProcess, 'global-canonical-audit');
   assert.equal(toolchainChecks[1].inProcess, 'normalize-canonical');
   assert.equal(toolchainChecks[3].inProcess, 'shared-dictionary-build');
+  const projectionReuseIndex = toolchainChecks.findIndex(
+    (check) => check.inProcess === 'surface-form-projection-reuse',
+  );
+  assert.ok(projectionReuseIndex > 3);
+  assert.ok(projectionReuseIndex < toolchainChecks.findIndex(
+    (check) => check.testFiles?.includes('tests/build-dictionary.test.mjs'),
+  ));
   assert.equal(
     CI_CATEGORIES.deep.checks.find((check) => check.testFiles?.includes('tests/reproducibility.test.mjs'))
       .testFiles[0],
     'tests/reproducibility.test.mjs',
   );
+});
+
+test('current-canonical surface-form gate runs in-process on the shared projection', () => {
+  const checks = CI_CATEGORIES.canonical.checks;
+  const auditIndex = checks.findIndex((check) => check.inProcess === 'global-canonical-audit');
+  const projectionIndex = checks.findIndex((check) => check.inProcess === 'surface-form-projection');
+  assert.ok(auditIndex >= 0);
+  assert.ok(projectionIndex > auditIndex);
+  assert.equal(
+    checks[projectionIndex].label,
+    'Validate M6-3 surface-form projection coverage',
+  );
+  assert.equal(checks[projectionIndex].command({}).executable, '[in-process]');
 });
 
 test('M5-15 pre-admission validation owns the current shared in-process session', () => {

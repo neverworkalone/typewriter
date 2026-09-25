@@ -17,6 +17,8 @@ describe('product dictionary runtime assets', () => {
     expect(workerSource).not.toContain('scripts/build/query');
     expect(workerSource).toContain("import sqlite3InitModule from './vendor/sqlite3.mjs'");
     expect(workerSource).toContain("from './search-query.js'");
+    expect(workerSource).toContain('generated_surface_forms');
+    expect(workerSource).toContain('createSearchResponseFromRows');
     expect(workerSource).toContain("new URL('../dictionary.sqlite', self.location.href)");
     expect(workerSource).toContain('PRAGMA query_only = ON');
     expect(workerSource).toContain('writeBlocked');
@@ -42,6 +44,7 @@ describe('product dictionary runtime assets', () => {
     expect(runtimePlugin).toContain("src/runtime/protocol.js");
     expect(runtimePlugin).toContain("src/runtime/query-adapter.js");
     expect(runtimePlugin).toContain("src/runtime/search-query.js");
+    expect(runtimePlugin).toContain("src/runtime/dictionary-worker.mjs");
     expect(runtimePlugin).toContain("node_modules/@sqlite.org/sqlite-wasm/dist");
     expect(runtimePlugin).toContain("path.join(runtimeDirectory, 'dictionary-worker.mjs')");
     expect(runtimePlugin).toContain("path.join(vendorDirectory, 'sqlite3.wasm')");

@@ -17,6 +17,12 @@ import {
   resolveBuildProvenance,
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
+import {
+  buildOrReuseSurfaceFormProjection,
+  loadSurfaceFormExceptionManifest,
+  loadSurfaceFormReviewManifest,
+  SURFACE_FORM_PROJECTION_VERSION,
+} from '../inflection/surface-form-projection.mjs';
 
 export const DICTIONARY_VERSION = 'm2-pilot-1';
 export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
@@ -59,7 +65,7 @@ function assertOutputIsGeneratedOutsideCanonical(inputDirectory, outputPath) {
   }
 }
 
-function metadataEntries(model, metadata) {
+function metadataEntries(model, metadata, surfaceProjection) {
   const counts = {
     record_count: model.records.length,
     start_count: model.records.filter((record) => record.role === 'start').length,
@@ -78,6 +84,9 @@ function metadataEntries(model, metadata) {
       0,
     ),
     relation_count: countRelations(model.records),
+    generated_surface_form_count: surfaceProjection.rows.length,
+    surface_form_eligible_sense_count: surfaceProjection.coverage.eligible_sense_count,
+    surface_form_exclusion_count: surfaceProjection.exclusions.length,
     expression_count: model.records.filter(
       (record) => record.record_type === 'expression',
     ).length,
@@ -85,7 +94,8 @@ function metadataEntries(model, metadata) {
 
   const values = {
     ...metadata,
-    build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v1',
+    build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v2',
+    surface_form_projection_version: SURFACE_FORM_PROJECTION_VERSION,
     build_tool_version: BUILD_TOOL_VERSION,
     dictionary_version: DICTIONARY_VERSION,
     normalization_version: model.normalization_version,
@@ -107,7 +117,7 @@ function metadataEntries(model, metadata) {
     });
 }
 
-function insertModel(database, model, metadata) {
+function insertModel(database, model, metadata, surfaceFormRows) {
   const insertMetadata = database.prepare(
     'INSERT INTO metadata (key, value) VALUES (?, ?)',
   );
@@ -119,6 +129,9 @@ function insertModel(database, model, metadata) {
   );
   const insertSense = database.prepare(
     'INSERT INTO senses (id, record_id, position, pos, gloss) VALUES (?, ?, ?, ?, ?)',
+  );
+  const insertGeneratedSurfaceForm = database.prepare(
+    'INSERT INTO generated_surface_forms (form, record_id, sense_id, rule_id) VALUES (?, ?, ?, ?)',
   );
   const insertRelation = database.prepare(
     `INSERT INTO relations
@@ -146,6 +159,15 @@ function insertModel(database, model, metadata) {
     record.senses.forEach((sense, position) => {
       insertSense.run(sense.id, record.id, position, sense.pos, sense.gloss);
     });
+  }
+
+  for (const row of surfaceFormRows) {
+    insertGeneratedSurfaceForm.run(
+      row.form,
+      row.record_id,
+      row.sense_id,
+      row.rule_id,
+    );
   }
 
   // Insert relations after every record and sense so forward references are
@@ -195,6 +217,8 @@ export async function buildDictionary({
   canonicalContext,
   semanticAudit,
   normalizedModel,
+  requireSurfaceFormClassifications,
+  requireSurfaceFormCollisionReview,
 } = {}) {
   const resolvedOutputPath = path.resolve(outputPath);
   assertOutputIsGeneratedOutsideCanonical(inputDirectory, resolvedOutputPath);
@@ -206,6 +230,26 @@ export async function buildDictionary({
     checkPilotCompleteness,
     canonicalContext: context,
     semanticAudit,
+  });
+  const exceptionManifest = context.derived?.surfaceFormExceptionManifest
+    ?? await loadSurfaceFormExceptionManifest();
+  context.derived.surfaceFormExceptionManifest = exceptionManifest;
+  const requireExceptionTargets = path.resolve(inputDirectory)
+    === path.resolve(DEFAULT_CANONICAL_DIRECTORY);
+  const requireClassDispositions = requireSurfaceFormClassifications
+    ?? requireExceptionTargets;
+  const requireCollisionReview = requireSurfaceFormCollisionReview
+    ?? requireClassDispositions;
+  const reviewManifest = context.derived?.surfaceFormReviewManifest
+    ?? (requireClassDispositions ? await loadSurfaceFormReviewManifest() : undefined);
+  if (reviewManifest) context.derived.surfaceFormReviewManifest = reviewManifest;
+  const surfaceFormProjection = buildOrReuseSurfaceFormProjection(context.records, {
+    context,
+    exceptionManifest,
+    reviewManifest,
+    requireExceptionTargets,
+    requireClassDispositions,
+    requireCollisionReview,
   });
   const provenance = await resolveBuildProvenance({
     repositoryDirectory,
@@ -232,14 +276,14 @@ export async function buildDictionary({
       node_version: process.version,
       sqlite_module: 'node:sqlite',
       sqlite_version: sqliteVersion,
-    });
+    }, surfaceFormProjection);
     database.exec('PRAGMA foreign_keys = ON;');
     database.exec(
       `PRAGMA user_version = ${Number.parseInt(SQLITE_SCHEMA_VERSION, 10)};`,
     );
     database.exec(SQLITE_SCHEMA_SQL);
     database.exec('BEGIN IMMEDIATE;');
-    insertModel(database, model, generatedMetadata);
+    insertModel(database, model, generatedMetadata, surfaceFormProjection.rows);
     database.exec('COMMIT;');
     verifyDatabase(database);
   } catch (error) {
@@ -276,6 +320,9 @@ export async function buildDictionary({
       0,
     ),
     relationCount: countRelations(model.records),
+    generatedSurfaceFormCount: surfaceFormProjection.rows.length,
+    surfaceFormExclusionCount: surfaceFormProjection.exclusions.length,
+    surfaceFormCoverage: surfaceFormProjection.coverage,
     metadata: Object.fromEntries(generatedMetadata),
   };
 }

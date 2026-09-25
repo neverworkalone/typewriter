@@ -190,7 +190,11 @@ test('M4 query responses preserve normalization and match provenance', async () 
   try {
     const { database } = opened;
     try {
-      for (const searchCase of fixture.cases.filter(({ actual }) => actual.raw_query !== undefined)) {
+      // M4 pending observations remain historical until a separate contract
+      // promotes them; M6 morphology behavior is asserted by its own fixture.
+      for (const searchCase of fixture.cases.filter(({ actual, evaluation }) => (
+        evaluation === 'baseline' && actual.raw_query !== undefined
+      ))) {
         const response = findRecordsBySearchTerm(database, searchCase.query);
         assert.equal(response.status, searchCase.actual.status, `${searchCase.id} status`);
         assert.equal(response.rawQuery, searchCase.actual.raw_query, `${searchCase.id} raw query`);

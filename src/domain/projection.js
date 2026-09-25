@@ -103,12 +103,18 @@ export function projectSense(sense) {
   };
 }
 
-export function projectRecord(record, { match = null, senseId = null } = {}) {
+export function projectRecord(record, {
+  match = null,
+  senseId = null,
+  senseIds = null,
+} = {}) {
   const senses = Array.isArray(record.senses) ? record.senses : [];
   const projectedSenses = senses.map(projectSense);
   const visibleSenses = senseId && projectedSenses.some(({ id }) => id === senseId)
     ? projectedSenses.filter(({ id }) => id === senseId)
-    : projectedSenses;
+    : Array.isArray(senseIds)
+      ? projectedSenses.filter(({ id }) => senseIds.includes(id))
+      : projectedSenses;
   const projected = {
     id: record.id,
     recordType: record.record_type,
@@ -131,14 +137,20 @@ export function projectSearchResults(records, matches = null) {
 
   return records
     .filter((record) => record.role !== 'reference-only')
-    .map((record, position) => projectRecord(record, {
-      match: matchById?.has(record.id)
+    .map((record, position) => {
+      const match = matchById?.has(record.id)
         ? matchById.get(record.id)
         : {
           kind: 'exact',
           position,
-        },
-    }));
+        };
+      return projectRecord(record, {
+        match,
+        senseIds: match?.kind === 'generated-surface-form'
+          ? match.senseIds
+          : null,
+      });
+    });
 }
 
 export function projectRelationTarget(record, context = {}) {
