@@ -105,6 +105,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/validate-canonical-jsonl.test.mjs', 'Test canonical JSONL validator'),
       testCheck('tests/canonical-context.test.mjs', 'Test shared canonical context'),
       testCheck('tests/validate-dataset-integrity.test.mjs', 'Test dataset validator'),
+      testCheck('tests/m6-1-quality-baseline.test.mjs', 'Test M6-1 baseline metric derivation'),
       testCheck('tests/target-inventory.test.mjs', 'Test target inventory'),
       npmCheck('Validate lexical rule inventory', 'validate:rules'),
       testCheck('tests/lexical-rule-inventory.test.mjs', 'Test lexical rule inventory'),

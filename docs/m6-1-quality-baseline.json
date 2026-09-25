@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "baseline_id": "m6-1-5k-quality-baseline-v1",
+  "source": {
+    "issue": 173,
+    "repository_commit": "296289cef9109729d63ad1f8ced791a13d74617c",
+    "canonical_directory": "data/canonical",
+    "canonical_revision": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9",
+    "canonical_file_count": 13
+  },
+  "metrics": {
+    "canonical": {
+      "revision": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9",
+      "file_count": 13,
+      "record_count": 5042,
+      "start_count": 5000,
+      "reference_only_count": 42,
+      "total_sense_count": 5301,
+      "record_type_counts_by_role": {
+        "start": {
+          "entry": 3847,
+          "expression": 1153
+        },
+        "reference-only": {
+          "entry": 41,
+          "expression": 1
+        }
+      },
+      "start_sense_count": 5259,
+      "reference_only_sense_count": 42,
+      "expression_record_count": 1154,
+      "records_by_sense_count_and_role": {
+        "start": {
+          "1": 4754,
+          "2": 234,
+          "3": 11,
+          "4": 1
+        },
+        "reference-only": {
+          "1": 42
+        }
+      },
+      "single_sense_record_count_by_role": {
+        "start": 4754,
+        "reference-only": 42
+      },
+      "polysemous_record_count_by_role": {
+        "start": 246,
+        "reference-only": 0
+      },
+      "maximum_senses_per_start": 4,
+      "pos_by_role": {
+        "start": {
+          "sense_count": {
+            "adjective": 309,
+            "adverb": 4,
+            "expression": 1175,
+            "noun": 3113,
+            "verb": 658
+          },
+          "records_with_pos": {
+            "adjective": 254,
+            "adverb": 4,
+            "expression": 1153,
+            "noun": 3023,
+            "verb": 569
+          }
+        },
+        "reference-only": {
+          "sense_count": {
+            "adjective": 5,
+            "expression": 1,
+            "noun": 27,
+            "verb": 9
+          },
+          "records_with_pos": {
+            "adjective": 5,
+            "expression": 1,
+            "noun": 27,
+            "verb": 9
+          }
+        }
+      }
+    },
+    "relations": {
+      "directed_tuple_count": 487,
+      "source_role_counts": {
+        "start": 487
+      },
+      "target_role_counts": {
+        "reference-only": 52,
+        "start": 435
+      },
+      "source_to_target_role_counts": {
+        "start->reference-only": 52,
+        "start->start": 435
+      },
+      "directed_tuples_by_type": {
+        "action": 35,
+        "antonym": 51,
+        "association": 47,
+        "direct": 22,
+        "mood": 81,
+        "near": 111,
+        "scene": 44,
+        "sensory": 96
+      },
+      "directed_tuples_by_type_and_target_role": {
+        "action": {
+          "reference-only": 2,
+          "start": 33
+        },
+        "antonym": {
+          "start": 51
+        },
+        "association": {
+          "reference-only": 3,
+          "start": 44
+        },
+        "direct": {
+          "reference-only": 20,
+          "start": 2
+        },
+        "mood": {
+          "reference-only": 2,
+          "start": 79
+        },
+        "near": {
+          "reference-only": 13,
+          "start": 98
+        },
+        "scene": {
+          "reference-only": 3,
+          "start": 41
+        },
+        "sensory": {
+          "reference-only": 9,
+          "start": 87
+        }
+      },
+      "directed_tuples_by_source_pos": {
+        "adjective": 78,
+        "expression": 25,
+        "noun": 312,
+        "verb": 72
+      },
+      "tuples_with_matching_reverse_same_type": 86,
+      "start_coverage": {
+        "relation_bearing_count": 336,
+        "relation_empty_count": 4664,
+        "relation_bearing_by_record_type": {
+          "entry": 317,
+          "expression": 19
+        },
+        "relation_empty_by_record_type": {
+          "entry": 3530,
+          "expression": 1134
+        }
+      }
+    },
+    "search": {
+      "start_search_form_value_count": 5251,
+      "distinct_start_search_form_value_count": 5251,
+      "starts_with_lemma_in_search_forms": 5000,
+      "starts_with_non_lemma_search_form": 248,
+      "non_lemma_search_form_value_count": 251,
+      "cross_record_search_form_collision_group_count": 0,
+      "exact_key_count": 5251,
+      "cross_record_exact_key_collision_group_count": 0,
+      "multi_result_exact_key_count": 0,
+      "exhaustive_runtime_reachability": {
+        "key_count": 5251,
+        "matched_key_count": 5251,
+        "missing_expected_result_count": 0,
+        "unexpected_result_count": 0,
+        "reference_only_leak_count": 0,
+        "unsupported_key_count": 0,
+        "mismatched_key_count": 0,
+        "mismatched_keys": []
+      },
+      "regression_corpus": {
+        "fixture_id": "m4-search-regressions",
+        "schema_version": 2,
+        "fixture_sha256": "e2ce9f4ee8812dbb532d4cb78ee725b417f138070ccf013ee78c647c08296598",
+        "case_count": 12,
+        "evaluation_counts": {
+          "baseline": 10,
+          "pending": 2
+        },
+        "input_class_counts": {
+          "editorial-gap": 1,
+          "exact-lemma": 4,
+          "exact-search-form": 1,
+          "no-data": 1,
+          "normalization-candidate": 2,
+          "unsupported": 3
+        },
+        "problem_counts": {
+          "editorial": 1,
+          "no-data": 1,
+          "none": 5,
+          "normalization": 2,
+          "unsupported": 3
+        },
+        "actual_status_counts": {
+          "no-match": 2,
+          "ready": 8,
+          "unsupported": 2
+        },
+        "baseline_case_count": 10,
+        "baseline_cases_matching_recorded_expectations": 10,
+        "pending_case_ids": [
+          "m4-editorial-gap-record-without-relations",
+          "m4-unsupported-inflected-form"
+        ],
+        "expected_actual_mismatch_case_ids": [
+          "m4-editorial-gap-record-without-relations",
+          "m4-unsupported-inflected-form"
+        ],
+        "baseline_multi_result_case_count": 0
+      }
+    }
+  },
+  "quality_gates": {
+    "contract_version": "m6-1-quality-gates-v1",
+    "policy": "Freeze these thresholds before collecting M6 quality evidence. A changed threshold requires a new contract version and must be recorded before the next sample is reviewed.",
+    "overall_decision": {
+      "pass": "Every applicable dimension passes and every required sample is complete.",
+      "hold": "Any dimension fails, required evidence is missing, or a reviewer disagreement remains unadjudicated.",
+      "not_applicable": "Use only when the current product and the proposed change expose no cases for that dimension. A missing sample is HOLD, not N/A.",
+      "combine": "Do not average dimensions or let a strong result in one dimension offset a failure in another."
+    },
+    "review_protocol": {
+      "independent_reviewers_per_canonical_case": 2,
+      "disagreement": "A designated editorial decision owner adjudicates disagreements before the case is counted.",
+      "retained_evidence": "Keep case IDs, structured outcomes, and source digests. Do not commit writer sentences, raw query context, or external source text."
+    },
+    "sampling": {
+      "stable_seed": "m6-1-quality-benchmark-v1",
+      "hash": "Sort candidates by SHA-256(seed + NUL + stratum + NUL + stable_unit_id), then take the first allocated rows.",
+      "relation_direct": {
+        "unit": "directed relation tuple",
+        "sample_size": "min(60, current direct-tuple count); census when the current count is 60 or less.",
+        "current_population": 22
+      },
+      "relation_other_types": {
+        "unit": "directed relation tuple, sampled separately for each non-direct relation type",
+        "per_type_sample_size": "min(20, current tuple count for that type); census when a type has fewer than 20 tuples.",
+        "minimum_types_reported": "Report all eight canonical relation types separately; a type with zero tuples is coverage evidence, not a pass on correctness."
+      },
+      "relation_gaps": {
+        "unit": "start record with no outgoing relation on any sense",
+        "sample_size": "min(80, current relation-empty start count)",
+        "strata": "record_type × first-sense POS; first sense follows canonical order.",
+        "allocation": "Allocate 10 per non-empty stratum or census that stratum when it has fewer than 10. Allocate remaining slots proportionally to each stratum remaining population using largest remainders; break ties by the lexical stratum key."
+      },
+      "writer_tasks": {
+        "task_count": 100,
+        "participants": 10,
+        "tasks_per_participant": 10,
+        "task_intents": {
+          "direct_replacement": 30,
+          "sense_choice": 20,
+          "expression_exploration": 15,
+          "relation_exploration": 25,
+          "no_data_or_policy_boundary": 10
+        },
+        "source": "Writer-authored needs and Typewriter-authored prompts; do not retain the writers’ original sentences in Git."
+      },
+      "ranking": {
+        "unit": "ambiguous query returning at least two start records",
+        "sample_size": "min(40, available ambiguous query count)",
+        "minimum_for_a_ranking_change": 20,
+        "current_population": 0
+      }
+    },
+    "dimensions": [
+      {
+        "id": "canonical-integrity",
+        "baseline_status": "PASS",
+        "baseline": "M5-15 global semantic audit covers every current record and sense with zero open blocking findings.",
+        "pass": "All canonical/schema/integrity/semantic-audit checks pass; every changed record and sense is covered; zero blocking findings.",
+        "threshold": {
+          "covered_records": 1,
+          "covered_senses": 1,
+          "blocking_findings": 0
+        },
+        "sample": "Exhaustive validators and semantic audit."
+      },
+      {
+        "id": "direct-substitutability",
+        "baseline_status": "NOT_MEASURED",
+        "baseline": "Current direct relations are counted, but the full 5K direct-relation set has no new independent review result.",
+        "pass": "At least 95% of sampled direct tuples are judged substitutable in the recorded sense and direction; zero critical POS or sense-boundary errors.",
+        "threshold": {
+          "accepted_rate": 0.95,
+          "critical_errors": 0
+        },
+        "sample": "Stable-hash sample up to 60 directed tuples; current population of 22 is a census."
+      },
+      {
+        "id": "relation-usefulness-and-type-honesty",
+        "baseline_status": "NOT_MEASURED",
+        "baseline": "Current relation density and type counts are measured; correctness and usefulness are not inferred from counts.",
+        "pass": "For every non-empty relation type, at least 80% of its sample is both writer-useful and correctly typed, sense-bound, and directed; zero critical POS or sense-boundary errors.",
+        "threshold": {
+          "accepted_rate_per_type": 0.8,
+          "critical_errors": 0
+        },
+        "sample": "Up to 20 stable-hash directed tuples per non-direct type; report each type separately. Keep direct relations under their stricter gate."
+      },
+      {
+        "id": "relation-coverage-and-gaps",
+        "baseline_status": "MEASURED_NO_DENSITY_GATE",
+        "baseline": "Relation-bearing and relation-empty starts are measured separately; no target density is authorized.",
+        "pass": "Review every selected gap and disposition it. At least 80% of writer tasks whose stated need is relation exploration reach one relevant result; record remaining high-demand gaps explicitly.",
+        "threshold": {
+          "reviewed_gap_sample": 1,
+          "relation_exploration_task_success": 0.8
+        },
+        "sample": "Up to 80 relation-empty starts, stratified by record type and first-sense POS, plus the relation-exploration writer tasks."
+      },
+      {
+        "id": "search-reachability-and-boundaries",
+        "baseline_status": "PASS",
+        "baseline": "The current exact runtime and M4 cases are exercised; the baseline also exhaustively checks every current canonical exact key.",
+        "pass": "100% of start lemmas and curated search forms resolve to their expected start IDs; zero unexpected results, missing results, or reference-only leaks; all non-pending M4 cases retain their expected results and policy boundaries.",
+        "threshold": {
+          "exact_key_reachability": 1,
+          "unexpected_results": 0,
+          "missing_results": 0,
+          "reference_only_leaks": 0
+        },
+        "sample": "Exhaustive unique start keys plus the shared M4 regression corpus. Pending cases remain pending until an explicit policy decision."
+      },
+      {
+        "id": "ranking-and-order-usefulness",
+        "baseline_status": "NOT_APPLICABLE",
+        "baseline": "Exact keys currently have no cross-record collisions, so writer usefulness of a multi-result order is not measured.",
+        "pass": "For a ranking change, at least 80% of the top results match the adjudicated writer choice across at least 20 ambiguous tasks; preserve deterministic tie-breaking and exact-match tiers.",
+        "threshold": {
+          "writer_preferred_top_result": 0.8,
+          "minimum_ambiguous_tasks": 20
+        },
+        "sample": "Stable-hash sample up to 40 ambiguous queries. N/A while no multi-result case is exposed; a ranking change with fewer than 20 cases is HOLD."
+      },
+      {
+        "id": "writer-task-usefulness",
+        "baseline_status": "NOT_MEASURED",
+        "baseline": "No current 5K writer-task success rate was measured.",
+        "pass": "At least 80 of 100 tasks produce a result the writer says they would use or deliberately adapt; every intent and any POS/record-type slice with at least 10 tasks scores at least 70%; zero critical misleading-result cases.",
+        "threshold": {
+          "overall_success_rate": 0.8,
+          "minimum_slice_success_rate": 0.7,
+          "critical_misleading_results": 0
+        },
+        "sample": "100 tasks from 10 writers, ten tasks each, with the fixed intent counts above."
+      }
+    ]
+  },
+  "inherited_m5_risks": [
+    {
+      "id": "relation-candidate-noise-is-stage-specific",
+      "source": "docs/m5-16-final-audit-report.md",
+      "disposition": "Keep each M5 proposal denominator with its stage. The stage-specific candidate noise rates do not measure the correctness of all 487 current canonical tuples."
+    },
+    {
+      "id": "editor-time-is-incomplete",
+      "source": "docs/m5-16-final-audit-report.md",
+      "measured_editor_seconds_lower_bound": 6199.055,
+      "disposition": "This is a partial lower bound, not total M5 editor time; do not treat agent-gated stages as zero human time."
+    },
+    {
+      "id": "m5-10k-and-morphology-not-authorized",
+      "source": "https://github.com/neverworkalone/typewriter/issues/173",
+      "disposition": "M6-1 authorizes M6-2 planning/implementation only. It authorizes no 10K expansion, morphology, bulk relation generation, or ranking architecture."
+    }
+  ]
+}

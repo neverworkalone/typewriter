@@ -1,0 +1,152 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  deriveM6QualityBaselineMetrics,
+  M6_1_QUALITY_GATES,
+} from '../scripts/validate/m6-1-quality-baseline.mjs';
+
+const relation = (target, target_sense, type = 'direct') => ({
+  target,
+  target_sense,
+  type,
+  note: 'Typewriter-authored test relation.',
+});
+
+const record = ({
+  id,
+  record_type = 'entry',
+  role = 'start',
+  lemma,
+  search_forms = [lemma],
+  senses,
+}) => ({ id, record_type, role, lemma, search_forms, senses });
+
+const fixture = {
+  schema_version: 2,
+  corpus_id: 'm6-baseline-test',
+  cases: [
+    {
+      id: 'baseline-exact',
+      query: '길',
+      input_class: 'exact-lemma',
+      evaluation: 'baseline',
+      expected: { status: 'ready', result_ids: ['w001'], selected_record_id: null },
+      actual: { status: 'ready', result_ids: ['w001'], selected_record_id: null },
+      selection: null,
+      assertions: [],
+      problem: 'none',
+      policy: 'Exact lookup fixture.',
+    },
+    {
+      id: 'pending-morphology',
+      query: '길었다',
+      input_class: 'unsupported',
+      evaluation: 'pending',
+      expected: { status: 'unsupported', result_ids: [], selected_record_id: null },
+      actual: { status: 'no-match', result_ids: [], selected_record_id: null },
+      selection: null,
+      assertions: [],
+      problem: 'unsupported',
+      policy: 'Pending morphology policy fixture.',
+    },
+  ],
+};
+
+test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate', () => {
+  const records = [
+    record({
+      id: 'w001',
+      lemma: '길',
+      senses: [
+        { id: 'w001-s1', pos: 'noun', gloss: '길의 한 뜻', relations: [relation('r001', 'r001-s1')] },
+        { id: 'w001-s2', pos: 'noun', gloss: '길의 다른 뜻' },
+      ],
+    }),
+    record({
+      id: 'w002',
+      lemma: '잇다',
+      search_forms: ['잇다', '공유'],
+      senses: [{
+        id: 'w002-s1',
+        pos: 'verb',
+        gloss: '잇다의 뜻',
+        relations: [relation('w001', 'w001-s1', 'action')],
+      }],
+    }),
+    record({
+      id: 'w003',
+      record_type: 'expression',
+      lemma: '이미지',
+      search_forms: ['자리', '공유'],
+      senses: [{ id: 'w003-s1', pos: 'expression', gloss: '표현의 뜻' }],
+    }),
+    record({
+      id: 'r001',
+      role: 'reference-only',
+      lemma: '참조',
+      senses: [{
+        id: 'r001-s1',
+        pos: 'noun',
+        gloss: '참조의 뜻',
+        relations: [relation('w001', 'w001-s1')],
+      }],
+    }),
+  ];
+
+  const metrics = deriveM6QualityBaselineMetrics({
+    records,
+    canonicalRevision: 'canonical-digest',
+    canonicalFileCount: 1,
+    regressionCorpus: fixture,
+    regressionSha256: 'fixture-digest',
+    reachability: { key_count: 4, matched_key_count: 4 },
+  });
+
+  assert.deepEqual(metrics.canonical.record_type_counts_by_role, {
+    start: { entry: 2, expression: 1 },
+    'reference-only': { entry: 1 },
+  });
+  assert.equal(metrics.canonical.total_sense_count, 5);
+  assert.equal(metrics.canonical.reference_only_sense_count, 1);
+  assert.deepEqual(metrics.canonical.single_sense_record_count_by_role, {
+    start: 2,
+    'reference-only': 1,
+  });
+  assert.deepEqual(metrics.canonical.polysemous_record_count_by_role, {
+    start: 1,
+    'reference-only': 0,
+  });
+  assert.deepEqual(metrics.canonical.pos_by_role.start.sense_count, {
+    expression: 1,
+    noun: 2,
+    verb: 1,
+  });
+  assert.deepEqual(metrics.canonical.pos_by_role['reference-only'].sense_count, {
+    noun: 1,
+  });
+  assert.equal(metrics.relations.directed_tuple_count, 3);
+  assert.deepEqual(metrics.relations.source_to_target_role_counts, {
+    'reference-only->start': 1,
+    'start->reference-only': 1,
+    'start->start': 1,
+  });
+  assert.equal(metrics.relations.tuples_with_matching_reverse_same_type, 2);
+  assert.equal(metrics.relations.start_coverage.relation_bearing_count, 2);
+  assert.equal(metrics.relations.start_coverage.relation_empty_count, 1);
+  assert.equal(metrics.search.start_search_form_value_count, 5);
+  assert.equal(metrics.search.starts_with_lemma_in_search_forms, 2);
+  assert.equal(metrics.search.starts_with_non_lemma_search_form, 2);
+  assert.equal(metrics.search.cross_record_search_form_collision_group_count, 1);
+  assert.equal(metrics.search.cross_record_exact_key_collision_group_count, 1);
+  assert.equal(metrics.search.regression_corpus.baseline_case_count, 1);
+  assert.deepEqual(metrics.search.regression_corpus.pending_case_ids, ['pending-morphology']);
+  assert.deepEqual(metrics.search.regression_corpus.expected_actual_mismatch_case_ids, ['pending-morphology']);
+});
+
+test('M6-1 gate contract keeps prospective editorial thresholds explicit', () => {
+  assert.equal(M6_1_QUALITY_GATES.contract_version, 'm6-1-quality-gates-v1');
+  assert.equal(M6_1_QUALITY_GATES.sampling.writer_tasks.task_count, 100);
+  assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'direct-substitutability').threshold.accepted_rate, 0.95);
+  assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'relation-usefulness-and-type-honesty').threshold.accepted_rate_per_type, 0.8);
+});
