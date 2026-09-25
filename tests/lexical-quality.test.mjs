@@ -19,7 +19,8 @@ import {
   validateLexicalSemanticReview,
   validateLexicalRecord,
 } from '../scripts/validate/lexical-quality.mjs';
-import { validateLexicalAddition } from '../scripts/batch/lexical-admission.mjs';
+import { validateLexicalAddition as validateLexicalAdditionImpl } from '../scripts/batch/lexical-admission.mjs';
+import { createCanonicalContext } from '../scripts/validate/canonical-context.mjs';
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
 import { productionValueSha256 } from '../scripts/batch/lexical-production-state.mjs';
 import {
@@ -47,6 +48,127 @@ const MALFORMED_TOPIC_REGRESSIONS = JSON.parse(readFileSync(
 
 const FIXTURE_ROOT = path.resolve('tests/fixtures/lexical-quality');
 const TOPIC_EVIDENCE_SENSE_ID = 'w-topic-evidence-s1';
+
+function asSurfaceFormTestRecordInfos(records = []) {
+  return records.map((recordInfo, index) => (recordInfo?.record
+    ? recordInfo
+    : { record: recordInfo, source: `surface-form-test:${index + 1}` }));
+}
+
+function surfaceFormTestContext(records, {
+  exceptions = [],
+  dispositions = [],
+} = {}) {
+  const recordInfos = asSurfaceFormTestRecordInfos(records);
+  const context = createCanonicalContext({ records: recordInfos }, {
+    canonicalDirectory: path.join(FIXTURE_ROOT, 'surface-form-canonical'),
+    source: 'fixture',
+  });
+  context.derived.surfaceFormExceptionManifest = {
+    schema_version: 1,
+    contract_id: 'm6-2-inflection-exceptions-v1',
+    source_issue: 174,
+    exceptions,
+  };
+  context.derived.surfaceFormReviewManifest = {
+    schema_version: 1,
+    contract_id: 'm6-3-surface-form-review-v1',
+    source_issue: 175,
+    dispositions,
+    reviewed_collisions: {
+      exact_generated: [],
+      ambiguous_generated: [],
+    },
+  };
+  return context;
+}
+
+// Most tests here exercise lexical policy on small, noncanonical fixtures.
+// Give their predicate senses an explicit fixture-only exclusion so the live
+// admission path can keep its strict surface-form gate enabled.
+function validateLexicalAddition(options = {}) {
+  if (options.canonicalContext) return validateLexicalAdditionImpl(options);
+  const recordInfos = asSurfaceFormTestRecordInfos(options.prospectiveRecords);
+  const dispositions = recordInfos.flatMap(({ record }) => (
+    record.role === 'start' && record.record_type === 'entry'
+      ? record.senses
+        .filter((sense) => ['verb', 'adjective'].includes(sense.pos) && record.lemma.endsWith('다'))
+        .map((sense) => ({
+          class_id: 'm6-3-predicate-excluded',
+          record_id: record.id,
+          sense_id: sense.id,
+          reason: 'Synthetic lexical-admission fixture does not exercise inflection search.',
+        }))
+      : []
+  ));
+  return validateLexicalAdditionImpl({
+    ...options,
+    canonicalContext: surfaceFormTestContext(recordInfos, { dispositions }),
+  });
+}
+
+test('live common admission requires surface-form classifications for predicate senses', () => {
+  const candidateRecord = {
+    id: 'w779',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w779',
+    lemma: '맛있다',
+    search_forms: ['맛있다'],
+    senses: [{
+      id: 'w779-s1',
+      pos: 'adjective',
+      gloss: '음식의 맛이 좋아 먹기에 즐겁다.',
+    }],
+  };
+  const prospectiveRecords = [{ record: candidateRecord, source: 'surface-form-admission-fixture' }];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords);
+  const productionState = makeProductionState({
+    batchId: 'future-surface-form-admission',
+    candidateRecords: [candidateRecord],
+    reviewedRecords: prospectiveRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+  const admissionOptions = {
+    batchId: 'future-surface-form-admission',
+    candidateRecords: [candidateRecord],
+    reviewedRecords: prospectiveRecords,
+    baseRecords: [],
+    prospectiveRecords,
+    semanticAudit,
+    productionState: productionState.state,
+    productionStateSources: productionState.sources,
+    productionPayloads: productionState.payloads,
+  };
+
+  const unclassifiedContext = surfaceFormTestContext(prospectiveRecords);
+  assert.throws(
+    () => validateLexicalAdditionImpl({
+      ...admissionOptions,
+      canonicalContext: unclassifiedContext,
+    }),
+    (error) => error.code === 'MISSING_EXCEPTION_CLASS',
+  );
+
+  const classifiedContext = surfaceFormTestContext(prospectiveRecords, {
+    exceptions: [{
+      class_id: 'm6-2-itda-present-adnominal',
+      record_id: candidateRecord.id,
+      sense_id: candidateRecord.senses[0].id,
+    }],
+  });
+  const result = validateLexicalAdditionImpl({
+    ...admissionOptions,
+    canonicalContext: classifiedContext,
+  });
+  assert.equal(result.audit.blocking_finding_count, 0);
+  assert.ok(classifiedContext.derived.surfaceFormProjection.rows.some(
+    ({ form, record_id: recordId, sense_id: senseId }) => (
+      form === '맛있는' && recordId === candidateRecord.id && senseId === candidateRecord.senses[0].id
+    ),
+  ));
+});
 
 function topicEvidenceForGloss(gloss, analysis = {}) {
   const record = {

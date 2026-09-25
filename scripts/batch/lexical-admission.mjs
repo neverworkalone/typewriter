@@ -69,6 +69,7 @@ function validateLexicalAdditionInternal({
   productionAuthorizationEvidence,
   productionAdmissionStage,
   productionPayloads,
+  canonicalContext,
   allowReplay = false,
   checkPilotCompleteness = false,
   candidateLabel = 'candidate records',
@@ -128,6 +129,17 @@ function validateLexicalAdditionInternal({
   const reviewedInfos = asRecordInfos(reviewedRecords, 'reviewed', reviewedLabel);
   const baseInfos = asRecordInfos(baseRecords, 'base-canonical', 'base-canonical');
   const prospectiveInfos = asRecordInfos(prospectiveRecords, 'prospective-canonical', prospectiveLabel);
+  if (canonicalContext !== undefined) {
+    if (!Array.isArray(canonicalContext?.records)
+      || canonicalRecordsSha256(canonicalContext.records.map(recordOf))
+        !== canonicalRecordsSha256(prospectiveInfos.map(recordOf))) {
+      const error = new Error(
+        'lexical admission canonical_context must describe the complete prospective_records exactly',
+      );
+      error.code = 'LEXICAL_ADMISSION_CONTEXT_MISMATCH';
+      throw error;
+    }
+  }
   let producerDecisionsByRecordId;
   if (hasProducerBinding) {
     producerDecisionsByRecordId = assertAdmissionInputsBoundToProducer(
@@ -216,12 +228,19 @@ function validateLexicalAdditionInternal({
     requireTopicAnalysis: !allowReplay,
   });
   const indexes = validateDatasetRecords(prospectiveInfos, {
+    context: canonicalContext,
     checkPilotCompleteness,
     semanticAudit,
     requireSemanticAudit: true,
     semanticAuditBaseRecords: baseInfos,
     requireDecisionSource: !allowReplay,
     requireTopicAnalysis: !allowReplay,
+    // Live admission validates the entire prospective canonical dictionary.
+    // Historical replay stays on its recorded contract and does not inherit
+    // current M6-3 classifications or collision-review requirements.
+    requireSurfaceFormProjection: !allowReplay,
+    requireSurfaceFormClassifications: !allowReplay,
+    requireSurfaceFormCollisionReview: !allowReplay,
   });
   // Keep an explicit audit result at this boundary so callers can bind the
   // exact complete-canonical report into their gate evidence.  The dataset
