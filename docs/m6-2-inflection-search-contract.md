@@ -30,6 +30,7 @@ current exact keys.
 | Single-token predicate entries | 818 |
 | Multiword predicate entries excluded from generation | 2 |
 | Single-token entries with both verb and adjective senses | 3 |
+| Single-token predicates with an open final stem syllable | 666 |
 
 The overlapping POS records are `w237 쓰다`, `w310 단정하다`, and `w548
 고소하다`. The excluded multiword lemmas are `w883 사려 깊다` and `w2814 몸을
@@ -44,6 +45,13 @@ final `ㅅ`, and 10 predicate records with final `ㅎ` (2 adjective and 8 verb
 records). These are spelling counts, not conjugation-class labels: final
 consonant alone does not prove regular or irregular behavior.
 
+The open-final inventory is also relevant to plain-past scope. It has 340 final
+`ㅏ` stems (303 ending in `-하다`, 37 other), 33 final `ㅗ` stems (26 ending in
+`-보다`, 7 ending in `-오다`, and none in another class), and 293 stems with
+other final vowels. The policy below supports only the evidenced classes and
+requires an explicit sense-bound exception for other open-vowel stems; it does
+not infer a past form for all 666 entries from vowel harmony alone.
+
 ## Supported surface-form classes
 
 Only `role: start`, `record_type: entry` records with a single-token citation
@@ -57,16 +65,20 @@ canonical sense whose `pos` is supported by the rule. The fixed rule slots are:
 | `adjective-present-adnominal-eun` | `adjective` | Present adnominal `-(으)ㄴ` | `예쁘다 → 예쁜` |
 | `adjective-present-adnominal-neun-exception` | registered `adjective` senses ending in `없다` | Present adnominal `-는` | `거침없다 → 거침없는` |
 | `predicate-future-adnominal-eul` | `verb`, `adjective` | Prospective adnominal `-(으)ㄹ` | `달다 → 달` |
-| `predicate-plain-past` | `verb`, `adjective` | Plain declarative past `-았/었다` | `먹다 → 먹었다`, `담담하다 → 담담했다` |
+| `predicate-plain-past-coda-bearing` | `verb`, `adjective` | Regular plain past for a coda-bearing stem | `먹다 → 먹었다`, `잡다 → 잡았다` |
+| `predicate-plain-past-open-a` | `verb`, `adjective` | Required `ㅏ + 았` contraction for other open-final `ㅏ` stems | `바라다 → 바랐다` |
+| `predicate-plain-past-hada` | `verb`, `adjective` | `-하다 → -했다` | `담담하다 → 담담했다` |
+| `predicate-plain-past-open-o-boda` | `verb`, `adjective` | Both contracted and uncontracted forms | `보다 → 보았다`, `봤다` |
+| `predicate-plain-past-required-oda` | `verb`, `adjective` | Contracted form only for `-오다` | `오다 → 왔다` |
+| `predicate-plain-past-registered-exception` | explicitly registered senses | Sense-bound irregular or exceptional past | `듣다 → 들었다`, `쓰다 → 썼다` |
 
-The fixed slots include the required M6 examples. `먹다` and `예쁘다` are not
-canonical records in the issue-start corpus, so their fixture cases are
-contract-only examples; they do not authorize adding either record. `바라보다`
-and `담담하다` are real current records. M6-3 must preserve the distinction
-between a rule example and a searchable canonical target. The regular rule
-fixtures also bind `읽은` to `읽다`, `옅은` to both adjective senses of `옅다`,
-and `잡았다` to both verb senses of `잡다`, so each ending class is exercised
-against the current corpus.
+The fixed slots include the required M6 examples. `먹다`, `예쁘다`, `보다`, and
+`오다` are not canonical records in the issue-start corpus, so those bare-lemma
+examples are contract-only; they do not authorize adding records. The compound
+lemmas `바라보다` and `다가오다`, and the lemma `담담하다`, are real current
+records. M6-3 must preserve the distinction between a rule example and a
+searchable canonical target. The fixtures bind `읽은` to `읽다`, `옅은` to both
+adjective senses of `옅다`, and `잡았다` to both verb senses of `잡다`.
 
 Apply the regular endings as follows:
 
@@ -76,22 +88,42 @@ Apply the regular endings as follows:
   append `은` after another coda.
 - For prospective `-(으)ㄹ`, attach final `ㄹ` when the stem has no coda or
   already ends in `ㄹ`; append `을` after another coda.
-- For plain past, select `았다` after a final stem vowel `ㅏ` or `ㅗ`, and
-  `었다` otherwise. `-하다` has the supported contracted form `-했다`.
+- Plain past is deliberately split into closed classes. For a regular
+  coda-bearing stem, append `았다` after final stem vowel `ㅏ` or `ㅗ`, and
+  `었다` otherwise. For an open-final `ㅏ` stem other than `-하다`, contraction
+  is required: merge final `ㅏ` with `았` by adding coda `ㅆ` (`바라다 →
+  바랐다`). The `-하다` class emits `-했다` (`담담하다 → 담담했다`). For
+  `-보다`, both `보았다` and `봤다` are supported: the uncontracted form appends
+  `았다`, while the contracted form adds coda `ㅆ` to the final open `보`
+  syllable. This also yields `바라보았다` and `바라봤다` for `바라보다`. For
+  `-오다`, contraction is required and the uncontracted form is unsupported;
+  add coda `ㅆ` to the final open `오` syllable (`다가오다 → 다가왔다`; `오았다`
+  is rejected). Other open-final vowel classes have no generic plain-past rule;
+  they require a reviewed, sense-bound exception entry before a past form is
+  projected.
+
+Past-class precedence is: registered sense-bound exception, `-하다`, regular
+coda-bearing, open-final `ㅏ`, required-contracted `-오다`, then optional
+contracted/uncontracted `-보다`. The classes are constrained by this ordering:
+`-하다` is not treated as the generic open-`ㅏ` class, and the `-오다` /
+`-보다` policies supersede the broad coda-vowel attachment that would otherwise
+emit invalid or incomplete forms. In particular, `오다` has `왔다` but not
+`오았다`, while `보다` permits both `보았다` and `봤다`.
 
 These attachment rules do not override lexical irregularity. A spelling feature
 does not authorize an irregular form by itself. Irregular or exceptional
 alternations must have an explicit, reviewed rule-class entry bound to the
 canonical `record_id` and `sense_id`; forms not covered by a regular attachment
-or registered class get no projection row. The contract fixtures exercise the
-current-corpus `ㄷ` irregular (`듣다 → 들었다`), `ㅂ` irregular adjective
+or registered class get no projection row. Future admission must fail closed:
+each new sense is classified under an applicable supported class or receives
+an explicit exclusion reason, and unknown classes never fall back to generic
+open-vowel past attachment. The contract fixtures exercise the current-corpus
+`ㄷ` irregular (`듣다 → 들었다`), `ㅂ` irregular adjective
 (`감탄스럽다 → 감탄스러운`), `ㅎ` irregular adjective (`희뿌옇다 → 희뿌연`),
 `ㅡ` irregular (`쓰다 → 썼다`), `르` irregular (`부르다 → 불렀다`), `ㅅ`
 irregular (`잇다 → 이었다`), and exceptional `없다` adnominals
-(`거침없다 → 거침없는`, `보잘것없다 → 보잘것없는`). Other contractions and
-exceptional forms are unsupported until separately registered and covered by a
-fixture; for example, this contract does not infer `보다 → 봤다` from the
-regular past rule.
+(`거침없다 → 거침없는`, `보잘것없다 → 보잘것없는`). An unregistered open-`ㅣ`
+past such as `기다렸다` is unsupported by this snapshot contract.
 
 Each query uses one of the listed slots. The contract does not compose multiple
 endings or analyze whitespace-separated tokens. It excludes connective forms
@@ -112,7 +144,8 @@ The real form `쓰는` is generated by both `w237 쓰다` and `w2783 쓸다`. Fo
 `w237`, only its three verb senses are candidates; its adjective sense is not a
 match for the verb rule. The real form `들었다` likewise has two candidates:
 `w201 듣다` through the registered `ㄷ` irregular class, and `w2797 들다`
-through the regular past rule. Both forms are intentionally ambiguous.
+through the regular coda-bearing past rule. Both forms are intentionally
+ambiguous.
 
 ## Precedence and normalization
 
@@ -180,8 +213,9 @@ as a workaround.
 
 The M6-2 JSON fixture records policy expectations and canonical bindings; it is
 not evidence that the runtime already supports morphology. Its test verifies
-the bound canonical examples, the 5K inventory, the synthetic required examples,
-ambiguity, precedence, and unsupported boundaries. M6-3 must add runtime/build
+the bound canonical examples, the 5K and open-vowel inventories, the synthetic
+required examples, contraction policy, ambiguity, precedence, and unsupported
+boundaries. M6-3 must add runtime/build
 regressions against the same contract before changing the M4 observed result for
 `담담했다`.
 
@@ -202,3 +236,7 @@ regressions against the same contract before changing the M4 observed result for
   [`ㅂ` irregular forms](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=311824),
   [`ㅎ` irregular forms](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=97&pageIndex=1&qna_seq=334394),
   [`하였다 → 했다`](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=2&qna_seq=320151).
+- For open-`ㅗ` past, the National Institute states `오다` takes `왔다` and
+  `보다` permits both `보았다` and `봤다`: [`오다` and `보다`](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=216&pageIndex=1&qna_seq=318662).
+- For open-final `ㅏ`, the National Institute confirms `바라다 → 바랐다` and
+  the `ㅏ/ㅓ + -았/었` contraction pattern: [`바라다` past form](https://www.korean.go.kr/front/onlineQna/onlineQnaView.do?mn_id=261&pageIndex=1&qna_seq=327024).

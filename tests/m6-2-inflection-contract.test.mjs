@@ -24,6 +24,10 @@ const codaTable = [
   'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ',
   'ㅍ', 'ㅎ',
 ];
+const vowelTable = [
+  'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ',
+  'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ',
+];
 
 function stemFinalCoda(lemma) {
   const stem = lemma.endsWith('다') ? lemma.slice(0, -1) : lemma;
@@ -32,6 +36,15 @@ function stemFinalCoda(lemma) {
   const offset = lastCharacter.codePointAt(0) - 0xac00;
   if (offset < 0 || offset >= 11172) return null;
   return codaTable[offset % 28];
+}
+
+function stemFinalVowel(lemma) {
+  const stem = lemma.endsWith('다') ? lemma.slice(0, -1) : lemma;
+  const lastCharacter = [...stem].at(-1);
+  if (!lastCharacter) return null;
+  const offset = lastCharacter.codePointAt(0) - 0xac00;
+  if (offset < 0 || offset >= 11172) return null;
+  return vowelTable[Math.floor((offset % 588) / 28)];
 }
 
 function uniquePredicatePos(record) {
@@ -44,8 +57,14 @@ function deriveInventory() {
     record.record_type === 'entry' && uniquePredicatePos(record).length > 0
   ));
   const singleTokenEntries = predicateEntries.filter(({ lemma }) => !lemma.includes(' '));
+  const openStemEntries = singleTokenEntries.filter(({ lemma }) => stemFinalCoda(lemma) === '');
   const posSenseCounts = { verb: 0, adjective: 0 };
   const posRecordCounts = { verb: 0, adjective: 0 };
+  const openStemFinalVowelCounts = {};
+  for (const record of openStemEntries) {
+    const vowel = stemFinalVowel(record.lemma);
+    openStemFinalVowelCounts[vowel] = (openStemFinalVowelCounts[vowel] ?? 0) + 1;
+  }
 
   for (const record of starts) {
     for (const sense of record.senses) {
@@ -63,6 +82,28 @@ function deriveInventory() {
     predicate_record_counts: posRecordCounts,
     entry_predicate_record_count: predicateEntries.length,
     single_token_entry_predicate_record_count: singleTokenEntries.length,
+    open_stem_predicate_record_count: openStemEntries.length,
+    open_stem_final_vowel_counts: openStemFinalVowelCounts,
+    open_stem_past_class_counts: {
+      hada: openStemEntries.filter(({ lemma }) => lemma.endsWith('하다')).length,
+      open_a_other: openStemEntries.filter((record) => (
+        stemFinalVowel(record.lemma) === 'ㅏ' && !record.lemma.endsWith('하다')
+      )).length,
+      open_o_boda: openStemEntries.filter((record) => (
+        stemFinalVowel(record.lemma) === 'ㅗ' && record.lemma.endsWith('보다')
+      )).length,
+      open_o_oda: openStemEntries.filter((record) => (
+        stemFinalVowel(record.lemma) === 'ㅗ' && record.lemma.endsWith('오다')
+      )).length,
+      open_o_other: openStemEntries.filter((record) => (
+        stemFinalVowel(record.lemma) === 'ㅗ'
+        && !record.lemma.endsWith('보다')
+        && !record.lemma.endsWith('오다')
+      )).length,
+      other_open_vowel: openStemEntries.filter((record) => (
+        !['ㅏ', 'ㅗ'].includes(stemFinalVowel(record.lemma))
+      )).length,
+    },
     mixed_pos_record_ids: singleTokenEntries
       .filter((record) => uniquePredicatePos(record).length > 1)
       .map(({ id }) => id)
@@ -109,9 +150,54 @@ test('M6-2 contract is pinned to the reproduced M6-1 canonical snapshot', () => 
       'adjective-present-adnominal-eun',
       'adjective-present-adnominal-neun-exception',
       'predicate-future-adnominal-eul',
-      'predicate-plain-past',
+      'predicate-plain-past-coda-bearing',
+      'predicate-plain-past-open-a',
+      'predicate-plain-past-hada',
+      'predicate-plain-past-open-o-boda',
+      'predicate-plain-past-required-oda',
+      'predicate-plain-past-registered-exception',
     ],
   );
+  assert.deepEqual(contract.plain_past_policy, {
+    priority_order: [
+      'predicate-plain-past-registered-exception',
+      'predicate-plain-past-hada',
+      'predicate-plain-past-coda-bearing',
+      'predicate-plain-past-open-a',
+      'predicate-plain-past-required-oda',
+      'predicate-plain-past-open-o-boda',
+    ],
+    coda_bearing: {
+      rule_id: 'predicate-plain-past-coda-bearing',
+      attachment: 'append 았다 after final stem vowel ㅏ or ㅗ; otherwise append 었다',
+    },
+    open_a: {
+      rule_id: 'predicate-plain-past-open-a',
+      contracted_form: 'required',
+      attachment: 'merge final open ㅏ with 았 by adding coda ㅆ to that stem syllable',
+    },
+    hada: {
+      rule_id: 'predicate-plain-past-hada',
+      lemma_suffix: '하다',
+      surface_suffix: '했다',
+    },
+    open_o_boda: {
+      rule_id: 'predicate-plain-past-open-o-boda',
+      lemma_suffix: '보다',
+      uncontracted_form: 'supported',
+      uncontracted_attachment: 'append 았다 to the stem',
+      contracted_form: 'supported',
+      contracted_attachment: 'merge final open ㅗ with 았 by adding coda ㅆ to that stem syllable',
+    },
+    open_o_oda: {
+      rule_id: 'predicate-plain-past-required-oda',
+      lemma_suffix: '오다',
+      contracted_form: 'required',
+      contracted_attachment: 'merge final open ㅗ with 았 by adding coda ㅆ to that stem syllable',
+      uncontracted_form: 'unsupported',
+    },
+    other_open_stem_vowels: 'unsupported unless registered as a sense-bound exception',
+  });
 });
 
 test('canonical positive and ambiguous cases bind to all licensed start senses', () => {
@@ -126,6 +212,12 @@ test('canonical positive and ambiguous cases bind to all licensed start senses',
       assert.deepEqual(findExactStartMatches(searchCase.query), [], `${searchCase.id} is generated`);
     }
     for (const candidate of searchCase.expected_candidates) {
+      for (const ruleId of candidate.rule_ids ?? searchCase.rule_ids) {
+        assert.ok(supportedRuleIds.has(ruleId), `${searchCase.id} candidate uses a supported rule`);
+      }
+      if (candidate.exception_id) {
+        assert.ok(candidate.sense_ids.length > 0, `${searchCase.id} binds exception to senses`);
+      }
       const record = recordsById.get(candidate.record_id);
       assert.ok(record, `${searchCase.id} references ${candidate.record_id}`);
       assert.equal(record.role, 'start', `${searchCase.id} uses a searchable record`);
@@ -165,8 +257,12 @@ test('required examples absent from the contract snapshot stay marked contract-o
   const syntheticCases = contract.cases.filter(
     ({ classification }) => classification === 'synthetic-positive',
   );
-  assert.equal(syntheticCases.length, 2);
+  assert.equal(syntheticCases.length, 5);
   for (const searchCase of syntheticCases) {
+    assert.deepEqual(findExactStartMatches(searchCase.query), [], `${searchCase.id} is contract-only`);
+    for (const ruleId of searchCase.rule_ids) {
+      assert.ok(contract.supported_rule_ids.includes(ruleId), `${searchCase.id} uses a supported rule`);
+    }
     const candidate = searchCase.expected_candidates[0];
     assert.equal(candidate.record_id, null);
     assert.equal(candidate.sense_ids.length, 0);
@@ -176,15 +272,56 @@ test('required examples absent from the contract snapshot stay marked contract-o
     );
     assert.equal(records.some((record) => record.lemma === candidate.lemma), false);
   }
+  assert.deepEqual(
+    syntheticCases.map(({ query, rule_ids: ruleIds, expected_candidates: [candidate] }) => (
+      [query, candidate.lemma, ruleIds]
+    )),
+    [
+      ['먹었다', '먹다', ['predicate-plain-past-coda-bearing']],
+      ['예쁜', '예쁘다', ['adjective-present-adnominal-eun']],
+      ['왔다', '오다', ['predicate-plain-past-required-oda']],
+      ['보았다', '보다', ['predicate-plain-past-open-o-boda']],
+      ['봤다', '보다', ['predicate-plain-past-open-o-boda']],
+    ],
+  );
 });
 
 test('unsupported examples use no exact start key and stay outside generated rules', () => {
   const unsupportedCases = contract.cases.filter(
     ({ classification }) => classification === 'unsupported',
   );
-  assert.equal(unsupportedCases.length, 2);
+  assert.equal(unsupportedCases.length, 4);
   for (const searchCase of unsupportedCases) {
     assert.deepEqual(searchCase.expected_candidates, []);
     assert.deepEqual(findExactStartMatches(searchCase.query), []);
+    if (searchCase.base_record_id) {
+      const record = recordsById.get(searchCase.base_record_id);
+      assert.ok(record, `${searchCase.id} references its canonical base`);
+      assert.equal(record.role, 'start');
+    }
   }
+  assert.equal(
+    unsupportedCases.find(({ query }) => query === '오았다').unsupported_reason,
+    'mandatory-o-contraction',
+  );
+  assert.equal(
+    unsupportedCases.find(({ query }) => query === '기다렸다').unsupported_reason,
+    'open-vowel-class-not-registered',
+  );
+});
+
+test('plain-past irregular paths bind the exception class to the exact candidate senses', () => {
+  const irregular = contract.cases.find(({ id }) => id === 'ambiguous-d-irregular-past-deureotda');
+  assert.deepEqual(irregular.rule_ids, [
+    'predicate-plain-past-coda-bearing',
+    'predicate-plain-past-registered-exception',
+  ]);
+  assert.deepEqual(irregular.expected_candidates[0].rule_ids, [
+    'predicate-plain-past-registered-exception',
+  ]);
+  assert.equal(irregular.expected_candidates[0].exception_id, 'm6-2-d-irregular-verb');
+  assert.deepEqual(irregular.expected_candidates[1].rule_ids, [
+    'predicate-plain-past-coda-bearing',
+  ]);
+  assert.equal(irregular.expected_candidates[1].exception_id, undefined);
 });
