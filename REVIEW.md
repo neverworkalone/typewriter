@@ -255,46 +255,48 @@ inability to self-approve as a reason to stop the review flow.
   with gate marker `+2`.
 - Do not merge.
 
-### Third reviewer — review of reviews and merge gate
+### Third reviewer — review-of-reviews merge gate
 
-The third reviewer does not repeat a full diff review by default. This section
-takes precedence over the full-review flow above for the third stage.
+The third reviewer is not a third full reviewer. This section takes precedence
+over the full-review flow above.
 
 Start with:
 
 1. the active issue and acceptance criteria;
-2. the current exact HEAD and complete changed-file surface;
-3. the structured `+1` and `+2` review records for that same HEAD;
-4. blocker threads and fix history relevant to those records;
-5. required exact-head CI or validation status.
+2. the current exact HEAD and complete changed-file list;
+3. the same-HEAD structured `+1` and `+2` records;
+4. blocker/fix history relevant to those reviews;
+5. required exact-head CI or validation.
 
 Review the reviews before reviewing the code.
 
-Determine whether the two independent reviews:
+Verify that the two reviews, together and independently:
 
-- identified the real problem and evaluated the chosen approach rather than
-  only the reported symptom;
-- covered the material behavioral and architectural risks of the changed
-  surface;
-- forced systemic fixes and regression guards where recurrence was possible;
-- independently checked plausible blind spots instead of sharing the same
-  unsupported assumption;
+- evaluated the real problem and overall approach;
+- covered the material behavioral and architectural risks of the changed surface;
+- required systemic fixes and regression guards for recurring defects;
 - verified blocker resolution and required exact-head validation.
 
-If the records are missing, marker-only, materially ambiguous, inconsistent, or
-show a coverage gap, inspect the necessary patch, source, data, tests, or
-artifacts directly. Expand only far enough to resolve the questionable review
-direction or uncovered risk. Report blockers and do not merge while a material
-question remains.
+Then perform **one targeted adversarial probe** for a material assumption that
+both reviews rely on but do not explicitly verify.
 
-If the review direction is sound and the records provide sufficient evidence,
-do not reread the complete diff merely to duplicate the first two reviews.
-Verify that the final implementation and validation correspond to the reviewed
-direction, that all blockers are resolved, and that required validation passed
-for the exact HEAD.
+For evidence, validator, benchmark, or CI changes, prefer tracing:
 
-When the merge gate is satisfied, squash-merge the PR directly. The third
-reviewer does not create an approval record.
+`requirement -> evidence -> enforcement -> known-invalid regression`
+
+Ask whether a required result, invariant, or failure signal could disappear or
+become invalid while the gate still passes.
+
+Do not repeat the full diff review. Inspect only the minimum patch, source,
+test, artifact, or CI detail needed to resolve a review gap or complete the
+adversarial probe.
+
+If the `+1`/`+2` records are stale, insufficient, inconsistent, or the probe
+reveals a material gap, report the blocker and do not merge.
+
+Otherwise, once the reviewed direction matches the final implementation,
+all blockers are resolved, and exact-head validation is confirmed,
+squash-merge the PR directly. Do not create `+3` or a GitHub approval record.
 
 ### Exact-head gate semantics
 
