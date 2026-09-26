@@ -14,6 +14,7 @@ import {
   makeWriterTaskSamplingUnit,
   M6_1_QUALITY_GATES,
   renderBaselineReport,
+  selectBaselineExactMatches,
   selectStableHashSample,
   summarizeWriterFacingCandidatePopulation,
 } from '../scripts/validate/m6-1-quality-baseline.mjs';
@@ -232,6 +233,29 @@ test('M6-1 reachability evaluator covers missing, unexpected, and reference-only
   ]);
   assert.equal(unexpectedKey.unexpected_key_count, 1);
   assert.throws(() => assertSearchReachabilityPass(unexpectedKey), /unregistered exact keys/);
+});
+
+test('M6-1 exact-key baseline excludes separately reviewed generated-form candidates', () => {
+  assert.deepEqual(selectBaselineExactMatches([
+    {
+      id: 'w2969',
+      role: 'start',
+      match: { kind: 'exact-lemma', field: 'lemma' },
+    },
+    {
+      id: 'w1081',
+      role: 'start',
+      match: { kind: 'generated-surface-form', field: 'surface-form' },
+    },
+    {
+      id: 'w9999',
+      role: 'reference-only',
+      match: { kind: 'exact-search-form', field: 'search-form' },
+    },
+  ]), [
+    { id: 'w2969', role: 'start' },
+    { id: 'w9999', role: 'reference-only' },
+  ]);
 });
 
 test('M6-1 snapshot equality rejects any derived metric drift', () => {

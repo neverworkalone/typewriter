@@ -514,6 +514,22 @@ export function evaluateSearchReachability(expectedRows, actualRows) {
   };
 }
 
+/**
+ * Keep the issue-start exact-key baseline scoped to its canonical sources.
+ * Later M6 search projections can legitimately add another reviewed
+ * generated-form candidate for the same query; M6-3 validates those
+ * candidates against its collision manifest separately.
+ */
+export function selectBaselineExactMatches(matches) {
+  assert.ok(Array.isArray(matches));
+  return matches
+    .filter(({ match }) => (
+      match?.kind === 'exact-lemma'
+      || match?.kind === 'exact-search-form'
+    ))
+    .map(({ id, role }) => ({ id, role }));
+}
+
 export function assertSearchReachabilityPass(reachability) {
   assert.equal(reachability.missing_expected_result_count, 0, 'all expected records must be returned');
   assert.equal(reachability.reference_only_leak_count, 0, 'free search must not expose reference-only records');
@@ -751,7 +767,7 @@ async function measureRuntimeReachability({ records, canonical, repositoryDirect
         key,
         normalized_query: response.normalizedQuery,
         status: response.status,
-        matches: response.matches.map(({ id, role }) => ({ id, role })),
+        matches: selectBaselineExactMatches(response.matches),
       };
     });
 
