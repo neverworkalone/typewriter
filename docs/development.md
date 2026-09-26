@@ -252,6 +252,10 @@ The normal category order is:
 The deep-only additions are `historical` replay and the `deep` category. To run the
 complete sequence locally, use `npm run ci:all`.
 
+The M7-1 deep benchmark measures the real 5K release baseline and deterministic
+100K/500K/1M workloads. See the [recorded method and scale results](m7-1-scale-benchmark.md)
+and the [machine-readable report](m7-1-scale-benchmark.json).
+
 The registry in `scripts/ci/registry.mjs` owns every root `tests/*.test.mjs` file
 exactly once. Each declared check is logged by name and has its own execution
 boundary; checks run sequentially and a failure stops the category before any later
