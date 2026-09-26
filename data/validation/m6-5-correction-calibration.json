@@ -1,0 +1,2069 @@
+{
+  "schema_version": 1,
+  "calibration_id": "m6-5-bounded-correction-calibration-v1",
+  "issue": 177,
+  "decision": "HOLD",
+  "source": {
+    "m6_5_issue_start_commit": "e04f4e5b3a913b769896cfea1e3b518adfe5b9f8",
+    "m6_4_issue_start_commit": "4226a97f162b1f4a7401a74893c3d28018d33385",
+    "canonical_revision": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9",
+    "baseline_contract_version": "m6-1-quality-gates-v2",
+    "m6_1_baseline_sha256": "4eb83fd3d19c8ff0b522300430e4107f002850907161f2bdcd97ba3872195209",
+    "m6_4_sample_sha256": "afe42789a95fb5c06cf77ec36bc7904231d889da772c6348bd25adb8d625e9b8",
+    "m6_4_report_sha256": "19af2343f2eb4e1b44f565e9c1f60edaaf805782fd9373904c6333ea00d6e5ca",
+    "m6_3_surface_form_review_sha256": "380e67ce30af6376906bca75f4c703da565dad59c27e094ec049629e861b5e22",
+    "canonical_file_count": 13,
+    "issue_start_runtime_sha256": {
+      "scripts/validate/m6-1-quality-baseline.mjs": "c66b1d9c0f9570514bd10fd9db73c9d53ed79b70a53d4ca53d9392c4b0b27eaa",
+      "scripts/build/query.mjs": "fab784bb887e265764f8231e6c7b05240ba2173b591a77f93b2c7663e5fc785b",
+      "src/runtime/search-query.js": "66480e70fbc9f636675cb93ebc59163e88792675d55d011c1da5ff141864a655",
+      "src/domain/exact-search-candidates.js": "7b9f4563f724cacfe8c14b5fa5553f6d9ef5bae144c605518f157d2e589c77e0",
+      "scripts/inflection/surface-form-projection.mjs": "ac45f89c529b91de01396c2468863ca82ab91738ea803fb4e49ad02808d893ed"
+    }
+  },
+  "disposition_counts": {
+    "corrected": 0,
+    "held": 284,
+    "rejected": 0
+  },
+  "disposition_counts_by_type": {
+    "exact_key_result_set": 2,
+    "ranking_query": 40,
+    "relation_gap": 80,
+    "relation_tuple": 162
+  },
+  "bounded_dispositions": [
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w1089\",\"w1089-s1\",\"w726\",\"w726-s1\",\"action\"]",
+      "selection_hash": "032f750314af05eaa04f168f4027f10917fe0e4eda860a554451ecefd1bb8544",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w351\",\"w351-s1\",\"w190\",\"w190-s1\",\"action\"]",
+      "selection_hash": "04403803b720162f80633cbe1ac2f3a92654d0fd82d7b55e0e913816d4fbc28f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w352\",\"w352-s1\",\"w239\",\"w239-s1\",\"action\"]",
+      "selection_hash": "259c311d17f208f5239bf0e4678c1b96b237ee426f96f330a59b5a875f94fb74",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w133\",\"w133-s1\",\"w202\",\"w202-s1\",\"action\"]",
+      "selection_hash": "27cbe5127282b8c0c4023570f4413b78c66d7fcd50d1f8f63a8310684a337b88",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w255\",\"w255-s1\",\"w200\",\"w200-s1\",\"action\"]",
+      "selection_hash": "2d3ffb8ae0cefe74d95c9e5b09da498510dbd28d5f363f1ea2bc82c64ac56e93",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w244\",\"w244-s1\",\"w238\",\"w238-s1\",\"action\"]",
+      "selection_hash": "31f153c77ec099f48b7f254c71893ec7980b2e13b79c7361b90d71e123f6fe31",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w243\",\"w243-s1\",\"w237\",\"w237-s1\",\"action\"]",
+      "selection_hash": "3cdbf420cc764307619ad6cc178e7304e4060ac34511c07309621b9e2ea6be03",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w022\",\"w022-s1\",\"w217\",\"w217-s1\",\"action\"]",
+      "selection_hash": "48eb870db6ba0e47f4750188b6a3f401c6b33165a4849a5f6d4c4f438ed8f2f1",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w296\",\"w296-s1\",\"r031\",\"r031-s1\",\"action\"]",
+      "selection_hash": "4d22a4ba26bd04c477a8120fde92ce57792f109152fcbb526ff9426e2825e963",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w304\",\"w304-s1\",\"w227\",\"w227-s1\",\"action\"]",
+      "selection_hash": "505e0ea1d517c64b250e90fadd79e761671872d9a0b8f631181dc935b9582c4d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w191\",\"w191-s2\",\"w224\",\"w224-s1\",\"action\"]",
+      "selection_hash": "57ed14e0321572e7a33d99720763ea49e47f59c11b31c71a6bc23b8cf4f6de4d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w1092\",\"w1092-s1\",\"w726\",\"w726-s1\",\"action\"]",
+      "selection_hash": "593bbf575d7ea5b243309784cb412d27bf56544bbd8195b366c649b7f8d8eb0b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w018\",\"w018-s1\",\"w203\",\"w203-s1\",\"action\"]",
+      "selection_hash": "68c41042767ee938a071aaa1103094db0fe86c1a22cc92991d06df8635ff8a0a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w199\",\"w199-s1\",\"w200\",\"w200-s1\",\"action\"]",
+      "selection_hash": "702b8cfefa199327cc0d4e3f8babf8d494515f8f84665a029b775cf52f453af9",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w250\",\"w250-s1\",\"w237\",\"w237-s1\",\"action\"]",
+      "selection_hash": "708321bdbbca1fb4f63402b58c781222d01016d0d6f4847d1e5c06c88b93622b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w1275\",\"w1275-s1\",\"w194\",\"w194-s1\",\"action\"]",
+      "selection_hash": "7d3cf1fcbf40518053213992fb0465358b47056a366977b8edd4dcaf617483b2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w242\",\"w242-s1\",\"w237\",\"w237-s1\",\"action\"]",
+      "selection_hash": "81f796add223b2f84595a79e81b6db94365e3088a15f9186f600c64828f66c8b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w008\",\"w008-s1\",\"r017\",\"r017-s1\",\"action\"]",
+      "selection_hash": "83b5ef1aa0b6cc4cca47cc2fb097016f2b97684d9f3a5b0b09a383fe95347d1f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w021\",\"w021-s1\",\"w217\",\"w217-s1\",\"action\"]",
+      "selection_hash": "89d3fdee2ba72e53a99b37eeae82871dd1e2ed3ec576116a970a58e6b58a5563",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w352\",\"w352-s1\",\"w191\",\"w191-s1\",\"action\"]",
+      "selection_hash": "8a78ce5a3e8e51940b4870fa67e6d1c0725e0fcded0a579830da72bacd65dab7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w047\",\"w047-s1\",\"w046\",\"w046-s1\",\"antonym\"]",
+      "selection_hash": "0a7966973d96fe0ba5b27b24be9476b1992ca2b794a12acc2683ea23c41c1d69",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w076\",\"w076-s1\",\"w081\",\"w081-s1\",\"antonym\"]",
+      "selection_hash": "0b7122e86ec876953554fe31bd575a63aff86a6371d15d7b69ca15501a8aac80",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w035\",\"w035-s1\",\"w034\",\"w034-s1\",\"antonym\"]",
+      "selection_hash": "0d66a7feb7fea3b207d27b1b43a84ff2c56810e7eba4ed3ab95ab1a8561cd18a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w056\",\"w056-s1\",\"w055\",\"w055-s1\",\"antonym\"]",
+      "selection_hash": "14c9a9cd65b5b77dd30816c459408b31ef0461e5fec6047298c0d51424cff5e5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w038\",\"w038-s1\",\"w039\",\"w039-s1\",\"antonym\"]",
+      "selection_hash": "17fc9de3e570eef2afa2ef132c5d93d57610859139889835c498fb17ce707b88",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w082\",\"w082-s1\",\"w083\",\"w083-s1\",\"antonym\"]",
+      "selection_hash": "1e7ef2f809bfbc186d28a3d50b7f66e115ccdb6ec351795ff2879b07fd4c4a09",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w048\",\"w048-s1\",\"w049\",\"w049-s1\",\"antonym\"]",
+      "selection_hash": "20d46d8e16e101f515a20d52baf08b1033cf6d50bd45cf75e58f0dd446a9a039",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w049\",\"w049-s2\",\"w048\",\"w048-s2\",\"antonym\"]",
+      "selection_hash": "222aed95d62652287ea6dc64f8995010af5d5dd6fd5d0fa2d657f3fbceb9b01f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w084\",\"w084-s1\",\"w078\",\"w078-s1\",\"antonym\"]",
+      "selection_hash": "2556d579cf1277f424dcf0b4af37b39b561162f05e215dc0e06a49394306eee9",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w032\",\"w032-s1\",\"w031\",\"w031-s1\",\"antonym\"]",
+      "selection_hash": "2e8c1e614db13098b075705913707f8ab164d9af4efae9ae6e0e3b5b9ac87755",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w240\",\"w240-s1\",\"w239\",\"w239-s1\",\"antonym\"]",
+      "selection_hash": "320e384ce27390efc85c12f51f96712336bf3908cac08231b53a376f2fb183a5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w192\",\"w192-s1\",\"w193\",\"w193-s1\",\"antonym\"]",
+      "selection_hash": "328569d9f5c30e0fefd6926acdda2d813d52aa7d46895187752c36e7fa18cb3a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w078\",\"w078-s1\",\"w084\",\"w084-s1\",\"antonym\"]",
+      "selection_hash": "34a0d08ec061d0b3234d7b689ec2cc61bf50b58329b11a1402ea33f1f1f1bb5c",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w081\",\"w081-s1\",\"w076\",\"w076-s1\",\"antonym\"]",
+      "selection_hash": "3e16595b718e93ff9f9f56f4693cd42b777a2f78f02057d0a58f2a2fee012887",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w045\",\"w045-s2\",\"w044\",\"w044-s2\",\"antonym\"]",
+      "selection_hash": "3f65be766d77215a9416c30db54c70c7765af3fa994b7c4616ef3df13dbbf2e5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w041\",\"w041-s1\",\"w040\",\"w040-s1\",\"antonym\"]",
+      "selection_hash": "463851f3f1fb5afbcea0a76b0c1d12c204f2fda5e21f5fde509680fc2d17693e",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w034\",\"w034-s1\",\"w035\",\"w035-s1\",\"antonym\"]",
+      "selection_hash": "468ac54a391c332eee9740f45893bb62b9078cf9dde12b0bc1578d50d4cd0539",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w047\",\"w047-s2\",\"w046\",\"w046-s2\",\"antonym\"]",
+      "selection_hash": "4ff0e3296c47999b179741039a1e643dee12cc68c662057f4e2bc24d664f29d9",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w046\",\"w046-s2\",\"w047\",\"w047-s2\",\"antonym\"]",
+      "selection_hash": "5165c446d943896e6875416d4d0c6486c8f1d409ff828f803171aa9ea90bc50b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w053\",\"w053-s1\",\"w052\",\"w052-s1\",\"antonym\"]",
+      "selection_hash": "51751ada18a12403f5f3d96dd9e373aeab5643b1a3342871089c169f2f3bc09e",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w214\",\"w214-s1\",\"w218\",\"w218-s1\",\"association\"]",
+      "selection_hash": "0b274056ba1d90472809cf534d168718eeff69a00996747c4fb6b2678328a89a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w252\",\"w252-s1\",\"w248\",\"w248-s1\",\"association\"]",
+      "selection_hash": "1030f8f669331d77f3405d9e11b0b7469f2b8a47d6d6fa0280e7010378bf1321",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w328\",\"w328-s2\",\"w021\",\"w021-s1\",\"association\"]",
+      "selection_hash": "12416c562d2fa59d049e10b4929201ed5f562da625c566389772da8ca94cd2ff",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w621\",\"w621-s2\",\"w009\",\"w009-s1\",\"association\"]",
+      "selection_hash": "28f6dc124430dd5323c1070c0e55c965aca3f8a42316711d4ed9a668078bc45b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w272\",\"w272-s1\",\"w200\",\"w200-s1\",\"association\"]",
+      "selection_hash": "2d7f003504e77c3b26ac880d515bad2bfc5202e2b1b0daae6b634359d6e6af81",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w347\",\"w347-s1\",\"w244\",\"w244-s1\",\"association\"]",
+      "selection_hash": "2dc6bbb5d38bc9c2d3e1c5ea512bdeb0524c193b3c3a50c43769b9b426c5ca76",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w263\",\"w263-s1\",\"w252\",\"w252-s1\",\"association\"]",
+      "selection_hash": "30b2607deb0a261256c138387d4f6db8e9a2f870adde73021edd1ba37a896162",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w237\",\"w237-s4\",\"r028\",\"r028-s1\",\"association\"]",
+      "selection_hash": "325fce6f85c1179e6a572cb8816e2ca6d5362a48e869516676d781ae9c14e2f2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w341\",\"w341-s1\",\"w273\",\"w273-s1\",\"association\"]",
+      "selection_hash": "334389f6bf623023e17cd0248270f71303ae81dffee1a6d6509bc9300fa85111",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w200\",\"w200-s2\",\"w280\",\"w280-s1\",\"association\"]",
+      "selection_hash": "37e3d22a37a2982031db5a7b2d7cee94f5cf6f3eac8b826b8b3da0c200de07f6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w252\",\"w252-s2\",\"w272\",\"w272-s1\",\"association\"]",
+      "selection_hash": "464a38d778bc3db015f6ce6b5306b109bc3ef9d1dac3cdf626ae5b84d4a1af58",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w196\",\"w196-s1\",\"w197\",\"w197-s1\",\"association\"]",
+      "selection_hash": "469b129e69f30f0f4cc0b886a8a2bc4b956fdf2c68d6ab1eadea3a4f1d616ff5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w246\",\"w246-s1\",\"w245\",\"w245-s1\",\"association\"]",
+      "selection_hash": "4b8c6a1c6c372b9a6cd962f733df4288c5623cfc4b1c2e4de5e7cf47ddd24a8f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w200\",\"w200-s1\",\"w273\",\"w273-s1\",\"association\"]",
+      "selection_hash": "56039931148560346942fbef3741e573f0100f4f38aa5d7d2969d864adf9fc1a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w280\",\"w280-s1\",\"w176\",\"w176-s1\",\"association\"]",
+      "selection_hash": "5a9dd0f304e8a9acd2bd1d4b2688c4a6d79e7cdc351a9b2c0ac423e736255f87",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w270\",\"w270-s1\",\"w269\",\"w269-s1\",\"association\"]",
+      "selection_hash": "5d97069c986e1b64d37b8d08edb57f367de508e98920c6c6aa698edaefbbde5b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w273\",\"w273-s1\",\"w200\",\"w200-s1\",\"association\"]",
+      "selection_hash": "7006d85fb7d87c9306f88763e72e77a47fe80f3dc83ac40ff9a8e1612acf0dd3",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w114\",\"w114-s1\",\"w115\",\"w115-s1\",\"association\"]",
+      "selection_hash": "72c1d5ad8db8f6d319ad819c951b85e50d03974be4c7afbc492d9dc83208aed2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w285\",\"w285-s1\",\"w284\",\"w284-s1\",\"association\"]",
+      "selection_hash": "7ce7c425a5a257555c6ef5698554afff9fb382d884684200a596a5f835c5bf90",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w293\",\"w293-s1\",\"w196\",\"w196-s1\",\"association\"]",
+      "selection_hash": "84f828ce45bb91804f5c97298db57734eba85b0ca1364e653084335e71914747",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w328\",\"w328-s1\",\"r043\",\"r043-s1\",\"direct\"]",
+      "selection_hash": "03df075233370aa0fa249d45abb0ece30e6a6632ab0f25aedb31f81fa06d52e7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w314\",\"w314-s1\",\"r039\",\"r039-s1\",\"direct\"]",
+      "selection_hash": "08f19d1ee84f8b0fb573048f651e62dddc312cc17c7394fb53d751e929896374",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w305\",\"w305-s1\",\"r038\",\"r038-s1\",\"direct\"]",
+      "selection_hash": "2829ba5dc9e371d2a4ce99071e5894b43ed892b55c5812ae640244f67a61fb69",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w851\",\"w851-s1\",\"w446\",\"w446-s1\",\"direct\"]",
+      "selection_hash": "417f9b78fd0cc0c18032801c3b07b6a2a071b34d1edf904ffe60753a804bf785",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w246\",\"w246-s1\",\"r034\",\"r034-s1\",\"direct\"]",
+      "selection_hash": "6d022bb5ad195ba3a844980b9ca98022d7c5b0c99741521fdb8cab023e3fa03d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w099\",\"w099-s1\",\"r004\",\"r004-s1\",\"direct\"]",
+      "selection_hash": "75e24a576c285d47c7b426c5920224100592573a53c961515563f79a0f234940",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w244\",\"w244-s1\",\"r035\",\"r035-s1\",\"direct\"]",
+      "selection_hash": "760653ad9a05ae57f0d6611d6bf29bab7aa1cffc5becc8a29c9de2d3df1311b3",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w296\",\"w296-s1\",\"r018\",\"r018-s1\",\"direct\"]",
+      "selection_hash": "807883a0034cc2813e93056e6389ecbb656c9652aa51a6e9a7f569ad38c4a5c7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w040\",\"w040-s1\",\"r030\",\"r030-s1\",\"direct\"]",
+      "selection_hash": "8dd42aad2831d120efb991dd26149408c0d70bc88ac1a35693f49fdca4f1a8a6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w1073\",\"w1073-s1\",\"w190\",\"w190-s1\",\"direct\"]",
+      "selection_hash": "af1bc0c325d5eb1737139b943fd7b5b7c7110aa41fdd2d382b286464628cf59f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w030\",\"w030-s1\",\"r009\",\"r009-s1\",\"direct\"]",
+      "selection_hash": "b019568488ff226238c6090a478257ccbba06dab4526ad453c895490e404aec3",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w237\",\"w237-s1\",\"r014\",\"r014-s1\",\"direct\"]",
+      "selection_hash": "bd1a7e2c89fcd2fea29a052a883092a857dab5cfe46822924fae6e83579e7d08",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w217\",\"w217-s1\",\"r013\",\"r013-s1\",\"direct\"]",
+      "selection_hash": "c630b68cd31c9c0480c438bf7ce79cf675e35d61866d2798d5c35447afd94daf",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w120\",\"w120-s1\",\"r006\",\"r006-s1\",\"direct\"]",
+      "selection_hash": "c6b07331184a3c0678f919aa21227ff23ec3e024ca188d8143aaa511ff18fe52",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w288\",\"w288-s1\",\"r017\",\"r017-s1\",\"direct\"]",
+      "selection_hash": "c8334cd20812b938d077e2b9c5afd3ea6259f8e0f685c04ee8ec83c61d39a94c",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w237\",\"w237-s2\",\"r015\",\"r015-s1\",\"direct\"]",
+      "selection_hash": "c90911a07cab489b20c661e62fc43443766c57c335f0c48da96dbc003ba5df18",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w011\",\"w011-s1\",\"r032\",\"r032-s1\",\"direct\"]",
+      "selection_hash": "de44ece34dd01c365b5883470d8e9334703109fa623005100a3703d9af1ef8a0",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w026\",\"w026-s1\",\"r008\",\"r008-s1\",\"direct\"]",
+      "selection_hash": "e3e8eae33c9396bac68397b88c95310aa05dd40aa921ec28f0dae398d7a8662f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w061\",\"w061-s1\",\"r001\",\"r001-s1\",\"direct\"]",
+      "selection_hash": "eb19e1917f0a1819797ebbea16304f7b7b0f2822a5ed102804a8476e9a89a577",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w079\",\"w079-s1\",\"r002\",\"r002-s1\",\"direct\"]",
+      "selection_hash": "f1589f7b4749415084684808f28108cd5bb5f69673544c6a77169022ac1fb7b8",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w106\",\"w106-s1\",\"r005\",\"r005-s1\",\"direct\"]",
+      "selection_hash": "f739689d0ad4ce4840852f0f1b6e1b235e892695f29452afd16fd1e56d819216",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w237\",\"w237-s3\",\"r016\",\"r016-s1\",\"direct\"]",
+      "selection_hash": "fa7a2dcfd3e476985e4a251546d2d32577aab48347425ecb2fed495f08af32a0",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w325\",\"w325-s2\",\"w004\",\"w004-s1\",\"mood\"]",
+      "selection_hash": "033258e985120fc4d0f778ecd644b29687a7b9c32e71a11e86e23e404c827b1a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w012\",\"w012-s1\",\"w004\",\"w004-s1\",\"mood\"]",
+      "selection_hash": "047a28712f4d8ffd70881cfb5ddc4bacd5a98bb17a4c1a3868e5b651a2caff6a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w313\",\"w313-s1\",\"w030\",\"w030-s1\",\"mood\"]",
+      "selection_hash": "09184fa509622f0204390a1c326959a19d7701c6fe9380e9ff76052fb72df1c5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w301\",\"w301-s1\",\"r036\",\"r036-s1\",\"mood\"]",
+      "selection_hash": "0a7e6cb1f46ac5eaa0571e4d70ce014355b6ffdc55dc1fe29d4f9ec970c5c88b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w300\",\"w300-s1\",\"w002\",\"w002-s1\",\"mood\"]",
+      "selection_hash": "0b770a6f70c288338d7f21c21faac21572478bca9c28e20534eb0a5b77bca3c0",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w094\",\"w094-s1\",\"w009\",\"w009-s1\",\"mood\"]",
+      "selection_hash": "0bf613939fd4c630fe1aaabf676358d0c252e7b7ee2b4e4e5b918659972aad5a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w358\",\"w358-s1\",\"w004\",\"w004-s1\",\"mood\"]",
+      "selection_hash": "0f70949d2acc3f2bc3456642826738f10b0465b3ac3457db2054bec82bc851a2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w203\",\"w203-s1\",\"w018\",\"w018-s1\",\"mood\"]",
+      "selection_hash": "10a91526f05433b340826555bb0b96dbf892130dbe700ee2533a57b128c301be",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w207\",\"w207-s2\",\"w002\",\"w002-s1\",\"mood\"]",
+      "selection_hash": "1cf90c793cd8fdc3a4d832ff40eb49480fb799f49d3ad7a89d72de946c9ca8e6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w338\",\"w338-s2\",\"w272\",\"w272-s1\",\"mood\"]",
+      "selection_hash": "236cfb46b49fb8becad89c18e60aef7dfaeb2c05c77eb98e328c97e3e552295a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w306\",\"w306-s1\",\"w019\",\"w019-s1\",\"mood\"]",
+      "selection_hash": "243cf5ec30778c859c1bf55424d296b5c5fbd48b0c9a180528b31832bf96fdea",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w356\",\"w356-s1\",\"w007\",\"w007-s1\",\"mood\"]",
+      "selection_hash": "2581d5963bc384a36907488b67f5214d752fad1d89b345a8f6660b3de52fd178",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w435\",\"w435-s1\",\"w018\",\"w018-s1\",\"mood\"]",
+      "selection_hash": "25d960e6f762235376513921946ee0a14d0be9d550fce26f014c297d6a53bb40",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w394\",\"w394-s1\",\"w024\",\"w024-s1\",\"mood\"]",
+      "selection_hash": "2aaea337a9c8c6968c698ca5f380353091aabd14f17d7fbc264e7acbe9af3877",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w290\",\"w290-s1\",\"w019\",\"w019-s1\",\"mood\"]",
+      "selection_hash": "2aef72581b37b4653a8a138ebadd6166e40b8bbdbc6feb7fe2e441ce8131f65a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w307\",\"w307-s1\",\"w016\",\"w016-s1\",\"mood\"]",
+      "selection_hash": "2c296beb41f0a9183accc833fb52c4319b1e32097cae650c2f75650ed93d3fbc",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w020\",\"w020-s1\",\"w019\",\"w019-s1\",\"mood\"]",
+      "selection_hash": "329872442215c3778745e2cfcff62643b67c90f1b0e4f1ba2975cf1f798192fe",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w015\",\"w015-s1\",\"w023\",\"w023-s1\",\"mood\"]",
+      "selection_hash": "3356fe615afc0ca66f44bbc16e4fd0a21b407f49d2ed3c8f1a758d30ebd1cd4f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w189\",\"w189-s1\",\"w006\",\"w006-s1\",\"mood\"]",
+      "selection_hash": "39b6c807b4c15a8c0d2ba9df1c3c27e97dc7d5ed7c8112bb85460372cc75f243",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w005\",\"w005-s1\",\"w004\",\"w004-s1\",\"mood\"]",
+      "selection_hash": "3ce2d09f23a03d338cb55598d02b3b8d88639868bf8bd2bfe363c096e7d21d0f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w134\",\"w134-s2\",\"w281\",\"w281-s1\",\"near\"]",
+      "selection_hash": "00e34a25785f48a1ce91cc6b3e81a06265cded2b3e2c88f8087264dd4cec1e5f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w332\",\"w332-s1\",\"w145\",\"w145-s1\",\"near\"]",
+      "selection_hash": "019696531eaec1bae07a36365e3ebca6076d9bc2fb76d88ba8513b9c0cfea170",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w363\",\"w363-s2\",\"w026\",\"w026-s1\",\"near\"]",
+      "selection_hash": "0567e6ab1216fe7dca069c4eb8b96bd84509434a9706d0d9323bfb17267d5166",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w317\",\"w317-s1\",\"w043\",\"w043-s1\",\"near\"]",
+      "selection_hash": "0716420db362222c72a7390f95b9ca42d4d92a6deb6bb6433364d3a099439609",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w291\",\"w291-s1\",\"w183\",\"w183-s1\",\"near\"]",
+      "selection_hash": "076cc0f71709459b52d900570aa8f1bf2170a2ed274bbb99c0921b9484ddef1c",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w033\",\"w033-s1\",\"w032\",\"w032-s1\",\"near\"]",
+      "selection_hash": "0a0518f30a20feadf605cc29db0b52c22172b445be848214a3fa7882b74c0203",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w326\",\"w326-s1\",\"w106\",\"w106-s1\",\"near\"]",
+      "selection_hash": "0c1b36cdefc91b40e1da389c18f15f7faed304c764980bcf36beccd5bbd59036",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w202\",\"w202-s1\",\"r012\",\"r012-s1\",\"near\"]",
+      "selection_hash": "0d87ae53f40563cbfe5b06add8b3d58e2d4bc0d95ea6ba620a8c11f88c7dd266",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w333\",\"w333-s1\",\"w145\",\"w145-s1\",\"near\"]",
+      "selection_hash": "1018488dc41dde4961a8a953778fbf417218729c4bd42d5396b611e921354ec1",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w038\",\"w038-s1\",\"w036\",\"w036-s1\",\"near\"]",
+      "selection_hash": "1040e82413783ab82663a405b013cf8e4fb931af7eb5254e13a2c88748f46558",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w123\",\"w123-s1\",\"w122\",\"w122-s1\",\"near\"]",
+      "selection_hash": "111249e3477388bcde1c4a4de5bd232bf12abfc92ce671fa96cc8279400a3129",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w328\",\"w328-s1\",\"w121\",\"w121-s1\",\"near\"]",
+      "selection_hash": "131ad2fc97c075dd129a646a6f8e75f21370584eaaa301b0612f1bddaa0b8eb2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w534\",\"w534-s1\",\"w432\",\"w432-s1\",\"near\"]",
+      "selection_hash": "155bc2051df676dc5f4ced18916103a04c5196b20e29f7f1bc6f6978cf9390c5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w303\",\"w303-s1\",\"r037\",\"r037-s1\",\"near\"]",
+      "selection_hash": "158f1e896a617bb50aee7d0a290f4e951b03b8ba5dc07cf9988b14d489859e86",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w012\",\"w012-s1\",\"w011\",\"w011-s1\",\"near\"]",
+      "selection_hash": "17e417af8687ffab2a3fd2bfc67b2c914d7679cfd79630af96becf40f689bb52",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w036\",\"w036-s1\",\"r026\",\"r026-s1\",\"near\"]",
+      "selection_hash": "1927ed4c2033ea78bbf173636272649691d419e2342d52c3d04d548991d35d52",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w006\",\"w006-s1\",\"w007\",\"w007-s1\",\"near\"]",
+      "selection_hash": "19d79d7cecc767167a6a0b1b9b2b2740d997537cf803eca5b595e658f5b59acc",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w028\",\"w028-s1\",\"w020\",\"w020-s1\",\"near\"]",
+      "selection_hash": "1c41c1b8c578efbce302f32ad274209778419beaf67ffb734f28b6ba0307d757",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w346\",\"w346-s1\",\"w180\",\"w180-s1\",\"near\"]",
+      "selection_hash": "2433f3ce6a81610bd3bca42b2d58ce292308edc6621536dee3c30692c3828494",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w343\",\"w343-s1\",\"w010\",\"w010-s1\",\"near\"]",
+      "selection_hash": "27725d85b8d4ef85323085c3c20a0bf6f6c213c3c9dccb45566831ff868490c1",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w375\",\"w375-s1\",\"r051\",\"r051-s1\",\"scene\"]",
+      "selection_hash": "103baf0a5d2259ce263353fc4dae3d77332e47cd4cfc12c9efc678abb35864f4",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w133\",\"w133-s2\",\"w097\",\"w097-s1\",\"scene\"]",
+      "selection_hash": "1ed6386ec6bbb56389c9bed819344fb2574b74b013aa984f09c75f069f8e2174",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w124\",\"w124-s1\",\"w074\",\"w074-s1\",\"scene\"]",
+      "selection_hash": "20f631b6df13c5e48500d52ee4b42c6f57214530aadafd56c291de53af271b1b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w144\",\"w144-s1\",\"w134\",\"w134-s1\",\"scene\"]",
+      "selection_hash": "332a145ea665dcdef0437b075283640c184e5944861ef3705057ebb3b41dc769",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w007\",\"w007-s1\",\"w151\",\"w151-s1\",\"scene\"]",
+      "selection_hash": "3374fa9cb3a9f31dc0066bc52f2c426c09633e482211e02bfd54488297c06970",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w188\",\"w188-s1\",\"w160\",\"w160-s1\",\"scene\"]",
+      "selection_hash": "395a2113c984a841393455251ead8d76750192d6689c5b25651250f26f9923bb",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w158\",\"w158-s1\",\"w157\",\"w157-s1\",\"scene\"]",
+      "selection_hash": "47d04c6c67b5ea17adf1847ad441e3d65c6f7daca15de7fbeeea1613eab443b0",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w392\",\"w392-s1\",\"w147\",\"w147-s1\",\"scene\"]",
+      "selection_hash": "4bc398c229eca0ecb59553fdcfe42113fba2843fe9b72c08ea345df736e1edc6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w129\",\"w129-s1\",\"w142\",\"w142-s1\",\"scene\"]",
+      "selection_hash": "4d23d4f82b19f9e0f91cb2115fc2bca6d5133984373521d9d85b0162b4e30d0b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w1010\",\"w1010-s1\",\"w142\",\"w142-s1\",\"scene\"]",
+      "selection_hash": "54ebb2c272abaed1080eda0270edd368f3dbd9b84ec08b2cd6d64e84bdcd6a25",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w371\",\"w371-s1\",\"r048\",\"r048-s1\",\"scene\"]",
+      "selection_hash": "59ecf8e391c32fce65088ef61fd5fe82a7729bc36058ad5acf15fea2c2254682",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w073\",\"w073-s1\",\"w142\",\"w142-s1\",\"scene\"]",
+      "selection_hash": "5f1421d47f9165bab6155f6bc10b76f83ba6c4973c8605da323bce50e40077ff",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w346\",\"w346-s1\",\"w125\",\"w125-s1\",\"scene\"]",
+      "selection_hash": "6fb7e0cb6bdac61f66dd4dd8021e71aed174f40ca31c0da2a2daa930eee98dc5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w126\",\"w126-s1\",\"w067\",\"w067-s1\",\"scene\"]",
+      "selection_hash": "838386ce437b41bf2a00bd3c63c5d9855825c5881f5d2524ee63d3330f65f229",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w348\",\"w348-s1\",\"w172\",\"w172-s1\",\"scene\"]",
+      "selection_hash": "860586b4ac983da4357421037fb87fa74acffa49a17ce994e7e66ac21490011f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w150\",\"w150-s1\",\"w151\",\"w151-s1\",\"scene\"]",
+      "selection_hash": "92fc8e962a346f43b0112870c0b4d96859ede8a533a8120d2b887977e7e393a6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w159\",\"w159-s1\",\"w157\",\"w157-s1\",\"scene\"]",
+      "selection_hash": "932b191637ad014b2b666e9ff0af29471f0d4e8c208dadbad6f4151cf82815f6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w131\",\"w131-s1\",\"w067\",\"w067-s1\",\"scene\"]",
+      "selection_hash": "954f12bced8ea17ea01bd93b029d0ea8a1772f20e1d56552fbd2928c26a65736",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w172\",\"w172-s1\",\"w147\",\"w147-s1\",\"scene\"]",
+      "selection_hash": "9e305dce29a853ee009a58f9008154070517bdb53ee0d1db89e3d9e903e2ff6a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w029\",\"w029-s1\",\"w152\",\"w152-s1\",\"scene\"]",
+      "selection_hash": "a18530b4db4a8bf86e923be544484903cfb08f33e67b7322e8a38f9257f64119",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w136\",\"w136-s1\",\"w066\",\"w066-s1\",\"sensory\"]",
+      "selection_hash": "01934d57ba3cae2f896ea09ad7cb7654fe41e6b30339384d2b33c5702e25cb4e",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w115\",\"w115-s1\",\"w093\",\"w093-s1\",\"sensory\"]",
+      "selection_hash": "02c7a0642cb34776cdf043bec7359cb7886a6bd7098b05701b302464b1b4fe5e",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w013\",\"w013-s1\",\"w072\",\"w072-s1\",\"sensory\"]",
+      "selection_hash": "07737d75bcf0aeeb849b5a3ae0d933ad4f4e62794188d74a620950ab1006b485",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w075\",\"w075-s1\",\"w055\",\"w055-s1\",\"sensory\"]",
+      "selection_hash": "0872378b7f3a38b1f27b578e233209db859eb37290cca212708695490f62eb1b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w139\",\"w139-s1\",\"w066\",\"w066-s1\",\"sensory\"]",
+      "selection_hash": "08fe74b2aaaba08f4cd19a82d155aeceada4f1dc7e18c9eb6b8b7b2b72146e04",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w062\",\"w062-s1\",\"w064\",\"w064-s1\",\"sensory\"]",
+      "selection_hash": "0a00badfac26b61cb8b3c07cedadaa30fb20703cbbd6b270aa0b01dae119625f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w327\",\"w327-s1\",\"w100\",\"w100-s1\",\"sensory\"]",
+      "selection_hash": "0bf211b4ee606d15c6c7b1bd94a6cb0019ba7c354814d62046422df9fa2c66d1",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w927\",\"w927-s1\",\"w044\",\"w044-s1\",\"sensory\"]",
+      "selection_hash": "1162d9a1c70bbf2fe6b62bbd6e90b923014f6738ccf8c16a2dd8813bff5b5abb",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w334\",\"w334-s1\",\"w091\",\"w091-s1\",\"sensory\"]",
+      "selection_hash": "153f5f850d2a2ffd4423b4da7fc5750868d59af8643c4797e336e6fc04c41287",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w348\",\"w348-s1\",\"w066\",\"w066-s1\",\"sensory\"]",
+      "selection_hash": "17e853c047c8405c2c4752340a36ab2e2ee67466c441bd83115ce45da3b8c734",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w066\",\"w066-s2\",\"r029\",\"r029-s1\",\"sensory\"]",
+      "selection_hash": "18a5aeb51ed0eda0473bfc635620f16fa79bf2ff4eda3fd782cfb1aef03f68cf",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w317\",\"w317-s1\",\"r040\",\"r040-s1\",\"sensory\"]",
+      "selection_hash": "1d142e5200de2f7ebae5ba957391e42f302a43736c622918f38d8cf3414c3371",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w460\",\"w460-s1\",\"w323\",\"w323-s1\",\"sensory\"]",
+      "selection_hash": "1dae7c0b4f4e89e05e2dce290acdf8d65c0bc585890e7db0c8d4eef0640b54e2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w334\",\"w334-s1\",\"w077\",\"w077-s1\",\"sensory\"]",
+      "selection_hash": "20322bd7308455e06393d128eef8042645ae3f9f7710284d8223276b47c1f5fa",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w273\",\"w273-s2\",\"w120\",\"w120-s1\",\"sensory\"]",
+      "selection_hash": "213fa2fb887f550f7e58b1d06a662fb47ab8a1626b134d5e061042b52da8b9de",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w019\",\"w019-s1\",\"w112\",\"w112-s1\",\"sensory\"]",
+      "selection_hash": "264bbe8907332147c5ab98a45df055382ac939cf0aded7ee9eb4523ed539673d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w074\",\"w074-s1\",\"w072\",\"w072-s1\",\"sensory\"]",
+      "selection_hash": "27f00147babccef93ffb0e2d7c00c2f6554eaa5d0ed8c5e831a055b0bf080021",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w089\",\"w089-s1\",\"w120\",\"w120-s1\",\"sensory\"]",
+      "selection_hash": "29fe253518b99888f4ad7134ba36506522bf3da6551beecb9f32945c5f202926",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w043\",\"w043-s1\",\"w079\",\"w079-s1\",\"sensory\"]",
+      "selection_hash": "2c7f280d3e9de7f4ad3b67609812543bf6908aad4afb57808899e7b47c84ff54",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_tuple",
+      "stable_unit_id": "[\"w349\",\"w349-s1\",\"w071\",\"w071-s1\",\"sensory\"]",
+      "selection_hash": "2ec59d8d2288ff7be9570435f4952926967382b2567101e74db33f39a3fe8eeb",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w670",
+      "selection_hash": "000e3c24ad99aeeb43bb47089fa06110ca1cce0166406cfe9c49db0ab103137f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w907",
+      "selection_hash": "02af19219f60ea195a0e28f79d0d949a2faa687d8e194a0a0ea532dcd1db7c79",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w686",
+      "selection_hash": "0373f3340c67a6f5b4617656396bcea5cee16822c8209f5015669315d052b877",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w652",
+      "selection_hash": "037ef95461f734e7614d01415ecaeff96dd4ccca495841b7863b65e8d3d5538c",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w861",
+      "selection_hash": "0bfb09fbd7b9de46a5a70bca4ae6475dcc0cf725345630218cd2d3ceb074e297",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w895",
+      "selection_hash": "0c4594c07d4b7906a7045758a33beb6da63760c64945b31b25be2c8fd4dfd6e7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w438",
+      "selection_hash": "0daf0bb45cc9c93bbaacaa7edb41b84911309924a057fecbc2b35738148fd3dd",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w434",
+      "selection_hash": "0e1a091d746e1c63f41263831b1eacaa07843ccbe61ffbcf7eef40173f6080a6",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w917",
+      "selection_hash": "0e83e5d22364c080d7b3f641fb728e9c27be4b2a3e32eff05136524baeb4261e",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w669",
+      "selection_hash": "1093edb157b8a4a1bf6b1fddae41e47f804c7a7217010bbf21f66d4b65df259b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w682",
+      "selection_hash": "10e61dd4c16513c44cf77abe6cf5072cc6fc4625b2d551f3948780a440e9c4b4",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2167",
+      "selection_hash": "0f1abf3e130d479a778f5f0e269927324d2d0e4f3105f8d525d0216bbc2a4f73",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3356",
+      "selection_hash": "8120d4564daec9abaff381d156a2203a54b406d2e79459eb689590e2fbc63639",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2166",
+      "selection_hash": "c16447337c63457fe4de35261c5cf550db6301ae98e6031e3e391202b0b0e34b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3355",
+      "selection_hash": "ecff1de0da1ee1090764d7150bcbbb5c4813c9a25893c7dec1b59ccc8a0384c2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2208",
+      "selection_hash": "002bea2d5cbf806ba56e50034d42288216a241baa812fcdc91fb3e57587ccf0b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3416",
+      "selection_hash": "0066dad1cd9790247afcf46341a52942e59d2cfb915b0e55c5021d57f6b13c4d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4210",
+      "selection_hash": "00933c54ec91214f85e6c208f11e5d5402143edcf40aaa2d901ff72ecb964113",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2254",
+      "selection_hash": "00ae93a20cfdd332e12cd6a0df6c75eb2971c50757345556de62d9d62cc26800",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w998",
+      "selection_hash": "00e4af909f4a8cc3fcb13225df78c5f5248f1505cc5b2874ba29757a84b0223c",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2530",
+      "selection_hash": "00e8cd96d37e76f258248203495a76aceb6427f329c30537dbefdae0709ad31b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w1733",
+      "selection_hash": "0110abb589b024d211036fdfd6a09eab2861689b5b00c8eabf18a69b2dcfde35",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2943",
+      "selection_hash": "0121599f370157693a07400afadd0d2cd3e95b1e6493fb6be406113a1e82e13f",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3481",
+      "selection_hash": "0121b8a630cc09d72196ac3fc6d5c2a381d6875121244e68f93467a2f0567b93",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w1249",
+      "selection_hash": "012338d978ddd4070c43a0c100037b7985c8f31eaabd16337995595f9b40113d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3331",
+      "selection_hash": "014e8cb6824e9ccac84cab25be3544e8e997dce67dc4b0b3fafce93dd9d174ad",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3301",
+      "selection_hash": "015345d4192d35fcc01e3bbef1bf09bae30770a58bd70c3d5a1f8b978de7b37a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4299",
+      "selection_hash": "017bb22cb2c8441841ff569798c6009e12264c35b3e6b971c3bc54818f21dd44",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2104",
+      "selection_hash": "017f084578a0c0e68861161a0edb4c375458fbd697cc8517dd54c2daecab4708",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w1718",
+      "selection_hash": "01880d4652b3154927fd4053da815123edd1addd0a00d10af2e56944d373da86",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4342",
+      "selection_hash": "0196670e0ec7167c9fccc9de77619621985fa08d8f62b1bf4652e7d3c1cebcf7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2146",
+      "selection_hash": "01ab53adef0743fe74c3898e004d01664768e2332eee4b94c835f199537b5d5c",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2635",
+      "selection_hash": "01c5c23c666bb1395877d76f6767ec43af1e92bba1660f21946072f3df78ceb4",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2977",
+      "selection_hash": "01d635baf9b97dc02466a4d4417fe237ea85290e69a649bc99d70dbf96ff2d54",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w1001",
+      "selection_hash": "01e228c7bff6cf74972fc64bdfcd5d72a9f5e0373669506bcb8d2c377c1253d7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2352",
+      "selection_hash": "0212bfdf5d32cf95bd7a28670a5e045e54aba997c443a5b4a6849a6e79719cd5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3456",
+      "selection_hash": "02295ca11b4a8347fccaa0bb37f8ce547639f952f8ce1a7a771275320f4c77a5",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2199",
+      "selection_hash": "023ee6695b8bffaa6238d011d12223dc7344639d0574e2cf420aa9513e4e9637",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w961",
+      "selection_hash": "024524cfc6ca64669a91f0d1e8c83d9620b67e6af9c646f1a79542bc3194aabd",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2334",
+      "selection_hash": "0263700ce8da4e6792cc08c95a4292fecf2643c2720da21d485762ea266480f7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2914",
+      "selection_hash": "026d91cb529b452d20dcd640242306052ca8033d5997a9c5ec900244ca8197ab",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w5246",
+      "selection_hash": "0285b7e69ef6fb404caa53db449749ba346d876f27d178435666e83e887db13b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w1350",
+      "selection_hash": "0287e7bf79b3327a1394d77b39137d85c35ac30dccfeb4762fb5c8f9117706bf",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4082",
+      "selection_hash": "02fe3692dc5cc4b2fe116acbab07c19dfadce9977ba5f49329acebf397adef63",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2576",
+      "selection_hash": "0300db30ae5a1d24056b886887afe82fc6bae0fcc9dfb60b2d1f52430e67ecab",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w5069",
+      "selection_hash": "030bede9f98a1d863fad21ef1320d40ea64f255e89c6f4b177ca995539c54274",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w632",
+      "selection_hash": "031caa6c59144e86de8ebeea5bce4d14288e602baa1975e662db9377937d24ca",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3582",
+      "selection_hash": "0000eea7eef638a15cc4e6a34cf1a46c78b8d79556b7fbace09223a3eb468b82",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4735",
+      "selection_hash": "0028f136210bb900dd67fc8b4800d1f1bdab5d910a6b8efd1cf07ecf16b403d7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2741",
+      "selection_hash": "00d32eec0bb2ccb04b0074b2d254cb1366ec0a9e6535b57efdb21d671adb6662",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2888",
+      "selection_hash": "00eb53ed83c46029a7fd5c7e5eb0f3bfea097e5359290ac17fc11ab14b00c65a",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w559",
+      "selection_hash": "015a9970e28e00740edd7597e39e1c36e337b695a74eab40b3e7448518fe08d2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w230",
+      "selection_hash": "0215741aa7495d3365a2bceb0358cf3e336eda52d1f8baf9f8fa9a2ca3fe5504",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4852",
+      "selection_hash": "023b33ff7b4847dc69eba104f5082549c0bd9f45fb1ffd3dddb50061937a84ca",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2870",
+      "selection_hash": "039424fea191122f3618f5b854ec97b005b2ae964d722cf55033b6c21a5e45ea",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2886",
+      "selection_hash": "043c8cc8951f0c8cb74f9c414bb1e608d555a9a0a58b453d0547093d52a2f0a2",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2869",
+      "selection_hash": "045b9f23942013f4f36ca761eed87d24cc3d78c8e21306df32997e82806d8561",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2737",
+      "selection_hash": "0474cd2440a7a3619bb2ebbbe8c4ec444abb3dcd34067e41f6c4cced3bb750f3",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4924",
+      "selection_hash": "04bc4874047b062a438ce939c9e0875f72dd12a5fe707c4e74b2a4a5000e04fb",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w205",
+      "selection_hash": "04caa3007d8bf09eee04038ca48eedf649642a7099bb86d8e2edad484f002de4",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4915",
+      "selection_hash": "05387ae3a7c2d029c1412dbda83e8fab8ee654cf90d1c15cffa74920df217850",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3775",
+      "selection_hash": "001662fb37580936bff2b429dda916bac5d150517874e96ddacfcdaaad05c0ad",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4508",
+      "selection_hash": "0030162bb13cde73bf599956f8ab3f0ba3a5127dbe8b53c6de231e2404933fc7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4461",
+      "selection_hash": "0047f5c2e5cae46f82a5a21f2df084ec0e2864230572962c384d7de8549608f0",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4839",
+      "selection_hash": "007b2cfe4068806256a3f6e1c6dd271ea7ba2cf01cc950a7540ed824adb02ce7",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2853",
+      "selection_hash": "008d2bd69b9dbea011f361ba6ae329c896b1f4d35962b12324294370d3b816fc",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w2735",
+      "selection_hash": "00edad02ace935de407ff5203b81b762b599536311590be14ec34248734db522",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4791",
+      "selection_hash": "014556b247089ce80336b5233d22197d18872063ad7d941b1e6d6550ae7b3066",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3094",
+      "selection_hash": "018025228c69849813908abff9d13fa5214a1765ab9d6c7c3e5b88ebcc1df89b",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4665",
+      "selection_hash": "018ecb62b0d56ab6ffdbf5998dbdc0ceb628a3be280de2fa3fe43709bcb8e0ee",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4686",
+      "selection_hash": "025fb06a1d33908e4b1bd2d89569d367c72b1f11b05585a423170b645d1bd141",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4847",
+      "selection_hash": "02689045f5557d6416e920d98701f7fadc656c7eaf340d5aa6a0c7d6d2dc5dbc",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3142",
+      "selection_hash": "02857f0ae05904a95e2d726be4a083ef339138a445c1d68504268e16ce76cc7d",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3718",
+      "selection_hash": "0291ce2e00cc492a0efcf95addfde67d27272557341c1ba7c497aa2284335a07",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w3150",
+      "selection_hash": "02b41b5f7793fa6fdc7ebed3f8a35302742ebfa01dc9edb9b3adc3fddd985001",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4325",
+      "selection_hash": "02b8d0682c399bfc6451ad9e591ea699335577a28af8aa415ba938547c62ec02",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4390",
+      "selection_hash": "02e280233b2d6ad586b1519796ee799357b12439550803e4b2c8449fad84d690",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4474",
+      "selection_hash": "03377af7d14a91326009566b567ac196fd7dd7d4fa8984babad6b7078063e1e4",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4388",
+      "selection_hash": "03403276822883062e12f07d8d72851f726ed91a603ff3bd9a165055afa267f0",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "relation_gap",
+      "stable_unit_id": "w4586",
+      "selection_hash": "038e39cc7086dadf4ecfd0504bcceeda45789b84f46001a1f762f83516991322",
+      "status": "held",
+      "reason_code": "independent_judgments_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "빛",
+      "selection_hash": "009f06186f8629beff6310617941423eb67aa6d406b8bf39c17acc34ec5aa356",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "맴돌다",
+      "selection_hash": "01787056cd7f58775e64c916e974196914254a56a6d8b650809ba1d93b03761a",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "담백",
+      "selection_hash": "02e34a2d2683250b34888f7648832d3b101d340e9cd8399dda316ba76d8ea29a",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "소식",
+      "selection_hash": "02f9b8350bfb693b5852ee6a94d98fb52b529470727159a5357acbb54c2ab6fe",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "틈",
+      "selection_hash": "0475a68d4a24de0c52439c43d14a0da041bf6bb7db4cecc2fcdb253982bf8031",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "뒷산",
+      "selection_hash": "058075d3bf6212d01fc8226eb975633e293aaa451f7e16b0645f36fbf3d52745",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "화사하",
+      "selection_hash": "07b747864e4737d2eee9fb7ad3ab50cb6ed65c22496c26494ef5c262be205eab",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "맑다",
+      "selection_hash": "083e1a3f9bb307f60050e6ceb0ee686102d2c1d2e398c7ceeb4e880eb3da31b5",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "일구",
+      "selection_hash": "0a5d27bf8b16db35f3079cab17210d38a0e94fc851c4866d55b2090bcd0207f3",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "다그치",
+      "selection_hash": "0a60e6ef007b35c56e782133dbfd664894b1c2d0abab541338aa827cb4dd4bb5",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "마주보",
+      "selection_hash": "0b1c1a2a5984a9f174f9a2a659f8e24d8af542de847c340ac4ec9d6aa2cec753",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "스치",
+      "selection_hash": "0b992e6f5ec3abd2218251a799d58107ff77186eccdfe82c466366fc3025c683",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "마주보다",
+      "selection_hash": "0bda9cd8028d019f4c64890c62be72bed89b229db0357e3640e15bde147b7116",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "넓히",
+      "selection_hash": "0ce005d6aa01c0a08be17a492c97585ed67856fb65247adaee78d0cea5200c18",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "젖히다",
+      "selection_hash": "0e32f58a4f06114fd8db8a2c896f024e4b742214eb461c498c0b9b1d279a8af9",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "관계",
+      "selection_hash": "0f1e84a2ba0444cb49b5f28f1dab3139aee27075e50a789702ed216e0550545b",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "둑",
+      "selection_hash": "0f3ed031c162d0411ece2c1cbbd19b6e6e98d9b6fb464f36ef5842ff34b7a74e",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "서늘하다",
+      "selection_hash": "0f4274ff8ca2f934a17addd46bfb2a75dfccaba2729aa9c81696a1f1f4d0e133",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "감추",
+      "selection_hash": "0fb6d1920452b340c6d755f16d96241ba0275a1bf5599621525079fd2ad5d18d",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "듣다",
+      "selection_hash": "10e2e5b70accc7ebd2c4a8de789588a50b57f4f0f398ea8b2a12e2c878a61c97",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "고양감",
+      "selection_hash": "111f01a862b96742ab6a8e17b84466c15007eaeb98d02c8bd916685706f3f258",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "내리다",
+      "selection_hash": "1182c8ff179712dad90b380ba73e221086bc5c654c7c5e5760c60d7ff9fdd790",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "감각",
+      "selection_hash": "13bbc32d407136aa4c7511213f2c671f7a3a84e2faa27247b9cf3ed75b3f6a2a",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "떠오르",
+      "selection_hash": "150523da1f3d2609cabdcc4eb02da140b999dbf491f3c558e9cb4014a9af03ca",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "무거움",
+      "selection_hash": "16563792619edac140631f7e0010efeea02900c27d4952bd92820c1c46c15435",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "쏟아지다",
+      "selection_hash": "173b15f49f3bbfd9c6b915e0eb2a964348f542164d421f3c10d24dddec469788",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "깔깔하",
+      "selection_hash": "17b256cad7277626da23816e0da1ab9604b62434e2e29a911492230489fe054e",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "깔깔하다",
+      "selection_hash": "1823e2d2a216d3cf6bb9d96cbfe9773569dbb11b399fadcfe1f98c79c3146050",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "마루",
+      "selection_hash": "18daf8b3a73e1b2c699726930cad910ae1a7de4c18d579d227bc746680dfdcc8",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "넓히다",
+      "selection_hash": "194d0acb89458d8716285923fcbba7bcc8d9dad63886555e69d5f0b5624fa186",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "모락모락하",
+      "selection_hash": "1a543942257f4c36bfc9a3209bda3fe4e27b91585bc57e9bc8f96d155657131e",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "찬기운",
+      "selection_hash": "1b6bc42ec54e2ed22f8795e32419382d659e4d716d9535f551fbc340fe80eeea",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "몰아치다",
+      "selection_hash": "1df81896378e234b351e0628305d0c7f6ebf198b4e55e4ee12d91599abeab7f7",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "마음을 다독이다",
+      "selection_hash": "1dff3bbd4490232544a547670f152d85099463dab79402ba935dfd5eb0444969",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "비뚤어지다",
+      "selection_hash": "1e087f3213b7fe6ce0ae75ed15c94137a537ccf8abebfd3992dc2e3ce06afb61",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "기민하",
+      "selection_hash": "1e29f85851abc8c41e3680f76be259474133291fd02b189c302292b5c708dcbe",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "새참",
+      "selection_hash": "1eeecdafe20fc11c6b6a1805241dd0dc4bdef70f106d571404ba4facdb92df58",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "아릿하다",
+      "selection_hash": "1eef970a39822a3e6c25649d04fb157a0953af3f2cbc15f0fba996c6458b23d5",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "가슴",
+      "selection_hash": "1fca9992398fa67855e014db18e6295a4002948174ae1bce2064492781647458",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "ranking_query",
+      "stable_unit_id": "가라앉히",
+      "selection_hash": "1fdb176ba2d8c0021dee911168fbef49285b3274320a4dd415d59e399761d228",
+      "status": "held",
+      "reason_code": "writer_choice_outcomes_not_recorded"
+    },
+    {
+      "unit_type": "exact_key_result_set",
+      "stable_unit_id": "끈",
+      "selection_hash": null,
+      "expected_ids": [
+        "w2969"
+      ],
+      "actual_ids": [
+        "w2969",
+        "w1081"
+      ],
+      "status": "held",
+      "reason_code": "m6_1_v2_vs_m6_2_m6_3_contract_conflict"
+    },
+    {
+      "unit_type": "exact_key_result_set",
+      "stable_unit_id": "열",
+      "selection_hash": null,
+      "expected_ids": [
+        "w110"
+      ],
+      "actual_ids": [
+        "w110",
+        "w192"
+      ],
+      "status": "held",
+      "reason_code": "m6_1_v2_vs_m6_2_m6_3_contract_conflict"
+    }
+  ],
+  "relation_calibration": {
+    "relation_default": "empty",
+    "relation_quota": "none",
+    "proposed_candidate_count": 0,
+    "admitted_count": 0,
+    "rejected_count": 0,
+    "noise_rate": null,
+    "measurement_status": "NOT_MEASURED_NO_AUTHORIZED_PROPOSALS"
+  },
+  "workload": {
+    "canonical_cases": 242,
+    "independent_judgments_required": 484,
+    "independent_judgments_recorded": 0,
+    "ranking_queries": 40,
+    "ranking_writer_choices_required_for_change": 20,
+    "ranking_writer_choices_recorded": 0,
+    "writer_task_results_required": 100,
+    "writer_task_results_recorded": 0,
+    "editor_time_seconds_recorded": 0,
+    "status": "NOT_MEASURED"
+  },
+  "exact_search_gate": {
+    "contract_version": "m6-1-quality-gates-v2",
+    "unexpected_result_count": 2,
+    "mismatched_queries": [
+      "끈",
+      "열"
+    ],
+    "status": "HOLD"
+  }
+}
