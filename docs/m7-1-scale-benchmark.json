@@ -1,0 +1,2026 @@
+{
+  "contract_version": "canonical-validation-benchmark-v5",
+  "runner_wiring": "same-process-shared-context-with-real-corpus-phases-and-level-continuation",
+  "synthetic_record_shape": {
+    "strategy": "cycle the real canonical record/sense/search-form/relation shape, then replace IDs and all lexical strings with deterministic synthetic values",
+    "text_policy": "preserve per-field Unicode codepoint lengths and record structure; do not copy canonical lemmas, glosses, notes, or IDs into synthetic JSONL",
+    "canonical_template_profile": {
+      "record_count": 5042,
+      "sense_count": 5301,
+      "relation_count": 487,
+      "search_form_count": 5298,
+      "record_roles": {
+        "start": 5000,
+        "reference-only": 42
+      },
+      "record_types": {
+        "entry": 3888,
+        "expression": 1154
+      },
+      "senses_per_record": {
+        "1": 4796,
+        "2": 234,
+        "3": 11,
+        "4": 1
+      },
+      "search_forms_per_record": {
+        "1": 4789,
+        "2": 250,
+        "3": 3
+      },
+      "parts_of_speech": {
+        "adjective": 314,
+        "verb": 667,
+        "noun": 3140,
+        "expression": 1176,
+        "adverb": 4
+      },
+      "relation_types": {
+        "mood": 81,
+        "near": 111,
+        "sensory": 96,
+        "association": 47,
+        "direct": 22,
+        "scene": 44,
+        "action": 35,
+        "antonym": 51
+      },
+      "records_with_relations": 336,
+      "start_records_with_non_lemma_search_forms": 248,
+      "non_lemma_search_form_count": 251,
+      "average_lemma_codepoints": 4.47,
+      "average_gloss_codepoints": 30.28
+    }
+  },
+  "benchmark_setup": "synthetic JSONL generation and synthetic authored-decision construction are fixture preparation; the product, package, and SQLite WASM runtime measurements run on temporary synthetic builds",
+  "runtime_environment": {
+    "measured_at_utc": "2026-09-26T11:57:13.992Z",
+    "source_revision": "c1ff6385c517f896d79aff69b89245b85936b830",
+    "node_version": "v24.19.0",
+    "sqlite_node_version": "3.53.3",
+    "platform": "darwin",
+    "os_release": "25.6.0",
+    "architecture": "arm64",
+    "cpu_model": "Apple M1 Pro",
+    "logical_cpu_count": 8,
+    "total_memory_mb": 16384,
+    "node_exec_args": [
+      "--max-old-space-size=8192"
+    ]
+  },
+  "release_performance_baseline": {
+    "data_kind": "real-current-canonical",
+    "input_record_count": 5042,
+    "input_bytes": 1444036,
+    "input_preparation_ms": 65.88,
+    "semantic_audit_ms": 365.66,
+    "normalization_ms": 154.44,
+    "sqlite_build_ms": 140.4,
+    "canonical_to_sqlite_wall_clock_ms": 726.38,
+    "database_counts": {
+      "records": 5042,
+      "senses": 5301,
+      "search_forms": 5298,
+      "relations": 487,
+      "generated_surface_forms": 3264
+    },
+    "product_and_runtime": {
+      "elapsed_ms": 1025.53,
+      "shared_database_validation_ms": 26.09,
+      "product_build_ms": 519.12,
+      "package_build_ms": 342.87,
+      "runtime_measurement_ms": 137.45,
+      "shared_sqlite_sha256": "0d9768e343bde28c1ec7ba81583c06584aa7b09fd6a0272ce3335d3c62ec2a3b",
+      "product_dictionary_sha256": "0d9768e343bde28c1ec7ba81583c06584aa7b09fd6a0272ce3335d3c62ec2a3b",
+      "package": {
+        "raw_package_bytes": 4908675,
+        "zip_package_bytes": 2420746,
+        "zip_entry_count": 31,
+        "dictionary_bytes": 2281472,
+        "dictionary_compressed_bytes": 820841,
+        "dictionary_raw_package_share_percent": 46.48,
+        "dictionary_zip_package_share_percent": 33.91,
+        "synthetic_canonical_jsonl_excluded": true,
+        "package_is_temporary_benchmark_output": true
+      },
+      "sqlite_wasm_runtime": {
+        "contract_version": "sqlite-wasm-runtime-benchmark-v2",
+        "sqlite_wasm_version": "3.53.0",
+        "database": {
+          "file_bytes": 2281472,
+          "page_size_bytes": 4096,
+          "page_count": 557,
+          "index_count": 14,
+          "index_bytes": 1044480,
+          "index_pages": [
+            {
+              "name": "idx_generated_surface_forms_form",
+              "bytes": 69632
+            },
+            {
+              "name": "idx_records_lemma",
+              "bytes": 118784
+            },
+            {
+              "name": "idx_relations_source_position",
+              "bytes": 12288
+            },
+            {
+              "name": "idx_relations_target",
+              "bytes": 16384
+            },
+            {
+              "name": "idx_search_forms_form",
+              "bytes": 122880
+            },
+            {
+              "name": "idx_senses_record_position",
+              "bytes": 86016
+            },
+            {
+              "name": "sqlite_autoindex_generated_surface_forms_1",
+              "bytes": 118784
+            },
+            {
+              "name": "sqlite_autoindex_metadata_1",
+              "bytes": 4096
+            },
+            {
+              "name": "sqlite_autoindex_records_1",
+              "bytes": 77824
+            },
+            {
+              "name": "sqlite_autoindex_relations_1",
+              "bytes": 12288
+            },
+            {
+              "name": "sqlite_autoindex_search_forms_1",
+              "bytes": 86016
+            },
+            {
+              "name": "sqlite_autoindex_senses_1",
+              "bytes": 98304
+            },
+            {
+              "name": "sqlite_autoindex_senses_2",
+              "bytes": 135168
+            },
+            {
+              "name": "sqlite_autoindex_senses_3",
+              "bytes": 86016
+            }
+          ],
+          "object_pages": [
+            {
+              "name": "generated_surface_forms",
+              "bytes": 204800
+            },
+            {
+              "name": "idx_generated_surface_forms_form",
+              "bytes": 69632
+            },
+            {
+              "name": "idx_records_lemma",
+              "bytes": 118784
+            },
+            {
+              "name": "idx_relations_source_position",
+              "bytes": 12288
+            },
+            {
+              "name": "idx_relations_target",
+              "bytes": 16384
+            },
+            {
+              "name": "idx_search_forms_form",
+              "bytes": 122880
+            },
+            {
+              "name": "idx_senses_record_position",
+              "bytes": 86016
+            },
+            {
+              "name": "metadata",
+              "bytes": 4096
+            },
+            {
+              "name": "records",
+              "bytes": 229376
+            },
+            {
+              "name": "relations",
+              "bytes": 77824
+            },
+            {
+              "name": "search_forms",
+              "bytes": 143360
+            },
+            {
+              "name": "senses",
+              "bytes": 573440
+            },
+            {
+              "name": "sqlite_autoindex_generated_surface_forms_1",
+              "bytes": 118784
+            },
+            {
+              "name": "sqlite_autoindex_metadata_1",
+              "bytes": 4096
+            },
+            {
+              "name": "sqlite_autoindex_records_1",
+              "bytes": 77824
+            },
+            {
+              "name": "sqlite_autoindex_relations_1",
+              "bytes": 12288
+            },
+            {
+              "name": "sqlite_autoindex_search_forms_1",
+              "bytes": 86016
+            },
+            {
+              "name": "sqlite_autoindex_senses_1",
+              "bytes": 98304
+            },
+            {
+              "name": "sqlite_autoindex_senses_2",
+              "bytes": 135168
+            },
+            {
+              "name": "sqlite_autoindex_senses_3",
+              "bytes": 86016
+            },
+            {
+              "name": "sqlite_schema",
+              "bytes": 4096
+            }
+          ]
+        },
+        "database_lifecycle": {
+          "max_live_databases": 1,
+          "events": [
+            "cold_open",
+            "cold_close",
+            "warm_open",
+            "warm_close"
+          ]
+        },
+        "startup": {
+          "wasm_module_init_ms": 15.04,
+          "database_file_read_ms": 0.57,
+          "first_database_open_ms": 15.66,
+          "first_ready_ms": 31.27,
+          "warm_database_reopen_ms": 0.57,
+          "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
+        },
+        "query_paths": [
+          {
+            "category": "exact-lemma",
+            "first_query_ms": 1.9,
+            "repeated_query": {
+              "sample_count": 40,
+              "median_ms": 0.23,
+              "p95_ms": 0.58,
+              "max_ms": 0.96
+            },
+            "result_count": 1,
+            "result_match_fields": [
+              "lemma"
+            ]
+          },
+          {
+            "category": "search-form",
+            "first_query_ms": 0.23,
+            "repeated_query": {
+              "sample_count": 40,
+              "median_ms": 0.2,
+              "p95_ms": 0.41,
+              "max_ms": 0.49
+            },
+            "result_count": 1,
+            "result_match_fields": [
+              "search-form"
+            ]
+          },
+          {
+            "category": "generated-surface-form",
+            "first_query_ms": 0.33,
+            "repeated_query": {
+              "sample_count": 40,
+              "median_ms": 0.15,
+              "p95_ms": 0.31,
+              "max_ms": 0.41
+            },
+            "result_count": 1,
+            "result_match_fields": [
+              "generated-surface-form"
+            ]
+          },
+          {
+            "category": "ambiguous-multi-sense",
+            "first_query_ms": 0.27,
+            "repeated_query": {
+              "sample_count": 40,
+              "median_ms": 0.15,
+              "p95_ms": 0.18,
+              "max_ms": 0.27
+            },
+            "result_count": 1,
+            "result_match_fields": [
+              "lemma"
+            ],
+            "ambiguous_sense_count": 2,
+            "ambiguous_record_load": {
+              "sample_count": 40,
+              "median_ms": 0.13,
+              "p95_ms": 0.27,
+              "max_ms": 0.41
+            }
+          }
+        ],
+        "memory": {
+          "scope": "benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter; only one live database instance at a time",
+          "phase_snapshots": [
+            {
+              "phase": "before_wasm_init",
+              "rss_mb": 51.7,
+              "heap_used_mb": 5.17,
+              "external_mb": 1.96,
+              "array_buffers_mb": 0.13
+            },
+            {
+              "phase": "after_wasm_init",
+              "rss_mb": 63.75,
+              "heap_used_mb": 7.05,
+              "external_mb": 9.98,
+              "array_buffers_mb": 0.13
+            },
+            {
+              "phase": "after_database_read",
+              "rss_mb": 65.98,
+              "heap_used_mb": 7.08,
+              "external_mb": 12.16,
+              "array_buffers_mb": 2.31
+            },
+            {
+              "phase": "after_first_database_open",
+              "rss_mb": 86.31,
+              "heap_used_mb": 7.94,
+              "external_mb": 12.34,
+              "array_buffers_mb": 2.32
+            },
+            {
+              "phase": "after_queries",
+              "rss_mb": 118.36,
+              "heap_used_mb": 8.97,
+              "external_mb": 12.33,
+              "array_buffers_mb": 2.32
+            },
+            {
+              "phase": "after_cold_database_close",
+              "rss_mb": 118.38,
+              "heap_used_mb": 9.01,
+              "external_mb": 12.33,
+              "array_buffers_mb": 2.32
+            },
+            {
+              "phase": "after_warm_database_open",
+              "rss_mb": 118.41,
+              "heap_used_mb": 9.14,
+              "external_mb": 12.33,
+              "array_buffers_mb": 2.32
+            },
+            {
+              "phase": "after_warm_database_close",
+              "rss_mb": 118.41,
+              "heap_used_mb": 9.38,
+              "external_mb": 12.33,
+              "array_buffers_mb": 2.32
+            }
+          ],
+          "cold_load": {
+            "peak_rss_mb": 118.48,
+            "steady_state_rss_mb": 118.36,
+            "after_close_rss_mb": 118.38
+          },
+          "warm_reopen": {
+            "baseline_rss_mb": 118.38,
+            "after_open_rss_mb": 118.41,
+            "open_ms": 0.57,
+            "after_close_rss_mb": 118.41
+          },
+          "peak_observed_rss_mb": 118.41,
+          "process_max_rss_mb": 118.48
+        }
+      }
+    }
+  },
+  "sqlite_scales": [
+    100000,
+    500000,
+    1000000
+  ],
+  "corpus_cost_wiring": {
+    "fast": "real session load/index plus semantic audit/topic evidence/lexical quality/full dataset validation/normalization and one shared SQLite build; fixture generation is excluded",
+    "normal": "shared SQLite validation plus product extension consumer",
+    "deep": "two independent SQLite rebuilds and byte-level reproducibility checks"
+  },
+  "fixed_level_evidence": {
+    "contract_version": "ci-level-evidence-v1",
+    "source_head": "c87c3013e3ccd7bd9160912ddca1632f1c4ddfa8",
+    "source_runs": {
+      "fast": "35690480989",
+      "normal": "35690480989",
+      "deep": "35690502805"
+    },
+    "source_urls": {
+      "fast": "https://github.com/neverworkalone/typewriter/actions/runs/35690480989",
+      "normal": "https://github.com/neverworkalone/typewriter/actions/runs/35690480989",
+      "deep": "https://github.com/neverworkalone/typewriter/actions/runs/35690502805"
+    },
+    "measurement": "fast and normal fixed remainders derive from exact-head PR level wall-clock minus the current-canonical corpus baseline; deep uses the exact-head ci:all non-benchmark window minus the current-canonical deep corpus baseline; remainder upper bounds are rounded up to the next millisecond",
+    "levels": {
+      "fast": {
+        "observed_wall_clock_ms": 14632.84,
+        "corpus_baseline_wall_clock_ms": 178.65,
+        "fixed_remainder_observed_wall_clock_ms": 14454.19,
+        "fixed_remainder_upper_bound_ms": 14455
+      },
+      "normal": {
+        "observed_wall_clock_ms": 69784.76,
+        "corpus_baseline_wall_clock_ms": 612.92,
+        "fixed_remainder_observed_wall_clock_ms": 69171.84,
+        "fixed_remainder_upper_bound_ms": 69172
+      },
+      "deep": {
+        "observed_wall_clock_ms": 182810.68,
+        "corpus_baseline_wall_clock_ms": 731.73,
+        "fixed_remainder_observed_wall_clock_ms": 182078.95,
+        "fixed_remainder_upper_bound_ms": 182079
+      }
+    }
+  },
+  "results": [
+    {
+      "scale": 100000,
+      "failure_stage": null,
+      "error": null,
+      "sqlite_build_count": 3,
+      "corpus_cost": {
+        "fast": {
+          "runner_category_order": [
+            "canonical",
+            "lexical",
+            "toolchain"
+          ],
+          "wall_clock_ms": 6350.12,
+          "canonical_context": "loaded, indexed, and globally validated once",
+          "sqlite_build_count": 1,
+          "corpus_phases": [
+            "load_and_index",
+            "buildCanonicalSemanticAudit",
+            "buildSemanticTopicEvidence",
+            "auditCanonicalLexicalQuality",
+            "validateDatasetRecords",
+            "normalizeCanonicalDirectory",
+            "buildDictionary"
+          ]
+        },
+        "normal": {
+          "runner_category_order": [
+            "canonical",
+            "lexical",
+            "toolchain",
+            "batch",
+            "product",
+            "artifacts"
+          ],
+          "wall_clock_ms": 9096.65,
+          "continuation_ms": 2746.45,
+          "shared_sqlite_artifact_reused": true,
+          "product_dictionary_digest_matches": true,
+          "sqlite_build_count": 0,
+          "corpus_phases": [
+            "validateSharedDictionary",
+            "product_extension_consumer",
+            "release_zip_package_measurement",
+            "sqlite_wasm_open_and_query_measurement"
+          ]
+        },
+        "deep": {
+          "runner_category_order": [
+            "historical",
+            "deep"
+          ],
+          "wall_clock_ms": 12594.15,
+          "continuation_ms": 3497.48,
+          "independent_sqlite_build_count": 2,
+          "reproducible": true,
+          "corpus_phases": [
+            "independent_buildDictionary_1",
+            "independent_buildDictionary_2",
+            "byte_identical_digest_check"
+          ]
+        }
+      },
+      "generate_ms": 537,
+      "load_and_index_ms": 910.35,
+      "synthetic_decision_source_ms": 424.73,
+      "semantic_audit_ms": 2865.49,
+      "topic_evidence_ms": 206.16,
+      "lexical_quality_ms": 707.97,
+      "global_validation_ms": 40.51,
+      "validator_result_count": {
+        "record_count": 100000,
+        "sense_count": 105080,
+        "relation_count": 9278,
+        "indexed_record_count": 100000,
+        "indexed_relation_count": 9278,
+        "blocking_finding_count": 0
+      },
+      "synthetic_workload_shape": {
+        "template_record_count": 5042,
+        "record_count": 100000,
+        "sense_count": 105080,
+        "relation_count": 9278,
+        "search_form_count": 105044,
+        "record_roles": {
+          "start": 99202,
+          "reference-only": 798
+        },
+        "record_types": {
+          "entry": 76957,
+          "expression": 23043
+        },
+        "senses_per_record": {
+          "1": 95172,
+          "2": 4595,
+          "3": 214,
+          "4": 19
+        },
+        "search_forms_per_record": {
+          "1": 95013,
+          "2": 4930,
+          "3": 57
+        },
+        "parts_of_speech": {
+          "adjective": 6163,
+          "verb": 13205,
+          "noun": 62160,
+          "expression": 23472,
+          "adverb": 80
+        },
+        "relation_types": {
+          "mood": 1544,
+          "near": 2116,
+          "sensory": 1827,
+          "association": 895,
+          "direct": 420,
+          "scene": 838,
+          "action": 669,
+          "antonym": 969
+        },
+        "records_with_relations": 6409,
+        "start_records_with_non_lemma_search_forms": 4892,
+        "non_lemma_search_form_count": 4949,
+        "average_lemma_codepoints": 4.23,
+        "average_gloss_codepoints": 30.34,
+        "generated_surface_form_count": 70340
+      },
+      "metrics": {
+        "canonical_load_count": 1,
+        "canonical_parse_count": 1,
+        "canonical_file_count": 1,
+        "canonical_index_build_count": 1,
+        "canonical_record_scan_count": 1,
+        "relation_index_build_count": 1,
+        "sqlite_build_count": 3,
+        "canonical_context_serialize_count": 0,
+        "canonical_context_deserialize_count": 0,
+        "canonical_context_rehydrate_count": 0,
+        "surface_form_projection_build_count": 1
+      },
+      "context_transport": {
+        "mode": "same-process-shared-context",
+        "serialize_count": 0,
+        "deserialize_count": 0,
+        "rehydrate_count": 0
+      },
+      "normalize_ms": 45.33,
+      "sqlite_build_ms": 1930.97,
+      "product_performance": {
+        "elapsed_ms": 2746.42,
+        "shared_database_validation_ms": 522.61,
+        "product_build_ms": 444.14,
+        "package_build_ms": 1557.11,
+        "runtime_measurement_ms": 222.55,
+        "shared_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+        "product_dictionary_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+        "package": {
+          "raw_package_bytes": 54036099,
+          "zip_package_bytes": 14049659,
+          "zip_entry_count": 31,
+          "dictionary_bytes": 51408896,
+          "dictionary_compressed_bytes": 12449754,
+          "dictionary_raw_package_share_percent": 95.14,
+          "dictionary_zip_package_share_percent": 88.61,
+          "synthetic_canonical_jsonl_excluded": true,
+          "package_is_temporary_benchmark_output": true
+        },
+        "sqlite_wasm_runtime": {
+          "contract_version": "sqlite-wasm-runtime-benchmark-v2",
+          "sqlite_wasm_version": "3.53.0",
+          "database": {
+            "file_bytes": 51408896,
+            "page_size_bytes": 4096,
+            "page_count": 12551,
+            "index_count": 14,
+            "index_bytes": 24399872,
+            "index_pages": [
+              {
+                "name": "idx_generated_surface_forms_form",
+                "bytes": 1527808
+              },
+              {
+                "name": "idx_records_lemma",
+                "bytes": 2326528
+              },
+              {
+                "name": "idx_relations_source_position",
+                "bytes": 217088
+              },
+              {
+                "name": "idx_relations_target",
+                "bytes": 299008
+              },
+              {
+                "name": "idx_search_forms_form",
+                "bytes": 2441216
+              },
+              {
+                "name": "idx_senses_record_position",
+                "bytes": 2134016
+              },
+              {
+                "name": "sqlite_autoindex_generated_surface_forms_1",
+                "bytes": 3211264
+              },
+              {
+                "name": "sqlite_autoindex_metadata_1",
+                "bytes": 4096
+              },
+              {
+                "name": "sqlite_autoindex_records_1",
+                "bytes": 1916928
+              },
+              {
+                "name": "sqlite_autoindex_relations_1",
+                "bytes": 217088
+              },
+              {
+                "name": "sqlite_autoindex_search_forms_1",
+                "bytes": 2134016
+              },
+              {
+                "name": "sqlite_autoindex_senses_1",
+                "bytes": 2371584
+              },
+              {
+                "name": "sqlite_autoindex_senses_2",
+                "bytes": 3465216
+              },
+              {
+                "name": "sqlite_autoindex_senses_3",
+                "bytes": 2134016
+              }
+            ],
+            "object_pages": [
+              {
+                "name": "generated_surface_forms",
+                "bytes": 4829184
+              },
+              {
+                "name": "idx_generated_surface_forms_form",
+                "bytes": 1527808
+              },
+              {
+                "name": "idx_records_lemma",
+                "bytes": 2326528
+              },
+              {
+                "name": "idx_relations_source_position",
+                "bytes": 217088
+              },
+              {
+                "name": "idx_relations_target",
+                "bytes": 299008
+              },
+              {
+                "name": "idx_search_forms_form",
+                "bytes": 2441216
+              },
+              {
+                "name": "idx_senses_record_position",
+                "bytes": 2134016
+              },
+              {
+                "name": "metadata",
+                "bytes": 4096
+              },
+              {
+                "name": "records",
+                "bytes": 5181440
+              },
+              {
+                "name": "relations",
+                "bytes": 1564672
+              },
+              {
+                "name": "search_forms",
+                "bytes": 3174400
+              },
+              {
+                "name": "senses",
+                "bytes": 12251136
+              },
+              {
+                "name": "sqlite_autoindex_generated_surface_forms_1",
+                "bytes": 3211264
+              },
+              {
+                "name": "sqlite_autoindex_metadata_1",
+                "bytes": 4096
+              },
+              {
+                "name": "sqlite_autoindex_records_1",
+                "bytes": 1916928
+              },
+              {
+                "name": "sqlite_autoindex_relations_1",
+                "bytes": 217088
+              },
+              {
+                "name": "sqlite_autoindex_search_forms_1",
+                "bytes": 2134016
+              },
+              {
+                "name": "sqlite_autoindex_senses_1",
+                "bytes": 2371584
+              },
+              {
+                "name": "sqlite_autoindex_senses_2",
+                "bytes": 3465216
+              },
+              {
+                "name": "sqlite_autoindex_senses_3",
+                "bytes": 2134016
+              },
+              {
+                "name": "sqlite_schema",
+                "bytes": 4096
+              }
+            ]
+          },
+          "database_lifecycle": {
+            "max_live_databases": 1,
+            "events": [
+              "cold_open",
+              "cold_close",
+              "warm_open",
+              "warm_close"
+            ]
+          },
+          "startup": {
+            "wasm_module_init_ms": 14.08,
+            "database_file_read_ms": 9.44,
+            "first_database_open_ms": 22.27,
+            "first_ready_ms": 45.79,
+            "warm_database_reopen_ms": 2.39,
+            "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
+          },
+          "query_paths": [
+            {
+              "category": "exact-lemma",
+              "first_query_ms": 1.98,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.22,
+                "p95_ms": 0.51,
+                "max_ms": 0.62
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "lemma"
+              ]
+            },
+            {
+              "category": "search-form",
+              "first_query_ms": 0.22,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.17,
+                "p95_ms": 0.34,
+                "max_ms": 0.59
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "search-form"
+              ]
+            },
+            {
+              "category": "generated-surface-form",
+              "first_query_ms": 0.4,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.16,
+                "p95_ms": 0.26,
+                "max_ms": 0.66
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "generated-surface-form"
+              ]
+            },
+            {
+              "category": "ambiguous-multi-sense",
+              "first_query_ms": 0.19,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.15,
+                "p95_ms": 0.17,
+                "max_ms": 0.37
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "lemma"
+              ],
+              "ambiguous_sense_count": 2,
+              "ambiguous_record_load": {
+                "sample_count": 40,
+                "median_ms": 0.14,
+                "p95_ms": 0.24,
+                "max_ms": 0.4
+              }
+            }
+          ],
+          "memory": {
+            "scope": "benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter; only one live database instance at a time",
+            "phase_snapshots": [
+              {
+                "phase": "before_wasm_init",
+                "rss_mb": 51.67,
+                "heap_used_mb": 5.16,
+                "external_mb": 1.96,
+                "array_buffers_mb": 0.13
+              },
+              {
+                "phase": "after_wasm_init",
+                "rss_mb": 61.59,
+                "heap_used_mb": 7.03,
+                "external_mb": 9.98,
+                "array_buffers_mb": 0.13
+              },
+              {
+                "phase": "after_database_read",
+                "rss_mb": 110.84,
+                "heap_used_mb": 7.15,
+                "external_mb": 59.03,
+                "array_buffers_mb": 49.18
+              },
+              {
+                "phase": "after_first_database_open",
+                "rss_mb": 177.45,
+                "heap_used_mb": 6.71,
+                "external_mb": 111.06,
+                "array_buffers_mb": 49.17
+              },
+              {
+                "phase": "after_queries",
+                "rss_mb": 215.19,
+                "heap_used_mb": 9.16,
+                "external_mb": 123.06,
+                "array_buffers_mb": 49.17
+              },
+              {
+                "phase": "after_cold_database_close",
+                "rss_mb": 215.27,
+                "heap_used_mb": 9.21,
+                "external_mb": 123.06,
+                "array_buffers_mb": 49.17
+              },
+              {
+                "phase": "after_warm_database_open",
+                "rss_mb": 215.28,
+                "heap_used_mb": 9.43,
+                "external_mb": 123.06,
+                "array_buffers_mb": 49.17
+              },
+              {
+                "phase": "after_warm_database_close",
+                "rss_mb": 215.28,
+                "heap_used_mb": 9.44,
+                "external_mb": 123.06,
+                "array_buffers_mb": 49.17
+              }
+            ],
+            "cold_load": {
+              "peak_rss_mb": 215.19,
+              "steady_state_rss_mb": 215.19,
+              "after_close_rss_mb": 215.27
+            },
+            "warm_reopen": {
+              "baseline_rss_mb": 215.27,
+              "after_open_rss_mb": 215.28,
+              "open_ms": 2.39,
+              "after_close_rss_mb": 215.28
+            },
+            "peak_observed_rss_mb": 215.28,
+            "process_max_rss_mb": 215.31
+          }
+        }
+      },
+      "shared_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "product_dictionary_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "reproducible_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "reproducible_second_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "composed_ci_levels": {
+        "fast": {
+          "fixed_level_observed_ms": 14632.84,
+          "fixed_remainder_observed_ms": 14454.19,
+          "fixed_remainder_upper_bound_ms": 14455,
+          "fixed_remainder_source_corpus_baseline_ms": 178.65,
+          "corpus_component_ms": 6350.12,
+          "conservative_upper_bound_ms": 20805.12,
+          "target_wall_clock_ms": 60000,
+          "within_target": true
+        },
+        "normal": {
+          "fixed_level_observed_ms": 69784.76,
+          "fixed_remainder_observed_ms": 69171.84,
+          "fixed_remainder_upper_bound_ms": 69172,
+          "fixed_remainder_source_corpus_baseline_ms": 612.92,
+          "corpus_component_ms": 9096.65,
+          "conservative_upper_bound_ms": 78268.65,
+          "target_wall_clock_ms": 180000,
+          "within_target": true
+        },
+        "deep": {
+          "fixed_level_observed_ms": 182810.68,
+          "fixed_remainder_observed_ms": 182078.95,
+          "fixed_remainder_upper_bound_ms": 182079,
+          "fixed_remainder_source_corpus_baseline_ms": 731.73,
+          "corpus_component_ms": 12594.15,
+          "conservative_upper_bound_ms": 194673.15,
+          "target_wall_clock_ms": 600000,
+          "within_target": true
+        }
+      },
+      "wall_clock_ms": 13556.09,
+      "peak_memory": {
+        "rss_mb": 1237.36,
+        "heap_used_mb": 809.3
+      }
+    },
+    {
+      "scale": 500000,
+      "failure_stage": null,
+      "error": null,
+      "sqlite_build_count": 3,
+      "corpus_cost": {
+        "fast": {
+          "runner_category_order": [
+            "canonical",
+            "lexical",
+            "toolchain"
+          ],
+          "wall_clock_ms": 32418.73,
+          "canonical_context": "loaded, indexed, and globally validated once",
+          "sqlite_build_count": 1,
+          "corpus_phases": [
+            "load_and_index",
+            "buildCanonicalSemanticAudit",
+            "buildSemanticTopicEvidence",
+            "auditCanonicalLexicalQuality",
+            "validateDatasetRecords",
+            "normalizeCanonicalDirectory",
+            "buildDictionary"
+          ]
+        },
+        "normal": {
+          "runner_category_order": [
+            "canonical",
+            "lexical",
+            "toolchain",
+            "batch",
+            "product",
+            "artifacts"
+          ],
+          "wall_clock_ms": 51151.41,
+          "continuation_ms": 18732.66,
+          "shared_sqlite_artifact_reused": true,
+          "product_dictionary_digest_matches": true,
+          "sqlite_build_count": 0,
+          "corpus_phases": [
+            "validateSharedDictionary",
+            "product_extension_consumer",
+            "release_zip_package_measurement",
+            "sqlite_wasm_open_and_query_measurement"
+          ]
+        },
+        "deep": {
+          "runner_category_order": [
+            "historical",
+            "deep"
+          ],
+          "wall_clock_ms": 67930.62,
+          "continuation_ms": 16779.13,
+          "independent_sqlite_build_count": 2,
+          "reproducible": true,
+          "corpus_phases": [
+            "independent_buildDictionary_1",
+            "independent_buildDictionary_2",
+            "byte_identical_digest_check"
+          ]
+        }
+      },
+      "generate_ms": 2639.82,
+      "load_and_index_ms": 3987.47,
+      "synthetic_decision_source_ms": 1721.79,
+      "semantic_audit_ms": 14104.44,
+      "topic_evidence_ms": 1021.05,
+      "lexical_quality_ms": 3997.94,
+      "global_validation_ms": 207.96,
+      "validator_result_count": {
+        "record_count": 500000,
+        "sense_count": 525800,
+        "relation_count": 48238,
+        "indexed_record_count": 500000,
+        "indexed_relation_count": 48238,
+        "blocking_finding_count": 0
+      },
+      "synthetic_workload_shape": {
+        "template_record_count": 5042,
+        "record_count": 500000,
+        "sense_count": 525800,
+        "relation_count": 48238,
+        "search_form_count": 525524,
+        "record_roles": {
+          "start": 495842,
+          "reference-only": 4158
+        },
+        "record_types": {
+          "entry": 385718,
+          "expression": 114282
+        },
+        "senses_per_record": {
+          "1": 475492,
+          "2": 23315,
+          "3": 1094,
+          "4": 99
+        },
+        "search_forms_per_record": {
+          "1": 474773,
+          "2": 24930,
+          "3": 297
+        },
+        "parts_of_speech": {
+          "adjective": 31283,
+          "verb": 66242,
+          "noun": 311408,
+          "expression": 116471,
+          "adverb": 396
+        },
+        "relation_types": {
+          "mood": 8024,
+          "near": 10996,
+          "sensory": 9507,
+          "association": 4655,
+          "direct": 2180,
+          "scene": 4358,
+          "action": 3469,
+          "antonym": 5049
+        },
+        "records_with_relations": 33289,
+        "start_records_with_non_lemma_search_forms": 24732,
+        "non_lemma_search_form_count": 25029,
+        "average_lemma_codepoints": 4.23,
+        "average_gloss_codepoints": 30.26,
+        "generated_surface_form_count": 353768
+      },
+      "metrics": {
+        "canonical_load_count": 1,
+        "canonical_parse_count": 1,
+        "canonical_file_count": 1,
+        "canonical_index_build_count": 1,
+        "canonical_record_scan_count": 1,
+        "relation_index_build_count": 1,
+        "sqlite_build_count": 3,
+        "canonical_context_serialize_count": 0,
+        "canonical_context_deserialize_count": 0,
+        "canonical_context_rehydrate_count": 0,
+        "surface_form_projection_build_count": 1
+      },
+      "context_transport": {
+        "mode": "same-process-shared-context",
+        "serialize_count": 0,
+        "deserialize_count": 0,
+        "rehydrate_count": 0
+      },
+      "normalize_ms": 300.92,
+      "sqlite_build_ms": 10163.71,
+      "product_performance": {
+        "elapsed_ms": 18732.61,
+        "shared_database_validation_ms": 6053.92,
+        "product_build_ms": 4938.7,
+        "package_build_ms": 7057.13,
+        "runtime_measurement_ms": 682.86,
+        "shared_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+        "product_dictionary_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+        "package": {
+          "raw_package_bytes": 261768835,
+          "zip_package_bytes": 64130222,
+          "zip_entry_count": 31,
+          "dictionary_bytes": 259141632,
+          "dictionary_compressed_bytes": 62530317,
+          "dictionary_raw_package_share_percent": 99,
+          "dictionary_zip_package_share_percent": 97.51,
+          "synthetic_canonical_jsonl_excluded": true,
+          "package_is_temporary_benchmark_output": true
+        },
+        "sqlite_wasm_runtime": {
+          "contract_version": "sqlite-wasm-runtime-benchmark-v2",
+          "sqlite_wasm_version": "3.53.0",
+          "database": {
+            "file_bytes": 259141632,
+            "page_size_bytes": 4096,
+            "page_count": 63267,
+            "index_count": 14,
+            "index_bytes": 123551744,
+            "index_pages": [
+              {
+                "name": "idx_generated_surface_forms_form",
+                "bytes": 7819264
+              },
+              {
+                "name": "idx_records_lemma",
+                "bytes": 11735040
+              },
+              {
+                "name": "idx_relations_source_position",
+                "bytes": 1126400
+              },
+              {
+                "name": "idx_relations_target",
+                "bytes": 1552384
+              },
+              {
+                "name": "idx_search_forms_form",
+                "bytes": 12251136
+              },
+              {
+                "name": "idx_senses_record_position",
+                "bytes": 10801152
+              },
+              {
+                "name": "sqlite_autoindex_generated_surface_forms_1",
+                "bytes": 16310272
+              },
+              {
+                "name": "sqlite_autoindex_metadata_1",
+                "bytes": 4096
+              },
+              {
+                "name": "sqlite_autoindex_records_1",
+                "bytes": 9728000
+              },
+              {
+                "name": "sqlite_autoindex_relations_1",
+                "bytes": 1126400
+              },
+              {
+                "name": "sqlite_autoindex_search_forms_1",
+                "bytes": 10797056
+              },
+              {
+                "name": "sqlite_autoindex_senses_1",
+                "bytes": 12009472
+              },
+              {
+                "name": "sqlite_autoindex_senses_2",
+                "bytes": 17489920
+              },
+              {
+                "name": "sqlite_autoindex_senses_3",
+                "bytes": 10801152
+              }
+            ],
+            "object_pages": [
+              {
+                "name": "generated_surface_forms",
+                "bytes": 24342528
+              },
+              {
+                "name": "idx_generated_surface_forms_form",
+                "bytes": 7819264
+              },
+              {
+                "name": "idx_records_lemma",
+                "bytes": 11735040
+              },
+              {
+                "name": "idx_relations_source_position",
+                "bytes": 1126400
+              },
+              {
+                "name": "idx_relations_target",
+                "bytes": 1552384
+              },
+              {
+                "name": "idx_search_forms_form",
+                "bytes": 12251136
+              },
+              {
+                "name": "idx_senses_record_position",
+                "bytes": 10801152
+              },
+              {
+                "name": "metadata",
+                "bytes": 4096
+              },
+              {
+                "name": "records",
+                "bytes": 25960448
+              },
+              {
+                "name": "relations",
+                "bytes": 8138752
+              },
+              {
+                "name": "search_forms",
+                "bytes": 15912960
+              },
+              {
+                "name": "senses",
+                "bytes": 61227008
+              },
+              {
+                "name": "sqlite_autoindex_generated_surface_forms_1",
+                "bytes": 16310272
+              },
+              {
+                "name": "sqlite_autoindex_metadata_1",
+                "bytes": 4096
+              },
+              {
+                "name": "sqlite_autoindex_records_1",
+                "bytes": 9728000
+              },
+              {
+                "name": "sqlite_autoindex_relations_1",
+                "bytes": 1126400
+              },
+              {
+                "name": "sqlite_autoindex_search_forms_1",
+                "bytes": 10797056
+              },
+              {
+                "name": "sqlite_autoindex_senses_1",
+                "bytes": 12009472
+              },
+              {
+                "name": "sqlite_autoindex_senses_2",
+                "bytes": 17489920
+              },
+              {
+                "name": "sqlite_autoindex_senses_3",
+                "bytes": 10801152
+              },
+              {
+                "name": "sqlite_schema",
+                "bytes": 4096
+              }
+            ]
+          },
+          "database_lifecycle": {
+            "max_live_databases": 1,
+            "events": [
+              "cold_open",
+              "cold_close",
+              "warm_open",
+              "warm_close"
+            ]
+          },
+          "startup": {
+            "wasm_module_init_ms": 13.67,
+            "database_file_read_ms": 44.54,
+            "first_database_open_ms": 48.38,
+            "first_ready_ms": 106.59,
+            "warm_database_reopen_ms": 7.06,
+            "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
+          },
+          "query_paths": [
+            {
+              "category": "exact-lemma",
+              "first_query_ms": 1.89,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.21,
+                "p95_ms": 0.36,
+                "max_ms": 1.54
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "lemma"
+              ]
+            },
+            {
+              "category": "search-form",
+              "first_query_ms": 0.19,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.18,
+                "p95_ms": 0.36,
+                "max_ms": 0.43
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "search-form"
+              ]
+            },
+            {
+              "category": "generated-surface-form",
+              "first_query_ms": 0.33,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.15,
+                "p95_ms": 0.27,
+                "max_ms": 0.45
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "generated-surface-form"
+              ]
+            },
+            {
+              "category": "ambiguous-multi-sense",
+              "first_query_ms": 0.18,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.14,
+                "p95_ms": 0.18,
+                "max_ms": 0.33
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "lemma"
+              ],
+              "ambiguous_sense_count": 2,
+              "ambiguous_record_load": {
+                "sample_count": 40,
+                "median_ms": 0.13,
+                "p95_ms": 0.17,
+                "max_ms": 0.44
+              }
+            }
+          ],
+          "memory": {
+            "scope": "benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter; only one live database instance at a time",
+            "phase_snapshots": [
+              {
+                "phase": "before_wasm_init",
+                "rss_mb": 51.77,
+                "heap_used_mb": 5.16,
+                "external_mb": 1.96,
+                "array_buffers_mb": 0.13
+              },
+              {
+                "phase": "after_wasm_init",
+                "rss_mb": 61.52,
+                "heap_used_mb": 7.03,
+                "external_mb": 9.98,
+                "array_buffers_mb": 0.13
+              },
+              {
+                "phase": "after_database_read",
+                "rss_mb": 309.7,
+                "heap_used_mb": 6.62,
+                "external_mb": 257.21,
+                "array_buffers_mb": 247.37
+              },
+              {
+                "phase": "after_first_database_open",
+                "rss_mb": 574.3,
+                "heap_used_mb": 7.5,
+                "external_mb": 547.02,
+                "array_buffers_mb": 247.37
+              },
+              {
+                "phase": "after_queries",
+                "rss_mb": 612.7,
+                "heap_used_mb": 9.18,
+                "external_mb": 546.92,
+                "array_buffers_mb": 247.28
+              },
+              {
+                "phase": "after_cold_database_close",
+                "rss_mb": 612.8,
+                "heap_used_mb": 9.22,
+                "external_mb": 546.92,
+                "array_buffers_mb": 247.28
+              },
+              {
+                "phase": "after_warm_database_open",
+                "rss_mb": 612.81,
+                "heap_used_mb": 9.43,
+                "external_mb": 546.92,
+                "array_buffers_mb": 247.28
+              },
+              {
+                "phase": "after_warm_database_close",
+                "rss_mb": 612.81,
+                "heap_used_mb": 9.81,
+                "external_mb": 546.92,
+                "array_buffers_mb": 247.28
+              }
+            ],
+            "cold_load": {
+              "peak_rss_mb": 612.7,
+              "steady_state_rss_mb": 612.7,
+              "after_close_rss_mb": 612.8
+            },
+            "warm_reopen": {
+              "baseline_rss_mb": 612.8,
+              "after_open_rss_mb": 612.81,
+              "open_ms": 7.06,
+              "after_close_rss_mb": 612.81
+            },
+            "peak_observed_rss_mb": 612.81,
+            "process_max_rss_mb": 612.81
+          }
+        }
+      },
+      "shared_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "product_dictionary_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "reproducible_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "reproducible_second_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "composed_ci_levels": {
+        "fast": {
+          "fixed_level_observed_ms": 14632.84,
+          "fixed_remainder_observed_ms": 14454.19,
+          "fixed_remainder_upper_bound_ms": 14455,
+          "fixed_remainder_source_corpus_baseline_ms": 178.65,
+          "corpus_component_ms": 32418.73,
+          "conservative_upper_bound_ms": 46873.73,
+          "target_wall_clock_ms": 60000,
+          "within_target": true
+        },
+        "normal": {
+          "fixed_level_observed_ms": 69784.76,
+          "fixed_remainder_observed_ms": 69171.84,
+          "fixed_remainder_upper_bound_ms": 69172,
+          "fixed_remainder_source_corpus_baseline_ms": 612.92,
+          "corpus_component_ms": 51151.41,
+          "conservative_upper_bound_ms": 120323.41,
+          "target_wall_clock_ms": 180000,
+          "within_target": true
+        },
+        "deep": {
+          "fixed_level_observed_ms": 182810.68,
+          "fixed_remainder_observed_ms": 182078.95,
+          "fixed_remainder_upper_bound_ms": 182079,
+          "fixed_remainder_source_corpus_baseline_ms": 731.73,
+          "corpus_component_ms": 67930.62,
+          "conservative_upper_bound_ms": 250009.62,
+          "target_wall_clock_ms": 600000,
+          "within_target": true
+        }
+      },
+      "wall_clock_ms": 72292.43,
+      "peak_memory": {
+        "rss_mb": 4267.39,
+        "heap_used_mb": 4319.98
+      }
+    },
+    {
+      "scale": 1000000,
+      "failure_stage": null,
+      "error": null,
+      "sqlite_build_count": 3,
+      "corpus_cost": {
+        "fast": {
+          "runner_category_order": [
+            "canonical",
+            "lexical",
+            "toolchain"
+          ],
+          "wall_clock_ms": 94449.81,
+          "canonical_context": "loaded, indexed, and globally validated once",
+          "sqlite_build_count": 1,
+          "corpus_phases": [
+            "load_and_index",
+            "buildCanonicalSemanticAudit",
+            "buildSemanticTopicEvidence",
+            "auditCanonicalLexicalQuality",
+            "validateDatasetRecords",
+            "normalizeCanonicalDirectory",
+            "buildDictionary"
+          ]
+        },
+        "normal": {
+          "runner_category_order": [
+            "canonical",
+            "lexical",
+            "toolchain",
+            "batch",
+            "product",
+            "artifacts"
+          ],
+          "wall_clock_ms": 191098.45,
+          "continuation_ms": 96648.53,
+          "shared_sqlite_artifact_reused": true,
+          "product_dictionary_digest_matches": true,
+          "sqlite_build_count": 0,
+          "corpus_phases": [
+            "validateSharedDictionary",
+            "product_extension_consumer",
+            "release_zip_package_measurement",
+            "sqlite_wasm_open_and_query_measurement"
+          ]
+        },
+        "deep": {
+          "runner_category_order": [
+            "historical",
+            "deep"
+          ],
+          "wall_clock_ms": 305111.21,
+          "continuation_ms": 114012.65,
+          "independent_sqlite_build_count": 2,
+          "reproducible": true,
+          "corpus_phases": [
+            "independent_buildDictionary_1",
+            "independent_buildDictionary_2",
+            "byte_identical_digest_check"
+          ]
+        }
+      },
+      "generate_ms": 6450.98,
+      "load_and_index_ms": 9203.07,
+      "synthetic_decision_source_ms": 4024.34,
+      "semantic_audit_ms": 39826.63,
+      "topic_evidence_ms": 3531.94,
+      "lexical_quality_ms": 16643.4,
+      "global_validation_ms": 509.95,
+      "validator_result_count": {
+        "record_count": 1000000,
+        "sense_count": 1051441,
+        "relation_count": 96451,
+        "indexed_record_count": 1000000,
+        "indexed_relation_count": 96451,
+        "blocking_finding_count": 0
+      },
+      "synthetic_workload_shape": {
+        "template_record_count": 5042,
+        "record_count": 1000000,
+        "sense_count": 1051441,
+        "relation_count": 96451,
+        "search_form_count": 1050868,
+        "record_roles": {
+          "start": 991684,
+          "reference-only": 8316
+        },
+        "record_types": {
+          "entry": 771400,
+          "expression": 228600
+        },
+        "senses_per_record": {
+          "1": 951138,
+          "2": 46481,
+          "3": 2183,
+          "4": 198
+        },
+        "search_forms_per_record": {
+          "1": 949726,
+          "2": 49680,
+          "3": 594
+        },
+        "parts_of_speech": {
+          "adjective": 62369,
+          "verb": 132275,
+          "noun": 623036,
+          "expression": 232967,
+          "adverb": 794
+        },
+        "relation_types": {
+          "mood": 16043,
+          "near": 21985,
+          "sensory": 19011,
+          "association": 9308,
+          "direct": 4358,
+          "scene": 8714,
+          "action": 6934,
+          "antonym": 10098
+        },
+        "records_with_relations": 66553,
+        "start_records_with_non_lemma_search_forms": 49284,
+        "non_lemma_search_form_count": 49878,
+        "average_lemma_codepoints": 4.23,
+        "average_gloss_codepoints": 30.3,
+        "generated_surface_form_count": 706109
+      },
+      "metrics": {
+        "canonical_load_count": 1,
+        "canonical_parse_count": 1,
+        "canonical_file_count": 1,
+        "canonical_index_build_count": 1,
+        "canonical_record_scan_count": 1,
+        "relation_index_build_count": 1,
+        "sqlite_build_count": 3,
+        "canonical_context_serialize_count": 0,
+        "canonical_context_deserialize_count": 0,
+        "canonical_context_rehydrate_count": 0,
+        "surface_form_projection_build_count": 1
+      },
+      "context_transport": {
+        "mode": "same-process-shared-context",
+        "serialize_count": 0,
+        "deserialize_count": 0,
+        "rehydrate_count": 0
+      },
+      "normalize_ms": 785.54,
+      "sqlite_build_ms": 27204.46,
+      "product_performance": {
+        "elapsed_ms": 96648.43,
+        "shared_database_validation_ms": 47468.74,
+        "product_build_ms": 32483.22,
+        "package_build_ms": 14190.33,
+        "runtime_measurement_ms": 2506.14,
+        "shared_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+        "product_dictionary_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+        "package": {
+          "raw_package_bytes": 521250435,
+          "zip_package_bytes": 126732519,
+          "zip_entry_count": 31,
+          "dictionary_bytes": 518623232,
+          "dictionary_compressed_bytes": 125132614,
+          "dictionary_raw_package_share_percent": 99.5,
+          "dictionary_zip_package_share_percent": 98.74,
+          "synthetic_canonical_jsonl_excluded": true,
+          "package_is_temporary_benchmark_output": true
+        },
+        "sqlite_wasm_runtime": {
+          "contract_version": "sqlite-wasm-runtime-benchmark-v2",
+          "sqlite_wasm_version": "3.53.0",
+          "database": {
+            "file_bytes": 518623232,
+            "page_size_bytes": 4096,
+            "page_count": 126617,
+            "index_count": 14,
+            "index_bytes": 247431168,
+            "index_pages": [
+              {
+                "name": "idx_generated_surface_forms_form",
+                "bytes": 15634432
+              },
+              {
+                "name": "idx_records_lemma",
+                "bytes": 23490560
+              },
+              {
+                "name": "idx_relations_source_position",
+                "bytes": 2289664
+              },
+              {
+                "name": "idx_relations_target",
+                "bytes": 3133440
+              },
+              {
+                "name": "idx_search_forms_form",
+                "bytes": 24555520
+              },
+              {
+                "name": "idx_senses_record_position",
+                "bytes": 21626880
+              },
+              {
+                "name": "sqlite_autoindex_generated_surface_forms_1",
+                "bytes": 32600064
+              },
+              {
+                "name": "sqlite_autoindex_metadata_1",
+                "bytes": 4096
+              },
+              {
+                "name": "sqlite_autoindex_records_1",
+                "bytes": 19492864
+              },
+              {
+                "name": "sqlite_autoindex_relations_1",
+                "bytes": 2289664
+              },
+              {
+                "name": "sqlite_autoindex_search_forms_1",
+                "bytes": 21622784
+              },
+              {
+                "name": "sqlite_autoindex_senses_1",
+                "bytes": 24051712
+              },
+              {
+                "name": "sqlite_autoindex_senses_2",
+                "bytes": 35012608
+              },
+              {
+                "name": "sqlite_autoindex_senses_3",
+                "bytes": 21626880
+              }
+            ],
+            "object_pages": [
+              {
+                "name": "generated_surface_forms",
+                "bytes": 48599040
+              },
+              {
+                "name": "idx_generated_surface_forms_form",
+                "bytes": 15634432
+              },
+              {
+                "name": "idx_records_lemma",
+                "bytes": 23490560
+              },
+              {
+                "name": "idx_relations_source_position",
+                "bytes": 2289664
+              },
+              {
+                "name": "idx_relations_target",
+                "bytes": 3133440
+              },
+              {
+                "name": "idx_search_forms_form",
+                "bytes": 24555520
+              },
+              {
+                "name": "idx_senses_record_position",
+                "bytes": 21626880
+              },
+              {
+                "name": "metadata",
+                "bytes": 4096
+              },
+              {
+                "name": "records",
+                "bytes": 51933184
+              },
+              {
+                "name": "relations",
+                "bytes": 16269312
+              },
+              {
+                "name": "search_forms",
+                "bytes": 31834112
+              },
+              {
+                "name": "senses",
+                "bytes": 122548224
+              },
+              {
+                "name": "sqlite_autoindex_generated_surface_forms_1",
+                "bytes": 32600064
+              },
+              {
+                "name": "sqlite_autoindex_metadata_1",
+                "bytes": 4096
+              },
+              {
+                "name": "sqlite_autoindex_records_1",
+                "bytes": 19492864
+              },
+              {
+                "name": "sqlite_autoindex_relations_1",
+                "bytes": 2289664
+              },
+              {
+                "name": "sqlite_autoindex_search_forms_1",
+                "bytes": 21622784
+              },
+              {
+                "name": "sqlite_autoindex_senses_1",
+                "bytes": 24051712
+              },
+              {
+                "name": "sqlite_autoindex_senses_2",
+                "bytes": 35012608
+              },
+              {
+                "name": "sqlite_autoindex_senses_3",
+                "bytes": 21626880
+              },
+              {
+                "name": "sqlite_schema",
+                "bytes": 4096
+              }
+            ]
+          },
+          "database_lifecycle": {
+            "max_live_databases": 1,
+            "events": [
+              "cold_open",
+              "cold_close",
+              "warm_open",
+              "warm_close"
+            ]
+          },
+          "startup": {
+            "wasm_module_init_ms": 15.5,
+            "database_file_read_ms": 229.22,
+            "first_database_open_ms": 353.74,
+            "first_ready_ms": 598.46,
+            "warm_database_reopen_ms": 26.75,
+            "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
+          },
+          "query_paths": [
+            {
+              "category": "exact-lemma",
+              "first_query_ms": 1.71,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.22,
+                "p95_ms": 0.33,
+                "max_ms": 0.72
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "lemma"
+              ]
+            },
+            {
+              "category": "search-form",
+              "first_query_ms": 0.19,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.17,
+                "p95_ms": 0.32,
+                "max_ms": 0.42
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "search-form"
+              ]
+            },
+            {
+              "category": "generated-surface-form",
+              "first_query_ms": 0.33,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.15,
+                "p95_ms": 0.18,
+                "max_ms": 0.59
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "generated-surface-form"
+              ]
+            },
+            {
+              "category": "ambiguous-multi-sense",
+              "first_query_ms": 0.19,
+              "repeated_query": {
+                "sample_count": 40,
+                "median_ms": 0.15,
+                "p95_ms": 0.17,
+                "max_ms": 0.37
+              },
+              "result_count": 1,
+              "result_match_fields": [
+                "lemma"
+              ],
+              "ambiguous_sense_count": 2,
+              "ambiguous_record_load": {
+                "sample_count": 40,
+                "median_ms": 0.13,
+                "p95_ms": 0.21,
+                "max_ms": 0.35
+              }
+            }
+          ],
+          "memory": {
+            "scope": "benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter; only one live database instance at a time",
+            "phase_snapshots": [
+              {
+                "phase": "before_wasm_init",
+                "rss_mb": 51.83,
+                "heap_used_mb": 5.14,
+                "external_mb": 1.96,
+                "array_buffers_mb": 0.13
+              },
+              {
+                "phase": "after_wasm_init",
+                "rss_mb": 61.89,
+                "heap_used_mb": 7.02,
+                "external_mb": 9.98,
+                "array_buffers_mb": 0.13
+              },
+              {
+                "phase": "after_database_read",
+                "rss_mb": 346.52,
+                "heap_used_mb": 7.11,
+                "external_mb": 504.77,
+                "array_buffers_mb": 494.93
+              },
+              {
+                "phase": "after_first_database_open",
+                "rss_mb": 855.45,
+                "heap_used_mb": 6.71,
+                "external_mb": 1088.38,
+                "array_buffers_mb": 494.74
+              },
+              {
+                "phase": "after_queries",
+                "rss_mb": 1105.53,
+                "heap_used_mb": 9.12,
+                "external_mb": 1088.38,
+                "array_buffers_mb": 494.74
+              },
+              {
+                "phase": "after_cold_database_close",
+                "rss_mb": 1105.56,
+                "heap_used_mb": 9.16,
+                "external_mb": 1088.38,
+                "array_buffers_mb": 494.74
+              },
+              {
+                "phase": "after_warm_database_open",
+                "rss_mb": 1105.59,
+                "heap_used_mb": 9.48,
+                "external_mb": 1088.38,
+                "array_buffers_mb": 494.74
+              },
+              {
+                "phase": "after_warm_database_close",
+                "rss_mb": 1105.59,
+                "heap_used_mb": 10.19,
+                "external_mb": 1088.38,
+                "array_buffers_mb": 494.74
+              }
+            ],
+            "cold_load": {
+              "peak_rss_mb": 1105.53,
+              "steady_state_rss_mb": 1105.53,
+              "after_close_rss_mb": 1105.56
+            },
+            "warm_reopen": {
+              "baseline_rss_mb": 1105.56,
+              "after_open_rss_mb": 1105.59,
+              "open_ms": 26.75,
+              "after_close_rss_mb": 1105.59
+            },
+            "peak_observed_rss_mb": 1105.59,
+            "process_max_rss_mb": 1105.59
+          }
+        }
+      },
+      "shared_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "product_dictionary_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "reproducible_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "reproducible_second_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "composed_ci_levels": {
+        "fast": {
+          "fixed_level_observed_ms": 14632.84,
+          "fixed_remainder_observed_ms": 14454.19,
+          "fixed_remainder_upper_bound_ms": 14455,
+          "fixed_remainder_source_corpus_baseline_ms": 178.65,
+          "corpus_component_ms": 94449.81,
+          "conservative_upper_bound_ms": 108904.81,
+          "target_wall_clock_ms": 60000,
+          "within_target": false
+        },
+        "normal": {
+          "fixed_level_observed_ms": 69784.76,
+          "fixed_remainder_observed_ms": 69171.84,
+          "fixed_remainder_upper_bound_ms": 69172,
+          "fixed_remainder_source_corpus_baseline_ms": 612.92,
+          "corpus_component_ms": 191098.45,
+          "conservative_upper_bound_ms": 260270.45,
+          "target_wall_clock_ms": 180000,
+          "within_target": false
+        },
+        "deep": {
+          "fixed_level_observed_ms": 182810.68,
+          "fixed_remainder_observed_ms": 182078.95,
+          "fixed_remainder_upper_bound_ms": 182079,
+          "fixed_remainder_source_corpus_baseline_ms": 731.73,
+          "corpus_component_ms": 305111.21,
+          "conservative_upper_bound_ms": 487190.21,
+          "target_wall_clock_ms": 600000,
+          "within_target": true
+        }
+      },
+      "wall_clock_ms": 315587.56,
+      "peak_memory": {
+        "rss_mb": 6506.44,
+        "heap_used_mb": 6739.61
+      }
+    }
+  ]
+}

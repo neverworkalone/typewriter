@@ -75,6 +75,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/protocol.js', '// fixture protocol\n'],
       ['runtime/query-adapter.js', '// fixture adapter\n'],
       ['runtime/search-query.js', '// fixture search\n'],
+      ['runtime/sqlite-query.js', '// fixture SQLite adapter\n'],
       ['runtime/vendor/sqlite3.mjs', '// fixture sqlite loader\n'],
       ['runtime/vendor/sqlite3.wasm', Buffer.from([0x00, 0x61, 0x73, 0x6d])],
       ['Apache-2.0.txt', readFileSync(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), 'utf8')],

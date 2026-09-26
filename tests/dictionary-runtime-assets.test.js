@@ -8,17 +8,18 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 
 describe('product dictionary runtime assets', () => {
   it('keeps the worker independent from Node-only query helpers', async () => {
-    const workerSource = await readFile(
-      path.join(repositoryRoot, 'src/runtime/dictionary-worker.mjs'),
-      'utf8',
-    );
+    const [workerSource, querySource] = await Promise.all([
+      readFile(path.join(repositoryRoot, 'src/runtime/dictionary-worker.mjs'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'src/runtime/sqlite-query.js'), 'utf8'),
+    ]);
 
     expect(workerSource).not.toContain('node:sqlite');
     expect(workerSource).not.toContain('scripts/build/query');
     expect(workerSource).toContain("import sqlite3InitModule from './vendor/sqlite3.mjs'");
-    expect(workerSource).toContain("from './search-query.js'");
-    expect(workerSource).toContain('generated_surface_forms');
-    expect(workerSource).toContain('createSearchResponseFromRows');
+    expect(workerSource).toContain("from './sqlite-query.js'");
+    expect(querySource).toContain("from './search-query.js'");
+    expect(querySource).toContain('generated_surface_forms');
+    expect(querySource).toContain('createSearchResponseFromRows');
     expect(workerSource).toContain("new URL('../dictionary.sqlite', self.location.href)");
     expect(workerSource).toContain('PRAGMA query_only = ON');
     expect(workerSource).toContain('writeBlocked');
@@ -44,6 +45,7 @@ describe('product dictionary runtime assets', () => {
     expect(runtimePlugin).toContain("src/runtime/protocol.js");
     expect(runtimePlugin).toContain("src/runtime/query-adapter.js");
     expect(runtimePlugin).toContain("src/runtime/search-query.js");
+    expect(runtimePlugin).toContain("src/runtime/sqlite-query.js");
     expect(runtimePlugin).toContain("src/runtime/dictionary-worker.mjs");
     expect(runtimePlugin).toContain("node_modules/@sqlite.org/sqlite-wasm/dist");
     expect(runtimePlugin).toContain("path.join(runtimeDirectory, 'dictionary-worker.mjs')");
