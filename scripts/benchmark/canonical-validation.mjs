@@ -45,6 +45,8 @@ const execFile = promisify(execFileCallback);
 const SQLITE_RUNTIME_BENCHMARK_PATH = path.join(SCRIPT_DIRECTORY, 'sqlite-runtime.mjs');
 const SYNTHETIC_HANGUL_BASE = 0xac00;
 const SYNTHETIC_HANGUL_COUNT = 11172;
+const SYNTHETIC_CJK_BASE = 0x4e00;
+const SYNTHETIC_CJK_COUNT = 0x9fff - SYNTHETIC_CJK_BASE + 1;
 const RELEASE_PACKAGE_NOTICES = [
   'Apache-2.0.txt',
   'LICENSE.md',
@@ -94,12 +96,19 @@ function syntheticText(prefix, sourceText, uniqueIndex = undefined) {
     const lexicalCharacters = text
       .map((character, index) => (!/\s/u.test(character) ? index : -1))
       .filter((index) => index >= 0);
-    const firstCodepoint = Math.floor(uniqueIndex / SYNTHETIC_HANGUL_COUNT);
-    const secondCodepoint = uniqueIndex % SYNTHETIC_HANGUL_COUNT;
+    const wordEnds = [];
+    for (let index = 0; index < text.length; index += 1) {
+      if (/\s/u.test(text[index])) continue;
+      if (index === text.length - 1 || /\s/u.test(text[index + 1])) wordEnds.push(index);
+    }
+    for (const index of wordEnds) text[index] = '文';
+
+    const firstCodepoint = Math.floor(uniqueIndex / SYNTHETIC_CJK_COUNT);
+    const secondCodepoint = uniqueIndex % SYNTHETIC_CJK_COUNT;
     const firstIndex = lexicalCharacters[0] ?? 0;
-    text[firstIndex] = String.fromCodePoint(SYNTHETIC_HANGUL_BASE + firstCodepoint);
+    text[firstIndex] = String.fromCodePoint(SYNTHETIC_CJK_BASE + firstCodepoint);
     if (lexicalCharacters.length > 1) {
-      text[lexicalCharacters[1]] = String.fromCodePoint(SYNTHETIC_HANGUL_BASE + secondCodepoint);
+      text[lexicalCharacters[1]] = String.fromCodePoint(SYNTHETIC_CJK_BASE + secondCodepoint);
     }
   }
   return text.join('');

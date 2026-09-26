@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSyntheticBenchmarkRecord } from '../scripts/benchmark/canonical-validation.mjs';
+import { findAmbiguousParticleFragments } from '../scripts/validate/lexical-quality.mjs';
 
 const templates = [
   {
@@ -91,5 +92,6 @@ test('synthetic multi-sense glosses retain whitespace and remain mechanically di
     assert.equal([...sense.gloss].length, [...multiSenseTemplates[0].senses[index].gloss].length);
     assert.equal(sense.gloss.split(/\s+/u).length, multiSenseTemplates[0].senses[index].gloss.split(/\s+/u).length);
     assert.equal(sense.gloss.includes('원본'), false);
+    assert.deepEqual(findAmbiguousParticleFragments(sense.gloss), []);
   }
 });
