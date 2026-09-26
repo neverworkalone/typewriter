@@ -4,9 +4,14 @@
 
 **HOLD.** The M6-1 sampling contract has been applied to the issue-start 5K
 canonical snapshot, and the selected cases are reproducible. The editorial
-benchmark is not complete: no independent case judgments or writer-task
-outcomes were available. The fixed M6-1 contract requires two independent
-judgments for each selected case and 100 tasks completed by 10 writers. Its
+benchmark is not complete: 242 canonical review cases require 484 independent
+judgments, no writer-choice outcomes were recorded for the separate ambiguous
+query ranking sample, and no writer-task outcomes were available. Under the
+fixed M6-1 contract, the 162 relation tuples and 80 relation-gap records are
+canonical review cases; the 40 ambiguous queries are ranking cases, not
+additional canonical cases. M6-1 requires writer-choice results across at
+least 20 ambiguous exact-query tasks before a ranking change. The separate
+writer-task plan requires 100 tasks completed by 10 writers. Its
 exact-reachability gate also records two unexpected runtime results (`끈`,
 `열`). No judgments or writer outcomes are inferred or fabricated here.
 
@@ -80,15 +85,21 @@ use pattern A and five use pattern B, for 30 direct-replacement, 20 sense-choice
 15 expression-exploration, 25 relation-exploration, and 10 no-data/policy
 boundary tasks. Recruitment, filled slots, and recorded outcomes are all zero.
 
+The fixed independent-judgment protocol applies to 242 canonical cases
+(162 relation tuples plus 80 relation-gap records), requiring 484 judgments.
+The 40 ambiguous-query cases use the separate ranking protocol: no writer-choice
+outcomes are recorded; at least 20 such tasks are required to evaluate a ranking
+change. These two evidence families are not combined.
+
 ## Findings by quality dimension
 
 | Dimension | Evidence and status |
 | --- | --- |
 | Direct substitutability | **Not measured.** The full 22-tuple direct sample is selected; the required 44 independent judgments are absent. |
 | Other relation usefulness and type honesty | **Not measured.** The seven per-type samples are selected (20 each); the required 280 independent judgments are absent. No type is treated as passing based on tuple counts. |
-| Relation gaps | **Coverage measured; impact not measured.** The 80 selected empty records still need independent dispositions as honest emptiness or a harmful gap. No density target is applied. |
+| Relation gaps | **Coverage measured; impact not measured.** The 80 selected empty records still need two independent dispositions each (160 judgments total) as honest emptiness or a harmful gap. No density target is applied. |
 | Search reachability and boundaries | **HOLD.** All 5,251 canonical exact keys return their expected start IDs, with zero missing keys, unsupported keys, or reference-only leaks. The current runtime also returns two extra records: `w1081` for `끈` (expected `w2969`) and `w192` for `열` (expected `w110`). The frozen M6-1 v2 gate requires zero unexpected results. The M4 regression corpus has 10/10 baseline cases matching expectations; two existing cases remain pending. |
-| Ranking and order usefulness | **Not measured.** The 40-query sample is selected, but no writer-preferred candidate outcomes are recorded. The population includes 336 within-record sense choices and two cross-record exact-query collisions. |
+| Ranking and order usefulness | **Not measured.** The 40-query sample is selected; 0/40 writer-choice outcomes are recorded. M6-1 requires at least 20 ambiguous exact-query task outcomes to evaluate a ranking change. The population includes 336 within-record sense choices and two cross-record exact-query collisions. |
 | Writer-task usefulness | **Not measured.** The contract requires 100 outcomes from 10 writers; 0 were available. |
 | Vocabulary coverage | **Not established.** Expected exact keys resolve, but this does not show which words writers tried and could not find. No user telemetry is present in the repository, and no real writer-task failures were observed. |
 
@@ -127,20 +138,23 @@ gate described above.
 
 The bounded M6-5 evidence backlog is:
 
-1. Obtain two independent judgments for each of the 162 relation tuples, 80
-   relation-empty records, and 40 ambiguous-query cases; adjudicate every
-   disagreement before counting outcomes.
-2. Recruit 10 writers and complete the preallocated 100-task pattern without
+1. Obtain two independent judgments for each of the 162 relation tuples and 80
+   relation-empty records (484 judgments total); adjudicate every disagreement
+   before counting outcomes.
+2. Collect writer-choice outcomes for the selected ambiguous-query ranking
+   sample separately. Preserve the M6-1 minimum of 20 outcomes before evaluating
+   any ranking change.
+3. Recruit 10 writers and complete the preallocated 100-task pattern without
    replacing a task after seeing its outcome. Keep original sentences and raw
    query context out of Git.
-3. Use those results to classify any corrections by root cause and rank only
+4. Use those results to classify any corrections by root cause and rank only
    evidence-backed work. The current audit authorizes no bulk relation filling
    and no ranking change.
-4. Resolve the two current search-result mismatches against the frozen
+5. Resolve the two current search-result mismatches against the frozen
    reachability gate before treating the search dimension as passing. Preserve
    the M6-1 v2 contract unless a separately versioned successor is approved
    before new evidence collection.
-5. Consider vocabulary coverage separately after real writer tasks expose
+6. Consider vocabulary coverage separately after real writer tasks expose
    concrete unmet needs. Current evidence does not show that 5K is insufficient.
 
 No 10K or post-M6-5 expansion is recommended from this evidence. Expansion
@@ -169,13 +183,18 @@ The following deterministic checks were run against the frozen M6-1 v2 contract:
 - `npm run baseline:m6-1` — reports the expected M6-1 v2 failure: two
   unexpected runtime results, for `끈` and `열`.
 - `npm run audit:m6-4` — all selected sample identities and source digests
-  reproduce across 282 selected cases; 0/564 independent judgments are present,
-  so the audit stays on HOLD. Its fixed-source boundary switches to historical
-  snapshot verification after issue-start inputs change.
+  reproduce across 282 selected units: 242 canonical review cases and 40
+  ambiguous queries. There are 0/484 independent canonical-case judgments,
+  0/40 writer-choice outcomes on the ranking sample, and 0/100 writer-task
+  outcomes, so the audit stays on HOLD. Its fixed-source boundary switches to
+  historical snapshot verification after issue-start inputs change.
 - `tests/m6-4-quality-audit.test.mjs` — valid sample comparison passes, while
   altered case identity, selection hash, source digest, decision status, and
-  pinned historical identity are rejected. Normal CI registers this test and
-  verifies the frozen sample bytes without launching the full audit CLI.
+  pinned historical identity are rejected; baseline/runtime changes block a
+  `--write` without invoking sample generation or modifying the frozen file.
+  The test also keeps canonical judgments separate from ranking choices.
+  Normal CI registers this test and verifies the frozen sample bytes without
+  launching the full audit CLI.
 - `npm run ci:normal` — all canonical, lexical, toolchain, batch, product, and
   artifact categories passed; artifact policy reported `workingTreeClean: true`.
 - `git diff --check`.

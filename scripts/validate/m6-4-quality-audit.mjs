@@ -44,7 +44,7 @@ const RUNTIME_PATHS = [
   'scripts/inflection/surface-form-projection.mjs',
 ];
 const DEFAULT_MODE = 'check';
-const FROZEN_SAMPLE_MANIFEST_SHA256 = 'a15aae2cccdd61e4bbe070800614f9e2f0e71d8d541e6002eddaf0d875589dbd';
+const FROZEN_SAMPLE_MANIFEST_SHA256 = 'afe42789a95fb5c06cf77ec36bc7904231d889da772c6348bd25adb8d625e9b8';
 export const M6_4_FROZEN_SOURCE_IDENTITY = Object.freeze({
   issue_start_commit: '4226a97f162b1f4a7401a74893c3d28018d33385',
   baseline_id: 'm6-1-5k-quality-baseline-v1',
@@ -130,11 +130,65 @@ export async function validateFrozenM6QualityAuditSnapshot({
     manifest,
     manifestBytes,
   });
+  assert.equal(manifest.review_status.ranking_evidence.selected_ambiguous_query_count,
+    manifest.frozen_sampling.ambiguous_queries.selected_count,
+    'M6-4 ranking evidence must cover the selected ambiguous-query sample');
   return {
     audit_id: manifest.audit_id,
     canonical_revision: manifest.source.canonical_revision,
     selected_canonical_case_count: manifest.review_status.selected_canonical_case_count,
+    selected_ambiguous_query_count: manifest.review_status.ranking_evidence.selected_ambiguous_query_count,
     decision: manifest.decision,
+  };
+}
+
+export async function writeM6QualityAuditManifest({
+  outputPath,
+  existingManifest,
+  currentSourceIdentity,
+  createManifest,
+}) {
+  if (existingManifest) {
+    assert.deepStrictEqual(
+      existingManifest.source,
+      currentSourceIdentity,
+      'Cannot rewrite the frozen M6-4 sample after any bound source input changes',
+    );
+  }
+
+  const manifest = await createManifest();
+  assert.deepStrictEqual(manifest.source, currentSourceIdentity,
+    'M6-4 sample output must bind the verified current source identity');
+  await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  return manifest;
+}
+
+export function makeM6QualityAuditReviewStatus({
+  relations,
+  relationGaps,
+  ambiguousQueries,
+}) {
+  const selectedCanonicalCaseCount = Object.values(relations)
+    .reduce((sum, sample) => sum + sample.selected_count, 0)
+    + relationGaps.selected_count;
+  const rankingGate = M6_1_QUALITY_GATES.dimensions.find(
+    ({ id }) => id === 'ranking-and-order-usefulness',
+  );
+  return {
+    selected_canonical_case_count: selectedCanonicalCaseCount,
+    independent_judgments_required_per_case:
+      M6_1_QUALITY_GATES.review_protocol.independent_reviewers_per_canonical_case,
+    independent_judgments_recorded: 0,
+    adjudication_complete: false,
+    ranking_evidence: {
+      selected_ambiguous_query_count: ambiguousQueries.selected_count,
+      minimum_writer_choice_task_count_for_ranking_change:
+        rankingGate.threshold.minimum_ambiguous_tasks,
+      writer_choice_task_count_recorded: 0,
+      status: 'NOT_MEASURED',
+    },
+    writer_task_results_required: 100,
+    writer_task_results_recorded: 0,
   };
 }
 
@@ -334,7 +388,28 @@ async function currentFileHashes() {
   ])));
 }
 
-async function buildManifest({ issueStartCommit, canonical, baseline, baselineSha256, runtimeFileSha256 }) {
+function makeSourceIdentity({
+  issueStartCommit,
+  canonical,
+  baseline,
+  baselineSha256,
+  runtimeFileSha256,
+  m6_3ReviewSha256,
+}) {
+  return {
+    issue_start_commit: issueStartCommit,
+    baseline_id: baseline.baseline_id,
+    baseline_contract_version: baseline.quality_gates.contract_version,
+    m6_1_baseline_sha256: baselineSha256,
+    canonical_revision: canonical.canonicalRevision,
+    canonical_file_count: canonical.fileCount,
+    m4_regression_fixture_sha256: baseline.metrics.search.regression_corpus.fixture_sha256,
+    m6_3_surface_form_review_sha256: m6_3ReviewSha256,
+    runtime_file_sha256: runtimeFileSha256,
+  };
+}
+
+async function buildManifest({ canonical, baseline, sourceIdentity }) {
   assert.equal(canonical.canonicalRevision, baseline.source.canonical_revision,
     'M6-4 keeps the M6-1 issue-start canonical revision fixed');
   assert.equal(canonical.fileCount, baseline.source.canonical_file_count);
@@ -365,27 +440,12 @@ async function buildManifest({ issueStartCommit, canonical, baseline, baselineSh
       actualRows,
       candidatePopulation,
     );
-    const reviewCaseCount = Object.values(relations)
-      .reduce((sum, sample) => sum + sample.selected_count, 0)
-      + relationGaps.selected_count
-      + ambiguousQueries.selected_count;
-    const reviewManifestBytes = await readFile(REVIEW_MANIFEST_PATH);
     return {
       schema_version: 1,
       audit_id: 'm6-4-writer-facing-quality-audit-v1',
       issue: 176,
       decision: 'HOLD',
-      source: {
-        issue_start_commit: issueStartCommit,
-        baseline_id: baseline.baseline_id,
-        baseline_contract_version: baseline.quality_gates.contract_version,
-        m6_1_baseline_sha256: baselineSha256,
-        canonical_revision: canonical.canonicalRevision,
-        canonical_file_count: canonical.fileCount,
-        m4_regression_fixture_sha256: baseline.metrics.search.regression_corpus.fixture_sha256,
-        m6_3_surface_form_review_sha256: sha256(reviewManifestBytes),
-        runtime_file_sha256: runtimeFileSha256,
-      },
+      source: sourceIdentity,
       frozen_sampling: {
         stable_seed: M6_1_QUALITY_GATES.sampling.stable_seed,
         stable_hash: M6_1_QUALITY_GATES.sampling.stable_hash,
@@ -394,14 +454,11 @@ async function buildManifest({ issueStartCommit, canonical, baseline, baselineSh
         ambiguous_queries: ambiguousQueries,
         writer_task_plan: writerTaskPlan(),
       },
-      review_status: {
-        selected_canonical_case_count: reviewCaseCount,
-        independent_judgments_required_per_case: 2,
-        independent_judgments_recorded: 0,
-        adjudication_complete: false,
-        writer_task_results_required: 100,
-        writer_task_results_recorded: 0,
-      },
+      review_status: makeM6QualityAuditReviewStatus({
+        relations,
+        relationGaps,
+        ambiguousQueries,
+      }),
       deterministic_checks: {
         exact_key_reachability: reachability,
         candidate_population: candidatePopulation,
@@ -455,6 +512,14 @@ async function main(argv = process.argv.slice(2)) {
   const baselineSha256 = sha256(await readFile(BASELINE_PATH));
   const runtimeFileSha256 = await currentFileHashes();
   const m6_3ReviewSha256 = sha256(await readFile(REVIEW_MANIFEST_PATH));
+  const sourceIdentity = makeSourceIdentity({
+    issueStartCommit,
+    canonical,
+    baseline,
+    baselineSha256,
+    runtimeFileSha256,
+    m6_3ReviewSha256,
+  });
 
   if (mode === 'check') {
     const verificationMode = determineM6QualityAuditVerificationMode({
@@ -480,28 +545,27 @@ async function main(argv = process.argv.slice(2)) {
     }
   }
 
-  const manifest = await buildManifest({
-    issueStartCommit,
-    canonical,
-    baseline,
-    baselineSha256,
-    runtimeFileSha256,
-  });
   if (mode === 'write') {
-    if (existing) {
-      assert.equal(existing.source.canonical_revision, manifest.source.canonical_revision,
-        'preserve the M6-4 issue-start sample when later canonical revisions exist');
-    }
-    await writeFile(OUTPUT_PATH, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    const manifest = await writeM6QualityAuditManifest({
+      outputPath: OUTPUT_PATH,
+      existingManifest: existing,
+      currentSourceIdentity: sourceIdentity,
+      createManifest: () => buildManifest({ canonical, baseline, sourceIdentity }),
+    });
     console.log(`Wrote M6-4 sample manifest for ${manifest.source.canonical_revision}.`);
     return;
   }
+
+  const manifest = await buildManifest({ canonical, baseline, sourceIdentity });
   assertM6QualityAuditManifestMatches(existing, manifest);
   console.log(
     `M6-4 sample manifest matches ${manifest.source.canonical_revision}: `
     + `${manifest.review_status.selected_canonical_case_count} canonical cases selected; `
     + `${manifest.review_status.independent_judgments_recorded}/`
-    + `${manifest.review_status.selected_canonical_case_count * 2} judgments recorded.`,
+    + `${manifest.review_status.selected_canonical_case_count * 2} independent judgments; `
+    + `${manifest.review_status.ranking_evidence.writer_choice_task_count_recorded}/`
+    + `${manifest.review_status.ranking_evidence.minimum_writer_choice_task_count_for_ranking_change} `
+    + 'minimum ranking writer-choice tasks recorded.',
   );
 }
 

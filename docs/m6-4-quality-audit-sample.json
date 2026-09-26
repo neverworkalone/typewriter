@@ -3010,10 +3010,16 @@
     }
   },
   "review_status": {
-    "selected_canonical_case_count": 282,
+    "selected_canonical_case_count": 242,
     "independent_judgments_required_per_case": 2,
     "independent_judgments_recorded": 0,
     "adjudication_complete": false,
+    "ranking_evidence": {
+      "selected_ambiguous_query_count": 40,
+      "minimum_writer_choice_task_count_for_ranking_change": 20,
+      "writer_choice_task_count_recorded": 0,
+      "status": "NOT_MEASURED"
+    },
     "writer_task_results_required": 100,
     "writer_task_results_recorded": 0
   },

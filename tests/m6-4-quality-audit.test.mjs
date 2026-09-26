@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   assertM6QualityAuditHistoricalSnapshot,
   assertM6QualityAuditManifestMatches,
   determineM6QualityAuditVerificationMode,
+  makeM6QualityAuditReviewStatus,
   M6_4_FROZEN_SOURCE_IDENTITY,
+  writeM6QualityAuditManifest,
 } from '../scripts/validate/m6-4-quality-audit.mjs';
 
 const digest = 'a'.repeat(64);
@@ -80,13 +85,43 @@ test('M6-4 manifest verifier accepts a valid build and rejects altered identity,
   }
 });
 
+test('M6-4 keeps canonical judgments separate from ambiguous-query writer choices', () => {
+  const status = makeM6QualityAuditReviewStatus({
+    relations: {
+      direct: { selected_count: 22 },
+      near: { selected_count: 20 },
+      mood: { selected_count: 20 },
+      scene: { selected_count: 20 },
+      sensory: { selected_count: 20 },
+      action: { selected_count: 20 },
+      association: { selected_count: 20 },
+      antonym: { selected_count: 20 },
+    },
+    relationGaps: { selected_count: 80 },
+    ambiguousQueries: { selected_count: 40 },
+  });
+
+  assert.equal(status.selected_canonical_case_count, 242);
+  assert.equal(status.independent_judgments_required_per_case, 2);
+  assert.equal(status.selected_canonical_case_count * status.independent_judgments_required_per_case, 484);
+  assert.deepEqual(status.ranking_evidence, {
+    selected_ambiguous_query_count: 40,
+    minimum_writer_choice_task_count_for_ranking_change: 20,
+    writer_choice_task_count_recorded: 0,
+    status: 'NOT_MEASURED',
+  });
+});
+
 test('M6-4 historical snapshot stays valid when current baseline inputs change and rejects tampering', () => {
   const manifest = {
     audit_id: 'm6-4-writer-facing-quality-audit-v1',
     issue: 176,
     decision: 'HOLD',
     source: structuredClone(M6_4_FROZEN_SOURCE_IDENTITY),
-    review_status: { selected_canonical_case_count: 282 },
+    review_status: {
+      selected_canonical_case_count: 242,
+      ranking_evidence: { selected_ambiguous_query_count: 40 },
+    },
   };
   const manifestBytes = Buffer.from(JSON.stringify(manifest));
   const expectedManifestSha256 = createHash('sha256').update(manifestBytes).digest('hex');
@@ -122,4 +157,59 @@ test('M6-4 historical snapshot stays valid when current baseline inputs change a
     manifestBytes: changedSourceBytes,
     expectedManifestSha256: createHash('sha256').update(changedSourceBytes).digest('hex'),
   }), /pinned issue-start source/);
+});
+
+test('M6-4 --write preserves the frozen file when baseline or runtime inputs change', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'm6-4-write-guard-'));
+  const outputPath = path.join(temporaryDirectory, 'sample.json');
+  const existingManifest = {
+    source: structuredClone(M6_4_FROZEN_SOURCE_IDENTITY),
+  };
+  const frozenBytes = Buffer.from(`${JSON.stringify(existingManifest, null, 2)}\n`);
+
+  try {
+    for (const [label, mutateSource] of [
+      ['baseline', (source) => { source.m6_1_baseline_sha256 = 'b'.repeat(64); }],
+      ['runtime', (source) => { source.runtime_file_sha256['scripts/build/query.mjs'] = 'b'.repeat(64); }],
+    ]) {
+      await writeFile(outputPath, frozenBytes);
+      const currentSourceIdentity = structuredClone(M6_4_FROZEN_SOURCE_IDENTITY);
+      mutateSource(currentSourceIdentity);
+      assert.equal(
+        currentSourceIdentity.canonical_revision,
+        existingManifest.source.canonical_revision,
+        `${label} fixture keeps canonical input unchanged`,
+      );
+      let createManifestCalls = 0;
+
+      await assert.rejects(writeM6QualityAuditManifest({
+        outputPath,
+        existingManifest,
+        currentSourceIdentity,
+        createManifest: async () => {
+          createManifestCalls += 1;
+          return { source: currentSourceIdentity };
+        },
+      }), /Cannot rewrite the frozen M6-4 sample/,
+      `${label} change must block a frozen sample rewrite`);
+
+      assert.equal(createManifestCalls, 0);
+      assert.deepEqual(await readFile(outputPath), frozenBytes);
+    }
+
+    const writableManifest = {
+      audit_id: 'm6-4-writer-facing-quality-audit-v1',
+      source: structuredClone(M6_4_FROZEN_SOURCE_IDENTITY),
+    };
+    const writtenManifest = await writeM6QualityAuditManifest({
+      outputPath,
+      existingManifest,
+      currentSourceIdentity: structuredClone(M6_4_FROZEN_SOURCE_IDENTITY),
+      createManifest: async () => writableManifest,
+    });
+    assert.deepEqual(writtenManifest, writableManifest);
+    assert.deepEqual(JSON.parse(await readFile(outputPath, 'utf8')), writableManifest);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });
