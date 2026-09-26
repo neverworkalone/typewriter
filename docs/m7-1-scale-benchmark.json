@@ -54,8 +54,8 @@
   },
   "benchmark_setup": "synthetic JSONL generation and synthetic authored-decision construction are fixture preparation; the product, package, and SQLite WASM runtime measurements run on temporary synthetic builds",
   "runtime_environment": {
-    "measured_at_utc": "2026-09-26T11:29:33.431Z",
-    "source_revision": "769710c655f5c44d86452e94acc5e46433c8929b",
+    "measured_at_utc": "2026-09-26T11:57:13.992Z",
+    "source_revision": "c1ff6385c517f896d79aff69b89245b85936b830",
     "node_version": "v24.19.0",
     "sqlite_node_version": "3.53.3",
     "platform": "darwin",
@@ -72,11 +72,11 @@
     "data_kind": "real-current-canonical",
     "input_record_count": 5042,
     "input_bytes": 1444036,
-    "input_preparation_ms": 68.7,
-    "semantic_audit_ms": 356.1,
-    "normalization_ms": 157.69,
-    "sqlite_build_ms": 134.68,
-    "canonical_to_sqlite_wall_clock_ms": 717.17,
+    "input_preparation_ms": 65.88,
+    "semantic_audit_ms": 365.66,
+    "normalization_ms": 154.44,
+    "sqlite_build_ms": 140.4,
+    "canonical_to_sqlite_wall_clock_ms": 726.38,
     "database_counts": {
       "records": 5042,
       "senses": 5301,
@@ -85,19 +85,19 @@
       "generated_surface_forms": 3264
     },
     "product_and_runtime": {
-      "elapsed_ms": 933.4,
-      "shared_database_validation_ms": 26.1,
-      "product_build_ms": 459.27,
-      "package_build_ms": 306.23,
-      "runtime_measurement_ms": 141.79,
-      "shared_sqlite_sha256": "82f4c71d028c51b69a29cbcdb198749ac2eb7f875766445885214df921452ea6",
-      "product_dictionary_sha256": "82f4c71d028c51b69a29cbcdb198749ac2eb7f875766445885214df921452ea6",
+      "elapsed_ms": 1025.53,
+      "shared_database_validation_ms": 26.09,
+      "product_build_ms": 519.12,
+      "package_build_ms": 342.87,
+      "runtime_measurement_ms": 137.45,
+      "shared_sqlite_sha256": "0d9768e343bde28c1ec7ba81583c06584aa7b09fd6a0272ce3335d3c62ec2a3b",
+      "product_dictionary_sha256": "0d9768e343bde28c1ec7ba81583c06584aa7b09fd6a0272ce3335d3c62ec2a3b",
       "package": {
         "raw_package_bytes": 4908675,
-        "zip_package_bytes": 2420734,
+        "zip_package_bytes": 2420746,
         "zip_entry_count": 31,
         "dictionary_bytes": 2281472,
-        "dictionary_compressed_bytes": 820829,
+        "dictionary_compressed_bytes": 820841,
         "dictionary_raw_package_share_percent": 46.48,
         "dictionary_zip_package_share_percent": 33.91,
         "synthetic_canonical_jsonl_excluded": true,
@@ -267,22 +267,22 @@
           ]
         },
         "startup": {
-          "wasm_module_init_ms": 13.93,
-          "database_file_read_ms": 0.77,
-          "first_database_open_ms": 15.6,
-          "first_ready_ms": 30.3,
-          "warm_database_reopen_ms": 0.66,
+          "wasm_module_init_ms": 15.04,
+          "database_file_read_ms": 0.57,
+          "first_database_open_ms": 15.66,
+          "first_ready_ms": 31.27,
+          "warm_database_reopen_ms": 0.57,
           "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
         },
         "query_paths": [
           {
             "category": "exact-lemma",
-            "first_query_ms": 3.07,
+            "first_query_ms": 1.9,
             "repeated_query": {
               "sample_count": 40,
-              "median_ms": 0.24,
-              "p95_ms": 0.51,
-              "max_ms": 0.94
+              "median_ms": 0.23,
+              "p95_ms": 0.58,
+              "max_ms": 0.96
             },
             "result_count": 1,
             "result_match_fields": [
@@ -291,12 +291,12 @@
           },
           {
             "category": "search-form",
-            "first_query_ms": 0.22,
+            "first_query_ms": 0.23,
             "repeated_query": {
               "sample_count": 40,
               "median_ms": 0.2,
-              "p95_ms": 0.39,
-              "max_ms": 1.57
+              "p95_ms": 0.41,
+              "max_ms": 0.49
             },
             "result_count": 1,
             "result_match_fields": [
@@ -308,9 +308,9 @@
             "first_query_ms": 0.33,
             "repeated_query": {
               "sample_count": 40,
-              "median_ms": 0.16,
-              "p95_ms": 0.44,
-              "max_ms": 1.25
+              "median_ms": 0.15,
+              "p95_ms": 0.31,
+              "max_ms": 0.41
             },
             "result_count": 1,
             "result_match_fields": [
@@ -319,12 +319,12 @@
           },
           {
             "category": "ambiguous-multi-sense",
-            "first_query_ms": 0.17,
+            "first_query_ms": 0.27,
             "repeated_query": {
               "sample_count": 40,
               "median_ms": 0.15,
-              "p95_ms": 0.28,
-              "max_ms": 0.45
+              "p95_ms": 0.18,
+              "max_ms": 0.27
             },
             "result_count": 1,
             "result_match_fields": [
@@ -334,8 +334,8 @@
             "ambiguous_record_load": {
               "sample_count": 40,
               "median_ms": 0.13,
-              "p95_ms": 0.32,
-              "max_ms": 0.73
+              "p95_ms": 0.27,
+              "max_ms": 0.41
             }
           }
         ],
@@ -344,74 +344,74 @@
           "phase_snapshots": [
             {
               "phase": "before_wasm_init",
-              "rss_mb": 51.89,
-              "heap_used_mb": 5.16,
+              "rss_mb": 51.7,
+              "heap_used_mb": 5.17,
               "external_mb": 1.96,
               "array_buffers_mb": 0.13
             },
             {
               "phase": "after_wasm_init",
-              "rss_mb": 61.64,
-              "heap_used_mb": 7.04,
+              "rss_mb": 63.75,
+              "heap_used_mb": 7.05,
               "external_mb": 9.98,
               "array_buffers_mb": 0.13
             },
             {
               "phase": "after_database_read",
-              "rss_mb": 63.89,
-              "heap_used_mb": 7.07,
+              "rss_mb": 65.98,
+              "heap_used_mb": 7.08,
               "external_mb": 12.16,
               "array_buffers_mb": 2.31
             },
             {
               "phase": "after_first_database_open",
-              "rss_mb": 85.63,
+              "rss_mb": 86.31,
               "heap_used_mb": 7.94,
               "external_mb": 12.34,
               "array_buffers_mb": 2.32
             },
             {
               "phase": "after_queries",
-              "rss_mb": 116.27,
-              "heap_used_mb": 8.3,
+              "rss_mb": 118.36,
+              "heap_used_mb": 8.97,
               "external_mb": 12.33,
-              "array_buffers_mb": 2.31
+              "array_buffers_mb": 2.32
             },
             {
               "phase": "after_cold_database_close",
-              "rss_mb": 116.27,
-              "heap_used_mb": 8.35,
+              "rss_mb": 118.38,
+              "heap_used_mb": 9.01,
               "external_mb": 12.33,
-              "array_buffers_mb": 2.31
+              "array_buffers_mb": 2.32
             },
             {
               "phase": "after_warm_database_open",
-              "rss_mb": 116.28,
-              "heap_used_mb": 8.54,
+              "rss_mb": 118.41,
+              "heap_used_mb": 9.14,
               "external_mb": 12.33,
-              "array_buffers_mb": 2.31
+              "array_buffers_mb": 2.32
             },
             {
               "phase": "after_warm_database_close",
-              "rss_mb": 116.28,
-              "heap_used_mb": 8.55,
+              "rss_mb": 118.41,
+              "heap_used_mb": 9.38,
               "external_mb": 12.33,
-              "array_buffers_mb": 2.31
+              "array_buffers_mb": 2.32
             }
           ],
           "cold_load": {
-            "peak_rss_mb": 116.27,
-            "steady_state_rss_mb": 116.27,
-            "after_close_rss_mb": 116.27
+            "peak_rss_mb": 118.48,
+            "steady_state_rss_mb": 118.36,
+            "after_close_rss_mb": 118.38
           },
           "warm_reopen": {
-            "baseline_rss_mb": 116.27,
-            "after_open_rss_mb": 116.28,
-            "open_ms": 0.66,
-            "after_close_rss_mb": 116.28
+            "baseline_rss_mb": 118.38,
+            "after_open_rss_mb": 118.41,
+            "open_ms": 0.57,
+            "after_close_rss_mb": 118.41
           },
-          "peak_observed_rss_mb": 116.28,
-          "process_max_rss_mb": 116.28
+          "peak_observed_rss_mb": 118.41,
+          "process_max_rss_mb": 118.48
         }
       }
     }
@@ -474,7 +474,7 @@
             "lexical",
             "toolchain"
           ],
-          "wall_clock_ms": 6205.92,
+          "wall_clock_ms": 6350.12,
           "canonical_context": "loaded, indexed, and globally validated once",
           "sqlite_build_count": 1,
           "corpus_phases": [
@@ -496,8 +496,8 @@
             "product",
             "artifacts"
           ],
-          "wall_clock_ms": 9045.95,
-          "continuation_ms": 2839.96,
+          "wall_clock_ms": 9096.65,
+          "continuation_ms": 2746.45,
           "shared_sqlite_artifact_reused": true,
           "product_dictionary_digest_matches": true,
           "sqlite_build_count": 0,
@@ -513,8 +513,8 @@
             "historical",
             "deep"
           ],
-          "wall_clock_ms": 12446.57,
-          "continuation_ms": 3400.6,
+          "wall_clock_ms": 12594.15,
+          "continuation_ms": 3497.48,
           "independent_sqlite_build_count": 2,
           "reproducible": true,
           "corpus_phases": [
@@ -524,13 +524,13 @@
           ]
         }
       },
-      "generate_ms": 543.55,
-      "load_and_index_ms": 723.92,
-      "synthetic_decision_source_ms": 336.87,
-      "semantic_audit_ms": 2747.05,
-      "topic_evidence_ms": 211.11,
-      "lexical_quality_ms": 745.19,
-      "global_validation_ms": 45.52,
+      "generate_ms": 537,
+      "load_and_index_ms": 910.35,
+      "synthetic_decision_source_ms": 424.73,
+      "semantic_audit_ms": 2865.49,
+      "topic_evidence_ms": 206.16,
+      "lexical_quality_ms": 707.97,
+      "global_validation_ms": 40.51,
       "validator_result_count": {
         "record_count": 100000,
         "sense_count": 105080,
@@ -607,22 +607,22 @@
         "deserialize_count": 0,
         "rehydrate_count": 0
       },
-      "normalize_ms": 47.84,
-      "sqlite_build_ms": 1949.45,
+      "normalize_ms": 45.33,
+      "sqlite_build_ms": 1930.97,
       "product_performance": {
-        "elapsed_ms": 2839.93,
-        "shared_database_validation_ms": 503.6,
-        "product_build_ms": 520.49,
-        "package_build_ms": 1600.29,
-        "runtime_measurement_ms": 215.55,
-        "shared_sqlite_sha256": "48a4bb4978cbbf45ee2abd0c0bd22920c405830c4ec72c608ce1f78b491e631c",
-        "product_dictionary_sha256": "48a4bb4978cbbf45ee2abd0c0bd22920c405830c4ec72c608ce1f78b491e631c",
+        "elapsed_ms": 2746.42,
+        "shared_database_validation_ms": 522.61,
+        "product_build_ms": 444.14,
+        "package_build_ms": 1557.11,
+        "runtime_measurement_ms": 222.55,
+        "shared_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+        "product_dictionary_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
         "package": {
           "raw_package_bytes": 54036099,
-          "zip_package_bytes": 14049456,
+          "zip_package_bytes": 14049659,
           "zip_entry_count": 31,
           "dictionary_bytes": 51408896,
-          "dictionary_compressed_bytes": 12449551,
+          "dictionary_compressed_bytes": 12449754,
           "dictionary_raw_package_share_percent": 95.14,
           "dictionary_zip_package_share_percent": 88.61,
           "synthetic_canonical_jsonl_excluded": true,
@@ -792,22 +792,22 @@
             ]
           },
           "startup": {
-            "wasm_module_init_ms": 14.26,
-            "database_file_read_ms": 8.77,
-            "first_database_open_ms": 23.12,
-            "first_ready_ms": 46.15,
-            "warm_database_reopen_ms": 2.11,
+            "wasm_module_init_ms": 14.08,
+            "database_file_read_ms": 9.44,
+            "first_database_open_ms": 22.27,
+            "first_ready_ms": 45.79,
+            "warm_database_reopen_ms": 2.39,
             "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
           },
           "query_paths": [
             {
               "category": "exact-lemma",
-              "first_query_ms": 1.76,
+              "first_query_ms": 1.98,
               "repeated_query": {
                 "sample_count": 40,
-                "median_ms": 0.21,
-                "p95_ms": 0.32,
-                "max_ms": 0.39
+                "median_ms": 0.22,
+                "p95_ms": 0.51,
+                "max_ms": 0.62
               },
               "result_count": 1,
               "result_match_fields": [
@@ -816,12 +816,12 @@
             },
             {
               "category": "search-form",
-              "first_query_ms": 0.2,
+              "first_query_ms": 0.22,
               "repeated_query": {
                 "sample_count": 40,
-                "median_ms": 0.18,
-                "p95_ms": 0.35,
-                "max_ms": 0.61
+                "median_ms": 0.17,
+                "p95_ms": 0.34,
+                "max_ms": 0.59
               },
               "result_count": 1,
               "result_match_fields": [
@@ -830,12 +830,12 @@
             },
             {
               "category": "generated-surface-form",
-              "first_query_ms": 0.35,
+              "first_query_ms": 0.4,
               "repeated_query": {
                 "sample_count": 40,
-                "median_ms": 0.15,
-                "p95_ms": 0.35,
-                "max_ms": 0.58
+                "median_ms": 0.16,
+                "p95_ms": 0.26,
+                "max_ms": 0.66
               },
               "result_count": 1,
               "result_match_fields": [
@@ -844,12 +844,12 @@
             },
             {
               "category": "ambiguous-multi-sense",
-              "first_query_ms": 0.17,
+              "first_query_ms": 0.19,
               "repeated_query": {
                 "sample_count": 40,
-                "median_ms": 0.14,
+                "median_ms": 0.15,
                 "p95_ms": 0.17,
-                "max_ms": 0.38
+                "max_ms": 0.37
               },
               "result_count": 1,
               "result_match_fields": [
@@ -858,9 +858,9 @@
               "ambiguous_sense_count": 2,
               "ambiguous_record_load": {
                 "sample_count": 40,
-                "median_ms": 0.13,
-                "p95_ms": 0.17,
-                "max_ms": 0.57
+                "median_ms": 0.14,
+                "p95_ms": 0.24,
+                "max_ms": 0.4
               }
             }
           ],
@@ -869,89 +869,89 @@
             "phase_snapshots": [
               {
                 "phase": "before_wasm_init",
-                "rss_mb": 51.78,
+                "rss_mb": 51.67,
                 "heap_used_mb": 5.16,
                 "external_mb": 1.96,
                 "array_buffers_mb": 0.13
               },
               {
                 "phase": "after_wasm_init",
-                "rss_mb": 61.89,
+                "rss_mb": 61.59,
                 "heap_used_mb": 7.03,
                 "external_mb": 9.98,
                 "array_buffers_mb": 0.13
               },
               {
                 "phase": "after_database_read",
-                "rss_mb": 111.11,
-                "heap_used_mb": 7.16,
+                "rss_mb": 110.84,
+                "heap_used_mb": 7.15,
                 "external_mb": 59.03,
                 "array_buffers_mb": 49.18
               },
               {
                 "phase": "after_first_database_open",
-                "rss_mb": 178.89,
+                "rss_mb": 177.45,
                 "heap_used_mb": 6.71,
                 "external_mb": 111.06,
                 "array_buffers_mb": 49.17
               },
               {
                 "phase": "after_queries",
-                "rss_mb": 217.33,
-                "heap_used_mb": 9.08,
+                "rss_mb": 215.19,
+                "heap_used_mb": 9.16,
                 "external_mb": 123.06,
                 "array_buffers_mb": 49.17
               },
               {
                 "phase": "after_cold_database_close",
-                "rss_mb": 217.44,
-                "heap_used_mb": 9.13,
+                "rss_mb": 215.27,
+                "heap_used_mb": 9.21,
                 "external_mb": 123.06,
                 "array_buffers_mb": 49.17
               },
               {
                 "phase": "after_warm_database_open",
-                "rss_mb": 217.45,
-                "heap_used_mb": 9.36,
+                "rss_mb": 215.28,
+                "heap_used_mb": 9.43,
                 "external_mb": 123.06,
                 "array_buffers_mb": 49.17
               },
               {
                 "phase": "after_warm_database_close",
-                "rss_mb": 217.45,
-                "heap_used_mb": 9.82,
+                "rss_mb": 215.28,
+                "heap_used_mb": 9.44,
                 "external_mb": 123.06,
                 "array_buffers_mb": 49.17
               }
             ],
             "cold_load": {
-              "peak_rss_mb": 217.34,
-              "steady_state_rss_mb": 217.33,
-              "after_close_rss_mb": 217.44
+              "peak_rss_mb": 215.19,
+              "steady_state_rss_mb": 215.19,
+              "after_close_rss_mb": 215.27
             },
             "warm_reopen": {
-              "baseline_rss_mb": 217.44,
-              "after_open_rss_mb": 217.45,
-              "open_ms": 2.11,
-              "after_close_rss_mb": 217.45
+              "baseline_rss_mb": 215.27,
+              "after_open_rss_mb": 215.28,
+              "open_ms": 2.39,
+              "after_close_rss_mb": 215.28
             },
-            "peak_observed_rss_mb": 217.45,
-            "process_max_rss_mb": 217.47
+            "peak_observed_rss_mb": 215.28,
+            "process_max_rss_mb": 215.31
           }
         }
       },
-      "shared_sqlite_sha256": "48a4bb4978cbbf45ee2abd0c0bd22920c405830c4ec72c608ce1f78b491e631c",
-      "product_dictionary_sha256": "48a4bb4978cbbf45ee2abd0c0bd22920c405830c4ec72c608ce1f78b491e631c",
-      "reproducible_sqlite_sha256": "48a4bb4978cbbf45ee2abd0c0bd22920c405830c4ec72c608ce1f78b491e631c",
-      "reproducible_second_sqlite_sha256": "48a4bb4978cbbf45ee2abd0c0bd22920c405830c4ec72c608ce1f78b491e631c",
+      "shared_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "product_dictionary_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "reproducible_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
+      "reproducible_second_sqlite_sha256": "58bc04c0172b286b5243cd35c7f297a8714a386892de0260bb4b03cfffa55a0c",
       "composed_ci_levels": {
         "fast": {
           "fixed_level_observed_ms": 14632.84,
           "fixed_remainder_observed_ms": 14454.19,
           "fixed_remainder_upper_bound_ms": 14455,
           "fixed_remainder_source_corpus_baseline_ms": 178.65,
-          "corpus_component_ms": 6205.92,
-          "conservative_upper_bound_ms": 20660.92,
+          "corpus_component_ms": 6350.12,
+          "conservative_upper_bound_ms": 20805.12,
           "target_wall_clock_ms": 60000,
           "within_target": true
         },
@@ -960,8 +960,8 @@
           "fixed_remainder_observed_ms": 69171.84,
           "fixed_remainder_upper_bound_ms": 69172,
           "fixed_remainder_source_corpus_baseline_ms": 612.92,
-          "corpus_component_ms": 9045.95,
-          "conservative_upper_bound_ms": 78217.95,
+          "corpus_component_ms": 9096.65,
+          "conservative_upper_bound_ms": 78268.65,
           "target_wall_clock_ms": 180000,
           "within_target": true
         },
@@ -970,16 +970,16 @@
           "fixed_remainder_observed_ms": 182078.95,
           "fixed_remainder_upper_bound_ms": 182079,
           "fixed_remainder_source_corpus_baseline_ms": 731.73,
-          "corpus_component_ms": 12446.57,
-          "conservative_upper_bound_ms": 194525.57,
+          "corpus_component_ms": 12594.15,
+          "conservative_upper_bound_ms": 194673.15,
           "target_wall_clock_ms": 600000,
           "within_target": true
         }
       },
-      "wall_clock_ms": 13327.21,
+      "wall_clock_ms": 13556.09,
       "peak_memory": {
-        "rss_mb": 1265.05,
-        "heap_used_mb": 800.21
+        "rss_mb": 1237.36,
+        "heap_used_mb": 809.3
       }
     },
     {
@@ -994,7 +994,7 @@
             "lexical",
             "toolchain"
           ],
-          "wall_clock_ms": 32199.26,
+          "wall_clock_ms": 32418.73,
           "canonical_context": "loaded, indexed, and globally validated once",
           "sqlite_build_count": 1,
           "corpus_phases": [
@@ -1016,8 +1016,8 @@
             "product",
             "artifacts"
           ],
-          "wall_clock_ms": 51614.98,
-          "continuation_ms": 19415.71,
+          "wall_clock_ms": 51151.41,
+          "continuation_ms": 18732.66,
           "shared_sqlite_artifact_reused": true,
           "product_dictionary_digest_matches": true,
           "sqlite_build_count": 0,
@@ -1033,8 +1033,8 @@
             "historical",
             "deep"
           ],
-          "wall_clock_ms": 74765.03,
-          "continuation_ms": 23149.99,
+          "wall_clock_ms": 67930.62,
+          "continuation_ms": 16779.13,
           "independent_sqlite_build_count": 2,
           "reproducible": true,
           "corpus_phases": [
@@ -1044,13 +1044,13 @@
           ]
         }
       },
-      "generate_ms": 2714.78,
-      "load_and_index_ms": 4017.33,
-      "synthetic_decision_source_ms": 1766.24,
-      "semantic_audit_ms": 13894.19,
-      "topic_evidence_ms": 1210.54,
-      "lexical_quality_ms": 4045.01,
-      "global_validation_ms": 209.51,
+      "generate_ms": 2639.82,
+      "load_and_index_ms": 3987.47,
+      "synthetic_decision_source_ms": 1721.79,
+      "semantic_audit_ms": 14104.44,
+      "topic_evidence_ms": 1021.05,
+      "lexical_quality_ms": 3997.94,
+      "global_validation_ms": 207.96,
       "validator_result_count": {
         "record_count": 500000,
         "sense_count": 525800,
@@ -1127,22 +1127,22 @@
         "deserialize_count": 0,
         "rehydrate_count": 0
       },
-      "normalize_ms": 279.95,
-      "sqlite_build_ms": 9958.96,
+      "normalize_ms": 300.92,
+      "sqlite_build_ms": 10163.71,
       "product_performance": {
-        "elapsed_ms": 19415.68,
-        "shared_database_validation_ms": 6812.64,
-        "product_build_ms": 5117.9,
-        "package_build_ms": 6842.28,
-        "runtime_measurement_ms": 642.86,
-        "shared_sqlite_sha256": "1f5ebeb2e2d34814ff443d563ab7e6430e356f499d94bf97b142d824bbbacde4",
-        "product_dictionary_sha256": "1f5ebeb2e2d34814ff443d563ab7e6430e356f499d94bf97b142d824bbbacde4",
+        "elapsed_ms": 18732.61,
+        "shared_database_validation_ms": 6053.92,
+        "product_build_ms": 4938.7,
+        "package_build_ms": 7057.13,
+        "runtime_measurement_ms": 682.86,
+        "shared_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+        "product_dictionary_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
         "package": {
           "raw_package_bytes": 261768835,
-          "zip_package_bytes": 64130601,
+          "zip_package_bytes": 64130222,
           "zip_entry_count": 31,
           "dictionary_bytes": 259141632,
-          "dictionary_compressed_bytes": 62530696,
+          "dictionary_compressed_bytes": 62530317,
           "dictionary_raw_package_share_percent": 99,
           "dictionary_zip_package_share_percent": 97.51,
           "synthetic_canonical_jsonl_excluded": true,
@@ -1312,22 +1312,22 @@
             ]
           },
           "startup": {
-            "wasm_module_init_ms": 13.56,
-            "database_file_read_ms": 43.51,
-            "first_database_open_ms": 56.74,
-            "first_ready_ms": 113.81,
-            "warm_database_reopen_ms": 7.13,
+            "wasm_module_init_ms": 13.67,
+            "database_file_read_ms": 44.54,
+            "first_database_open_ms": 48.38,
+            "first_ready_ms": 106.59,
+            "warm_database_reopen_ms": 7.06,
             "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
           },
           "query_paths": [
             {
               "category": "exact-lemma",
-              "first_query_ms": 1.73,
+              "first_query_ms": 1.89,
               "repeated_query": {
                 "sample_count": 40,
                 "median_ms": 0.21,
-                "p95_ms": 0.3,
-                "max_ms": 0.51
+                "p95_ms": 0.36,
+                "max_ms": 1.54
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1339,9 +1339,9 @@
               "first_query_ms": 0.19,
               "repeated_query": {
                 "sample_count": 40,
-                "median_ms": 0.17,
-                "p95_ms": 0.3,
-                "max_ms": 0.39
+                "median_ms": 0.18,
+                "p95_ms": 0.36,
+                "max_ms": 0.43
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1350,12 +1350,12 @@
             },
             {
               "category": "generated-surface-form",
-              "first_query_ms": 0.32,
+              "first_query_ms": 0.33,
               "repeated_query": {
                 "sample_count": 40,
                 "median_ms": 0.15,
-                "p95_ms": 0.19,
-                "max_ms": 0.38
+                "p95_ms": 0.27,
+                "max_ms": 0.45
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1368,8 +1368,8 @@
               "repeated_query": {
                 "sample_count": 40,
                 "median_ms": 0.14,
-                "p95_ms": 0.19,
-                "max_ms": 0.34
+                "p95_ms": 0.18,
+                "max_ms": 0.33
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1380,7 +1380,7 @@
                 "sample_count": 40,
                 "median_ms": 0.13,
                 "p95_ms": 0.17,
-                "max_ms": 0.53
+                "max_ms": 0.44
               }
             }
           ],
@@ -1389,89 +1389,89 @@
             "phase_snapshots": [
               {
                 "phase": "before_wasm_init",
-                "rss_mb": 51.72,
+                "rss_mb": 51.77,
                 "heap_used_mb": 5.16,
                 "external_mb": 1.96,
                 "array_buffers_mb": 0.13
               },
               {
                 "phase": "after_wasm_init",
-                "rss_mb": 64.02,
+                "rss_mb": 61.52,
                 "heap_used_mb": 7.03,
                 "external_mb": 9.98,
                 "array_buffers_mb": 0.13
               },
               {
                 "phase": "after_database_read",
-                "rss_mb": 312.27,
-                "heap_used_mb": 6.61,
+                "rss_mb": 309.7,
+                "heap_used_mb": 6.62,
                 "external_mb": 257.21,
                 "array_buffers_mb": 247.37
               },
               {
                 "phase": "after_first_database_open",
-                "rss_mb": 580.22,
-                "heap_used_mb": 6.69,
+                "rss_mb": 574.3,
+                "heap_used_mb": 7.5,
                 "external_mb": 547.02,
-                "array_buffers_mb": 247.27
+                "array_buffers_mb": 247.37
               },
               {
                 "phase": "after_queries",
-                "rss_mb": 617.17,
-                "heap_used_mb": 9.31,
+                "rss_mb": 612.7,
+                "heap_used_mb": 9.18,
                 "external_mb": 546.92,
                 "array_buffers_mb": 247.28
               },
               {
                 "phase": "after_cold_database_close",
-                "rss_mb": 617.22,
-                "heap_used_mb": 9.35,
+                "rss_mb": 612.8,
+                "heap_used_mb": 9.22,
                 "external_mb": 546.92,
                 "array_buffers_mb": 247.28
               },
               {
                 "phase": "after_warm_database_open",
-                "rss_mb": 617.23,
-                "heap_used_mb": 9.89,
+                "rss_mb": 612.81,
+                "heap_used_mb": 9.43,
                 "external_mb": 546.92,
                 "array_buffers_mb": 247.28
               },
               {
                 "phase": "after_warm_database_close",
-                "rss_mb": 617.23,
-                "heap_used_mb": 10.34,
+                "rss_mb": 612.81,
+                "heap_used_mb": 9.81,
                 "external_mb": 546.92,
                 "array_buffers_mb": 247.28
               }
             ],
             "cold_load": {
-              "peak_rss_mb": 617.17,
-              "steady_state_rss_mb": 617.17,
-              "after_close_rss_mb": 617.22
+              "peak_rss_mb": 612.7,
+              "steady_state_rss_mb": 612.7,
+              "after_close_rss_mb": 612.8
             },
             "warm_reopen": {
-              "baseline_rss_mb": 617.22,
-              "after_open_rss_mb": 617.23,
-              "open_ms": 7.13,
-              "after_close_rss_mb": 617.23
+              "baseline_rss_mb": 612.8,
+              "after_open_rss_mb": 612.81,
+              "open_ms": 7.06,
+              "after_close_rss_mb": 612.81
             },
-            "peak_observed_rss_mb": 617.23,
-            "process_max_rss_mb": 617.25
+            "peak_observed_rss_mb": 612.81,
+            "process_max_rss_mb": 612.81
           }
         }
       },
-      "shared_sqlite_sha256": "1f5ebeb2e2d34814ff443d563ab7e6430e356f499d94bf97b142d824bbbacde4",
-      "product_dictionary_sha256": "1f5ebeb2e2d34814ff443d563ab7e6430e356f499d94bf97b142d824bbbacde4",
-      "reproducible_sqlite_sha256": "1f5ebeb2e2d34814ff443d563ab7e6430e356f499d94bf97b142d824bbbacde4",
-      "reproducible_second_sqlite_sha256": "1f5ebeb2e2d34814ff443d563ab7e6430e356f499d94bf97b142d824bbbacde4",
+      "shared_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "product_dictionary_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "reproducible_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
+      "reproducible_second_sqlite_sha256": "1aa73a23660d3f35b77da14ed9568df57ae82cb1c4681303608a3527cb7f9e4b",
       "composed_ci_levels": {
         "fast": {
           "fixed_level_observed_ms": 14632.84,
           "fixed_remainder_observed_ms": 14454.19,
           "fixed_remainder_upper_bound_ms": 14455,
           "fixed_remainder_source_corpus_baseline_ms": 178.65,
-          "corpus_component_ms": 32199.26,
-          "conservative_upper_bound_ms": 46654.26,
+          "corpus_component_ms": 32418.73,
+          "conservative_upper_bound_ms": 46873.73,
           "target_wall_clock_ms": 60000,
           "within_target": true
         },
@@ -1480,8 +1480,8 @@
           "fixed_remainder_observed_ms": 69171.84,
           "fixed_remainder_upper_bound_ms": 69172,
           "fixed_remainder_source_corpus_baseline_ms": 612.92,
-          "corpus_component_ms": 51614.98,
-          "conservative_upper_bound_ms": 120786.98,
+          "corpus_component_ms": 51151.41,
+          "conservative_upper_bound_ms": 120323.41,
           "target_wall_clock_ms": 180000,
           "within_target": true
         },
@@ -1490,16 +1490,16 @@
           "fixed_remainder_observed_ms": 182078.95,
           "fixed_remainder_upper_bound_ms": 182079,
           "fixed_remainder_source_corpus_baseline_ms": 731.73,
-          "corpus_component_ms": 74765.03,
-          "conservative_upper_bound_ms": 256844.03,
+          "corpus_component_ms": 67930.62,
+          "conservative_upper_bound_ms": 250009.62,
           "target_wall_clock_ms": 600000,
           "within_target": true
         }
       },
-      "wall_clock_ms": 79246.26,
+      "wall_clock_ms": 72292.43,
       "peak_memory": {
-        "rss_mb": 4420.77,
-        "heap_used_mb": 4370.37
+        "rss_mb": 4267.39,
+        "heap_used_mb": 4319.98
       }
     },
     {
@@ -1514,7 +1514,7 @@
             "lexical",
             "toolchain"
           ],
-          "wall_clock_ms": 92914.59,
+          "wall_clock_ms": 94449.81,
           "canonical_context": "loaded, indexed, and globally validated once",
           "sqlite_build_count": 1,
           "corpus_phases": [
@@ -1536,8 +1536,8 @@
             "product",
             "artifacts"
           ],
-          "wall_clock_ms": 166419.01,
-          "continuation_ms": 73504.24,
+          "wall_clock_ms": 191098.45,
+          "continuation_ms": 96648.53,
           "shared_sqlite_artifact_reused": true,
           "product_dictionary_digest_matches": true,
           "sqlite_build_count": 0,
@@ -1553,8 +1553,8 @@
             "historical",
             "deep"
           ],
-          "wall_clock_ms": 239902.83,
-          "continuation_ms": 73483.69,
+          "wall_clock_ms": 305111.21,
+          "continuation_ms": 114012.65,
           "independent_sqlite_build_count": 2,
           "reproducible": true,
           "corpus_phases": [
@@ -1564,13 +1564,13 @@
           ]
         }
       },
-      "generate_ms": 6414.57,
-      "load_and_index_ms": 9458.66,
-      "synthetic_decision_source_ms": 3985.57,
-      "semantic_audit_ms": 38126.31,
-      "topic_evidence_ms": 3102.54,
-      "lexical_quality_ms": 16324.12,
-      "global_validation_ms": 663.92,
+      "generate_ms": 6450.98,
+      "load_and_index_ms": 9203.07,
+      "synthetic_decision_source_ms": 4024.34,
+      "semantic_audit_ms": 39826.63,
+      "topic_evidence_ms": 3531.94,
+      "lexical_quality_ms": 16643.4,
+      "global_validation_ms": 509.95,
       "validator_result_count": {
         "record_count": 1000000,
         "sense_count": 1051441,
@@ -1647,22 +1647,22 @@
         "deserialize_count": 0,
         "rehydrate_count": 0
       },
-      "normalize_ms": 1000.32,
-      "sqlite_build_ms": 27304.05,
+      "normalize_ms": 785.54,
+      "sqlite_build_ms": 27204.46,
       "product_performance": {
-        "elapsed_ms": 73504.1,
-        "shared_database_validation_ms": 33743.36,
-        "product_build_ms": 23862.15,
-        "package_build_ms": 13860.14,
-        "runtime_measurement_ms": 2038.45,
-        "shared_sqlite_sha256": "d5c0449d477e29a03b767ba064e0995c6f70daf12d4e8ed307d026290cca5398",
-        "product_dictionary_sha256": "d5c0449d477e29a03b767ba064e0995c6f70daf12d4e8ed307d026290cca5398",
+        "elapsed_ms": 96648.43,
+        "shared_database_validation_ms": 47468.74,
+        "product_build_ms": 32483.22,
+        "package_build_ms": 14190.33,
+        "runtime_measurement_ms": 2506.14,
+        "shared_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+        "product_dictionary_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
         "package": {
           "raw_package_bytes": 521250435,
-          "zip_package_bytes": 126730380,
+          "zip_package_bytes": 126732519,
           "zip_entry_count": 31,
           "dictionary_bytes": 518623232,
-          "dictionary_compressed_bytes": 125130475,
+          "dictionary_compressed_bytes": 125132614,
           "dictionary_raw_package_share_percent": 99.5,
           "dictionary_zip_package_share_percent": 98.74,
           "synthetic_canonical_jsonl_excluded": true,
@@ -1832,22 +1832,22 @@
             ]
           },
           "startup": {
-            "wasm_module_init_ms": 14.98,
-            "database_file_read_ms": 246.71,
-            "first_database_open_ms": 339.36,
-            "first_ready_ms": 601.05,
-            "warm_database_reopen_ms": 27.48,
+            "wasm_module_init_ms": 15.5,
+            "database_file_read_ms": 229.22,
+            "first_database_open_ms": 353.74,
+            "first_ready_ms": 598.46,
+            "warm_database_reopen_ms": 26.75,
             "file_cache_note": "first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled"
           },
           "query_paths": [
             {
               "category": "exact-lemma",
-              "first_query_ms": 1.66,
+              "first_query_ms": 1.71,
               "repeated_query": {
                 "sample_count": 40,
-                "median_ms": 0.21,
-                "p95_ms": 0.78,
-                "max_ms": 2.69
+                "median_ms": 0.22,
+                "p95_ms": 0.33,
+                "max_ms": 0.72
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1856,12 +1856,12 @@
             },
             {
               "category": "search-form",
-              "first_query_ms": 0.28,
+              "first_query_ms": 0.19,
               "repeated_query": {
                 "sample_count": 40,
                 "median_ms": 0.17,
-                "p95_ms": 0.3,
-                "max_ms": 0.4
+                "p95_ms": 0.32,
+                "max_ms": 0.42
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1870,12 +1870,12 @@
             },
             {
               "category": "generated-surface-form",
-              "first_query_ms": 0.34,
+              "first_query_ms": 0.33,
               "repeated_query": {
                 "sample_count": 40,
                 "median_ms": 0.15,
-                "p95_ms": 0.19,
-                "max_ms": 0.53
+                "p95_ms": 0.18,
+                "max_ms": 0.59
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1888,8 +1888,8 @@
               "repeated_query": {
                 "sample_count": 40,
                 "median_ms": 0.15,
-                "p95_ms": 0.19,
-                "max_ms": 0.39
+                "p95_ms": 0.17,
+                "max_ms": 0.37
               },
               "result_count": 1,
               "result_match_fields": [
@@ -1899,8 +1899,8 @@
               "ambiguous_record_load": {
                 "sample_count": 40,
                 "median_ms": 0.13,
-                "p95_ms": 0.18,
-                "max_ms": 0.39
+                "p95_ms": 0.21,
+                "max_ms": 0.35
               }
             }
           ],
@@ -1909,89 +1909,89 @@
             "phase_snapshots": [
               {
                 "phase": "before_wasm_init",
-                "rss_mb": 51.5,
-                "heap_used_mb": 5.16,
+                "rss_mb": 51.83,
+                "heap_used_mb": 5.14,
                 "external_mb": 1.96,
                 "array_buffers_mb": 0.13
               },
               {
                 "phase": "after_wasm_init",
-                "rss_mb": 63.77,
-                "heap_used_mb": 7.04,
+                "rss_mb": 61.89,
+                "heap_used_mb": 7.02,
                 "external_mb": 9.98,
                 "array_buffers_mb": 0.13
               },
               {
                 "phase": "after_database_read",
-                "rss_mb": 355.42,
+                "rss_mb": 346.52,
                 "heap_used_mb": 7.11,
                 "external_mb": 504.77,
                 "array_buffers_mb": 494.93
               },
               {
                 "phase": "after_first_database_open",
-                "rss_mb": 889.63,
+                "rss_mb": 855.45,
                 "heap_used_mb": 6.71,
                 "external_mb": 1088.38,
                 "array_buffers_mb": 494.74
               },
               {
                 "phase": "after_queries",
-                "rss_mb": 1107.58,
-                "heap_used_mb": 9.18,
+                "rss_mb": 1105.53,
+                "heap_used_mb": 9.12,
                 "external_mb": 1088.38,
                 "array_buffers_mb": 494.74
               },
               {
                 "phase": "after_cold_database_close",
-                "rss_mb": 1107.63,
-                "heap_used_mb": 9.22,
+                "rss_mb": 1105.56,
+                "heap_used_mb": 9.16,
                 "external_mb": 1088.38,
                 "array_buffers_mb": 494.74
               },
               {
                 "phase": "after_warm_database_open",
-                "rss_mb": 1107.69,
+                "rss_mb": 1105.59,
                 "heap_used_mb": 9.48,
                 "external_mb": 1088.38,
                 "array_buffers_mb": 494.74
               },
               {
                 "phase": "after_warm_database_close",
-                "rss_mb": 1107.69,
-                "heap_used_mb": 9.98,
+                "rss_mb": 1105.59,
+                "heap_used_mb": 10.19,
                 "external_mb": 1088.38,
                 "array_buffers_mb": 494.74
               }
             ],
             "cold_load": {
-              "peak_rss_mb": 1107.58,
-              "steady_state_rss_mb": 1107.58,
-              "after_close_rss_mb": 1107.63
+              "peak_rss_mb": 1105.53,
+              "steady_state_rss_mb": 1105.53,
+              "after_close_rss_mb": 1105.56
             },
             "warm_reopen": {
-              "baseline_rss_mb": 1107.63,
-              "after_open_rss_mb": 1107.69,
-              "open_ms": 27.48,
-              "after_close_rss_mb": 1107.69
+              "baseline_rss_mb": 1105.56,
+              "after_open_rss_mb": 1105.59,
+              "open_ms": 26.75,
+              "after_close_rss_mb": 1105.59
             },
-            "peak_observed_rss_mb": 1107.69,
-            "process_max_rss_mb": 1107.7
+            "peak_observed_rss_mb": 1105.59,
+            "process_max_rss_mb": 1105.59
           }
         }
       },
-      "shared_sqlite_sha256": "d5c0449d477e29a03b767ba064e0995c6f70daf12d4e8ed307d026290cca5398",
-      "product_dictionary_sha256": "d5c0449d477e29a03b767ba064e0995c6f70daf12d4e8ed307d026290cca5398",
-      "reproducible_sqlite_sha256": "d5c0449d477e29a03b767ba064e0995c6f70daf12d4e8ed307d026290cca5398",
-      "reproducible_second_sqlite_sha256": "d5c0449d477e29a03b767ba064e0995c6f70daf12d4e8ed307d026290cca5398",
+      "shared_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "product_dictionary_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "reproducible_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
+      "reproducible_second_sqlite_sha256": "e04780c85f923f2d2b93a47b35ddae9109a029c19ead3f36dd7aa3742fe15f31",
       "composed_ci_levels": {
         "fast": {
           "fixed_level_observed_ms": 14632.84,
           "fixed_remainder_observed_ms": 14454.19,
           "fixed_remainder_upper_bound_ms": 14455,
           "fixed_remainder_source_corpus_baseline_ms": 178.65,
-          "corpus_component_ms": 92914.59,
-          "conservative_upper_bound_ms": 107369.59,
+          "corpus_component_ms": 94449.81,
+          "conservative_upper_bound_ms": 108904.81,
           "target_wall_clock_ms": 60000,
           "within_target": false
         },
@@ -2000,8 +2000,8 @@
           "fixed_remainder_observed_ms": 69171.84,
           "fixed_remainder_upper_bound_ms": 69172,
           "fixed_remainder_source_corpus_baseline_ms": 612.92,
-          "corpus_component_ms": 166419.01,
-          "conservative_upper_bound_ms": 235591.01,
+          "corpus_component_ms": 191098.45,
+          "conservative_upper_bound_ms": 260270.45,
           "target_wall_clock_ms": 180000,
           "within_target": false
         },
@@ -2010,16 +2010,16 @@
           "fixed_remainder_observed_ms": 182078.95,
           "fixed_remainder_upper_bound_ms": 182079,
           "fixed_remainder_source_corpus_baseline_ms": 731.73,
-          "corpus_component_ms": 239902.83,
-          "conservative_upper_bound_ms": 421981.83,
+          "corpus_component_ms": 305111.21,
+          "conservative_upper_bound_ms": 487190.21,
           "target_wall_clock_ms": 600000,
           "within_target": true
         }
       },
-      "wall_clock_ms": 250303.11,
+      "wall_clock_ms": 315587.56,
       "peak_memory": {
-        "rss_mb": 6371.73,
-        "heap_used_mb": 6738.36
+        "rss_mb": 6506.44,
+        "heap_used_mb": 6739.61
       }
     }
   ]
