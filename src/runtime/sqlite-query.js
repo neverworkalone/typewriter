@@ -3,6 +3,22 @@ import {
   normalizeSearchInput,
 } from './search-query.js';
 
+export const REFERENCE_ONLY_MATCH_SQL = `
+  SELECT (
+    EXISTS (
+      SELECT 1
+      FROM records
+      WHERE role = 'reference-only' AND lemma = ?
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM search_forms
+      INNER JOIN records ON records.id = search_forms.record_id
+      WHERE records.role = 'reference-only' AND search_forms.form = ?
+    )
+  ) AS has_reference_only_match
+`;
+
 function allRows(database, sql, parameters = []) {
   if (typeof database.selectObjects === 'function') {
     return database.selectObjects(sql, parameters).map((row) => ({ ...row }));
@@ -57,14 +73,8 @@ function findGeneratedSurfaceRows(database, term) {
 }
 
 function hasReferenceOnlyMatch(database, term) {
-  return Boolean(firstRow(database, `
-    SELECT records.id
-    FROM records
-    LEFT JOIN search_forms ON search_forms.record_id = records.id
-    WHERE records.role = 'reference-only'
-      AND (records.lemma = ? OR search_forms.form = ?)
-    LIMIT 1
-  `, [term, term]));
+  const row = firstRow(database, REFERENCE_ONLY_MATCH_SQL, [term, term]);
+  return Number(row?.has_reference_only_match) === 1;
 }
 
 export function findRecordsBySearchTerm(database, rawQuery) {

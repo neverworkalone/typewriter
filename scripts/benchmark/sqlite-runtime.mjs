@@ -174,60 +174,118 @@ export async function measureSqliteWasmRuntime({
   }
 
   const measurements = [];
-  measurements.push({ phase: 'before_wasm_init', ...memorySnapshot() });
-  const wasmInitStart = now();
-  const sqlite3 = await sqlite3InitModule();
-  const wasmModuleInitMs = elapsed(wasmInitStart);
-  measurements.push({ phase: 'after_wasm_init', ...memorySnapshot() });
-
-  const fileReadStart = now();
-  const bytes = new Uint8Array(await readFile(databasePath));
-  const fileReadMs = elapsed(fileReadStart);
-  const databaseBytes = (await stat(databasePath)).size;
-  measurements.push({ phase: 'after_database_read', ...memorySnapshot() });
-
-  const coldOpenStart = now();
-  const coldDatabase = openWasmDatabase(sqlite3, bytes);
-  const coldDatabaseOpenMs = elapsed(coldOpenStart);
-  measurements.push({ phase: 'after_first_database_open', ...memorySnapshot() });
-  const fileMetrics = databaseSizeMetrics(coldDatabase, databaseBytes);
-
-  const queryPaths = queryCases.map((queryCase) => measureQueryPath(
-    coldDatabase,
-    queryCase,
-    iterations,
-  ));
-  measurements.push({ phase: 'after_queries', ...memorySnapshot() });
-
-  const warmOpenStart = now();
-  const warmDatabase = openWasmDatabase(sqlite3, bytes);
-  const warmDatabaseOpenMs = elapsed(warmOpenStart);
-  measurements.push({ phase: 'after_warm_database_open', ...memorySnapshot() });
-  warmDatabase.close();
-  coldDatabase.close();
-
-  const coldReadyMs = Math.round((wasmModuleInitMs + fileReadMs + coldDatabaseOpenMs) * 100) / 100;
-  const peakObservedRss = Math.max(...measurements.map(({ rss_mb }) => rss_mb));
-  return {
-    contract_version: 'sqlite-wasm-runtime-benchmark-v1',
-    sqlite_wasm_version: sqlite3.version.libVersion,
-    database: fileMetrics,
-    startup: {
-      wasm_module_init_ms: wasmModuleInitMs,
-      database_file_read_ms: fileReadMs,
-      first_database_open_ms: coldDatabaseOpenMs,
-      first_ready_ms: coldReadyMs,
-      warm_database_reopen_ms: warmDatabaseOpenMs,
-      file_cache_note: 'first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled',
-    },
-    query_paths: queryPaths,
-    memory: {
-      scope: 'benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter',
-      phase_snapshots: measurements,
-      peak_observed_rss_mb: peakObservedRss,
-      process_max_rss_mb: processMaximumRssMb(),
-    },
+  const databaseLifecycleEvents = [];
+  let currentDatabase;
+  let maxLiveDatabases = 0;
+  let coldDatabase;
+  let warmDatabase;
+  const recordMemory = (phase) => {
+    const snapshot = { phase, ...memorySnapshot() };
+    measurements.push(snapshot);
+    return snapshot;
   };
+  const openTrackedDatabase = (sqlite3, bytes, phase) => {
+    if (currentDatabase) {
+      throw new Error('SQLite WASM runtime benchmark cannot hold two live database instances');
+    }
+    const database = openWasmDatabase(sqlite3, bytes);
+    currentDatabase = database;
+    maxLiveDatabases = Math.max(maxLiveDatabases, 1);
+    databaseLifecycleEvents.push(`${phase}_open`);
+    return database;
+  };
+  const closeTrackedDatabase = (database, phase) => {
+    if (currentDatabase !== database) {
+      throw new Error(`SQLite WASM runtime benchmark closed an untracked ${phase} database`);
+    }
+    try {
+      database.close();
+    } finally {
+      currentDatabase = undefined;
+      databaseLifecycleEvents.push(`${phase}_close`);
+    }
+  };
+
+  try {
+    recordMemory('before_wasm_init');
+    const wasmInitStart = now();
+    const sqlite3 = await sqlite3InitModule();
+    const wasmModuleInitMs = elapsed(wasmInitStart);
+    recordMemory('after_wasm_init');
+
+    const fileReadStart = now();
+    const bytes = new Uint8Array(await readFile(databasePath));
+    const fileReadMs = elapsed(fileReadStart);
+    const databaseBytes = (await stat(databasePath)).size;
+    recordMemory('after_database_read');
+
+    const coldOpenStart = now();
+    coldDatabase = openTrackedDatabase(sqlite3, bytes, 'cold');
+    const coldDatabaseOpenMs = elapsed(coldOpenStart);
+    recordMemory('after_first_database_open');
+    const fileMetrics = databaseSizeMetrics(coldDatabase, databaseBytes);
+
+    const queryPaths = queryCases.map((queryCase) => measureQueryPath(
+      coldDatabase,
+      queryCase,
+      iterations,
+    ));
+    const coldSteadyState = recordMemory('after_queries');
+    const coldLoadPeakRss = processMaximumRssMb();
+
+    closeTrackedDatabase(coldDatabase, 'cold');
+    coldDatabase = undefined;
+    const afterColdClose = recordMemory('after_cold_database_close');
+
+    const warmOpenStart = now();
+    warmDatabase = openTrackedDatabase(sqlite3, bytes, 'warm');
+    const warmDatabaseOpenMs = elapsed(warmOpenStart);
+    const afterWarmOpen = recordMemory('after_warm_database_open');
+    closeTrackedDatabase(warmDatabase, 'warm');
+    warmDatabase = undefined;
+    const afterWarmClose = recordMemory('after_warm_database_close');
+
+    const coldReadyMs = Math.round((wasmModuleInitMs + fileReadMs + coldDatabaseOpenMs) * 100) / 100;
+    const peakObservedRss = Math.max(...measurements.map(({ rss_mb }) => rss_mb));
+    return {
+      contract_version: 'sqlite-wasm-runtime-benchmark-v2',
+      sqlite_wasm_version: sqlite3.version.libVersion,
+      database: fileMetrics,
+      database_lifecycle: {
+        max_live_databases: maxLiveDatabases,
+        events: databaseLifecycleEvents,
+      },
+      startup: {
+        wasm_module_init_ms: wasmModuleInitMs,
+        database_file_read_ms: fileReadMs,
+        first_database_open_ms: coldDatabaseOpenMs,
+        first_ready_ms: coldReadyMs,
+        warm_database_reopen_ms: warmDatabaseOpenMs,
+        file_cache_note: 'first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled',
+      },
+      query_paths: queryPaths,
+      memory: {
+        scope: 'benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter; only one live database instance at a time',
+        phase_snapshots: measurements,
+        cold_load: {
+          peak_rss_mb: coldLoadPeakRss,
+          steady_state_rss_mb: coldSteadyState.rss_mb,
+          after_close_rss_mb: afterColdClose.rss_mb,
+        },
+        warm_reopen: {
+          baseline_rss_mb: afterColdClose.rss_mb,
+          after_open_rss_mb: afterWarmOpen.rss_mb,
+          open_ms: warmDatabaseOpenMs,
+          after_close_rss_mb: afterWarmClose.rss_mb,
+        },
+        peak_observed_rss_mb: peakObservedRss,
+        process_max_rss_mb: processMaximumRssMb(),
+      },
+    };
+  } finally {
+    if (warmDatabase) closeTrackedDatabase(warmDatabase, 'warm');
+    if (coldDatabase) closeTrackedDatabase(coldDatabase, 'cold');
+  }
 }
 
 function argument(name, fallback = undefined) {
