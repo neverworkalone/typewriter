@@ -17,13 +17,11 @@ import {
 import { createCanonicalContext } from './canonical-context.mjs';
 import {
   allocateRelationGapQuotas,
-  assertSearchReachabilityPass,
   evaluateSearchReachability,
   makeAmbiguousQuerySamplingUnit,
   makeRelationGapSamplingUnit,
   makeRelationSamplingUnit,
   M6_1_QUALITY_GATES,
-  selectBaselineExactMatches,
   selectRelationGapSample,
   selectStableHashSample,
   summarizeWriterFacingCandidatePopulation,
@@ -40,13 +38,13 @@ const REVIEW_MANIFEST_PATH = path.join(
 );
 const RUNTIME_PATHS = [
   'scripts/validate/m6-1-quality-baseline.mjs',
-  'scripts/validate/m6-4-quality-audit.mjs',
   'scripts/build/query.mjs',
   'src/runtime/search-query.js',
   'src/domain/exact-search-candidates.js',
   'scripts/inflection/surface-form-projection.mjs',
 ];
 const DEFAULT_MODE = 'check';
+const FROZEN_SAMPLE_MANIFEST_SHA256 = 'a15aae2cccdd61e4bbe070800614f9e2f0e71d8d541e6002eddaf0d875589dbd';
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -61,6 +59,70 @@ function samplingHash(unit) {
     `${M6_1_QUALITY_GATES.sampling.stable_seed}\u0000${unit.stratum}\u0000${unit.stable_unit_id}`,
     'utf8',
   ));
+}
+
+export function determineM6QualityAuditVerificationMode({
+  currentCanonicalRevision,
+  frozenCanonicalRevision,
+  currentRuntimeFileSha256,
+  frozenRuntimeFileSha256,
+  currentBaselineSha256,
+  frozenBaselineSha256,
+  currentM6_3ReviewSha256,
+  frozenM6_3ReviewSha256,
+}) {
+  const sameRuntime = JSON.stringify(currentRuntimeFileSha256) === JSON.stringify(frozenRuntimeFileSha256);
+  return currentCanonicalRevision === frozenCanonicalRevision
+    && sameRuntime
+    && currentBaselineSha256 === frozenBaselineSha256
+    && currentM6_3ReviewSha256 === frozenM6_3ReviewSha256
+    ? 'rebuild-current-sample'
+    : 'verify-frozen-historical-sample';
+}
+
+export function assertM6QualityAuditManifestMatches(committed, recomputed) {
+  assert.deepStrictEqual(
+    committed,
+    recomputed,
+    'M6-4 sample manifest differs from its fixed contract or bound source',
+  );
+}
+
+export function assertM6QualityAuditHistoricalSnapshot({
+  manifest,
+  baseline,
+  baselineSha256,
+  manifestBytes,
+  expectedManifestSha256,
+  runtimePaths,
+}) {
+  assert.equal(sha256(manifestBytes), expectedManifestSha256,
+    'M6-4 historical sample bytes changed from the reviewed issue-start snapshot');
+  assert.equal(manifest.audit_id, 'm6-4-writer-facing-quality-audit-v1');
+  assert.equal(manifest.issue, 176);
+  assert.equal(manifest.decision, 'HOLD');
+  assert.equal(manifest.source.baseline_id, baseline.baseline_id);
+  assert.equal(manifest.source.baseline_contract_version, baseline.quality_gates.contract_version);
+  assert.equal(manifest.source.canonical_revision, baseline.source.canonical_revision);
+  assert.equal(
+    manifest.source.m6_1_baseline_sha256,
+    baselineSha256,
+    'M6-4 historical sample must remain bound to the fixed M6-1 baseline artifact',
+  );
+  assert.deepStrictEqual(Object.keys(manifest.source.runtime_file_sha256).sort(), [...runtimePaths].sort());
+  assert.ok(Object.values(manifest.source.runtime_file_sha256)
+    .every((digest) => /^[a-f0-9]{64}$/.test(digest)));
+}
+
+function assertFrozenHistoricalManifest(manifest, baseline, baselineSha256, manifestBytes) {
+  assertM6QualityAuditHistoricalSnapshot({
+    manifest,
+    baseline,
+    baselineSha256,
+    manifestBytes,
+    expectedManifestSha256: FROZEN_SAMPLE_MANIFEST_SHA256,
+    runtimePaths: RUNTIME_PATHS,
+  });
 }
 
 function unwrapRecords(records) {
@@ -167,15 +229,14 @@ function buildExactQueryRows(database, records) {
       key,
       normalized_query: response.normalizedQuery,
       status: response.status,
-      matches: selectBaselineExactMatches(response.matches),
+      matches: response.matches.map(({ id, role }) => ({ id, role })),
     };
   });
   const reachability = evaluateSearchReachability(expectedRows, actualRows);
-  assertSearchReachabilityPass(reachability);
   return { actualRows, reachability };
 }
 
-function ambiguousQuerySampling(records, actualRows, baselinePopulation) {
+function ambiguousQuerySampling(records, actualRows, candidatePopulation) {
   const recordsById = new Map(records.map((record) => [record.id, record]));
   const eligible = [];
   for (const row of actualRows) {
@@ -195,7 +256,7 @@ function ambiguousQuerySampling(records, actualRows, baselinePopulation) {
       candidates,
     });
   }
-  assert.equal(eligible.length, baselinePopulation.ambiguous_query_count);
+  assert.equal(eligible.length, candidatePopulation.ambiguous_query_count);
   const selected = selectStableHashSample(eligible.map(({ unit }) => unit), { limit: 40 });
   const eligibleByQuery = new Map(eligible.map((item) => [item.unit.stable_unit_id, item]));
   return {
@@ -260,11 +321,7 @@ async function currentFileHashes() {
   ])));
 }
 
-async function buildManifest({ issueStartCommit }) {
-  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY, {
-    useSharedContext: false,
-  });
-  const baseline = await readJson(BASELINE_PATH);
+async function buildManifest({ issueStartCommit, canonical, baseline, baselineSha256, runtimeFileSha256 }) {
   assert.equal(canonical.canonicalRevision, baseline.source.canonical_revision,
     'M6-4 keeps the M6-1 issue-start canonical revision fixed');
   assert.equal(canonical.fileCount, baseline.source.canonical_file_count);
@@ -288,17 +345,12 @@ async function buildManifest({ issueStartCommit }) {
     database = new DatabaseSync(databasePath, { readOnly: true });
     const { actualRows, reachability } = buildExactQueryRows(database, records);
     const candidatePopulation = summarizeWriterFacingCandidatePopulation(records, actualRows);
-    assert.deepStrictEqual(
-      candidatePopulation,
-      baseline.metrics.search.writer_facing_candidate_population,
-      'M6-1 exact candidate population remains frozen after generated-form projection is separated',
-    );
     const relations = relationSampling(records);
     const relationGaps = relationGapSampling(records);
     const ambiguousQueries = ambiguousQuerySampling(
       records,
       actualRows,
-      baseline.metrics.search.writer_facing_candidate_population,
+      candidatePopulation,
     );
     const reviewCaseCount = Object.values(relations)
       .reduce((sum, sample) => sum + sample.selected_count, 0)
@@ -314,11 +366,12 @@ async function buildManifest({ issueStartCommit }) {
         issue_start_commit: issueStartCommit,
         baseline_id: baseline.baseline_id,
         baseline_contract_version: baseline.quality_gates.contract_version,
+        m6_1_baseline_sha256: baselineSha256,
         canonical_revision: canonical.canonicalRevision,
         canonical_file_count: canonical.fileCount,
         m4_regression_fixture_sha256: baseline.metrics.search.regression_corpus.fixture_sha256,
         m6_3_surface_form_review_sha256: sha256(reviewManifestBytes),
-        runtime_file_sha256: await currentFileHashes(),
+        runtime_file_sha256: runtimeFileSha256,
       },
       frozen_sampling: {
         stable_seed: M6_1_QUALITY_GATES.sampling.stable_seed,
@@ -357,6 +410,10 @@ function parseMode(argv) {
 
 async function main(argv = process.argv.slice(2)) {
   const mode = parseMode(argv);
+  const manifestBytes = await readFile(OUTPUT_PATH).catch((error) => {
+    if (mode === 'write' && error.code === 'ENOENT') return undefined;
+    throw error;
+  });
   const existing = await readJson(OUTPUT_PATH).catch((error) => {
     if (mode === 'write' && error.code === 'ENOENT') return undefined;
     throw error;
@@ -378,7 +435,42 @@ async function main(argv = process.argv.slice(2)) {
   } catch {
     throw new Error('Current HEAD must descend from the M6-4 issue-start commit.');
   }
-  const manifest = await buildManifest({ issueStartCommit });
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY, {
+    useSharedContext: false,
+  });
+  const baseline = await readJson(BASELINE_PATH);
+  const baselineSha256 = sha256(await readFile(BASELINE_PATH));
+  const runtimeFileSha256 = await currentFileHashes();
+  const m6_3ReviewSha256 = sha256(await readFile(REVIEW_MANIFEST_PATH));
+
+  if (mode === 'check') {
+    const verificationMode = determineM6QualityAuditVerificationMode({
+      currentCanonicalRevision: canonical.canonicalRevision,
+      frozenCanonicalRevision: existing.source.canonical_revision,
+      currentRuntimeFileSha256: runtimeFileSha256,
+      frozenRuntimeFileSha256: existing.source.runtime_file_sha256,
+      currentBaselineSha256: baselineSha256,
+      frozenBaselineSha256: existing.source.m6_1_baseline_sha256,
+      currentM6_3ReviewSha256: m6_3ReviewSha256,
+      frozenM6_3ReviewSha256: existing.source.m6_3_surface_form_review_sha256,
+    });
+    if (verificationMode === 'verify-frozen-historical-sample') {
+      assertFrozenHistoricalManifest(existing, baseline, baselineSha256, manifestBytes);
+      console.log(
+        `M6-4 historical sample remains fixed at ${existing.source.canonical_revision}; `
+        + `current canonical ${canonical.canonicalRevision} is outside this issue-start audit.`,
+      );
+      return;
+    }
+  }
+
+  const manifest = await buildManifest({
+    issueStartCommit,
+    canonical,
+    baseline,
+    baselineSha256,
+    runtimeFileSha256,
+  });
   if (mode === 'write') {
     if (existing) {
       assert.equal(existing.source.canonical_revision, manifest.source.canonical_revision,
@@ -388,8 +480,7 @@ async function main(argv = process.argv.slice(2)) {
     console.log(`Wrote M6-4 sample manifest for ${manifest.source.canonical_revision}.`);
     return;
   }
-  assert.deepStrictEqual(existing, manifest,
-    'M6-4 sample manifest differs from the fixed M6-1 contract or bound source');
+  assertM6QualityAuditManifestMatches(existing, manifest);
   console.log(
     `M6-4 sample manifest matches ${manifest.source.canonical_revision}: `
     + `${manifest.review_status.selected_canonical_case_count} canonical cases selected; `

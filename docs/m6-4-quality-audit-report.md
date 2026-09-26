@@ -6,8 +6,9 @@
 canonical snapshot, and the selected cases are reproducible. The editorial
 benchmark is not complete: no independent case judgments or writer-task
 outcomes were available. The fixed M6-1 contract requires two independent
-judgments for each selected case and 100 tasks completed by 10 writers. No
-judgments or writer outcomes are inferred or fabricated here.
+judgments for each selected case and 100 tasks completed by 10 writers. Its
+exact-reachability gate also records two unexpected runtime results (`끈`,
+`열`). No judgments or writer outcomes are inferred or fabricated here.
 
 The exact sample is recorded in
 [`m6-4-quality-audit-sample.json`](m6-4-quality-audit-sample.json). Recreate and
@@ -20,9 +21,16 @@ npm run audit:m6-4
 
 The sample is bound to M6-1 contract `m6-1-quality-gates-v2`, seed
 `m6-1-quality-benchmark-v1`, canonical revision
-`8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9`, the M4
-regression fixture digest, the M6-3 collision-review manifest, and the relevant
-runtime source digests. M6-1 thresholds and sample rules were not changed.
+`8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9`, the M6-1
+baseline artifact, the M4 regression fixture digest, the M6-3 collision-review
+manifest, and the relevant runtime source digests. M6-1 thresholds and sample
+rules were not changed.
+
+`npm run audit:m6-4` rebuilds this sample while its issue-start canonical,
+baseline, M6-3 review, and runtime inputs are unchanged. If a later revision
+changes those inputs, the command verifies this immutable issue-start snapshot
+instead of recalculating it against a later canonical corpus. A later corpus
+needs its own audit sample.
 
 ## Measured corpus and selected samples
 
@@ -55,12 +63,14 @@ allocation:
 | expression × expression | 1,134 | 19 |
 | **Total** | **4,664** | **80** |
 
-There are 336 exact queries with at least two record/sense choices in the M6-1
-writer-facing population; 40 were selected. All 336 are choices among senses
-within one start record. None are cross-record exact-key collisions. The
-sample contains 39 two-candidate queries and one three-candidate query. This
-measures the available choice set, not whether the canonical sense order
-matches writers' preferred result.
+The current runtime exposes 338 exact queries with at least two record/sense
+choices; 40 were selected. Of these, 336 are choices among senses within one
+start record and two are cross-record exact-key collisions caused by generated
+surface forms. The sample contains 39 two-candidate queries and one
+three-candidate query. Neither collision was selected into the 40-query sample,
+but both are included in its eligible population and the reachability result
+below. This measures the available choice set, not whether the order matches
+writers' preferred result.
 
 The writer-task plan preserves the fixed allocation: five participant slots
 use pattern A and five use pattern B, for 30 direct-replacement, 20 sense-choice,
@@ -74,27 +84,28 @@ boundary tasks. Recruitment, filled slots, and recorded outcomes are all zero.
 | Direct substitutability | **Not measured.** The full 22-tuple direct sample is selected; the required 44 independent judgments are absent. |
 | Other relation usefulness and type honesty | **Not measured.** The seven per-type samples are selected (20 each); the required 280 independent judgments are absent. No type is treated as passing based on tuple counts. |
 | Relation gaps | **Coverage measured; impact not measured.** The 80 selected empty records still need independent dispositions as honest emptiness or a harmful gap. No density target is applied. |
-| Search reachability and boundaries | **PASS for M6-1 exact keys.** All 5,251 canonical exact keys resolve to their expected start IDs; no missing, unexpected exact, unsupported, or reference-only results remain. The M4 regression corpus has 10/10 baseline cases matching expectations; two existing cases remain pending. |
-| Ranking and order usefulness | **Not measured.** The 40-query sample is selected, but no writer-preferred candidate outcomes are recorded. The population consists of within-record sense choices. |
+| Search reachability and boundaries | **HOLD.** All 5,251 canonical exact keys return their expected start IDs, with zero missing keys, unsupported keys, or reference-only leaks. The current runtime also returns two extra records: `w1081` for `끈` (expected `w2969`) and `w192` for `열` (expected `w110`). The frozen M6-1 v2 gate requires zero unexpected results. The M4 regression corpus has 10/10 baseline cases matching expectations; two existing cases remain pending. |
+| Ranking and order usefulness | **Not measured.** The 40-query sample is selected, but no writer-preferred candidate outcomes are recorded. The population includes 336 within-record sense choices and two cross-record exact-query collisions. |
 | Writer-task usefulness | **Not measured.** The contract requires 100 outcomes from 10 writers; 0 were available. |
-| Vocabulary coverage | **Not established.** Exact-key reachability is complete, but that says nothing about vocabulary writers tried and could not find. No user telemetry is present in the repository, and no real writer-task failures were observed. |
+| Vocabulary coverage | **Not established.** Expected exact keys resolve, but this does not show which words writers tried and could not find. No user telemetry is present in the repository, and no real writer-task failures were observed. |
 
-### Search validator finding
+### Search reachability finding
 
-**Classification: shared validator/audit gap.** After M6-3 added reviewed
-surface-form results, the M6-1 exact-key baseline began counting two approved
-generated candidates as unexpected exact results. For query `끈`, the exact
-candidate is `w2969` and the M6-3-reviewed generated candidate is `w1081`.
-For `열`, the exact candidate is `w110` and the reviewed generated candidate
-is `w192`. The M6-3 collision manifest explicitly retains both generated
-candidates while preserving exact-match precedence.
+**Classification: current search result-set mismatch against the frozen
+M6-1 v2 reachability gate.** The runtime returns two extra start records for
+canonical exact queries: `끈` returns `w2969` plus generated candidate `w1081`,
+and `열` returns `w110` plus generated candidate `w192`. The M6-3 collision
+manifest reviewed and retained both generated candidates. That M6-3 approval
+does not remove them from the M6-1 v2 runtime result set or change its
+zero-unexpected-results requirement. Accordingly, `npm run baseline:m6-1`
+reports the two mismatches and exits nonzero. The M6-4 audit records them as a
+HOLD finding; it does not filter candidates or revise the frozen gate.
 
-The M6-1 checker now filters its exact-key measure by exact-lemma and
-exact-search-form provenance. The M6-3 surface-form validator remains
-responsible for generated-form candidates. This preserves the frozen M6-1
-metrics and thresholds while making the historical exact-key gate compatible
-with the later reviewed projection. No canonical data or generated database
-was changed.
+The two additional cross-record choices raise the current writer-facing
+ambiguous-query population from the M6-1 snapshot's 336 to 338. Both remain
+eligible for the frozen stable-hash sample, even though neither falls within
+the selected 40. The ranking sample therefore uses the current full runtime
+candidate set.
 
 The repository's real failure/boundary evidence is limited to its checked-in
 regression fixtures. The M4 baseline has the pending editorial-gap case
@@ -108,7 +119,8 @@ failures.
 No sampled relation has been judged, so this audit supports no canonical data
 correction, producer/admission defect, typed-relation defect, harmful empty gap,
 ranking defect, or vocabulary coverage claim. The one reproduced issue is the
-shared M6-1 search-audit scope gap described above.
+current-runtime result-set mismatch against the frozen M6-1 exact-reachability
+gate described above.
 
 The bounded M6-5 evidence backlog is:
 
@@ -121,7 +133,11 @@ The bounded M6-5 evidence backlog is:
 3. Use those results to classify any corrections by root cause and rank only
    evidence-backed work. The current audit authorizes no bulk relation filling
    and no ranking change.
-4. Consider vocabulary coverage separately after real writer tasks expose
+4. Resolve the two current search-result mismatches against the frozen
+   reachability gate before treating the search dimension as passing. Preserve
+   the M6-1 v2 contract unless a separately versioned successor is approved
+   before new evidence collection.
+5. Consider vocabulary coverage separately after real writer tasks expose
    concrete unmet needs. Current evidence does not show that 5K is insufficient.
 
 No 10K or post-M6-5 expansion is recommended from this evidence. Expansion
@@ -134,7 +150,7 @@ deficit and an owner makes a separate decision.
 | --- | --- |
 | Apply the frozen M6-1 benchmark and sample rules | **Partial:** all canonical sample identities are selected reproducibly; human review and writer-task collection remain incomplete. |
 | Report direct accuracy, relation usefulness/noise, gaps, ranking, and vocabulary separately | **Partial:** each dimension and its evidence state are reported separately; editorial outcomes remain unmeasured. |
-| Classify findings by root cause | **Complete for available evidence:** one shared audit gap; no unsupported data or product defect claims. |
+| Classify findings by root cause | **Complete for available evidence:** one frozen-gate result-set mismatch; no relation-quality or vocabulary-coverage claim is inferred. |
 | Decide whether sampled empty relations are honest or harmful | **HOLD:** requires the missing independent editorial judgments. |
 | Define a bounded evidence-based M6-5 correction scope | **Partial:** only evidence collection is justified; data corrections cannot yet be scoped. |
 | Avoid inferring authorization for expansion | **Complete:** no expansion is supported or authorized by this report. |
@@ -142,17 +158,20 @@ deficit and an owner makes a separate decision.
 
 ## Validation
 
-The following deterministic checks passed after the M6-1 provenance correction:
+The following deterministic checks were run against the frozen M6-1 v2 contract:
 
-- `node --test tests/m6-1-quality-baseline.test.mjs` — 9/9 passed.
-- `npm run baseline:m6-1` — the frozen canonical digest matches; 5,251/5,251
-  exact keys are reachable.
+- `node --test tests/m6-1-quality-baseline.test.mjs` — 9/9 passed, including a
+  synthetic exact-plus-generated cross-record result that remains visible to
+  the reachability and candidate-population checks.
+- `npm run baseline:m6-1` — reports the expected M6-1 v2 failure: two
+  unexpected runtime results, for `끈` and `열`.
 - `npm run audit:m6-4` — all selected sample identities and source digests
-  reproduce; 0/564 independent judgments are present, so the audit stays on
-  HOLD.
-- `npm run ci:normal` — all canonical, lexical, toolchain, batch, product, and
-  generated-artifact checks passed; the final artifact-policy check reported a
-  clean working tree.
+  reproduce across 282 selected cases; 0/564 independent judgments are present,
+  so the audit stays on HOLD. Its fixed-source boundary switches to historical
+  snapshot verification after issue-start inputs change.
+- `tests/m6-4-quality-audit.test.mjs` — valid sample comparison passes, while
+  altered case identity, selection hash, source digest, and decision status are
+  rejected. The test and `npm run audit:m6-4` are registered in normal CI.
 - `git diff --check`.
 
 The change does not affect a browser-only boundary; Chrome for Testing is not

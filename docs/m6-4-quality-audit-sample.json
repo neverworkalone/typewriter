@@ -7,13 +7,13 @@
     "issue_start_commit": "4226a97f162b1f4a7401a74893c3d28018d33385",
     "baseline_id": "m6-1-5k-quality-baseline-v1",
     "baseline_contract_version": "m6-1-quality-gates-v2",
+    "m6_1_baseline_sha256": "4eb83fd3d19c8ff0b522300430e4107f002850907161f2bdcd97ba3872195209",
     "canonical_revision": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9",
     "canonical_file_count": 13,
     "m4_regression_fixture_sha256": "e2ce9f4ee8812dbb532d4cb78ee725b417f138070ccf013ee78c647c08296598",
     "m6_3_surface_form_review_sha256": "380e67ce30af6376906bca75f4c703da565dad59c27e094ec049629e861b5e22",
     "runtime_file_sha256": {
-      "scripts/validate/m6-1-quality-baseline.mjs": "42c52ce6c65846144f5c878367a2af1a622b8c20791e8133327f29f6bac4f246",
-      "scripts/validate/m6-4-quality-audit.mjs": "b5c9f1a1959fc176f1b6bec78910aa1a3ec275992a3b613f05acc2261cd1d3fb",
+      "scripts/validate/m6-1-quality-baseline.mjs": "c66b1d9c0f9570514bd10fd9db73c9d53ed79b70a53d4ca53d9392c4b0b27eaa",
       "scripts/build/query.mjs": "fab784bb887e265764f8231e6c7b05240ba2173b591a77f93b2c7663e5fc785b",
       "src/runtime/search-query.js": "66480e70fbc9f636675cb93ebc59163e88792675d55d011c1da5ff141864a655",
       "src/domain/exact-search-candidates.js": "7b9f4563f724cacfe8c14b5fa5553f6d9ef5bae144c605518f157d2e589c77e0",
@@ -2307,7 +2307,7 @@
       ]
     },
     "ambiguous_queries": {
-      "population_count": 336,
+      "population_count": 338,
       "selected_count": 40,
       "candidates_per_query": "runtime exact-lemma and exact-search-form candidates expanded using canonical sense order",
       "cases": [
@@ -3022,24 +3022,48 @@
       "key_count": 5251,
       "matched_key_count": 5251,
       "missing_expected_result_count": 0,
-      "unexpected_result_count": 0,
+      "unexpected_result_count": 2,
       "unexpected_key_count": 0,
       "reference_only_leak_count": 0,
       "unsupported_key_count": 0,
-      "mismatched_key_count": 0,
-      "mismatched_keys": []
+      "mismatched_key_count": 2,
+      "mismatched_keys": [
+        {
+          "key": "끈",
+          "expected_ids": [
+            "w2969"
+          ],
+          "actual_ids": [
+            "w2969",
+            "w1081"
+          ],
+          "actual_status": "ready"
+        },
+        {
+          "key": "열",
+          "expected_ids": [
+            "w110"
+          ],
+          "actual_ids": [
+            "w110",
+            "w192"
+          ],
+          "actual_status": "ready"
+        }
+      ]
     },
     "candidate_population": {
       "exact_query_count": 5251,
       "candidate_options_per_exact_query": {
-        "1": 4915,
-        "2": 323,
+        "1": 4913,
+        "2": 325,
         "3": 12,
         "4": 1
       },
-      "ambiguous_query_count": 336,
-      "ambiguous_query_candidate_option_count": 686,
+      "ambiguous_query_count": 338,
+      "ambiguous_query_candidate_option_count": 690,
       "ambiguous_query_counts_by_kind": {
+        "multiple-start-records": 2,
         "single-polysemous-start-record": 336
       },
       "maximum_candidate_options": 4
