@@ -355,11 +355,23 @@ function memorySnapshot() {
   };
 }
 
-function mergeMemorySnapshots(left, right) {
+function mergeMemorySamples(left, right) {
   if (!left) return right;
   return {
     rss_mb: Math.max(left.rss_mb, right.rss_mb),
     heap_used_mb: Math.max(left.heap_used_mb, right.heap_used_mb),
+  };
+}
+
+function runnerMemoryMetrics(samples) {
+  const { maxRSS } = process.resourceUsage();
+  return {
+    // Node reports ru_maxrss as KiB on supported platforms; convert that to MiB.
+    process_max_rss_mb: Number.isFinite(maxRSS) && maxRSS > 0
+      ? Math.round(maxRSS / 1024 * 100) / 100
+      : null,
+    max_sampled_rss_mb: samples?.rss_mb ?? null,
+    max_sampled_heap_used_mb: samples?.heap_used_mb ?? null,
   };
 }
 
@@ -810,6 +822,280 @@ function requireReportValue(value, description, scale = undefined) {
   }
 }
 
+function requireNonnegativeNumber(value, description, scale) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error('scale ' + scale + ' has an invalid ' + description);
+  }
+}
+
+function requirePositiveSafeInteger(value, description, scale) {
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error('scale ' + scale + ' has an invalid ' + description);
+  }
+}
+
+function requireNonnegativeSafeInteger(value, description, scale) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error('scale ' + scale + ' has an invalid ' + description);
+  }
+}
+
+function validateTimingSummary(summary, description, scale) {
+  requireReportValue(summary, description, scale);
+  requirePositiveSafeInteger(summary.sample_count, description + ' sample count', scale);
+  for (const metric of ['median_ms', 'p95_ms', 'max_ms']) {
+    requireNonnegativeNumber(summary[metric], description + ' ' + metric, scale);
+  }
+  if (summary.median_ms > summary.p95_ms || summary.p95_ms > summary.max_ms) {
+    throw new Error('scale ' + scale + ' has inconsistent ' + description + ' timing quantiles');
+  }
+}
+
+function validateCountMap(value, description, scale) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('scale ' + scale + ' is missing ' + description);
+  }
+  const counts = Object.values(value);
+  for (const count of counts) {
+    requirePositiveSafeInteger(count, description + ' count', scale);
+  }
+  return counts.reduce((sum, count) => sum + count, 0);
+}
+
+function validateHistogram(value, description, scale) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('scale ' + scale + ' is missing ' + description);
+  }
+  let count = 0;
+  let weightedCount = 0;
+  for (const [bucket, amount] of Object.entries(value)) {
+    const bucketValue = Number(bucket);
+    if (!Number.isSafeInteger(bucketValue) || bucketValue < 1) {
+      throw new Error('scale ' + scale + ' has an invalid ' + description + ' bucket');
+    }
+    requirePositiveSafeInteger(amount, description + ' bucket count', scale);
+    count += amount;
+    weightedCount += bucketValue * amount;
+  }
+  return { count, weightedCount };
+}
+
+function validateSyntheticWorkloadShape(shape, scale) {
+  requireReportValue(shape, 'synthetic workload shape', scale);
+  requirePositiveSafeInteger(shape.template_record_count, 'synthetic template record count', scale);
+  if (shape.record_count !== scale) {
+    throw new Error('scale ' + scale + ' synthetic shape record count does not match the requested scale');
+  }
+  requirePositiveSafeInteger(shape.record_count, 'synthetic record count', scale);
+  requirePositiveSafeInteger(shape.sense_count, 'synthetic sense count', scale);
+  requireNonnegativeSafeInteger(shape.relation_count, 'synthetic relation count', scale);
+  requirePositiveSafeInteger(shape.search_form_count, 'synthetic search-form count', scale);
+
+  const roleCount = validateCountMap(shape.record_roles, 'synthetic record roles', scale);
+  if (roleCount !== shape.record_count || !Number.isSafeInteger(shape.record_roles.start)) {
+    throw new Error('scale ' + scale + ' has incomplete synthetic record-role evidence');
+  }
+  if (validateCountMap(shape.record_types, 'synthetic record types', scale) !== shape.record_count) {
+    throw new Error('scale ' + scale + ' synthetic record types do not match the record count');
+  }
+  const sensesPerRecord = validateHistogram(shape.senses_per_record, 'senses-per-record shape', scale);
+  if (sensesPerRecord.count !== shape.record_count
+    || sensesPerRecord.weightedCount !== shape.sense_count) {
+    throw new Error('scale ' + scale + ' synthetic sense shape does not match its counts');
+  }
+  const formsPerRecord = validateHistogram(shape.search_forms_per_record, 'search-forms-per-record shape', scale);
+  if (formsPerRecord.count !== shape.record_count
+    || formsPerRecord.weightedCount !== shape.search_form_count) {
+    throw new Error('scale ' + scale + ' synthetic search-form shape does not match its counts');
+  }
+  if (validateCountMap(shape.parts_of_speech, 'synthetic part-of-speech shape', scale) !== shape.sense_count) {
+    throw new Error('scale ' + scale + ' synthetic part-of-speech shape does not match its sense count');
+  }
+  if (validateCountMap(shape.relation_types, 'synthetic relation-type shape', scale) !== shape.relation_count) {
+    throw new Error('scale ' + scale + ' synthetic relation-type shape does not match its relation count');
+  }
+  for (const metric of [
+    'records_with_relations',
+    'start_records_with_non_lemma_search_forms',
+    'non_lemma_search_form_count',
+    'generated_surface_form_count',
+  ]) {
+    requireNonnegativeSafeInteger(shape[metric], 'synthetic workload ' + metric, scale);
+  }
+  if (shape.records_with_relations > shape.record_count
+    || shape.start_records_with_non_lemma_search_forms > shape.record_roles.start
+    || shape.non_lemma_search_form_count > shape.search_form_count) {
+    throw new Error('scale ' + scale + ' has inconsistent synthetic workload shape counts');
+  }
+  for (const metric of ['average_lemma_codepoints', 'average_gloss_codepoints']) {
+    requireNonnegativeNumber(shape[metric], 'synthetic workload ' + metric, scale);
+    if (shape[metric] <= 0) {
+      throw new Error('scale ' + scale + ' has an empty synthetic workload ' + metric);
+    }
+  }
+}
+
+function validateRuntimeDatabaseEvidence(database, scale) {
+  requireReportValue(database, 'SQLite database measurement', scale);
+  for (const metric of ['file_bytes', 'page_size_bytes', 'page_count', 'index_count']) {
+    requirePositiveSafeInteger(database[metric], 'SQLite ' + metric, scale);
+  }
+  requirePositiveSafeInteger(database.index_bytes, 'SQLite index bytes', scale);
+  if (database.index_bytes > database.file_bytes
+    || database.page_size_bytes * database.page_count < database.file_bytes) {
+    throw new Error('scale ' + scale + ' has inconsistent SQLite file and page sizes');
+  }
+  if (!Array.isArray(database.index_pages) || database.index_pages.length !== database.index_count) {
+    throw new Error('scale ' + scale + ' is missing SQLite index-size breakdown');
+  }
+  const indexNames = new Set();
+  let indexBytes = 0;
+  for (const index of database.index_pages) {
+    if (!index || typeof index.name !== 'string' || index.name.length === 0 || indexNames.has(index.name)) {
+      throw new Error('scale ' + scale + ' has an invalid SQLite index-size entry');
+    }
+    requirePositiveSafeInteger(index.bytes, 'SQLite index-page bytes', scale);
+    indexNames.add(index.name);
+    indexBytes += index.bytes;
+  }
+  if (indexBytes !== database.index_bytes) {
+    throw new Error('scale ' + scale + ' SQLite index-size breakdown does not match its total');
+  }
+}
+
+function validateRuntimeStartupEvidence(startup, scale) {
+  requireReportValue(startup, 'SQLite startup timings', scale);
+  const timings = [
+    'wasm_module_init_ms',
+    'database_file_read_ms',
+    'first_database_open_ms',
+    'first_ready_ms',
+    'warm_database_reopen_ms',
+  ];
+  for (const metric of timings) {
+    requireNonnegativeNumber(startup[metric], 'SQLite startup ' + metric, scale);
+  }
+  const componentTotal = startup.wasm_module_init_ms
+    + startup.database_file_read_ms
+    + startup.first_database_open_ms;
+  if (Math.abs(componentTotal - startup.first_ready_ms) > 1) {
+    throw new Error('scale ' + scale + ' has inconsistent SQLite first-ready timing');
+  }
+}
+
+function validateRuntimeQueryEvidence(queryPaths, scale) {
+  const expectedFields = new Map([
+    ['exact-lemma', 'lemma'],
+    ['search-form', 'search-form'],
+    ['generated-surface-form', 'generated-surface-form'],
+    ['ambiguous-multi-sense', null],
+  ]);
+  if (!Array.isArray(queryPaths) || queryPaths.length !== expectedFields.size) {
+    throw new Error('scale ' + scale + ' is missing representative SQLite query paths');
+  }
+  const pathsByCategory = new Map();
+  for (const queryPath of queryPaths) {
+    if (!queryPath || typeof queryPath.category !== 'string' || pathsByCategory.has(queryPath.category)) {
+      throw new Error('scale ' + scale + ' has invalid or duplicate representative query categories');
+    }
+    pathsByCategory.set(queryPath.category, queryPath);
+  }
+  for (const [category, expectedField] of expectedFields) {
+    const queryPath = pathsByCategory.get(category);
+    if (!queryPath) {
+      throw new Error('scale ' + scale + ' is missing the ' + category + ' query path');
+    }
+    requireNonnegativeNumber(queryPath.first_query_ms, category + ' first query timing', scale);
+    validateTimingSummary(queryPath.repeated_query, category + ' repeated query', scale);
+    requirePositiveSafeInteger(queryPath.result_count, category + ' result count', scale);
+    if (!Array.isArray(queryPath.result_match_fields)
+      || queryPath.result_match_fields.length === 0
+      || queryPath.result_match_fields.some((field) => typeof field !== 'string' || field.length === 0)) {
+      throw new Error('scale ' + scale + ' is missing ' + category + ' result-path evidence');
+    }
+    if (expectedField !== null && !queryPath.result_match_fields.includes(expectedField)) {
+      throw new Error('scale ' + scale + ' used the wrong result path for ' + category);
+    }
+    if (category === 'ambiguous-multi-sense') {
+      requirePositiveSafeInteger(queryPath.ambiguous_sense_count, 'ambiguous query sense count', scale);
+      if (queryPath.ambiguous_sense_count < 2) {
+        throw new Error('scale ' + scale + ' ambiguous query does not exercise a multi-sense record');
+      }
+      validateTimingSummary(queryPath.ambiguous_record_load, 'ambiguous record-load query', scale);
+    }
+  }
+}
+
+function validateRuntimeMemoryEvidence(memory, scale) {
+  requireReportValue(memory, 'SQLite runtime memory measurements', scale);
+  if (typeof memory.scope !== 'string' || memory.scope.length === 0) {
+    throw new Error('scale ' + scale + ' is missing SQLite runtime memory scope');
+  }
+  const requiredPhases = [
+    'before_wasm_init',
+    'after_wasm_init',
+    'after_database_read',
+    'after_first_database_open',
+    'after_queries',
+    'after_cold_database_close',
+    'after_warm_database_open',
+    'after_warm_database_close',
+  ];
+  if (!Array.isArray(memory.phase_snapshots)) {
+    throw new Error('scale ' + scale + ' is missing SQLite runtime memory phase snapshots');
+  }
+  const phases = new Set();
+  for (const snapshot of memory.phase_snapshots) {
+    if (!snapshot || typeof snapshot.phase !== 'string' || phases.has(snapshot.phase)) {
+      throw new Error('scale ' + scale + ' has invalid SQLite runtime memory phase snapshots');
+    }
+    phases.add(snapshot.phase);
+    for (const metric of ['rss_mb', 'heap_used_mb', 'external_mb', 'array_buffers_mb']) {
+      requireNonnegativeNumber(snapshot[metric], 'runtime memory ' + snapshot.phase + ' ' + metric, scale);
+    }
+    if (snapshot.rss_mb <= 0) {
+      throw new Error('scale ' + scale + ' has an empty runtime RSS snapshot for ' + snapshot.phase);
+    }
+  }
+  if (requiredPhases.some((phase) => !phases.has(phase))) {
+    throw new Error('scale ' + scale + ' is missing a required SQLite runtime memory phase');
+  }
+  requireReportValue(memory.cold_load, 'SQLite cold-load memory summary', scale);
+  requireReportValue(memory.warm_reopen, 'SQLite warm-reopen memory summary', scale);
+  for (const metric of ['peak_rss_mb', 'steady_state_rss_mb', 'after_close_rss_mb']) {
+    requireNonnegativeNumber(memory.cold_load[metric], 'SQLite cold-load ' + metric, scale);
+    if (memory.cold_load[metric] <= 0) {
+      throw new Error('scale ' + scale + ' has an empty SQLite cold-load ' + metric);
+    }
+  }
+  for (const metric of ['baseline_rss_mb', 'after_open_rss_mb', 'after_close_rss_mb']) {
+    requireNonnegativeNumber(memory.warm_reopen[metric], 'SQLite warm-reopen ' + metric, scale);
+    if (memory.warm_reopen[metric] <= 0) {
+      throw new Error('scale ' + scale + ' has an empty SQLite warm-reopen ' + metric);
+    }
+  }
+  requireNonnegativeNumber(memory.warm_reopen.open_ms, 'SQLite warm-reopen timing', scale);
+  requireNonnegativeNumber(memory.peak_observed_rss_mb, 'SQLite observed runtime RSS', scale);
+  requireNonnegativeNumber(memory.process_max_rss_mb, 'SQLite process maximum RSS', scale);
+  if (memory.peak_observed_rss_mb <= 0
+    || memory.process_max_rss_mb < memory.peak_observed_rss_mb) {
+    throw new Error('scale ' + scale + ' has inconsistent SQLite runtime RSS measurements');
+  }
+}
+
+function validateRunnerMemoryEvidence(memory, scale) {
+  requireReportValue(memory, 'scale-runner memory measurements', scale);
+  requireNonnegativeNumber(memory.process_max_rss_mb, 'scale-runner process maximum RSS', scale);
+  requireNonnegativeNumber(memory.max_sampled_rss_mb, 'scale-runner sampled RSS maximum', scale);
+  requireNonnegativeNumber(memory.max_sampled_heap_used_mb, 'scale-runner sampled heap maximum', scale);
+  if (memory.process_max_rss_mb <= 0
+    || memory.max_sampled_rss_mb <= 0
+    || memory.max_sampled_heap_used_mb <= 0
+    || memory.process_max_rss_mb + 0.02 < memory.max_sampled_rss_mb) {
+    throw new Error('scale ' + scale + ' has inconsistent scale-runner memory measurements');
+  }
+}
+
 function validateProductScaleResult(result) {
   const { scale } = result;
   const product = result.product_performance;
@@ -833,6 +1119,65 @@ function validateProductScaleResult(result) {
       !== JSON.stringify(['cold_open', 'cold_close', 'warm_open', 'warm_close'])) {
     throw new Error(`scale ${scale} did not complete the single-database cold/warm lifecycle`);
   }
+
+  const packageMetrics = product.package;
+  for (const metric of [
+    'raw_package_bytes',
+    'zip_package_bytes',
+    'zip_entry_count',
+    'dictionary_bytes',
+    'dictionary_compressed_bytes',
+  ]) {
+    requirePositiveSafeInteger(packageMetrics[metric], 'product package ' + metric, scale);
+  }
+  for (const metric of [
+    'dictionary_raw_package_share_percent',
+    'dictionary_zip_package_share_percent',
+  ]) {
+    requireNonnegativeNumber(packageMetrics[metric], 'product package ' + metric, scale);
+    if (packageMetrics[metric] > 100) {
+      throw new Error('scale ' + scale + ' has an invalid product package ' + metric);
+    }
+  }
+  if (packageMetrics.package_is_temporary_benchmark_output !== true) {
+    throw new Error('scale ' + scale + ' product package is not identified as temporary benchmark output');
+  }
+  if (packageMetrics.dictionary_bytes !== runtime.database.file_bytes
+    || packageMetrics.raw_package_bytes < packageMetrics.dictionary_bytes
+    || packageMetrics.zip_package_bytes < packageMetrics.dictionary_compressed_bytes) {
+    throw new Error('scale ' + scale + ' has inconsistent product package and SQLite sizes');
+  }
+  const rawShare = Math.round(
+    packageMetrics.dictionary_bytes / packageMetrics.raw_package_bytes * 10000,
+  ) / 100;
+  const zipShare = Math.round(
+    packageMetrics.dictionary_compressed_bytes / packageMetrics.zip_package_bytes * 10000,
+  ) / 100;
+  if (packageMetrics.dictionary_raw_package_share_percent !== rawShare
+    || packageMetrics.dictionary_zip_package_share_percent !== zipShare) {
+    throw new Error('scale ' + scale + ' has inconsistent product package size ratios');
+  }
+
+  validateRuntimeDatabaseEvidence(runtime.database, scale);
+  validateRuntimeStartupEvidence(runtime.startup, scale);
+  validateRuntimeQueryEvidence(runtime.query_paths, scale);
+  validateRuntimeMemoryEvidence(runtime.memory, scale);
+  for (const metric of [
+    'elapsed_ms',
+    'shared_database_validation_ms',
+    'product_build_ms',
+    'package_build_ms',
+    'runtime_measurement_ms',
+  ]) {
+    requireNonnegativeNumber(product[metric], 'product performance ' + metric, scale);
+  }
+  requireNonnegativeNumber(result.normalize_ms, 'normalization timing', scale);
+  requireNonnegativeNumber(result.sqlite_build_ms, 'SQLite build timing', scale);
+  if (result.sqlite_build_ms <= 0) {
+    throw new Error('scale ' + scale + ' has an empty SQLite build timing');
+  }
+  validateSyntheticWorkloadShape(result.synthetic_workload_shape, scale);
+  validateRunnerMemoryEvidence(result.runner_memory, scale);
 
   const digests = [
     product.shared_sqlite_sha256,
@@ -868,6 +1213,17 @@ export function validateBenchmarkReport(report, {
   }
   if (!Array.isArray(report.sqlite_scales)) {
     throw new Error('benchmark report is missing sqlite_scales');
+  }
+  if (selectedSqliteScales.size > 0
+    && (report.contract_version !== 'canonical-validation-benchmark-v6'
+      || report.runner_memory_contract?.contract_version !== 'runner-memory-contract-v1'
+      || report.runner_memory_contract.rss_metric !== 'process_max_rss_mb'
+      || report.runner_memory_contract.rss_source !== 'process.resourceUsage().maxRSS'
+      || report.runner_memory_contract.rss_scope !== 'cumulative-process-high-water-at-ascending-scale-boundary'
+      || report.runner_memory_contract.sampled_heap_metric !== 'max_sampled_heap_used_mb'
+      || report.runner_memory_contract.sampled_heap_source !== 'process.memoryUsage().heapUsed'
+      || report.runner_memory_contract.sampled_heap_scope !== 'max-phase-boundary-sample-not-true-peak')) {
+    throw new Error('benchmark report is missing the v6 scale-runner memory contract');
   }
 
   const reportedSqliteScales = new Set(report.sqlite_scales);
@@ -992,7 +1348,7 @@ export async function benchmarkCanonicalValidation({
       });
     }
 
-    for (const scale of sizes) {
+    for (const scale of [...sizes].sort((left, right) => left - right)) {
       const result = {
         scale,
         failure_stage: null,
@@ -1000,9 +1356,9 @@ export async function benchmarkCanonicalValidation({
         sqlite_build_count: 0,
         corpus_cost: {},
       };
-      let peakMemory;
+      let maxSampledMemory;
       const sampleMemory = () => {
-        peakMemory = mergeMemorySnapshots(peakMemory, memorySnapshot());
+        maxSampledMemory = mergeMemorySamples(maxSampledMemory, memorySnapshot());
       };
       const scaleDirectory = path.join(root, String(scale));
       const canonicalDirectory = path.join(scaleDirectory, 'canonical');
@@ -1240,14 +1596,14 @@ export async function benchmarkCanonicalValidation({
         result.failure_stage = null;
         result.wall_clock_ms = elapsed(totalStart);
         sampleMemory();
-        result.peak_memory = peakMemory;
+        result.runner_memory = runnerMemoryMetrics(maxSampledMemory);
         result.metrics = contextSummary(context).metrics;
       } catch (error) {
         result.failure_stage = result.failure_stage ?? 'unknown';
         result.error = error.code ? `${error.code}: ${error.message}` : error.message;
         result.wall_clock_ms = elapsed(totalStart);
         sampleMemory();
-        result.peak_memory = peakMemory;
+        result.runner_memory = runnerMemoryMetrics(maxSampledMemory);
       }
       results.push(result);
     }
@@ -1256,8 +1612,17 @@ export async function benchmarkCanonicalValidation({
   }
 
   return {
-    contract_version: 'canonical-validation-benchmark-v5',
+    contract_version: 'canonical-validation-benchmark-v6',
     runner_wiring: 'same-process-shared-context-with-real-corpus-phases-and-level-continuation',
+    runner_memory_contract: {
+      contract_version: 'runner-memory-contract-v1',
+      rss_metric: 'process_max_rss_mb',
+      rss_source: 'process.resourceUsage().maxRSS',
+      rss_scope: 'cumulative-process-high-water-at-ascending-scale-boundary',
+      sampled_heap_metric: 'max_sampled_heap_used_mb',
+      sampled_heap_source: 'process.memoryUsage().heapUsed',
+      sampled_heap_scope: 'max-phase-boundary-sample-not-true-peak',
+    },
     synthetic_record_shape: {
       strategy: 'cycle the real canonical record/sense/search-form/relation shape, then replace IDs and all lexical strings with deterministic synthetic values',
       text_policy: 'preserve per-field Unicode codepoint lengths and record structure; do not copy canonical lemmas, glosses, notes, or IDs into synthetic JSONL',
