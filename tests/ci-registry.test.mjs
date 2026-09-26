@@ -144,16 +144,16 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
   assert.deepEqual(CI_DEEP_CATEGORY_ORDER, ['historical', 'deep']);
   assert.equal(
     CI_CATEGORIES.deep.checks.at(-1).label,
-    'Run 500K/1M fast/normal/deep synthetic canonical benchmark',
+    'Run 100K/500K/1M release-shaped performance and scale benchmark',
   );
   assert.deepEqual(
     CI_CATEGORIES.deep.checks.at(-1).command({}).args,
     [
       'run',
-      'benchmark:canonical',
+      'benchmark:release',
       '--',
-      '--sizes=500000,1000000',
-      '--sqlite-scale=500000,1000000',
+      '--sizes=100000,500000,1000000',
+      '--sqlite-scale=100000,500000,1000000',
       '--fixed-level-evidence=config/ci-level-evidence.json',
     ],
   );

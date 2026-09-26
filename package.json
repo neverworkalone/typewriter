@@ -101,6 +101,7 @@
     "normalize": "node scripts/normalize/canonical.mjs",
     "build:dictionary": "node scripts/build/dictionary.mjs",
     "validate:search": "node scripts/validate/search-regressions.mjs",
+    "benchmark:release": "node --max-old-space-size=8192 scripts/benchmark/canonical-validation.mjs --release-performance",
     "benchmark:canonical": "node --max-old-space-size=8192 scripts/benchmark/canonical-validation.mjs",
     "package": "bash pack.sh",
     "package:minify": "bash pack.sh --minify",

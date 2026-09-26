@@ -226,6 +226,8 @@ export const CI_CATEGORIES = Object.freeze({
     label: 'Product tests and extension build',
     checks: [
       testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
+      testCheck('tests/runtime-query-adapter.test.mjs', 'Test shared native and WASM SQLite query adapter'),
+      testCheck('tests/scale-benchmark.test.mjs', 'Test deterministic product-shaped scale fixture'),
       testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
       testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),
       testCheck('tests/m6-2-inflection-contract.test.mjs', 'Test M6-2 inflection search contract'),
@@ -257,11 +259,11 @@ export const CI_CATEGORIES = Object.freeze({
       inProcessCheck('Run current-revision SQLite reproducibility audit', 'deep-m2-reproducibility'),
       testCheck('tests/reproducibility.test.mjs', 'Test reproducible dictionary builds'),
       npmCheck(
-        'Run 500K/1M fast/normal/deep synthetic canonical benchmark',
-        'benchmark:canonical',
+        'Run 100K/500K/1M release-shaped performance and scale benchmark',
+        'benchmark:release',
         [
-          '--sizes=500000,1000000',
-          '--sqlite-scale=500000,1000000',
+          '--sizes=100000,500000,1000000',
+          '--sqlite-scale=100000,500000,1000000',
           '--fixed-level-evidence=config/ci-level-evidence.json',
         ],
       ),
