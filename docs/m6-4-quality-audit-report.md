@@ -172,6 +172,8 @@ The following deterministic checks were run against the frozen M6-1 v2 contract:
 - `tests/m6-4-quality-audit.test.mjs` — valid sample comparison passes, while
   altered case identity, selection hash, source digest, and decision status are
   rejected. The test and `npm run audit:m6-4` are registered in normal CI.
+- `npm run ci:normal` — all canonical, lexical, toolchain, batch, product, and
+  artifact categories passed; artifact policy reported `workingTreeClean: true`.
 - `git diff --check`.
 
 The change does not affect a browser-only boundary; Chrome for Testing is not
