@@ -20,6 +20,8 @@ require those outcomes remain **NOT MEASURED**, rather than treated as passes.
 This checkpoint was derived from `origin/master` at
 `e04f4e5b3a913b769896cfea1e3b518adfe5b9f8` with canonical revision
 `8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9`.
+It is a frozen historical checkpoint: it records issue-start results and does
+not claim to recalculate them against a later working tree.
 
 | Input | SHA-256 |
 | --- | --- |
@@ -27,6 +29,14 @@ This checkpoint was derived from `origin/master` at
 | [`docs/m6-4-quality-audit-sample.json`](m6-4-quality-audit-sample.json) | `afe42789a95fb5c06cf77ec36bc7904231d889da772c6348bd25adb8d625e9b8` |
 | [`docs/m6-4-quality-audit-report.md`](m6-4-quality-audit-report.md) | `19af2343f2eb4e1b44f565e9c1f60edaaf805782fd9373904c6333ea00d6e5ca` |
 | [`data/validation/m6-3-surface-form-review.json`](../data/validation/m6-3-surface-form-review.json) | `380e67ce30af6376906bca75f4c703da565dad59c27e094ec049629e861b5e22` |
+
+The calibration manifest also pins the complete issue-start runtime source set:
+the M6-1 baseline validator, SQLite query adapter, shared search response
+adapter, exact candidate expansion helper, and M6-3 surface-form projection.
+Normal CI validates the manifest's closed shape, full byte digest, and pinned
+source identity. It does not compare those historical inputs with current files
+or rewrite the frozen decision artifact; a changed manifest byte or identity
+fails validation.
 
 ## Bounded findings and dispositions
 

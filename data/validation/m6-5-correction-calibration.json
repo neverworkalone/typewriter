@@ -12,10 +12,13 @@
     "m6_4_sample_sha256": "afe42789a95fb5c06cf77ec36bc7904231d889da772c6348bd25adb8d625e9b8",
     "m6_4_report_sha256": "19af2343f2eb4e1b44f565e9c1f60edaaf805782fd9373904c6333ea00d6e5ca",
     "m6_3_surface_form_review_sha256": "380e67ce30af6376906bca75f4c703da565dad59c27e094ec049629e861b5e22",
-    "current_runtime_sha256": {
+    "canonical_file_count": 13,
+    "issue_start_runtime_sha256": {
+      "scripts/validate/m6-1-quality-baseline.mjs": "c66b1d9c0f9570514bd10fd9db73c9d53ed79b70a53d4ca53d9392c4b0b27eaa",
       "scripts/build/query.mjs": "fab784bb887e265764f8231e6c7b05240ba2173b591a77f93b2c7663e5fc785b",
       "src/runtime/search-query.js": "66480e70fbc9f636675cb93ebc59163e88792675d55d011c1da5ff141864a655",
-      "scripts/validate/m6-1-quality-baseline.mjs": "c66b1d9c0f9570514bd10fd9db73c9d53ed79b70a53d4ca53d9392c4b0b27eaa"
+      "src/domain/exact-search-candidates.js": "7b9f4563f724cacfe8c14b5fa5553f6d9ef5bae144c605518f157d2e589c77e0",
+      "scripts/inflection/surface-form-projection.mjs": "ac45f89c529b91de01396c2468863ca82ab91738ea803fb4e49ad02808d893ed"
     }
   },
   "disposition_counts": {
