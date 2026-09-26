@@ -214,7 +214,15 @@ export async function measureSqliteWasmRuntime({
     recordMemory('after_wasm_init');
 
     const fileReadStart = now();
-    const bytes = new Uint8Array(await readFile(databasePath));
+    // Share the file Buffer's ArrayBuffer with a plain Uint8Array view. SQLite
+    // WASM requires the plain view, and this avoids a second file-sized copy;
+    // the extension runtime also holds its response ArrayBuffer while deserializing it.
+    const fileBuffer = await readFile(databasePath);
+    const bytes = new Uint8Array(
+      fileBuffer.buffer,
+      fileBuffer.byteOffset,
+      fileBuffer.byteLength,
+    );
     const fileReadMs = elapsed(fileReadStart);
     const databaseBytes = (await stat(databasePath)).size;
     recordMemory('after_database_read');
