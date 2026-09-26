@@ -78,6 +78,8 @@ deterministic source/ID ties; it does not use frequency or generated scores.
 - `runtime/dictionary-worker.mjs` is the dedicated module worker;
 - `runtime/protocol.js` contains the versioned request/response contract;
 - `runtime/query-adapter.js` is the browser-facing read-only adapter; and
+- `runtime/sqlite-query.js` contains the shared SQLite query operations used by
+  Node builds and the product worker;
 - `runtime/search-query.js` contains the shared pure search normalizer and response
   contract; and
 - `runtime/vendor/sqlite3.mjs` plus `runtime/vendor/sqlite3.wasm` are the pinned
@@ -86,8 +88,9 @@ deterministic source/ID ties; it does not use frequency or generated scores.
 The main-thread adapter in [`src/runtime/query-adapter.js`](../src/runtime/query-adapter.js)
 exposes only exact start-record search, record/sense/relation reads, metadata, and
 runtime status. The worker and Node helper share
-[`src/runtime/search-query.js`](../src/runtime/search-query.js), so raw and
-normalized query fields plus match provenance use one implementation.
+[`src/runtime/sqlite-query.js`](../src/runtime/sqlite-query.js), which uses
+[`src/runtime/search-query.js`](../src/runtime/search-query.js) for the pure search
+normalizer and response contract.
 Reference-only records can be fetched by ID for relation display, but are never
 returned from free-term search. The worker loads its own packaged
 database with extension-relative URLs, keeps one initialization promise, enables

@@ -46,6 +46,10 @@ export function createProductRuntimeAssets({
         path.join(runtimeDirectory, 'search-query.js'),
       ),
       cp(
+        path.join(projectRoot, 'src/runtime/sqlite-query.js'),
+        path.join(runtimeDirectory, 'sqlite-query.js'),
+      ),
+      cp(
         path.join(sqliteWasmDirectory, 'index.mjs'),
         path.join(vendorDirectory, 'sqlite3.mjs'),
       ),

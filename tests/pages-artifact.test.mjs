@@ -61,6 +61,7 @@ async function createArtifact(t, {
     'runtime/protocol.js',
     'runtime/query-adapter.js',
     'runtime/search-query.js',
+    'runtime/sqlite-query.js',
     'runtime/vendor/sqlite3.mjs',
     'runtime/vendor/sqlite3.wasm',
   ]) {
