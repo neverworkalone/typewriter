@@ -89,6 +89,18 @@ test('current-canonical surface-form gate runs in-process on the shared projecti
   assert.equal(checks[projectionIndex].command({}).executable, '[in-process]');
 });
 
+test('normal canonical CI verifies the frozen M6-4 snapshot without a second full audit build', () => {
+  const checks = CI_CATEGORIES.canonical.checks;
+  const snapshotCheck = checks.find((check) => check.inProcess === 'm6-4-frozen-snapshot');
+
+  assert.ok(snapshotCheck);
+  assert.equal(snapshotCheck.command({}).executable, '[in-process]');
+  assert.equal(
+    checks.some((check) => check.command({}).args?.includes('audit:m6-4')),
+    false,
+  );
+});
+
 test('M5-15 pre-admission validation owns the current shared in-process session', () => {
   const m515Check = CI_CATEGORIES.batch.checks.find(
     (check) => check.inProcess === 'm5-15-pre-admission',

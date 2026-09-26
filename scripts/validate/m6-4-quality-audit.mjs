@@ -45,6 +45,23 @@ const RUNTIME_PATHS = [
 ];
 const DEFAULT_MODE = 'check';
 const FROZEN_SAMPLE_MANIFEST_SHA256 = 'a15aae2cccdd61e4bbe070800614f9e2f0e71d8d541e6002eddaf0d875589dbd';
+export const M6_4_FROZEN_SOURCE_IDENTITY = Object.freeze({
+  issue_start_commit: '4226a97f162b1f4a7401a74893c3d28018d33385',
+  baseline_id: 'm6-1-5k-quality-baseline-v1',
+  baseline_contract_version: 'm6-1-quality-gates-v2',
+  m6_1_baseline_sha256: '4eb83fd3d19c8ff0b522300430e4107f002850907161f2bdcd97ba3872195209',
+  canonical_revision: '8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9',
+  canonical_file_count: 13,
+  m4_regression_fixture_sha256: 'e2ce9f4ee8812dbb532d4cb78ee725b417f138070ccf013ee78c647c08296598',
+  m6_3_surface_form_review_sha256: '380e67ce30af6376906bca75f4c703da565dad59c27e094ec049629e861b5e22',
+  runtime_file_sha256: Object.freeze({
+    'scripts/validate/m6-1-quality-baseline.mjs': 'c66b1d9c0f9570514bd10fd9db73c9d53ed79b70a53d4ca53d9392c4b0b27eaa',
+    'scripts/build/query.mjs': 'fab784bb887e265764f8231e6c7b05240ba2173b591a77f93b2c7663e5fc785b',
+    'src/runtime/search-query.js': '66480e70fbc9f636675cb93ebc59163e88792675d55d011c1da5ff141864a655',
+    'src/domain/exact-search-candidates.js': '7b9f4563f724cacfe8c14b5fa5553f6d9ef5bae144c605518f157d2e589c77e0',
+    'scripts/inflection/surface-form-projection.mjs': 'ac45f89c529b91de01396c2468863ca82ab91738ea803fb4e49ad02808d893ed',
+  }),
+});
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -90,39 +107,35 @@ export function assertM6QualityAuditManifestMatches(committed, recomputed) {
 
 export function assertM6QualityAuditHistoricalSnapshot({
   manifest,
-  baseline,
-  baselineSha256,
   manifestBytes,
-  expectedManifestSha256,
-  runtimePaths,
+  expectedManifestSha256 = FROZEN_SAMPLE_MANIFEST_SHA256,
+  frozenSourceIdentity = M6_4_FROZEN_SOURCE_IDENTITY,
 }) {
   assert.equal(sha256(manifestBytes), expectedManifestSha256,
     'M6-4 historical sample bytes changed from the reviewed issue-start snapshot');
   assert.equal(manifest.audit_id, 'm6-4-writer-facing-quality-audit-v1');
   assert.equal(manifest.issue, 176);
   assert.equal(manifest.decision, 'HOLD');
-  assert.equal(manifest.source.baseline_id, baseline.baseline_id);
-  assert.equal(manifest.source.baseline_contract_version, baseline.quality_gates.contract_version);
-  assert.equal(manifest.source.canonical_revision, baseline.source.canonical_revision);
-  assert.equal(
-    manifest.source.m6_1_baseline_sha256,
-    baselineSha256,
-    'M6-4 historical sample must remain bound to the fixed M6-1 baseline artifact',
-  );
-  assert.deepStrictEqual(Object.keys(manifest.source.runtime_file_sha256).sort(), [...runtimePaths].sort());
-  assert.ok(Object.values(manifest.source.runtime_file_sha256)
-    .every((digest) => /^[a-f0-9]{64}$/.test(digest)));
+  assert.deepStrictEqual(manifest.source, frozenSourceIdentity,
+    'M6-4 sample source identity differs from its pinned issue-start source');
 }
 
-function assertFrozenHistoricalManifest(manifest, baseline, baselineSha256, manifestBytes) {
+export async function validateFrozenM6QualityAuditSnapshot({
+  repositoryDirectory = REPOSITORY_DIRECTORY,
+} = {}) {
+  const samplePath = path.join(repositoryDirectory, 'docs/m6-4-quality-audit-sample.json');
+  const manifestBytes = await readFile(samplePath);
+  const manifest = JSON.parse(manifestBytes.toString('utf8'));
   assertM6QualityAuditHistoricalSnapshot({
     manifest,
-    baseline,
-    baselineSha256,
     manifestBytes,
-    expectedManifestSha256: FROZEN_SAMPLE_MANIFEST_SHA256,
-    runtimePaths: RUNTIME_PATHS,
   });
+  return {
+    audit_id: manifest.audit_id,
+    canonical_revision: manifest.source.canonical_revision,
+    selected_canonical_case_count: manifest.review_status.selected_canonical_case_count,
+    decision: manifest.decision,
+  };
 }
 
 function unwrapRecords(records) {
@@ -455,7 +468,10 @@ async function main(argv = process.argv.slice(2)) {
       frozenM6_3ReviewSha256: existing.source.m6_3_surface_form_review_sha256,
     });
     if (verificationMode === 'verify-frozen-historical-sample') {
-      assertFrozenHistoricalManifest(existing, baseline, baselineSha256, manifestBytes);
+      assertM6QualityAuditHistoricalSnapshot({
+        manifest: existing,
+        manifestBytes,
+      });
       console.log(
         `M6-4 historical sample remains fixed at ${existing.source.canonical_revision}; `
         + `current canonical ${canonical.canonicalRevision} is outside this issue-start audit.`,

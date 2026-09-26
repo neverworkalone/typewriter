@@ -29,8 +29,11 @@ rules were not changed.
 `npm run audit:m6-4` rebuilds this sample while its issue-start canonical,
 baseline, M6-3 review, and runtime inputs are unchanged. If a later revision
 changes those inputs, the command verifies this immutable issue-start snapshot
-instead of recalculating it against a later canonical corpus. A later corpus
-needs its own audit sample.
+by its committed bytes and pinned source identity instead of recalculating it
+against a later canonical corpus. Normal CI performs that inexpensive frozen
+snapshot verification; it does not launch the full audit CLI or build a second
+SQLite database. Use the standalone command for full re-derivation. A later
+corpus needs its own audit sample.
 
 ## Measured corpus and selected samples
 
@@ -170,8 +173,9 @@ The following deterministic checks were run against the frozen M6-1 v2 contract:
   so the audit stays on HOLD. Its fixed-source boundary switches to historical
   snapshot verification after issue-start inputs change.
 - `tests/m6-4-quality-audit.test.mjs` — valid sample comparison passes, while
-  altered case identity, selection hash, source digest, and decision status are
-  rejected. The test and `npm run audit:m6-4` are registered in normal CI.
+  altered case identity, selection hash, source digest, decision status, and
+  pinned historical identity are rejected. Normal CI registers this test and
+  verifies the frozen sample bytes without launching the full audit CLI.
 - `npm run ci:normal` — all canonical, lexical, toolchain, batch, product, and
   artifact categories passed; artifact policy reported `workingTreeClean: true`.
 - `git diff --check`.

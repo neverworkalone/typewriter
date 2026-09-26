@@ -28,6 +28,7 @@ import { runGlobalCanonicalAudit } from './global-canonical-audit.mjs';
 import { validateSharedDictionary } from './validate-shared-dictionary.mjs';
 import { runM2Pipeline } from '../verify/m2-pipeline.mjs';
 import { validateM515 } from '../batch/validate-m5-15.mjs';
+import { validateFrozenM6QualityAuditSnapshot } from '../validate/m6-4-quality-audit.mjs';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 
@@ -294,6 +295,11 @@ async function ensureSharedDictionary(session) {
 
 async function runInProcessCheck(name, context) {
   const canonicalContext = context.canonicalContext;
+  if (name === 'm6-4-frozen-snapshot') {
+    console.log(JSON.stringify(await validateFrozenM6QualityAuditSnapshot(), null, 2));
+    return;
+  }
+
   if (name === 'canonical-jsonl') {
     console.log(
       `Validated ${canonicalContext.fileCount} canonical JSONL file(s) / ${canonicalContext.records.length} record(s) with schema.`,
