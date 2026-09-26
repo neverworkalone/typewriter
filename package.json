@@ -25,6 +25,7 @@
     "validate:inventory": "node scripts/validate/target-inventory.mjs",
     "validate:rules": "node scripts/validate/rule-inventory.mjs",
     "baseline:m6-1": "node scripts/validate/m6-1-quality-baseline.mjs --check",
+    "audit:m6-4": "node scripts/validate/m6-4-quality-audit.mjs --check",
     "validate:surface-forms": "node scripts/validate/surface-form-projection.mjs",
     "batch:validate": "node scripts/batch/validate-batch.mjs",
     "batch:import": "node scripts/batch/import-reviewed-batch.mjs",

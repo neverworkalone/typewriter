@@ -517,7 +517,14 @@ export function evaluateSearchReachability(expectedRows, actualRows) {
 export function assertSearchReachabilityPass(reachability) {
   assert.equal(reachability.missing_expected_result_count, 0, 'all expected records must be returned');
   assert.equal(reachability.reference_only_leak_count, 0, 'free search must not expose reference-only records');
-  assert.equal(reachability.unexpected_result_count, 0, 'queries must not return unexpected records');
+  const unexpectedKeys = reachability.mismatched_keys
+    .filter(({ actual_ids, expected_ids }) => actual_ids.some((id) => !expected_ids.includes(id)))
+    .map(({ key }) => key);
+  assert.equal(
+    reachability.unexpected_result_count,
+    0,
+    `queries must not return unexpected records${unexpectedKeys.length ? `: ${unexpectedKeys.join(', ')}` : ''}`,
+  );
   assert.equal(reachability.unexpected_key_count, 0, 'the runtime must not expose unregistered exact keys');
   assert.equal(reachability.unsupported_key_count, 0, 'canonical start keys must not be classified as unsupported');
   assert.equal(reachability.matched_key_count, reachability.key_count, 'every expected exact key must be reachable');
@@ -1105,9 +1112,9 @@ export async function main(argv = process.argv.slice(2)) {
     return snapshot;
   }
 
-  assertBaselineSnapshotMatches(existing, snapshot);
   const reachability = snapshot.metrics.search.exhaustive_runtime_reachability;
   assertSearchReachabilityPass(reachability);
+  assertBaselineSnapshotMatches(existing, snapshot);
   const template = await readFile(DEFAULT_REPORT_TEMPLATE_PATH, 'utf8');
   const report = await readFile(DEFAULT_REPORT_PATH, 'utf8');
   assertBaselineReportMatches(template, report, snapshot);

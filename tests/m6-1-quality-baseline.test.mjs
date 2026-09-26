@@ -234,6 +234,31 @@ test('M6-1 reachability evaluator covers missing, unexpected, and reference-only
   assert.throws(() => assertSearchReachabilityPass(unexpectedKey), /unregistered exact keys/);
 });
 
+test('M6-1 v2 measures the full runtime result and retains generated-form candidates in query choices', () => {
+  const records = [
+    record({ id: 'w2969', lemma: '끈', senses: [{ id: 'w2969-s1', pos: 'noun' }] }),
+    record({ id: 'w1081', lemma: '매듭', search_forms: ['매듭'], senses: [{ id: 'w1081-s1', pos: 'noun' }] }),
+  ];
+  const expected = [{ key: '끈', expected_ids: ['w2969'] }];
+  const actual = [{
+    key: '끈',
+    normalized_query: '끈',
+    status: 'ready',
+    matches: [
+      { id: 'w2969', role: 'start' },
+      { id: 'w1081', role: 'start' },
+    ],
+  }];
+
+  const reachability = evaluateSearchReachability(expected, actual);
+  assert.equal(reachability.unexpected_result_count, 1);
+  assert.throws(() => assertSearchReachabilityPass(reachability), /끈/);
+
+  const population = summarizeWriterFacingCandidatePopulation(records, actual);
+  assert.equal(population.ambiguous_query_count, 1);
+  assert.deepEqual(population.ambiguous_query_counts_by_kind, { 'multiple-start-records': 1 });
+});
+
 test('M6-1 snapshot equality rejects any derived metric drift', () => {
   const baseline = { metrics: { canonical: { start_count: 5000 } } };
   assert.doesNotThrow(() => assertBaselineSnapshotMatches(baseline, structuredClone(baseline)));
