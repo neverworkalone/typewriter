@@ -1,6 +1,6 @@
 # M7-1 release performance and scale benchmark
 
-Measured 2026-09-26 on source revision `af4ce2ab2a28dc13b2e31f1a3fe7cd62053d3e7f`. The v6 machine-readable result, including phase-level memory snapshots and digests, is [`m7-1-scale-benchmark.json`](m7-1-scale-benchmark.json).
+Measured 2026-09-26 on source revision `af4ce2ab2a28dc13b2e31f1a3fe7cd62053d3e7f`. The v7 machine-readable result, including phase-level memory snapshots, codepoint-length profiles, and digests, is [`m7-1-scale-benchmark.json`](m7-1-scale-benchmark.json).
 
 ## Environment and method
 
@@ -12,6 +12,7 @@ Measured 2026-09-26 on source revision `af4ce2ab2a28dc13b2e31f1a3fe7cd62053d3e7f
 - Runtime measurements use the production SQLite WASM module and the shared query adapter in a fresh Node child process. The file is read once and exposed to WASM through a zero-copy `Uint8Array` view; WASM deserialization allocates its own database image. The benchmark closes the cold database before opening the warm instance and records lifecycle events, cold peak/steady/after-close RSS, and warm reopen RSS separately. The test enforces a maximum of one live database.
 - The runtime child measures 40 repeated queries after 5 warm-ups. First-ready includes WASM initialization, database read, and first open. OS file-cache state is uncontrolled. The scale-runner process covers generation, audits, validation, normalization, SQLite builds, and reproducibility checks. These measurements do not include Chrome startup or worker-message overhead; those belong to browser install/update validation.
 - The CLI prints its report, then exits nonzero if a requested scale failed or is absent, or if a selected SQLite scale lacks valid package, SQLite file/index, startup, four representative query, runtime-memory/lifecycle, scale-runner-memory, synthetic-shape, build-timing, or reproducibility evidence. A `--sqlite-scale` absent from `--sizes` is rejected before benchmarking. Focused fail-closed fixtures exercise missing and malformed evidence through the CLI exit code.
+- Synthetic average lemma and gloss codepoint lengths are checked against an ordered canonical-derived template profile. Validation weights complete template cycles plus the first records in a partial final cycle, so an altered average cannot pass while category counts remain plausible. The report stores codepoint lengths only, not canonical text.
 - Scale runs are evaluated in ascending order. The scale-runner's RSS is the benchmark process's `process.resourceUsage().maxRSS` high-water mark at each scale boundary; it is cumulative across earlier scales in the same run. The reported V8 heap value is `max_sampled_heap_used_mb`, the greatest `process.memoryUsage().heapUsed` observed at phase boundaries, not a true process peak.
 
 ## Real 5K release baseline
@@ -61,4 +62,4 @@ Keep full scale measurements in the existing deep/manual/scheduled path; do not 
 - **1M completes as a deep stress workload.** It builds a 518.6 MB database and 126.73 MB ZIP. Runtime child maximum is 1,107 MiB RSS; the scale-runner process maximum is 6.37 GiB RSS and its maximum sampled heap-used value is 6.56 GiB. The composed 1M fast and normal upper bounds exceed their current budgets, while deep remains within its 600-second target. Keep 1M out of fast and normal CI.
 - Independent SQLite builds reproduced the same digest for each scale, and product output reused the validated SQLite artifact. Synthetic JSONL was not included in canonical directories or product packages.
 
-Synthetic text preserves the real corpus's per-field lengths and whitespace structure, but not future lexical entropy or compression behavior. Treat 100K–1M package sizes as deterministic structural stress evidence; use the real 5K package as the product baseline.
+Synthetic glosses and relation notes preserve the real corpus's codepoint lengths and whitespace structure. Lemmas and search forms use deterministic synthetic values, so their lengths follow the recorded synthetic profile rather than the canonical lemma lengths. These workloads do not model future lexical entropy or compression behavior. Treat 100K–1M package sizes as deterministic structural stress evidence; use the real 5K package as the product baseline.

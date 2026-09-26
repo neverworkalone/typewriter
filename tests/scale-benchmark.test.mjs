@@ -63,7 +63,7 @@ function validCliReport() {
     array_buffers_mb: 2 + index,
   }));
   return {
-    contract_version: 'canonical-validation-benchmark-v6',
+    contract_version: 'canonical-validation-benchmark-v7',
     runner_memory_contract: {
       contract_version: 'runner-memory-contract-v1',
       rss_metric: 'process_max_rss_mb',
@@ -75,23 +75,27 @@ function validCliReport() {
     },
     synthetic_record_shape: {
       strategy: 'cycle a canonical template profile and replace lexical values',
-      text_policy: 'preserve the canonical record structure',
+      text_policy: 'preserve gloss lengths and synthesize deterministic lemmas',
       canonical_template_profile: {
         record_count: 2,
         sense_count: 2,
         relation_count: 0,
         search_form_count: 2,
         record_roles: { start: 2 },
-        record_types: { entry: 2 },
+        record_types: { entry: 1, expression: 1 },
         senses_per_record: { 1: 2 },
         search_forms_per_record: { 1: 2 },
-        parts_of_speech: { noun: 2 },
+        parts_of_speech: { noun: 1, expression: 1 },
         relation_types: {},
         records_with_relations: 0,
         start_records_with_non_lemma_search_forms: 0,
         non_lemma_search_form_count: 0,
         average_lemma_codepoints: 2,
-        average_gloss_codepoints: 10,
+        average_gloss_codepoints: 15,
+        synthetic_text_codepoint_lengths: {
+          lemma_by_record: [4, 5],
+          gloss_by_record: [[10], [20]],
+        },
       },
     },
     release_performance_baseline: {
@@ -104,30 +108,30 @@ function validCliReport() {
         search_forms: 2,
       },
     },
-    sqlite_scales: [100],
+    sqlite_scales: [101],
     results: [{
-      scale: 100,
+      scale: 101,
       failure_stage: null,
       error: null,
       normalize_ms: 2,
       sqlite_build_ms: 3,
       synthetic_workload_shape: {
         template_record_count: 2,
-        record_count: 100,
-        sense_count: 100,
+        record_count: 101,
+        sense_count: 101,
         relation_count: 0,
-        search_form_count: 100,
-        record_roles: { start: 100 },
-        record_types: { entry: 100 },
-        senses_per_record: { 1: 100 },
-        search_forms_per_record: { 1: 100 },
-        parts_of_speech: { noun: 100 },
+        search_form_count: 101,
+        record_roles: { start: 101 },
+        record_types: { entry: 51, expression: 50 },
+        senses_per_record: { 1: 101 },
+        search_forms_per_record: { 1: 101 },
+        parts_of_speech: { noun: 51, expression: 50 },
         relation_types: {},
         records_with_relations: 0,
         start_records_with_non_lemma_search_forms: 0,
         non_lemma_search_form_count: 0,
-        average_lemma_codepoints: 2,
-        average_gloss_codepoints: 10,
+        average_lemma_codepoints: 4.5,
+        average_gloss_codepoints: 14.95,
         generated_surface_form_count: 1,
       },
       runner_memory: {
@@ -247,8 +251,8 @@ function invokeBenchmarkCli(report, options = {}) {
   const exitCodes = [];
   const runPromise = runBenchmarkCli({
     benchmark: options.benchmark ?? (async () => report),
-    sizes: options.sizes ?? [100],
-    sqliteScales: options.sqliteScales ?? new Set([100]),
+    sizes: options.sizes ?? [101],
+    sqliteScales: options.sqliteScales ?? new Set([101]),
     releasePerformance: options.releasePerformance ?? true,
     writeReport: (value) => printedReports.push(JSON.stringify(value)),
     writeError: (message) => printedErrors.push(message),
@@ -446,9 +450,23 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
     {
       name: 'synthetic workload shape matches the canonical template profile',
       mutate: (result) => {
-        result.synthetic_workload_shape.record_roles = { start: 80, 'reference-only': 20 };
+        result.synthetic_workload_shape.record_roles = { start: 80, 'reference-only': 21 };
       },
       error: /synthetic record_roles includes a category outside the canonical template profile/u,
+    },
+    {
+      name: 'synthetic average lemma codepoint length matches full cycles and the remainder',
+      mutate: (result) => {
+        result.synthetic_workload_shape.average_lemma_codepoints = 200;
+      },
+      error: /average lemma codepoint length does not match the canonical template profile/u,
+    },
+    {
+      name: 'synthetic average gloss codepoint length matches full cycles and the remainder',
+      mutate: (result) => {
+        result.synthetic_workload_shape.average_gloss_codepoints = 200;
+      },
+      error: /average gloss codepoint length does not match the canonical template profile/u,
     },
     {
       name: 'generated surface query has generated surface forms',
@@ -476,7 +494,7 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
       mutate: (_result, report) => {
         report.runner_memory_contract.sampled_heap_metric = 'peak_memory.heap_used_mb';
       },
-      error: /missing the v6 scale-runner memory contract/u,
+      error: /missing the v7 scale-evidence contract/u,
     },
     {
       name: 'canonical template profile matches the release baseline',
@@ -484,6 +502,13 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
         report.release_performance_baseline.input_record_count = 3;
       },
       error: /canonical template profile does not match the release input record count/u,
+    },
+    {
+      name: 'canonical template codepoint-length profile',
+      mutate: (_result, report) => {
+        delete report.synthetic_record_shape.canonical_template_profile.synthetic_text_codepoint_lengths;
+      },
+      error: /missing canonical synthetic text codepoint length profile/u,
     },
   ];
 
@@ -509,7 +534,7 @@ test('release benchmark CLI prints diagnostics and fails closed for incomplete s
 
     assert.equal(await runPromise, undefined);
     assert.match(printedReports[0], /fixture build failed/u);
-    assert.match(printedErrors[0], /scale 100 failed at sqlite-build: fixture build failed/u);
+    assert.match(printedErrors[0], /scale 101 failed at sqlite-build: fixture build failed/u);
     assert.deepEqual(exitCodes, [1]);
   });
 
@@ -520,7 +545,7 @@ test('release benchmark CLI prints diagnostics and fails closed for incomplete s
 
     assert.equal(await runPromise, undefined);
     assert.deepEqual(JSON.parse(printedReports[0]).results, []);
-    assert.match(printedErrors[0], /missing requested scale 100/u);
+    assert.match(printedErrors[0], /missing requested scale 101/u);
     assert.deepEqual(exitCodes, [1]);
   });
 

@@ -465,6 +465,15 @@ function summarizeTemplateShape(records) {
   };
 }
 
+function summarizeSyntheticTextCodepointLengths(records) {
+  const normalized = records.map(recordOf);
+  const profileToken = syntheticToken(0);
+  return {
+    lemma_by_record: normalized.map((template) => [...syntheticLemma(template, profileToken)].length),
+    gloss_by_record: normalized.map(({ senses }) => senses.map(({ gloss }) => [...gloss].length)),
+  };
+}
+
 function selectBenchmarkQueries(context) {
   const records = context.records.map(recordOf);
   const recordsById = new Map(records.map((record) => [record.id, record]));
@@ -956,6 +965,41 @@ function validateSyntheticRecordShapeMetadata(syntheticRecordShape, releaseBasel
     generated_surface_form_count: 0,
   }, profile.record_count, { allowZeroGeneratedSurfaceForm: true });
 
+  const lengthProfile = profile.synthetic_text_codepoint_lengths;
+  requireReportValue(lengthProfile, 'canonical synthetic text codepoint length profile');
+  if (!Array.isArray(lengthProfile.lemma_by_record)
+    || lengthProfile.lemma_by_record.length !== profile.record_count
+    || !Array.isArray(lengthProfile.gloss_by_record)
+    || lengthProfile.gloss_by_record.length !== profile.record_count) {
+    throw new Error('benchmark canonical template profile is missing per-record synthetic text codepoint lengths');
+  }
+  for (const codepoints of lengthProfile.lemma_by_record) {
+    requirePositiveSafeInteger(codepoints, 'canonical template synthetic lemma codepoint length');
+  }
+  const glossSensesPerRecord = [];
+  let glossLengthCount = 0;
+  let glossCodepointTotal = 0;
+  for (const glosses of lengthProfile.gloss_by_record) {
+    if (!Array.isArray(glosses) || glosses.length === 0) {
+      throw new Error('benchmark canonical template profile has an invalid per-record gloss codepoint length list');
+    }
+    glossSensesPerRecord.push(glosses.length);
+    glossLengthCount += glosses.length;
+    for (const codepoints of glosses) {
+      requirePositiveSafeInteger(codepoints, 'canonical template gloss codepoint length');
+      glossCodepointTotal += codepoints;
+    }
+  }
+  const expectedSenseHistogram = Object.entries(profile.senses_per_record)
+    .sort(([left], [right]) => Number(left) - Number(right));
+  const actualSenseHistogram = Object.entries(countBy(glossSensesPerRecord))
+    .sort(([left], [right]) => Number(left) - Number(right));
+  if (glossLengthCount !== profile.sense_count
+    || JSON.stringify(actualSenseHistogram) !== JSON.stringify(expectedSenseHistogram)
+    || roundedAverage(glossCodepointTotal, glossLengthCount) !== profile.average_gloss_codepoints) {
+    throw new Error('benchmark canonical template profile gloss codepoint lengths do not match its sense shape');
+  }
+
   const baselineCounts = releaseBaseline?.database_counts;
   const countsToMatch = [
     [profile.record_count, releaseBaseline?.input_record_count, 'release input record count'],
@@ -979,6 +1023,44 @@ function scaledTemplateCountBounds(templateCount, templateRecordCount, scale) {
     minimum: fullCycles * templateCount,
     maximum: upperCycles * templateCount,
   };
+}
+
+function roundedAverage(total, count) {
+  return Math.round(total / count * 100) / 100;
+}
+
+function expectedRepeatedAverage(valuesByRecord, scale) {
+  const fullCycles = Math.floor(scale / valuesByRecord.length);
+  const remainder = scale % valuesByRecord.length;
+  const cycleTotal = valuesByRecord.reduce((sum, value) => sum + value, 0);
+  const remainderTotal = valuesByRecord
+    .slice(0, remainder)
+    .reduce((sum, value) => sum + value, 0);
+  return roundedAverage(fullCycles * cycleTotal + remainderTotal, scale);
+}
+
+function expectedRepeatedGroupedAverage(valuesByRecord, scale) {
+  const fullCycles = Math.floor(scale / valuesByRecord.length);
+  const remainder = scale % valuesByRecord.length;
+  const cycleTotal = valuesByRecord.flat().reduce((sum, value) => sum + value, 0);
+  const cycleCount = valuesByRecord.reduce((sum, values) => sum + values.length, 0);
+  const remainderValues = valuesByRecord.slice(0, remainder).flat();
+  const remainderTotal = remainderValues.reduce((sum, value) => sum + value, 0);
+  const remainderCount = remainderValues.length;
+  return roundedAverage(
+    fullCycles * cycleTotal + remainderTotal,
+    fullCycles * cycleCount + remainderCount,
+  );
+}
+
+function expectedRepeatedGroupedCount(valuesByRecord, scale) {
+  const fullCycles = Math.floor(scale / valuesByRecord.length);
+  const remainder = scale % valuesByRecord.length;
+  const cycleCount = valuesByRecord.reduce((sum, values) => sum + values.length, 0);
+  const remainderCount = valuesByRecord
+    .slice(0, remainder)
+    .reduce((sum, values) => sum + values.length, 0);
+  return fullCycles * cycleCount + remainderCount;
 }
 
 function validateScaledTemplateCountMap(actual, template, description, scale, templateRecordCount) {
@@ -1040,6 +1122,19 @@ function validateSyntheticWorkloadAgainstTemplate(shape, templateProfile, scale)
     if (shape[metric] < minimum || shape[metric] > maximum) {
       throw new Error('scale ' + scale + ' synthetic ' + metric + ' does not match the canonical template profile');
     }
+  }
+
+  const lengthProfile = templateProfile.synthetic_text_codepoint_lengths;
+  if (shape.sense_count !== expectedRepeatedGroupedCount(lengthProfile.gloss_by_record, scale)) {
+    throw new Error('scale ' + scale + ' synthetic sense count does not match the canonical template cycle and remainder');
+  }
+  const expectedLemmaAverage = expectedRepeatedAverage(lengthProfile.lemma_by_record, scale);
+  if (shape.average_lemma_codepoints !== expectedLemmaAverage) {
+    throw new Error('scale ' + scale + ' synthetic average lemma codepoint length does not match the canonical template profile');
+  }
+  const expectedGlossAverage = expectedRepeatedGroupedAverage(lengthProfile.gloss_by_record, scale);
+  if (shape.average_gloss_codepoints !== expectedGlossAverage) {
+    throw new Error('scale ' + scale + ' synthetic average gloss codepoint length does not match the canonical template profile');
   }
 }
 
@@ -1364,7 +1459,7 @@ export function validateBenchmarkReport(report, {
     throw new Error('benchmark report is missing sqlite_scales');
   }
   if (selectedSqliteScales.size > 0
-    && (report.contract_version !== 'canonical-validation-benchmark-v6'
+    && (report.contract_version !== 'canonical-validation-benchmark-v7'
       || report.runner_memory_contract?.contract_version !== 'runner-memory-contract-v1'
       || report.runner_memory_contract.rss_metric !== 'process_max_rss_mb'
       || report.runner_memory_contract.rss_source !== 'process.resourceUsage().maxRSS'
@@ -1372,7 +1467,7 @@ export function validateBenchmarkReport(report, {
       || report.runner_memory_contract.sampled_heap_metric !== 'max_sampled_heap_used_mb'
       || report.runner_memory_contract.sampled_heap_source !== 'process.memoryUsage().heapUsed'
       || report.runner_memory_contract.sampled_heap_scope !== 'max-phase-boundary-sample-not-true-peak')) {
-    throw new Error('benchmark report is missing the v6 scale-runner memory contract');
+    throw new Error('benchmark report is missing the v7 scale-evidence contract');
   }
 
   const reportedSqliteScales = new Set(report.sqlite_scales);
@@ -1484,7 +1579,10 @@ export async function benchmarkCanonicalValidation({
   const templateInputPreparationMs = elapsed(inputPreparationStart);
   const templates = canonicalTemplateContext.records.map(recordOf);
   const templateIndexById = new Map(templates.map(({ id }, index) => [id, index]));
-  const templateProfile = summarizeTemplateShape(templates);
+  const templateProfile = {
+    ...summarizeTemplateShape(templates),
+    synthetic_text_codepoint_lengths: summarizeSyntheticTextCodepointLengths(templates),
+  };
   const canonicalInputBytes = (await listFiles(canonicalDirectory))
     .filter(({ path: filePath }) => filePath.endsWith('.jsonl'))
     .reduce((total, { bytes }) => total + bytes, 0);
@@ -1767,7 +1865,7 @@ export async function benchmarkCanonicalValidation({
   }
 
   return {
-    contract_version: 'canonical-validation-benchmark-v6',
+    contract_version: 'canonical-validation-benchmark-v7',
     runner_wiring: 'same-process-shared-context-with-real-corpus-phases-and-level-continuation',
     runner_memory_contract: {
       contract_version: 'runner-memory-contract-v1',
@@ -1780,7 +1878,7 @@ export async function benchmarkCanonicalValidation({
     },
     synthetic_record_shape: {
       strategy: 'cycle the real canonical record/sense/search-form/relation shape, then replace IDs and all lexical strings with deterministic synthetic values',
-      text_policy: 'preserve per-field Unicode codepoint lengths and record structure; do not copy canonical lemmas, glosses, notes, or IDs into synthetic JSONL',
+      text_policy: 'preserve gloss and relation-note Unicode codepoint lengths and record structure; synthesize deterministic lemma/search-form strings by record type and part of speech; do not copy canonical lemmas, glosses, notes, or IDs into synthetic JSONL',
       canonical_template_profile: templateProfile,
     },
     benchmark_setup: 'synthetic JSONL generation and synthetic authored-decision construction are fixture preparation; the product, package, and SQLite WASM runtime measurements run on temporary synthetic builds',
