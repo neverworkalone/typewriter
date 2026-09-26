@@ -73,7 +73,37 @@ function validCliReport() {
       sampled_heap_source: 'process.memoryUsage().heapUsed',
       sampled_heap_scope: 'max-phase-boundary-sample-not-true-peak',
     },
-    release_performance_baseline: { data_kind: 'real-current-canonical' },
+    synthetic_record_shape: {
+      strategy: 'cycle a canonical template profile and replace lexical values',
+      text_policy: 'preserve the canonical record structure',
+      canonical_template_profile: {
+        record_count: 2,
+        sense_count: 2,
+        relation_count: 0,
+        search_form_count: 2,
+        record_roles: { start: 2 },
+        record_types: { entry: 2 },
+        senses_per_record: { 1: 2 },
+        search_forms_per_record: { 1: 2 },
+        parts_of_speech: { noun: 2 },
+        relation_types: {},
+        records_with_relations: 0,
+        start_records_with_non_lemma_search_forms: 0,
+        non_lemma_search_form_count: 0,
+        average_lemma_codepoints: 2,
+        average_gloss_codepoints: 10,
+      },
+    },
+    release_performance_baseline: {
+      data_kind: 'real-current-canonical',
+      input_record_count: 2,
+      database_counts: {
+        records: 2,
+        senses: 2,
+        relations: 0,
+        search_forms: 2,
+      },
+    },
     sqlite_scales: [100],
     results: [{
       scale: 100,
@@ -98,7 +128,7 @@ function validCliReport() {
         non_lemma_search_form_count: 0,
         average_lemma_codepoints: 2,
         average_gloss_codepoints: 10,
-        generated_surface_form_count: 0,
+        generated_surface_form_count: 1,
       },
       runner_memory: {
         process_max_rss_mb: 200,
@@ -183,18 +213,18 @@ function validCliReport() {
             scope: 'benchmark Node process; only one live database',
             phase_snapshots: memoryPhases,
             cold_load: {
-              peak_rss_mb: 120,
-              steady_state_rss_mb: 120,
-              after_close_rss_mb: 121,
+              peak_rss_mb: 104,
+              steady_state_rss_mb: 104,
+              after_close_rss_mb: 105,
             },
             warm_reopen: {
-              baseline_rss_mb: 121,
-              after_open_rss_mb: 122,
+              baseline_rss_mb: 105,
+              after_open_rss_mb: 106,
               open_ms: 5,
-              after_close_rss_mb: 122,
+              after_close_rss_mb: 107,
             },
-            peak_observed_rss_mb: 122,
-            process_max_rss_mb: 123,
+            peak_observed_rss_mb: 107,
+            process_max_rss_mb: 108,
           },
         },
       },
@@ -350,6 +380,35 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
       error: /empty runtime RSS snapshot/u,
     },
     {
+      name: 'runtime phase exceeds reported maximum',
+      mutate: (result) => {
+        result.product_performance.sqlite_wasm_runtime.memory.phase_snapshots
+          .find(({ phase }) => phase === 'after_queries').rss_mb = 130;
+      },
+      error: /cold-load steady-state RSS does not match the after_queries snapshot/u,
+    },
+    {
+      name: 'cold runtime summary matches its phase',
+      mutate: (result) => {
+        result.product_performance.sqlite_wasm_runtime.memory.cold_load.steady_state_rss_mb = 103;
+      },
+      error: /cold-load steady-state RSS does not match the after_queries snapshot/u,
+    },
+    {
+      name: 'observed runtime maximum matches all phases',
+      mutate: (result) => {
+        result.product_performance.sqlite_wasm_runtime.memory.peak_observed_rss_mb = 106;
+      },
+      error: /observed RSS summary does not match the phase maximum/u,
+    },
+    {
+      name: 'warm reopen timing matches startup',
+      mutate: (result) => {
+        result.product_performance.sqlite_wasm_runtime.memory.warm_reopen.open_ms = 6;
+      },
+      error: /warm-reopen timing does not match startup evidence/u,
+    },
+    {
       name: 'single database lifecycle',
       mutate: (result) => {
         result.product_performance.sqlite_wasm_runtime.database_lifecycle.max_live_databases = 2;
@@ -385,6 +444,20 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
       error: /synthetic sense shape does not match its counts/u,
     },
     {
+      name: 'synthetic workload shape matches the canonical template profile',
+      mutate: (result) => {
+        result.synthetic_workload_shape.record_roles = { start: 80, 'reference-only': 20 };
+      },
+      error: /synthetic record_roles includes a category outside the canonical template profile/u,
+    },
+    {
+      name: 'generated surface query has generated surface forms',
+      mutate: (result) => {
+        result.synthetic_workload_shape.generated_surface_form_count = 0;
+      },
+      error: /no generated surface forms for its representative query/u,
+    },
+    {
       name: 'missing synthetic workload shape',
       mutate: (result) => {
         delete result.synthetic_workload_shape;
@@ -404,6 +477,13 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
         report.runner_memory_contract.sampled_heap_metric = 'peak_memory.heap_used_mb';
       },
       error: /missing the v6 scale-runner memory contract/u,
+    },
+    {
+      name: 'canonical template profile matches the release baseline',
+      mutate: (_result, report) => {
+        report.release_performance_baseline.input_record_count = 3;
+      },
+      error: /canonical template profile does not match the release input record count/u,
     },
   ];
 

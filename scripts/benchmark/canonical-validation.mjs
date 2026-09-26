@@ -880,7 +880,7 @@ function validateHistogram(value, description, scale) {
   return { count, weightedCount };
 }
 
-function validateSyntheticWorkloadShape(shape, scale) {
+function validateSyntheticWorkloadShape(shape, scale, { allowZeroGeneratedSurfaceForm = false } = {}) {
   requireReportValue(shape, 'synthetic workload shape', scale);
   requirePositiveSafeInteger(shape.template_record_count, 'synthetic template record count', scale);
   if (shape.record_count !== scale) {
@@ -918,9 +918,16 @@ function validateSyntheticWorkloadShape(shape, scale) {
     'records_with_relations',
     'start_records_with_non_lemma_search_forms',
     'non_lemma_search_form_count',
-    'generated_surface_form_count',
   ]) {
     requireNonnegativeSafeInteger(shape[metric], 'synthetic workload ' + metric, scale);
+  }
+  requireNonnegativeSafeInteger(
+    shape.generated_surface_form_count,
+    'synthetic workload generated_surface_form_count',
+    scale,
+  );
+  if (!allowZeroGeneratedSurfaceForm && shape.generated_surface_form_count === 0) {
+    throw new Error('scale ' + scale + ' has no generated surface forms for its representative query');
   }
   if (shape.records_with_relations > shape.record_count
     || shape.start_records_with_non_lemma_search_forms > shape.record_roles.start
@@ -931,6 +938,107 @@ function validateSyntheticWorkloadShape(shape, scale) {
     requireNonnegativeNumber(shape[metric], 'synthetic workload ' + metric, scale);
     if (shape[metric] <= 0) {
       throw new Error('scale ' + scale + ' has an empty synthetic workload ' + metric);
+    }
+  }
+}
+
+function validateSyntheticRecordShapeMetadata(syntheticRecordShape, releaseBaseline) {
+  requireReportValue(syntheticRecordShape, 'synthetic record shape policy');
+  if (typeof syntheticRecordShape.strategy !== 'string' || syntheticRecordShape.strategy.length === 0
+    || typeof syntheticRecordShape.text_policy !== 'string' || syntheticRecordShape.text_policy.length === 0) {
+    throw new Error('benchmark report is missing the synthetic record shape strategy or text policy');
+  }
+  const profile = syntheticRecordShape.canonical_template_profile;
+  requireReportValue(profile, 'canonical template shape profile');
+  validateSyntheticWorkloadShape({
+    ...profile,
+    template_record_count: profile.record_count,
+    generated_surface_form_count: 0,
+  }, profile.record_count, { allowZeroGeneratedSurfaceForm: true });
+
+  const baselineCounts = releaseBaseline?.database_counts;
+  const countsToMatch = [
+    [profile.record_count, releaseBaseline?.input_record_count, 'release input record count'],
+    [profile.record_count, baselineCounts?.records, 'release database record count'],
+    [profile.sense_count, baselineCounts?.senses, 'release database sense count'],
+    [profile.search_form_count, baselineCounts?.search_forms, 'release database search-form count'],
+    [profile.relation_count, baselineCounts?.relations, 'release database relation count'],
+  ];
+  for (const [profileCount, baselineCount, description] of countsToMatch) {
+    if (Number.isSafeInteger(baselineCount) && profileCount !== baselineCount) {
+      throw new Error('benchmark canonical template profile does not match the ' + description);
+    }
+  }
+  return profile;
+}
+
+function scaledTemplateCountBounds(templateCount, templateRecordCount, scale) {
+  const fullCycles = Math.floor(scale / templateRecordCount);
+  const upperCycles = fullCycles + (scale % templateRecordCount > 0 ? 1 : 0);
+  return {
+    minimum: fullCycles * templateCount,
+    maximum: upperCycles * templateCount,
+  };
+}
+
+function validateScaledTemplateCountMap(actual, template, description, scale, templateRecordCount) {
+  const actualNames = new Set(Object.keys(actual));
+  const templateNames = new Set(Object.keys(template));
+  if ([...actualNames].some((name) => !templateNames.has(name))) {
+    throw new Error('scale ' + scale + ' synthetic ' + description + ' includes a category outside the canonical template profile');
+  }
+  for (const name of templateNames) {
+    const { minimum, maximum } = scaledTemplateCountBounds(template[name], templateRecordCount, scale);
+    const actualCount = actual[name] ?? 0;
+    if (actualCount < minimum || actualCount > maximum) {
+      throw new Error('scale ' + scale + ' synthetic ' + description + ' does not match the canonical template distribution');
+    }
+  }
+}
+
+function validateSyntheticWorkloadAgainstTemplate(shape, templateProfile, scale) {
+  const templateRecordCount = templateProfile.record_count;
+  if (shape.template_record_count !== templateRecordCount) {
+    throw new Error('scale ' + scale + ' synthetic workload uses the wrong canonical template record count');
+  }
+  for (const metric of ['sense_count', 'relation_count', 'search_form_count']) {
+    const { minimum, maximum } = scaledTemplateCountBounds(
+      templateProfile[metric],
+      templateRecordCount,
+      scale,
+    );
+    if (shape[metric] < minimum || shape[metric] > maximum) {
+      throw new Error('scale ' + scale + ' synthetic ' + metric + ' does not match the canonical template profile');
+    }
+  }
+  for (const metric of [
+    'record_roles',
+    'record_types',
+    'senses_per_record',
+    'search_forms_per_record',
+    'parts_of_speech',
+    'relation_types',
+  ]) {
+    validateScaledTemplateCountMap(
+      shape[metric],
+      templateProfile[metric],
+      metric,
+      scale,
+      templateRecordCount,
+    );
+  }
+  for (const metric of [
+    'records_with_relations',
+    'start_records_with_non_lemma_search_forms',
+    'non_lemma_search_form_count',
+  ]) {
+    const { minimum, maximum } = scaledTemplateCountBounds(
+      templateProfile[metric],
+      templateRecordCount,
+      scale,
+    );
+    if (shape[metric] < minimum || shape[metric] > maximum) {
+      throw new Error('scale ' + scale + ' synthetic ' + metric + ' does not match the canonical template profile');
     }
   }
 }
@@ -1017,6 +1125,9 @@ function validateRuntimeQueryEvidence(queryPaths, scale) {
       throw new Error('scale ' + scale + ' used the wrong result path for ' + category);
     }
     if (category === 'ambiguous-multi-sense') {
+      if (!queryPath.result_match_fields.some((field) => ['lemma', 'search-form'].includes(field))) {
+        throw new Error('scale ' + scale + ' used an invalid result path for the ambiguous query');
+      }
       requirePositiveSafeInteger(queryPath.ambiguous_sense_count, 'ambiguous query sense count', scale);
       if (queryPath.ambiguous_sense_count < 2) {
         throw new Error('scale ' + scale + ' ambiguous query does not exercise a multi-sense record');
@@ -1024,9 +1135,10 @@ function validateRuntimeQueryEvidence(queryPaths, scale) {
       validateTimingSummary(queryPath.ambiguous_record_load, 'ambiguous record-load query', scale);
     }
   }
+  return pathsByCategory;
 }
 
-function validateRuntimeMemoryEvidence(memory, scale) {
+function validateRuntimeMemoryEvidence(memory, startup, scale) {
   requireReportValue(memory, 'SQLite runtime memory measurements', scale);
   if (typeof memory.scope !== 'string' || memory.scope.length === 0) {
     throw new Error('scale ' + scale + ' is missing SQLite runtime memory scope');
@@ -1045,11 +1157,13 @@ function validateRuntimeMemoryEvidence(memory, scale) {
     throw new Error('scale ' + scale + ' is missing SQLite runtime memory phase snapshots');
   }
   const phases = new Set();
+  const snapshotsByPhase = new Map();
   for (const snapshot of memory.phase_snapshots) {
     if (!snapshot || typeof snapshot.phase !== 'string' || phases.has(snapshot.phase)) {
       throw new Error('scale ' + scale + ' has invalid SQLite runtime memory phase snapshots');
     }
     phases.add(snapshot.phase);
+    snapshotsByPhase.set(snapshot.phase, snapshot);
     for (const metric of ['rss_mb', 'heap_used_mb', 'external_mb', 'array_buffers_mb']) {
       requireNonnegativeNumber(snapshot[metric], 'runtime memory ' + snapshot.phase + ' ' + metric, scale);
     }
@@ -1060,6 +1174,7 @@ function validateRuntimeMemoryEvidence(memory, scale) {
   if (requiredPhases.some((phase) => !phases.has(phase))) {
     throw new Error('scale ' + scale + ' is missing a required SQLite runtime memory phase');
   }
+  const rssAt = (phase) => snapshotsByPhase.get(phase).rss_mb;
   requireReportValue(memory.cold_load, 'SQLite cold-load memory summary', scale);
   requireReportValue(memory.warm_reopen, 'SQLite warm-reopen memory summary', scale);
   for (const metric of ['peak_rss_mb', 'steady_state_rss_mb', 'after_close_rss_mb']) {
@@ -1077,9 +1192,35 @@ function validateRuntimeMemoryEvidence(memory, scale) {
   requireNonnegativeNumber(memory.warm_reopen.open_ms, 'SQLite warm-reopen timing', scale);
   requireNonnegativeNumber(memory.peak_observed_rss_mb, 'SQLite observed runtime RSS', scale);
   requireNonnegativeNumber(memory.process_max_rss_mb, 'SQLite process maximum RSS', scale);
-  if (memory.peak_observed_rss_mb <= 0
-    || memory.process_max_rss_mb < memory.peak_observed_rss_mb) {
-    throw new Error('scale ' + scale + ' has inconsistent SQLite runtime RSS measurements');
+  if (memory.cold_load.steady_state_rss_mb !== rssAt('after_queries')) {
+    throw new Error('scale ' + scale + ' cold-load steady-state RSS does not match the after_queries snapshot');
+  }
+  if (memory.cold_load.after_close_rss_mb !== rssAt('after_cold_database_close')) {
+    throw new Error('scale ' + scale + ' cold-load after-close RSS does not match its phase snapshot');
+  }
+  if (memory.warm_reopen.baseline_rss_mb !== rssAt('after_cold_database_close')
+    || memory.warm_reopen.after_open_rss_mb !== rssAt('after_warm_database_open')
+    || memory.warm_reopen.after_close_rss_mb !== rssAt('after_warm_database_close')) {
+    throw new Error('scale ' + scale + ' warm-reopen RSS summary does not match its phase snapshots');
+  }
+  if (memory.warm_reopen.open_ms !== startup.warm_database_reopen_ms) {
+    throw new Error('scale ' + scale + ' warm-reopen timing does not match startup evidence');
+  }
+  const observedMaximumRss = Math.max(...memory.phase_snapshots.map(({ rss_mb }) => rss_mb));
+  if (memory.peak_observed_rss_mb !== observedMaximumRss) {
+    throw new Error('scale ' + scale + ' observed RSS summary does not match the phase maximum');
+  }
+  const coldObservedMaximumRss = Math.max(...[
+    'before_wasm_init',
+    'after_wasm_init',
+    'after_database_read',
+    'after_first_database_open',
+    'after_queries',
+  ].map(rssAt));
+  if (memory.cold_load.peak_rss_mb < coldObservedMaximumRss
+    || memory.cold_load.peak_rss_mb > memory.process_max_rss_mb
+    || memory.process_max_rss_mb < observedMaximumRss) {
+    throw new Error('scale ' + scale + ' has inconsistent SQLite runtime RSS maxima');
   }
 }
 
@@ -1096,7 +1237,7 @@ function validateRunnerMemoryEvidence(memory, scale) {
   }
 }
 
-function validateProductScaleResult(result) {
+function validateProductScaleResult(result, templateProfile) {
   const { scale } = result;
   const product = result.product_performance;
   requireReportValue(product, 'product performance result', scale);
@@ -1160,8 +1301,8 @@ function validateProductScaleResult(result) {
 
   validateRuntimeDatabaseEvidence(runtime.database, scale);
   validateRuntimeStartupEvidence(runtime.startup, scale);
-  validateRuntimeQueryEvidence(runtime.query_paths, scale);
-  validateRuntimeMemoryEvidence(runtime.memory, scale);
+  const queryPathsByCategory = validateRuntimeQueryEvidence(runtime.query_paths, scale);
+  validateRuntimeMemoryEvidence(runtime.memory, runtime.startup, scale);
   for (const metric of [
     'elapsed_ms',
     'shared_database_validation_ms',
@@ -1176,7 +1317,15 @@ function validateProductScaleResult(result) {
   if (result.sqlite_build_ms <= 0) {
     throw new Error('scale ' + scale + ' has an empty SQLite build timing');
   }
-  validateSyntheticWorkloadShape(result.synthetic_workload_shape, scale);
+  const syntheticShape = result.synthetic_workload_shape;
+  validateSyntheticWorkloadShape(syntheticShape, scale);
+  validateSyntheticWorkloadAgainstTemplate(syntheticShape, templateProfile, scale);
+  const generatedSurfaceQuery = queryPathsByCategory.get('generated-surface-form');
+  if (syntheticShape.generated_surface_form_count < 1
+    || !generatedSurfaceQuery
+    || !generatedSurfaceQuery.result_match_fields.includes('generated-surface-form')) {
+    throw new Error('scale ' + scale + ' generated-surface query is not backed by synthetic surface-form evidence');
+  }
   validateRunnerMemoryEvidence(result.runner_memory, scale);
 
   const digests = [
@@ -1235,6 +1384,12 @@ export function validateBenchmarkReport(report, {
   if (releasePerformance && !report.release_performance_baseline) {
     throw new Error('benchmark report is missing the real release baseline');
   }
+  const templateProfile = selectedSqliteScales.size > 0
+    ? validateSyntheticRecordShapeMetadata(
+      report.synthetic_record_shape,
+      report.release_performance_baseline,
+    )
+    : null;
 
   const resultsByScale = new Map();
   for (const result of report.results) {
@@ -1258,7 +1413,7 @@ export function validateBenchmarkReport(report, {
         `scale ${scale} failed at ${result.failure_stage ?? 'unknown'}: ${result.error ?? 'unknown error'}`,
       );
     }
-    if (selectedSqliteScales.has(scale)) validateProductScaleResult(result);
+    if (selectedSqliteScales.has(scale)) validateProductScaleResult(result, templateProfile);
   }
   return report;
 }
