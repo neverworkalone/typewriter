@@ -162,6 +162,13 @@ test('artifact policy classifies projections before they can become tracked data
   assert.deepEqual(projectionReview.generated, []);
   assert.deepEqual(projectionReview.unclassified, []);
 
+  const calibrationEvidence = classifyTrackedArtifacts(
+    ['data/validation/m6-5-correction-calibration.json'],
+    options,
+  );
+  assert.deepEqual(calibrationEvidence.generated, []);
+  assert.deepEqual(calibrationEvidence.unclassified, []);
+
   const unclassified = classifyTrackedArtifacts(
     ['data/validation/future-derived-envelope.json'],
     options,
