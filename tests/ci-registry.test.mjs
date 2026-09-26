@@ -141,6 +141,13 @@ test('CI levels are nested and deep owns the scale benchmark', () => {
     CI_NORMAL_CATEGORY_ORDER.includes('historical'),
     false,
   );
+  assert.equal(CI_NORMAL_CATEGORY_ORDER.includes('product'), true);
+  assert.equal(
+    CI_CATEGORIES.product.checks.some(
+      (check) => check.testFiles?.includes('tests/scale-benchmark.test.mjs'),
+    ),
+    true,
+  );
   assert.deepEqual(CI_DEEP_CATEGORY_ORDER, ['historical', 'deep']);
   assert.equal(
     CI_CATEGORIES.deep.checks.at(-1).label,

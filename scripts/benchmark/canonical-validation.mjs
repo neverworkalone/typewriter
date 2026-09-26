@@ -61,6 +61,9 @@ function parseSizes(argument = process.argv.find((value) => value.startsWith('--
   if (sizes.some((size) => !Number.isSafeInteger(size) || size < 1)) {
     throw new Error(`--sizes must contain positive integers: ${raw}`);
   }
+  if (new Set(sizes).size !== sizes.length) {
+    throw new Error(`--sizes must not repeat a scale: ${raw}`);
+  }
   return sizes;
 }
 
@@ -770,6 +773,165 @@ function composeLevelBudgets(corpusCost, fixedLevelEvidence) {
   }));
 }
 
+function validateScaleSelection(sizes, sqliteScales) {
+  if (!Array.isArray(sizes) || sizes.some((size) => !Number.isSafeInteger(size) || size < 1)) {
+    throw new Error('sizes must contain positive safe integers');
+  }
+  if (new Set(sizes).size !== sizes.length) {
+    throw new Error('sizes must not repeat a scale');
+  }
+
+  if (!sqliteScales || typeof sqliteScales[Symbol.iterator] !== 'function') {
+    throw new Error('sqliteScales must be an iterable of positive safe integers');
+  }
+  const sqliteScaleList = [...sqliteScales];
+  if (sqliteScaleList.some((scale) => !Number.isSafeInteger(scale) || scale < 1)) {
+    throw new Error('sqliteScales must contain positive safe integers');
+  }
+  const selectedSqliteScales = new Set(sqliteScaleList);
+  if (selectedSqliteScales.size !== sqliteScaleList.length) {
+    throw new Error('sqliteScales must not repeat a scale');
+  }
+
+  const requestedSizes = new Set(sizes);
+  const omittedSqliteScales = [...selectedSqliteScales].filter((scale) => !requestedSizes.has(scale));
+  if (omittedSqliteScales.length > 0) {
+    throw new Error(
+      `SQLite scales must also be listed in --sizes: ${omittedSqliteScales.join(', ')}`,
+    );
+  }
+  return selectedSqliteScales;
+}
+
+function requireReportValue(value, description, scale = undefined) {
+  if (value === undefined || value === null) {
+    const prefix = scale === undefined ? 'benchmark report' : `scale ${scale}`;
+    throw new Error(`${prefix} is missing ${description}`);
+  }
+}
+
+function validateProductScaleResult(result) {
+  const { scale } = result;
+  const product = result.product_performance;
+  requireReportValue(product, 'product performance result', scale);
+  requireReportValue(product.package, 'package result', scale);
+  requireReportValue(product.sqlite_wasm_runtime, 'SQLite WASM runtime result', scale);
+
+  if (!Number.isSafeInteger(product.package.zip_package_bytes) || product.package.zip_package_bytes < 1) {
+    throw new Error(`scale ${scale} has an invalid product ZIP size`);
+  }
+  if (product.package.synthetic_canonical_jsonl_excluded !== true) {
+    throw new Error(`scale ${scale} product package does not prove synthetic JSONL exclusion`);
+  }
+
+  const runtime = product.sqlite_wasm_runtime;
+  if (!Number.isSafeInteger(runtime.database?.file_bytes) || runtime.database.file_bytes < 1) {
+    throw new Error(`scale ${scale} has an invalid SQLite database size`);
+  }
+  if (runtime.database_lifecycle?.max_live_databases !== 1
+    || JSON.stringify(runtime.database_lifecycle.events)
+      !== JSON.stringify(['cold_open', 'cold_close', 'warm_open', 'warm_close'])) {
+    throw new Error(`scale ${scale} did not complete the single-database cold/warm lifecycle`);
+  }
+
+  const digests = [
+    product.shared_sqlite_sha256,
+    product.product_dictionary_sha256,
+    result.shared_sqlite_sha256,
+    result.product_dictionary_sha256,
+    result.reproducible_sqlite_sha256,
+    result.reproducible_second_sqlite_sha256,
+  ];
+  if (digests.some((digest) => typeof digest !== 'string' || !/^[0-9a-f]{64}$/u.test(digest))
+    || new Set(digests).size !== 1) {
+    throw new Error(`scale ${scale} is missing matching SQLite and product reproducibility digests`);
+  }
+  if (result.corpus_cost?.deep?.reproducible !== true) {
+    throw new Error(`scale ${scale} did not complete independent SQLite reproducibility builds`);
+  }
+  for (const level of ['fast', 'normal', 'deep']) {
+    if (!Number.isFinite(result.corpus_cost?.[level]?.wall_clock_ms)
+      || result.corpus_cost[level].wall_clock_ms < 0) {
+      throw new Error(`scale ${scale} is missing the ${level} corpus timing`);
+    }
+  }
+}
+
+export function validateBenchmarkReport(report, {
+  sizes,
+  sqliteScales = new Set(),
+  releasePerformance = false,
+} = {}) {
+  const selectedSqliteScales = validateScaleSelection(sizes, sqliteScales);
+  if (!report || !Array.isArray(report.results)) {
+    throw new Error('benchmark report is missing scale results');
+  }
+  if (!Array.isArray(report.sqlite_scales)) {
+    throw new Error('benchmark report is missing sqlite_scales');
+  }
+
+  const reportedSqliteScales = new Set(report.sqlite_scales);
+  if (reportedSqliteScales.size !== report.sqlite_scales.length
+    || reportedSqliteScales.size !== selectedSqliteScales.size
+    || [...selectedSqliteScales].some((scale) => !reportedSqliteScales.has(scale))) {
+    throw new Error('benchmark report SQLite scales do not match the requested scales');
+  }
+  if (releasePerformance && !report.release_performance_baseline) {
+    throw new Error('benchmark report is missing the real release baseline');
+  }
+
+  const resultsByScale = new Map();
+  for (const result of report.results) {
+    if (!Number.isSafeInteger(result?.scale) || resultsByScale.has(result.scale)) {
+      throw new Error(`benchmark report contains an invalid or duplicate scale result: ${result?.scale}`);
+    }
+    resultsByScale.set(result.scale, result);
+  }
+
+  const requestedSizes = new Set(sizes);
+  const unexpectedScales = [...resultsByScale.keys()].filter((scale) => !requestedSizes.has(scale));
+  if (unexpectedScales.length > 0) {
+    throw new Error(`benchmark report contains unrequested scales: ${unexpectedScales.join(', ')}`);
+  }
+
+  for (const scale of sizes) {
+    const result = resultsByScale.get(scale);
+    if (!result) throw new Error(`benchmark report is missing requested scale ${scale}`);
+    if (result.failure_stage !== null || result.error !== null) {
+      throw new Error(
+        `scale ${scale} failed at ${result.failure_stage ?? 'unknown'}: ${result.error ?? 'unknown error'}`,
+      );
+    }
+    if (selectedSqliteScales.has(scale)) validateProductScaleResult(result);
+  }
+  return report;
+}
+
+export async function runBenchmarkCli({
+  benchmark = benchmarkCanonicalValidation,
+  sizes = parseSizes(),
+  sqliteScales = parseOptionalScales(),
+  releasePerformance = process.argv.includes('--release-performance'),
+  writeReport = (report) => console.log(JSON.stringify(report, null, 2)),
+  writeError = (message) => console.error(message),
+  setExitCode = (code) => { process.exitCode = code; },
+} = {}) {
+  try {
+    const selectedSqliteScales = validateScaleSelection(sizes, sqliteScales);
+    const report = await benchmark({ sizes, sqliteScales: selectedSqliteScales, releasePerformance });
+    writeReport(report);
+    return validateBenchmarkReport(report, {
+      sizes,
+      sqliteScales: selectedSqliteScales,
+      releasePerformance,
+    });
+  } catch (error) {
+    writeError(error.message);
+    setExitCode(1);
+    return undefined;
+  }
+}
+
 export async function benchmarkCanonicalValidation({
   sizes = parseSizes(),
   sqliteScale,
@@ -781,6 +943,7 @@ export async function benchmarkCanonicalValidation({
   const selectedSqliteScales = sqliteScales === undefined
     ? (sqliteScale === undefined ? parseOptionalScales() : new Set([sqliteScale]))
     : new Set(sqliteScales);
+  validateScaleSelection(sizes, selectedSqliteScales);
   const selectedFixedLevelEvidence = await loadFixedLevelEvidence(
     fixedLevelEvidence
       ?? (fixedLevelCosts
@@ -1115,7 +1278,7 @@ export async function benchmarkCanonicalValidation({
 }
 
 async function main() {
-  console.log(JSON.stringify(await benchmarkCanonicalValidation(), null, 2));
+  await runBenchmarkCli();
 }
 
 if (path.resolve(process.argv[1] ?? '') === path.resolve(fileURLToPath(import.meta.url))) {
