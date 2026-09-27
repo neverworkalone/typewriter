@@ -13,6 +13,7 @@ import {
   DICTIONARY_VERSION,
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
+import { readForeignKeyViolations } from '../src/runtime/dictionary-validation.js';
 
 const FORBIDDEN_PACKAGE_PATHS = [
   /^(src|tests|node_modules|\.git)(\/|$)/,
@@ -403,6 +404,10 @@ function validateDictionaryMetadata({
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
     if (integrity !== 'ok') {
       errors.push(`Dictionary SQLite integrity_check failed: ${JSON.stringify(integrity)}.`);
+    }
+    const foreignKeyViolations = readForeignKeyViolations(database);
+    if (foreignKeyViolations.length > 0) {
+      errors.push(`Dictionary SQLite foreign_key_check found ${foreignKeyViolations.length} violation(s).`);
     }
   } catch (error) {
     errors.push(`Packaged dictionary could not be read: ${error.message}`);

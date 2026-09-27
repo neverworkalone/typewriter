@@ -22,6 +22,23 @@ function selectValue(database, sql) {
   return row ? Object.values(row)[0] : undefined;
 }
 
+function selectRows(database, sql) {
+  if (typeof database.selectObjects === 'function') {
+    return database.selectObjects(sql).map((row) => ({ ...row }));
+  }
+  if (typeof database.prepare === 'function') {
+    return database.prepare(sql).all().map((row) => ({ ...row }));
+  }
+
+  const resultRows = [];
+  database.exec({ sql, rowMode: 'object', resultRows });
+  return resultRows;
+}
+
+export function readForeignKeyViolations(database) {
+  return selectRows(database, 'PRAGMA foreign_key_check');
+}
+
 function readMetadata(database) {
   try {
     return getMetadata(database);
@@ -106,6 +123,24 @@ export function validatePackagedDictionary(database, {
       ERROR_CODES.DATABASE_INTEGRITY_FAILED,
       'The packaged dictionary failed its SQLite integrity check.',
       { integrity_result: integrity ?? null },
+    );
+  }
+
+  let foreignKeyViolations;
+  try {
+    foreignKeyViolations = readForeignKeyViolations(database);
+  } catch (error) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary foreign-key check could not be completed.',
+      { cause: error?.message || String(error) },
+    );
+  }
+  if (foreignKeyViolations.length > 0) {
+    throw validationError(
+      ERROR_CODES.DATABASE_INTEGRITY_FAILED,
+      'The packaged dictionary contains invalid foreign-key references.',
+      { foreign_key_violations: foreignKeyViolations },
     );
   }
 

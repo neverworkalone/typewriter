@@ -22,6 +22,7 @@ describe('product dictionary runtime assets', () => {
     expect(workerSource).toContain('validatePackagedDictionary(database, {');
     expect(validationSource).toContain('export function validatePackagedDictionary(database, {');
     expect(validationSource).toContain('PRAGMA quick_check');
+    expect(validationSource).toContain('PRAGMA foreign_key_check');
     expect(validationSource).toContain('source_revision_verified');
     expect(workerSource).toContain("from './dictionary-build-info.js'");
     expect(querySource).toContain("from './search-query.js'");

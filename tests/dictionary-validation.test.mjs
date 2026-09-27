@@ -7,7 +7,10 @@ import {
   DICTIONARY_VERSION,
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
-import { validatePackagedDictionary } from '../src/runtime/dictionary-validation.js';
+import {
+  readForeignKeyViolations,
+  validatePackagedDictionary,
+} from '../src/runtime/dictionary-validation.js';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 
 function createDictionary({ metadataOverrides = {}, userVersion = SQLITE_SCHEMA_VERSION } = {}) {
@@ -108,5 +111,43 @@ test('rejects truncated dictionary contents and missing tables against packaged 
   } finally {
     missingRow.close();
     missingTable.close();
+  }
+});
+
+test('rejects dangling foreign keys even when quick_check and every row count still match', () => {
+  const database = createDictionary({
+    metadataOverrides: {
+      record_count: '1',
+      start_count: '1',
+      search_form_count: '1',
+    },
+  });
+  try {
+    database.exec('PRAGMA foreign_keys = OFF');
+    database.prepare(`
+      INSERT INTO records (id, record_type, role, candidate_id, lemma)
+      VALUES ('w001', 'entry', 'start', NULL, '가다')
+    `).run();
+    database.prepare(`
+      INSERT INTO search_forms (record_id, position, form)
+      VALUES ('w001', 0, '가다')
+    `).run();
+    database.prepare(`
+      UPDATE search_forms SET record_id = '__missing_record__'
+      WHERE record_id = 'w001' AND position = 0
+    `).run();
+
+    assert.equal(database.prepare('PRAGMA quick_check').get().quick_check, 'ok');
+    for (const [key, sql] of Object.entries(DICTIONARY_COUNT_QUERIES)) {
+      const actual = String(Object.values(database.prepare(sql).get())[0]);
+      const expected = database.prepare('SELECT value FROM metadata WHERE key = ?').get(key).value;
+      assert.equal(actual, expected);
+    }
+    assert.equal(readForeignKeyViolations(database).length, 1);
+    assert.throws(() => validatePackagedDictionary(database), {
+      code: 'DATABASE_INTEGRITY_FAILED',
+    });
+  } finally {
+    database.close();
   }
 });

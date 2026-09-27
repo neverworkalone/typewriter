@@ -145,6 +145,25 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     });
     assert.deepEqual(matchingPackage.errors, []);
 
+    const foreignKeyDatabase = new DatabaseSync(databasePath);
+    foreignKeyDatabase.exec('PRAGMA foreign_keys = OFF');
+    foreignKeyDatabase.prepare(`
+      INSERT INTO search_forms (record_id, position, form)
+      VALUES ('missing-record', 0, 'orphan')
+    `).run();
+    foreignKeyDatabase.close();
+    const danglingForeignKey = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(danglingForeignKey.errors.includes(
+      'Dictionary SQLite foreign_key_check found 1 violation(s).',
+    ));
+    const repairedFixture = new DatabaseSync(databasePath);
+    repairedFixture.prepare("DELETE FROM search_forms WHERE form = 'orphan'").run();
+    repairedFixture.close();
+
     const runtimeBuildInfoPath = path.join(packageDirectory, 'runtime/dictionary-build-info.js');
     await writeFile(
       runtimeBuildInfoPath,

@@ -193,8 +193,10 @@ The runner verifies that the database source revision and bytes change, exact,
 search-form, and generated-surface lookups work after restart, and the saved
 Settings remain in `chrome.storage.local`. It also boots isolated copies with
 missing, unreadable, corrupt, schema-mismatched, dictionary-version-mismatched,
-revision-mismatched, and incomplete databases and checks the visible load error
-and worker retry behavior.
+revision-mismatched, referentially invalid, and incomplete databases and checks
+the visible load error and worker retry behavior. `foreign_key_check` runs in the
+runtime and package/artifact validators because SQLite's quick/integrity checks
+do not report dangling foreign-key references.
 
 실제 검증 기록 (2026-09-06, Chrome for Testing 152.0.7977.82): 제품 `popup.html`에서
 패키지된 query adapter가 worker와 SQLite/WASM을 로드했고, `담담하다` lemma, `담담`

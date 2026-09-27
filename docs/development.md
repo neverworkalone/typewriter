@@ -77,9 +77,9 @@ npm run test:mv3:package -- \
 The package runner also checks exact, search-form, and generated-surface lookups
 after replacement. It exercises missing, unreadable, corrupt,
 schema-mismatched, dictionary-version-mismatched, revision-mismatched, and
-incomplete database copies in CFT, including a fresh worker retry from each load
-failure. Those fixture edits stay in temporary copies and never change canonical
-data or the release package.
+foreign-key-invalid and incomplete database copies in CFT, including a fresh
+worker retry from each load failure. Those fixture edits stay in temporary copies
+and never change canonical data or the release package.
 
 `npm run build` generates the product's packaged `dictionary.sqlite` and the
 `runtime/` SQLite WASM worker assets after the Vite bundle. If the worktree is

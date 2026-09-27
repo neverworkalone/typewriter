@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { PRODUCT_LEGAL_FILES } from './product-output-contract.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
+import { readForeignKeyViolations } from '../../src/runtime/dictionary-validation.js';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -225,6 +226,13 @@ function readDatabaseMetadata(databasePath) {
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
     if (integrity !== 'ok') {
       fail('Pages dictionary failed SQLite integrity_check.', 'PAGES_ARTIFACT_SQLITE');
+    }
+    const foreignKeyViolations = readForeignKeyViolations(database);
+    if (foreignKeyViolations.length > 0) {
+      fail(
+        `Pages dictionary foreign_key_check found ${foreignKeyViolations.length} violation(s).`,
+        'PAGES_ARTIFACT_SQLITE',
+      );
     }
     const rows = database.prepare('SELECT key, value FROM metadata ORDER BY key').all();
     return Object.fromEntries(rows.map(({ key, value }) => [key, value]));

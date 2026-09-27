@@ -20,6 +20,7 @@ const FAILURE_SCENARIOS = Object.freeze([
   { name: 'dictionary-version-mismatch', errorCode: 'DICTIONARY_VERSION_MISMATCH' },
   { name: 'revision-mismatch', errorCode: 'DICTIONARY_REVISION_MISMATCH' },
   { name: 'incomplete-database', errorCode: 'DATABASE_METADATA_INVALID' },
+  { name: 'foreign-key-violation', errorCode: 'DATABASE_INTEGRITY_FAILED' },
 ]);
 
 function option(name, fallback = undefined) {
@@ -101,6 +102,16 @@ async function createFailureFixture(sourceDirectory, fixtureDirectory, name) {
           OR target_record_id = 'w026'
       `).run();
       database.prepare("DELETE FROM records WHERE id = 'w026'").run();
+    } else if (name === 'foreign-key-violation') {
+      database.exec('PRAGMA foreign_keys = OFF');
+      const existingSearchForm = database.prepare(
+        'SELECT record_id, position FROM search_forms ORDER BY record_id, position LIMIT 1',
+      ).get();
+      if (!existingSearchForm) throw new Error('Cannot create a foreign-key fixture without a search form.');
+      database.prepare(`
+        UPDATE search_forms SET record_id = ?
+        WHERE record_id = ? AND position = ?
+      `).run('__typewriter_missing_foreign_key__', existingSearchForm.record_id, existingSearchForm.position);
     } else {
       throw new Error(`Unknown failure fixture: ${name}.`);
     }
