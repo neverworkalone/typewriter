@@ -18,7 +18,8 @@ work areas are documented here without creating empty scaffolding.
 | M6-4 writer-facing quality audit | Reproducible M6-1 sample selection, tamper rejection, and issue report | `docs/m6-4-quality-audit-sample.json`, `docs/m6-4-quality-audit-report.md`, `scripts/validate/m6-4-quality-audit.mjs`, and `tests/m6-4-quality-audit.test.mjs` | Normal CI verifies the committed snapshot's pinned bytes and source identity without a second canonical/SQLite build. Run `npm run audit:m6-4` manually for full sample re-derivation while issue-start inputs match; the CLI verifies the immutable historical snapshot after later source changes. Preserve the M6-1 seed, sample rules, canonical digest, and `HOLD` while human evidence is missing. |
 | Raw unreviewed draft | LLM output, editor scratch work, or other material that has not passed Typewriter review | A temporary workspace outside this repository | Never a canonical input and never committed. |
 | External raw/reference material | API responses, scraped pages, downloaded source files, or other source material held for research | `data/reference/` as an ignored local work area only when source terms permit local storage and processing; otherwise a temporary workspace outside the checkout | Never committed or read by product builds. Verify the source terms before the stated use; keep only the review decision and permitted Typewriter-authored result when appropriate. |
-| Local reference evidence index (proposed by #192) | Searchable local projection of an approved reference corpus | `data/reference/indexes/` (ignored local output) | Not canonical or product input. The proposed NIKL SQLite index and its source text remain outside Git and product packages. |
+| External-material review record | Source terms checked for an editorial or reference role, including unresolved restrictions | `docs/external-material-review-*.md` | Track the decision and scope without copying source text. A pending decision does not authorize local processing. |
+| Local reference evidence index (#192 design, #194 implementation) | Searchable local projection of an approved reference corpus | `data/reference/indexes/` (ignored local output) | Not canonical or product input. The NIKL SQLite index and its source text remain outside Git and product packages. The indexer refuses corpus access while its permission record is pending. |
 | Generated dictionary database | SQLite built deterministically from canonical input | Build output such as `dist/` or `artifacts/` | Generated, not hand-edited, and ignored as local output. |
 | User data | Recent searches, favorites, settings, and other runtime state | Browser-managed extension storage | Never stored in the read-only dictionary database or repository. |
 | Application, documentation, and brand assets | Source code, policy documents, and approved Typewriter assets | Repository paths such as `src/`, `docs/`, and `public/` | Tracked unless a file-specific rule says otherwise. Existing `public/` assets remain intact. |
@@ -44,13 +45,13 @@ Only reviewed Typewriter records belong there. The generated SQLite and packaged
 extension are built into ignored `artifacts/` or `dist/` output and are never edited
 as canonical data.
 
-The following locations are deliberately not created as part of the foundation:
+These locations are local-only or intentionally deferred:
 
 - `data/draft/` remains a temporary workspace outside the repository for raw
   unreviewed drafts;
-- `data/reference/` may hold local-only source references and proposed derived
-  indexes when source terms permit local storage and processing; Git ignores it;
-- `scripts/reference/` is a proposed home for the #192 corpus index CLI if a separate implementation task is approved; it is not created by the design pilot;
+- `data/reference/` may hold local-only source references and derived indexes
+  when source terms permit local storage and processing; Git ignores it;
+- `scripts/reference/` contains the local-only reference indexer and lookup CLI from #194; it is separate from `scripts/build/` and the canonical product-dictionary build;
 - generated database and package output belongs in ignored build output such as
   `dist/` or `artifacts/`;
 - user data has no repository directory because it belongs to browser storage.

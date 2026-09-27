@@ -218,6 +218,7 @@ export const CI_CATEGORIES = Object.freeze({
       inProcessCheck('Run integrated M2 audit', 'm2-audit'),
       inProcessCheck('Verify shared surface-form projection reuse', 'surface-form-projection-reuse'),
       testCheck('tests/build-dictionary.test.mjs', 'Test SQLite dictionary build'),
+      testCheck('tests/nikl-reference-index.test.mjs', 'Test local NIKL reference index'),
       testCheck('tests/m2-pipeline.test.mjs', 'Test integrated M2 audit'),
     ],
   },

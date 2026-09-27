@@ -107,6 +107,8 @@
     "package:minify": "bash pack.sh --minify",
     "validate:package": "node scripts/validate-package.mjs",
     "validate:release": "node scripts/validate-release.mjs",
+    "reference:nikl:build": "node scripts/reference/build-nikl-index.mjs",
+    "reference:nikl:search": "node scripts/reference/search-nikl-index.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",
