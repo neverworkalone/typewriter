@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  closeSync,
   existsSync,
+  openSync,
   readdirSync,
   readFileSync,
+  writeSync,
   writeFileSync,
 } from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -505,6 +508,57 @@ test('compares ZIP contents with the validated unpacked package and filename', a
     });
     assert.ok(modifiedZipContents.errors.includes(
       'ZIP file content differs from the unpacked package: popup.html',
+    ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('streams exact ZIP-entry comparison for files larger than 64 MiB', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-package-large-entry-'));
+  const projectDirectory = path.join(temporaryDirectory, 'typewriter');
+  const packageDirectory = path.join(projectDirectory, 'dist');
+  const zipPath = path.join(projectDirectory, 'typewriter_0.3.0.zip');
+  const entryPath = path.join(packageDirectory, 'large.bin');
+  const archiverPath = path.join(REPOSITORY_DIRECTORY, 'scripts/build/create-package-zip.py');
+  const entrySize = 64 * 1024 * 1024 + 1024;
+  const block = Buffer.alloc(1024 * 1024, 0x61);
+  await mkdir(packageDirectory, { recursive: true });
+  try {
+    const descriptor = openSync(entryPath, 'w');
+    try {
+      let offset = 0;
+      while (offset < entrySize) {
+        const bytesToWrite = Math.min(block.length, entrySize - offset);
+        offset += writeSync(descriptor, block, 0, bytesToWrite, offset);
+      }
+    } finally {
+      closeSync(descriptor);
+    }
+
+    execFileSync('python3', [archiverPath, packageDirectory, zipPath]);
+    const matchingPackage = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['large.bin'],
+      manifestVersion: '0.3.0',
+    });
+    assert.deepEqual(matchingPackage.errors, []);
+
+    const tamperDescriptor = openSync(entryPath, 'r+');
+    try {
+      writeSync(tamperDescriptor, Buffer.from([0x62]), 0, 1, entrySize - 1);
+    } finally {
+      closeSync(tamperDescriptor);
+    }
+    const modifiedPackage = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['large.bin'],
+      manifestVersion: '0.3.0',
+    });
+    assert.ok(modifiedPackage.errors.includes(
+      'ZIP file content differs from the unpacked package: large.bin',
     ));
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });

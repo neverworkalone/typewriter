@@ -2,6 +2,7 @@
 """Create a package ZIP with stable ordering, timestamps, and file modes."""
 
 import os
+import shutil
 import stat
 import sys
 import zipfile
@@ -30,13 +31,8 @@ def create_package_zip(source_directory, output_path):
             info.create_system = 3
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = (stat.S_IFREG | 0o644) << 16
-            with open(file_path, 'rb') as source:
-                archive.writestr(
-                    info,
-                    source.read(),
-                    compress_type=zipfile.ZIP_DEFLATED,
-                    compresslevel=9,
-                )
+            with open(file_path, 'rb') as source, archive.open(info, 'w') as destination:
+                shutil.copyfileobj(source, destination, length=1024 * 1024)
 
 
 if len(sys.argv) != 3:

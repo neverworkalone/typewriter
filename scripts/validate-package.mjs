@@ -1,5 +1,16 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  readSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
@@ -634,6 +645,27 @@ function listZipFiles(zipPath) {
     .filter((file) => file && !file.endsWith('/'));
 }
 
+function filesEqualStreaming(leftPath, rightPath) {
+  let leftDescriptor;
+  let rightDescriptor;
+  try {
+    leftDescriptor = openSync(leftPath, 'r');
+    rightDescriptor = openSync(rightPath, 'r');
+    const leftBuffer = Buffer.allocUnsafe(1024 * 1024);
+    const rightBuffer = Buffer.allocUnsafe(1024 * 1024);
+    while (true) {
+      const leftBytes = readSync(leftDescriptor, leftBuffer, 0, leftBuffer.length, null);
+      const rightBytes = readSync(rightDescriptor, rightBuffer, 0, rightBuffer.length, null);
+      if (leftBytes !== rightBytes) return false;
+      if (leftBytes === 0) return true;
+      if (!leftBuffer.subarray(0, leftBytes).equals(rightBuffer.subarray(0, rightBytes))) return false;
+    }
+  } finally {
+    if (leftDescriptor !== undefined) closeSync(leftDescriptor);
+    if (rightDescriptor !== undefined) closeSync(rightDescriptor);
+  }
+}
+
 export function validatePackageZip({ packageDir, zipPath, packageFiles, manifestVersion }) {
   const errors = [];
   let zipFiles;
@@ -658,19 +690,30 @@ export function validatePackageZip({ packageDir, zipPath, packageFiles, manifest
   if (duplicateFiles.length > 0) {
     errors.push(`Duplicate files found in ZIP: ${[...new Set(duplicateFiles)].sort().join(', ')}`);
   }
-  for (const file of new Set(packageFiles)) {
-    if (!zipFiles.includes(file) || hasUnsafePath(file)) continue;
-    try {
-      const zipContents = execFileSync('unzip', ['-p', zipPath, file], {
-        maxBuffer: 64 * 1024 * 1024,
-      });
-      const packageContents = readFileSync(path.join(packageDir, file));
-      if (!zipContents.equals(packageContents)) {
-        errors.push(`ZIP file content differs from the unpacked package: ${file}`);
+  const extractionDirectory = mkdtempSync(path.join(tmpdir(), 'typewriter-package-entry-'));
+  const extractionPath = path.join(extractionDirectory, 'entry.bin');
+  try {
+    for (const file of new Set(packageFiles)) {
+      if (!zipFiles.includes(file) || hasUnsafePath(file)) continue;
+      let descriptor;
+      try {
+        descriptor = openSync(extractionPath, 'w');
+        execFileSync('unzip', ['-p', zipPath, file], {
+          stdio: ['ignore', descriptor, 'ignore'],
+        });
+        closeSync(descriptor);
+        descriptor = undefined;
+        if (!filesEqualStreaming(path.join(packageDir, file), extractionPath)) {
+          errors.push(`ZIP file content differs from the unpacked package: ${file}`);
+        }
+      } catch (error) {
+        errors.push(`ZIP file content could not be verified: ${file} (${error.message})`);
+      } finally {
+        if (descriptor !== undefined) closeSync(descriptor);
       }
-    } catch (error) {
-      errors.push(`ZIP file content could not be verified: ${file} (${error.message})`);
     }
+  } finally {
+    rmSync(extractionDirectory, { recursive: true, force: true });
   }
   const forbidden = packageForbiddenFiles(zipFiles);
   if (forbidden.length > 0) {
