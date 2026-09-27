@@ -78,10 +78,15 @@ decision but does not replace review or become editorial truth automatically.
 
 ## Storage and build boundary
 
-Keep raw external material and unreviewed drafts in a temporary workspace outside
-the repository. The canonical input is limited to reviewed Typewriter JSONL. The
-deterministic build reads canonical input and produces generated SQLite; it must not
-silently pull from external services or temporary research material.
+Keep raw external material in a temporary workspace outside the repository unless
+its applicable terms permit local storage and processing under the Git-ignored
+`data/reference/` work area. Material kept there is local-only: do not add it to Git
+or product inputs. When those terms do not permit local storage, keep the material
+outside the checkout or do not store it. Keep unreviewed drafts in a temporary
+workspace outside the repository. The canonical input is limited to reviewed
+Typewriter JSONL. The deterministic build reads canonical input and produces
+generated SQLite; it must not silently pull from external services, local reference
+material, or temporary research material.
 
 M5 target-selection files under `data/inventory/` are tracked editorial planning
 artifacts, not canonical input. They may record a candidate, classification, hold,
