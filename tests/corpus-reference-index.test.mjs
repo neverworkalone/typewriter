@@ -10,6 +10,7 @@ import {
   assertCorpusPermission,
   auditCorpus,
   buildCorpusIndex,
+  REPOSITORY_DIRECTORY,
   searchCorpusIndex,
 } from '../scripts/reference/corpus-index.mjs';
 
@@ -384,6 +385,20 @@ test('build refuses to place SQLite output inside the raw source directory', asy
   );
 
   assert.deepEqual(await readFile(sourcePath), originalSourceBytes);
+});
+
+test('repository-local SQLite output is restricted to the ignored reference index directory', async () => {
+  const directory = await makeTemporaryDirectory();
+  const corpusDirectory = await makeCorpus(directory);
+  const publicOutputPath = path.join(REPOSITORY_DIRECTORY, 'public', 'leak.sqlite');
+
+  await assert.rejects(
+    buildCorpusIndex({
+      inputDirectory: corpusDirectory,
+      outputPath: publicOutputPath,
+    }),
+    /Repository-local SQLite output is restricted to .*data[\\/]reference[\\/]indexes/u,
+  );
 });
 
 test('permission record blocks pending terms and accepts the stated reference scope', async () => {

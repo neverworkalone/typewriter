@@ -24,6 +24,10 @@ export const DEFAULT_INDEX_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'data/reference/indexes/written-corpus-2025.sqlite',
 );
+const REPOSITORY_INDEX_DIRECTORY = path.join(
+  REPOSITORY_DIRECTORY,
+  'data/reference/indexes',
+);
 export const DEFAULT_PERMISSION_RECORD_PATH = path.join(
   REPOSITORY_DIRECTORY,
   'docs/external-material-review-written-corpus-2025.md',
@@ -583,17 +587,29 @@ async function verifyInputPathSet(inputDirectory, audit) {
   }
 }
 
-function requireOutputOutsideInput(inputDirectory, outputPath) {
-  const relativeOutputPath = path.relative(inputDirectory, outputPath);
-  const firstPathSegment = relativeOutputPath.split(path.sep, 1)[0];
-  const isInsideInputDirectory = relativeOutputPath === ''
+function isWithinDirectory(directoryPath, candidatePath) {
+  const relativePath = path.relative(directoryPath, candidatePath);
+  return relativePath === ''
     || (
-      !path.isAbsolute(relativeOutputPath)
-      && firstPathSegment !== '..'
+      !path.isAbsolute(relativePath)
+      && relativePath !== '..'
+      && !relativePath.startsWith('..' + path.sep)
     );
-  if (isInsideInputDirectory) {
+}
+
+function requireSafeOutputPath(inputDirectory, outputPath) {
+  if (isWithinDirectory(inputDirectory, outputPath)) {
     throw new Error(
       'SQLite output must be outside the corpus input directory: ' + outputPath,
+    );
+  }
+  if (
+    isWithinDirectory(REPOSITORY_DIRECTORY, outputPath)
+    && !isWithinDirectory(REPOSITORY_INDEX_DIRECTORY, outputPath)
+  ) {
+    throw new Error(
+      'Repository-local SQLite output is restricted to '
+      + REPOSITORY_INDEX_DIRECTORY + ': ' + outputPath,
     );
   }
 }
@@ -604,7 +620,7 @@ export async function buildCorpusIndex({
 } = {}) {
   const absoluteInputDirectory = path.resolve(inputDirectory);
   const absoluteOutputPath = path.resolve(outputPath);
-  requireOutputOutsideInput(absoluteInputDirectory, absoluteOutputPath);
+  requireSafeOutputPath(absoluteInputDirectory, absoluteOutputPath);
   assertFts5TrigramSupport();
   const audit = await auditCorpus({ inputDirectory: absoluteInputDirectory });
 

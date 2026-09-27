@@ -4,7 +4,6 @@ import {
   assertCorpusPermission,
   auditCorpus,
   buildCorpusIndex,
-  DEFAULT_INDEX_PATH,
   DEFAULT_INPUT_DIRECTORY,
 } from './corpus-index.mjs';
 
@@ -14,7 +13,6 @@ function usage() {
     '',
     'Options:',
     '  --input-dir <path>  JSON source directory (default: data/reference/corpus/)',
-    '  --output <path>     SQLite output (default: data/reference/indexes/written-corpus-2025.sqlite)',
     '  --check-only        Run the full schema preflight without building SQLite',
     '  --help              Show this help',
   ].join('\n');
@@ -23,7 +21,6 @@ function usage() {
 function parseArguments(argumentsList) {
   const options = {
     inputDirectory: DEFAULT_INPUT_DIRECTORY,
-    outputPath: DEFAULT_INDEX_PATH,
     checkOnly: false,
     help: false,
   };
@@ -38,17 +35,13 @@ function parseArguments(argumentsList) {
       options.checkOnly = true;
       continue;
     }
-    if (argument === '--input-dir' || argument === '--output') {
+    if (argument === '--input-dir') {
       const value = argumentsList[index + 1];
       if (!value || value.startsWith('--')) {
         throw new Error(argument + ' requires a path.');
       }
       index += 1;
-      if (argument === '--input-dir') {
-        options.inputDirectory = path.resolve(value);
-      } else {
-        options.outputPath = path.resolve(value);
-      }
+      options.inputDirectory = path.resolve(value);
       continue;
     }
     throw new Error('Unknown option: ' + argument);
