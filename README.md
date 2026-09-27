@@ -93,7 +93,8 @@ validation, regression and unit tests, product builds, and product output
 contract checks. It is equivalent to npm run ci:normal. The build command creates
 extension files in dist/, and the package command creates and validates an
 extension ZIP. For the clean-checkout release candidate flow, install Chrome for
-Testing and run `npm run validate:release`; see [Build and reproducibility](docs/build.md).
+Testing and run `npm run validate:release`; see [Build and reproducibility](docs/build.md)
+and the [M8 release-candidate handoff](docs/m8-handoff.md).
 
 To build the separate GitHub Pages web candidate locally, run
 `npm run build:web`. It writes `dist-web/` for the repository base path
