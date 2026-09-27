@@ -30,7 +30,7 @@ const REPOSITORY_INDEX_DIRECTORY = path.join(
 );
 export const DEFAULT_PERMISSION_RECORD_PATH = path.join(
   REPOSITORY_DIRECTORY,
-  'data/reference/permission-review-written-corpus-2025.md',
+  'docs/external-material-review-written-corpus-2025.md',
 );
 
 export const INDEX_SCHEMA_VERSION = '1';
