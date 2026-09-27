@@ -106,6 +106,7 @@
     "package": "bash pack.sh",
     "package:minify": "bash pack.sh --minify",
     "validate:package": "node scripts/validate-package.mjs",
+    "validate:release": "node scripts/validate-release.mjs",
     "test:mv3:product": "node scripts/extension/run-cft-product.mjs",
     "test:mv3:package": "node scripts/extension/run-cft-package.mjs",
     "verify:m2": "node scripts/verify/m2-pipeline.mjs",

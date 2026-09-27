@@ -25,11 +25,6 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v zip >/dev/null 2>&1; then
-  echo "Missing zip command. Install zip before packaging." >&2
-  exit 1
-fi
-
 cd "$PROJECT_ROOT"
 TYPEWRITER_BUILD_MINIFY="$typewriterMinify" npm run build
 
@@ -37,12 +32,13 @@ TYPEWRITER_BUILD_MINIFY="$typewriterMinify" npm run build
 # entrypoints. The logo is retained because the Settings page references it.
 rm -f "$DIST_DIR/favicon.ico" "$DIST_DIR/icon.png"
 find "$DIST_DIR" -name '.DS_Store' -type f -delete
+# Remove repository-only policy documents left by earlier package builds.
+rm -f "$DIST_DIR/LICENSE.md" "$DIST_DIR/DATA-LICENSE.md" \
+  "$DIST_DIR/BRAND.md" "$DIST_DIR/PRIVACY.md"
 
 cp "$PROJECT_ROOT/Apache-2.0.txt" "$DIST_DIR/Apache-2.0.txt"
-cp "$PROJECT_ROOT/LICENSE.md" "$DIST_DIR/LICENSE.md"
-cp "$PROJECT_ROOT/DATA-LICENSE.md" "$DIST_DIR/DATA-LICENSE.md"
-cp "$PROJECT_ROOT/BRAND.md" "$DIST_DIR/BRAND.md"
 cp "$PROJECT_ROOT/THIRD-PARTY-NOTICES.txt" "$DIST_DIR/THIRD-PARTY-NOTICES.txt"
+node "$PROJECT_ROOT/scripts/build/write-release-info.mjs" "$DIST_DIR"
 find "$DIST_DIR" -type f -exec chmod 0644 {} +
 
 ZIP_NAME="$(python3 "$PROJECT_ROOT/pack.py")"
@@ -53,10 +49,7 @@ ZIP_PATH="$ZIP_DIR/$ZIP_NAME"
 TEMP_ZIP="$ZIP_PATH.tmp.$$"
 trap 'rm -f "$TEMP_ZIP"' EXIT
 
-(
-  cd "$DIST_DIR"
-  zip -qr "$TEMP_ZIP" . -x '*.DS_Store'
-)
+python3 "$PROJECT_ROOT/scripts/build/create-package-zip.py" "$DIST_DIR" "$TEMP_ZIP"
 
 mv -f "$TEMP_ZIP" "$ZIP_PATH"
 
@@ -66,3 +59,4 @@ node "$PROJECT_ROOT/scripts/validate-package.mjs" \
   --zip "$ZIP_PATH"
 
 printf 'Created %s\n' "$ZIP_PATH"
+python3 -c 'import hashlib, pathlib, sys; print("SHA-256: " + hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())' "$ZIP_PATH"

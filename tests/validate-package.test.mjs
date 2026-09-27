@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  writeSync,
+  writeFileSync,
+} from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -8,6 +16,8 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
+import { createPackageReleaseInfo } from '../scripts/build/release-info.mjs';
+import { withStagedReleaseCandidate } from '../scripts/build/stage-release-candidate.mjs';
 
 import {
   collectManifestFiles,
@@ -68,6 +78,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     };
     const packageFiles = new Map([
       ['manifest.json', JSON.stringify(manifest)],
+      ['release-info.json', '{}\n'],
       ['popup.html', '<main>fixture popup</main>'],
       ['options.html', '<main>fixture options</main>'],
       ['logo.png', 'fixture logo'],
@@ -82,9 +93,6 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/vendor/sqlite3.mjs', '// fixture sqlite loader\n'],
       ['runtime/vendor/sqlite3.wasm', Buffer.from([0x00, 0x61, 0x73, 0x6d])],
       ['Apache-2.0.txt', readFileSync(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), 'utf8')],
-      ['LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8')],
-      ['DATA-LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'DATA-LICENSE.md'), 'utf8')],
-      ['BRAND.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'BRAND.md'), 'utf8')],
       ['THIRD-PARTY-NOTICES.txt', readFileSync(
         path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'),
         'utf8',
@@ -137,6 +145,14 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     for (const [key, value] of Object.entries(metadata)) insertMetadata.run(key, value);
     database.close();
     await chmod(databasePath, 0o644);
+    await writeFile(
+      path.join(packageDirectory, 'release-info.json'),
+      `${JSON.stringify(createPackageReleaseInfo({
+        projectRoot: REPOSITORY_DIRECTORY,
+        packageDirectory,
+      }), null, 2)}\n`,
+    );
+    await chmod(path.join(packageDirectory, 'release-info.json'), 0o644);
 
     const matchingPackage = validatePackageDirectory({
       packageDir: packageDirectory,
@@ -144,6 +160,43 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.deepEqual(matchingPackage.errors, []);
+
+    for (const repositoryOnlyDocument of ['LICENSE.md', 'DATA-LICENSE.md', 'BRAND.md', 'PRIVACY.md']) {
+      const documentPath = path.join(packageDirectory, repositoryOnlyDocument);
+      await writeFile(
+        documentPath,
+        readFileSync(path.join(REPOSITORY_DIRECTORY, repositoryOnlyDocument), 'utf8'),
+      );
+      await chmod(documentPath, 0o644);
+      const packageWithRepositoryDocument = validatePackageDirectory({
+        packageDir: packageDirectory,
+        projectRoot: REPOSITORY_DIRECTORY,
+        canonicalDirectory,
+      });
+      assert.ok(packageWithRepositoryDocument.errors.includes(
+        `Unexpected files found in package: ${repositoryOnlyDocument}`,
+      ));
+      await rm(documentPath);
+    }
+
+    const releaseInfoPath = path.join(packageDirectory, 'release-info.json');
+    await writeFile(releaseInfoPath, '{}\n');
+    const changedReleaseInfo = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(changedReleaseInfo.errors.includes(
+      'Packaged release identity does not match application, extension, dictionary, source, and build-input digests.',
+    ));
+    await writeFile(
+      releaseInfoPath,
+      `${JSON.stringify(createPackageReleaseInfo({
+        projectRoot: REPOSITORY_DIRECTORY,
+        packageDirectory,
+      }), null, 2)}\n`,
+    );
+    await chmod(releaseInfoPath, 0o644);
 
     const foreignKeyDatabase = new DatabaseSync(databasePath);
     foreignKeyDatabase.exec('PRAGMA foreign_keys = OFF');
@@ -183,9 +236,9 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     );
     await chmod(runtimeBuildInfoPath, 0o644);
 
-    const licensePath = path.join(packageDirectory, 'LICENSE.md');
-    const validLicense = readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8');
-    const alteredLicenseContents = validLicense.replace('Apache\nLicense 2.0', 'MIT\nLicense');
+    const licensePath = path.join(packageDirectory, 'Apache-2.0.txt');
+    const validLicense = readFileSync(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), 'utf8');
+    const alteredLicenseContents = validLicense.replace('Apache License', 'Altered License');
     assert.notEqual(alteredLicenseContents, validLicense);
     await writeFile(licensePath, alteredLicenseContents);
     const alteredLicense = validatePackageDirectory({
@@ -194,16 +247,9 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.ok(alteredLicense.errors.includes(
-      'Packaged legal file differs from the repository source: LICENSE.md.',
+      'Packaged legal file differs from the repository source: Apache-2.0.txt.',
     ));
 
-    await rm(licensePath);
-    const missingLicense = validatePackageDirectory({
-      packageDir: packageDirectory,
-      projectRoot: REPOSITORY_DIRECTORY,
-      canonicalDirectory,
-    });
-    assert.ok(missingLicense.errors.includes('Legal package file is missing from the project or package: LICENSE.md.'));
     await writeFile(licensePath, validLicense);
     await chmod(licensePath, 0o644);
 
@@ -236,6 +282,53 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     assert.ok(stalePackage.errors.includes(
       'Dictionary metadata record_count must be "4", received "3".',
     ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('failed release validation removes staged ZIPs without publishing a final candidate', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-release-failure-'));
+  const outputDirectory = path.join(temporaryDirectory, 'release');
+  const packageName = 'typewriter_1.0.zip';
+  const finalPackagePath = path.join(outputDirectory, packageName);
+  try {
+    assert.throws(() => withStagedReleaseCandidate({
+      outputDirectory,
+      packageName,
+      validateCandidate: ({ candidatePackagePath, repeatedPackagePath }) => {
+        writeFileSync(candidatePackagePath, 'candidate ZIP');
+        writeFileSync(repeatedPackagePath, 'repeat ZIP');
+        throw new Error('Chrome for Testing validation failed');
+      },
+    }), /Chrome for Testing validation failed/);
+
+    assert.equal(existsSync(finalPackagePath), false);
+    assert.deepEqual(readdirSync(outputDirectory), []);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('successful release validation publishes one final ZIP after both staged builds pass', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-release-success-'));
+  const outputDirectory = path.join(temporaryDirectory, 'release');
+  const packageName = 'typewriter_1.0.zip';
+  const expectedBytes = Buffer.from('validated package bytes');
+  try {
+    const finalPackagePath = withStagedReleaseCandidate({
+      outputDirectory,
+      packageName,
+      validateCandidate: ({ candidatePackagePath, repeatedPackagePath }) => {
+        writeFileSync(candidatePackagePath, expectedBytes);
+        writeFileSync(repeatedPackagePath, expectedBytes);
+        assert.deepEqual(readFileSync(candidatePackagePath), readFileSync(repeatedPackagePath));
+      },
+    });
+
+    assert.equal(path.basename(finalPackagePath), packageName);
+    assert.deepEqual(readFileSync(finalPackagePath), expectedBytes);
+    assert.deepEqual(readdirSync(outputDirectory), [packageName]);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
@@ -295,6 +388,8 @@ test('rejects remote code, permissions, exposed resources, source maps, and miss
         version: '0.3.0',
         permissions: ['storage', 'tabs'],
         host_permissions: ['<all_urls>'],
+        optional_host_permissions: ['https://example.invalid/*'],
+        externally_connectable: { matches: ['https://example.invalid/*'] },
         web_accessible_resources: [{ resources: ['dictionary.sqlite'], matches: ['<all_urls>'] }],
         action: { default_popup: 'popup.html' },
         options_ui: { page: 'options.html' },
@@ -320,6 +415,8 @@ test('rejects remote code, permissions, exposed resources, source maps, and miss
 
     assert.match(errors, /Product permissions must be exactly/);
     assert.match(errors, /Host permissions are not allowed/);
+    assert.match(errors, /Optional host permissions are not allowed/);
+    assert.match(errors, /externally_connectable is not allowed/);
     assert.match(errors, /web_accessible_resources must not expose/);
     assert.match(errors, /Remote code or CDN reference/);
     assert.match(errors, /regular 0644 file/);
@@ -372,11 +469,15 @@ test('compares ZIP contents with the validated unpacked package and filename', a
   const projectDirectory = path.join(temporaryDirectory, 'typewriter');
   const packageDirectory = path.join(projectDirectory, 'dist');
   const zipPath = path.join(projectDirectory, 'typewriter_0.3.0.zip');
+  const zipSourceDirectory = path.join(temporaryDirectory, 'zip-source');
+  const archiverPath = path.join(REPOSITORY_DIRECTORY, 'scripts/build/create-package-zip.py');
   try {
     await mkdir(packageDirectory, { recursive: true });
+    await mkdir(zipSourceDirectory, { recursive: true });
     await writeFile(path.join(packageDirectory, 'manifest.json'), '{}');
     await writeFile(path.join(packageDirectory, 'popup.html'), '<main></main>');
-    execFileSync('zip', ['-q', zipPath, 'manifest.json'], { cwd: packageDirectory });
+    await writeFile(path.join(zipSourceDirectory, 'manifest.json'), '{}');
+    execFileSync('python3', [archiverPath, zipSourceDirectory, zipPath]);
 
     const result = validatePackageZip({
       packageDir: packageDirectory,
@@ -387,6 +488,104 @@ test('compares ZIP contents with the validated unpacked package and filename', a
 
     assert.match(result.errors.join('\n'), /ZIP is missing files from the unpacked build: popup\.html/);
     assert.equal(result.errors.some((error) => /ZIP name mismatch/.test(error)), false);
+
+    await writeFile(path.join(zipSourceDirectory, 'popup.html'), '<main></main>');
+    execFileSync('python3', [archiverPath, zipSourceDirectory, zipPath]);
+    const matchingContents = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['manifest.json', 'popup.html'],
+      manifestVersion: '0.3.0',
+    });
+    assert.deepEqual(matchingContents.errors, []);
+
+    await writeFile(path.join(packageDirectory, 'popup.html'), '<main>tampered</main>');
+    const modifiedZipContents = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['manifest.json', 'popup.html'],
+      manifestVersion: '0.3.0',
+    });
+    assert.ok(modifiedZipContents.errors.includes(
+      'ZIP file content differs from the unpacked package: popup.html',
+    ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('streams exact ZIP-entry comparison for files larger than 64 MiB', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-package-large-entry-'));
+  const projectDirectory = path.join(temporaryDirectory, 'typewriter');
+  const packageDirectory = path.join(projectDirectory, 'dist');
+  const zipPath = path.join(projectDirectory, 'typewriter_0.3.0.zip');
+  const entryPath = path.join(packageDirectory, 'large.bin');
+  const archiverPath = path.join(REPOSITORY_DIRECTORY, 'scripts/build/create-package-zip.py');
+  const entrySize = 64 * 1024 * 1024 + 1024;
+  const block = Buffer.alloc(1024 * 1024, 0x61);
+  await mkdir(packageDirectory, { recursive: true });
+  try {
+    const descriptor = openSync(entryPath, 'w');
+    try {
+      let offset = 0;
+      while (offset < entrySize) {
+        const bytesToWrite = Math.min(block.length, entrySize - offset);
+        offset += writeSync(descriptor, block, 0, bytesToWrite, offset);
+      }
+    } finally {
+      closeSync(descriptor);
+    }
+
+    execFileSync('python3', [archiverPath, packageDirectory, zipPath]);
+    const matchingPackage = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['large.bin'],
+      manifestVersion: '0.3.0',
+    });
+    assert.deepEqual(matchingPackage.errors, []);
+
+    const tamperDescriptor = openSync(entryPath, 'r+');
+    try {
+      writeSync(tamperDescriptor, Buffer.from([0x62]), 0, 1, entrySize - 1);
+    } finally {
+      closeSync(tamperDescriptor);
+    }
+    const modifiedPackage = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['large.bin'],
+      manifestVersion: '0.3.0',
+    });
+    assert.ok(modifiedPackage.errors.includes(
+      'ZIP file content differs from the unpacked package: large.bin',
+    ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('creates byte-identical package ZIPs with normalized archive metadata', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-package-deterministic-'));
+  const sourceDirectory = path.join(temporaryDirectory, 'dist');
+  const firstZipPath = path.join(temporaryDirectory, 'first.zip');
+  const secondZipPath = path.join(temporaryDirectory, 'second.zip');
+  const archiverPath = path.join(REPOSITORY_DIRECTORY, 'scripts/build/create-package-zip.py');
+  try {
+    await mkdir(path.join(sourceDirectory, 'assets'), { recursive: true });
+    await writeFile(path.join(sourceDirectory, 'assets/main.js'), 'export default 1;\n');
+    await writeFile(path.join(sourceDirectory, 'manifest.json'), '{"version":"1.0"}\n');
+    await writeFile(path.join(sourceDirectory, '.DS_Store'), 'development metadata');
+
+    execFileSync('python3', [archiverPath, sourceDirectory, firstZipPath]);
+    await writeFile(path.join(sourceDirectory, 'assets/main.js'), 'export default 1;\n');
+    execFileSync('python3', [archiverPath, sourceDirectory, secondZipPath]);
+
+    assert.deepEqual(readFileSync(firstZipPath), readFileSync(secondZipPath));
+    assert.deepEqual(
+      execFileSync('unzip', ['-Z1', firstZipPath], { encoding: 'utf8' }).trim().split(/\r?\n/u),
+      ['assets/main.js', 'manifest.json'],
+    );
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

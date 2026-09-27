@@ -159,16 +159,52 @@ fixed at `1.0.0`.
 The package contains only the MV3 product surface: `manifest.json`, `popup.html`,
 `options.html`, Vite assets/chunks, the current generated `dictionary.sqlite`, the
 SQLite worker/contract/validation/protocol/query adapter, the pinned SQLite
-JavaScript/WASM runtime, icons and `logo.png`, plus the full `Apache-2.0.txt` license and
-`THIRD-PARTY-NOTICES.txt`. Development sources, tests, package configuration,
-source maps, remote code/CDN references, host permissions, and web-accessible product
+JavaScript/WASM runtime, icons and `logo.png`, `release-info.json`, and the
+`Apache-2.0.txt` and `THIRD-PARTY-NOTICES.txt` files required for bundled software.
+Repository-level policy documents (`LICENSE.md`, `DATA-LICENSE.md`, `BRAND.md`, and
+`PRIVACY.md`) stay in the source tree and are not copied into the Store ZIP. The
+privacy policy source remains available for the Store privacy-policy URL and
+disclosures; see the M8 listing flow.
+Development sources, tests, package configuration, source maps, remote code/CDN
+references, unapproved runtime assets, host permissions, and web-accessible product
 resources are rejected.
 
 `node scripts/validate-package.mjs` checks the manifest contract, package file set,
-MV3 permissions/CSP, SQLite integrity and M2 metadata/source revision, legal files,
-file modes, and ZIP integrity/contents. The pack script writes to a temporary ZIP
-and moves it atomically only after creation; `TYPEWRITER_ALLOW_DIRTY=true` is an
-explicit local-development escape hatch that records `dirty-allowed` provenance.
+MV3 permissions/CSP, SQLite integrity and M2 metadata/source revision, release
+identity, legal files, file modes, and ZIP integrity and byte-for-byte contents.
+`release-info.json` binds the app and extension versions, dictionary and schema
+versions, canonical/source revision, generated database digest, manifest digest,
+and dependency-lock digest. Package archives use sorted paths, fixed timestamps,
+and fixed file modes; `npm run validate:release` builds twice and requires identical
+ZIP bytes. The pack script writes to a temporary ZIP and moves it atomically only
+after creation. `TYPEWRITER_ALLOW_DIRTY=true` remains an explicit local-development
+escape hatch and its provenance is marked `dirty-allowed`.
+
+### Clean-checkout release candidate validation
+
+From a clean checkout, install the lockfile dependencies and run one command with
+the Chrome for Testing executable and an output directory outside the repository:
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+npm run validate:release -- \
+  --chrome="/path/to/Google Chrome for Testing" \
+  --output-dir="/tmp/typewriter-release"
+```
+
+The command runs normal CI, builds and validates the production package twice,
+compares the resulting ZIP digests, and runs the browser install/search/offline
+checks against the exact ZIP and unpacked package. CFT runs only through this
+explicit release-candidate command, outside ordinary CI. Both builds stay in a
+temporary staging directory beneath the requested output directory; the final ZIP
+is atomically published only after every check passes, and failed runs remove the
+staged artifacts. It prints the package path,
+SHA-256, both product versions, dictionary/schema versions, and the source revision.
+Keep that ZIP and digest together when handing the validated candidate to M8.
+The repository privacy disclosure describes the current extension's local
+settings storage and on-device dictionary lookup. This flow does not lift the corpus
+redistribution hold in `DATA-LICENSE.md`; the generated candidate remains held
+until rights clearance and the applicable publication gate approve it.
 
 For Chrome integration, run the following after packaging. The runner validates the
 generated package and loads both the working `dist/` and a temporary extraction of
