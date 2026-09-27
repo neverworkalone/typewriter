@@ -20,17 +20,17 @@ publication gate approves the release.
 
 | Identity | Validated value |
 | --- | --- |
-| Source revision | 266d04d18a452b37d1a0afb0bf101e6d3d6d2ead |
+| Source revision | c68fa542b41a795cb5e1ade358213d41ba8dbd4d |
 | Normal-CI canonical revision | 8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9 |
 | Canonical corpus | 5,042 records; 5,000 starts; 42 reference-only; 5,301 senses; 5,298 search forms; 487 curated relations |
 | Generated surface forms | 3,264 |
 | npm package / extension version source | 1.0.0 / `public/manifest.json#version` |
 | Dictionary / SQLite schema | m2-pilot-1 / 2 |
-| Package | `typewriter_<manifest-version>.zip`, 2,440,791 bytes, 28 files |
-| Package SHA-256 | 47eb3b57fa2a37aa72ed6a553cafec3d80fc065df9cd2c5ac06fcdd69be3bb1e |
-| Packaged database SHA-256 | 4b8bfd8c59eee7c0965eba54ea9e0b240b5a881fe95a8d41e29b4f2301fe86c0 |
+| Package | `typewriter_<manifest-version>.zip`, 2,440,796 bytes, 28 files |
+| Package SHA-256 | 14e76207be6aeef984b714c870623efff1d6d596e9d0e76b43eefbeb596eea24 |
+| Packaged database SHA-256 | c266303b18bcb74a9b051d8696c527f4a9d3a4445298fab200015867d24fffd0 |
 | Manifest SHA-256 | 25ad1ca69efe322014a5021b0bee7c33ba4340f69e56898af03f073071384144 |
-| Lockfile SHA-256 | ef54e54b73bc94dbc7a4b4707ec8bd1fc12502d404dfb5d06e9a3f567566bbb0 |
+| Lockfile SHA-256 | 6230c9d02a582aa955314a288a278a86d571d92d87a278b270d21485ea1136b6 |
 
 release-info.json records the source as verified and the worktree as clean.
 The release validator produced the same package SHA in two independent package
@@ -43,9 +43,9 @@ not commit or distribute it while the data hold remains.
 Start at the exact source revision with a clean worktree. Keep the package output
 outside the checkout:
 
-    git checkout 266d04d18a452b37d1a0afb0bf101e6d3d6d2ead
+    git checkout c68fa542b41a795cb5e1ade358213d41ba8dbd4d
     npm ci --ignore-scripts --no-audit --no-fund
-    npm run validate:release -- --chrome="/path/to/Google Chrome for Testing" --output-dir="/tmp/typewriter-release-266d04d"
+    npm run validate:release -- --chrome="/path/to/Google Chrome for Testing" --output-dir="/tmp/typewriter-release-c68fa54"
 
 This flow runs ci:normal, builds and validates the production package twice,
 requires byte-identical ZIPs, verifies release/source provenance, and exercises
@@ -65,8 +65,8 @@ The audited predecessor package was built from M7-2 revision
 manifest version 1.0. Since that test fixture is newer than the current candidate
 manifest, the update harness raises only its temporary test copy to 1.0.1. This
 checks same-profile update mechanics; the exact candidate ZIP is separately
-installed and exercised by `validate:release`. No public 1.0 release is being
-upgraded.
+installed and exercised by `validate:release`. The test-only version increment
+does not change the fixed npm package version or the candidate manifest source.
 
 ## Install, update, and failure evidence
 
@@ -75,9 +75,9 @@ upgraded.
   and no request left the extension origin.
 - Same-profile replacement changed the database digest from
   538c0c08f5f1eebf365c3b2e669ddaf63537d48e26ca95b53a0e9835908cf58c at the
-  predecessor to 4b8bfd8c59eee7c0965eba54ea9e0b240b5a881fe95a8d41e29b4f2301fe86c0
+  predecessor to c266303b18bcb74a9b051d8696c527f4a9d3a4445298fab200015867d24fffd0
   at the candidate. Runtime provenance changed from the predecessor source SHA
-  to 266d04d18a452b37d1a0afb0bf101e6d3d6d2ead.
+  to c68fa542b41a795cb5e1ade358213d41ba8dbd4d.
 - Post-update searches passed: 담담하다 (exact, w026), 가누 (search form,
   w1068), and 가냘픈 (generated surface form, w596).
 - All saved chrome.storage.local settings survived the update unchanged.
