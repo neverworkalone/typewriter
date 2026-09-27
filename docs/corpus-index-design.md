@@ -1,12 +1,12 @@
-# NIKL written-corpus local index design
+# Written corpus local index design
 
 ## Decision
 
-Treat the NIKL sample and any derived index as local reference evidence. Keep the raw JSON and generated SQLite under the already ignored data/reference/ work area. Add a future command under scripts/reference/; keep it separate from scripts/build/, which builds the canonical product dictionary.
+Treat the corpus sample and any derived index as local reference evidence. Keep the raw JSON and generated SQLite under the already ignored data/reference/ work area. The #194 implementation lives under scripts/reference/ and is separate from scripts/build/, which builds the canonical product dictionary.
 
 Use SQLite for source, document, and paragraph records. Build an FTS5 trigram index over paragraph text for literal substring lookup, then join hits back to source and document metadata. This is a text-evidence index, not a Korean tokenizer: it cannot claim lemma frequency, word-token frequency, POS counts, or writer usefulness. A hit must never create or admit a Typewriter candidate automatically.
 
-This issue is the design pilot only. No production indexer, full-corpus import, canonical data change, or product-package input is added here.
+Issue #192 was the design pilot. Issue #194 implements the local indexer without adding corpus-derived canonical data or product-package inputs.
 
 ## Pilot file inspected
 
@@ -55,12 +55,12 @@ FTS5 trigram search is character-substring search, not Korean morphological anal
 ## Repository and data boundary
 
 - Raw source stays in the ignored local area data/reference/corpus/ (or another approved temporary workspace). It is not added to Git.
-- The proposed generated database path is data/reference/indexes/nikl-written-2025.sqlite. The existing .gitignore excludes all of data/reference/; no new ignore rule is needed.
-- The proposed tracked CLI is scripts/reference/build-nikl-index.mjs. It is research/reference tooling, separate from the canonical-to-product build in scripts/build/.
+- The proposed generated database path is data/reference/indexes/written-corpus-2025.sqlite. The existing .gitignore excludes all of data/reference/; no new ignore rule is needed.
+- The tracked CLI is scripts/reference/build-corpus-index.mjs. It is research/reference tooling, separate from the canonical-to-product build in scripts/build/.
 - The derived index is not canonical JSONL, an inventory projection, a batch manifest, or product output. It must not be read by npm run build, Pages, or package commands.
 - Do not commit corpus text, generated SQLite, candidate dumps, or context snippets. Existing lexical workflows may use source evidence only after its use is authorized; any resulting target decision remains Typewriter-authored and follows the existing inventory, reviewed-batch, validation, and canonical import gates.
 
-The official [corpus overview](https://kli.korean.go.kr/introduce/corpusIntroduce.do) distinguishes raw corpora from corpora with language-analysis annotations. The [usage FAQ](https://kli.korean.go.kr/m/boards/faqList.do) says use is limited to an approved purpose in Korean-language or language-information-processing research and development; public results must not contain source text and require prior approval. The [2025 corpus listing](https://kli.korean.go.kr/corpus/request/corpusRegist.do) describes the written corpus, but that description is not an individual user's usage agreement. Before a real index build, verify the downloaded file's agreement and that Typewriter's intended local lexical-evidence use is an approved purpose. The issue-start design does not establish that permission, or permission to publish corpus-derived results.
+The official [corpus overview](https://kli.korean.go.kr/introduce/corpusIntroduce.do) distinguishes raw corpora from corpora with language-analysis annotations. The [request help](https://kli.korean.go.kr/corpus/request/faqInfo.do?lang=en) says a request is reviewed and approved, after which the user signs a corpus license agreement before downloading. The [2025 corpus listing](https://kli.korean.go.kr/corpus/request/corpusRegist.do) describes the written corpus, but that description is not an individual user's usage agreement. Before a real index build, verify the downloaded file's agreement and that Typewriter's intended local lexical-evidence use is an approved purpose. The implementation review is recorded in [external-material-review-written-corpus-2025.md](external-material-review-written-corpus-2025.md); its machine-readable scope fields remain pending. The issue-start design does not establish permission to process the local corpus or publish corpus-derived results.
 
 ## Full-corpus implications
 
@@ -74,21 +74,19 @@ The current local data/reference/corpus/ directory contains 3,410 .json files to
 
 Known blockers for the first implementation are full-folder schema variation, the exact terms attached to the local download, the FTS5 feature on the minimum supported Node runtime, short-query latency, and actual FTS storage cost. None is answered by the one-file pilot.
 
-## Follow-up implementation plan
-
-Create a separate indexer task with this bounded sequence:
-
-1. Verify the downloaded corpus agreement and approved Typewriter use before reading the full directory for index generation. Inventory and schema-check every input file; record path, size, and digest, and fail closed on unsupported structure.
-2. Implement scripts/reference/build-nikl-index.mjs with Node's existing node:sqlite platform, a streaming-across-files loop (one parsed JSON source file at a time), stable source IDs, the tables above, and a temporary-output/atomic-replacement lifecycle.
-3. Feature-check FTS5 trigram on the minimum supported Node version. Add substring queries for 3+ Unicode characters and a correct scan fallback for 1–2 characters. Return paragraph hits with local source IDs and metadata; never label results lemma/POS frequency.
-4. Add small self-authored JSON fixtures under tests/fixtures/ for positive and negative substring matches, paragraph/source grouping, repeated document and paragraph IDs in different document positions of the same source file, malformed input rejection, and a rebuild that produces the same sorted logical rows. Verify duplicate IDs remain separate rows and FTS hits map back to the correct positions. Do not place real corpus text in fixtures.
-5. Build the local full index only after the permission gate passes. Measure peak memory, total build time, database/FTS size, and representative short/long lookup latency. Use those measurements to decide whether per-file incremental updates or a short-query index is warranted.
-6. Confirm the generated file remains ignored and absent from canonical validators, extension/Web builds, and release packages. Keep all corpus evidence outside the canonical admission path.
-
-## Pilot acceptance summary
+## Pilot acceptance summary (#192 design)
 
 - Actual pilot schema and present-versus-absent fields: documented above.
 - Useful lookup boundaries and exact-vs-derived information: documented above.
 - SQLite tables, indexes, query paths, artifact boundaries, and rebuild plan: specified above.
 - Full-corpus measurements and unresolved uncertainties: recorded without claiming a performance benchmark or rights clearance.
-- Production indexer, corpus-wide schema validation, full-corpus build, and canonical changes: deferred to the follow-up task.
+- Production indexer, corpus-wide schema validation, and full-corpus build were deferred to #194; canonical changes remain out of scope.
+
+## Implementation status (#194)
+
+- The local builder, reusable literal lookup, and permission check are implemented under scripts/reference/. Deterministic fixture tests are retained at scripts/reference/corpus-index.test.mjs and run manually with `node --test scripts/reference/corpus-index.test.mjs` on an FTS5-capable local runtime.
+- Every build runs the same fail-closed schema validation in a sorted preflight and again while inserting one JSON file at a time. Temporary SQLite output is validated before replacing the active local index.
+- The build and lookup CLIs require a permitted reference decision, explicit permission for local storage, schema scanning and processing, SQLite/FTS indexing, and lexical-reference use, plus completed reviews of distribution/embedding and attribution/notice terms. Missing or pending fields block real-corpus operations. The current record remains pending; no full-corpus scan or index build has been run.
+- The builder fixes repository-local output to the ignored `data/reference/indexes/` directory. The fixture suite is retained for local/manual use and is not wired into normal CI.
+- No full-corpus schema scan or index build was run. After the permission record is completed, run the preflight and full build, then report corpus counts, build time, peak memory where practical, SQLite/FTS size, and short/long query latency.
+- The index remains ignored local reference data. Product build, package, Pages, release, and canonical admission paths do not reference scripts/reference/ or data/reference/.

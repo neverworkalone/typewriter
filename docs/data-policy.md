@@ -59,6 +59,12 @@ The record must answer the following before a source is used for the stated role
 4. What attribution or notice is required?
 5. Was the source permitted, left pending, or rejected for the intended role?
 
+When a local tool gates access from a review record, it must check the specific
+operation scopes and terms reviews required for that tool. A permitted decision
+and intended-role label alone do not authorize operations whose individual scope
+fields are missing or pending. Distribution restrictions and attribution terms
+must also be explicitly reviewed, even when the tool keeps all material local.
+
 ## Canonical-data rules
 
 Canonical records must be Typewriter's own reviewed data and must remain traceable
