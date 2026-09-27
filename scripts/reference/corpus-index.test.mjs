@@ -405,6 +405,11 @@ test('permission record blocks pending terms and accepts the stated reference sc
   const directory = await makeTemporaryDirectory();
   const permissionRecordPath = path.join(directory, 'permission-review.md');
 
+  await assert.rejects(
+    assertCorpusPermission({ permissionRecordPath }),
+    /cannot read permission record/u,
+  );
+
   await writeFile(permissionRecordPath, [
     '- Intended role: reference',
     '- Decision: pending',
