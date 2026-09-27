@@ -61,6 +61,10 @@ database:
 Canonical JSONL is the source of truth. SQLite is generated from it. Runtime
 lookup is local and does not depend on an external dictionary or AI service.
 
+The Chrome extension searches its packaged dictionary on-device and stores only
+saved Settings in Chrome's local extension storage. It does not transmit searches
+or keep search history. See the [extension privacy disclosure](PRIVACY.md).
+
 ### Lexical data and evidence
 
 Lexical additions go through shared production, admission, and validation rules.
@@ -88,7 +92,8 @@ The default test command runs the normal CI gate, including repository
 validation, regression and unit tests, product builds, and product output
 contract checks. It is equivalent to npm run ci:normal. The build command creates
 extension files in dist/, and the package command creates and validates an
-extension ZIP.
+extension ZIP. For the clean-checkout release candidate flow, install Chrome for
+Testing and run `npm run validate:release`; see [Build and reproducibility](docs/build.md).
 
 To build the separate GitHub Pages web candidate locally, run
 `npm run build:web`. It writes `dist-web/` for the repository base path

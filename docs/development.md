@@ -37,10 +37,26 @@ npm run validate:package -- \
 ```
 
 Without `TYPEWRITER_ZIP_DIR`, the ZIP is written to `~/Downloads`. The packager
-builds into `dist/`, removes development-only output, copies the full Apache-2.0
-license and third-party notice, and atomically moves the completed ZIP into place.
+builds into `dist/`, removes development-only output, copies the privacy,
+release-identity, and license notices, creates an archive with stable paths,
+timestamps, and file modes, then atomically moves the completed ZIP into place.
 During local development, a dirty-worktree build must be explicit:
 `TYPEWRITER_ALLOW_DIRTY=true TYPEWRITER_ZIP_DIR=/tmp/typewriter-package npm run package`.
+
+For the release candidate, start from a clean checkout and use the single M8
+handoff validation command. It runs normal CI, builds twice to prove that the ZIP
+bytes reproduce, and exercises the exact package in Chrome for Testing:
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+npm run validate:release -- \
+  --chrome="/path/to/Google Chrome for Testing" \
+  --output-dir="/tmp/typewriter-release"
+```
+
+The command prints the validated ZIP's SHA-256 with the app, extension, dictionary,
+schema, and source versions. The current dictionary redistribution hold remains
+in force after this engineering validation; see `DATA-LICENSE.md`.
 
 When Chrome for Testing is available, verify both the unpacked build and the exact
 ZIP contents after extraction:

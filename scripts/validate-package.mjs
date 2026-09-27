@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import {
   buildSurfaceFormProjection,
@@ -14,6 +15,7 @@ import {
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
 import { readForeignKeyViolations } from '../src/runtime/dictionary-validation.js';
+import { createPackageReleaseInfo } from './build/release-info.mjs';
 
 const FORBIDDEN_PACKAGE_PATHS = [
   /^(src|tests|node_modules|\.git)(\/|$)/,
@@ -28,6 +30,7 @@ const LEGAL_FILES = new Set([
   'LICENSE.md',
   'DATA-LICENSE.md',
   'BRAND.md',
+  'PRIVACY.md',
   'THIRD-PARTY-NOTICES.txt',
 ]);
 
@@ -35,6 +38,8 @@ const EXPECTED_FILE_MODE = 0o644;
 
 const REQUIRED_PRODUCT_FILES = Object.freeze([
   'dictionary.sqlite',
+  'release-info.json',
+  'PRIVACY.md',
   'logo.png',
   'runtime/dictionary-worker.mjs',
   'runtime/dictionary-build-info.js',
@@ -79,6 +84,7 @@ function hasUnsafePath(value) {
   const normalized = normalizeEntry(value);
   return normalized.startsWith('/')
     || normalized.split('/').includes('..')
+    || normalized.startsWith('-')
     || normalized.includes('\0');
 }
 
@@ -239,13 +245,25 @@ function validateManifest(manifest) {
   if (JSON.stringify(manifest.permissions) !== JSON.stringify(['storage'])) {
     errors.push('Product permissions must be exactly ["storage"].');
   }
-  if (Array.isArray(manifest.host_permissions) && manifest.host_permissions.length > 0) {
+  if (manifest.host_permissions !== undefined
+    && (!Array.isArray(manifest.host_permissions) || manifest.host_permissions.length > 0)) {
     errors.push('Host permissions are not allowed in the product package.');
   }
-  if (Array.isArray(manifest.optional_permissions) && manifest.optional_permissions.length > 0) {
+  if (manifest.optional_permissions !== undefined
+    && (!Array.isArray(manifest.optional_permissions) || manifest.optional_permissions.length > 0)) {
     errors.push('Optional permissions are not allowed in the product package.');
   }
-  if (Array.isArray(manifest.web_accessible_resources) && manifest.web_accessible_resources.length > 0) {
+  if (manifest.optional_host_permissions !== undefined
+    && (!Array.isArray(manifest.optional_host_permissions)
+      || manifest.optional_host_permissions.length > 0)) {
+    errors.push('Optional host permissions are not allowed in the product package.');
+  }
+  if (manifest.externally_connectable !== undefined) {
+    errors.push('externally_connectable is not allowed in the product package.');
+  }
+  if (manifest.web_accessible_resources !== undefined
+    && (!Array.isArray(manifest.web_accessible_resources)
+      || manifest.web_accessible_resources.length > 0)) {
     errors.push('web_accessible_resources must not expose product files.');
   }
   if (manifest.action?.default_popup !== 'popup.html') {
@@ -254,8 +272,9 @@ function validateManifest(manifest) {
   if (manifest.options_ui?.page !== 'options.html') {
     errors.push('The options page must be options.html.');
   }
-  if (manifest.content_security_policy?.extension_pages
-    !== "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'") {
+  if (Object.keys(manifest.content_security_policy ?? {}).join(',') !== 'extension_pages'
+    || manifest.content_security_policy.extension_pages
+      !== "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'") {
     errors.push('The extension-pages CSP must allow only local code and SQLite WASM evaluation.');
   }
   return errors;
@@ -418,6 +437,25 @@ function validateDictionaryMetadata({
   return errors;
 }
 
+function validatePackageReleaseInfo({ packageDir, projectRoot }) {
+  const errors = [];
+  const releaseInfoPath = path.join(packageDir, 'release-info.json');
+  if (!existsSync(releaseInfoPath)) {
+    return ['Packaged release identity is missing release-info.json.'];
+  }
+
+  try {
+    const actualReleaseInfo = readJson(releaseInfoPath);
+    const expectedReleaseInfo = createPackageReleaseInfo({ projectRoot, packageDirectory: packageDir });
+    if (!isDeepStrictEqual(actualReleaseInfo, expectedReleaseInfo)) {
+      errors.push('Packaged release identity does not match application, extension, dictionary, source, and build-input digests.');
+    }
+  } catch (error) {
+    errors.push(`Packaged release identity could not be verified: ${error.message}`);
+  }
+  return errors;
+}
+
 function validateVueRuntimeNotice(projectRoot, notice) {
   const errors = [];
   const packageJsonPath = path.join(projectRoot, 'package.json');
@@ -560,6 +598,7 @@ export function validatePackageDirectory({
         expectedGeneratedSurfaceForms,
       }));
     }
+    errors.push(...validatePackageReleaseInfo({ packageDir, projectRoot }));
   }
   errors.push(...validateLegalFiles(packageDir, actualFiles, projectRoot));
 
@@ -626,6 +665,20 @@ export function validatePackageZip({ packageDir, zipPath, packageFiles, manifest
   const duplicateFiles = zipFiles.filter((file, index) => zipFiles.indexOf(file) !== index);
   if (duplicateFiles.length > 0) {
     errors.push(`Duplicate files found in ZIP: ${[...new Set(duplicateFiles)].sort().join(', ')}`);
+  }
+  for (const file of new Set(packageFiles)) {
+    if (!zipFiles.includes(file) || hasUnsafePath(file)) continue;
+    try {
+      const zipContents = execFileSync('unzip', ['-p', zipPath, file], {
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      const packageContents = readFileSync(path.join(packageDir, file));
+      if (!zipContents.equals(packageContents)) {
+        errors.push(`ZIP file content differs from the unpacked package: ${file}`);
+      }
+    } catch (error) {
+      errors.push(`ZIP file content could not be verified: ${file} (${error.message})`);
+    }
   }
   const forbidden = packageForbiddenFiles(zipFiles);
   if (forbidden.length > 0) {

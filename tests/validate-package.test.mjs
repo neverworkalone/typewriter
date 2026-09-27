@@ -8,6 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
+import { createPackageReleaseInfo } from '../scripts/build/release-info.mjs';
 
 import {
   collectManifestFiles,
@@ -68,6 +69,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     };
     const packageFiles = new Map([
       ['manifest.json', JSON.stringify(manifest)],
+      ['release-info.json', '{}\n'],
       ['popup.html', '<main>fixture popup</main>'],
       ['options.html', '<main>fixture options</main>'],
       ['logo.png', 'fixture logo'],
@@ -85,6 +87,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8')],
       ['DATA-LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'DATA-LICENSE.md'), 'utf8')],
       ['BRAND.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'BRAND.md'), 'utf8')],
+      ['PRIVACY.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'PRIVACY.md'), 'utf8')],
       ['THIRD-PARTY-NOTICES.txt', readFileSync(
         path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'),
         'utf8',
@@ -137,6 +140,14 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     for (const [key, value] of Object.entries(metadata)) insertMetadata.run(key, value);
     database.close();
     await chmod(databasePath, 0o644);
+    await writeFile(
+      path.join(packageDirectory, 'release-info.json'),
+      `${JSON.stringify(createPackageReleaseInfo({
+        projectRoot: REPOSITORY_DIRECTORY,
+        packageDirectory,
+      }), null, 2)}\n`,
+    );
+    await chmod(path.join(packageDirectory, 'release-info.json'), 0o644);
 
     const matchingPackage = validatePackageDirectory({
       packageDir: packageDirectory,
@@ -144,6 +155,25 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.deepEqual(matchingPackage.errors, []);
+
+    const releaseInfoPath = path.join(packageDirectory, 'release-info.json');
+    await writeFile(releaseInfoPath, '{}\n');
+    const changedReleaseInfo = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(changedReleaseInfo.errors.includes(
+      'Packaged release identity does not match application, extension, dictionary, source, and build-input digests.',
+    ));
+    await writeFile(
+      releaseInfoPath,
+      `${JSON.stringify(createPackageReleaseInfo({
+        projectRoot: REPOSITORY_DIRECTORY,
+        packageDirectory,
+      }), null, 2)}\n`,
+    );
+    await chmod(releaseInfoPath, 0o644);
 
     const foreignKeyDatabase = new DatabaseSync(databasePath);
     foreignKeyDatabase.exec('PRAGMA foreign_keys = OFF');
@@ -295,6 +325,8 @@ test('rejects remote code, permissions, exposed resources, source maps, and miss
         version: '0.3.0',
         permissions: ['storage', 'tabs'],
         host_permissions: ['<all_urls>'],
+        optional_host_permissions: ['https://example.invalid/*'],
+        externally_connectable: { matches: ['https://example.invalid/*'] },
         web_accessible_resources: [{ resources: ['dictionary.sqlite'], matches: ['<all_urls>'] }],
         action: { default_popup: 'popup.html' },
         options_ui: { page: 'options.html' },
@@ -320,6 +352,8 @@ test('rejects remote code, permissions, exposed resources, source maps, and miss
 
     assert.match(errors, /Product permissions must be exactly/);
     assert.match(errors, /Host permissions are not allowed/);
+    assert.match(errors, /Optional host permissions are not allowed/);
+    assert.match(errors, /externally_connectable is not allowed/);
     assert.match(errors, /web_accessible_resources must not expose/);
     assert.match(errors, /Remote code or CDN reference/);
     assert.match(errors, /regular 0644 file/);
@@ -372,11 +406,15 @@ test('compares ZIP contents with the validated unpacked package and filename', a
   const projectDirectory = path.join(temporaryDirectory, 'typewriter');
   const packageDirectory = path.join(projectDirectory, 'dist');
   const zipPath = path.join(projectDirectory, 'typewriter_0.3.0.zip');
+  const zipSourceDirectory = path.join(temporaryDirectory, 'zip-source');
+  const archiverPath = path.join(REPOSITORY_DIRECTORY, 'scripts/build/create-package-zip.py');
   try {
     await mkdir(packageDirectory, { recursive: true });
+    await mkdir(zipSourceDirectory, { recursive: true });
     await writeFile(path.join(packageDirectory, 'manifest.json'), '{}');
     await writeFile(path.join(packageDirectory, 'popup.html'), '<main></main>');
-    execFileSync('zip', ['-q', zipPath, 'manifest.json'], { cwd: packageDirectory });
+    await writeFile(path.join(zipSourceDirectory, 'manifest.json'), '{}');
+    execFileSync('python3', [archiverPath, zipSourceDirectory, zipPath]);
 
     const result = validatePackageZip({
       packageDir: packageDirectory,
@@ -387,6 +425,53 @@ test('compares ZIP contents with the validated unpacked package and filename', a
 
     assert.match(result.errors.join('\n'), /ZIP is missing files from the unpacked build: popup\.html/);
     assert.equal(result.errors.some((error) => /ZIP name mismatch/.test(error)), false);
+
+    await writeFile(path.join(zipSourceDirectory, 'popup.html'), '<main></main>');
+    execFileSync('python3', [archiverPath, zipSourceDirectory, zipPath]);
+    const matchingContents = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['manifest.json', 'popup.html'],
+      manifestVersion: '0.3.0',
+    });
+    assert.deepEqual(matchingContents.errors, []);
+
+    await writeFile(path.join(packageDirectory, 'popup.html'), '<main>tampered</main>');
+    const modifiedZipContents = validatePackageZip({
+      packageDir: packageDirectory,
+      zipPath,
+      packageFiles: ['manifest.json', 'popup.html'],
+      manifestVersion: '0.3.0',
+    });
+    assert.ok(modifiedZipContents.errors.includes(
+      'ZIP file content differs from the unpacked package: popup.html',
+    ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('creates byte-identical package ZIPs with normalized archive metadata', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-package-deterministic-'));
+  const sourceDirectory = path.join(temporaryDirectory, 'dist');
+  const firstZipPath = path.join(temporaryDirectory, 'first.zip');
+  const secondZipPath = path.join(temporaryDirectory, 'second.zip');
+  const archiverPath = path.join(REPOSITORY_DIRECTORY, 'scripts/build/create-package-zip.py');
+  try {
+    await mkdir(path.join(sourceDirectory, 'assets'), { recursive: true });
+    await writeFile(path.join(sourceDirectory, 'assets/main.js'), 'export default 1;\n');
+    await writeFile(path.join(sourceDirectory, 'manifest.json'), '{"version":"1.0"}\n');
+    await writeFile(path.join(sourceDirectory, '.DS_Store'), 'development metadata');
+
+    execFileSync('python3', [archiverPath, sourceDirectory, firstZipPath]);
+    await writeFile(path.join(sourceDirectory, 'assets/main.js'), 'export default 1;\n');
+    execFileSync('python3', [archiverPath, sourceDirectory, secondZipPath]);
+
+    assert.deepEqual(readFileSync(firstZipPath), readFileSync(secondZipPath));
+    assert.deepEqual(
+      execFileSync('unzip', ['-Z1', firstZipPath], { encoding: 'utf8' }).trim().split(/\r?\n/u),
+      ['assets/main.js', 'manifest.json'],
+    );
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
