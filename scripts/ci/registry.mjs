@@ -225,6 +225,7 @@ export const CI_CATEGORIES = Object.freeze({
   product: {
     label: 'Product tests and extension build',
     checks: [
+      testCheck('tests/dictionary-validation.test.mjs', 'Test packaged dictionary runtime guards'),
       testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
       testCheck('tests/runtime-query-adapter.test.mjs', 'Test shared native and WASM SQLite query adapter'),
       testCheck('tests/scale-benchmark.test.mjs', 'Test deterministic product-shaped scale fixture'),
