@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 import { PRODUCT_LEGAL_FILES } from './product-output-contract.mjs';
 import { loadCanonicalContext } from '../validate/canonical-context.mjs';
+import { readForeignKeyViolations } from '../../src/runtime/dictionary-validation.js';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -19,6 +20,9 @@ const ALLOWED_FILES = new Set([
   'favicon.ico',
   'dictionary.sqlite',
   'runtime/dictionary-worker.mjs',
+  'runtime/dictionary-build-info.js',
+  'runtime/dictionary-contract.js',
+  'runtime/dictionary-validation.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',
@@ -223,6 +227,13 @@ function readDatabaseMetadata(databasePath) {
     if (integrity !== 'ok') {
       fail('Pages dictionary failed SQLite integrity_check.', 'PAGES_ARTIFACT_SQLITE');
     }
+    const foreignKeyViolations = readForeignKeyViolations(database);
+    if (foreignKeyViolations.length > 0) {
+      fail(
+        `Pages dictionary foreign_key_check found ${foreignKeyViolations.length} violation(s).`,
+        'PAGES_ARTIFACT_SQLITE',
+      );
+    }
     const rows = database.prepare('SELECT key, value FROM metadata ORDER BY key').all();
     return Object.fromEntries(rows.map(({ key, value }) => [key, value]));
   } catch (error) {
@@ -283,6 +294,17 @@ export async function validatePagesArtifact({
   await validateLegalFiles(resolvedRepositoryDirectory, resolvedOutputDirectory);
   const metadata = readDatabaseMetadata(path.join(resolvedOutputDirectory, 'dictionary.sqlite'));
   assertDatabaseMetadata(metadata, expectedGitRevision, expectedCanonicalDigest);
+  const runtimeBuildInfo = await readFile(
+    path.join(resolvedOutputDirectory, 'runtime/dictionary-build-info.js'),
+    'utf8',
+  );
+  const expectedRuntimeRevision = `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(metadata.source_revision)};`;
+  if (!runtimeBuildInfo.split(/\r?\n/u).includes(expectedRuntimeRevision)) {
+    fail(
+      'Pages runtime build info must match the packaged dictionary source revision.',
+      'PAGES_ARTIFACT_SOURCE_REVISION',
+    );
+  }
 
   return {
     fileCount: fileInventory.files.length,

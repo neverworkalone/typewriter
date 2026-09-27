@@ -1,4 +1,6 @@
-export const SQLITE_SCHEMA_VERSION = '2';
+import { SQLITE_SCHEMA_VERSION } from '../../src/runtime/dictionary-contract.js';
+
+export { SQLITE_SCHEMA_VERSION };
 
 export const SQLITE_SCHEMA_SQL = `
 CREATE TABLE metadata (

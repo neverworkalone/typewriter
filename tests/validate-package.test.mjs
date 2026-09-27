@@ -72,6 +72,9 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['options.html', '<main>fixture options</main>'],
       ['logo.png', 'fixture logo'],
       ['runtime/dictionary-worker.mjs', '// fixture worker\n'],
+      ['runtime/dictionary-build-info.js', 'export const EXPECTED_DICTIONARY_SOURCE_REVISION = "fixture";\n'],
+      ['runtime/dictionary-contract.js', '// fixture dictionary contract\n'],
+      ['runtime/dictionary-validation.js', '// fixture dictionary validation\n'],
       ['runtime/protocol.js', '// fixture protocol\n'],
       ['runtime/query-adapter.js', '// fixture adapter\n'],
       ['runtime/search-query.js', '// fixture search\n'],
@@ -94,6 +97,10 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       await chmod(filePath, 0o644);
     }
 
+    const sourceRevision = execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+      cwd: REPOSITORY_DIRECTORY,
+      encoding: 'utf8',
+    }).trim();
     const metadata = {
       dictionary_version: 'm2-pilot-1',
       schema_version: '2',
@@ -112,16 +119,18 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       sense_count: '3',
       relation_count: '1',
       expression_count: '1',
-      source_revision: execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
-        cwd: REPOSITORY_DIRECTORY,
-        encoding: 'utf8',
-      }).trim(),
+      source_revision: sourceRevision,
       source_revision_source: 'git-head',
       source_revision_verified: 'true',
       worktree_state: 'clean',
       node_version: process.version,
       sqlite_version: '3.53.0',
     };
+    await writeFile(
+      path.join(packageDirectory, 'runtime/dictionary-build-info.js'),
+      `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(sourceRevision)};\n`,
+    );
+    await chmod(path.join(packageDirectory, 'runtime/dictionary-build-info.js'), 0o644);
     const database = new DatabaseSync(databasePath);
     database.exec(`PRAGMA user_version = 2; ${SQLITE_SCHEMA_SQL}`);
     const insertMetadata = database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');
@@ -135,6 +144,44 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.deepEqual(matchingPackage.errors, []);
+
+    const foreignKeyDatabase = new DatabaseSync(databasePath);
+    foreignKeyDatabase.exec('PRAGMA foreign_keys = OFF');
+    foreignKeyDatabase.prepare(`
+      INSERT INTO search_forms (record_id, position, form)
+      VALUES ('missing-record', 0, 'orphan')
+    `).run();
+    foreignKeyDatabase.close();
+    const danglingForeignKey = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(danglingForeignKey.errors.includes(
+      'Dictionary SQLite foreign_key_check found 1 violation(s).',
+    ));
+    const repairedFixture = new DatabaseSync(databasePath);
+    repairedFixture.prepare("DELETE FROM search_forms WHERE form = 'orphan'").run();
+    repairedFixture.close();
+
+    const runtimeBuildInfoPath = path.join(packageDirectory, 'runtime/dictionary-build-info.js');
+    await writeFile(
+      runtimeBuildInfoPath,
+      `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify('b'.repeat(40))};\n`,
+    );
+    const mismatchedRuntimeBuildInfo = validatePackageDirectory({
+      packageDir: packageDirectory,
+      projectRoot: REPOSITORY_DIRECTORY,
+      canonicalDirectory,
+    });
+    assert.ok(mismatchedRuntimeBuildInfo.errors.includes(
+      'Runtime build info must match the packaged dictionary source revision.',
+    ));
+    await writeFile(
+      runtimeBuildInfoPath,
+      `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(sourceRevision)};\n`,
+    );
+    await chmod(runtimeBuildInfoPath, 0o644);
 
     const licensePath = path.join(packageDirectory, 'LICENSE.md');
     const validLicense = readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8');

@@ -102,6 +102,16 @@ Chrome check. The manifest allows WASM evaluation for extension pages while
 retaining only the `storage` permission, no host permissions, and no web-accessible
 dictionary asset.
 
+Every runtime load checks the packaged SQLite schema and `user_version`, supported
+dictionary version, verified source revision, SQLite quick-check result, and
+record-count metadata before serving a query. An incompatible or incomplete file
+fails with a stable load error and the popup offers a retry. The dictionary stays
+inside the extension package and is loaded read-only; extension updates replace it
+without touching `chrome.storage.local`. That storage holds display settings only,
+so the current product has no dictionary migration or search-history migration.
+After an update the new worker reports the replacement dictionary's version,
+schema, and source revision for lifecycle verification.
+
 The product build uses the same clean-worktree provenance contract as the SQLite
 builder. During local development with uncommitted changes, use the explicit
 escape hatch:
@@ -148,8 +158,8 @@ fixed at `1.0.0`.
 
 The package contains only the MV3 product surface: `manifest.json`, `popup.html`,
 `options.html`, Vite assets/chunks, the current generated `dictionary.sqlite`, the
-SQLite worker/protocol/query adapter, the pinned SQLite JavaScript/WASM runtime,
-icons and `logo.png`, plus the full `Apache-2.0.txt` license and
+SQLite worker/contract/validation/protocol/query adapter, the pinned SQLite
+JavaScript/WASM runtime, icons and `logo.png`, plus the full `Apache-2.0.txt` license and
 `THIRD-PARTY-NOTICES.txt`. Development sources, tests, package configuration,
 source maps, remote code/CDN references, host permissions, and web-accessible product
 resources are rejected.
@@ -176,7 +186,17 @@ reflection, content-sized/scrolling layouts, the product runtime's SQLite
 `query_only` and write-rejection status, and that no request leaves the extension
 origin. This is the supported automated equivalent of installing the ZIP as an
 unpacked extension; the Chrome GUI's direct ZIP installation path remains a manual
-release smoke check.
+release smoke check. Pass `--previous-extension=/path/to/previous/unpacked` to
+start from a prior real package, preserve its isolated profile, then load the new
+ZIP contents at the same extension path with a higher test manifest version.
+The runner verifies that the database source revision and bytes change, exact,
+search-form, and generated-surface lookups work after restart, and the saved
+Settings remain in `chrome.storage.local`. It also boots isolated copies with
+missing, unreadable, corrupt, schema-mismatched, dictionary-version-mismatched,
+revision-mismatched, referentially invalid, and incomplete databases and checks
+the visible load error and worker retry behavior. `foreign_key_check` runs in the
+runtime and package/artifact validators because SQLite's quick/integrity checks
+do not report dangling foreign-key references.
 
 실제 검증 기록 (2026-09-06, Chrome for Testing 152.0.7977.82): 제품 `popup.html`에서
 패키지된 query adapter가 worker와 SQLite/WASM을 로드했고, `담담하다` lemma, `담담`

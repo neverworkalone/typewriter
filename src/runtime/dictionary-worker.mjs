@@ -1,4 +1,5 @@
 import sqlite3InitModule from './vendor/sqlite3.mjs';
+import { EXPECTED_DICTIONARY_SOURCE_REVISION } from './dictionary-build-info.js';
 import {
   ERROR_CODES,
   MESSAGE_TYPES,
@@ -6,10 +7,10 @@ import {
 } from './protocol.js';
 import {
   findRecordsBySearchTerm,
-  getMetadata,
   getRecord,
   getSenseRelations,
 } from './sqlite-query.js';
+import { validatePackagedDictionary } from './dictionary-validation.js';
 
 let databasePromise;
 
@@ -102,6 +103,10 @@ async function loadDatabase() {
       );
     }
 
+    const dictionaryMetadata = validatePackagedDictionary(database, {
+      expectedSourceRevision: EXPECTED_DICTIONARY_SOURCE_REVISION,
+    });
+
     let writeBlocked = false;
     try {
       database.exec(
@@ -133,6 +138,7 @@ async function loadDatabase() {
       queryOnly,
       writeBlocked,
       persistedWriteCount,
+      dictionaryMetadata,
     };
   } catch (error) {
     try {
@@ -170,6 +176,9 @@ function getStatus(runtime) {
     persisted_write_count: runtime.persistedWriteCount,
     database_bytes: runtime.bytes,
     sqlite_version: runtime.sqlite3.version.libVersion,
+    dictionary_version: runtime.dictionaryMetadata.dictionary_version,
+    schema_version: runtime.dictionaryMetadata.schema_version,
+    source_revision: runtime.dictionaryMetadata.source_revision,
   };
 }
 
@@ -204,7 +213,7 @@ async function dispatch(method, params = {}) {
       case 'get-relations':
         return getSenseRelations(database, validateString(params.senseId, 'senseId'));
       case 'metadata':
-        return getMetadata(database);
+        return runtime.dictionaryMetadata;
       default:
         throw workerError(
           ERROR_CODES.UNSUPPORTED_REQUEST,

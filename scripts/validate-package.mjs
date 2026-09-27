@@ -9,6 +9,11 @@ import {
   SURFACE_FORM_PROJECTION_VERSION,
 } from './inflection/surface-form-projection.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY } from './validate/canonical-jsonl.mjs';
+import {
+  DICTIONARY_VERSION,
+  SQLITE_SCHEMA_VERSION,
+} from '../src/runtime/dictionary-contract.js';
+import { readForeignKeyViolations } from '../src/runtime/dictionary-validation.js';
 
 const FORBIDDEN_PACKAGE_PATHS = [
   /^(src|tests|node_modules|\.git)(\/|$)/,
@@ -32,6 +37,9 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'dictionary.sqlite',
   'logo.png',
   'runtime/dictionary-worker.mjs',
+  'runtime/dictionary-build-info.js',
+  'runtime/dictionary-contract.js',
+  'runtime/dictionary-validation.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',
@@ -46,10 +54,10 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
 ]);
 
 const EXPECTED_METADATA = Object.freeze({
-  dictionary_version: 'm2-pilot-1',
-  schema_version: '2',
+  dictionary_version: DICTIONARY_VERSION,
+  schema_version: SQLITE_SCHEMA_VERSION,
   normalization_version: '1',
-  build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v2',
+  build_contract: `canonical-jsonl -> normalized-v1 -> sqlite-v${SQLITE_SCHEMA_VERSION}`,
   build_tool_version: '1',
   surface_form_projection_version: SURFACE_FORM_PROJECTION_VERSION,
 });
@@ -348,6 +356,14 @@ function validateDictionaryMetadata({
     if (metadata.source_revision_source !== 'git-head' || metadata.source_revision_verified !== 'true') {
       errors.push('Dictionary source revision must be verified from the current Git HEAD.');
     }
+    const runtimeBuildInfoPath = path.join(packageDir, 'runtime/dictionary-build-info.js');
+    if (existsSync(runtimeBuildInfoPath)) {
+      const runtimeBuildInfo = readFileSync(runtimeBuildInfoPath, 'utf8');
+      const expectedRuntimeRevision = `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(metadata.source_revision)};`;
+      if (!runtimeBuildInfo.split(/\r?\n/u).includes(expectedRuntimeRevision)) {
+        errors.push('Runtime build info must match the packaged dictionary source revision.');
+      }
+    }
     if (!['clean', 'dirty-allowed'].includes(metadata.worktree_state)) {
       errors.push(`Dictionary worktree_state is invalid: ${JSON.stringify(metadata.worktree_state)}.`);
     }
@@ -388,6 +404,10 @@ function validateDictionaryMetadata({
     const integrity = database.prepare('PRAGMA integrity_check').get()?.integrity_check;
     if (integrity !== 'ok') {
       errors.push(`Dictionary SQLite integrity_check failed: ${JSON.stringify(integrity)}.`);
+    }
+    const foreignKeyViolations = readForeignKeyViolations(database);
+    if (foreignKeyViolations.length > 0) {
+      errors.push(`Dictionary SQLite foreign_key_check found ${foreignKeyViolations.length} violation(s).`);
     }
   } catch (error) {
     errors.push(`Packaged dictionary could not be read: ${error.message}`);

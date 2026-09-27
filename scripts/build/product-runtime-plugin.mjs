@@ -1,4 +1,5 @@
-import { cp, mkdir } from 'node:fs/promises';
+import { cp, mkdir, writeFile } from 'node:fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 
 import { buildDictionary } from './dictionary.mjs';
@@ -32,6 +33,14 @@ export function createProductRuntimeAssets({
       cp(
         path.join(projectRoot, 'src/runtime/dictionary-worker.mjs'),
         path.join(runtimeDirectory, 'dictionary-worker.mjs'),
+      ),
+      cp(
+        path.join(projectRoot, 'src/runtime/dictionary-contract.js'),
+        path.join(runtimeDirectory, 'dictionary-contract.js'),
+      ),
+      cp(
+        path.join(projectRoot, 'src/runtime/dictionary-validation.js'),
+        path.join(runtimeDirectory, 'dictionary-validation.js'),
       ),
       cp(
         path.join(projectRoot, 'src/runtime/protocol.js'),
@@ -80,20 +89,37 @@ export function createProductRuntimeAssets({
 
       await cp(sharedDictionaryPath, outputPath);
       console.log(`Product dictionary reused from shared artifact: ${sharedDictionaryPath}`);
-      return;
+    } else {
+      const summary = await buildDictionary({
+        inputDirectory: canonicalDirectory,
+        outputPath,
+        checkPilotCompleteness: true,
+        repositoryDirectory: projectRoot,
+        allowDirty,
+      });
+
+      console.log(
+        `Product dictionary built: ${summary.recordCount} records, `
+          + `${summary.senseCount} senses, ${summary.relationCount} relations.`,
+      );
     }
 
-    const summary = await buildDictionary({
-      inputDirectory: canonicalDirectory,
-      outputPath,
-      checkPilotCompleteness: true,
-      repositoryDirectory: projectRoot,
-      allowDirty,
-    });
-
-    console.log(
-      `Product dictionary built: ${summary.recordCount} records, `
-        + `${summary.senseCount} senses, ${summary.relationCount} relations.`,
+    const database = new DatabaseSync(outputPath, { readOnly: true });
+    let sourceRevision;
+    try {
+      sourceRevision = database.prepare(
+        "SELECT value FROM metadata WHERE key = 'source_revision'",
+      ).get()?.value;
+    } finally {
+      database.close();
+    }
+    if (!/^[0-9a-f]{40}$/.test(sourceRevision || '')) {
+      throw new Error('Product dictionary source revision is missing or invalid.');
+    }
+    await writeFile(
+      path.join(runtimeDirectory, 'dictionary-build-info.js'),
+      `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(sourceRevision)};\n`,
+      { mode: 0o644 },
     );
   }
 

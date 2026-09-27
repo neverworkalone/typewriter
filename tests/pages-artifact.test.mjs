@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 import { PRODUCT_LEGAL_FILES } from '../scripts/validate/product-output-contract.mjs';
 import { validatePagesArtifact } from '../scripts/validate/pages-artifact.mjs';
 
@@ -58,6 +59,9 @@ async function createArtifact(t, {
   }
   for (const fileName of [
     'runtime/dictionary-worker.mjs',
+    'runtime/dictionary-build-info.js',
+    'runtime/dictionary-contract.js',
+    'runtime/dictionary-validation.js',
     'runtime/protocol.js',
     'runtime/query-adapter.js',
     'runtime/search-query.js',
@@ -65,14 +69,17 @@ async function createArtifact(t, {
     'runtime/vendor/sqlite3.mjs',
     'runtime/vendor/sqlite3.wasm',
   ]) {
-    await writeFile(path.join(outputDirectory, fileName), 'fixture');
+    await writeFile(
+      path.join(outputDirectory, fileName),
+      fileName === 'runtime/dictionary-build-info.js'
+        ? `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(sourceRevision)};\n`
+        : 'fixture',
+    );
   }
 
   const databasePath = path.join(outputDirectory, 'dictionary.sqlite');
   const database = new DatabaseSync(databasePath);
-  database.exec(
-    'CREATE TABLE metadata (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);',
-  );
+  database.exec(`PRAGMA user_version = 2; ${SQLITE_SCHEMA_SQL}`);
   const insert = database.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');
   const metadata = {
     source_revision: sourceRevision,
@@ -181,6 +188,27 @@ test('rejects a dictionary bound to a different Git source revision', async (t) 
       expectedCanonicalRevision: CANONICAL_REVISION,
     }),
     { code: 'PAGES_ARTIFACT_SOURCE_REVISION' },
+  );
+});
+
+test('rejects Pages dictionaries with dangling foreign-key references', async (t) => {
+  const { outputDirectory } = await createArtifact(t);
+  const database = new DatabaseSync(path.join(outputDirectory, 'dictionary.sqlite'));
+  database.exec('PRAGMA foreign_keys = OFF');
+  database.prepare(`
+    INSERT INTO search_forms (record_id, position, form)
+    VALUES ('missing-record', 0, 'orphan')
+  `).run();
+  database.close();
+
+  await assert.rejects(
+    validatePagesArtifact({
+      outputDirectory,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      expectedSourceRevision: SOURCE_REVISION,
+      expectedCanonicalRevision: CANONICAL_REVISION,
+    }),
+    { code: 'PAGES_ARTIFACT_SQLITE' },
   );
 });
 

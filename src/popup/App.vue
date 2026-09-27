@@ -175,6 +175,9 @@ onBeforeUnmount(() => {
     :data-runtime-query-only="runtimeStatus?.query_only"
     :data-runtime-write-blocked="runtimeStatus?.write_blocked"
     :data-runtime-persisted-write-count="runtimeStatus?.persisted_write_count"
+    :data-runtime-dictionary-version="runtimeStatus?.dictionary_version"
+    :data-runtime-schema-version="runtimeStatus?.schema_version"
+    :data-runtime-source-revision="runtimeStatus?.source_revision"
   >
     <span class="sr-only">말의 결을 찾는 사전</span>
     <DictionaryPanel

@@ -17,6 +17,7 @@ import {
   resolveBuildProvenance,
 } from './provenance.mjs';
 import { SQLITE_SCHEMA_SQL, SQLITE_SCHEMA_VERSION } from './sqlite-schema.mjs';
+import { DICTIONARY_VERSION } from '../../src/runtime/dictionary-contract.js';
 import {
   buildOrReuseSurfaceFormProjection,
   loadSurfaceFormExceptionManifest,
@@ -24,7 +25,7 @@ import {
   SURFACE_FORM_PROJECTION_VERSION,
 } from '../inflection/surface-form-projection.mjs';
 
-export const DICTIONARY_VERSION = 'm2-pilot-1';
+export { DICTIONARY_VERSION };
 export const DEFAULT_DICTIONARY_OUTPUT = path.resolve(
   'artifacts/dictionary.sqlite',
 );
@@ -94,7 +95,7 @@ function metadataEntries(model, metadata, surfaceProjection) {
 
   const values = {
     ...metadata,
-    build_contract: 'canonical-jsonl -> normalized-v1 -> sqlite-v2',
+    build_contract: `canonical-jsonl -> normalized-v1 -> sqlite-v${SQLITE_SCHEMA_VERSION}`,
     surface_form_projection_version: SURFACE_FORM_PROJECTION_VERSION,
     build_tool_version: BUILD_TOOL_VERSION,
     dictionary_version: DICTIONARY_VERSION,
