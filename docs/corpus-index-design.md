@@ -74,6 +74,18 @@ The local `data/reference/corpus/` snapshot used for issue #197 contained 3,410 
 
 The full-folder schema and FTS storage uncertainties from the pilot were measured in issue #197. The one-character literal fallback is materially slower than the trigram path; keep it correct and measure actual query demand before adding a separate short-query index. The builder still feature-checks FTS5 because the declared minimum Node version may not provide the trigram tokenizer.
 
+## Bounded search and future corpus tooling
+
+Every paragraph-returning `searchCorpusIndex()` lookup is limited in SQL before rows are materialized in Node.js. Omitting `limit` returns at most 50 rows; callers may request 1–200 rows, and larger or invalid values fail. The same contract applies to FTS5 trigram and one-/two-character literal fallback searches. There is no unlimited row-returning mode. The CLI accepts the same bounded `--limit` range and does not provide an unlimited option.
+
+Use the corpus APIs according to the amount of evidence needed:
+
+- Use bounded `searchCorpusIndex()` results when actual paragraph evidence is needed.
+- Use `countCorpusMatches()` or the CLI's `--count` mode for exhaustive match counts; both run `COUNT(*)` inside SQLite and return only the aggregate value.
+- Process candidate words incrementally. Handle one query and its bounded result batch at a time, then release those results before continuing; do not collect arrays for many broad queries into one large in-memory structure.
+- Do not read the SQLite index into a `Buffer` or copy the whole database into application memory.
+- Keep corpus/index access out of product runtime, Pages, extension builds, and normal CI. The synthetic corpus reference suite remains local/manual and is not a normal-CI dependency.
+
 ## Full-corpus build measurements (#197)
 
 The owner confirmed the site permission status as `permitted` for this issue's local reference task. The full-corpus preflight and build ran on 2026-09-27 against the local snapshot only. No corpus text or search result excerpts were added to Git.

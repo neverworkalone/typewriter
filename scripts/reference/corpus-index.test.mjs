@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   assertFts5TrigramSupport,
   assertCorpusPermission,
   auditCorpus,
   buildCorpusIndex,
+  countCorpusMatches,
   REPOSITORY_DIRECTORY,
   searchCorpusIndex,
 } from './corpus-index.mjs';
@@ -137,6 +140,59 @@ async function buildFixtureIndex(directory, corpusDirectory) {
   return { outputPath, summary };
 }
 
+async function makeManyMatchingCorpus(directory, paragraphCount = 230) {
+  const corpusDirectory = path.join(directory, 'corpus');
+  await writeSource(corpusDirectory, 'bulk-fixture.json', makeSource({
+    id: 'synthetic-bulk-corpus',
+    title: 'Synthetic bounded-search fixture',
+    documents: [makeDocument({
+      id: 'bulk-document',
+      title: 'Synthetic bulk document',
+      paragraphs: Array.from({ length: paragraphCount }, (_, index) => makeParagraph(
+        'bulk-paragraph-' + index,
+        '표적문자열 빛행 합성문단 ' + String(index).padStart(3, '0'),
+      )),
+    })],
+  }));
+  return corpusDirectory;
+}
+
+function captureDatabaseCalls(callback) {
+  const databasePrototype = DatabaseSync.prototype;
+  const probeDatabase = new DatabaseSync(':memory:');
+  const statementPrototype = Object.getPrototypeOf(probeDatabase.prepare('SELECT 1'));
+  probeDatabase.close();
+
+  const originalPrepare = databasePrototype.prepare;
+  const originalAll = statementPrototype.all;
+  const originalGet = statementPrototype.get;
+  const sqlByStatement = new WeakMap();
+  const calls = [];
+
+  databasePrototype.prepare = function capturePreparedSql(sql, ...parameters) {
+    const statement = Reflect.apply(originalPrepare, this, [sql, ...parameters]);
+    sqlByStatement.set(statement, sql);
+    return statement;
+  };
+  statementPrototype.all = function captureAll(...parameters) {
+    calls.push({ method: 'all', sql: sqlByStatement.get(this), parameters });
+    return Reflect.apply(originalAll, this, parameters);
+  };
+  statementPrototype.get = function captureGet(...parameters) {
+    calls.push({ method: 'get', sql: sqlByStatement.get(this), parameters });
+    return Reflect.apply(originalGet, this, parameters);
+  };
+
+  try {
+    callback();
+  } finally {
+    databasePrototype.prepare = originalPrepare;
+    statementPrototype.all = originalAll;
+    statementPrototype.get = originalGet;
+  }
+  return calls;
+}
+
 function readLogicalRows(databasePath) {
   const database = new DatabaseSync(databasePath, { readOnly: true });
   try {
@@ -258,10 +314,93 @@ test('three-character FTS and one/two-character fallbacks return literal matches
     searchCorpusIndex({ databasePath: outputPath, query: '강물' }).length,
     1,
   );
+  assert.equal(countCorpusMatches({ databasePath: outputPath, query: '바람빛' }), 2);
+  assert.equal(countCorpusMatches({ databasePath: outputPath, query: '빛' }), 4);
+  assert.equal(countCorpusMatches({ databasePath: outputPath, query: '강물' }), 1);
+  assert.equal(countCorpusMatches({ databasePath: outputPath, query: '' }), 0);
   assert.deepEqual(
     searchCorpusIndex({ databasePath: outputPath, query: '없는표현' }),
     [],
   );
+});
+
+test('corpus search defaults to 50 and caps FTS and one/two-character fallback at 200', {
+  skip: hasFts5Trigram ? false : fts5TrigramError.message,
+}, async () => {
+  const directory = await makeTemporaryDirectory();
+  const corpusDirectory = await makeManyMatchingCorpus(directory);
+  const { outputPath, summary } = await buildFixtureIndex(directory, corpusDirectory);
+  assert.equal(summary.paragraph_count, 230);
+
+  for (const query of ['표적문자열', '빛', '빛행']) {
+    const defaultHits = searchCorpusIndex({ databasePath: outputPath, query });
+    const smallHits = searchCorpusIndex({ databasePath: outputPath, query, limit: 7 });
+    const maximumHits = searchCorpusIndex({ databasePath: outputPath, query, limit: 200 });
+    assert.equal(defaultHits.length, 50, query + ' uses the 50-row default');
+    assert.equal(smallHits.length, 7, query + ' accepts an explicit limit below the default');
+    assert.equal(maximumHits.length, 200, query + ' accepts the hard maximum');
+    assert.deepEqual(smallHits, defaultHits.slice(0, 7));
+    assert.deepEqual(maximumHits.slice(0, 7), defaultHits.slice(0, 7));
+    assert.equal(countCorpusMatches({ databasePath: outputPath, query }), 230);
+  }
+
+  const cliResult = spawnSync(process.execPath, [
+    fileURLToPath(new URL('./search-corpus-index.mjs', import.meta.url)),
+    '--index',
+    outputPath,
+    '--count',
+    '표적문자열',
+  ], { encoding: 'utf8' });
+  assert.equal(cliResult.status, 0, cliResult.stderr);
+  assert.deepEqual(JSON.parse(cliResult.stdout), {
+    evidence_type: 'literal_text_match_count',
+    search_mode: 'fts5-trigram',
+    match_count: 230,
+  });
+
+  const calls = captureDatabaseCalls(() => {
+    assert.equal(
+      searchCorpusIndex({ databasePath: outputPath, query: '표적문자열' }).length,
+      50,
+    );
+    assert.equal(
+      countCorpusMatches({ databasePath: outputPath, query: '표적문자열' }),
+      230,
+    );
+  });
+  assert.equal(calls.length, 2);
+  const [rowFetch, aggregate] = calls;
+  assert.equal(rowFetch.method, 'all');
+  assert.match(rowFetch.sql, /LIMIT\s+\?/u);
+  assert.equal(rowFetch.parameters.at(-1), 50);
+  assert.equal(aggregate.method, 'get');
+  assert.match(aggregate.sql, /SELECT\s+COUNT\(\*\)\s+AS\s+match_count/u);
+  assert.doesNotMatch(aggregate.sql, /\bLIMIT\b/u);
+});
+
+test('corpus search rejects limits outside the supported range', () => {
+  assert.throws(
+    () => searchCorpusIndex({ databasePath: '/missing/index.sqlite', query: '빛', limit: 201 }),
+    { name: 'TypeError', message: /no greater than 200/u },
+  );
+
+  for (const limit of [
+    0,
+    -1,
+    1.5,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    null,
+    '50',
+    true,
+  ]) {
+    assert.throws(
+      () => searchCorpusIndex({ databasePath: '/missing/index.sqlite', query: '빛', limit }),
+      { name: 'TypeError', message: /no greater than 200/u },
+      'reject invalid limit ' + String(limit),
+    );
+  }
 });
 
 test('repeated source, document, and paragraph IDs remain separate positional evidence rows', {

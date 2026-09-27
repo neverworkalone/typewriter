@@ -36,6 +36,9 @@ export const DEFAULT_PERMISSION_RECORD_PATH = path.join(
 export const INDEX_SCHEMA_VERSION = '1';
 export const INDEX_BUILDER_VERSION = '1';
 
+const DEFAULT_SEARCH_RESULT_LIMIT = 50;
+const MAX_SEARCH_RESULT_LIMIT = 200;
+
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 const SOURCE_METADATA_FIELDS = Object.freeze([
   'title',
@@ -737,33 +740,60 @@ function exactFtsPhrase(query) {
   return '"' + query.replaceAll('"', '""') + '"';
 }
 
-export function searchCorpusIndex({
-  databasePath = DEFAULT_INDEX_PATH,
-  query,
-  limit,
-} = {}) {
+function validateCorpusQuery(query) {
   if (typeof query !== 'string') {
     throw new TypeError('Search query must be a string.');
   }
   if (query.includes('\u0000')) {
     throw new TypeError('Search query must not contain NUL characters.');
   }
-  if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1)) {
-    throw new TypeError('Search limit must be a positive safe integer.');
+  return [...query].length >= 3;
+}
+
+function validateSearchLimit(limit) {
+  const effectiveLimit = limit === undefined ? DEFAULT_SEARCH_RESULT_LIMIT : limit;
+  if (
+    !Number.isSafeInteger(effectiveLimit)
+    || effectiveLimit < 1
+    || effectiveLimit > MAX_SEARCH_RESULT_LIMIT
+  ) {
+    throw new TypeError(
+      'Search limit must be a positive safe integer no greater than '
+      + MAX_SEARCH_RESULT_LIMIT + '.',
+    );
   }
+  return effectiveLimit;
+}
+
+function corpusMatchFromAndWhere(useFts) {
+  const whereClause = useFts
+    ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0'
+    : 'instr(p.form, ?) > 0';
+  return `
+    FROM paragraphs AS p
+    JOIN documents AS d ON d.document_rowid = p.document_rowid
+    JOIN source_files AS sf ON sf.source_path = d.source_path
+    ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
+    WHERE ${whereClause}
+  `;
+}
+
+function corpusMatchParameters(query, useFts) {
+  return useFts ? [exactFtsPhrase(query), query] : [query];
+}
+
+export function searchCorpusIndex({
+  databasePath = DEFAULT_INDEX_PATH,
+  query,
+  limit,
+} = {}) {
+  const useFts = validateCorpusQuery(query);
+  const effectiveLimit = validateSearchLimit(limit);
   if (query.length === 0) {
     return [];
   }
 
-  const useFts = [...query].length >= 3;
-  const whereClause = useFts
-    ? 'paragraph_fts MATCH ? AND instr(p.form, ?) > 0'
-    : 'instr(p.form, ?) > 0';
-  const orderAndLimit = `
-    ORDER BY sf.source_path COLLATE BINARY,
-             d.document_ordinal,
-             p.ordinal
-  ` + (limit === undefined ? '' : 'LIMIT ?');
+  const matchFromAndWhere = corpusMatchFromAndWhere(useFts);
   const sql = `
     SELECT
       p.paragraph_rowid,
@@ -786,22 +816,39 @@ export function searchCorpusIndex({
       p.paragraph_id,
       p.ordinal AS paragraph_ordinal,
       p.form
-    FROM paragraphs AS p
-    JOIN documents AS d ON d.document_rowid = p.document_rowid
-    JOIN source_files AS sf ON sf.source_path = d.source_path
-    ${useFts ? 'JOIN paragraph_fts ON paragraph_fts.rowid = p.paragraph_rowid' : ''}
-    WHERE ${whereClause}
-    ${orderAndLimit}
+    ${matchFromAndWhere}
+    ORDER BY sf.source_path COLLATE BINARY,
+             d.document_ordinal,
+             p.ordinal
+    LIMIT ?
   `;
   const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
   try {
-    const parameters = useFts
-      ? [exactFtsPhrase(query), query]
-      : [query];
-    if (limit !== undefined) {
-      parameters.push(limit);
-    }
+    const parameters = corpusMatchParameters(query, useFts);
+    parameters.push(effectiveLimit);
     return database.prepare(sql).all(...parameters);
+  } finally {
+    database.close();
+  }
+}
+
+export function countCorpusMatches({
+  databasePath = DEFAULT_INDEX_PATH,
+  query,
+} = {}) {
+  const useFts = validateCorpusQuery(query);
+  if (query.length === 0) {
+    return 0;
+  }
+
+  const sql = `
+    SELECT COUNT(*) AS match_count
+    ${corpusMatchFromAndWhere(useFts)}
+  `;
+  const database = new DatabaseSync(path.resolve(databasePath), { readOnly: true });
+  try {
+    const parameters = corpusMatchParameters(query, useFts);
+    return database.prepare(sql).get(...parameters).match_count;
   } finally {
     database.close();
   }
