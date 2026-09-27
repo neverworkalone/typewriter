@@ -152,9 +152,8 @@ optional `npm run package:minify` command uses the same inputs and validator wit
 Vite/esbuild minification enabled. Both commands rebuild `dist/`, then create
 `<repository>_<manifest-version>.zip` in `TYPEWRITER_ZIP_DIR` or, by default, in
 `~/Downloads`.
-The Chrome manifest release version is intentionally independent from the npm
-package version: the manifest is currently `1.0`, while `package.json` remains
-fixed at `1.0.0`.
+The Chrome manifest and npm package versions follow the 0.1 release line: the
+manifest is `0.1` and npm's semantic package version is `0.1.0`.
 
 The package contains only the MV3 product surface: `manifest.json`, `popup.html`,
 `options.html`, Vite assets/chunks, the current generated `dictionary.sqlite`, the
@@ -214,7 +213,7 @@ the exact ZIP through isolated Chrome profiles:
 npm run test:mv3:package -- \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
-  --zip=/path/to/typewriter_1.0.zip
+  --zip=/path/to/typewriter_0.1.zip
 ```
 
 It checks the popup and Settings flows, local dictionary coverage, saved settings

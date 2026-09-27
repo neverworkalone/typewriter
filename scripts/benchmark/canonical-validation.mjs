@@ -520,12 +520,13 @@ function selectBenchmarkQueries(context) {
   ];
 }
 
-async function measureSqliteWasm({ databasePath, queryCases, queriesPath }) {
+async function measureSqliteWasm({ databasePath, queryCases, queriesPath, expectedSourceRevision }) {
   await writeFile(queriesPath, JSON.stringify(queryCases));
   const { stdout } = await execFile(process.execPath, [
     SQLITE_RUNTIME_BENCHMARK_PATH,
     `--database=${databasePath}`,
     `--queries-file=${queriesPath}`,
+    `--expected-source-revision=${expectedSourceRevision}`,
   ], {
     cwd: REPOSITORY_DIRECTORY,
     maxBuffer: 8 * 1024 * 1024,
@@ -619,10 +620,21 @@ async function measureProductOutput({ context, databasePath, productDirectory, s
   const packageMetrics = await packageProductBuild(productDirectory);
   const packageBuildMs = elapsed(packageStart);
   const runtimeStart = now();
+  const buildInfoSource = await readFile(
+    path.join(productDirectory, 'runtime/dictionary-build-info.js'),
+    'utf8',
+  );
+  const expectedSourceRevision = buildInfoSource.match(
+    /^export const EXPECTED_DICTIONARY_SOURCE_REVISION = "([0-9a-f]{40})";$/mu,
+  )?.[1];
+  if (!expectedSourceRevision) {
+    throw new Error('Product runtime build info is missing its expected dictionary source revision');
+  }
   const runtimeMetrics = await measureSqliteWasm({
     databasePath: productDictionaryPath,
     queryCases: selectBenchmarkQueries(context),
     queriesPath: path.join(scaleDirectory, 'runtime-query-cases.json'),
+    expectedSourceRevision,
   });
   return {
     elapsed_ms: elapsed(outputStart),
@@ -1168,21 +1180,47 @@ function validateRuntimeDatabaseEvidence(database, scale) {
 
 function validateRuntimeStartupEvidence(startup, scale) {
   requireReportValue(startup, 'SQLite startup timings', scale);
+  if (typeof startup.readiness_scope !== 'string'
+    || !startup.readiness_scope.includes('validatePackagedDictionary')) {
+    throw new Error('scale ' + scale + ' does not describe current worker-ready startup scope');
+  }
   const timings = [
     'wasm_module_init_ms',
     'database_file_read_ms',
     'first_database_open_ms',
-    'first_ready_ms',
+    'query_only_setup_ms',
+    'packaged_dictionary_validation_ms',
+    'read_only_probe_ms',
+    'raw_open_ms',
+    'worker_ready_ms',
     'warm_database_reopen_ms',
+    'warm_query_only_setup_ms',
+    'warm_packaged_dictionary_validation_ms',
+    'warm_read_only_probe_ms',
+    'warm_worker_ready_ms',
   ];
   for (const metric of timings) {
     requireNonnegativeNumber(startup[metric], 'SQLite startup ' + metric, scale);
   }
-  const componentTotal = startup.wasm_module_init_ms
+  const rawOpenTotal = startup.wasm_module_init_ms
     + startup.database_file_read_ms
     + startup.first_database_open_ms;
-  if (Math.abs(componentTotal - startup.first_ready_ms) > 1) {
-    throw new Error('scale ' + scale + ' has inconsistent SQLite first-ready timing');
+  if (Math.abs(rawOpenTotal - startup.raw_open_ms) > 1) {
+    throw new Error('scale ' + scale + ' has inconsistent SQLite raw-open timing');
+  }
+  const workerReadyTotal = rawOpenTotal
+    + startup.query_only_setup_ms
+    + startup.packaged_dictionary_validation_ms
+    + startup.read_only_probe_ms;
+  if (Math.abs(workerReadyTotal - startup.worker_ready_ms) > 1) {
+    throw new Error('scale ' + scale + ' has inconsistent current worker-ready timing');
+  }
+  const warmWorkerReadyTotal = startup.warm_database_reopen_ms
+    + startup.warm_query_only_setup_ms
+    + startup.warm_packaged_dictionary_validation_ms
+    + startup.warm_read_only_probe_ms;
+  if (Math.abs(warmWorkerReadyTotal - startup.warm_worker_ready_ms) > 1) {
+    throw new Error('scale ' + scale + ' has inconsistent warm worker-ready timing');
   }
 }
 
@@ -1243,9 +1281,12 @@ function validateRuntimeMemoryEvidence(memory, startup, scale) {
     'after_wasm_init',
     'after_database_read',
     'after_first_database_open',
+    'after_query_only_setup',
+    'after_packaged_dictionary_validation',
+    'after_read_only_probe',
     'after_queries',
     'after_cold_database_close',
-    'after_warm_database_open',
+    'after_warm_worker_ready',
     'after_warm_database_close',
   ];
   if (!Array.isArray(memory.phase_snapshots)) {
@@ -1294,7 +1335,7 @@ function validateRuntimeMemoryEvidence(memory, startup, scale) {
     throw new Error('scale ' + scale + ' cold-load after-close RSS does not match its phase snapshot');
   }
   if (memory.warm_reopen.baseline_rss_mb !== rssAt('after_cold_database_close')
-    || memory.warm_reopen.after_open_rss_mb !== rssAt('after_warm_database_open')
+    || memory.warm_reopen.after_open_rss_mb !== rssAt('after_warm_worker_ready')
     || memory.warm_reopen.after_close_rss_mb !== rssAt('after_warm_database_close')) {
     throw new Error('scale ' + scale + ' warm-reopen RSS summary does not match its phase snapshots');
   }
@@ -1310,6 +1351,9 @@ function validateRuntimeMemoryEvidence(memory, startup, scale) {
     'after_wasm_init',
     'after_database_read',
     'after_first_database_open',
+    'after_query_only_setup',
+    'after_packaged_dictionary_validation',
+    'after_read_only_probe',
     'after_queries',
   ].map(rssAt));
   if (memory.cold_load.peak_rss_mb < coldObservedMaximumRss

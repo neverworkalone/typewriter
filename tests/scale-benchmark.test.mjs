@@ -51,9 +51,12 @@ function validCliReport() {
     'after_wasm_init',
     'after_database_read',
     'after_first_database_open',
+    'after_query_only_setup',
+    'after_packaged_dictionary_validation',
+    'after_read_only_probe',
     'after_queries',
     'after_cold_database_close',
-    'after_warm_database_open',
+    'after_warm_worker_ready',
     'after_warm_database_close',
   ].map((phase, index) => ({
     phase,
@@ -183,11 +186,20 @@ function validCliReport() {
             events: ['cold_open', 'cold_close', 'warm_open', 'warm_close'],
           },
           startup: {
+            readiness_scope: 'SQLite WASM module initialization, packaged database read/open, current worker query-only setup, validatePackagedDictionary, and read-only probe; excludes Chrome process and worker-message startup',
             wasm_module_init_ms: 10,
             database_file_read_ms: 20,
             first_database_open_ms: 30,
-            first_ready_ms: 60,
+            query_only_setup_ms: 1,
+            packaged_dictionary_validation_ms: 2,
+            read_only_probe_ms: 1,
+            raw_open_ms: 60,
+            worker_ready_ms: 64,
             warm_database_reopen_ms: 5,
+            warm_query_only_setup_ms: 1,
+            warm_packaged_dictionary_validation_ms: 2,
+            warm_read_only_probe_ms: 1,
+            warm_worker_ready_ms: 9,
           },
           query_paths: [
             {
@@ -225,18 +237,18 @@ function validCliReport() {
             scope: 'benchmark Node process; only one live database',
             phase_snapshots: memoryPhases,
             cold_load: {
-              peak_rss_mb: 104,
-              steady_state_rss_mb: 104,
-              after_close_rss_mb: 105,
+              peak_rss_mb: 107,
+              steady_state_rss_mb: 107,
+              after_close_rss_mb: 108,
             },
             warm_reopen: {
-              baseline_rss_mb: 105,
-              after_open_rss_mb: 106,
+              baseline_rss_mb: 108,
+              after_open_rss_mb: 109,
               open_ms: 5,
-              after_close_rss_mb: 107,
+              after_close_rss_mb: 110,
             },
-            peak_observed_rss_mb: 107,
-            process_max_rss_mb: 108,
+            peak_observed_rss_mb: 110,
+            process_max_rss_mb: 111,
           },
         },
       },
@@ -605,9 +617,9 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
     {
       name: 'real release baseline startup timing',
       mutate: (_result, report) => {
-        delete report.release_performance_baseline.product_and_runtime.sqlite_wasm_runtime.startup.first_ready_ms;
+        delete report.release_performance_baseline.product_and_runtime.sqlite_wasm_runtime.startup.worker_ready_ms;
       },
-      error: /invalid SQLite startup first_ready_ms/u,
+      error: /invalid SQLite startup worker_ready_ms/u,
     },
     {
       name: 'real release baseline query paths',

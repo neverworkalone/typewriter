@@ -290,7 +290,7 @@ test('derives dictionary metadata from the supplied canonical directory and reje
 test('failed release validation removes staged ZIPs without publishing a final candidate', async () => {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-release-failure-'));
   const outputDirectory = path.join(temporaryDirectory, 'release');
-  const packageName = 'typewriter_1.0.zip';
+  const packageName = 'typewriter_0.1.zip';
   const finalPackagePath = path.join(outputDirectory, packageName);
   try {
     assert.throws(() => withStagedReleaseCandidate({
@@ -313,7 +313,7 @@ test('failed release validation removes staged ZIPs without publishing a final c
 test('successful release validation publishes one final ZIP after both staged builds pass', async () => {
   const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-release-success-'));
   const outputDirectory = path.join(temporaryDirectory, 'release');
-  const packageName = 'typewriter_1.0.zip';
+  const packageName = 'typewriter_0.1.zip';
   const expectedBytes = Buffer.from('validated package bytes');
   try {
     const finalPackagePath = withStagedReleaseCandidate({
