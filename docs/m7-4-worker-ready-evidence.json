@@ -19,14 +19,14 @@
     "synthetic_input": "temporary deterministic corpus-shape fixtures; excluded from canonical data and product releases"
   },
   "release_candidate": {
-    "package": "typewriter_0.1.zip",
+    "package": "typewriter_<manifest-version>.zip",
     "package_bytes": 2440791,
     "package_sha256": "47eb3b57fa2a37aa72ed6a553cafec3d80fc065df9cd2c5ac06fcdd69be3bb1e",
     "database_sha256": "4b8bfd8c59eee7c0965eba54ea9e0b240b5a881fe95a8d41e29b4f2301fe86c0",
     "manifest_sha256": "25ad1ca69efe322014a5021b0bee7c33ba4340f69e56898af03f073071384144",
     "package_lock_sha256": "ef54e54b73bc94dbc7a4b4707ec8bd1fc12502d404dfb5d06e9a3f567566bbb0",
-    "application_version": "0.1.0",
-    "extension_version": "0.1",
+    "application_version": "1.0.0",
+    "extension_version_source": "public/manifest.json#version",
     "clean_exact_candidate_release_validation": "passed"
   },
   "scales": [

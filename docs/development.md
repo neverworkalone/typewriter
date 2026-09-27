@@ -33,8 +33,11 @@ TYPEWRITER_ZIP_DIR=/tmp/typewriter-package-minified npm run package:minify
 npm run validate:package -- \
   --project-root="$PWD" \
   --dir=dist \
-  --zip=/tmp/typewriter-package/typewriter_0.1.zip
+  --zip=/tmp/typewriter-package/generated-package.zip
 ```
+
+Replace the placeholder ZIP path with the path printed by the packager. Its
+filename is generated from `public/manifest.json#version`.
 
 Without `TYPEWRITER_ZIP_DIR`, the ZIP is written to `~/Downloads`. The packager
 builds into `dist/`, removes development-only output, copies the privacy,
@@ -70,7 +73,7 @@ ZIP contents after extraction:
 npm run test:mv3:package -- \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
-  --zip=/tmp/typewriter-package/typewriter_0.1.zip
+  --zip=/tmp/typewriter-package/generated-package.zip
 ```
 
 The package runner first applies the package validator, then loads `dist/` and a
@@ -91,7 +94,7 @@ lookups, and saved settings:
 npm run test:mv3:package -- \
   --chrome="/path/to/Google Chrome for Testing" \
   --extension=dist \
-  --zip=/tmp/typewriter-package/typewriter_0.1.zip \
+  --zip=/tmp/typewriter-package/generated-package.zip \
   --previous-extension=/path/to/previous/unpacked
 ```
 

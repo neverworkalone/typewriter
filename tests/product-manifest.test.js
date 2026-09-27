@@ -16,7 +16,7 @@ describe('product MV3 manifest', () => {
     const manifest = await readRepositoryJson('public/manifest.json');
 
     expect(manifest.manifest_version).toBe(3);
-    expect(manifest.version).toBe('0.1');
+    expect(typeof manifest.version).toBe('string');
     expect(manifest.action.default_popup).toBe('popup.html');
     expect(manifest.options_ui.page).toBe('options.html');
     expect(manifest.permissions).toEqual(['storage']);
@@ -27,12 +27,10 @@ describe('product MV3 manifest', () => {
     );
   });
 
-  it('keeps the Chrome manifest and npm package on the 0.1 release line', async () => {
+  it('keeps the npm package version fixed independently from the manifest version', async () => {
     const packageJson = await readRepositoryJson('package.json');
-    const manifest = await readRepositoryJson('public/manifest.json');
 
-    expect(manifest.version).toBe('0.1');
-    expect(packageJson.version).toBe('0.1.0');
+    expect(packageJson.version).toBe('1.0.0');
   });
 
   it('keeps both declared HTML entrypoints in the product source', async () => {

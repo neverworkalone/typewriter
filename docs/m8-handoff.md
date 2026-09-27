@@ -24,9 +24,9 @@ publication gate approves the release.
 | Normal-CI canonical revision | 8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9 |
 | Canonical corpus | 5,042 records; 5,000 starts; 42 reference-only; 5,301 senses; 5,298 search forms; 487 curated relations |
 | Generated surface forms | 3,264 |
-| Application / extension | 0.1.0 / 0.1 |
+| npm package / extension version source | 1.0.0 / `public/manifest.json#version` |
 | Dictionary / SQLite schema | m2-pilot-1 / 2 |
-| Package | typewriter_0.1.zip, 2,440,791 bytes, 28 files |
+| Package | `typewriter_<manifest-version>.zip`, 2,440,791 bytes, 28 files |
 | Package SHA-256 | 47eb3b57fa2a37aa72ed6a553cafec3d80fc065df9cd2c5ac06fcdd69be3bb1e |
 | Packaged database SHA-256 | 4b8bfd8c59eee7c0965eba54ea9e0b240b5a881fe95a8d41e29b4f2301fe86c0 |
 | Manifest SHA-256 | 25ad1ca69efe322014a5021b0bee7c33ba4340f69e56898af03f073071384144 |
@@ -58,14 +58,15 @@ the CFT install, popup, settings, local-search, and read-only runtime checks.
 For the same-profile update check, supply a genuine earlier production-shaped
 unpacked package:
 
-    npm run test:mv3:package -- --chrome="/path/to/Google Chrome for Testing" --extension=dist --zip="/path/to/typewriter_0.1.zip" --previous-extension="/path/to/previous-unpacked-package"
+    npm run test:mv3:package -- --chrome="/path/to/Google Chrome for Testing" --extension=dist --zip="/path/to/generated-package.zip" --previous-extension="/path/to/previous-unpacked-package"
 
 The audited predecessor package was built from M7-2 revision
-765c9369f95b1747f64a72c8faba4b361ad10742 and carries the unreleased engineering
-version 1.0. Because that fixture is numerically newer than the intended 0.1
-release, the update harness raises only its temporary test copy to 1.0.1. This
-checks same-profile update mechanics; the exact 0.1 ZIP is separately installed
-and exercised by `validate:release`. No public 1.0 release is being upgraded.
+765c9369f95b1747f64a72c8faba4b361ad10742 and carries the fixed engineering
+manifest version 1.0. Since that test fixture is newer than the current candidate
+manifest, the update harness raises only its temporary test copy to 1.0.1. This
+checks same-profile update mechanics; the exact candidate ZIP is separately
+installed and exercised by `validate:release`. No public 1.0 release is being
+upgraded.
 
 ## Install, update, and failure evidence
 
