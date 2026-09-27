@@ -1,0 +1,115 @@
+{
+  "contract_version": "worker-ready-scale-evidence-v1",
+  "source_revision": "266d04d18a452b37d1a0afb0bf101e6d3d6d2ead",
+  "scale_run_measured_at_utc": "2026-09-27T05:04:17.330Z",
+  "environment": {
+    "platform": "darwin-arm64",
+    "cpu": "Apple M1 Pro",
+    "logical_cpus": 8,
+    "memory_mb": 16384,
+    "node": "v24.19.0",
+    "node_sqlite": "3.53.3",
+    "sqlite_wasm": "3.53.0"
+  },
+  "method": {
+    "runtime_contract": "sqlite-wasm-runtime-benchmark-v3",
+    "command": "npm run benchmark:canonical -- --sizes=500000,1000000 --sqlite-scale=500000,1000000 --fixed-level-evidence=config/ci-level-evidence.json",
+    "readiness_scope": "SQLite WASM init, packaged DB read/open, query-only setup, validatePackagedDictionary, and read-only probe; excludes Chrome process and worker-message startup",
+    "memory_limit": "one live database instance; cold close precedes warm reopen",
+    "synthetic_input": "temporary deterministic corpus-shape fixtures; excluded from canonical data and product releases"
+  },
+  "release_candidate": {
+    "package": "typewriter_<manifest-version>.zip",
+    "source_revision": "c68fa542b41a795cb5e1ade358213d41ba8dbd4d",
+    "package_bytes": 2440796,
+    "package_sha256": "14e76207be6aeef984b714c870623efff1d6d596e9d0e76b43eefbeb596eea24",
+    "database_sha256": "c266303b18bcb74a9b051d8696c527f4a9d3a4445298fab200015867d24fffd0",
+    "manifest_sha256": "25ad1ca69efe322014a5021b0bee7c33ba4340f69e56898af03f073071384144",
+    "package_lock_sha256": "6230c9d02a582aa955314a288a278a86d571d92d87a278b270d21485ea1136b6",
+    "application_version": "1.0.0",
+    "extension_version_source": "public/manifest.json#version",
+    "clean_exact_candidate_release_validation": "passed"
+  },
+  "scales": [
+    {
+      "records": 5042,
+      "senses": 5301,
+      "relations": 487,
+      "search_forms": 5298,
+      "generated_surfaces": 3264,
+      "database_bytes": 2281472,
+      "database_sha256": "4b8bfd8c59eee7c0965eba54ea9e0b240b5a881fe95a8d41e29b4f2301fe86c0",
+      "raw_open_ms": 24.65,
+      "packaged_validation_ms": 34.74,
+      "worker_ready_ms": 61.99,
+      "warm_worker_ready_ms": 21.91,
+      "query_p95_ms": {
+        "exact_lemma": 0.39,
+        "search_form": 0.52,
+        "generated_surface": 0.46,
+        "ambiguous": 0.17
+      },
+      "runtime_process_max_rss_mb": 109.41
+    },
+    {
+      "records": 500000,
+      "senses": 525800,
+      "relations": 48238,
+      "search_forms": 525524,
+      "generated_surfaces": 353768,
+      "database_bytes": 259141632,
+      "zip_bytes": 64133603,
+      "database_sha256": "ce048aafcc906ee0c72ad6afc1ec2556ae70048ff040a0b2ac6c47e0d099ccd3",
+      "raw_open_ms": 303.43,
+      "packaged_validation_ms": 2442.8,
+      "worker_ready_ms": 2749,
+      "warm_worker_ready_ms": 2259.01,
+      "query_p95_ms": {
+        "exact_lemma": 0.41,
+        "search_form": 0.3,
+        "generated_surface": 0.22,
+        "ambiguous": 0.18
+      },
+      "runner_process_max_rss_mb": 3436.55,
+      "runner_max_sampled_heap_mb": 3797.22,
+      "composed_ci_upper_bound_ms": {
+        "fast": 45546.52,
+        "normal": 126154.59,
+        "deep": 262308.05
+      },
+      "blocking_findings": 0,
+      "sqlite_builds_reproducible": true,
+      "synthetic_canonical_data_in_package": false
+    },
+    {
+      "records": 1000000,
+      "senses": 1051441,
+      "relations": 96451,
+      "search_forms": 1050868,
+      "generated_surfaces": 706109,
+      "database_bytes": 518623232,
+      "zip_bytes": 126733470,
+      "database_sha256": "befd9167a796410d76d6895bdc9525b2c57987a9c7cf346a3e9b87f5fc824673",
+      "raw_open_ms": 715.16,
+      "packaged_validation_ms": 5166.92,
+      "worker_ready_ms": 5885.21,
+      "warm_worker_ready_ms": 4620.04,
+      "query_p95_ms": {
+        "exact_lemma": 0.47,
+        "search_form": 0.55,
+        "generated_surface": 0.27,
+        "ambiguous": 0.21
+      },
+      "runner_process_max_rss_mb": 6441.05,
+      "runner_max_sampled_heap_mb": 6682.44,
+      "composed_ci_upper_bound_ms": {
+        "fast": 105124.31,
+        "normal": 253062.26,
+        "deep": 447073.9
+      },
+      "blocking_findings": 0,
+      "sqlite_builds_reproducible": true,
+      "synthetic_canonical_data_in_package": false
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import {
   findRecordsBySearchTerm,
   getRecord,
 } from '../../src/runtime/sqlite-query.js';
+import { validatePackagedDictionary } from '../../src/runtime/dictionary-validation.js';
 
 function now() {
   return performance.now();
@@ -60,29 +61,49 @@ function openWasmDatabase(sqlite3, bytes) {
       bytes.byteLength,
       sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE,
     ));
-    database.exec('PRAGMA query_only = ON');
-    const queryOnly = Number(database.selectValue('PRAGMA query_only'));
-    if (queryOnly !== 1) throw new Error('SQLite WASM database did not enter query-only mode');
-
-    let writeBlocked = false;
-    try {
-      database.exec(
-        "INSERT INTO records (id, record_type, role, lemma) VALUES ('__typewriter_read_only_probe__', 'entry', 'start', '쓰기 금지')",
-      );
-    } catch {
-      writeBlocked = true;
-    }
-    const persistedWriteCount = Number(database.selectValue(
-      "SELECT COUNT(*) FROM records WHERE id = '__typewriter_read_only_probe__'",
-    ));
-    if (!writeBlocked || persistedWriteCount !== 0) {
-      throw new Error('SQLite WASM database failed the runtime read-only probe');
-    }
     return database;
   } catch (error) {
     database.close();
     throw error;
   }
+}
+
+function prepareDatabaseForWorkerReady(database, expectedSourceRevision, recordMemoryPhase = () => {}) {
+  const queryOnlyStart = now();
+  database.exec('PRAGMA query_only = ON');
+  const queryOnly = Number(database.selectValue('PRAGMA query_only'));
+  if (queryOnly !== 1) throw new Error('SQLite WASM database did not enter query-only mode');
+  const queryOnlySetupMs = elapsed(queryOnlyStart);
+  recordMemoryPhase('after_query_only_setup');
+
+  const validationStart = now();
+  validatePackagedDictionary(database, { expectedSourceRevision });
+  const packagedDictionaryValidationMs = elapsed(validationStart);
+  recordMemoryPhase('after_packaged_dictionary_validation');
+
+  const readOnlyProbeStart = now();
+  let writeBlocked = false;
+  try {
+    database.exec(
+      "INSERT INTO records (id, record_type, role, lemma) VALUES ('__typewriter_read_only_probe__', 'entry', 'start', '쓰기 금지')",
+    );
+  } catch {
+    writeBlocked = true;
+  }
+  const persistedWriteCount = Number(database.selectValue(
+    "SELECT COUNT(*) FROM records WHERE id = '__typewriter_read_only_probe__'",
+  ));
+  if (!writeBlocked || persistedWriteCount !== 0) {
+    throw new Error('SQLite WASM database failed the runtime read-only probe');
+  }
+  const readOnlyProbeMs = elapsed(readOnlyProbeStart);
+  recordMemoryPhase('after_read_only_probe');
+
+  return {
+    query_only_setup_ms: queryOnlySetupMs,
+    packaged_dictionary_validation_ms: packagedDictionaryValidationMs,
+    read_only_probe_ms: readOnlyProbeMs,
+  };
 }
 
 function databaseSizeMetrics(database, databaseBytes) {
@@ -164,6 +185,7 @@ export async function measureSqliteWasmRuntime({
   databasePath,
   queryCases,
   iterations = 40,
+  expectedSourceRevision,
 } = {}) {
   if (!databasePath) throw new Error('databasePath is required');
   if (!Array.isArray(queryCases) || queryCases.length === 0) {
@@ -171,6 +193,9 @@ export async function measureSqliteWasmRuntime({
   }
   if (!Number.isSafeInteger(iterations) || iterations < 5) {
     throw new Error('iterations must be an integer of at least five');
+  }
+  if (!/^[0-9a-f]{40}$/.test(expectedSourceRevision ?? '')) {
+    throw new Error('expectedSourceRevision must be a full lowercase Git SHA');
   }
 
   const measurements = [];
@@ -231,6 +256,11 @@ export async function measureSqliteWasmRuntime({
     coldDatabase = openTrackedDatabase(sqlite3, bytes, 'cold');
     const coldDatabaseOpenMs = elapsed(coldOpenStart);
     recordMemory('after_first_database_open');
+    const coldReadyComponents = prepareDatabaseForWorkerReady(
+      coldDatabase,
+      expectedSourceRevision,
+      recordMemory,
+    );
     const fileMetrics = databaseSizeMetrics(coldDatabase, databaseBytes);
 
     const queryPaths = queryCases.map((queryCase) => measureQueryPath(
@@ -248,15 +278,24 @@ export async function measureSqliteWasmRuntime({
     const warmOpenStart = now();
     warmDatabase = openTrackedDatabase(sqlite3, bytes, 'warm');
     const warmDatabaseOpenMs = elapsed(warmOpenStart);
-    const afterWarmOpen = recordMemory('after_warm_database_open');
+    const warmReadyComponents = prepareDatabaseForWorkerReady(warmDatabase, expectedSourceRevision);
+    const afterWarmOpen = recordMemory('after_warm_worker_ready');
     closeTrackedDatabase(warmDatabase, 'warm');
     warmDatabase = undefined;
     const afterWarmClose = recordMemory('after_warm_database_close');
 
-    const coldReadyMs = Math.round((wasmModuleInitMs + fileReadMs + coldDatabaseOpenMs) * 100) / 100;
+    const rawOpenMs = Math.round((wasmModuleInitMs + fileReadMs + coldDatabaseOpenMs) * 100) / 100;
+    const workerReadyMs = Math.round((rawOpenMs
+      + coldReadyComponents.query_only_setup_ms
+      + coldReadyComponents.packaged_dictionary_validation_ms
+      + coldReadyComponents.read_only_probe_ms) * 100) / 100;
+    const warmWorkerReadyMs = Math.round((warmDatabaseOpenMs
+      + warmReadyComponents.query_only_setup_ms
+      + warmReadyComponents.packaged_dictionary_validation_ms
+      + warmReadyComponents.read_only_probe_ms) * 100) / 100;
     const peakObservedRss = Math.max(...measurements.map(({ rss_mb }) => rss_mb));
     return {
-      contract_version: 'sqlite-wasm-runtime-benchmark-v2',
+      contract_version: 'sqlite-wasm-runtime-benchmark-v3',
       sqlite_wasm_version: sqlite3.version.libVersion,
       database: fileMetrics,
       database_lifecycle: {
@@ -264,16 +303,25 @@ export async function measureSqliteWasmRuntime({
         events: databaseLifecycleEvents,
       },
       startup: {
+        readiness_scope: 'SQLite WASM module initialization, packaged database read/open, current worker query-only setup, validatePackagedDictionary, and read-only probe; excludes Chrome process and worker-message startup',
         wasm_module_init_ms: wasmModuleInitMs,
         database_file_read_ms: fileReadMs,
         first_database_open_ms: coldDatabaseOpenMs,
-        first_ready_ms: coldReadyMs,
+        query_only_setup_ms: coldReadyComponents.query_only_setup_ms,
+        packaged_dictionary_validation_ms: coldReadyComponents.packaged_dictionary_validation_ms,
+        read_only_probe_ms: coldReadyComponents.read_only_probe_ms,
+        raw_open_ms: rawOpenMs,
+        worker_ready_ms: workerReadyMs,
         warm_database_reopen_ms: warmDatabaseOpenMs,
+        warm_query_only_setup_ms: warmReadyComponents.query_only_setup_ms,
+        warm_packaged_dictionary_validation_ms: warmReadyComponents.packaged_dictionary_validation_ms,
+        warm_read_only_probe_ms: warmReadyComponents.read_only_probe_ms,
+        warm_worker_ready_ms: warmWorkerReadyMs,
         file_cache_note: 'first means a fresh SQLite WASM module in a fresh process; OS disk-cache state is uncontrolled',
       },
       query_paths: queryPaths,
       memory: {
-        scope: 'benchmark Node process running the production SQLite WASM module and shared runtime SQL adapter; only one live database instance at a time',
+        scope: 'benchmark Node process running the production SQLite WASM module, current worker packaged-dictionary validation, read-only probe, and shared runtime SQL adapter; only one live database instance at a time',
         phase_snapshots: measurements,
         cold_load: {
           peak_rss_mb: coldLoadPeakRss,
@@ -305,14 +353,16 @@ function argument(name, fallback = undefined) {
 async function main() {
   const databasePath = argument('database');
   const queryFile = argument('queries-file');
-  if (!databasePath || !queryFile) {
-    throw new Error('Use --database=<path> --queries-file=<path>');
+  const expectedSourceRevision = argument('expected-source-revision');
+  if (!databasePath || !queryFile || !expectedSourceRevision) {
+    throw new Error('Use --database=<path> --queries-file=<path> --expected-source-revision=<full-git-sha>');
   }
   const queryCases = JSON.parse(await readFile(queryFile, 'utf8'));
   console.log(JSON.stringify(await measureSqliteWasmRuntime({
     databasePath,
     queryCases,
     iterations: Number(argument('iterations', '40')),
+    expectedSourceRevision,
   })));
 }
 

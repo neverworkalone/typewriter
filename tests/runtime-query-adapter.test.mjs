@@ -7,6 +7,11 @@ import path from 'node:path';
 
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import {
+  DICTIONARY_COUNT_QUERIES,
+  DICTIONARY_VERSION,
+  SQLITE_SCHEMA_VERSION,
+} from '../src/runtime/dictionary-contract.js';
+import {
   REFERENCE_ONLY_MATCH_SQL,
   findRecordsBySearchTerm,
   getMetadata,
@@ -15,6 +20,8 @@ import {
 } from '../src/runtime/sqlite-query.js';
 import { measureSqliteWasmRuntime } from '../scripts/benchmark/sqlite-runtime.mjs';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
+
+const FIXTURE_SOURCE_REVISION = 'a'.repeat(40);
 
 const FIXTURE_SQL = `
 INSERT INTO records VALUES ('w001', 'entry', 'start', 'w001', '가다');
@@ -32,13 +39,29 @@ INSERT INTO records VALUES ('r003', 'entry', 'reference-only', NULL, '빛');
 INSERT INTO search_forms VALUES ('r003', 0, '빛'), ('r003', 1, '빛나다');
 INSERT INTO senses VALUES ('r003-s1', 'r003', 0, 'noun', '밝음');
 INSERT INTO relations VALUES ('w001-s1', 0, 'r003', 'r003-s1', 'near', '연결된 뜻');
-INSERT INTO metadata VALUES ('dictionary_version', 'fixture-v1');
 `;
 
 function seedDatabase(database) {
-  database.exec('PRAGMA foreign_keys = ON;');
+  database.exec(`PRAGMA foreign_keys = ON; PRAGMA user_version = ${SQLITE_SCHEMA_VERSION};`);
   database.exec(SQLITE_SCHEMA_SQL);
   database.exec(FIXTURE_SQL);
+  const metadata = {
+    dictionary_version: DICTIONARY_VERSION,
+    schema_version: String(SQLITE_SCHEMA_VERSION),
+    source_revision: FIXTURE_SOURCE_REVISION,
+    source_revision_source: 'git-head',
+    source_revision_verified: 'true',
+  };
+  for (const [key, query] of Object.entries(DICTIONARY_COUNT_QUERIES)) {
+    const value = typeof database.selectValue === 'function'
+      ? database.selectValue(query)
+      : Object.values(database.prepare(query).get())[0];
+    metadata[key] = String(value);
+  }
+  const quoteSql = (value) => `'${String(value).replaceAll("'", "''")}'`;
+  for (const [key, value] of Object.entries(metadata)) {
+    database.exec(`INSERT INTO metadata (key, value) VALUES (${quoteSql(key)}, ${quoteSql(value)})`);
+  }
 }
 
 function queryPlan(database, sql, parameters = []) {
@@ -113,8 +136,19 @@ test('SQLite WASM runtime benchmark closes the cold database before a single-ins
         },
       ],
       iterations: 5,
+      expectedSourceRevision: FIXTURE_SOURCE_REVISION,
     });
 
+    assert.equal(report.contract_version, 'sqlite-wasm-runtime-benchmark-v3');
+    assert.match(report.startup.readiness_scope, /validatePackagedDictionary/u);
+    assert.equal(
+      report.startup.worker_ready_ms,
+      Math.round((report.startup.raw_open_ms
+        + report.startup.query_only_setup_ms
+        + report.startup.packaged_dictionary_validation_ms
+        + report.startup.read_only_probe_ms) * 100) / 100,
+    );
+    assert.ok(report.startup.warm_worker_ready_ms >= report.startup.warm_database_reopen_ms);
     assert.equal(report.database_lifecycle.max_live_databases, 1);
     assert.deepEqual(report.database_lifecycle.events, [
       'cold_open',
