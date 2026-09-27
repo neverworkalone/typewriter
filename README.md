@@ -131,6 +131,7 @@ assets:
   reserved; see [Brand policy](BRAND.md).
 - Third-party components retain their own licenses; see
   [Third-party notices](THIRD-PARTY-NOTICES.txt).
+- 국립국어원 문어말뭉치 2025(1.0). 국립국어원 모두의 말뭉치 (https://kli.korean.go.kr/corpus).
 
 A file being present in Git, build output, or a package does not mean its content
 is cleared for reuse. The [license overview](LICENSE.md) describes the file
