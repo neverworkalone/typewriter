@@ -34,17 +34,17 @@ Typewriter는 크롬 브라우저 확장 프로그램 형태의 작가용 한국
 > 아래 필드명과 값은 `scripts/reference/`의 permission gate가 읽으므로 번역하거나 형식을 변경하지 않는다.
 
 - Intended role: reference
-- Allowed local storage: pending
-- Allowed schema scanning and processing: pending
-- Allowed SQLite/FTS indexing: pending
-- Allowed lexical-reference use: pending
-- Distribution/embedding terms reviewed: pending
-- Attribution/notice terms reviewed: pending
-- Decision: pending
+- Allowed local storage: permitted
+- Allowed schema scanning and processing: permitted
+- Allowed SQLite/FTS indexing: permitted
+- Allowed lexical-reference use: permitted
+- Distribution/embedding terms reviewed: complete
+- Attribution/notice terms reviewed: complete
+- Decision: permitted for stated role
 
 ## 추가 확인 사항
 
-- 이용 근거: 국립국어원 모두의 말뭉치 이용 신청 승인 및 이용 약정 체결 후 「문어 말뭉치 2025(1.0)」을 다운로드하여 사용했다.
+- 이용 근거: 국립국어원 모두의 말뭉치 이용 신청 승인 및 이용 약정 체결 후 「문어 말뭉치 2025(1.0)」을 다운로드하여 사용했다. 2026-09-27 소유자는 국립국어원 사이트에서 승인 상태가 `permitted`로 확인되었으며, #197의 로컬 참고 목적(전체 스키마 검사·처리, SQLite/FTS 색인, 어휘 참고 검색)을 포함한다고 확인했다.
 - 공개 및 배포: 말뭉치 원문, 문장·문단 발췌 및 로컬 분석용 인덱스는 공개하거나 제품에 포함하지 않는다. 공개 결과물에는 선정한 단어와 Typewriter에서 자체 작성한 뜻풀이 및 단어 간 관계 정보만 포함한다.
 - 출처 표기: README의 「Licenses and reuse」에 다음과 같이 출처를 명시한다.  
   `국립국어원 문어말뭉치 2025(1.0). 국립국어원 모두의 말뭉치 (https://kli.korean.go.kr/corpus).`
