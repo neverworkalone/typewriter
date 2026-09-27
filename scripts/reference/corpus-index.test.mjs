@@ -12,7 +12,7 @@ import {
   buildCorpusIndex,
   REPOSITORY_DIRECTORY,
   searchCorpusIndex,
-} from '../scripts/reference/corpus-index.mjs';
+} from './corpus-index.mjs';
 
 let fts5TrigramError;
 try {

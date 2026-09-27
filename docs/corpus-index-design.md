@@ -84,7 +84,7 @@ Known blockers for the first implementation are full-folder schema variation, th
 
 ## Implementation status (#194)
 
-- The local builder, reusable literal lookup, permission check, and deterministic fixture tests are implemented under scripts/reference/ and tests/corpus-reference-index.test.mjs.
+- The local builder, reusable literal lookup, and permission check are implemented under scripts/reference/. Deterministic fixture tests are retained at scripts/reference/corpus-index.test.mjs and run manually with `node --test scripts/reference/corpus-index.test.mjs` on an FTS5-capable local runtime.
 - Every build runs the same fail-closed schema validation in a sorted preflight and again while inserting one JSON file at a time. Temporary SQLite output is validated before replacing the active local index.
 - The build and lookup CLIs require the review record to say permitted for the reference role. The owner confirmed the download followed approval and a signed agreement, but the account-specific terms and approved request purpose are not available in this checkout. The record therefore remains pending for local storage, indexing, and lexical-reference use.
 - The builder fixes repository-local output to the ignored `data/reference/indexes/` directory. The fixture suite is retained for local/manual use and is not wired into normal CI.
