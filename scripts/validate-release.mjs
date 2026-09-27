@@ -4,17 +4,15 @@ import {
   constants,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   realpathSync,
-  rmSync,
   statSync,
 } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
-import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { withStagedReleaseCandidate } from './build/stage-release-candidate.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIRECTORY, '..');
@@ -126,56 +124,60 @@ function main(args = process.argv.slice(2)) {
   const manifest = JSON.parse(readFileSync(path.join(PROJECT_ROOT, 'public/manifest.json'), 'utf8'));
   const packageMetadata = JSON.parse(readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
   const packageName = `${path.basename(PROJECT_ROOT)}_${manifest.version}.zip`;
-  const packagePath = path.join(resolvedOutputDirectory, packageName);
-  if (existsSync(packagePath)) {
-    throw new Error(`Refusing to overwrite an existing release package: ${packagePath}`);
-  }
+  let validatedReleaseInfo;
+  let validatedPackageHash;
+  const packagePath = withStagedReleaseCandidate({
+    outputDirectory: resolvedOutputDirectory,
+    packageName,
+    validateCandidate: ({
+      candidateDirectory,
+      candidatePackagePath,
+      repeatedDirectory,
+      repeatedPackagePath,
+    }) => {
+      console.log(`Release source: ${revision}`);
+      console.log('Running the normal CI gate on the clean checkout.');
+      runNpm(['run', 'ci:normal'], cleanBuildEnvironment());
+      requireCleanWorktree();
 
-  const repeatedBuildDirectory = mkdtempSync(path.join(os.tmpdir(), 'typewriter-release-repeat-'));
-  try {
-    console.log(`Release source: ${revision}`);
-    console.log('Running the normal CI gate on the clean checkout.');
-    runNpm(['run', 'ci:normal'], cleanBuildEnvironment());
-    requireCleanWorktree();
+      console.log('Building and validating the production package twice.');
+      runNpm(['run', 'package'], cleanBuildEnvironment(candidateDirectory));
+      runNpm(['run', 'package'], cleanBuildEnvironment(repeatedDirectory));
+      if (sha256File(candidatePackagePath) !== sha256File(repeatedPackagePath)) {
+        throw new Error('Two production package builds from the same clean checkout produced different ZIP bytes.');
+      }
 
-    console.log('Building and validating the production package twice.');
-    runNpm(['run', 'package'], cleanBuildEnvironment(resolvedOutputDirectory));
-    const repeatedZipPath = path.join(repeatedBuildDirectory, packageName);
-    runNpm(['run', 'package'], cleanBuildEnvironment(repeatedBuildDirectory));
-    if (sha256File(packagePath) !== sha256File(repeatedZipPath)) {
-      throw new Error('Two production package builds from the same clean checkout produced different ZIP bytes.');
-    }
+      const releaseInfo = JSON.parse(readFileSync(path.join(DIST_DIRECTORY, 'release-info.json'), 'utf8'));
+      if (releaseInfo.source.revision !== revision
+        || releaseInfo.source.revision_verified !== true
+        || releaseInfo.source.worktree_state !== 'clean'
+        || releaseInfo.dictionary.canonical_source_revision !== revision) {
+        throw new Error('The package release identity is not bound to this clean, verified source revision.');
+      }
 
-    const releaseInfo = JSON.parse(readFileSync(path.join(DIST_DIRECTORY, 'release-info.json'), 'utf8'));
-    if (releaseInfo.source.revision !== revision
-      || releaseInfo.source.revision_verified !== true
-      || releaseInfo.source.worktree_state !== 'clean'
-      || releaseInfo.dictionary.canonical_source_revision !== revision) {
-      throw new Error('The package release identity is not bound to this clean, verified source revision.');
-    }
+      console.log('Checking the exact ZIP and unpacked package in Chrome for Testing.');
+      runNpm([
+        'run',
+        'test:mv3:package',
+        '--',
+        `--chrome=${chromePath}`,
+        `--extension=${DIST_DIRECTORY}`,
+        `--zip=${candidatePackagePath}`,
+      ], cleanBuildEnvironment());
+      requireCleanWorktree();
+      validatedReleaseInfo = releaseInfo;
+      validatedPackageHash = sha256File(candidatePackagePath);
+    },
+  });
 
-    console.log('Checking the exact ZIP and unpacked package in Chrome for Testing.');
-    runNpm([
-      'run',
-      'test:mv3:package',
-      '--',
-      `--chrome=${chromePath}`,
-      `--extension=${DIST_DIRECTORY}`,
-      `--zip=${packagePath}`,
-    ], cleanBuildEnvironment());
-    requireCleanWorktree();
-
-    console.log(`Release package: ${packagePath}`);
-    console.log(`SHA-256: ${sha256File(packagePath)}`);
-    console.log(`Application version: ${packageMetadata.version}`);
-    console.log(`Extension version: ${manifest.version}`);
-    console.log(`Dictionary version: ${releaseInfo.dictionary.version}`);
-    console.log(`SQLite schema version: ${releaseInfo.dictionary.schema_version}`);
-    console.log(`Canonical/source revision: ${revision}`);
-    console.log('This command validates an RC package; it does not clear the corpus redistribution hold in DATA-LICENSE.md.');
-  } finally {
-    rmSync(repeatedBuildDirectory, { recursive: true, force: true });
-  }
+  console.log(`Release package: ${packagePath}`);
+  console.log(`SHA-256: ${validatedPackageHash}`);
+  console.log(`Application version: ${packageMetadata.version}`);
+  console.log(`Extension version: ${manifest.version}`);
+  console.log(`Dictionary version: ${validatedReleaseInfo.dictionary.version}`);
+  console.log(`SQLite schema version: ${validatedReleaseInfo.dictionary.schema_version}`);
+  console.log(`Canonical/source revision: ${revision}`);
+  console.log('This command validates an RC package; it does not clear the corpus redistribution hold in DATA-LICENSE.md.');
 }
 
 try {

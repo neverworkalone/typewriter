@@ -27,10 +27,6 @@ const FORBIDDEN_PACKAGE_PATHS = [
 
 const LEGAL_FILES = new Set([
   'Apache-2.0.txt',
-  'LICENSE.md',
-  'DATA-LICENSE.md',
-  'BRAND.md',
-  'PRIVACY.md',
   'THIRD-PARTY-NOTICES.txt',
 ]);
 
@@ -39,7 +35,6 @@ const EXPECTED_FILE_MODE = 0o644;
 const REQUIRED_PRODUCT_FILES = Object.freeze([
   'dictionary.sqlite',
   'release-info.json',
-  'PRIVACY.md',
   'logo.png',
   'runtime/dictionary-worker.mjs',
   'runtime/dictionary-build-info.js',
@@ -52,9 +47,6 @@ const REQUIRED_PRODUCT_FILES = Object.freeze([
   'runtime/vendor/sqlite3.mjs',
   'runtime/vendor/sqlite3.wasm',
   'Apache-2.0.txt',
-  'LICENSE.md',
-  'DATA-LICENSE.md',
-  'BRAND.md',
   'THIRD-PARTY-NOTICES.txt',
 ]);
 

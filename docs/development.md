@@ -55,8 +55,13 @@ npm run validate:release -- \
 ```
 
 The command prints the validated ZIP's SHA-256 with the app, extension, dictionary,
-schema, and source versions. The current dictionary redistribution hold remains
-in force after this engineering validation; see `DATA-LICENSE.md`.
+schema, and source versions. It runs Chrome for Testing only as part of this
+explicit release-candidate validation; ordinary CI does not run CFT. Only the
+bundled software's Apache and third-party license notices are included in the
+ZIP. The privacy policy source remains in `PRIVACY.md` for the Store disclosure
+flow, while repository policy documents stay out of the package. The current
+dictionary redistribution hold remains in force after this engineering validation;
+see `DATA-LICENSE.md`.
 
 When Chrome for Testing is available, verify both the unpacked build and the exact
 ZIP contents after extraction:

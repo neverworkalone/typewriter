@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -9,6 +14,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 import { createPackageReleaseInfo } from '../scripts/build/release-info.mjs';
+import { withStagedReleaseCandidate } from '../scripts/build/stage-release-candidate.mjs';
 
 import {
   collectManifestFiles,
@@ -84,10 +90,6 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       ['runtime/vendor/sqlite3.mjs', '// fixture sqlite loader\n'],
       ['runtime/vendor/sqlite3.wasm', Buffer.from([0x00, 0x61, 0x73, 0x6d])],
       ['Apache-2.0.txt', readFileSync(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), 'utf8')],
-      ['LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8')],
-      ['DATA-LICENSE.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'DATA-LICENSE.md'), 'utf8')],
-      ['BRAND.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'BRAND.md'), 'utf8')],
-      ['PRIVACY.md', readFileSync(path.join(REPOSITORY_DIRECTORY, 'PRIVACY.md'), 'utf8')],
       ['THIRD-PARTY-NOTICES.txt', readFileSync(
         path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'),
         'utf8',
@@ -156,6 +158,24 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     });
     assert.deepEqual(matchingPackage.errors, []);
 
+    for (const repositoryOnlyDocument of ['LICENSE.md', 'DATA-LICENSE.md', 'BRAND.md', 'PRIVACY.md']) {
+      const documentPath = path.join(packageDirectory, repositoryOnlyDocument);
+      await writeFile(
+        documentPath,
+        readFileSync(path.join(REPOSITORY_DIRECTORY, repositoryOnlyDocument), 'utf8'),
+      );
+      await chmod(documentPath, 0o644);
+      const packageWithRepositoryDocument = validatePackageDirectory({
+        packageDir: packageDirectory,
+        projectRoot: REPOSITORY_DIRECTORY,
+        canonicalDirectory,
+      });
+      assert.ok(packageWithRepositoryDocument.errors.includes(
+        `Unexpected files found in package: ${repositoryOnlyDocument}`,
+      ));
+      await rm(documentPath);
+    }
+
     const releaseInfoPath = path.join(packageDirectory, 'release-info.json');
     await writeFile(releaseInfoPath, '{}\n');
     const changedReleaseInfo = validatePackageDirectory({
@@ -213,9 +233,9 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     );
     await chmod(runtimeBuildInfoPath, 0o644);
 
-    const licensePath = path.join(packageDirectory, 'LICENSE.md');
-    const validLicense = readFileSync(path.join(REPOSITORY_DIRECTORY, 'LICENSE.md'), 'utf8');
-    const alteredLicenseContents = validLicense.replace('Apache\nLicense 2.0', 'MIT\nLicense');
+    const licensePath = path.join(packageDirectory, 'Apache-2.0.txt');
+    const validLicense = readFileSync(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), 'utf8');
+    const alteredLicenseContents = validLicense.replace('Apache License', 'Altered License');
     assert.notEqual(alteredLicenseContents, validLicense);
     await writeFile(licensePath, alteredLicenseContents);
     const alteredLicense = validatePackageDirectory({
@@ -224,16 +244,9 @@ test('derives dictionary metadata from the supplied canonical directory and reje
       canonicalDirectory,
     });
     assert.ok(alteredLicense.errors.includes(
-      'Packaged legal file differs from the repository source: LICENSE.md.',
+      'Packaged legal file differs from the repository source: Apache-2.0.txt.',
     ));
 
-    await rm(licensePath);
-    const missingLicense = validatePackageDirectory({
-      packageDir: packageDirectory,
-      projectRoot: REPOSITORY_DIRECTORY,
-      canonicalDirectory,
-    });
-    assert.ok(missingLicense.errors.includes('Legal package file is missing from the project or package: LICENSE.md.'));
     await writeFile(licensePath, validLicense);
     await chmod(licensePath, 0o644);
 
@@ -266,6 +279,53 @@ test('derives dictionary metadata from the supplied canonical directory and reje
     assert.ok(stalePackage.errors.includes(
       'Dictionary metadata record_count must be "4", received "3".',
     ));
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('failed release validation removes staged ZIPs without publishing a final candidate', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-release-failure-'));
+  const outputDirectory = path.join(temporaryDirectory, 'release');
+  const packageName = 'typewriter_1.0.zip';
+  const finalPackagePath = path.join(outputDirectory, packageName);
+  try {
+    assert.throws(() => withStagedReleaseCandidate({
+      outputDirectory,
+      packageName,
+      validateCandidate: ({ candidatePackagePath, repeatedPackagePath }) => {
+        writeFileSync(candidatePackagePath, 'candidate ZIP');
+        writeFileSync(repeatedPackagePath, 'repeat ZIP');
+        throw new Error('Chrome for Testing validation failed');
+      },
+    }), /Chrome for Testing validation failed/);
+
+    assert.equal(existsSync(finalPackagePath), false);
+    assert.deepEqual(readdirSync(outputDirectory), []);
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test('successful release validation publishes one final ZIP after both staged builds pass', async () => {
+  const temporaryDirectory = await mkdtemp(path.join(tmpdir(), 'typewriter-release-success-'));
+  const outputDirectory = path.join(temporaryDirectory, 'release');
+  const packageName = 'typewriter_1.0.zip';
+  const expectedBytes = Buffer.from('validated package bytes');
+  try {
+    const finalPackagePath = withStagedReleaseCandidate({
+      outputDirectory,
+      packageName,
+      validateCandidate: ({ candidatePackagePath, repeatedPackagePath }) => {
+        writeFileSync(candidatePackagePath, expectedBytes);
+        writeFileSync(repeatedPackagePath, expectedBytes);
+        assert.deepEqual(readFileSync(candidatePackagePath), readFileSync(repeatedPackagePath));
+      },
+    });
+
+    assert.equal(path.basename(finalPackagePath), packageName);
+    assert.deepEqual(readFileSync(finalPackagePath), expectedBytes);
+    assert.deepEqual(readdirSync(outputDirectory), [packageName]);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

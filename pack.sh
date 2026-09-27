@@ -34,10 +34,6 @@ rm -f "$DIST_DIR/favicon.ico" "$DIST_DIR/icon.png"
 find "$DIST_DIR" -name '.DS_Store' -type f -delete
 
 cp "$PROJECT_ROOT/Apache-2.0.txt" "$DIST_DIR/Apache-2.0.txt"
-cp "$PROJECT_ROOT/LICENSE.md" "$DIST_DIR/LICENSE.md"
-cp "$PROJECT_ROOT/DATA-LICENSE.md" "$DIST_DIR/DATA-LICENSE.md"
-cp "$PROJECT_ROOT/BRAND.md" "$DIST_DIR/BRAND.md"
-cp "$PROJECT_ROOT/PRIVACY.md" "$DIST_DIR/PRIVACY.md"
 cp "$PROJECT_ROOT/THIRD-PARTY-NOTICES.txt" "$DIST_DIR/THIRD-PARTY-NOTICES.txt"
 node "$PROJECT_ROOT/scripts/build/write-release-info.mjs" "$DIST_DIR"
 find "$DIST_DIR" -type f -exec chmod 0644 {} +
