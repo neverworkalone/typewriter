@@ -62,7 +62,7 @@ function validCliReport() {
     external_mb: 5 + index,
     array_buffers_mb: 2 + index,
   }));
-  return {
+  const report = {
     contract_version: 'canonical-validation-benchmark-v7',
     runner_memory_contract: {
       contract_version: 'runner-memory-contract-v1',
@@ -101,12 +101,20 @@ function validCliReport() {
     release_performance_baseline: {
       data_kind: 'real-current-canonical',
       input_record_count: 2,
+      input_bytes: 600,
+      input_preparation_ms: 1,
+      semantic_audit_ms: 2,
+      normalization_ms: 3,
+      sqlite_build_ms: 4,
+      canonical_to_sqlite_wall_clock_ms: 10,
       database_counts: {
         records: 2,
         senses: 2,
         relations: 0,
         search_forms: 2,
+        generated_surface_forms: 1,
       },
+      product_and_runtime: null,
     },
     sqlite_scales: [101],
     results: [{
@@ -243,6 +251,36 @@ function validCliReport() {
       reproducible_second_sqlite_sha256: fixtureDigest,
     }],
   };
+  report.release_performance_baseline.product_and_runtime = structuredClone(
+    report.results[0].product_performance,
+  );
+  return report;
+}
+
+function validTwoScaleCliReport() {
+  const report = validCliReport();
+  report.sqlite_scales = [101, 102];
+  const laterScale = structuredClone(report.results[0]);
+  laterScale.scale = 102;
+  Object.assign(laterScale.synthetic_workload_shape, {
+    record_count: 102,
+    sense_count: 102,
+    search_form_count: 102,
+    record_roles: { start: 102 },
+    record_types: { entry: 51, expression: 51 },
+    senses_per_record: { 1: 102 },
+    search_forms_per_record: { 1: 102 },
+    parts_of_speech: { noun: 51, expression: 51 },
+    average_lemma_codepoints: 4.5,
+    average_gloss_codepoints: 15,
+  });
+  laterScale.runner_memory = {
+    process_max_rss_mb: 220,
+    max_sampled_rss_mb: 210,
+    max_sampled_heap_used_mb: 105,
+  };
+  report.results.push(laterScale);
+  return report;
 }
 
 function invokeBenchmarkCli(report, options = {}) {
@@ -330,6 +368,32 @@ test('release benchmark CLI accepts complete scale and reproducibility results',
   assert.equal(printedReports.length, 1);
   assert.deepEqual(JSON.parse(printedReports[0]), report);
   assert.deepEqual(exitCodes, []);
+});
+
+test('release benchmark CLI accepts nondecreasing runner RSS across ascending SQLite scales', async () => {
+  const report = validTwoScaleCliReport();
+  const { printedReports, exitCodes, runPromise } = invokeBenchmarkCli(report, {
+    sizes: [101, 102],
+    sqliteScales: new Set([101, 102]),
+  });
+
+  assert.strictEqual(await runPromise, report);
+  assert.equal(printedReports.length, 1);
+  assert.deepEqual(exitCodes, []);
+});
+
+test('release benchmark CLI rejects a decreasing cumulative runner RSS across selected scales', async () => {
+  const report = validTwoScaleCliReport();
+  report.results[1].runner_memory.process_max_rss_mb = 199;
+  report.results[1].runner_memory.max_sampled_rss_mb = 198;
+  const { printedErrors, exitCodes, runPromise } = invokeBenchmarkCli(report, {
+    sizes: [101, 102],
+    sqliteScales: new Set([101, 102]),
+  });
+
+  assert.equal(await runPromise, undefined);
+  assert.match(printedErrors[0], /cumulative scale-runner process maximum RSS decreased after scale 101/u);
+  assert.deepEqual(exitCodes, [1]);
 });
 
 test('release benchmark CLI fails closed when a required SQLite scale evidence axis is missing or invalid', async (t) => {
@@ -499,9 +563,58 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
     {
       name: 'canonical template profile matches the release baseline',
       mutate: (_result, report) => {
-        report.release_performance_baseline.input_record_count = 3;
+        report.release_performance_baseline.database_counts.senses = 3;
       },
-      error: /canonical template profile does not match the release input record count/u,
+      error: /canonical template profile does not match the release database sense count/u,
+    },
+    {
+      name: 'real release baseline input bytes',
+      mutate: (_result, report) => {
+        delete report.release_performance_baseline.input_bytes;
+      },
+      error: /invalid release baseline input bytes/u,
+    },
+    {
+      name: 'real release baseline build timing',
+      mutate: (_result, report) => {
+        delete report.release_performance_baseline.semantic_audit_ms;
+      },
+      error: /invalid release baseline semantic_audit_ms/u,
+    },
+    {
+      name: 'real release baseline database counts',
+      mutate: (_result, report) => {
+        delete report.release_performance_baseline.database_counts.generated_surface_forms;
+      },
+      error: /invalid release baseline database generated-surface-form count/u,
+    },
+    {
+      name: 'real release baseline product package size',
+      mutate: (_result, report) => {
+        delete report.release_performance_baseline.product_and_runtime.package.zip_package_bytes;
+      },
+      error: /invalid product ZIP size/u,
+    },
+    {
+      name: 'real release baseline startup timing',
+      mutate: (_result, report) => {
+        delete report.release_performance_baseline.product_and_runtime.sqlite_wasm_runtime.startup.first_ready_ms;
+      },
+      error: /invalid SQLite startup first_ready_ms/u,
+    },
+    {
+      name: 'real release baseline query paths',
+      mutate: (_result, report) => {
+        report.release_performance_baseline.product_and_runtime.sqlite_wasm_runtime.query_paths.pop();
+      },
+      error: /missing representative SQLite query paths/u,
+    },
+    {
+      name: 'real release baseline runtime memory',
+      mutate: (_result, report) => {
+        delete report.release_performance_baseline.product_and_runtime.sqlite_wasm_runtime.memory.phase_snapshots;
+      },
+      error: /missing SQLite runtime memory phase snapshots/u,
     },
     {
       name: 'canonical template codepoint-length profile',

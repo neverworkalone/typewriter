@@ -1009,7 +1009,7 @@ function validateSyntheticRecordShapeMetadata(syntheticRecordShape, releaseBasel
     [profile.relation_count, baselineCounts?.relations, 'release database relation count'],
   ];
   for (const [profileCount, baselineCount, description] of countsToMatch) {
-    if (Number.isSafeInteger(baselineCount) && profileCount !== baselineCount) {
+    if (releaseBaseline && profileCount !== baselineCount) {
       throw new Error('benchmark canonical template profile does not match the ' + description);
     }
   }
@@ -1332,9 +1332,7 @@ function validateRunnerMemoryEvidence(memory, scale) {
   }
 }
 
-function validateProductScaleResult(result, templateProfile) {
-  const { scale } = result;
-  const product = result.product_performance;
+function validateProductAndRuntimeEvidence(product, scale) {
   requireReportValue(product, 'product performance result', scale);
   requireReportValue(product.package, 'package result', scale);
   requireReportValue(product.sqlite_wasm_runtime, 'SQLite WASM runtime result', scale);
@@ -1407,6 +1405,66 @@ function validateProductScaleResult(result, templateProfile) {
   ]) {
     requireNonnegativeNumber(product[metric], 'product performance ' + metric, scale);
   }
+
+  const productDigests = [product.shared_sqlite_sha256, product.product_dictionary_sha256];
+  if (productDigests.some((digest) => typeof digest !== 'string' || !/^[0-9a-f]{64}$/u.test(digest))
+    || new Set(productDigests).size !== 1) {
+    throw new Error(`scale ${scale} is missing matching product and shared SQLite digests`);
+  }
+  return queryPathsByCategory;
+}
+
+function validateReleasePerformanceBaseline(baseline) {
+  requireReportValue(baseline, 'real release baseline');
+  if (baseline.data_kind !== 'real-current-canonical') {
+    throw new Error('benchmark report real release baseline has an invalid data kind');
+  }
+  const scope = 'release baseline';
+  requirePositiveSafeInteger(baseline.input_record_count, 'release baseline input record count', scope);
+  requirePositiveSafeInteger(baseline.input_bytes, 'release baseline input bytes', scope);
+  for (const metric of [
+    'input_preparation_ms',
+    'semantic_audit_ms',
+    'normalization_ms',
+    'sqlite_build_ms',
+    'canonical_to_sqlite_wall_clock_ms',
+  ]) {
+    requireNonnegativeNumber(baseline[metric], 'release baseline ' + metric, scope);
+  }
+  if (baseline.sqlite_build_ms <= 0) {
+    throw new Error('benchmark report real release baseline has an empty SQLite build timing');
+  }
+  const expectedBuildWallClock = Math.round((baseline.input_preparation_ms
+    + baseline.semantic_audit_ms
+    + baseline.normalization_ms
+    + baseline.sqlite_build_ms) * 100) / 100;
+  if (baseline.canonical_to_sqlite_wall_clock_ms !== expectedBuildWallClock) {
+    throw new Error('benchmark report real release baseline has inconsistent canonical-to-SQLite timing');
+  }
+
+  const counts = baseline.database_counts;
+  requireReportValue(counts, 'release baseline database counts');
+  requirePositiveSafeInteger(counts.records, 'release baseline database record count', scope);
+  requirePositiveSafeInteger(counts.senses, 'release baseline database sense count', scope);
+  requirePositiveSafeInteger(counts.search_forms, 'release baseline database search-form count', scope);
+  requireNonnegativeSafeInteger(counts.relations, 'release baseline database relation count', scope);
+  requireNonnegativeSafeInteger(
+    counts.generated_surface_forms,
+    'release baseline database generated-surface-form count',
+    scope,
+  );
+  if (counts.records !== baseline.input_record_count) {
+    throw new Error('benchmark report release baseline database record count does not match its input record count');
+  }
+
+  validateProductAndRuntimeEvidence(baseline.product_and_runtime, baseline.input_record_count);
+}
+
+function validateProductScaleResult(result, templateProfile) {
+  const { scale } = result;
+  const product = result.product_performance;
+  const queryPathsByCategory = validateProductAndRuntimeEvidence(product, scale);
+
   requireNonnegativeNumber(result.normalize_ms, 'normalization timing', scale);
   requireNonnegativeNumber(result.sqlite_build_ms, 'SQLite build timing', scale);
   if (result.sqlite_build_ms <= 0) {
@@ -1446,6 +1504,21 @@ function validateProductScaleResult(result, templateProfile) {
   }
 }
 
+function validateCumulativeRunnerMemoryEvidence(resultsByScale, selectedSqliteScales) {
+  let previousScale = null;
+  let previousProcessMaxRss = null;
+  for (const scale of [...selectedSqliteScales].sort((left, right) => left - right)) {
+    const processMaxRss = resultsByScale.get(scale).runner_memory.process_max_rss_mb;
+    if (previousProcessMaxRss !== null && processMaxRss < previousProcessMaxRss) {
+      throw new Error(
+        `scale ${scale} cumulative scale-runner process maximum RSS decreased after scale ${previousScale}`,
+      );
+    }
+    previousScale = scale;
+    previousProcessMaxRss = processMaxRss;
+  }
+}
+
 export function validateBenchmarkReport(report, {
   sizes,
   sqliteScales = new Set(),
@@ -1479,6 +1552,9 @@ export function validateBenchmarkReport(report, {
   if (releasePerformance && !report.release_performance_baseline) {
     throw new Error('benchmark report is missing the real release baseline');
   }
+  if (report.release_performance_baseline) {
+    validateReleasePerformanceBaseline(report.release_performance_baseline);
+  }
   const templateProfile = selectedSqliteScales.size > 0
     ? validateSyntheticRecordShapeMetadata(
       report.synthetic_record_shape,
@@ -1510,6 +1586,7 @@ export function validateBenchmarkReport(report, {
     }
     if (selectedSqliteScales.has(scale)) validateProductScaleResult(result, templateProfile);
   }
+  validateCumulativeRunnerMemoryEvidence(resultsByScale, selectedSqliteScales);
   return report;
 }
 
