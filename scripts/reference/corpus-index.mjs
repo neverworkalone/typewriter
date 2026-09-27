@@ -51,6 +51,14 @@ const DOCUMENT_METADATA_FIELDS = Object.freeze([
   'publisher',
   'date',
 ]);
+const PERMISSION_SCOPE_REQUIREMENTS = Object.freeze({
+  'Allowed local storage': 'permitted',
+  'Allowed schema scanning and processing': 'permitted',
+  'Allowed SQLite/FTS indexing': 'permitted',
+  'Allowed lexical-reference use': 'permitted',
+  'Distribution/embedding terms reviewed': 'complete',
+  'Attribution/notice terms reviewed': 'complete',
+});
 
 function compareLexically(left, right) {
   if (left < right) return -1;
@@ -812,14 +820,46 @@ export async function assertCorpusPermission({
     );
   }
 
-  const decision = record.match(/^- Decision:\s*(.+)$/mu)?.[1]?.trim();
-  const role = record.match(/^- Intended role:\s*(.+)$/mu)?.[1]?.trim();
+  const recognizedFields = new Set([
+    'Decision',
+    'Intended role',
+    ...Object.keys(PERMISSION_SCOPE_REQUIREMENTS),
+  ]);
+  const fields = new Map();
+  for (const line of record.split(/\r?\n/u)) {
+    const match = line.match(/^- ([^:]+):\s*(.*?)\s*$/u);
+    if (!match) continue;
+    const field = match[1].trim();
+    if (!recognizedFields.has(field)) continue;
+    if (fields.has(field)) {
+      throw new Error(
+        'Permission record ' + permissionRecordPath
+        + ' has a duplicate field: ' + field,
+      );
+    }
+    fields.set(field, match[2].trim().toLowerCase());
+  }
+
+  const decision = fields.get('Decision');
+  const role = fields.get('Intended role');
   if (decision !== 'permitted for stated role' || role !== 'reference') {
     throw new Error(
       'Corpus scanning, indexing, and lookup are disabled until '
       + permissionRecordPath
       + ' records a permitted decision for the reference role, with terms '
       + 'covering local storage, indexing, and lexical-reference use.',
+    );
+  }
+
+  const unresolvedFields = Object.entries(PERMISSION_SCOPE_REQUIREMENTS)
+    .filter(([field, requiredValue]) => fields.get(field) !== requiredValue)
+    .map(([field]) => field);
+  if (unresolvedFields.length > 0) {
+    throw new Error(
+      'Corpus scanning, indexing, and lookup are disabled until '
+      + permissionRecordPath
+      + ' records all required permission scopes and completed terms reviews. '
+      + 'Unresolved fields: ' + unresolvedFields.join(', ') + '.',
     );
   }
 }

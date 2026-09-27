@@ -418,6 +418,21 @@ test('permission record blocks pending terms and accepts the stated reference sc
     '- Intended role: reference',
     '- Decision: permitted for stated role',
   ].join('\n'));
+  await assert.rejects(
+    assertCorpusPermission({ permissionRecordPath }),
+    /required permission scopes.*Allowed local storage/u,
+  );
+
+  await writeFile(permissionRecordPath, [
+    '- Intended role: reference',
+    '- Decision: permitted for stated role',
+    '- Allowed local storage: permitted',
+    '- Allowed schema scanning and processing: permitted',
+    '- Allowed SQLite/FTS indexing: permitted',
+    '- Allowed lexical-reference use: permitted',
+    '- Distribution/embedding terms reviewed: complete',
+    '- Attribution/notice terms reviewed: complete',
+  ].join('\n'));
   await assert.doesNotReject(
     assertCorpusPermission({ permissionRecordPath }),
   );

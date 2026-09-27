@@ -11,6 +11,12 @@
 - Allowed processing or transformation: The agreement's permission for full-folder schema scanning, hashing, local SQLite/FTS indexing, and lexical-reference lookup has not been verified.
 - Distribution or embedding restrictions: Do not distribute corpus text, excerpts, generated indexes, or source-derived bulk material in Git or product packages. The agreement's exact restrictions remain unverified.
 - Required attribution or notices: The local description sheet supplies a suggested corpus citation. Whether the signed agreement requires additional attribution or notices remains unverified.
+- Allowed local storage: pending
+- Allowed schema scanning and processing: pending
+- Allowed SQLite/FTS indexing: pending
+- Allowed lexical-reference use: pending
+- Distribution/embedding terms reviewed: pending
+- Attribution/notice terms reviewed: pending
 - Decision: pending
 - Typewriter data decision: no adoption
 - Notes and limitations: Do not scan or index the local corpus until the signed agreement and approved request scope confirm local storage, processing, indexing, and lexical-reference use. The build and search CLIs check this record before real-corpus access. Synthetic self-authored fixtures may be used for implementation tests.
