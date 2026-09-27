@@ -1414,6 +1414,15 @@ function validateProductAndRuntimeEvidence(product, scale) {
   return queryPathsByCategory;
 }
 
+function validateGeneratedSurfaceEvidence(queryPathsByCategory, generatedSurfaceFormCount, description) {
+  const generatedSurfaceQuery = queryPathsByCategory.get('generated-surface-form');
+  if (generatedSurfaceFormCount < 1
+    || !generatedSurfaceQuery
+    || !generatedSurfaceQuery.result_match_fields.includes('generated-surface-form')) {
+    throw new Error(description + ' has no generated surface forms for its representative query');
+  }
+}
+
 function validateReleasePerformanceBaseline(baseline) {
   requireReportValue(baseline, 'real release baseline');
   if (baseline.data_kind !== 'real-current-canonical') {
@@ -1457,7 +1466,15 @@ function validateReleasePerformanceBaseline(baseline) {
     throw new Error('benchmark report release baseline database record count does not match its input record count');
   }
 
-  validateProductAndRuntimeEvidence(baseline.product_and_runtime, baseline.input_record_count);
+  const queryPathsByCategory = validateProductAndRuntimeEvidence(
+    baseline.product_and_runtime,
+    baseline.input_record_count,
+  );
+  validateGeneratedSurfaceEvidence(
+    queryPathsByCategory,
+    counts.generated_surface_forms,
+    'release baseline',
+  );
 }
 
 function validateProductScaleResult(result, templateProfile) {
@@ -1473,12 +1490,11 @@ function validateProductScaleResult(result, templateProfile) {
   const syntheticShape = result.synthetic_workload_shape;
   validateSyntheticWorkloadShape(syntheticShape, scale);
   validateSyntheticWorkloadAgainstTemplate(syntheticShape, templateProfile, scale);
-  const generatedSurfaceQuery = queryPathsByCategory.get('generated-surface-form');
-  if (syntheticShape.generated_surface_form_count < 1
-    || !generatedSurfaceQuery
-    || !generatedSurfaceQuery.result_match_fields.includes('generated-surface-form')) {
-    throw new Error('scale ' + scale + ' generated-surface query is not backed by synthetic surface-form evidence');
-  }
+  validateGeneratedSurfaceEvidence(
+    queryPathsByCategory,
+    syntheticShape.generated_surface_form_count,
+    'scale ' + scale,
+  );
   validateRunnerMemoryEvidence(result.runner_memory, scale);
 
   const digests = [

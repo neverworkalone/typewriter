@@ -589,6 +589,13 @@ test('release benchmark CLI fails closed when a required SQLite scale evidence a
       error: /invalid release baseline database generated-surface-form count/u,
     },
     {
+      name: 'real release baseline generated-surface count supports its representative query',
+      mutate: (_result, report) => {
+        report.release_performance_baseline.database_counts.generated_surface_forms = 0;
+      },
+      error: /release baseline has no generated surface forms for its representative query/u,
+    },
+    {
       name: 'real release baseline product package size',
       mutate: (_result, report) => {
         delete report.release_performance_baseline.product_and_runtime.package.zip_package_bytes;
