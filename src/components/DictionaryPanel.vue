@@ -212,7 +212,7 @@ const statePresentation = computed(() => {
     return {
       category: 'runtime',
       title: '사전을 불러오지 못했습니다.',
-      description: '패키지된 사전 파일을 확인한 뒤 다시 시도해 주세요.',
+      description: '확장 프로그램을 업데이트하거나 다시 설치한 뒤 다시 시도해 주세요.',
     };
   }
   if (props.error?.kind === 'query') {
@@ -398,6 +398,8 @@ defineExpose({ focusSearch });
       :data-search-state="status"
       :data-search-category="statePresentation.category"
       :data-search-reason="emptyReason || undefined"
+      :data-search-error-code="error?.code || undefined"
+      :data-search-error-kind="error?.kind || undefined"
       role="status"
       aria-live="polite"
     >

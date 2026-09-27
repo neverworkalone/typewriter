@@ -690,6 +690,9 @@ describe('product MV3 Vue shells', () => {
     await submit('load');
     expect(host.querySelector('[data-search-state="error"]')).not.toBeNull();
     expect(host.textContent).toContain('사전을 불러오지 못했습니다.');
+    expect(host.querySelector('.state-copy span').textContent.trim()).toBe(
+      '확장 프로그램을 업데이트하거나 다시 설치한 뒤 다시 시도해 주세요.',
+    );
 
     mode = 'query';
     await submit('query');

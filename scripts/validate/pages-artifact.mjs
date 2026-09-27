@@ -19,6 +19,9 @@ const ALLOWED_FILES = new Set([
   'favicon.ico',
   'dictionary.sqlite',
   'runtime/dictionary-worker.mjs',
+  'runtime/dictionary-build-info.js',
+  'runtime/dictionary-contract.js',
+  'runtime/dictionary-validation.js',
   'runtime/protocol.js',
   'runtime/query-adapter.js',
   'runtime/search-query.js',
@@ -283,6 +286,17 @@ export async function validatePagesArtifact({
   await validateLegalFiles(resolvedRepositoryDirectory, resolvedOutputDirectory);
   const metadata = readDatabaseMetadata(path.join(resolvedOutputDirectory, 'dictionary.sqlite'));
   assertDatabaseMetadata(metadata, expectedGitRevision, expectedCanonicalDigest);
+  const runtimeBuildInfo = await readFile(
+    path.join(resolvedOutputDirectory, 'runtime/dictionary-build-info.js'),
+    'utf8',
+  );
+  const expectedRuntimeRevision = `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(metadata.source_revision)};`;
+  if (!runtimeBuildInfo.split(/\r?\n/u).includes(expectedRuntimeRevision)) {
+    fail(
+      'Pages runtime build info must match the packaged dictionary source revision.',
+      'PAGES_ARTIFACT_SOURCE_REVISION',
+    );
+  }
 
   return {
     fileCount: fileInventory.files.length,

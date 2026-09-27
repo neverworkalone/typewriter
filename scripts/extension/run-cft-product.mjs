@@ -1,9 +1,11 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
@@ -226,32 +228,8 @@ async function closeChrome(child) {
   }
 }
 
-async function removeTemporaryDirectory(directory) {
-  await rm(directory, {
-    recursive: true,
-    force: true,
-    maxRetries: 10,
-    retryDelay: 200,
-  });
-}
-
-export async function runCftProduct({
-  chromePath = DEFAULT_CHROME_CANDIDATES[0],
-  extensionDirectory = DEFAULT_EXTENSION_DIRECTORY,
-  port = 9230,
-  profileDirectory = undefined,
-} = {}) {
-  if (!chromePath) {
-    throw new Error(
-      'Chrome for Testing path is required. Pass --chrome=/path/to/Google Chrome for Testing.',
-    );
-  }
-
-  const ownedProfile = !profileDirectory;
-  const resolvedProfileDirectory = profileDirectory || await mkdtemp(
-    path.join(os.tmpdir(), 'typewriter-product-cft-'),
-  );
-  const chromeArguments = [
+function chromeArguments({ extensionDirectory, port, profileDirectory }) {
+  return [
     '--headless=new',
     '--no-sandbox',
     '--no-first-run',
@@ -268,16 +246,22 @@ export async function runCftProduct({
     '--no-proxy-server',
     '--remote-debugging-address=127.0.0.1',
     '--remote-debugging-port=' + port,
-    '--user-data-dir=' + resolvedProfileDirectory,
+    '--user-data-dir=' + path.resolve(profileDirectory),
     'about:blank',
   ];
-  const child = spawn(chromePath, chromeArguments, {
+}
+
+async function startProductBrowser({ chromePath, extensionDirectory, port, profileDirectory }) {
+  const child = spawn(chromePath, chromeArguments({
+    extensionDirectory,
+    port,
+    profileDirectory,
+  }), {
     stdio: ['ignore', 'ignore', 'ignore'],
   });
 
   let connection;
   let managerTargetId;
-  const extensionTargets = [];
   try {
     const version = await waitForVersion(port, child);
     connection = connect(version.webSocketDebuggerUrl);
@@ -292,6 +276,449 @@ export async function runCftProduct({
     });
     await connection.command('Runtime.enable', {}, managerSession.sessionId);
     const extensionId = await findExtensionId(connection, managerSession.sessionId);
+
+    return { child, connection, managerTargetId, extensionId };
+  } catch (error) {
+    connection?.socket.close();
+    await closeChrome(child);
+    throw error;
+  }
+}
+
+async function readExtensionBuildInfo(extensionDirectory) {
+  const manifest = JSON.parse(await readFile(
+    path.join(extensionDirectory, 'manifest.json'),
+    'utf8',
+  ));
+  const dictionaryPath = path.join(extensionDirectory, 'dictionary.sqlite');
+  const dictionaryBytes = await readFile(dictionaryPath);
+  const database = new DatabaseSync(dictionaryPath, { readOnly: true });
+  let metadata;
+  try {
+    metadata = Object.fromEntries(database.prepare(
+      'SELECT key, value FROM metadata ORDER BY key',
+    ).all().map(({ key, value }) => [key, value]));
+  } finally {
+    database.close();
+  }
+
+  return {
+    manifestVersion: manifest.version,
+    databaseDigest: createHash('sha256').update(dictionaryBytes).digest('hex'),
+    dictionaryVersion: metadata.dictionary_version,
+    schemaVersion: metadata.schema_version,
+    sourceRevision: metadata.source_revision,
+  };
+}
+
+function compareVersions(left, right) {
+  const leftParts = String(left).split('.').map(Number);
+  const rightParts = String(right).split('.').map(Number);
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function matchesSettings(actual, expected) {
+  return actual !== null
+    && typeof actual === 'object'
+    && !Array.isArray(actual)
+    && Object.keys(actual).length === Object.keys(expected).length
+    && Object.entries(expected).every(([key, value]) => actual[key] === value);
+}
+
+async function replaceExtensionDirectory(sourceDirectory, destinationDirectory) {
+  const source = path.resolve(sourceDirectory);
+  const destination = path.resolve(destinationDirectory);
+  if (source === destination) {
+    throw new Error('The update package must be separate from the installed extension directory.');
+  }
+
+  await rm(destination, { recursive: true, force: true });
+  await cp(source, destination, { recursive: true, force: true });
+}
+
+async function runLoadFailureCheck({
+  connection,
+  extensionId,
+  expectedErrorCode,
+  extensionTargets,
+}) {
+  const popup = await createExtensionSession(connection, extensionId, 'popup.html');
+  extensionTargets.push(popup);
+  await waitForCondition(
+    connection,
+    popup.sessionId,
+    'Boolean(document.querySelector("[aria-label=\\"검색어\\"]"))',
+  );
+
+  async function readFailure() {
+    await waitForCondition(
+      connection,
+      popup.sessionId,
+      'document.querySelector("[data-search-state=\\"error\\"]")',
+    );
+    return evaluate(connection, popup.sessionId, [
+      '(() => ({',
+      '  state: document.querySelector("[data-search-state]")?.dataset.searchState || "",',
+      '  category: document.querySelector("[data-search-state]")?.dataset.searchCategory || "",',
+      '  code: document.querySelector("[data-search-state]")?.dataset.searchErrorCode || "",',
+      '  kind: document.querySelector("[data-search-state]")?.dataset.searchErrorKind || "",',
+      '  title: document.querySelector(".state-copy strong")?.textContent.trim() || "",',
+      '  description: document.querySelector(".state-copy span")?.textContent.trim() || "",',
+      '  retryVisible: Boolean(document.querySelector(".retry-button")),',
+      '  hasRecord: Boolean(document.querySelector("[data-dictionary-record]")),',
+      '  query: document.querySelector("[aria-label=\\"검색어\\"]")?.value || "",',
+      '  retryWorkerCreations: window.__typewriterRetryWorkerCreations || 0,',
+      '}))()',
+    ].join('\n'));
+  }
+
+  async function submitQuery() {
+    await evaluate(connection, popup.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      '  input.value = "담담";',
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));',
+      '  return true;',
+      '})()',
+    ].join('\n'));
+    return readFailure();
+  }
+
+  const firstFailure = await submitQuery();
+  if (
+    firstFailure.state !== 'error'
+    || firstFailure.category !== 'runtime'
+    || firstFailure.code !== expectedErrorCode
+    || firstFailure.kind !== 'load'
+    || firstFailure.title !== '사전을 불러오지 못했습니다.'
+    || firstFailure.description !== '확장 프로그램을 업데이트하거나 다시 설치한 뒤 다시 시도해 주세요.'
+    || !firstFailure.retryVisible
+    || firstFailure.hasRecord
+    || firstFailure.query !== '담담'
+  ) {
+    throw new Error('CFT load-failure state was not deterministic: ' + JSON.stringify(firstFailure));
+  }
+
+  await evaluate(connection, popup.sessionId, [
+    '(() => {',
+    '  const NativeWorker = window.Worker;',
+    '  window.__typewriterRetryWorkerCreations = 0;',
+    '  window.Worker = class extends NativeWorker {',
+    '    constructor(...args) {',
+    '      super(...args);',
+    '      window.__typewriterRetryWorkerCreations += 1;',
+    '    }',
+    '  };',
+    '  document.querySelector(".retry-button")?.click();',
+    '  return true;',
+    '})()',
+  ].join('\n'));
+  await waitForCondition(
+    connection,
+    popup.sessionId,
+    `window.__typewriterRetryWorkerCreations > 0 && document.querySelector("[data-search-state=\\"error\\"]")?.dataset.searchErrorCode === "${expectedErrorCode}"`,
+  );
+  const retryFailure = await readFailure();
+  if (
+    retryFailure.code !== firstFailure.code
+    || retryFailure.kind !== firstFailure.kind
+    || !retryFailure.retryVisible
+    || retryFailure.hasRecord
+    || retryFailure.retryWorkerCreations < 1
+  ) {
+    throw new Error('CFT retry changed the packaged-dictionary failure state: ' + JSON.stringify(retryFailure));
+  }
+
+  return { firstFailure, retryFailure };
+}
+
+async function runUpdateLifecycleCheck({
+  chromePath,
+  extensionDirectory,
+  updateExtensionDirectory,
+  initialBuildInfo,
+  updateBuildInfo,
+  profileDirectory,
+  port,
+  browser,
+  extensionTargets,
+  onBrowserChange,
+}) {
+  const previousPopup = await createExtensionSession(browser.connection, browser.extensionId, 'popup.html');
+  extensionTargets.push(previousPopup);
+  await evaluate(browser.connection, previousPopup.sessionId, [
+    '(() => {',
+    '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+    '  input.value = "담담";',
+    '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+    '  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));',
+    '  return true;',
+    '})()',
+  ].join('\n'));
+  await waitForCondition(
+    browser.connection,
+    previousPopup.sessionId,
+    'Boolean(document.querySelector("[data-record-id=\\"w026\\"]"))',
+  );
+
+  const previousOptions = await createExtensionSession(browser.connection, browser.extensionId, 'options.html');
+  extensionTargets.push(previousOptions);
+  await waitForCondition(
+    browser.connection,
+    previousOptions.sessionId,
+    'document.querySelectorAll("[role=\\"switch\\"]").length === 5 && [...document.querySelectorAll("[role=\\"switch\\"]")].every((node) => !node.disabled)',
+  );
+  await evaluate(browser.connection, previousOptions.sessionId, [
+    '(() => {',
+    '  document.querySelectorAll("[role=\\"switch\\"]")[0]?.click();',
+    '  document.querySelectorAll("[role=\\"switch\\"]")[1]?.click();',
+    '  document.querySelectorAll("[role=\\"switch\\"]")[4]?.click();',
+    '  document.querySelector("[data-background-preset-key=\\"fog\\"]")?.click();',
+    '  return true;',
+    '})()',
+  ].join('\n'));
+  await waitForCondition(
+    browser.connection,
+    previousOptions.sessionId,
+    'document.querySelector(".preview-panel [data-group-id=\\"association\\"]") !== null && getComputedStyle(document.querySelector(".preview-panel [data-dictionary-panel]")).backgroundColor === "rgb(241, 244, 246)"',
+  );
+  await evaluate(browser.connection, previousOptions.sessionId, 'document.querySelector(".save-button")?.click()');
+  await waitForCondition(
+    browser.connection,
+    previousOptions.sessionId,
+    'document.querySelector(".save-status")?.textContent.includes("저장됨") && document.querySelector(".save-button")?.disabled === true',
+  );
+  const expectedSettings = {
+    definition: false,
+    synonyms: false,
+    antonyms: false,
+    texture: true,
+    association: true,
+    background: 'fog',
+  };
+  const previousSettings = await evaluate(browser.connection, previousPopup.sessionId,
+    'new Promise((resolve) => chrome.storage.local.get("typewriter.settings.v1", (result) => resolve(result["typewriter.settings.v1"] || null)))',
+  );
+  if (!matchesSettings(previousSettings, expectedSettings)) {
+    throw new Error('CFT update fixture could not persist its starting user settings: ' + JSON.stringify(previousSettings));
+  }
+
+  const oldConnection = browser.connection;
+  for (const target of extensionTargets) {
+    await oldConnection.command('Target.closeTarget', { targetId: target.targetId }).catch(() => {});
+  }
+  extensionTargets.length = 0;
+  if (browser.managerTargetId) {
+    await oldConnection.command('Target.closeTarget', { targetId: browser.managerTargetId }).catch(() => {});
+  }
+  oldConnection.socket.close();
+  onBrowserChange({ ...browser, connection: null, managerTargetId: null });
+  await closeChrome(browser.child);
+
+  await replaceExtensionDirectory(updateExtensionDirectory, extensionDirectory);
+  const updatedBrowser = await startProductBrowser({
+    chromePath,
+    extensionDirectory,
+    port: port + 50,
+    profileDirectory,
+  });
+  onBrowserChange(updatedBrowser);
+  if (updatedBrowser.extensionId !== browser.extensionId) {
+    throw new Error('CFT extension update changed the unpacked extension ID.');
+  }
+
+  const updatedPopup = await createExtensionSession(updatedBrowser.connection, updatedBrowser.extensionId, 'popup.html');
+  extensionTargets.push(updatedPopup);
+  await waitForCondition(
+    updatedBrowser.connection,
+    updatedPopup.sessionId,
+    `document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeSourceRevision === "${updateBuildInfo.sourceRevision}"`,
+  );
+  await evaluate(updatedBrowser.connection, updatedPopup.sessionId, [
+    '(() => {',
+    '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+    '  input.value = "담담";',
+    '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+    '  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));',
+    '  return true;',
+    '})()',
+  ].join('\n'));
+  await waitForCondition(
+    updatedBrowser.connection,
+    updatedPopup.sessionId,
+    'Boolean(document.querySelector("[data-record-id=\\"w026\\"]"))',
+  );
+  const updatedRuntime = await evaluate(updatedBrowser.connection, updatedPopup.sessionId, [
+    '(() => {',
+    '  const product = document.querySelector("[data-product-surface=\\"popup\\"]");',
+    '  return {',
+    '    recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
+    '    dictionaryVersion: product?.dataset.runtimeDictionaryVersion || "",',
+    '    schemaVersion: product?.dataset.runtimeSchemaVersion || "",',
+    '    sourceRevision: product?.dataset.runtimeSourceRevision || "",',
+    '    manifestVersion: chrome.runtime.getManifest().version,',
+    '  };',
+    '})()',
+  ].join('\n'));
+  const updateQueryChecks = [];
+  for (const check of [
+    { query: '가누', recordId: 'w1068', match: 'search-form' },
+    { query: '가냘픈', recordId: 'w596', match: 'generated-surface-form' },
+  ]) {
+    await evaluate(updatedBrowser.connection, updatedPopup.sessionId, [
+      '(() => {',
+      '  const input = document.querySelector("[aria-label=\\"검색어\\"]");',
+      `  input.value = ${JSON.stringify(check.query)};`,
+      '  input.dispatchEvent(new Event("input", { bubbles: true }));',
+      '  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));',
+      '  return true;',
+      '})()',
+    ].join('\n'));
+    await waitForCondition(
+      updatedBrowser.connection,
+      updatedPopup.sessionId,
+      `document.querySelector("[aria-label=\\"검색어\\"]")?.value === ${JSON.stringify(check.query)} && Boolean(document.querySelector("[data-record-id=\\"${check.recordId}\\"]"))`,
+    );
+    const result = await evaluate(updatedBrowser.connection, updatedPopup.sessionId, [
+      '(() => ({',
+      '  query: document.querySelector("[aria-label=\\"검색어\\"]")?.value || "",',
+      '  recordId: document.querySelector("[data-dictionary-record]")?.dataset.recordId || "",',
+      '}))()',
+    ].join('\n'));
+    if (result.query !== check.query || result.recordId !== check.recordId) {
+      throw new Error(`CFT updated dictionary ${check.match} lookup failed: ${JSON.stringify(result)}`);
+    }
+    updateQueryChecks.push({ ...check, ...result });
+  }
+  const persistedSettings = await evaluate(updatedBrowser.connection, updatedPopup.sessionId,
+    'new Promise((resolve) => chrome.storage.local.get("typewriter.settings.v1", (result) => resolve(result["typewriter.settings.v1"] || null)))',
+  );
+  if (
+    updatedRuntime.recordId !== 'w026'
+    || updatedRuntime.dictionaryVersion !== updateBuildInfo.dictionaryVersion
+    || updatedRuntime.schemaVersion !== updateBuildInfo.schemaVersion
+    || updatedRuntime.sourceRevision !== updateBuildInfo.sourceRevision
+    || updatedRuntime.manifestVersion !== updateBuildInfo.manifestVersion
+    || !matchesSettings(persistedSettings, expectedSettings)
+  ) {
+    throw new Error('CFT install-update-database replacement assertions failed: ' + JSON.stringify({
+      previous: initialBuildInfo,
+      updated: updatedRuntime,
+      persistedSettings,
+    }));
+  }
+
+  const prefix = 'chrome-extension://' + updatedBrowser.extensionId + '/';
+  const nonExtensionRequests = oldConnection.events
+    .concat(updatedBrowser.connection.events)
+    .filter((message) => message.method === 'Network.requestWillBeSent')
+    .map((message) => message.params.request.url)
+    .filter((url) => !url.startsWith(prefix));
+  if (nonExtensionRequests.length > 0) {
+    throw new Error('Extension update made non-extension requests: ' + JSON.stringify(nonExtensionRequests));
+  }
+
+  return {
+    previous: initialBuildInfo,
+    updated: updateBuildInfo,
+    runtime: updatedRuntime,
+    queryChecks: updateQueryChecks,
+    previousSettings,
+    persistedSettings,
+  };
+}
+
+async function removeTemporaryDirectory(directory) {
+  await rm(directory, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 200,
+  });
+}
+
+export async function runCftProduct({
+  chromePath = DEFAULT_CHROME_CANDIDATES[0],
+  extensionDirectory = DEFAULT_EXTENSION_DIRECTORY,
+  updateExtensionDirectory = undefined,
+  expectedLoadErrorCode = undefined,
+  port = 9230,
+  profileDirectory = undefined,
+} = {}) {
+  if (!chromePath) {
+    throw new Error(
+      'Chrome for Testing path is required. Pass --chrome=/path/to/Google Chrome for Testing.',
+    );
+  }
+
+  const ownedProfile = !profileDirectory;
+  const resolvedProfileDirectory = profileDirectory || await mkdtemp(
+    path.join(os.tmpdir(), 'typewriter-product-cft-'),
+  );
+  const resolvedExtensionDirectory = path.resolve(extensionDirectory);
+  let initialBuildInfo = null;
+  let updateBuildInfo = null;
+  if (updateExtensionDirectory) {
+    initialBuildInfo = await readExtensionBuildInfo(resolvedExtensionDirectory);
+    updateBuildInfo = await readExtensionBuildInfo(updateExtensionDirectory);
+    if (
+      initialBuildInfo.databaseDigest === updateBuildInfo.databaseDigest
+      || initialBuildInfo.sourceRevision === updateBuildInfo.sourceRevision
+      || compareVersions(updateBuildInfo.manifestVersion, initialBuildInfo.manifestVersion) <= 0
+      || initialBuildInfo.dictionaryVersion !== updateBuildInfo.dictionaryVersion
+      || initialBuildInfo.schemaVersion !== updateBuildInfo.schemaVersion
+    ) {
+      throw new Error('CFT update fixture must replace the dictionary under a higher app version and preserve its supported schema/version.');
+    }
+  }
+
+  const initialBrowser = await startProductBrowser({
+    chromePath,
+    extensionDirectory: resolvedExtensionDirectory,
+    port,
+    profileDirectory: resolvedProfileDirectory,
+  });
+  let child = initialBrowser.child;
+  let connection = initialBrowser.connection;
+  let managerTargetId = initialBrowser.managerTargetId;
+  let extensionId = initialBrowser.extensionId;
+  const extensionTargets = [];
+  const observedEvents = [];
+  try {
+    if (expectedLoadErrorCode) {
+      const failure = await runLoadFailureCheck({
+        connection,
+        extensionId,
+        expectedErrorCode: expectedLoadErrorCode,
+        extensionTargets,
+      });
+      return { extensionId, expectedLoadErrorCode, failure };
+    }
+    if (updateExtensionDirectory) {
+      const update = await runUpdateLifecycleCheck({
+        chromePath,
+        extensionDirectory: resolvedExtensionDirectory,
+        updateExtensionDirectory,
+        initialBuildInfo,
+        updateBuildInfo,
+        profileDirectory: resolvedProfileDirectory,
+        port,
+        browser: initialBrowser,
+        extensionTargets,
+        onBrowserChange(nextBrowser) {
+          child = nextBrowser.child;
+          connection = nextBrowser.connection;
+          managerTargetId = nextBrowser.managerTargetId;
+          extensionId = nextBrowser.extensionId;
+        },
+      });
+      return { extensionId, update };
+    }
 
     const popup = await createExtensionSession(connection, extensionId, 'popup.html');
     extensionTargets.push(popup);
@@ -332,6 +759,9 @@ export async function runCftProduct({
       '  runtimeQueryOnly: Number(document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeQueryOnly || NaN),',
       '  runtimeWriteBlocked: document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeWriteBlocked === "true",',
       '  runtimePersistedWriteCount: Number(document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimePersistedWriteCount || NaN),',
+      '  runtimeDictionaryVersion: document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeDictionaryVersion || "",',
+      '  runtimeSchemaVersion: document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeSchemaVersion || "",',
+      '  runtimeSourceRevision: document.querySelector("[data-product-surface=\\"popup\\"]")?.dataset.runtimeSourceRevision || "",',
       '  scrollMaxHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).maxHeight,',
       '  scrollOverflowY: getComputedStyle(document.querySelector(".dictionary-scroll-region")).overflowY,',
       '  scrollMinHeight: getComputedStyle(document.querySelector(".dictionary-scroll-region")).minHeight,',
@@ -981,11 +1411,7 @@ export async function runCftProduct({
       '}))()',
     ].join('\n'));
 
-    const prefix = 'chrome-extension://' + extensionId + '/';
-    const nonExtensionRequests = connection.events
-      .filter((message) => message.method === 'Network.requestWillBeSent')
-      .map((message) => message.params.request.url)
-      .filter((url) => !url.startsWith(prefix));
+    observedEvents.push(...connection.events);
 
     if (
       popupReady.recordId !== 'w026'
@@ -1004,6 +1430,10 @@ export async function runCftProduct({
       || popupReady.runtimeQueryOnly !== 1
       || !popupReady.runtimeWriteBlocked
       || popupReady.runtimePersistedWriteCount !== 0
+      || popupReady.runtimeDictionaryVersion !== 'm2-pilot-1'
+      || popupReady.runtimeSchemaVersion !== '2'
+      || !/^[0-9a-f]{40}$/.test(popupReady.runtimeSourceRevision)
+      || (initialBuildInfo && popupReady.runtimeSourceRevision !== initialBuildInfo.sourceRevision)
       || popupReady.definitionTopGap === null
       || popupReady.definitionBottomGap === null
       || Math.abs(popupReady.definitionTopGap - popupReady.definitionBottomGap) > 1
@@ -1185,6 +1615,11 @@ export async function runCftProduct({
     ) {
       throw new Error('Options version CFT assertions failed: ' + JSON.stringify(optionsVersion));
     }
+    const prefix = 'chrome-extension://' + extensionId + '/';
+    const nonExtensionRequests = observedEvents
+      .filter((message) => message.method === 'Network.requestWillBeSent')
+      .map((message) => message.params.request.url)
+      .filter((url) => !url.startsWith(prefix));
     if (nonExtensionRequests.length > 0) {
       throw new Error('Product UI made non-extension requests: ' + JSON.stringify(nonExtensionRequests));
     }
@@ -1241,6 +1676,8 @@ export async function main() {
   const summary = await runCftProduct({
     chromePath: option('chrome'),
     extensionDirectory: option('extension', DEFAULT_EXTENSION_DIRECTORY),
+    updateExtensionDirectory: option('update-extension'),
+    expectedLoadErrorCode: option('expect-load-error'),
     port: Number(option('port', '9230')),
     profileDirectory: option('profile'),
   });

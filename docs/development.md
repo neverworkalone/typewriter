@@ -60,6 +60,27 @@ external requests. Chrome's GUI-only direct ZIP installation is not automated; t
 extracted directory is the equivalent unpacked installation surface used by the
 runner.
 
+To check a real extension and dictionary update, add the previous production-shaped
+unpacked package. The runner installs it into a temporary profile, saves settings,
+replaces the extension files with the new ZIP contents under a higher test version,
+then verifies the new source revision, exact, search-form, and generated-surface
+lookups, and saved settings:
+
+```sh
+npm run test:mv3:package -- \
+  --chrome="/path/to/Google Chrome for Testing" \
+  --extension=dist \
+  --zip=/tmp/typewriter-package/typewriter_1.0.zip \
+  --previous-extension=/path/to/previous/unpacked
+```
+
+The package runner also checks exact, search-form, and generated-surface lookups
+after replacement. It exercises missing, unreadable, corrupt,
+schema-mismatched, dictionary-version-mismatched, revision-mismatched, and
+incomplete database copies in CFT, including a fresh worker retry from each load
+failure. Those fixture edits stay in temporary copies and never change canonical
+data or the release package.
+
 `npm run build` generates the product's packaged `dictionary.sqlite` and the
 `runtime/` SQLite WASM worker assets after the Vite bundle. If the worktree is
 dirty, use `TYPEWRITER_ALLOW_DIRTY=true npm run build` explicitly.

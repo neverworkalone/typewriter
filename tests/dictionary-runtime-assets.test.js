@@ -8,15 +8,22 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 
 describe('product dictionary runtime assets', () => {
   it('keeps the worker independent from Node-only query helpers', async () => {
-    const [workerSource, querySource] = await Promise.all([
+    const [workerSource, querySource, validationSource] = await Promise.all([
       readFile(path.join(repositoryRoot, 'src/runtime/dictionary-worker.mjs'), 'utf8'),
       readFile(path.join(repositoryRoot, 'src/runtime/sqlite-query.js'), 'utf8'),
+      readFile(path.join(repositoryRoot, 'src/runtime/dictionary-validation.js'), 'utf8'),
     ]);
 
     expect(workerSource).not.toContain('node:sqlite');
     expect(workerSource).not.toContain('scripts/build/query');
     expect(workerSource).toContain("import sqlite3InitModule from './vendor/sqlite3.mjs'");
     expect(workerSource).toContain("from './sqlite-query.js'");
+    expect(workerSource).toContain("from './dictionary-validation.js'");
+    expect(workerSource).toContain('validatePackagedDictionary(database, {');
+    expect(validationSource).toContain('export function validatePackagedDictionary(database, {');
+    expect(validationSource).toContain('PRAGMA quick_check');
+    expect(validationSource).toContain('source_revision_verified');
+    expect(workerSource).toContain("from './dictionary-build-info.js'");
     expect(querySource).toContain("from './search-query.js'");
     expect(querySource).toContain('generated_surface_forms');
     expect(querySource).toContain('createSearchResponseFromRows');
@@ -42,6 +49,9 @@ describe('product dictionary runtime assets', () => {
     expect(webConfig).toContain("?? '/typewriter/'");
     expect(webConfig).toContain("path.join(webRoot, 'public')");
     expect(runtimePlugin).toContain("src/runtime/dictionary-worker.mjs");
+    expect(runtimePlugin).toContain("src/runtime/dictionary-contract.js");
+    expect(runtimePlugin).toContain("src/runtime/dictionary-validation.js");
+    expect(runtimePlugin).toContain("dictionary-build-info.js");
     expect(runtimePlugin).toContain("src/runtime/protocol.js");
     expect(runtimePlugin).toContain("src/runtime/query-adapter.js");
     expect(runtimePlugin).toContain("src/runtime/search-query.js");

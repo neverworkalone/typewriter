@@ -58,6 +58,9 @@ async function createArtifact(t, {
   }
   for (const fileName of [
     'runtime/dictionary-worker.mjs',
+    'runtime/dictionary-build-info.js',
+    'runtime/dictionary-contract.js',
+    'runtime/dictionary-validation.js',
     'runtime/protocol.js',
     'runtime/query-adapter.js',
     'runtime/search-query.js',
@@ -65,7 +68,12 @@ async function createArtifact(t, {
     'runtime/vendor/sqlite3.mjs',
     'runtime/vendor/sqlite3.wasm',
   ]) {
-    await writeFile(path.join(outputDirectory, fileName), 'fixture');
+    await writeFile(
+      path.join(outputDirectory, fileName),
+      fileName === 'runtime/dictionary-build-info.js'
+        ? `export const EXPECTED_DICTIONARY_SOURCE_REVISION = ${JSON.stringify(sourceRevision)};\n`
+        : 'fixture',
+    );
   }
 
   const databasePath = path.join(outputDirectory, 'dictionary.sqlite');
