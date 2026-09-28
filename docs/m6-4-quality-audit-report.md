@@ -1,5 +1,10 @@
 # M6-4 5K writer-facing lexical quality audit
 
+> Historical M6-4 evidence remains pinned to its original 5K baseline and
+> relation-gap sample. Current role-independent lexical reachability and
+> relation-gap denominators are recorded in
+> [`m6-1-searchable-lexical-baseline.md`](m6-1-searchable-lexical-baseline.md).
+
 ## Decision
 
 **HOLD.** The M6-1 sampling contract has been applied to the issue-start 5K

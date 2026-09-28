@@ -1483,10 +1483,13 @@ function validateM511SharedProduction({
   }
   const reviews = catalog.map((catalogEntry, index) => {
     const decisionResult = editorialResult.decisions[index];
+    const authoredDecision = editorialResult.artifact.decisions[index];
     return {
       candidate_id: candidateRecords[index].record.id,
       inventory_id: catalogEntry.inventory_id,
       decision: decisionResult.decision.decision,
+      ...(authoredDecision.hold_basis ? { hold_basis: authoredDecision.hold_basis } : {}),
+      ...(authoredDecision.rejection_basis ? { rejection_basis: authoredDecision.rejection_basis } : {}),
       semantic_review: editorialResult.artifact.decisions[index].semantic_review,
       ...(decisionResult.record ? { reviewed_record: decisionResult.record } : {}),
       expected_record_type: catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry',
@@ -1504,6 +1507,10 @@ function validateM511SharedProduction({
     productionStateSources,
     allowReplay: true,
     historicalReplay: true,
+    historicalDispositionSource: {
+      sourceBytes: editorialSource.bytes,
+      proposalSourceBytes: proposalSource.bytes,
+    },
     checkPilotCompleteness,
     catalogCount: catalog.length,
     expectedSelectedCount: expectedImportedCount,

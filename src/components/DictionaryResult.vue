@@ -221,7 +221,7 @@ defineExpose({ focusCandidate });
     </section>
 
     <p
-      v-if="record.role === 'start' && !hasVisibleSenseRelations"
+      v-if="!hasVisibleSenseRelations"
       class="editorial-gap-note"
       data-editorial-gap
     >연결된 관계어는 아직 정리되지 않았습니다.</p>

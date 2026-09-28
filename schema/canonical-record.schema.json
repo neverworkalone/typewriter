@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://typewriter.neverworkalone.dev/schema/canonical-record.schema.json",
   "title": "Typewriter canonical record",
-  "description": "The minimal Editorial Model v1 shape for one canonical JSONL record.",
+  "description": "The minimal canonical record shape. role preserves the historical start/reference-only editorial classification; it does not control direct-search eligibility for a valid in-scope lexical entry.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -24,6 +24,7 @@
     },
     "role": {
       "type": "string",
+      "description": "Historical editorial classification retained for provenance and inventory reporting. Both values may be directly searchable when the record is lexically valid and in scope.",
       "enum": ["start", "reference-only"]
     },
     "candidate_id": {

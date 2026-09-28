@@ -237,37 +237,46 @@
       "policy": "An antonym remains an antonym relation and is not reclassified as a direct substitute."
     },
     {
-      "id": "m3-reference-only-free-search-blocked",
+      "id": "m3-reference-only-direct-searchable",
       "query": "덤덤하다",
-      "input_class": "unsupported",
+      "input_class": "exact-lemma",
       "evaluation": "baseline",
       "expected": {
-        "status": "unsupported",
-        "result_ids": [],
+        "status": "ready",
+        "result_ids": ["r008"],
         "selected_record_id": null
       },
       "actual": {
-        "status": "unsupported",
-        "result_ids": [],
+        "status": "ready",
+        "result_ids": ["r008"],
         "selected_record_id": null,
         "raw_query": "덤덤하다",
         "normalized_query": "덤덤하다",
         "normalization_rules": [],
-        "reason": "reference-only-not-searchable",
-        "matches": []
+        "reason": null,
+        "matches": [
+          {
+            "record_id": "r008",
+            "kind": "exact-lemma",
+            "field": "lemma",
+            "value": "덤덤하다",
+            "normalization_rules": []
+          }
+        ]
       },
       "selection": null,
       "assertions": [
         {
           "kind": "record",
           "record_id": "r008",
-          "in_results": false,
+          "in_results": true,
           "role": "reference-only",
-          "sense_ids": ["r008-s1"]
+          "sense_ids": ["r008-s1"],
+          "relation_count": 0
         }
       ],
-      "problem": "unsupported",
-      "policy": "Reference-only records may be reached from a relation but are not promoted to free-search starts."
+      "problem": "none",
+      "policy": "A valid relation target is directly searchable by lemma regardless of its historical role, and missing outgoing relations remain an editorial gap."
     },
     {
       "id": "m4-normalization-hangul-nfd",

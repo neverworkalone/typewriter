@@ -263,7 +263,7 @@ test('M5 canonical rows dereference batch authority without copying authored nar
   row.review_binding = authorSemanticReviewBinding(row, record);
   const batchSourceContent = {
     schema_version: '1',
-    contract_version: 'lexical-semantic-decision-source-v3',
+    contract_version: 'lexical-semantic-decision-source-v4',
     review_binding_contract_version: AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
     source_id: 'synthetic-batch-source-v1',
     artifact_sha256: 'a'.repeat(64),

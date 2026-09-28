@@ -469,7 +469,7 @@ test('M5-12A historical producer admits multi-sense evidence and rejects missing
     state: result.production.production_state,
     sources: result.production.production_state_sources,
   });
-  assert.doesNotThrow(() => production.validateLexicalProduction({
+  assert.throws(() => production.validateLexicalProduction({
     batchId: 'm5-12a-expansion-20260920',
     candidateRecords,
     reviews,
@@ -480,10 +480,14 @@ test('M5-12A historical producer admits multi-sense evidence and rejects missing
     productionStateSources: historicalProductionState.sources,
     allowReplay: true,
     historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/m5-12a-semantic-decisions.json',
+      sourceBytes: serialized.bytes,
+    },
     catalogCount: M5_12A_SELECTION_COUNT,
     expectedSelectedCount: M5_12A_IMPORT_COUNT,
     checkPilotCompleteness: true,
-  }));
+  }), (error) => error.code === 'LEXICAL_PRODUCTION_DECISION_HOLD_BASIS');
 
   const missingEvidence = structuredClone(source);
   missingEvidence.decisions[decisionIndex].sense_reviews.splice(1, 1);

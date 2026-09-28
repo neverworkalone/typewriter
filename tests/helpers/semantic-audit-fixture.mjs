@@ -88,6 +88,8 @@ function makeProductionSemanticReview(record, {
   rank,
   candidateRecord = record,
   reviewedRecord = record,
+  holdBasis,
+  rejectionBasis,
   topicAnalyses = {},
 } = {}) {
   const decisionSourceId = `${artifactId}:decision-source`;
@@ -101,6 +103,8 @@ function makeProductionSemanticReview(record, {
     candidate_record_sha256: sha256Json(candidateRecord),
     reviewed_record_sha256: sha256Json(reviewedRecord),
     decision,
+    ...(holdBasis ? { hold_basis: holdBasis } : {}),
+    ...(rejectionBasis ? { rejection_basis: rejectionBasis } : {}),
     rank,
     score,
   });
@@ -139,6 +143,8 @@ function makeProductionSemanticReview(record, {
       candidate_record_sha256: sha256Json(candidateRecord),
       reviewed_record_sha256: sha256Json(reviewedRecord),
       decision,
+      ...(holdBasis ? { hold_basis: holdBasis } : {}),
+      ...(rejectionBasis ? { rejection_basis: rejectionBasis } : {}),
       selection_rank: rank,
       selection_score: score,
       rationale: `${candidateRecord.id} was selected from the separately authored fixture decision source.`,
@@ -240,6 +246,7 @@ export function makeProductionState({
   batchId = 'test-production-batch',
   candidateRecords = [],
   reviewedRecords = [],
+  decisionRows = [],
   baseRecords = [],
   prospectiveRecords = [],
   semanticAudit = {},
@@ -249,29 +256,44 @@ export function makeProductionState({
   producerGateDigest,
 } = {}) {
   const reviewedValues = reviewedRecords.map(recordOf);
-  const reviewedDecisions = reviewedRecords.map((recordInfo) => recordInfo?.decision ?? 'included');
+  const reviewedById = new Map(reviewedValues.map((record, index) => [
+    record.id,
+    { record, decision: reviewedRecords[index]?.decision ?? 'included' },
+  ]));
+  const dispositionsById = new Map(decisionRows.map((row) => [row.candidate_record_id, row]));
   const candidateValues = (candidateRecords.length > 0 ? candidateRecords : reviewedRecords).map(recordOf);
   const baseValues = baseRecords.map(recordOf);
   const prospectiveValues = prospectiveRecords.length > 0
     ? prospectiveRecords.map(recordOf)
     : [...baseValues, ...reviewedValues];
   const reviewRows = candidateValues.map((candidate, index) => {
-    const decision = reviewedValues[index] ? reviewedDecisions[index] : 'held';
+    const reviewed = reviewedById.get(candidate.id);
+    const disposition = dispositionsById.get(candidate.id) ?? {};
+    const decision = disposition.decision ?? reviewed?.decision ?? (reviewed ? 'included' : 'held');
+    const holdBasis = disposition.hold_basis ?? (decision === 'held' ? 'unresolved-sense' : undefined);
+    const rejectionBasis = disposition.rejection_basis;
+    const reviewedRecord = reviewed?.record;
     return {
       candidate_id: candidate.id,
       decision,
-      semantic_review: makeProductionSemanticReview(reviewedValues[index] ?? candidate, {
+      ...(holdBasis ? { hold_basis: holdBasis } : {}),
+      ...(rejectionBasis ? { rejection_basis: rejectionBasis } : {}),
+      semantic_review: makeProductionSemanticReview(reviewedRecord ?? candidate, {
         decision,
         artifactId,
         rank: index + 1,
         candidateRecord: candidate,
-        reviewedRecord: reviewedValues[index] ?? candidate,
+        reviewedRecord: reviewedRecord ?? candidate,
+        holdBasis,
+        rejectionBasis,
         topicAnalyses,
       }),
-      ...(reviewedValues[index] ? { reviewed_record: reviewedValues[index] } : {}),
+      ...(reviewedRecord ? { reviewed_record: reviewedRecord } : {}),
     };
   });
-  const selectedRanks = reviewedValues.map((_, index) => index + 1);
+  const selectedRanks = reviewRows
+    .filter((row) => row.reviewed_record)
+    .map((row) => row.semantic_review.selection.rank);
   const candidateOutput = candidateValues;
   const reviewOutput = { review_rows: reviewRows, reviewed_records: reviewedValues };
   const selectionOutput = { selected_records: reviewedValues, selection_ranks: selectedRanks };

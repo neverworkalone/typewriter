@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parseJsonWithUniqueKeys } from './unique-json.mjs';
 import {
   AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  isGrandfatheredLegacyDispositionSource,
   isGrandfatheredM512ADecisionSource,
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
 } from './semantic-decision-row.mjs';
@@ -434,6 +435,28 @@ function validateCompactDecisionSource(value, filePath, semantics) {
       }
     }
     if (value.contract_version === SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION) {
+      const holdBases = new Set([
+        'unresolved-lexical-unit',
+        'unresolved-identity',
+        'unresolved-sense',
+        'unresolved-scope',
+      ]);
+      const rejectionBases = new Set([
+        'duplicate-identity',
+        'not-a-lexical-unit',
+        'unsupported-scope',
+      ]);
+      const dispositionBasisValid = row.decision === 'held'
+        ? holdBases.has(row.hold_basis) && !Object.hasOwn(row, 'rejection_basis')
+        : row.decision === 'rejected'
+          ? rejectionBases.has(row.rejection_basis) && !Object.hasOwn(row, 'hold_basis')
+          : !Object.hasOwn(row, 'hold_basis') && !Object.hasOwn(row, 'rejection_basis');
+      if (!dispositionBasisValid) {
+        fail(
+          `${filePath} decision ${index} has no supported source-bound hold or rejection basis`,
+          'DURABLE_EVIDENCE_POLICY_SHAPE',
+        );
+      }
       const binding = row.review_binding;
       if (value.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION
         || binding?.contract_version !== value.review_binding_contract_version
@@ -626,12 +649,17 @@ async function validateDurableEvidenceSemantics({ repositoryDirectory, tracked, 
       validateCompactGateArtifact(value, filePath, semantics);
       const sourceSha256 = createHash('sha256').update(bytes).digest('hex');
       const isGrandfatheredDecisionSource = requiredContractName === 'decision_source'
-        && isGrandfatheredM512ADecisionSource({
+        && (isGrandfatheredM512ADecisionSource({
           source: value,
           sourcePath: filePath,
           sourceSha256,
           artifactSha256: value.artifact_sha256,
-        });
+        }) || isGrandfatheredLegacyDispositionSource({
+          source: value,
+          sourcePath: filePath,
+          sourceSha256,
+          artifactSha256: value.artifact_sha256,
+        }));
       validateClosedContract(value, filePath, semantics, 'durable artifact', requiredContractName, {
         allowExactGrandfatheredVersion: isGrandfatheredDecisionSource,
       });

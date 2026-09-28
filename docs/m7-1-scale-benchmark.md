@@ -1,5 +1,11 @@
 # M7-1 release performance and scale benchmark
 
+> Historical benchmark note: the dedicated reference-only existence probe
+> measured below was removed by Issue #209. Current exact lookup is role
+> independent and uses the indexed lemma/search-form queries; the runtime query
+> adapter regression verifies those query plans. SQLite schema and index
+> representation are unchanged.
+
 Measured 2026-09-26 on source revision `7c604c8c4a94f6934385be8dffda1fe3311e47c3`. The v7 machine-readable result, including phase-level memory snapshots, codepoint-length profiles, and digests, is [`m7-1-scale-benchmark.json`](m7-1-scale-benchmark.json).
 
 ## Environment and method
@@ -57,7 +63,7 @@ Keep full scale measurements in the existing deep/manual/scheduled path; do not 
 
 ## Findings and scale boundary
 
-- **The 500K runtime query blocker is fixed.** The prior reference-only check scanned `records` and scaled to tens of milliseconds. The adapter now runs separate indexed lemma and search-form existence checks. Regression coverage checks `EXPLAIN QUERY PLAN` on both native and WASM SQLite, requires `idx_records_lemma` and `idx_search_forms_form`, and rejects table scans. After the fix, every 500K repeated query path is at or below 0.47 ms p95. The 250 ms number is this report's historical raw-open measurement; current worker-ready latency including M7-2 validation is recorded in the M7-4 evidence linked above.
+- **The 500K runtime query blocker was fixed at the time of this report.** The former reference-only check scanned `records` and scaled to tens of milliseconds. That dedicated probe has since been removed; role-independent lookup uses the indexed lemma and search-form queries. The historical regression recorded `EXPLAIN QUERY PLAN` on native and WASM SQLite, required `idx_records_lemma` and `idx_search_forms_form`, and rejected table scans. Its measured 500K repeated query paths were at or below 0.47 ms p95. The 250 ms number is this report's historical raw-open measurement; current worker-ready latency including M7-2 validation is recorded in the M7-4 evidence linked above.
 - **The benchmark no longer opens two WASM databases at once.** It closes the cold database before warm reopen, asserts the one-instance lifecycle, and reports each memory phase independently. At 500K the product package is 64.13 MB and the runtime child maximum is 614 MiB RSS; the separate scale-runner process maximum is 3.92 GiB RSS and its maximum sampled heap-used value is 4.17 GiB. The report CLI now rejects a selected scale when any required product, startup, query, memory, shape, timing, or reproducibility evidence is missing or malformed.
 - **1M completes as a deep stress workload.** It builds a 518.6 MB database and 126.73 MB ZIP. Runtime child maximum is 1,100 MiB RSS; the scale-runner process maximum is 5.64 GiB RSS and its maximum sampled heap-used value is 6.63 GiB. The composed 1M fast and normal upper bounds exceed their current budgets, while deep remains within its 600-second target. Keep 1M out of fast and normal CI.
 - Independent SQLite builds reproduced the same digest for each scale, and product output reused the validated SQLite artifact. Synthetic JSONL was not included in canonical directories or product packages.

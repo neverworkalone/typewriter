@@ -1272,6 +1272,13 @@ export async function buildM515({
     prospectiveRecords,
     semanticAudit,
     stageEvidence: productionStageEvidence,
+    // M5-15 remains a byte-pinned v3 historical decision source.
+    allowReplay: true,
+    historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/m5-15-semantic-decisions.json',
+      sourceBytes: artifacts.semanticDecisionSourceBytes,
+    },
     catalogCount: M5_15_SELECTION_COUNT,
     expectedSelectedCount: M5_15_IMPORT_COUNT,
     checkPilotCompleteness: true,

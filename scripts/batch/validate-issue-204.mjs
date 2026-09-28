@@ -263,6 +263,7 @@ function issue204DecisionConfig(source) {
   return {
     label: 'Issue #204',
     errorPrefix: 'ISSUE_204',
+    sourcePath: 'data/batches/issue-204-semantic-decisions.json',
     sourceId: DECISION_SOURCE_ID,
     candidateSourceId: CANDIDATE_SOURCE_ID,
     batchId: BATCH_ID,
@@ -586,6 +587,13 @@ export async function validateIssue204() {
       prospectiveRecords: canonical.records,
       semanticAudit,
     }),
+    // Issue #204 is replayed from its byte-pinned v3 decision source.
+    allowReplay: true,
+    historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/issue-204-semantic-decisions.json',
+      sourceBytes: decisionBytes,
+    },
     catalogCount: 10,
     expectedSelectedCount: 10,
     candidateLabel: 'Issue #204 admitted pilot candidates',

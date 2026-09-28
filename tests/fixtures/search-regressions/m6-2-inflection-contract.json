@@ -1,57 +1,57 @@
 {
-  "schema_version": 1,
-  "contract_id": "m6-2-inflection-search-v1",
+  "schema_version": 2,
+  "contract_id": "m6-2-inflection-search-v2",
   "source": {
-    "issue": 174,
-    "repository_commit": "b5de2d32d2d0ce02feca8eb244baff3c95845ca5",
-    "baseline_id": "m6-1-5k-quality-baseline-v1",
-    "canonical_revision": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9"
+    "issue": 209,
+    "repository_commit": "e4bdaeb119481e0cd13d070d4b2e5ddb703ed06a",
+    "baseline_id": "m6-1-searchable-lexical-baseline-v2",
+    "canonical_revision": "34e71c58f9855fd2f5f4cd7478c77a40e8b2f1ba63bc29201b3f3ed86d0b3e09"
   },
   "inventory": {
     "predicate_sense_counts": {
-      "verb": 658,
-      "adjective": 309
+      "verb": 668,
+      "adjective": 314
     },
     "predicate_record_counts": {
-      "verb": 569,
-      "adjective": 254
+      "verb": 579,
+      "adjective": 259
     },
-    "entry_predicate_record_count": 820,
-    "single_token_entry_predicate_record_count": 818,
-    "open_stem_predicate_record_count": 666,
+    "entry_predicate_record_count": 835,
+    "single_token_entry_predicate_record_count": 833,
+    "open_stem_predicate_record_count": 680,
     "open_stem_final_vowel_counts": {
-      "ㅏ": 340,
+      "ㅏ": 352,
       "ㅡ": 27,
       "ㅣ": 176,
       "ㅗ": 33,
       "ㅔ": 4,
-      "ㅐ": 41,
+      "ㅐ": 42,
       "ㅜ": 27,
-      "ㅟ": 4,
+      "ㅟ": 5,
       "ㅓ": 12,
       "ㅞ": 1,
       "ㅚ": 1
     },
     "open_stem_past_class_counts": {
-      "hada": 303,
+      "hada": 315,
       "open_a_other": 37,
       "open_o_boda": 26,
       "open_o_oda": 7,
       "open_o_other": 0,
-      "other_open_vowel": 293
+      "other_open_vowel": 295
     },
     "mixed_pos_record_ids": ["w237", "w310", "w548"],
     "multiword_record_ids": ["w2814", "w883"],
     "spelling_features": {
-      "ends_hada": 303,
+      "ends_hada": 315,
       "ends_reuda": 23,
-      "stem_final_coda_l": 40,
-      "stem_final_coda_d_verb": 15,
-      "stem_final_coda_b_adjective": 17,
-      "stem_final_coda_b_verb": 15,
+      "stem_final_coda_l": 41,
+      "stem_final_coda_d_verb": 17,
+      "stem_final_coda_b_adjective": 19,
+      "stem_final_coda_b_verb": 18,
       "stem_final_coda_s_verb": 7,
       "stem_final_coda_h_adjective": 2,
-      "stem_final_coda_h_verb": 8
+      "stem_final_coda_h_verb": 10
     }
   },
   "supported_rule_ids": [
@@ -327,10 +327,34 @@
       "classification": "collision",
       "rule_ids": ["predicate-future-adnominal-eul"],
       "corpus_binding": "canonical",
+      "expected_exact_record_ids": ["w935"],
       "generated_candidate_record_ids": ["w935"],
       "expected_match_kind": "exact-search-form",
       "expected_candidates": [
         {"record_id": "w935", "lemma": "달다", "sense_ids": ["w935-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "role-independent-reference-generated-damdaman",
+      "query": "덤덤한",
+      "classification": "positive",
+      "rule_ids": ["adjective-present-adnominal-eun"],
+      "corpus_binding": "canonical",
+      "expected_candidates": [
+        {"record_id": "r008", "lemma": "덤덤하다", "sense_ids": ["r008-s1"], "pos": "adjective"}
+      ]
+    },
+    {
+      "id": "collision-exact-lemma-wonhan",
+      "query": "원한",
+      "classification": "collision",
+      "rule_ids": ["verb-past-adnominal-eun"],
+      "corpus_binding": "canonical",
+      "expected_exact_record_ids": ["w799"],
+      "generated_candidate_record_ids": ["r013"],
+      "expected_match_kind": "exact-lemma",
+      "expected_candidates": [
+        {"record_id": "r013", "lemma": "원하다", "sense_ids": ["r013-s1"], "pos": "verb"}
       ]
     },
     {"id": "unsupported-connective-barabomyeo", "query": "바라보며", "classification": "unsupported", "unsupported_reason": "ending-not-in-supported-slots", "corpus_binding": "canonical-base-with-unsupported-ending", "expected_candidates": [], "base_record_id": "w202"},

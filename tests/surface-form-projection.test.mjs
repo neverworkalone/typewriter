@@ -88,8 +88,8 @@ function rowsForForm(projection, form) {
 function reviewManifest(dispositions = [], reviewedCollisions = {}) {
   return {
     schema_version: 1,
-    contract_id: 'm6-3-surface-form-review-v1',
-    source_issue: 175,
+    contract_id: 'm6-3-searchable-predicate-review-v2',
+    source_issue: 209,
     dispositions,
     reviewed_collisions: {
       exact_generated: reviewedCollisions.exact_generated ?? [],
@@ -128,7 +128,7 @@ test('the complete 5K canonical domain has deterministic declared projection cov
     requireCollisionReview: true,
   });
   const livePredicateSenseCount = records
-    .filter(({ role, record_type: recordType }) => role === 'start' && recordType === 'entry')
+    .filter(({ record_type: recordType }) => recordType === 'entry')
     .reduce(
     (count, record) => count + record.senses.filter(
       ({ pos }) => pos === 'verb' || pos === 'adjective',

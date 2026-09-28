@@ -27,11 +27,11 @@ const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_OUTPUT_PATH = path.join(
   REPOSITORY_DIRECTORY,
-  'docs/m6-1-quality-baseline.json',
+  'docs/m6-1-searchable-lexical-baseline.json',
 );
 const DEFAULT_REPORT_PATH = path.join(
   REPOSITORY_DIRECTORY,
-  'docs/m6-1-quality-baseline.md',
+  'docs/m6-1-searchable-lexical-baseline.md',
 );
 const DEFAULT_REPORT_TEMPLATE_PATH = path.join(
   SCRIPT_DIRECTORY,
@@ -43,7 +43,7 @@ const DEFAULT_REGRESSION_PATH = path.join(
 );
 
 export const M6_1_QUALITY_GATES = Object.freeze({
-  contract_version: 'm6-1-quality-gates-v2',
+  contract_version: 'm6-1-quality-gates-v3',
   policy: 'Freeze these thresholds before collecting M6 quality evidence. A changed threshold requires a new contract version and must be recorded before the next sample is reviewed.',
   overall_decision: {
     pass: 'Every applicable dimension passes and every required sample is complete.',
@@ -57,7 +57,7 @@ export const M6_1_QUALITY_GATES = Object.freeze({
     retained_evidence: 'Keep case IDs, structured outcomes, and source digests. Do not commit writer sentences, raw query context, or external source text.',
   },
   sampling: {
-    stable_seed: 'm6-1-quality-benchmark-v1',
+    stable_seed: 'm6-1-searchable-lexical-benchmark-v2',
     stable_hash: {
       input: 'seed + U+0000 + stratum + U+0000 + stable_unit_id',
       encoding: 'UTF-8 bytes of the exact strings',
@@ -74,12 +74,12 @@ export const M6_1_QUALITY_GATES = Object.freeze({
       relation_gap_record: {
         stratum: 'JSON.stringify([record_type, first_sense.pos])',
         stable_unit_id: 'canonical record.id',
-        eligibility: 'start record with no outgoing relation on any sense',
+        eligibility: 'valid searchable canonical record with no outgoing relation on any sense',
       },
       ambiguous_query: {
         stratum: 'exact-writer-facing-candidate-query',
         stable_unit_id: 'exact runtime-normalized query string, preserving its codepoints',
-        eligibility: 'runtime exact-query result expands to at least two ordered (start record, sense) candidate options in interactive DictionaryPanel exact mode',
+        eligibility: 'runtime exact-query result expands to at least two ordered (record, sense) candidate options in interactive DictionaryPanel exact mode',
       },
       writer_task: {
         stratum: 'task_intent',
@@ -98,8 +98,8 @@ export const M6_1_QUALITY_GATES = Object.freeze({
       minimum_types_reported: 'Report all eight canonical relation types separately; a type with zero tuples is coverage evidence, not a pass on correctness.',
     },
     relation_gaps: {
-      unit: 'start record with no outgoing relation on any sense',
-      sample_size: 'min(80, current relation-empty start count)',
+      unit: 'searchable record with no outgoing relation on any sense',
+      sample_size: 'min(80, current relation-empty searchable record count)',
       strata: 'record_type × first-sense POS; first sense follows canonical order.',
       allocation: 'Set each initial quota to min(10, stratum population). Allocate remaining slots to remaining capacities with the Hamilton largest-remainder method: floor each exact proportional quota, then give leftover slots by descending fractional remainder, breaking ties by stratum UTF-8 byte order. If a stratum reaches capacity, repeat over the remaining capacities.',
     },
@@ -120,7 +120,7 @@ export const M6_1_QUALITY_GATES = Object.freeze({
     },
     ranking: {
       unit: 'exact query whose ordered writer-facing candidate list has at least two record/sense options',
-      candidate_expansion: 'One candidate per start record when it has zero or one sense; one candidate per sense when a start record has multiple senses. Preserve runtime record order and canonical sense order, matching DictionaryPanel exact-mode candidateOptions.',
+      candidate_expansion: 'One candidate per record when it has zero or one sense; one candidate per sense when a record has multiple senses. Preserve runtime record order and canonical sense order, matching DictionaryPanel exact-mode candidateOptions.',
       population_metric: 'metrics.search.writer_facing_candidate_population.ambiguous_query_count',
       sample_size: 'min(40, writer-facing ambiguous exact-query count)',
       minimum_for_a_ranking_change: 20,
@@ -154,18 +154,18 @@ export const M6_1_QUALITY_GATES = Object.freeze({
     {
       id: 'relation-coverage-and-gaps',
       baseline_status: 'MEASURED_NO_DENSITY_GATE',
-      baseline: 'Relation-bearing and relation-empty starts are measured separately; no target density is authorized.',
+      baseline: 'Relation-bearing and relation-empty searchable records are measured separately; no target density is authorized.',
       pass: 'Review every selected gap and disposition it. At least 80% of writer tasks whose stated need is relation exploration reach one relevant result; record remaining high-demand gaps explicitly.',
       threshold: { reviewed_gap_sample: 1, relation_exploration_task_success: 0.8 },
-      sample: 'Up to 80 relation-empty starts, stratified by record type and first-sense POS, plus the relation-exploration writer tasks.',
+      sample: 'Up to 80 relation-empty searchable records, stratified by record type and first-sense POS, plus the relation-exploration writer tasks.',
     },
     {
       id: 'search-reachability-and-boundaries',
       baseline_status: 'PASS',
-      baseline: 'The current exact runtime and M4 cases are exercised; the baseline also exhaustively checks every current canonical exact key.',
-      pass: '100% of start lemmas and curated search forms resolve to their expected start IDs; zero unexpected results, missing results, or reference-only leaks; all non-pending M4 cases retain their expected results and policy boundaries.',
-      threshold: { exact_key_reachability: 1, unexpected_results: 0, missing_results: 0, reference_only_leaks: 0 },
-      sample: 'Exhaustive unique start keys plus the shared M4 regression corpus. Pending cases remain pending until an explicit policy decision.',
+      baseline: 'The role-independent exact runtime and M4 cases are exercised; the baseline also exhaustively checks every current canonical exact key.',
+      pass: '100% of valid searchable canonical lemmas and curated search forms resolve to their expected IDs; zero unexpected results or missing results; all non-pending M4 cases retain their expected results and policy boundaries.',
+      threshold: { exact_key_reachability: 1, unexpected_results: 0, missing_results: 0 },
+      sample: 'Exhaustive unique canonical keys plus the shared M4 regression corpus. Pending cases remain pending until an explicit policy decision.',
     },
     {
       id: 'ranking-and-order-usefulness',
@@ -224,7 +224,6 @@ export function makeRelationSamplingUnit({
 
 export function makeRelationGapSamplingUnit(record) {
   assert.equal(typeof record?.id, 'string');
-  assert.equal(record.role, 'start');
   assert.equal(typeof record?.record_type, 'string');
   assert.equal(typeof record?.senses?.[0]?.pos, 'string');
   assert.ok(record.senses.every((sense) => (sense.relations ?? []).length === 0));
@@ -250,20 +249,16 @@ export function makeAmbiguousQuerySamplingUnit(normalizedExactQuery, candidateCo
 export function summarizeWriterFacingCandidatePopulation(records, queryRows) {
   assert.ok(Array.isArray(records));
   assert.ok(Array.isArray(queryRows));
-  const startRecordsById = new Map(records
-    .filter(({ role }) => role === 'start')
-    .map((record) => [record.id, record]));
+  const recordsById = new Map(records.map((record) => [record.id, record]));
   const exactQueries = new Map();
 
   for (const row of queryRows) {
     if (row.status !== 'ready') continue;
     assert.equal(typeof row.normalized_query, 'string');
     assert.ok(row.normalized_query.length > 0);
-    const matchedRecords = (row.matches ?? [])
-      .filter(({ role }) => role === 'start')
-      .map(({ id }) => {
-        const record = startRecordsById.get(id);
-        assert.ok(record, `runtime exact query ${JSON.stringify(row.normalized_query)} returned an unknown start ${id}`);
+    const matchedRecords = (row.matches ?? []).map(({ id }) => {
+        const record = recordsById.get(id);
+        assert.ok(record, `runtime exact query ${JSON.stringify(row.normalized_query)} returned an unknown record ${id}`);
         return record;
       });
     const candidates = expandExactSearchCandidates(matchedRecords);
@@ -282,9 +277,9 @@ export function summarizeWriterFacingCandidatePopulation(records, queryRows) {
       candidate_signature: candidateSignature,
       matched_record_count: matchedRecords.length,
       query_kind: matchedRecords.length > 1
-        ? 'multiple-start-records'
+        ? 'multiple-records'
         : candidates.length > 1
-          ? 'single-polysemous-start-record'
+          ? 'single-polysemous-record'
           : 'single-candidate',
     });
   }
@@ -459,7 +454,6 @@ export function evaluateSearchReachability(expectedRows, actualRows) {
   let matchedKeyCount = 0;
   let missingExpectedCount = 0;
   let unexpectedResultCount = 0;
-  let referenceOnlyLeakCount = 0;
   let unsupportedKeyCount = 0;
 
   for (const expectedRow of expectedRows) {
@@ -471,13 +465,11 @@ export function evaluateSearchReachability(expectedRows, actualRows) {
     const expectedIdSet = new Set(expectedIds);
     const missing = expectedIds.filter((id) => !actualIds.includes(id));
     const unexpected = actualIds.filter((id) => !expectedIdSet.has(id));
-    const roleLeaks = matches.filter(({ role }) => role !== 'start');
 
     if (status === 'ready' && actualIds.length > 0) matchedKeyCount += 1;
     if (status === 'unsupported') unsupportedKeyCount += 1;
     missingExpectedCount += missing.length;
     unexpectedResultCount += unexpected.length;
-    referenceOnlyLeakCount += roleLeaks.length;
 
     if (status !== 'ready' || !equalArray(actualIds, expectedIds)) {
       mismatches.push({
@@ -507,7 +499,6 @@ export function evaluateSearchReachability(expectedRows, actualRows) {
     missing_expected_result_count: missingExpectedCount,
     unexpected_result_count: unexpectedResultCount,
     unexpected_key_count: unexpectedKeyCount,
-    reference_only_leak_count: referenceOnlyLeakCount,
     unsupported_key_count: unsupportedKeyCount,
     mismatched_key_count: mismatches.length,
     mismatched_keys: mismatches.slice(0, 20),
@@ -516,7 +507,6 @@ export function evaluateSearchReachability(expectedRows, actualRows) {
 
 export function assertSearchReachabilityPass(reachability) {
   assert.equal(reachability.missing_expected_result_count, 0, 'all expected records must be returned');
-  assert.equal(reachability.reference_only_leak_count, 0, 'free search must not expose reference-only records');
   const unexpectedKeys = reachability.mismatched_keys
     .filter(({ actual_ids, expected_ids }) => actual_ids.some((id) => !expected_ids.includes(id)))
     .map(({ key }) => key);
@@ -526,7 +516,7 @@ export function assertSearchReachabilityPass(reachability) {
     `queries must not return unexpected records${unexpectedKeys.length ? `: ${unexpectedKeys.join(', ')}` : ''}`,
   );
   assert.equal(reachability.unexpected_key_count, 0, 'the runtime must not expose unregistered exact keys');
-  assert.equal(reachability.unsupported_key_count, 0, 'canonical start keys must not be classified as unsupported');
+  assert.equal(reachability.unsupported_key_count, 0, 'canonical searchable keys must not be classified as unsupported');
   assert.equal(reachability.matched_key_count, reachability.key_count, 'every expected exact key must be reachable');
   assert.equal(reachability.mismatched_key_count, 0, 'all exact-key status and ordering must match the canonical mapping');
 }
@@ -551,6 +541,7 @@ export function deriveM6QualityBaselineMetrics({
   const byId = new Map(records.map((record) => [record.id, record]));
   const starts = records.filter(({ role }) => role === 'start');
   const references = records.filter(({ role }) => role === 'reference-only');
+  const searchableSenseCount = records.reduce((count, { senses }) => count + senses.length, 0);
   const recordTypeCountsByRole = Object.fromEntries(
     ['start', 'reference-only'].map((role) => [
       role,
@@ -618,28 +609,28 @@ export function deriveM6QualityBaselineMetrics({
     relationsByTypeAndTargetRole[relation.type] = counts;
   }
 
-  const startsWithRelations = starts.filter(({ senses }) => (
+  const searchableWithRelations = records.filter(({ senses }) => (
     senses.some((sense) => (sense.relations ?? []).length > 0)
   ));
-  const startsWithoutRelations = starts.filter(({ senses }) => (
+  const searchableWithoutRelations = records.filter(({ senses }) => (
     senses.every((sense) => (sense.relations ?? []).length === 0)
   ));
 
-  const allStartKeys = new Map();
-  const startSearchFormValues = [];
+  const allSearchableKeys = new Map();
+  const searchableSearchFormValues = [];
   const formsByRecord = new Map();
-  for (const record of starts) {
+  for (const record of records) {
     const recordForms = [...record.search_forms];
     formsByRecord.set(record.id, recordForms);
-    startSearchFormValues.push(...recordForms);
+    searchableSearchFormValues.push(...recordForms);
     for (const value of new Set([record.lemma, ...recordForms])) {
-      const ids = allStartKeys.get(value) ?? new Set();
+      const ids = allSearchableKeys.get(value) ?? new Set();
       ids.add(record.id);
-      allStartKeys.set(value, ids);
+      allSearchableKeys.set(value, ids);
     }
   }
   const searchFormValueOwners = new Map();
-  for (const record of starts) {
+  for (const record of records) {
     for (const value of formsByRecord.get(record.id)) {
       const ids = searchFormValueOwners.get(value) ?? new Set();
       ids.add(record.id);
@@ -660,6 +651,8 @@ export function deriveM6QualityBaselineMetrics({
       start_count: starts.length,
       reference_only_count: references.length,
       total_sense_count: records.reduce((count, { senses }) => count + senses.length, 0),
+      searchable_record_count: records.length,
+      searchable_sense_count: searchableSenseCount,
       record_type_counts_by_role: recordTypeCountsByRole,
       start_sense_count: startSenses.length,
       reference_only_sense_count: references.reduce((count, { senses }) => count + senses.length, 0),
@@ -694,29 +687,29 @@ export function deriveM6QualityBaselineMetrics({
       ),
       directed_tuples_by_source_pos: countBy(relationRows.map(({ sense }) => sense.pos)),
       tuples_with_matching_reverse_same_type: tuplesWithMatchingReverse,
-      start_coverage: {
-        relation_bearing_count: startsWithRelations.length,
-        relation_empty_count: startsWithoutRelations.length,
-        relation_bearing_by_record_type: countBy(startsWithRelations.map(({ record_type }) => record_type)),
-        relation_empty_by_record_type: countBy(startsWithoutRelations.map(({ record_type }) => record_type)),
+      searchable_coverage: {
+        relation_bearing_count: searchableWithRelations.length,
+        relation_empty_count: searchableWithoutRelations.length,
+        relation_bearing_by_record_type: countBy(searchableWithRelations.map(({ record_type }) => record_type)),
+        relation_empty_by_record_type: countBy(searchableWithoutRelations.map(({ record_type }) => record_type)),
       },
     },
     search: {
-      start_search_form_value_count: startSearchFormValues.length,
-      distinct_start_search_form_value_count: new Set(startSearchFormValues).size,
-      starts_with_lemma_in_search_forms: starts.filter(({ lemma, search_forms: forms }) => forms.includes(lemma)).length,
-      starts_with_non_lemma_search_form: starts.filter(({ lemma, search_forms: forms }) => (
+      searchable_search_form_value_count: searchableSearchFormValues.length,
+      distinct_searchable_search_form_value_count: new Set(searchableSearchFormValues).size,
+      searchable_records_with_lemma_in_search_forms: records.filter(({ lemma, search_forms: forms }) => forms.includes(lemma)).length,
+      searchable_records_with_non_lemma_search_form: records.filter(({ lemma, search_forms: forms }) => (
         forms.some((form) => form !== lemma)
       )).length,
-      non_lemma_search_form_value_count: starts.reduce((count, { lemma, search_forms: forms }) => (
+      non_lemma_search_form_value_count: records.reduce((count, { lemma, search_forms: forms }) => (
         count + forms.filter((form) => form !== lemma).length
       ), 0),
       cross_record_search_form_collision_group_count: [...searchFormValueOwners.values()]
         .filter((ids) => ids.size > 1).length,
-      exact_key_count: allStartKeys.size,
-      cross_record_exact_key_collision_group_count: [...allStartKeys.values()]
+      exact_key_count: allSearchableKeys.size,
+      cross_record_exact_key_collision_group_count: [...allSearchableKeys.values()]
         .filter((ids) => ids.size > 1).length,
-      multi_result_exact_key_count: [...allStartKeys.values()]
+      multi_result_exact_key_count: [...allSearchableKeys.values()]
         .filter((ids) => ids.size > 1).length,
       writer_facing_candidate_population: writerFacingCandidatePopulation,
       exhaustive_runtime_reachability: reachability,
@@ -727,7 +720,7 @@ export function deriveM6QualityBaselineMetrics({
 
 async function measureRuntimeReachability({ records, canonical, repositoryDirectory }) {
   const expectedByKey = new Map();
-  for (const record of records.filter(({ role }) => role === 'start')) {
+  for (const record of records) {
     for (const key of new Set([record.lemma, ...record.search_forms])) {
       const ids = expectedByKey.get(key) ?? new Set();
       ids.add(record.id);
@@ -758,12 +751,20 @@ async function measureRuntimeReachability({ records, canonical, repositoryDirect
         key,
         normalized_query: response.normalizedQuery,
         status: response.status,
-        matches: response.matches.map(({ id, role }) => ({ id, role })),
+        matches: response.matches.map(({ id, role, match }) => ({
+          id,
+          role,
+          match_kind: match?.kind ?? null,
+        })),
       };
     });
+    const exactRows = actualRows.map((row) => ({
+      ...row,
+      matches: row.matches.filter(({ match_kind: kind }) => kind !== 'generated-surface-form'),
+    }));
 
     return {
-      reachability: evaluateSearchReachability(expectedRows, actualRows),
+      reachability: evaluateSearchReachability(expectedRows, exactRows),
       writerFacingCandidatePopulation: summarizeWriterFacingCandidatePopulation(records, actualRows),
     };
   } finally {
@@ -819,9 +820,9 @@ async function buildSnapshot({ sourceCommit, inputs }) {
 
   return {
     schema_version: 1,
-    baseline_id: 'm6-1-5k-quality-baseline-v1',
+    baseline_id: 'm6-1-searchable-lexical-baseline-v2',
     source: {
-      issue: 173,
+      issue: 209,
       repository_commit: sourceCommit,
       canonical_directory: 'data/canonical',
       canonical_revision: inputs.canonical.canonicalRevision,
@@ -845,7 +846,7 @@ async function buildSnapshot({ sourceCommit, inputs }) {
       {
         id: 'm5-10k-and-morphology-not-authorized',
         source: 'https://github.com/neverworkalone/typewriter/issues/173',
-        disposition: 'M6-1 authorizes M6-2 planning/implementation only. It authorizes no 10K expansion, morphology, bulk relation generation, or ranking architecture.',
+        disposition: 'This correction preserves the existing bounded M6-2/M6-3 morphology contract while authorizing no corpus expansion, broader morphology, bulk relation generation, or ranking architecture.',
       },
     ],
   };
@@ -879,21 +880,21 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
   const posTypes = [...new Set(Object.values(canonical.pos_by_role)
     .flatMap(({ sense_count }) => Object.keys(sense_count)))].sort();
   const relationRecordTypes = [...new Set([
-    ...Object.keys(relations.start_coverage.relation_bearing_by_record_type),
-    ...Object.keys(relations.start_coverage.relation_empty_by_record_type),
+    ...Object.keys(relations.searchable_coverage.relation_bearing_by_record_type),
+    ...Object.keys(relations.searchable_coverage.relation_empty_by_record_type),
   ])].sort();
   const relationCoverageRows = relationRecordTypes.map((type) => [
     type,
-    relations.start_coverage.relation_bearing_by_record_type[type] ?? 0,
-    relations.start_coverage.relation_empty_by_record_type[type] ?? 0,
-    (relations.start_coverage.relation_bearing_by_record_type[type] ?? 0)
-      + (relations.start_coverage.relation_empty_by_record_type[type] ?? 0),
+    relations.searchable_coverage.relation_bearing_by_record_type[type] ?? 0,
+    relations.searchable_coverage.relation_empty_by_record_type[type] ?? 0,
+    (relations.searchable_coverage.relation_bearing_by_record_type[type] ?? 0)
+      + (relations.searchable_coverage.relation_empty_by_record_type[type] ?? 0),
   ]);
   relationCoverageRows.push([
     'Total',
-    `${formatCount(relations.start_coverage.relation_bearing_count)} (${percent(relations.start_coverage.relation_bearing_count, canonical.start_count)})`,
-    `${formatCount(relations.start_coverage.relation_empty_count)} (${percent(relations.start_coverage.relation_empty_count, canonical.start_count)})`,
-    formatCount(canonical.start_count),
+    `${formatCount(relations.searchable_coverage.relation_bearing_count)} (${percent(relations.searchable_coverage.relation_bearing_count, canonical.searchable_record_count)})`,
+    `${formatCount(relations.searchable_coverage.relation_empty_count)} (${percent(relations.searchable_coverage.relation_empty_count, canonical.searchable_record_count)})`,
+    formatCount(canonical.searchable_record_count),
   ]);
   const relationTypes = Object.keys(relations.directed_tuples_by_type);
   const dimensions = gates.dimensions.map((dimension) => [
@@ -919,6 +920,7 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
     '### Snapshot identity',
     '',
     markdownTable(['Field', 'Value'], [
+      ['Issue', `#${source.issue}`],
       ['Issue-start repository commit', source.repository_commit],
       ['Canonical content digest', source.canonical_revision],
       ['Canonical JSONL files', formatCount(canonical.file_count)],
@@ -929,11 +931,13 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
     '',
     markdownTable(['Measure', 'Count'], [
       ['Canonical records', formatCount(canonical.record_count)],
-      ['Search starts', formatCount(canonical.start_count)],
-      ['Reference-only records', formatCount(canonical.reference_only_count)],
+      ['Direct-searchable records', formatCount(canonical.searchable_record_count)],
+      ['Direct-searchable senses', formatCount(canonical.searchable_sense_count)],
+      ['Historical start-role records', formatCount(canonical.start_count)],
+      ['Historical reference-only-role records', formatCount(canonical.reference_only_count)],
       ['All senses', formatCount(canonical.total_sense_count)],
-      ['Start senses', formatCount(canonical.start_sense_count)],
-      ['Reference-only senses', formatCount(canonical.reference_only_sense_count)],
+      ['Historical start-role senses', formatCount(canonical.start_sense_count)],
+      ['Historical reference-only-role senses', formatCount(canonical.reference_only_sense_count)],
       ['Expression records', formatCount(canonical.expression_record_count)],
       ['Directed relation tuples', formatCount(relations.directed_tuple_count)],
     ]),
@@ -959,9 +963,9 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
       ]),
     ])),
     '',
-    '### Relation coverage, type, and direction',
+    '### Searchable-record relation coverage, type, and direction',
     '',
-    markdownTable(['Start record type', 'Relation-bearing', 'Relation-empty', 'Total'], relationCoverageRows
+    markdownTable(['Searchable record type', 'Relation-bearing', 'Relation-empty', 'Total'], relationCoverageRows
       .map((row) => [row[0], ...row.slice(1).map(formatCount)])),
     '',
     markdownTable(['Relation type', 'Directed tuples', 'Target roles'], relationTypes.map((type) => [
@@ -987,19 +991,19 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
     '### Search reachability and regression evidence',
     '',
     markdownTable(['Search-form measure', 'Count'], [
-      ['Start form values', formatCount(search.start_search_form_value_count)],
-      ['Distinct start form values', formatCount(search.distinct_start_search_form_value_count)],
-      ['Starts containing their lemma as a form', formatCount(search.starts_with_lemma_in_search_forms)],
-      ['Starts with an alternate form', formatCount(search.starts_with_non_lemma_search_form)],
+      ['Searchable form values', formatCount(search.searchable_search_form_value_count)],
+      ['Distinct searchable form values', formatCount(search.distinct_searchable_search_form_value_count)],
+      ['Records containing their lemma as a form', formatCount(search.searchable_records_with_lemma_in_search_forms)],
+      ['Records with an alternate form', formatCount(search.searchable_records_with_non_lemma_search_form)],
       ['Alternate form values', formatCount(search.non_lemma_search_form_value_count)],
       ['Cross-record form collision groups', formatCount(search.cross_record_search_form_collision_group_count)],
-      ['Distinct exact start keys', formatCount(search.exact_key_count)],
+      ['Distinct exact searchable keys', formatCount(search.exact_key_count)],
       ['Cross-record exact-key collision groups', formatCount(search.cross_record_exact_key_collision_group_count)],
       ['Multi-result exact keys', formatCount(search.multi_result_exact_key_count)],
       ['Writer-facing exact-query population', formatCount(writerCandidates.exact_query_count)],
       ['Exact queries with at least two record/sense candidates', formatCount(writerCandidates.ambiguous_query_count)],
-      ['Ambiguous queries with multiple start records', formatCount(writerCandidates.ambiguous_query_counts_by_kind['multiple-start-records'] ?? 0)],
-      ['Ambiguous queries with multiple senses in one record only', formatCount(writerCandidates.ambiguous_query_counts_by_kind['single-polysemous-start-record'] ?? 0)],
+      ['Ambiguous queries with multiple records', formatCount(writerCandidates.ambiguous_query_counts_by_kind['multiple-records'] ?? 0)],
+      ['Ambiguous queries with multiple senses in one record only', formatCount(writerCandidates.ambiguous_query_counts_by_kind['single-polysemous-record'] ?? 0)],
       ['Candidate options across ambiguous queries', formatCount(writerCandidates.ambiguous_query_candidate_option_count)],
       ['Writer-facing options per exact query', compactJson(writerCandidates.candidate_options_per_exact_query)],
     ]),
@@ -1010,7 +1014,6 @@ export function renderBaselineSnapshotMarkdown(snapshot) {
       ['Missing expected results', formatCount(reachability.missing_expected_result_count)],
       ['Unexpected results', formatCount(reachability.unexpected_result_count)],
       ['Unexpected keys', formatCount(reachability.unexpected_key_count)],
-      ['Reference-only leaks', formatCount(reachability.reference_only_leak_count)],
       ['Unsupported canonical keys', formatCount(reachability.unsupported_key_count)],
       ['Mismatched keys', formatCount(reachability.mismatched_key_count)],
     ]),
@@ -1119,8 +1122,8 @@ export async function main(argv = process.argv.slice(2)) {
   const report = await readFile(DEFAULT_REPORT_PATH, 'utf8');
   assertBaselineReportMatches(template, report, snapshot);
   console.log(
-    `M6-1 baseline matches ${snapshot.source.canonical_revision}: `
-    + `${snapshot.metrics.canonical.start_count} starts, `
+    `M6-1 searchable lexical baseline matches ${snapshot.source.canonical_revision}: `
+    + `${snapshot.metrics.canonical.searchable_record_count} searchable records, `
     + `${reachability.matched_key_count}/${reachability.key_count} exact keys reachable.`,
   );
   return snapshot;

@@ -15,6 +15,8 @@ import {
   validateLexicalRecord,
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
+import { validateLexicalDispositionBasis } from '../validate/lexical-disposition.mjs';
+import { verifyGrandfatheredHistoricalDispositions } from './historical-disposition-source.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_DECISIONS = Object.freeze([
@@ -77,6 +79,25 @@ function semanticReviewInput(entry, index) {
   }
   requireObject(entry.semantic_review, `${label}.semantic_review`);
   return entry;
+}
+
+function validateProductionDisposition(entry, label) {
+  const errorCodePrefix = 'LEXICAL_PRODUCTION_DECISION';
+  validateLexicalDispositionBasis(entry, { label, errorCodePrefix });
+  const authoredDecision = entry.semantic_review.authored_decision;
+  validateLexicalDispositionBasis(authoredDecision, {
+    label: `${label}.semantic_review.authored_decision`,
+    errorCodePrefix,
+  });
+  if (['held', 'rejected'].includes(entry.decision)) {
+    const basisKey = entry.decision === 'held' ? 'hold_basis' : 'rejection_basis';
+    if (authoredDecision?.[basisKey] !== entry[basisKey]) {
+      fail(
+        `${label}.${basisKey} must match the independently authored semantic-review disposition`,
+        'LEXICAL_PRODUCTION_DECISION_BASIS_BINDING',
+      );
+    }
+  }
 }
 
 function valuesOf(recordInfos) {
@@ -489,8 +510,10 @@ export function validateLexicalProduction({
   productionState,
   productionStateSources,
   productionPayloads,
+  canonicalContext,
   allowReplay = false,
   historicalReplay = false,
+  historicalDispositionSource,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -516,6 +539,14 @@ export function validateLexicalProduction({
   }
   const candidates = requireArray(candidateRecords, 'production.candidate_records');
   const reviewRows = requireArray(reviews, 'production.reviews');
+  const grandfatheredDispositionIds = historicalReplay === true
+    ? verifyGrandfatheredHistoricalDispositions({
+      batchId,
+      candidateRecords: candidates,
+      reviews: reviewRows,
+      historicalDispositionSource,
+    })
+    : new Set();
   const correctionRows = requireArray(corrections, 'production.corrections');
   if (candidates.length === 0 && correctionRows.length === 0) {
     fail('production must contain candidate records or reviewed corrections', 'LEXICAL_PRODUCTION_SCOPE');
@@ -568,6 +599,17 @@ export function validateLexicalProduction({
   const candidateIds = new Set();
   for (const [index, rawEntry] of reviewRows.entries()) {
     const entry = semanticReviewInput(rawEntry, index);
+    const missingDispositionBasis = (entry.decision === 'held' && !Object.hasOwn(entry, 'hold_basis'))
+      || (entry.decision === 'rejected' && !Object.hasOwn(entry, 'rejection_basis'));
+    // Replay does not disable the shared rule. Only exact source rows whose
+    // bytes and candidate bindings were reverified at this boundary may retain
+    // a pre-basis held/rejected verdict.
+    const grandfatheredLegacyDisposition = historicalReplay === true
+      && missingDispositionBasis
+      && grandfatheredDispositionIds.has(entry.candidate_id);
+    if (!grandfatheredLegacyDisposition) {
+      validateProductionDisposition(entry, `production.reviews[${index}]`);
+    }
     const candidate = recordOf(candidates[index]);
     if (entry.candidate_id !== candidate.id) {
       fail(`production.reviews[${index}].candidate_id is not bound to ${candidate.id}`, 'LEXICAL_PRODUCTION_BINDING');
@@ -744,6 +786,7 @@ export function validateLexicalProduction({
       productionAuthorizationEvidence: productionContext.authorizationEvidence,
       productionAdmissionStage: productionContext.admissionStage,
       productionPayloads: preAuditPayloads,
+      canonicalContext,
       allowReplay,
       checkPilotCompleteness,
       candidateLabel,

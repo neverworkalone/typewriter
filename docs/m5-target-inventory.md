@@ -3,10 +3,21 @@
 ## Purpose and boundary
 
 M5 expands Typewriter in reviewable stages. The inventory is a selection and
-measurement input, not dictionary data. Its count unit is a **search start**: one
-surface-level entry a writer can intentionally search for. A sense, relation,
-expression attached to another record, `reference-only` record, inflected form, or
-duplicate does not increase the start count.
+measurement input, not dictionary data. Its `start` totals are historical M5
+selection and capacity metrics; they do not define current direct-search
+eligibility. Valid in-scope canonical entries are searchable regardless of
+`role`, including relation targets with no outgoing relations.
+
+For future admission, `fit` means a valid lexical identity and supported record
+structure. Commonness, generality, low standalone writer usefulness, low
+vividness, and relation absence do not reject an otherwise valid candidate.
+Selection axes distribute bounded capacity among fit candidates. An authored
+rejection requires a structured lexical basis such as duplicate identity,
+non-lexical unit, or unsupported scope.
+
+The historic M5 count unit remains a **search start**: one surface-level entry
+selected for that stage's planned batch. A sense, relation, inflected form, or
+duplicate does not increase that historic count.
 
 The reviewable inventory is an on-demand projection built by
 [`scripts/inventory/generate-target-inventory.mjs`](../scripts/inventory/generate-target-inventory.mjs).

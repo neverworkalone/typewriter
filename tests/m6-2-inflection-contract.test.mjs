@@ -13,37 +13,37 @@ const contractPath = path.join(
   repositoryRoot,
   'tests/fixtures/search-regressions/m6-2-inflection-contract.json',
 );
-const baselinePath = path.join(repositoryRoot, 'docs/m6-1-quality-baseline.json');
+const baselinePath = path.join(repositoryRoot, 'docs/m6-1-searchable-lexical-baseline.json');
 const contract = JSON.parse(await readFile(contractPath, 'utf8'));
 const baseline = JSON.parse(await readFile(baselinePath, 'utf8'));
 const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedContext: false });
 const records = canonical.records.map(({ record }) => record);
 const recordsById = new Map(records.map((record) => [record.id, record]));
 
-function findExactStartMatches(query) {
-  return records.filter((record) => (
-    record.role === 'start'
-    && (record.lemma === query || record.search_forms.includes(query))
-  ));
+function findExactSearchableMatches(query) {
+  return records.filter((record) => record.lemma === query || record.search_forms.includes(query));
 }
 
-test('M6-2 contract remains pinned to the reproduced M6-1 canonical snapshot', () => {
-  assert.equal(contract.schema_version, 1);
-  assert.equal(contract.contract_id, 'm6-2-inflection-search-v1');
-  assert.equal(contract.source.issue, 174);
+test('M6-2 contract covers every searchable role in the reproduced M6-1 snapshot', () => {
+  assert.equal(contract.schema_version, 2);
+  assert.equal(contract.contract_id, 'm6-2-inflection-search-v2');
+  assert.equal(contract.source.issue, 209);
   assert.equal(contract.source.baseline_id, baseline.baseline_id);
   assert.equal(contract.source.canonical_revision, baseline.source.canonical_revision);
+  const roleMetrics = ['start', 'reference-only'].map((role) => baseline.metrics.canonical.pos_by_role[role]);
+  const sumByPos = (field) => Object.fromEntries(['adjective', 'verb'].map((pos) => [
+    pos,
+    roleMetrics.reduce((sum, metrics) => sum + metrics[field][pos], 0),
+  ]));
   assert.deepEqual(contract.inventory.predicate_sense_counts, {
-    adjective: baseline.metrics.canonical.pos_by_role.start.sense_count.adjective,
-    verb: baseline.metrics.canonical.pos_by_role.start.sense_count.verb,
+    ...sumByPos('sense_count'),
   });
   assert.deepEqual(contract.inventory.predicate_record_counts, {
-    adjective: baseline.metrics.canonical.pos_by_role.start.records_with_pos.adjective,
-    verb: baseline.metrics.canonical.pos_by_role.start.records_with_pos.verb,
+    ...sumByPos('records_with_pos'),
   });
   assert.equal(
     createHash('sha256').update(JSON.stringify(contract.inventory)).digest('hex'),
-    '31c5245a88d6d681692bddda76e2bc15dd6744a291d98950252329060e3e5e62',
+    'a1e6f15cc938521919d6dccc1f816e7a62f20ab15ea85e7aed069b3c66848c87',
   );
   assert.deepEqual(
     contract.supported_rule_ids,
@@ -138,7 +138,7 @@ test('open ㅗ past contraction replaces the vowel nucleus before adding ㅆ', (
   assert.equal(contractedCases.get('오았다').unsupported_reason, 'mandatory-o-contraction');
 });
 
-test('canonical positive and ambiguous cases bind to all licensed start senses', () => {
+test('canonical positive and ambiguous cases bind to all licensed searchable senses', () => {
   const cases = contract.cases.filter((searchCase) => searchCase.corpus_binding === 'canonical');
   const supportedRuleIds = new Set(contract.supported_rule_ids);
   for (const searchCase of cases) {
@@ -147,7 +147,7 @@ test('canonical positive and ambiguous cases bind to all licensed start senses',
       assert.ok(supportedRuleIds.has(ruleId), `${searchCase.id} uses a supported rule`);
     }
     if (searchCase.classification !== 'collision') {
-      assert.deepEqual(findExactStartMatches(searchCase.query), [], `${searchCase.id} is generated`);
+      assert.deepEqual(findExactSearchableMatches(searchCase.query), [], `${searchCase.id} is generated`);
     }
     for (const candidate of searchCase.expected_candidates) {
       for (const ruleId of candidate.rule_ids ?? searchCase.rule_ids) {
@@ -158,7 +158,7 @@ test('canonical positive and ambiguous cases bind to all licensed start senses',
       }
       const record = recordsById.get(candidate.record_id);
       assert.ok(record, `${searchCase.id} references ${candidate.record_id}`);
-      assert.equal(record.role, 'start', `${searchCase.id} uses a searchable record`);
+      assert.ok(['start', 'reference-only'].includes(record.role), `${searchCase.id} retains a historical role`);
       assert.equal(record.record_type, 'entry', `${searchCase.id} uses an entry`);
       assert.equal(record.lemma, candidate.lemma, `${searchCase.id} preserves its lemma`);
       for (const senseId of candidate.sense_ids) {
@@ -175,20 +175,23 @@ test('canonical positive and ambiguous cases bind to all licensed start senses',
     const candidateIds = searchCase.expected_candidates.map(({ record_id }) => record_id);
     assert.ok(candidateIds.length > 1, `${searchCase.id} preserves multiple records`);
     assert.deepEqual(candidateIds, [...candidateIds].sort());
-    assert.deepEqual(findExactStartMatches(searchCase.query), []);
+    assert.deepEqual(findExactSearchableMatches(searchCase.query), []);
   }
 });
 
 test('existing exact/search-form hits keep precedence over generated collisions', () => {
-  const searchCase = contract.cases.find(({ classification }) => classification === 'collision');
-  assert.ok(searchCase);
-  const exactMatches = findExactStartMatches(searchCase.query);
-  assert.deepEqual(exactMatches.map(({ id }) => id), ['w935']);
-  assert.equal(exactMatches[0].lemma === searchCase.query ? 'exact-lemma' : 'exact-search-form',
-    searchCase.expected_match_kind);
-  assert.deepEqual(searchCase.generated_candidate_record_ids, ['w935']);
-  assert.equal(searchCase.expected_candidates.length, 1);
-  assert.equal(searchCase.expected_candidates[0].record_id, 'w935');
+  const collisionCases = contract.cases.filter(({ classification }) => classification === 'collision');
+  assert.ok(collisionCases.length > 0);
+  for (const searchCase of collisionCases) {
+    const exactMatches = findExactSearchableMatches(searchCase.query);
+    assert.deepEqual(exactMatches.map(({ id }) => id), searchCase.expected_exact_record_ids);
+    assert.equal(exactMatches[0].lemma === searchCase.query ? 'exact-lemma' : 'exact-search-form',
+      searchCase.expected_match_kind);
+    assert.deepEqual(
+      searchCase.generated_candidate_record_ids,
+      searchCase.expected_candidates.map(({ record_id: id }) => id),
+    );
+  }
 });
 
 test('required examples absent from the contract snapshot stay marked contract-only', () => {
@@ -197,7 +200,7 @@ test('required examples absent from the contract snapshot stay marked contract-o
   );
   assert.equal(syntheticCases.length, 5);
   for (const searchCase of syntheticCases) {
-    assert.deepEqual(findExactStartMatches(searchCase.query), [], `${searchCase.id} is contract-only`);
+    assert.deepEqual(findExactSearchableMatches(searchCase.query), [], `${searchCase.id} is contract-only`);
     for (const ruleId of searchCase.rule_ids) {
       assert.ok(contract.supported_rule_ids.includes(ruleId), `${searchCase.id} uses a supported rule`);
     }
@@ -231,11 +234,11 @@ test('unsupported examples use no exact start key and stay outside generated rul
   assert.equal(unsupportedCases.length, 4);
   for (const searchCase of unsupportedCases) {
     assert.deepEqual(searchCase.expected_candidates, []);
-    assert.deepEqual(findExactStartMatches(searchCase.query), []);
+    assert.deepEqual(findExactSearchableMatches(searchCase.query), []);
     if (searchCase.base_record_id) {
       const record = recordsById.get(searchCase.base_record_id);
       assert.ok(record, `${searchCase.id} references its canonical base`);
-      assert.equal(record.role, 'start');
+      assert.ok(['start', 'reference-only'].includes(record.role));
     }
   }
   assert.equal(

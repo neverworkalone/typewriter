@@ -2,61 +2,60 @@
 
 ## Decision
 
-M6 supports a finite set of surface forms for a canonical predicate lemma. The
-surface form reaches the existing `start` record and the sense or senses whose
-part of speech licenses that form. It never creates a canonical record per
-inflected form.
+M6 supports a finite set of surface forms for every valid in-scope canonical
+predicate entry, regardless of its historical `start` or `reference-only`
+role. The surface form reaches the existing record and the sense or senses
+whose part of speech licenses that form. It never creates a canonical record
+per inflected form.
 
-The current runtime remains exact-only until M6-3 implements this contract. The
-M4 regression corpus remains a record of the M4 runtime; the separate contract
-fixture in `tests/fixtures/search-regressions/m6-2-inflection-contract.json`
-states the new expected behavior.
+M6-3 implements this bounded projection in the shared Extension and Web
+runtime. The M4 regression corpus preserves the older exact-only observation;
+the separate M6-2 contract fixture records the generated-form behavior.
 
 ## Corpus inventory
 
-The contract is based on `master` at `b5de2d32d2d0ce02feca8eb244baff3c95845ca5`
-and the unchanged M6-1 canonical digest
-`8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9`.
-`npm run baseline:m6-1` reproduced the 5,000 searchable starts and all 5,251
-current exact keys.
+Issue #209 extends the original M6-2 inventory to every valid in-scope predicate
+entry. The current inventory is reproduced by `npm run baseline:m6-1` and
+recorded in [`m6-1-searchable-lexical-baseline.json`](m6-1-searchable-lexical-baseline.json).
 
 | Inventory measure | Count |
 | --- | ---: |
-| Start senses with POS `verb` | 658 |
-| Start records with a `verb` sense | 569 |
-| Start senses with POS `adjective` | 309 |
-| Start records with an `adjective` sense | 254 |
-| Start `entry` records with a verb or adjective sense | 820 |
-| Single-token predicate entries | 818 |
+| Searchable senses with POS `verb` | 668 |
+| Searchable records with a `verb` sense | 579 |
+| Searchable senses with POS `adjective` | 314 |
+| Searchable records with an `adjective` sense | 259 |
+| Searchable `entry` records with a verb or adjective sense | 835 |
+| Single-token predicate entries | 833 |
 | Multiword predicate entries excluded from generation | 2 |
 | Single-token entries with both verb and adjective senses | 3 |
-| Single-token predicates with an open final stem syllable | 666 |
+| Single-token predicates with an open final stem syllable | 680 |
 
 The overlapping POS records are `w237 쓰다`, `w310 단정하다`, and `w548
 고소하다`. The excluded multiword lemmas are `w883 사려 깊다` and `w2814 몸을
 기대다`. These records show why generated rows must bind to a sense as well as a
 record, and why M6 does not split or rewrite expression spacing.
 
-Observed spelling features among the 818 single-token entries include 303
-lemmas ending in `-하다`, 23 ending in `-르다`, and 40 stems with final `ㄹ`.
-Other final-stem groups include 15 verb records with final `ㄷ`, 32 predicate
-records with final `ㅂ` (17 adjective and 15 verb records), 7 verb records with
-final `ㅅ`, and 10 predicate records with final `ㅎ` (2 adjective and 8 verb
+Observed spelling features among the 833 single-token entries include 315
+lemmas ending in `-하다`, 23 ending in `-르다`, and 41 stems with final `ㄹ`.
+Other final-stem groups include 17 verb records with final `ㄷ`, 37 predicate
+records with final `ㅂ` (19 adjective and 18 verb records), 7 verb records with
+final `ㅅ`, and 12 predicate records with final `ㅎ` (2 adjective and 10 verb
 records). These are spelling counts, not conjugation-class labels: final
 consonant alone does not prove regular or irregular behavior.
 
-The open-final inventory is also relevant to plain-past scope. It has 340 final
-`ㅏ` stems (303 ending in `-하다`, 37 other), 33 final `ㅗ` stems (26 ending in
-`-보다`, 7 ending in `-오다`, and none in another class), and 293 stems with
+The open-final inventory is also relevant to plain-past scope. It has 352 final
+`ㅏ` stems (315 ending in `-하다`, 37 other), 33 final `ㅗ` stems (26 ending in
+`-보다`, 7 ending in `-오다`, and none in another class), and 295 stems with
 other final vowels. The policy below supports only the evidenced classes and
 requires an explicit sense-bound exception for other open-vowel stems; it does
-not infer a past form for all 666 entries from vowel harmony alone.
+not infer a past form for all 680 entries from vowel harmony alone.
 
 ## Supported surface-form classes
 
-Only `role: start`, `record_type: entry` records with a single-token citation
-lemma ending in `다` are eligible. A surface form is generated only for a
-canonical sense whose `pos` is supported by the rule. The fixed rule slots are:
+Every `record_type: entry` record with a predicate sense is in scope, independent
+of historical role. The existing projection still requires a single-token
+citation lemma ending in `다`, and generates a form only for a canonical sense
+whose `pos` is supported by the rule. The fixed rule slots are:
 
 | Rule ID | Sense POS | Supported form | Example |
 | --- | --- | --- | --- |
@@ -197,9 +196,9 @@ records the reviewed exact/generated and generated/generated collision
 candidate sets. Neither manifest stores lexical records or duplicate generated
 forms. A missing or changed disposition fails shared admission. A new, changed,
 or removed collision candidate set must be reviewed in the M6-3 manifest before
-admission succeeds. Exact candidates include every `role: start` entry and
-expression lemma/search form; generated candidates retain their sense and rule
-identity. Index `form` for lookup and preserve deterministic source order. Keep
+admission succeeds. Exact candidates include every valid in-scope entry and
+expression lemma/search form regardless of historical role; generated
+candidates retain their sense and rule identity. Index `form` for lookup and preserve deterministic source order. Keep
 record and sense foreign-key checks fail-closed. Do not add generated surface
 forms to canonical JSONL, create per-form records, or change canonical schema
 for this contract.
@@ -214,8 +213,8 @@ to `ㅘ` before adding coda `ㅆ` and returns no result for other stem endings.
 
 ## Future lexical admission
 
-For every new searchable `entry` sense with POS `verb` or `adjective`, shared
-admission must do one of the following:
+For every new in-scope `entry` sense with POS `verb` or `adjective`, shared
+admission must do one of the following, independent of historical role:
 
 1. classify it under each applicable supported rule and prove that the
    deterministic projection includes its expected surface form; or
@@ -232,13 +231,12 @@ as a workaround.
 
 ## Fixture and implementation boundary
 
-The M6-2 JSON fixture records policy expectations and canonical bindings; it is
-not evidence that the runtime already supports morphology. Its test verifies
-the bound canonical examples, the 5K and open-vowel inventories, the synthetic
-required examples, contraction policy, ambiguity, precedence, and unsupported
-boundaries. M6-3 must add runtime/build
-regressions against the same contract before changing the M4 observed result for
-`담담했다`.
+The M6-2 JSON fixture records policy expectations and canonical bindings. Its
+tests verify the bound canonical examples, the complete canonical and
+open-vowel inventories, synthetic required examples, contraction policy,
+ambiguity, precedence, and unsupported boundaries. M6-3 build/runtime tests
+exercise the same contract, including role-independent generated candidates
+and exact-result precedence.
 
 ## References
 

@@ -230,6 +230,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/dictionary-validation.test.mjs', 'Test packaged dictionary runtime guards'),
       testCheck('tests/search-query.test.mjs', 'Test shared search query contract'),
       testCheck('tests/runtime-query-adapter.test.mjs', 'Test shared native and WASM SQLite query adapter'),
+      testCheck('tests/searchable-start-contract.test.mjs', 'Test role-independent searchable lexical eligibility'),
       testCheck('tests/scale-benchmark.test.mjs', 'Test deterministic product-shaped scale fixture'),
       testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
       testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),

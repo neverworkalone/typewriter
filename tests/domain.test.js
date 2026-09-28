@@ -121,11 +121,17 @@ describe('Editorial Model v1 projection', () => {
     records[0].record_type = 'expression';
 
     const projected = projectSearchResults(records);
-    expect(projected.map(({ id }) => id)).toEqual(['w288']);
+    expect(projected.map(({ id }) => id)).toEqual(['w288', 'r008']);
     expect(projected[0]).toMatchObject({
       recordType: 'expression',
       role: 'start',
       match: { kind: 'exact', position: 0 },
+    });
+    expect(projected[1]).toMatchObject({
+      id: 'r008',
+      role: 'reference-only',
+      hasRelations: false,
+      match: { kind: 'exact', position: 1 },
     });
     expect(projectRelationTarget(records[1])).toMatchObject({
       role: 'reference-only',

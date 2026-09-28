@@ -43,6 +43,7 @@ export const M5_15_SEMANTIC_DECISION_SOURCE_POLICY = 'shared-authored-axis-cover
 export const M5_15_DECISION_SOURCE_CONFIG = Object.freeze({
   label: 'M5-15',
   errorPrefix: 'M5_15',
+  sourcePath: 'data/batches/m5-15-semantic-decisions.json',
   sourceId: M5_15_SEMANTIC_DECISION_SOURCE_ID,
   candidateSourceId: M5_15_CANDIDATE_SOURCE_ID,
   batchId: M5_15_BATCH_ID,

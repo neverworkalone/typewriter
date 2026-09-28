@@ -29,8 +29,8 @@ function sha256(bytes) {
 function decisionSourceFixture({ candidateRecords = [], decisions = [] } = {}) {
   return {
     schema_version: '1',
-    contract_version: 'lexical-semantic-decision-source-v3',
-    review_binding_contract_version: 'source-bound-semantic-review-v1',
+    contract_version: 'lexical-semantic-decision-source-v4',
+    review_binding_contract_version: 'source-bound-semantic-review-v2',
     kind: 'separately-authored-semantic-decision-source',
     source_id: 'future-source',
     authoring_mode: 'agent-authored-decision',
@@ -54,6 +54,7 @@ function decisionRowFixture(overrides = {}) {
     inventory_id: 'm5-12a-w001',
     candidate_record_sha256: 'a'.repeat(64),
     decision: 'held',
+    hold_basis: 'unresolved-sense',
     rank: 1,
     score: 1,
     decision_rationale: 'future decision',
@@ -63,8 +64,13 @@ function decisionRowFixture(overrides = {}) {
     sense_reviews: [],
     ...overrides,
   };
+  if (row.decision !== 'held') delete row.hold_basis;
+  if (row.decision !== 'rejected') delete row.rejection_basis;
+  row.gloss_judgment = row.decision === 'held'
+    ? 'needs-context'
+    : row.decision === 'rejected' ? 'reject' : 'fit';
   row.review_binding ??= {
-    contract_version: 'source-bound-semantic-review-v1',
+    contract_version: 'source-bound-semantic-review-v2',
     candidate_record_id: row.candidate_record_id,
     candidate_record_sha256: row.candidate_record_sha256,
     decision_evidence_sha256: 'd'.repeat(64),
@@ -415,8 +421,8 @@ test('artifact policy rejects alternate decision-row envelopes in a source-bound
   const filePath = path.join(repositoryDirectory, relativePath);
   const value = {
     schema_version: '1',
-    contract_version: 'lexical-semantic-decision-source-v3',
-    review_binding_contract_version: 'source-bound-semantic-review-v1',
+    contract_version: 'lexical-semantic-decision-source-v4',
+    review_binding_contract_version: 'source-bound-semantic-review-v2',
     kind: 'separately-authored-semantic-decision-source',
     source_id: 'future-source',
     authoring_mode: 'agent-authored-decision',
@@ -431,12 +437,13 @@ test('artifact policy rejects alternate decision-row envelopes in a source-bound
       inventory_id: 'm5-12a-w001',
       candidate_record_sha256: 'a'.repeat(64),
       decision: 'held',
+      hold_basis: 'unresolved-sense',
       rank: 1,
       score: 1,
       decision_rationale: 'future decision',
       sense_reviews: [],
       review_binding: {
-        contract_version: 'source-bound-semantic-review-v1',
+        contract_version: 'source-bound-semantic-review-v2',
         candidate_record_id: 'w1001',
         candidate_record_sha256: 'a'.repeat(64),
         decision_evidence_sha256: 'd'.repeat(64),
@@ -666,7 +673,7 @@ test('artifact policy rejects an unregistered decision-source contract version',
   const relativePath = 'data/batches/future-semantic-decisions.json';
   const filePath = path.join(repositoryDirectory, relativePath);
   const value = decisionSourceFixture();
-  value.contract_version = 'lexical-semantic-decision-source-v4';
+  value.contract_version = 'lexical-semantic-decision-source-v5';
 
   try {
     await mkdir(path.dirname(filePath), { recursive: true });

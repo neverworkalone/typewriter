@@ -115,6 +115,7 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
     ] },
     { key: '자리', normalized_query: '자리', status: 'ready', matches: [{ id: 'w003', role: 'start' }] },
     { key: '이미지', normalized_query: '이미지', status: 'ready', matches: [{ id: 'w003', role: 'start' }] },
+    { key: '참조', normalized_query: '참조', status: 'ready', matches: [{ id: 'r001', role: 'reference-only' }] },
   ]);
 
   const metrics = deriveM6QualityBaselineMetrics({
@@ -132,6 +133,8 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
     'reference-only': { entry: 1 },
   });
   assert.equal(metrics.canonical.total_sense_count, 5);
+  assert.equal(metrics.canonical.searchable_record_count, 4);
+  assert.equal(metrics.canonical.searchable_sense_count, 5);
   assert.equal(metrics.canonical.reference_only_sense_count, 1);
   assert.deepEqual(metrics.canonical.single_sense_record_count_by_role, {
     start: 2,
@@ -156,17 +159,17 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
     'start->start': 1,
   });
   assert.equal(metrics.relations.tuples_with_matching_reverse_same_type, 2);
-  assert.equal(metrics.relations.start_coverage.relation_bearing_count, 2);
-  assert.equal(metrics.relations.start_coverage.relation_empty_count, 1);
-  assert.equal(metrics.search.start_search_form_value_count, 5);
-  assert.equal(metrics.search.starts_with_lemma_in_search_forms, 2);
-  assert.equal(metrics.search.starts_with_non_lemma_search_form, 2);
+  assert.equal(metrics.relations.searchable_coverage.relation_bearing_count, 3);
+  assert.equal(metrics.relations.searchable_coverage.relation_empty_count, 1);
+  assert.equal(metrics.search.searchable_search_form_value_count, 6);
+  assert.equal(metrics.search.searchable_records_with_lemma_in_search_forms, 3);
+  assert.equal(metrics.search.searchable_records_with_non_lemma_search_form, 2);
   assert.equal(metrics.search.cross_record_search_form_collision_group_count, 1);
   assert.equal(metrics.search.cross_record_exact_key_collision_group_count, 1);
   assert.equal(metrics.search.writer_facing_candidate_population.ambiguous_query_count, 2);
   assert.deepEqual(metrics.search.writer_facing_candidate_population.ambiguous_query_counts_by_kind, {
-    'single-polysemous-start-record': 1,
-    'multiple-start-records': 1,
+    'single-polysemous-record': 1,
+    'multiple-records': 1,
   });
   assert.equal(metrics.search.regression_corpus.baseline_case_count, 1);
   assert.deepEqual(metrics.search.regression_corpus.pending_case_ids, ['pending-morphology']);
@@ -174,48 +177,15 @@ test('M6-1 metrics keep roles, senses, POS, relations, and search forms separate
 });
 
 test('M6-1 gate contract keeps prospective editorial thresholds explicit', () => {
-  assert.equal(M6_1_QUALITY_GATES.contract_version, 'm6-1-quality-gates-v2');
+  assert.equal(M6_1_QUALITY_GATES.contract_version, 'm6-1-quality-gates-v3');
   assert.equal(M6_1_QUALITY_GATES.sampling.writer_tasks.task_count, 100);
   assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'direct-substitutability').threshold.accepted_rate, 0.95);
   assert.equal(M6_1_QUALITY_GATES.dimensions.find(({ id }) => id === 'relation-usefulness-and-type-honesty').threshold.accepted_rate_per_type, 0.8);
 });
 
-test('M6-1 reachability evaluator covers missing, unexpected, and reference-only results', () => {
-  const expected = [{ key: '길', expected_ids: ['w001'] }];
+test('M6-1 reachability evaluator covers missing and unexpected results across historical roles', () => {
+  const expected = [{ key: '길', expected_ids: ['w001', 'r001'] }];
   const passing = evaluateSearchReachability(expected, [{
-    key: '길',
-    status: 'ready',
-    matches: [{ id: 'w001', role: 'start' }],
-  }]);
-  assert.deepEqual(passing, {
-    key_count: 1,
-    matched_key_count: 1,
-    missing_expected_result_count: 0,
-    unexpected_result_count: 0,
-    unexpected_key_count: 0,
-    reference_only_leak_count: 0,
-    unsupported_key_count: 0,
-    mismatched_key_count: 0,
-    mismatched_keys: [],
-  });
-  assert.doesNotThrow(() => assertSearchReachabilityPass(passing));
-
-  const missing = evaluateSearchReachability(expected, []);
-  assert.equal(missing.missing_expected_result_count, 1);
-  assert.throws(() => assertSearchReachabilityPass(missing), /all expected records must be returned/);
-
-  const unexpected = evaluateSearchReachability(expected, [{
-    key: '길',
-    status: 'ready',
-    matches: [
-      { id: 'w001', role: 'start' },
-      { id: 'w999', role: 'start' },
-    ],
-  }]);
-  assert.equal(unexpected.unexpected_result_count, 1);
-  assert.throws(() => assertSearchReachabilityPass(unexpected), /unexpected records/);
-
-  const leakedReference = evaluateSearchReachability(expected, [{
     key: '길',
     status: 'ready',
     matches: [
@@ -223,18 +193,47 @@ test('M6-1 reachability evaluator covers missing, unexpected, and reference-only
       { id: 'r001', role: 'reference-only' },
     ],
   }]);
-  assert.equal(leakedReference.reference_only_leak_count, 1);
-  assert.throws(() => assertSearchReachabilityPass(leakedReference), /reference-only records/);
+  assert.deepEqual(passing, {
+    key_count: 1,
+    matched_key_count: 1,
+    missing_expected_result_count: 0,
+    unexpected_result_count: 0,
+    unexpected_key_count: 0,
+    unsupported_key_count: 0,
+    mismatched_key_count: 0,
+    mismatched_keys: [],
+  });
+  assert.doesNotThrow(() => assertSearchReachabilityPass(passing));
+
+  const missing = evaluateSearchReachability(expected, []);
+  assert.equal(missing.missing_expected_result_count, 2);
+  assert.throws(() => assertSearchReachabilityPass(missing), /all expected records must be returned/);
+
+  const unexpected = evaluateSearchReachability(expected, [{
+    key: '길',
+    status: 'ready',
+    matches: [
+      { id: 'w001', role: 'start' },
+      { id: 'r001', role: 'reference-only' },
+      { id: 'w999', role: 'start' },
+    ],
+  }]);
+  assert.equal(unexpected.unexpected_result_count, 1);
+  assert.equal(unexpected.missing_expected_result_count, 0);
+  assert.throws(() => assertSearchReachabilityPass(unexpected), /unexpected records/);
 
   const unexpectedKey = evaluateSearchReachability(expected, [
-    { key: '길', status: 'ready', matches: [{ id: 'w001', role: 'start' }] },
+    { key: '길', status: 'ready', matches: [
+      { id: 'w001', role: 'start' },
+      { id: 'r001', role: 'reference-only' },
+    ] },
     { key: '숨은키', status: 'ready', matches: [{ id: 'w002', role: 'start' }] },
   ]);
   assert.equal(unexpectedKey.unexpected_key_count, 1);
   assert.throws(() => assertSearchReachabilityPass(unexpectedKey), /unregistered exact keys/);
 });
 
-test('M6-1 v2 measures the full runtime result and retains generated-form candidates in query choices', () => {
+test('searchable baseline measures exact reachability and retains generated candidates in query choices', () => {
   const records = [
     record({ id: 'w2969', lemma: '끈', senses: [{ id: 'w2969-s1', pos: 'noun' }] }),
     record({ id: 'w1081', lemma: '매듭', search_forms: ['매듭'], senses: [{ id: 'w1081-s1', pos: 'noun' }] }),
@@ -256,7 +255,7 @@ test('M6-1 v2 measures the full runtime result and retains generated-form candid
 
   const population = summarizeWriterFacingCandidatePopulation(records, actual);
   assert.equal(population.ambiguous_query_count, 1);
-  assert.deepEqual(population.ambiguous_query_counts_by_kind, { 'multiple-start-records': 1 });
+  assert.deepEqual(population.ambiguous_query_counts_by_kind, { 'multiple-records': 1 });
 });
 
 test('M6-1 snapshot equality rejects any derived metric drift', () => {
@@ -281,7 +280,7 @@ test('M6-1 sampling identities and stable-hash selection are frozen', () => {
   });
   assert.deepEqual(makeRelationGapSamplingUnit({
     id: 'w003',
-    role: 'start',
+    role: 'reference-only',
     record_type: 'entry',
     senses: [{ pos: 'noun', relations: [] }, { pos: 'verb', relations: [] }],
   }), { stratum: '["entry","noun"]', stable_unit_id: 'w003' });
@@ -347,7 +346,7 @@ test('one polysemous exact result is an ambiguous writer-facing ranking case', (
     candidate_options_per_exact_query: { '2': 1 },
     ambiguous_query_count: 1,
     ambiguous_query_candidate_option_count: 2,
-    ambiguous_query_counts_by_kind: { 'single-polysemous-start-record': 1 },
+    ambiguous_query_counts_by_kind: { 'single-polysemous-record': 1 },
     maximum_candidate_options: 2,
   });
   assert.deepEqual(makeAmbiguousQuerySamplingUnit('é', 2), {
@@ -397,7 +396,6 @@ test('M6-1 report checker detects stale generated content', () => {
     missing_expected_result_count: 0,
     unexpected_result_count: 0,
     unexpected_key_count: 0,
-    reference_only_leak_count: 0,
     unsupported_key_count: 0,
     mismatched_key_count: 0,
     mismatched_keys: [],

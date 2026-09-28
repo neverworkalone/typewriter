@@ -1,5 +1,9 @@
 # M2 handoff to M3
 
+> Historical handoff: the role-based direct-search restriction recorded here
+> was superseded by Issue #209. Valid in-scope records are now searchable
+> regardless of their historical role.
+
 M2 closes with a pilot dataset of 326 canonical records: 300 `start` records,
 26 `reference-only` records, 386 senses, 340 directed relations, 363 search
 forms, and 14 expressions. The integrated audit compares every canonical record,
