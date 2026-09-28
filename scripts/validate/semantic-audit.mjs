@@ -19,6 +19,7 @@ import { inspectSenseBoundaryPairs } from './sense-boundary.mjs';
 import {
   AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
   compactAuthoredSemanticDecisionRow,
+  isGrandfatheredLegacyDispositionSource,
   isGrandfatheredM512ADecisionSource,
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   validateAuthoredSemanticReviewBinding,
@@ -628,6 +629,11 @@ function resolveBatchDecision(record, binding, batchDecisionSources) {
   }
   const sourceContract = source.source?.contract_version;
   const isGrandfathered = isGrandfatheredM512ADecisionSource({
+    source: source.source,
+    sourcePath: source.sourcePath,
+    sourceSha256: source.sourceSha256,
+    artifactSha256: source.artifactSha256,
+  }) || isGrandfatheredLegacyDispositionSource({
     source: source.source,
     sourcePath: source.sourcePath,
     sourceSha256: source.sourceSha256,

@@ -36,6 +36,10 @@ import {
 } from '../scripts/batch/m5-13-decision-source.mjs';
 import { selectReviewedCandidates } from '../scripts/batch/lexical-selection.mjs';
 import {
+  AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
+} from '../scripts/validate/semantic-decision-row.mjs';
+import {
   M5_13_BASE_SUMMARY,
   M5_13_FINAL_SUMMARY,
   M5_13_TARGET,
@@ -229,6 +233,8 @@ test('M5-13 shared preflight rejects adjacent candidate evidence shifted after r
 
   // Refresh only the outer artifact digest, as a positional importer could;
   // the authored candidate/sense evidence binding must remain immutable.
+  source.contract_version = SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION;
+  source.review_binding_contract_version = AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION;
   const serialized = serializeM513DecisionSource(source);
   assert.throws(
     () => validateM513DecisionSource({

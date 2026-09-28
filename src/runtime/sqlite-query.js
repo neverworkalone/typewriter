@@ -3,6 +3,22 @@ import {
   normalizeSearchInput,
 } from './search-query.js';
 
+export const EXACT_SEARCH_ROWS_SQL = `
+  SELECT id, record_type, role, candidate_id, lemma,
+         'lemma' AS match_field, lemma AS match_value, 0 AS match_priority
+  FROM records
+  WHERE lemma = ?
+  UNION ALL
+  SELECT records.id, records.record_type, records.role,
+         records.candidate_id, records.lemma,
+         'search-form' AS match_field, search_forms.form AS match_value,
+         1 AS match_priority
+  FROM records
+  INNER JOIN search_forms ON search_forms.record_id = records.id
+  WHERE search_forms.form = ?
+  ORDER BY id, match_priority
+`;
+
 function allRows(database, sql, parameters = []) {
   if (typeof database.selectObjects === 'function') {
     return database.selectObjects(sql, parameters).map((row) => ({ ...row }));
@@ -21,21 +37,7 @@ function firstRow(database, sql, parameters = []) {
 }
 
 function findSearchRows(database, term) {
-  return allRows(database, `
-    SELECT id, record_type, role, candidate_id, lemma,
-           'lemma' AS match_field, lemma AS match_value, 0 AS match_priority
-    FROM records
-    WHERE lemma = ?
-    UNION ALL
-    SELECT records.id, records.record_type, records.role,
-           records.candidate_id, records.lemma,
-           'search-form' AS match_field, search_forms.form AS match_value,
-           1 AS match_priority
-    FROM records
-    INNER JOIN search_forms ON search_forms.record_id = records.id
-    WHERE search_forms.form = ?
-    ORDER BY id, match_priority
-  `, [term, term]);
+  return allRows(database, EXACT_SEARCH_ROWS_SQL, [term, term]);
 }
 
 function findGeneratedSurfaceRows(database, term) {

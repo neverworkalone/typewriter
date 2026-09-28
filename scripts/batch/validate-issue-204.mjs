@@ -263,6 +263,7 @@ function issue204DecisionConfig(source) {
   return {
     label: 'Issue #204',
     errorPrefix: 'ISSUE_204',
+    sourcePath: 'data/batches/issue-204-semantic-decisions.json',
     sourceId: DECISION_SOURCE_ID,
     candidateSourceId: CANDIDATE_SOURCE_ID,
     batchId: BATCH_ID,

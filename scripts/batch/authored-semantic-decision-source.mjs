@@ -9,6 +9,7 @@ import {
 } from '../validate/lexical-quality.mjs';
 import {
   AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION,
+  isGrandfatheredLegacyDispositionSource,
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
   compactAuthoredSemanticDecisionRow,
   validateAuthoredSemanticReviewBinding,
@@ -18,6 +19,12 @@ import { selectReviewedCandidates } from './lexical-selection.mjs';
 const DECISION_COUNT_KEYS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
+const HOLD_BASES = new Set([
+  'unresolved-lexical-unit',
+  'unresolved-identity',
+  'unresolved-sense',
+  'unresolved-scope',
+]);
 const REJECTION_BASES = new Set([
   'duplicate-identity',
   'not-a-lexical-unit',
@@ -99,12 +106,20 @@ function validateAuthoredCandidateRecord(candidate, identity, label, config) {
   return candidate;
 }
 
-/** Keep rejection authority inside lexical identity and supported scope. */
+/** Keep hold and rejection authority inside unresolved lexical structure. */
 export function validateAuthoredDecisionDisposition(row, label = 'decision', config = {
   label: 'semantic decision source',
   errorPrefix: 'AUTHORED_SEMANTIC',
 }) {
-  if (row.decision === 'rejected') {
+  if (row.decision === 'held') {
+    if (!HOLD_BASES.has(row.hold_basis) || Object.hasOwn(row, 'rejection_basis')) {
+      fail(
+        `${label}.hold_basis must identify an unresolved lexical-unit, identity, sense, or scope question`,
+        'DECISION_SOURCE_HOLD_BASIS',
+        config,
+      );
+    }
+  } else if (row.decision === 'rejected') {
     if (!REJECTION_BASES.has(row.rejection_basis)) {
       fail(
         `${label}.rejection_basis must identify a lexical-unit, identity, or scope defect`,
@@ -112,10 +127,17 @@ export function validateAuthoredDecisionDisposition(row, label = 'decision', con
         config,
       );
     }
-  } else if (Object.hasOwn(row, 'rejection_basis')) {
+    if (Object.hasOwn(row, 'hold_basis')) {
+      fail(
+        `${label}.hold_basis is only valid for a held lexical identity`,
+        'DECISION_SOURCE_HOLD_BASIS',
+        config,
+      );
+    }
+  } else if (Object.hasOwn(row, 'rejection_basis') || Object.hasOwn(row, 'hold_basis')) {
     fail(
-      `${label}.rejection_basis is only valid for a rejected lexical identity`,
-      'DECISION_SOURCE_REJECTION_BASIS',
+      `${label} hold_basis and rejection_basis are only valid for held or rejected lexical identities`,
+      'DECISION_SOURCE_DISPOSITION_BASIS',
       config,
     );
   }
@@ -187,7 +209,14 @@ export function validateDistinctSenseSemanticRationales(candidate, senseReviews)
   return true;
 }
 
-function validateDecisionRow(row, { identity, candidate, decisionSourceId, reviewPassCandidates, config } = {}) {
+function validateDecisionRow(row, {
+  identity,
+  candidate,
+  decisionSourceId,
+  reviewPassCandidates,
+  config,
+  legacyDispositionSource = false,
+} = {}) {
   const label = `decision ${identity.inventory_id}`;
   requireObject(row, label, config);
   if (row.inventory_id !== identity.inventory_id || row.candidate_record_id !== candidate.id) {
@@ -197,7 +226,7 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId, revie
     fail(`${label}.candidate_record_sha256 does not bind the candidate`, 'DECISION_SOURCE_BINDING', config);
   }
   if (!DECISIONS.has(row.decision)) fail(`${label}.decision is unsupported`, 'DECISION_SOURCE_VALUE', config);
-  validateAuthoredDecisionDisposition(row, label, config);
+  if (!legacyDispositionSource) validateAuthoredDecisionDisposition(row, label, config);
   if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > config.selectionCount) {
     fail(`${label}.rank must be within the complete candidate pool`, 'DECISION_SOURCE_VALUE', config);
   }
@@ -231,10 +260,12 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId, revie
   } catch (error) {
     fail(`${label} semantic evidence failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
   }
-  try {
-    validateAuthoredSemanticReviewBinding(row, candidate);
-  } catch (error) {
-    fail(`${label} semantic evidence binding failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
+  if (!legacyDispositionSource) {
+    try {
+      validateAuthoredSemanticReviewBinding(row, candidate);
+    } catch (error) {
+      fail(`${label} semantic evidence binding failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
+    }
   }
   for (const [senseIndex, senseReview] of senseReviews.entries()) {
     const senseLabel = `${label}.sense_reviews[${senseIndex}]`;
@@ -294,9 +325,17 @@ export function validateAuthoredSemanticDecisionSource({
   config,
 } = {}) {
   requireObject(source, `${config.label} semantic decision source`, config);
+  if (!Buffer.isBuffer(sourceBytes)) fail(`${config.label} semantic decision source bytes are required`, 'DECISION_SOURCE_BINDING', config);
+  const sourceSha256 = createHash('sha256').update(sourceBytes).digest('hex');
+  const legacyDispositionSource = isGrandfatheredLegacyDispositionSource({
+    source,
+    sourcePath: config.sourcePath,
+    sourceSha256,
+    artifactSha256: source.artifact_sha256,
+  });
   if (source.schema_version !== '1'
-    || source.contract_version !== SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION
-    || source.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION
+    || (!legacyDispositionSource && source.contract_version !== SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION)
+    || (!legacyDispositionSource && source.review_binding_contract_version !== AUTHORED_SEMANTIC_REVIEW_BINDING_CONTRACT_VERSION)
     || source.kind !== 'separately-authored-semantic-decision-source') {
     fail(`${config.label} semantic decision source contract is unsupported`, 'DECISION_SOURCE_CONTRACT', config);
   }
@@ -370,7 +409,6 @@ export function validateAuthoredSemanticDecisionSource({
     fail(`${config.label} selection policy drifted`, 'DECISION_SOURCE_SCOPE', config);
   }
   requireString(selection.selection_rationale, `${config.label} semantic decision source.selection.selection_rationale`, config);
-  if (!Buffer.isBuffer(sourceBytes)) fail(`${config.label} semantic decision source bytes are required`, 'DECISION_SOURCE_BINDING', config);
   const artifactSha256 = requireDigest(source.artifact_sha256, `${config.label} semantic decision source.artifact_sha256`, config);
   if (artifactSha256 !== sha256Json(sourceForArtifactDigest(source))) {
     fail(`${config.label} semantic decision source artifact digest is not reproducible`, 'DECISION_SOURCE_BINDING', config);
@@ -406,6 +444,7 @@ export function validateAuthoredSemanticDecisionSource({
       decisionSourceId: source.source_id,
       reviewPassCandidates,
       config,
+      legacyDispositionSource,
     });
   }
   if (seenIds.size !== identities.length || seenRanks.size !== config.selectionCount) {
@@ -450,7 +489,7 @@ export function validateAuthoredSemanticDecisionSource({
   return {
     source,
     sourceBytes,
-    sourceSha256: createHash('sha256').update(sourceBytes).digest('hex'),
+    sourceSha256,
     artifactSha256,
     rows: source.decisions,
     byCandidateId: new Map(source.decisions.map((row) => [row.candidate_record_id, row])),

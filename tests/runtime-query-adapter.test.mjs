@@ -12,6 +12,7 @@ import {
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
 import {
+  EXACT_SEARCH_ROWS_SQL,
   findRecordsBySearchTerm,
   getMetadata,
   getRecord,
@@ -102,21 +103,7 @@ test('the shared search adapter returns the same exact, form, surface, and ambig
     assert.deepEqual(getRecord(wasm, 'w001'), getRecord(native, 'w001'));
 
     for (const database of [native, wasm]) {
-      const plan = queryPlan(database, `
-        SELECT id, record_type, role, candidate_id, lemma,
-               'lemma' AS match_field, lemma AS match_value, 0 AS match_priority
-        FROM records
-        WHERE lemma = ?
-        UNION ALL
-        SELECT records.id, records.record_type, records.role,
-               records.candidate_id, records.lemma,
-               'search-form' AS match_field, search_forms.form AS match_value,
-               1 AS match_priority
-        FROM records
-        INNER JOIN search_forms ON search_forms.record_id = records.id
-        WHERE search_forms.form = ?
-        ORDER BY id, match_priority
-      `, ['term', 'term']);
+      const plan = queryPlan(database, EXACT_SEARCH_ROWS_SQL, ['term', 'term']);
       assert.match(plan, /idx_records_lemma/u);
       assert.match(plan, /idx_search_forms_form/u);
       assert.doesNotMatch(plan, /SCAN (?:records|search_forms)/u);
