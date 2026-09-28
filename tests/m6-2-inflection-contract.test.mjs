@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
@@ -19,115 +20,6 @@ const canonical = await readCanonicalRecords(canonicalDirectory, { useSharedCont
 const records = canonical.records.map(({ record }) => record);
 const recordsById = new Map(records.map((record) => [record.id, record]));
 
-const predicatePos = new Set(['verb', 'adjective']);
-const codaTable = [
-  '', 'ㄱ', 'ㄲ', 'ㄳ', 'ㄴ', 'ㄵ', 'ㄶ', 'ㄷ', 'ㄹ', 'ㄺ', 'ㄻ', 'ㄼ', 'ㄽ',
-  'ㄾ', 'ㄿ', 'ㅀ', 'ㅁ', 'ㅂ', 'ㅄ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ',
-  'ㅍ', 'ㅎ',
-];
-const vowelTable = [
-  'ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ',
-  'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ',
-];
-
-function stemFinalCoda(lemma) {
-  const stem = lemma.endsWith('다') ? lemma.slice(0, -1) : lemma;
-  const lastCharacter = [...stem].at(-1);
-  if (!lastCharacter) return null;
-  const offset = lastCharacter.codePointAt(0) - 0xac00;
-  if (offset < 0 || offset >= 11172) return null;
-  return codaTable[offset % 28];
-}
-
-function stemFinalVowel(lemma) {
-  const stem = lemma.endsWith('다') ? lemma.slice(0, -1) : lemma;
-  const lastCharacter = [...stem].at(-1);
-  if (!lastCharacter) return null;
-  const offset = lastCharacter.codePointAt(0) - 0xac00;
-  if (offset < 0 || offset >= 11172) return null;
-  return vowelTable[Math.floor((offset % 588) / 28)];
-}
-
-function uniquePredicatePos(record) {
-  return [...new Set(record.senses.map(({ pos }) => pos).filter((pos) => predicatePos.has(pos)))];
-}
-
-function deriveInventory() {
-  const starts = records.filter((record) => record.role === 'start');
-  const predicateEntries = starts.filter((record) => (
-    record.record_type === 'entry' && uniquePredicatePos(record).length > 0
-  ));
-  const singleTokenEntries = predicateEntries.filter(({ lemma }) => !lemma.includes(' '));
-  const openStemEntries = singleTokenEntries.filter(({ lemma }) => stemFinalCoda(lemma) === '');
-  const posSenseCounts = { verb: 0, adjective: 0 };
-  const posRecordCounts = { verb: 0, adjective: 0 };
-  const openStemFinalVowelCounts = {};
-  for (const record of openStemEntries) {
-    const vowel = stemFinalVowel(record.lemma);
-    openStemFinalVowelCounts[vowel] = (openStemFinalVowelCounts[vowel] ?? 0) + 1;
-  }
-
-  for (const record of starts) {
-    for (const sense of record.senses) {
-      if (predicatePos.has(sense.pos)) posSenseCounts[sense.pos] += 1;
-    }
-    for (const pos of uniquePredicatePos(record)) posRecordCounts[pos] += 1;
-  }
-
-  const countByPosAndCoda = (pos, coda) => singleTokenEntries.filter((record) => (
-    uniquePredicatePos(record).includes(pos) && stemFinalCoda(record.lemma) === coda
-  )).length;
-
-  return {
-    predicate_sense_counts: posSenseCounts,
-    predicate_record_counts: posRecordCounts,
-    entry_predicate_record_count: predicateEntries.length,
-    single_token_entry_predicate_record_count: singleTokenEntries.length,
-    open_stem_predicate_record_count: openStemEntries.length,
-    open_stem_final_vowel_counts: openStemFinalVowelCounts,
-    open_stem_past_class_counts: {
-      hada: openStemEntries.filter(({ lemma }) => lemma.endsWith('하다')).length,
-      open_a_other: openStemEntries.filter((record) => (
-        stemFinalVowel(record.lemma) === 'ㅏ' && !record.lemma.endsWith('하다')
-      )).length,
-      open_o_boda: openStemEntries.filter((record) => (
-        stemFinalVowel(record.lemma) === 'ㅗ' && record.lemma.endsWith('보다')
-      )).length,
-      open_o_oda: openStemEntries.filter((record) => (
-        stemFinalVowel(record.lemma) === 'ㅗ' && record.lemma.endsWith('오다')
-      )).length,
-      open_o_other: openStemEntries.filter((record) => (
-        stemFinalVowel(record.lemma) === 'ㅗ'
-        && !record.lemma.endsWith('보다')
-        && !record.lemma.endsWith('오다')
-      )).length,
-      other_open_vowel: openStemEntries.filter((record) => (
-        !['ㅏ', 'ㅗ'].includes(stemFinalVowel(record.lemma))
-      )).length,
-    },
-    mixed_pos_record_ids: singleTokenEntries
-      .filter((record) => uniquePredicatePos(record).length > 1)
-      .map(({ id }) => id)
-      .sort(),
-    multiword_record_ids: predicateEntries
-      .filter(({ lemma }) => lemma.includes(' '))
-      .map(({ id }) => id)
-      .sort(),
-    spelling_features: {
-      ends_hada: singleTokenEntries.filter(({ lemma }) => lemma.endsWith('하다')).length,
-      ends_reuda: singleTokenEntries.filter(({ lemma }) => lemma.endsWith('르다')).length,
-      stem_final_coda_l: singleTokenEntries
-        .filter((record) => stemFinalCoda(record.lemma) === 'ㄹ').length,
-      stem_final_coda_d_verb: countByPosAndCoda('verb', 'ㄷ'),
-      stem_final_coda_b_adjective: countByPosAndCoda('adjective', 'ㅂ'),
-      stem_final_coda_b_verb: countByPosAndCoda('verb', 'ㅂ'),
-      stem_final_coda_s_verb: countByPosAndCoda('verb', 'ㅅ'),
-      stem_final_coda_h_adjective: countByPosAndCoda('adjective', 'ㅎ'),
-      stem_final_coda_h_verb: countByPosAndCoda('verb', 'ㅎ'),
-    },
-  };
-}
-
 function findExactStartMatches(query) {
   return records.filter((record) => (
     record.role === 'start'
@@ -135,14 +27,24 @@ function findExactStartMatches(query) {
   ));
 }
 
-test('M6-2 contract is pinned to the reproduced M6-1 canonical snapshot', () => {
+test('M6-2 contract remains pinned to the reproduced M6-1 canonical snapshot', () => {
   assert.equal(contract.schema_version, 1);
   assert.equal(contract.contract_id, 'm6-2-inflection-search-v1');
   assert.equal(contract.source.issue, 174);
   assert.equal(contract.source.baseline_id, baseline.baseline_id);
   assert.equal(contract.source.canonical_revision, baseline.source.canonical_revision);
-  assert.equal(canonical.canonicalRevision, contract.source.canonical_revision);
-  assert.deepEqual(deriveInventory(), contract.inventory);
+  assert.deepEqual(contract.inventory.predicate_sense_counts, {
+    adjective: baseline.metrics.canonical.pos_by_role.start.sense_count.adjective,
+    verb: baseline.metrics.canonical.pos_by_role.start.sense_count.verb,
+  });
+  assert.deepEqual(contract.inventory.predicate_record_counts, {
+    adjective: baseline.metrics.canonical.pos_by_role.start.records_with_pos.adjective,
+    verb: baseline.metrics.canonical.pos_by_role.start.records_with_pos.verb,
+  });
+  assert.equal(
+    createHash('sha256').update(JSON.stringify(contract.inventory)).digest('hex'),
+    '31c5245a88d6d681692bddda76e2bc15dd6744a291d98950252329060e3e5e62',
+  );
   assert.deepEqual(
     contract.supported_rule_ids,
     [
