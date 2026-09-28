@@ -86,7 +86,8 @@ function hasAllowedKeys(value, requiredKeys, allowedKeys) {
 }
 
 function validateDispositionLedger(ledger, ledgerBytes) {
-  if (ledger.schema_version !== 'issue-204-pilot-review-v1'
+  if (ledger.schema_version !== '1'
+    || ledger.contract_version !== 'issue-204-pilot-review-v1'
     || ledger.issue !== 204
     || ledger.parent_issue !== 201
     || ledger.authoring_mode !== 'agent-authored-decision'

@@ -92,7 +92,11 @@
         "pattern": "data/batches/*-promotion.json",
         "contract": "promotion_manifest"
       },
-    {
+      {
+        "pattern": "data/batches/issue-204-pilot-decisions.json",
+        "contract": "issue_204_pilot_ledger"
+      },
+      {
       "pattern": "data/batches/*-semantic-decisions.json",
       "contract": "decision_source"
     },
@@ -666,6 +670,7 @@
           "parent_issue",
           "batch_id",
           "provenance",
+          "source_basis",
           "candidate_source",
           "selection",
           "decisions",
@@ -685,6 +690,7 @@
           "parent_issue": "number",
           "batch_id": "string",
           "provenance": "object",
+          "source_basis": "object",
           "candidate_source": "object",
           "selection": "object",
           "decisions": "array<object>",
@@ -694,6 +700,12 @@
           "artifact_sha256": "string"
         },
         "nested_field_types": {
+          "$.source_basis": {
+            "pilot_decision_ledger_sha256": "string",
+            "candidate_selection_sha256": "string",
+            "candidate_count": "integer",
+            "admitted_candidate_ordinals": "array<integer>"
+          },
           "$.provenance": {
             "generator": "string",
             "generator_version": "string",
@@ -959,6 +971,7 @@
           "decision_source_id"
         ],
         "nested_allowed_fields": {
+          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals"],
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
@@ -1888,6 +1901,195 @@
             "prospective_canonical": "string",
             "audit": "string",
             "batch_local_quality_fork": "boolean"
+          }
+        }
+      },
+      "issue_204_pilot_ledger": {
+        "contract_versions": [
+          "issue-204-pilot-review-v1"
+        ],
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "issue",
+          "parent_issue",
+          "batch_id",
+          "authoring_mode",
+          "reviewer",
+          "human_reviewed",
+          "publication_state",
+          "source_artifacts",
+          "decision_policy",
+          "decision_counts",
+          "decisions",
+          "admission_source_id"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "issue",
+          "parent_issue",
+          "batch_id",
+          "authoring_mode",
+          "reviewer",
+          "human_reviewed",
+          "publication_state",
+          "source_artifacts",
+          "decision_policy",
+          "decision_counts",
+          "decisions",
+          "admission_source_id"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "issue": "integer",
+          "parent_issue": "integer",
+          "batch_id": "string",
+          "authoring_mode": "string",
+          "reviewer": "string",
+          "human_reviewed": "boolean",
+          "publication_state": "string",
+          "source_artifacts": "object",
+          "decision_policy": "string",
+          "decision_counts": "object",
+          "decisions": "array<object>",
+          "admission_source_id": "string"
+        },
+        "nested_allowed_fields": {
+          "$.source_artifacts": [
+            "candidate_selection_path",
+            "candidate_selection_sha256",
+            "pilot_inventory_path",
+            "pilot_inventory_sha256",
+            "candidate_selection_created_at_utc",
+            "permission_record_sha256",
+            "corpus_index_input_manifest_sha256",
+            "corpus_index_logical_rows_sha256",
+            "corpus_index_paragraph_count",
+            "sample_paragraph_count",
+            "sample_fraction",
+            "canonical_revision_before",
+            "candidate_count",
+            "source_text_committed"
+          ],
+          "$.decision_counts": [
+            "admit",
+            "hold",
+            "reject",
+            "already-covered",
+            "invalid-lemma",
+            "wrong-pos",
+            "needs-sense-split",
+            "search-surface-collision"
+          ],
+          "$.decisions.*": [
+            "candidate_ordinal",
+            "inventory_id",
+            "corpus_evidence",
+            "morphology_proposal",
+            "editorial_judgment"
+          ],
+          "$.decisions.*.corpus_evidence": [
+            "paragraph_hits_in_sample",
+            "distinct_documents_in_sample",
+            "distinct_sources_in_sample",
+            "source_concentration_ratio_in_sample",
+            "sample_fraction"
+          ],
+          "$.decisions.*.morphology_proposal": [
+            "lemma",
+            "pos",
+            "analyzer_pos",
+            "ambiguity_status",
+            "analyzer_interpretation_count",
+            "ambiguous_observed_surface_count"
+          ],
+          "$.decisions.*.editorial_judgment": [
+            "disposition",
+            "rationale",
+            "reviewer",
+            "human_reviewed",
+            "corrected_lemma",
+            "corrected_pos",
+            "writer_use_axis",
+            "canonical_record_ids",
+            "admitted_sense_count",
+            "writer_usefulness_rejection_class",
+            "writer_usefulness_rejection_class_label",
+            "competing_canonical_matches"
+          ],
+          "$.decisions.*.editorial_judgment.competing_canonical_matches.*": [
+            "record_id",
+            "match_kind"
+          ]
+        },
+        "nested_field_types": {
+          "$.source_artifacts": {
+            "candidate_selection_path": "string",
+            "candidate_selection_sha256": "string",
+            "pilot_inventory_path": "string",
+            "pilot_inventory_sha256": "string",
+            "candidate_selection_created_at_utc": "string",
+            "permission_record_sha256": "string",
+            "corpus_index_input_manifest_sha256": "string",
+            "corpus_index_logical_rows_sha256": "string",
+            "corpus_index_paragraph_count": "integer",
+            "sample_paragraph_count": "integer",
+            "sample_fraction": "number",
+            "canonical_revision_before": "string",
+            "candidate_count": "integer",
+            "source_text_committed": "boolean"
+          },
+          "$.decision_counts": {
+            "admit": "integer",
+            "hold": "integer",
+            "reject": "integer",
+            "already-covered": "integer",
+            "invalid-lemma": "integer",
+            "wrong-pos": "integer",
+            "needs-sense-split": "integer",
+            "search-surface-collision": "integer"
+          },
+          "$.decisions.*": {
+            "candidate_ordinal": "integer",
+            "inventory_id": "string",
+            "corpus_evidence": "object",
+            "morphology_proposal": "object",
+            "editorial_judgment": "object"
+          },
+          "$.decisions.*.corpus_evidence": {
+            "paragraph_hits_in_sample": "integer",
+            "distinct_documents_in_sample": "integer",
+            "distinct_sources_in_sample": "integer",
+            "source_concentration_ratio_in_sample": "number",
+            "sample_fraction": "number"
+          },
+          "$.decisions.*.morphology_proposal": {
+            "lemma": "string",
+            "pos": "string",
+            "analyzer_pos": "string",
+            "ambiguity_status": "string",
+            "analyzer_interpretation_count": "integer",
+            "ambiguous_observed_surface_count": "integer"
+          },
+          "$.decisions.*.editorial_judgment": {
+            "disposition": "string",
+            "rationale": "string",
+            "reviewer": "string",
+            "human_reviewed": "boolean",
+            "corrected_lemma": "null|string",
+            "corrected_pos": "null|string",
+            "writer_use_axis": "string",
+            "canonical_record_ids": "array<string>",
+            "admitted_sense_count": "integer",
+            "writer_usefulness_rejection_class": "string",
+            "writer_usefulness_rejection_class_label": "string",
+            "competing_canonical_matches": "array<object>"
+          },
+          "$.decisions.*.editorial_judgment.competing_canonical_matches.*": {
+            "record_id": "string",
+            "match_kind": "string"
           }
         }
       },
