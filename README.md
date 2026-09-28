@@ -15,12 +15,8 @@ not write or rewrite prose.
 
 ## Availability
 
+- Install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/typewriter/dpifnfihnakglmffddnhmefbllmnbbmk).
 - **Live demo:** https://neverworkalone.net/typewriter/
-- **Chrome extension:** The extension is a development prototype and has no
-  Chrome Web Store listing. Its build and package contain dictionary data. The
-  current canonical corpus and derived distributions remain held from
-  redistribution pending record-level rights clearance, so packages must not be
-  released or shared yet.
 - **Repository:** This project is being prepared for public use. Repository
   visibility and product releases are separate decisions.
 
