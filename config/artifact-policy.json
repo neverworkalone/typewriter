@@ -2002,7 +2002,7 @@
             "pos",
             "analyzer_pos",
             "ambiguity_status",
-            "analyzer_interpretation_count",
+            "analyzer_pos_interpretation_count",
             "ambiguous_observed_surface_count"
           ],
           "$.decisions.*.editorial_judgment": [
@@ -2070,7 +2070,7 @@
             "pos": "string",
             "analyzer_pos": "string",
             "ambiguity_status": "string",
-            "analyzer_interpretation_count": "integer",
+            "analyzer_pos_interpretation_count": "integer",
             "ambiguous_observed_surface_count": "integer"
           },
           "$.decisions.*.editorial_judgment": {

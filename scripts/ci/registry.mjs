@@ -166,6 +166,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
       testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
+      testCheck('tests/issue-204-review-regressions.test.mjs', 'Test Issue #204 review evidence regressions'),
       npmCheck('Validate Issue #204 corpus pilot admission', 'batch:issue-204:check'),
       inProcessCheck(
         'Validate M5-15 pre-admission boundary',

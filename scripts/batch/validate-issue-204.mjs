@@ -25,6 +25,7 @@ import {
   validateAuthoredSemanticDecisionSource,
   authoredSemanticDecisionRowDigest,
 } from './authored-semantic-decision-source.mjs';
+import { validateIssue204MorphologyEvidence } from './issue-204-review-contract.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionBytesSha256, productionSourceBytes } from './lexical-production-state.mjs';
 
@@ -122,7 +123,7 @@ function validateDispositionLedger(ledger, ledgerBytes) {
       'pos',
       'analyzer_pos',
       'ambiguity_status',
-      'analyzer_interpretation_count',
+      'analyzer_pos_interpretation_count',
       'ambiguous_observed_surface_count',
     ]) || !hasExactKeys(row.corpus_evidence, [
       'paragraph_hits_in_sample',
@@ -181,8 +182,8 @@ function validateDispositionLedger(ledger, ledgerBytes) {
       || row.morphology_proposal.pos.trim().length === 0
       || typeof row.morphology_proposal?.analyzer_pos !== 'string'
       || typeof row.morphology_proposal?.ambiguity_status !== 'string'
-      || !Number.isSafeInteger(row.morphology_proposal?.analyzer_interpretation_count)
-      || row.morphology_proposal.analyzer_interpretation_count < 0
+      || !Number.isSafeInteger(row.morphology_proposal?.analyzer_pos_interpretation_count)
+      || row.morphology_proposal.analyzer_pos_interpretation_count < 0
       || !Number.isSafeInteger(row.morphology_proposal?.ambiguous_observed_surface_count)
       || row.morphology_proposal.ambiguous_observed_surface_count < 0
       || typeof row.corpus_evidence?.paragraph_hits_in_sample !== 'number'
@@ -201,6 +202,16 @@ function validateDispositionLedger(ledger, ledgerBytes) {
       || row.corpus_evidence.sample_fraction < 0
       || row.corpus_evidence.sample_fraction > 1) {
       fail('candidate morphology and aggregate corpus evidence are incomplete');
+    }
+    try {
+      validateIssue204MorphologyEvidence({
+        proposal: row.morphology_proposal,
+        disposition: editorial.disposition,
+        rationale: editorial.rationale,
+        label: row.inventory_id,
+      });
+    } catch (error) {
+      fail(error.message);
     }
     if (editorial.corrected_lemma !== null || editorial.corrected_pos !== null) {
       fail('the authored pilot unexpectedly claims a lemma or POS correction');

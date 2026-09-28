@@ -9,7 +9,7 @@
   "batch_id": "issue-204-corpus-pilot-20260928",
   "authoring_mode": "agent-authored-decision",
   "source_basis": {
-    "pilot_decision_ledger_sha256": "8913eeebcd87c99ef52f7e682958e21c2844086a5b8d906ec837167aeb50d1e1",
+    "pilot_decision_ledger_sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b",
     "candidate_selection_sha256": "bf5f4fc2185f572a3950b81a794d26b65084cb1b8d2b3b182f9f558a36a5c6fe",
     "candidate_count": 100,
     "admitted_candidate_ordinals": [
@@ -320,7 +320,7 @@
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
           "boundary_rationale": "m5-5327 w5350 w5350-s1 819431e49187: 서사와 대화는 쓰임과 구성 방식이 달라 독립된 sense로 유지한다.",
-          "semantic_rationale": "이 sense는 사건이나 경험을 엮은 서사 내용이라는 사용을 한정한다.",
+          "semantic_rationale": "이 sense는 사건이나 경험을 말·글로 엮어 전하는 서사 내용에 해당한다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -332,7 +332,7 @@
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
           "boundary_rationale": "m5-5327 w5350 w5350-s2 adc82eedc035: 서사와 대화는 쓰임과 구성 방식이 달라 독립된 sense로 유지한다.",
-          "semantic_rationale": "이 sense는 사건이나 경험을 엮은 서사 내용이라는 사용을 한정한다.",
+          "semantic_rationale": "이 sense는 대화에서 서로 주고받는 말의 내용을 가리키며, 사건을 엮어 전하는 서사와 구별된다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -362,13 +362,13 @@
             "sense_id": "w5350-s1",
             "sense_sha256": "a5d1385899912a8d4ad2a5f8176b1548d0ebfaebbc67f0378751443089dbf663",
             "gloss_sha256": "819431e49187338be91f0940da403949cdcc13d32a7ecf02a1da7f27bf6453ce",
-            "evidence_sha256": "41b1fa391a7978ed7d57e9fdf18bc0c6a7929b4bb5de604fc4ec5bf53447a0a5"
+            "evidence_sha256": "09b8794d560244a64a77d652aebb367f03c201e1aa1491efe712aa9baf4e50c3"
           },
           {
             "sense_id": "w5350-s2",
             "sense_sha256": "cd4b8c36e550d3bdb1439f4666a40133ade721555bd8e62c7eb1b96fcff270ea",
             "gloss_sha256": "adc82eedc035e905b9395025259ea9508971564ab4caaa107b3fce59bbd59dcd",
-            "evidence_sha256": "962cf909a48b7e0d8840f2e7399a9a015b5fa455fdd7e0d404955098861d4b6f"
+            "evidence_sha256": "b2924045827b8b76032a0b8ecf64ee99857ffd23b1b75601420fc1cc72cb1cb2"
           }
         ]
       }
@@ -390,7 +390,7 @@
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
           "boundary_rationale": "m5-5336 w5351 w5351-s1 edd809cc6903: 겉모양과 드러난 양상은 묘사 대상이 달라 독립된 sense로 유지한다.",
-          "semantic_rationale": "이 sense는 눈에 드러나는 사람·사물의 외형이라는 사용을 한정한다.",
+          "semantic_rationale": "이 sense는 사람이나 사물에서 눈에 보이는 겉모양과 외형을 가리킨다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -402,7 +402,7 @@
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
           "boundary_rationale": "m5-5336 w5351 w5351-s2 accb1deaba4e: 겉모양과 드러난 양상은 묘사 대상이 달라 독립된 sense로 유지한다.",
-          "semantic_rationale": "이 sense는 눈에 드러나는 사람·사물의 외형이라는 사용을 한정한다.",
+          "semantic_rationale": "이 sense는 외형 자체가 아니라 행동이나 상태에서 드러나는 양상을 가리킨다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -432,13 +432,13 @@
             "sense_id": "w5351-s1",
             "sense_sha256": "5d535faab8bf2959e9d7cd54763991feb1d24ed45a13eb0068a430a702f7a85f",
             "gloss_sha256": "edd809cc69030943041f8930a8f08495a1b05705e2935f45c1fc77fedbe47a19",
-            "evidence_sha256": "cd6a2bf70be1a12415e7d7a7ccbef69b15476eb04d30710113c7bdcad9600027"
+            "evidence_sha256": "5df7d567fee93e12e587657ba5299a4bce7cc826492686e1e680a4262d94f137"
           },
           {
             "sense_id": "w5351-s2",
             "sense_sha256": "96148ad315aea9500ba549c27b506f5ef4818aeaa012489a3e28a804c7b37051",
             "gloss_sha256": "accb1deaba4e250bd62f5440fb03a15333d2498ee794762df612ecf457db556b",
-            "evidence_sha256": "5e6adfcb1b50ed7baf3b05e32a8a2d60ec9f17beaf3b2b92e7c4eba963c7f2be"
+            "evidence_sha256": "be5c98b01449e54764e68ec4fca212aebf94b9213dba02079e9d9e3732d116f6"
           }
         ]
       }
@@ -616,7 +616,7 @@
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
           "boundary_rationale": "m5-5368 w5356 w5356-s1 9e34a250ba74: 기억하는 작용과 회상되는 내용은 행위와 대상이 달라 독립된 sense로 유지한다.",
-          "semantic_rationale": "이 sense는 지난 일을 마음속에 간직하는 정신 작용을 한정한다.",
+          "semantic_rationale": "이 sense는 지난 일을 마음속에 간직하는 정신 작용을 가리킨다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -628,7 +628,7 @@
           "boundary_classification": "atomic",
           "boundary_decision": "atomic",
           "boundary_rationale": "m5-5368 w5356 w5356-s2 c631ee6b2a6e: 기억하는 작용과 회상되는 내용은 행위와 대상이 달라 독립된 sense로 유지한다.",
-          "semantic_rationale": "이 sense는 지난 일을 마음속에 간직하는 정신 작용을 한정한다.",
+          "semantic_rationale": "이 sense는 간직된 과거의 사건이 나중에 마음에 다시 떠오르는 내용을 가리킨다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -658,13 +658,13 @@
             "sense_id": "w5356-s1",
             "sense_sha256": "64d963b2c2dd25413ffb4bfa849edc3660485c3b3172f11232f24710eb3ea908",
             "gloss_sha256": "9e34a250ba7406e118ca55de3881d2a7120af33c48a0868c9794f1de1a995bb6",
-            "evidence_sha256": "d067e52c78d1d6e2aad93dcb8d8cf05b05d06da5b09871ec3db0da82146705bc"
+            "evidence_sha256": "ae974c6f7a9c3ee00da2f83cd2d1d5292318ea2c70dfe2cad78ba2c641de1453"
           },
           {
             "sense_id": "w5356-s2",
             "sense_sha256": "0875e0ed5925db21610d2267bcf938e01def6c80510c267c672322148ab83cb7",
             "gloss_sha256": "c631ee6b2a6e6ad55d0a949158a0b0bd18d6e89282e5c1d3b226972548d3e1ba",
-            "evidence_sha256": "c91ef38e133e8dcaba1775f5fbf3966c6f176bcb9123a0e2cddc500f5905e4a5"
+            "evidence_sha256": "92a8fb82002ebf17e99947467136abacd6d3468ffaa14a3b523fe91716173d2a"
           }
         ]
       }
@@ -748,5 +748,5 @@
       }
     }
   ],
-  "artifact_sha256": "8078100a8d41d9d971929993ff529f71bdd6319d3eae6401852420ac56face77"
+  "artifact_sha256": "bd48c2a3ac46c47926be5939be41607c45863dbf149274d76e370f4d14476504"
 }

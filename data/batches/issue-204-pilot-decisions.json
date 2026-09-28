@@ -50,12 +50,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 3,
-        "ambiguous_observed_surface_count": 13
+        "ambiguous_observed_surface_count": 13,
+        "analyzer_pos_interpretation_count": 3
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "하다: Kiwi returned 3 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "하다: analyzer_pos_interpretation_count=3; ambiguous_observed_surface_count=13 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -80,12 +80,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "되다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "되다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -110,12 +110,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 2,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 2
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "있다: Kiwi returned 2 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "있다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -140,8 +140,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -172,8 +172,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -202,8 +202,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -234,8 +234,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -264,12 +264,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "알다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "알다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -294,12 +294,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 3
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "가다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "가다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -324,12 +324,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 3
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "보이다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "보이다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -354,8 +354,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -384,12 +384,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "오다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "오다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -414,12 +414,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 2
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "모르다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "모르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -444,12 +444,12 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 2,
-        "ambiguous_observed_surface_count": 5
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 2
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "크다: Kiwi returned 2 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "크다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -474,8 +474,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -506,8 +506,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -538,12 +538,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "위하다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "위하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -568,8 +568,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -598,12 +598,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 3
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "대하다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "대하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -628,8 +628,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -658,8 +658,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -688,12 +688,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 5
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "살다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "살다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -718,12 +718,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 5
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "나다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "나다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -748,8 +748,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -780,12 +780,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 2
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "그러다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "그러다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -810,12 +810,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 2
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "주다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "주다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -840,8 +840,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -872,12 +872,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "느끼다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "느끼다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -902,8 +902,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -932,12 +932,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "가지다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "가지다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -962,8 +962,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -992,12 +992,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "따르다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "따르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1022,12 +1022,12 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "정도: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "정도: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1052,8 +1052,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1084,8 +1084,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1116,8 +1116,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -1148,8 +1148,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1178,8 +1178,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1210,8 +1210,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1242,8 +1242,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1272,12 +1272,12 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "자리: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "자리: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1302,12 +1302,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 5
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "사다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "사다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1332,8 +1332,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1362,8 +1362,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1394,8 +1394,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1424,8 +1424,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1456,12 +1456,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 2
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "서다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "서다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1486,8 +1486,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1516,8 +1516,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -1548,8 +1548,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1578,8 +1578,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1608,8 +1608,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1640,8 +1640,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -1672,12 +1672,12 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "아이: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "아이: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1702,12 +1702,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "남다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "남다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1732,8 +1732,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1762,8 +1762,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1792,12 +1792,12 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "다르다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "다르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1822,8 +1822,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -1852,8 +1852,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -1884,8 +1884,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -1916,12 +1916,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "생기다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "생기다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1946,12 +1946,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "치다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "치다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -1976,12 +1976,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "타다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "타다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2006,8 +2006,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2036,8 +2036,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2066,8 +2066,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -2098,8 +2098,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -2130,12 +2130,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "두다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "두다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2160,8 +2160,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2192,12 +2192,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 3
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "통하다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "통하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2222,8 +2222,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2254,8 +2254,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2286,8 +2286,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2316,8 +2316,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2348,8 +2348,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2380,12 +2380,12 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "혼자: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "혼자: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2410,12 +2410,12 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 2,
-        "ambiguous_observed_surface_count": 4
+        "ambiguous_observed_surface_count": 4,
+        "analyzer_pos_interpretation_count": 2
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "어리다: Kiwi returned 2 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "어리다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=4 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2440,8 +2440,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2470,8 +2470,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2502,8 +2502,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2534,8 +2534,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2564,8 +2564,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2594,8 +2594,8 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2626,12 +2626,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "좋아하다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "좋아하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2656,8 +2656,8 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "search-surface-collision",
@@ -2692,8 +2692,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2724,8 +2724,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2756,12 +2756,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "올리다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "올리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2786,8 +2786,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -2818,12 +2818,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "걸리다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "걸리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2848,8 +2848,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "needs-sense-split",
@@ -2878,8 +2878,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -2910,12 +2910,12 @@
         "pos": "adjective",
         "analyzer_pos": "VA",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 2,
-        "ambiguous_observed_surface_count": 3
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 2
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "길다: Kiwi returned 2 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "길다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2940,12 +2940,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "뜨다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "뜨다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -2970,8 +2970,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "admit",
@@ -3002,8 +3002,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -3034,12 +3034,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 1
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "돌리다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "돌리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
@@ -3064,8 +3064,8 @@
         "pos": "noun",
         "analyzer_pos": "NNG",
         "ambiguity_status": "single_observed_analysis_unverified",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 0
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "reject",
@@ -3096,12 +3096,12 @@
         "pos": "verb",
         "analyzer_pos": "VV",
         "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
-        "analyzer_interpretation_count": 1,
-        "ambiguous_observed_surface_count": 2
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
       },
       "editorial_judgment": {
         "disposition": "hold",
-        "rationale": "알리다: Kiwi returned 1 analyzer interpretations for sampled surface forms; the lemma/POS proposal is not stable enough for admission. Sample breadth is usage evidence, not a resolution of the morphology. Hold for context-bound review.",
+        "rationale": "알리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
         "reviewer": "codex-agent",
         "human_reviewed": false,
         "corrected_lemma": null,
