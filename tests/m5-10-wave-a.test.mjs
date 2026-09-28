@@ -9,7 +9,7 @@ import {
   assertMetricsMatch,
   createMetricsArtifact,
 } from '../scripts/batch/derive-metrics.mjs';
-import { validateBatch } from '../scripts/batch/validate-batch.mjs';
+import { validateHistoricalBatch } from '../scripts/batch/validate-batch.mjs';
 import { validateExpansionStage } from '../scripts/batch/validate-m5-8-process.mjs';
 import { validateWaveARelationScreen } from '../scripts/batch/validate-wave-a-relation-screen.mjs';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../scripts/validate/canonical-jsonl.mjs';
 import { validateRelationDiff } from '../scripts/batch/relation-diff.mjs';
 import {
+  makeHistoricalReplayState,
   makeProductionState,
   writeSemanticAuditFixture,
 } from './helpers/semantic-audit-fixture.mjs';
@@ -217,7 +218,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       ...historicalCanonical.records,
       ...staged.records,
     ].map(({ record }) => record);
-    const production = makeProductionState({
+    const production = makeHistoricalReplayState(makeProductionState({
       batchId: validatedManifest.batch_id,
       candidateRecords: staged.records,
       reviewedRecords: staged.records,
@@ -225,16 +226,18 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       prospectiveRecords: [...historicalCanonical.records, ...staged.records],
       semanticAudit: semanticAudit.artifact,
       artifactId: 'm5-10-wave-a-test-production',
-    });
+    }));
+    assert.equal(production.state.producer_mode, 'replay');
     validatedManifest.production_state = production.state;
     await writeFile(validatedManifestPath, `${JSON.stringify(validatedManifest, null, 2)}\n`, 'utf8');
 
-    const summary = await validateBatch({
+    const summary = await validateHistoricalBatch({
       manifestPath: validatedManifestPath,
       stagedRecordsPath,
       semanticAuditPath,
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
+      allowReplay: true,
       productionStateSources: production.sources,
     });
     assert.equal(summary.canonicalRecordCount, 570);
@@ -257,6 +260,7 @@ test('M5-10 Wave A reproduces its source-bound +50 gate and import boundary', as
       inventoryPath: path.join(BATCH_DIRECTORY, 'm5-10-wave-a-preimport-inventory.json'),
       canonicalDirectory: HISTORICAL_CANONICAL_DIRECTORY,
       productionStateSources: production.sources,
+      historicalReplay: true,
     });
     assert.equal(imported.outputRecordCount, 50);
     assert.equal(await readFile(outputPath, 'utf8'), waveRecords);

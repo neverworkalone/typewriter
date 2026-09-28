@@ -1186,6 +1186,13 @@ async function reconstructBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
   return { current, baseSeed, baseSeedBytes };
 }
 
+function isLaterM5GenerationNote(decisionNote) {
+  if (typeof decisionNote !== 'string') return false;
+  const generationId = decisionNote.match(/after separate generation (m5-\S+)/u)?.[1];
+  const milestone = generationId?.match(/^m5-(\d+)/u)?.[1];
+  return milestone !== undefined && Number(milestone) > 12;
+}
+
 async function loadBaseInputs({
   currentSeedPath = CURRENT_SEED_PATH,
   currentPromotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
@@ -1314,6 +1321,7 @@ function buildGate({
     canonical_integrity: JSON.stringify(finalSummary) === JSON.stringify(M5_12A_FINAL_SUMMARY),
     deterministic_sqlite: preflightPassed('deterministic_sqlite'),
     search_product_regression: preflightPassed('search_product_regression'),
+    prospective_dictionary_stability: preflightPassed('prospective_dictionary_stability'),
     extension_build: preflightPassed('extension_build'),
     package_validation: preflightPassed('package_validation'),
     artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
@@ -1678,6 +1686,10 @@ export async function buildM512A({
     prospectiveRecords,
     semanticAudit,
     stageEvidence: productionStageEvidence,
+    // M5-12A is a frozen batch. Use the historical boundary so later live-only
+    // surface checks do not rewrite its original admission verdict.
+    allowReplay: true,
+    historicalReplay: true,
     catalogCount: M5_12A_SELECTION_COUNT,
     expectedSelectedCount: M5_12A_IMPORT_COUNT,
     checkPilotCompleteness: true,
@@ -1873,7 +1885,7 @@ async function assertMissingOrEmpty(filePath, label) {
   fail(`${label} already contains durable promotion events; M5-12A promotion is not replayable`, 'PROMOTION_ALREADY_APPLIED');
 }
 
-function assertPreflightEvidence(result) {
+function assertPreflightEvidence(result, { allowLegacyHistoricalPreflight = false } = {}) {
   const preflight = result.preflight ?? result.promotion?.preflight ?? result.admission?.gate?.preflight;
   const requiredChecks = [
     'deterministic_sqlite',
@@ -1882,6 +1894,9 @@ function assertPreflightEvidence(result) {
     'package_validation',
     'artifact_policy_clean_checkout',
   ];
+  if (!allowLegacyHistoricalPreflight) {
+    requiredChecks.push('prospective_dictionary_stability');
+  }
   if (!preflight || preflight.status !== 'complete' || typeof preflight.input_canonical_directory_sha256 !== 'string') {
     fail('M5-12A promotion requires complete prospective preflight evidence', 'PROMOTION_PREFLIGHT_REQUIRED');
   }
@@ -2250,7 +2265,7 @@ export async function validateM512AFinal({
       ...currentSeed,
       revision: 'm5-12',
       targets: currentSeed.targets.filter(({ decision_note: decisionNote }) => (
-        !decisionNote?.includes('m5-13-generation-')
+        !isLaterM5GenerationNote(decisionNote)
       )),
     };
     const historicalSeedBytes = jsonBytes(historicalSeed);
@@ -2283,7 +2298,7 @@ export async function validateM512AFinal({
     assertPreflightEvidence({
       preflight: promotion.preflight,
       prospective: result.prospective,
-    });
+    }, { allowLegacyHistoricalPreflight: true });
     if (admission.decisions?.included + admission.decisions?.corrected !== M5_12A_IMPORT_COUNT) fail('admission imported count drifted', 'DECISION_COUNT_MISMATCH');
     const processedDecisionCount = admission.decisions?.included
       + admission.decisions?.corrected

@@ -14,6 +14,10 @@ import {
   CI_NORMAL_CATEGORY_ORDER,
   collectTestOwnership,
 } from '../scripts/ci/registry.mjs';
+import {
+  evaluateDeepCiGate,
+  resolveDeepCiRequest,
+} from '../scripts/ci/deep-ci-gate.mjs';
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 
@@ -201,13 +205,20 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
   assert.match(deepWorkflow, /^name: Deep CI$/mu);
   assert.match(deepWorkflow, /schedule:\n\s+- cron: '0 22 \* \* 0'/u);
   assert.match(deepWorkflow, /workflow_dispatch:/u);
+  assert.match(
+    deepWorkflow,
+    /pull_request:\n\s+types: \[opened, reopened, synchronize, labeled, unlabeled\]/u,
+  );
   assert.match(deepWorkflow, /run: npm run ci:all/u);
   assert.equal((deepWorkflow.match(/run: npm run ci:all/gu) ?? []).length, 1);
   assert.match(deepWorkflow, /runs-on: ubuntu-24\.04/u);
   assert.match(deepWorkflow, /actions\/checkout@v7/u);
   assert.match(deepWorkflow, /actions\/setup-node@v7/u);
   assert.match(deepWorkflow, /node-version: 22\.13\.x/u);
-  assert.doesNotMatch(deepWorkflow, /^\s+pull_request:/mu);
+  assert.match(deepWorkflow, /name: Deep CI Gate/u);
+  assert.match(deepWorkflow, /if: always\(\) && github\.event_name == 'pull_request'/u);
+  assert.match(deepWorkflow, /ref: \$\{\{ needs\.resolve\.outputs\.target_ref \}\}/u);
+  assert.match(deepWorkflow, /run: node scripts\/ci\/deep-ci-gate\.mjs gate/u);
   assert.doesNotMatch(deepWorkflow, /^\s+push:/mu);
 
   const pagesEvents = pagesWorkflow.split('\non:\n')[1]?.split('\npermissions:\n')[0]?.trim();
@@ -221,4 +232,98 @@ test('CI and Pages workflows keep their trigger responsibilities separate', asyn
     readme,
     /!\[Deep CI\]\(https:\/\/github\.com\/neverworkalone\/typewriter\/actions\/workflows\/deep\.yml\/badge\.svg\)/u,
   );
+});
+
+test('Deep CI request resolves labels and exact pull request heads', () => {
+  const firstSha = '1'.repeat(40);
+  const secondSha = '2'.repeat(40);
+  const defaultSha = 'a'.repeat(40);
+
+  const unlabeled = resolveDeepCiRequest({
+    eventName: 'pull_request',
+    eventPayload: {
+      action: 'opened',
+      pull_request: { head: { sha: firstSha }, labels: [] },
+    },
+    defaultSha,
+  });
+  assert.deepEqual(unlabeled, { deepRequired: false, targetRef: firstSha });
+  assert.deepEqual(
+    evaluateDeepCiGate({
+      isPullRequest: true,
+      deepRequired: unlabeled.deepRequired,
+      deepResult: 'skipped',
+      resolveResult: 'success',
+    }),
+    { success: true, reason: 'deep-ci-label-not-present' },
+  );
+
+  const labeled = resolveDeepCiRequest({
+    eventName: 'pull_request',
+    eventPayload: {
+      action: 'labeled',
+      pull_request: {
+        head: { sha: firstSha },
+        labels: [{ name: 'triage' }, { name: 'deep-ci' }],
+      },
+    },
+    defaultSha,
+  });
+  assert.deepEqual(labeled, { deepRequired: true, targetRef: firstSha });
+
+  const synchronized = resolveDeepCiRequest({
+    eventName: 'pull_request',
+    eventPayload: {
+      action: 'synchronize',
+      pull_request: {
+        head: { sha: secondSha },
+        labels: [{ name: 'deep-ci' }],
+      },
+    },
+    defaultSha,
+  });
+  assert.deepEqual(synchronized, { deepRequired: true, targetRef: secondSha });
+});
+
+test('Deep CI Gate passes only optional or successful Deep validation', () => {
+  for (const deepResult of ['failure', 'cancelled', 'skipped', '']) {
+    assert.deepEqual(
+      evaluateDeepCiGate({
+        isPullRequest: true,
+        deepRequired: true,
+        deepResult,
+        resolveResult: 'success',
+      }),
+      { success: false, reason: `deep-${deepResult || 'missing'}` },
+    );
+  }
+
+  assert.deepEqual(
+    evaluateDeepCiGate({
+      isPullRequest: true,
+      deepRequired: true,
+      deepResult: 'success',
+      resolveResult: 'success',
+    }),
+    { success: true, reason: 'deep-validation-succeeded' },
+  );
+  assert.deepEqual(
+    evaluateDeepCiGate({
+      isPullRequest: true,
+      deepRequired: false,
+      deepResult: 'skipped',
+      resolveResult: 'failure',
+    }),
+    { success: false, reason: 'resolve-failure' },
+  );
+});
+
+test('scheduled and manual Deep CI always require the full validation run', () => {
+  const defaultSha = 'b'.repeat(40);
+  for (const eventName of ['schedule', 'workflow_dispatch']) {
+    assert.deepEqual(
+      resolveDeepCiRequest({ eventName, eventPayload: {}, defaultSha }),
+      { deepRequired: true, targetRef: defaultSha },
+    );
+  }
 });

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { chmod, copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   buildDictionary,
 } from '../build/dictionary.mjs';
+import { prepareProductPackageDirectory } from '../build/prepare-product-package.mjs';
 import {
   getMetadata,
   readLogicalDatabaseSnapshot,
@@ -43,16 +44,6 @@ function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-async function chmodFiles(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  await Promise.all(entries.map(async (entry) => {
-    const filePath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return chmodFiles(filePath);
-    if (entry.isFile()) await chmod(filePath, 0o644);
-    return undefined;
-  }));
-}
-
 function closeDatabase(database) {
   try {
     database?.close();
@@ -63,6 +54,50 @@ function closeDatabase(database) {
 
 function compareLogicalDatabaseSnapshots(first, second) {
   return JSON.stringify(first) === JSON.stringify(second);
+}
+
+async function captureProspectiveDatabase(databasePath, expectedSummary, phase) {
+  let database;
+  try {
+    database = new DatabaseSync(databasePath, { readOnly: true });
+    const metadata = getMetadata(database);
+    const expectedMetadata = {
+      record_count: expectedSummary.record_count,
+      start_count: expectedSummary.start_count,
+      reference_only_count: expectedSummary.reference_only_count,
+      sense_count: expectedSummary.sense_count,
+      relation_count: expectedSummary.relation_count,
+      expression_count: expectedSummary.expression_count,
+    };
+    const mismatches = Object.entries(expectedMetadata)
+      .filter(([key, value]) => metadata[key] !== String(value))
+      .map(([key, value]) => `${key} expected ${value}, received ${metadata[key]}`);
+    if (mismatches.length > 0) {
+      fail(
+        `M5-12A ${phase} dictionary is not bound to its prospective canonical summary: ${mismatches.join('; ')}`,
+        'M5_12A_PREFLIGHT_SQLITE_FAILED',
+      );
+    }
+
+    const logicalSnapshot = readLogicalDatabaseSnapshot(database);
+    const bytesSha256 = sha256(await readFile(databasePath));
+    return { metadata, logicalSnapshot, bytesSha256 };
+  } catch (error) {
+    if (error instanceof M512APreflightError) throw error;
+    fail(`M5-12A ${phase} dictionary could not be read: ${error.message}`, 'M5_12A_PREFLIGHT_SQLITE_FAILED');
+  } finally {
+    closeDatabase(database);
+  }
+}
+
+function assertProspectiveDatabaseUnchanged(before, after, phase) {
+  if (before.bytesSha256 !== after.bytesSha256
+    || !compareLogicalDatabaseSnapshots(before.logicalSnapshot, after.logicalSnapshot)) {
+    fail(
+      `M5-12A ${phase} changed the prospective dictionary after it was built`,
+      'M5_12A_PREFLIGHT_SQLITE_FAILED',
+    );
+  }
 }
 
 async function runProspectiveProductChecks({ canonicalDirectory, outputDirectory, databasePath }) {
@@ -114,11 +149,17 @@ async function runM512APreflightOnce({
   const outputDirectory = path.join(temporaryDirectory, 'dist');
   const sharedProductDatabasePath = path.join(temporaryDirectory, 'dictionary-shared.sqlite');
   const secondDatabasePath = path.join(temporaryDirectory, 'dictionary-second.sqlite');
-  const zipPath = path.join(temporaryDirectory, `${path.basename(temporaryDirectory)}_1.0.zip`);
   let firstDatabase;
   let secondDatabase;
   try {
     await mkdir(outputDirectory, { recursive: true });
+    await buildDictionary({
+      inputDirectory: prospectiveCanonicalDirectory,
+      outputPath: sharedProductDatabasePath,
+      checkPilotCompleteness: true,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: true,
+    });
     await execFileAsync(VITE_PATH, ['build', '--config', path.join(REPOSITORY_DIRECTORY, 'vite.config.js')], {
       cwd: REPOSITORY_DIRECTORY,
       env: {
@@ -127,25 +168,51 @@ async function runM512APreflightOnce({
         TYPEWRITER_BUILD_MINIFY: 'false',
         TYPEWRITER_CANONICAL_DIRECTORY: prospectiveCanonicalDirectory,
         TYPEWRITER_BUILD_OUTPUT_DIRECTORY: outputDirectory,
+        TYPEWRITER_SHARED_DICTIONARY_PATH: sharedProductDatabasePath,
       },
       maxBuffer: 20 * 1024 * 1024,
     });
 
     const productDatabasePath = path.join(outputDirectory, 'dictionary.sqlite');
-    await copyFile(productDatabasePath, sharedProductDatabasePath);
+    const initialProductDatabase = await captureProspectiveDatabase(
+      productDatabasePath,
+      expectedSummary,
+      'initial build',
+    );
     await runProspectiveProductChecks({
       canonicalDirectory: prospectiveCanonicalDirectory,
       outputDirectory,
       databasePath: sharedProductDatabasePath,
     });
-    for (const fileName of ['favicon.ico', 'icon.png']) {
-      await rm(path.join(outputDirectory, fileName), { force: true });
-    }
-    await Promise.all([
-      cp(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), path.join(outputDirectory, 'Apache-2.0.txt')),
-      cp(path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'), path.join(outputDirectory, 'THIRD-PARTY-NOTICES.txt')),
-    ]);
-    await chmodFiles(outputDirectory);
+    const postChecksDatabase = await captureProspectiveDatabase(
+      productDatabasePath,
+      expectedSummary,
+      'product checks',
+    );
+    assertProspectiveDatabaseUnchanged(
+      initialProductDatabase,
+      postChecksDatabase,
+      'product checks',
+    );
+    await prepareProductPackageDirectory({
+      projectRoot: REPOSITORY_DIRECTORY,
+      packageDirectory: outputDirectory,
+    });
+    const packagedDatabase = await captureProspectiveDatabase(
+      productDatabasePath,
+      expectedSummary,
+      'package preparation',
+    );
+    assertProspectiveDatabaseUnchanged(
+      initialProductDatabase,
+      packagedDatabase,
+      'package preparation',
+    );
+    const packagedManifest = JSON.parse(await readFile(path.join(outputDirectory, 'manifest.json'), 'utf8'));
+    const zipPath = path.join(
+      temporaryDirectory,
+      `${path.basename(temporaryDirectory)}_${packagedManifest.version}.zip`,
+    );
     await execFileAsync('zip', ['-qr', zipPath, '.'], { cwd: outputDirectory });
 
     const packageResult = validatePackage({
@@ -238,6 +305,17 @@ async function runM512APreflightOnce({
           input_canonical_directory_sha256: prospectiveCanonicalDigest,
           package_file_count: packageResult.actualFiles.length,
           zip_file_count: packageResult.zipFiles.length,
+        },
+        prospective_dictionary_stability: {
+          status: 'pass',
+          input_canonical_directory_sha256: prospectiveCanonicalDigest,
+          record_count: packagedDatabase.metadata.record_count,
+          generated_surface_form_count: packagedDatabase.metadata.generated_surface_form_count,
+          surface_form_eligible_sense_count: packagedDatabase.metadata.surface_form_eligible_sense_count,
+          surface_form_exclusion_count: packagedDatabase.metadata.surface_form_exclusion_count,
+          product_checks_preserved_database: true,
+          package_preparation_preserved_database: true,
+          database_sha256: packagedDatabase.bytesSha256,
         },
         artifact_policy_clean_checkout: {
           status: 'pass',

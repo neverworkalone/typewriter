@@ -39,15 +39,14 @@ import {
 import {
   validateExpansionStage,
 } from '../scripts/batch/validate-m5-8-process.mjs';
-import {
-  validateBatch,
-} from '../scripts/batch/validate-batch.mjs';
+import { validateHistoricalBatch } from '../scripts/batch/validate-batch.mjs';
 import {
   summarizeRelationDiff,
   validateRelationDiff,
 } from '../scripts/batch/relation-diff.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
+  makeHistoricalReplayState,
   makeProductionState,
   writeSemanticAuditFixture,
 } from './helpers/semantic-audit-fixture.mjs';
@@ -577,7 +576,7 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
     const manifestWithSemanticAudit = await readBatchJson('m5-10-wave-a2.json');
     manifestWithSemanticAudit.review.semantic_audit_sha256 = semanticAudit.sha256;
     const promotedRecords = canonical.records.filter(({ record }) => reviewedIds.includes(record.id));
-    const production = makeProductionState({
+    const production = makeHistoricalReplayState(makeProductionState({
       batchId: manifestWithSemanticAudit.batch_id,
       candidateRecords: promotedRecords,
       reviewedRecords: promotedRecords,
@@ -585,7 +584,8 @@ test('M5-10A Wave A2 imports frozen reviewed data but keeps the next stage uncre
       prospectiveRecords: [...baseForValidation.records, ...promotedRecords],
       semanticAudit: semanticAudit.artifact,
       artifactId: 'm5-10a-wave-a2-validation-production',
-    });
+    }));
+    assert.equal(production.state.producer_mode, 'replay');
     manifestWithSemanticAudit.production_state = production.state;
     await writeFile(manifestPath, `${JSON.stringify(manifestWithSemanticAudit, null, 2)}\n`, 'utf8');
     const metricsWithManifestOverride = await readBatchJson('m5-10a-wave-a2-metrics.json');
@@ -901,7 +901,7 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     const validatedPromotedManifest = structuredClone(promotedManifest);
     validatedPromotedManifest.review.semantic_audit_sha256 = semanticAudit.sha256;
     const promotionStagedRecords = referenceRecords.slice(canonical.records.length);
-    const promotionProduction = makeProductionState({
+    const promotionProduction = makeHistoricalReplayState(makeProductionState({
       batchId: validatedPromotedManifest.batch_id,
       candidateRecords: promotionStagedRecords,
       reviewedRecords: promotionStagedRecords,
@@ -909,16 +909,18 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
       prospectiveRecords: [...baseForPromotion.records, ...promotionStagedRecords],
       semanticAudit: semanticAudit.artifact,
       artifactId: 'm5-10a-wave-a2-promotion-production',
-    });
+    }));
+    assert.equal(promotionProduction.state.producer_mode, 'replay');
     validatedPromotedManifest.production_state = promotionProduction.state;
     await writeFile(promotedManifestPath, `${JSON.stringify(validatedPromotedManifest)}\n`, 'utf8');
     await writeFile(stagedRecordsPath, reviewedStagingBytes);
-    const promotion = await validateBatch({
+    const promotion = await validateHistoricalBatch({
       manifestPath: promotedManifestPath,
       stagedRecordsPath,
       semanticAuditPath,
       inventoryPath: A2_INVENTORY_PATH,
       canonicalDirectory: A2_BASE_CANONICAL_DIRECTORY,
+      allowReplay: true,
       productionStateSources: {
         ...promotionProduction.sources,
       },
@@ -931,12 +933,13 @@ test('M5-10A Wave A2 keeps unverified proposals out of completed claims', async 
     assert.notEqual(tamperedStaging, reviewedStagingBytes.toString('utf8'));
     await writeFile(tamperedStagedRecordsPath, tamperedStaging, 'utf8');
     await assert.rejects(
-      validateBatch({
+      validateHistoricalBatch({
         manifestPath: promotedManifestPath,
         stagedRecordsPath: tamperedStagedRecordsPath,
         semanticAuditPath,
         inventoryPath: A2_INVENTORY_PATH,
         canonicalDirectory: A2_BASE_CANONICAL_DIRECTORY,
+        allowReplay: true,
         productionStateSources: {
           ...promotionProduction.sources,
         },
