@@ -188,18 +188,21 @@ function topicEvidenceForGloss(gloss, analysis = {}) {
 }
 
 test('the shared audit covers the complete current canonical dictionary', async () => {
+  const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
+  const canonical = await readCanonicalRecords(path.resolve('data/canonical'));
   const result = await validateDatasetDirectory(path.resolve('data/canonical'), {
     checkPilotCompleteness: true,
   });
-  assert.equal(result.recordCount, 5042);
-
-  const { readCanonicalRecords } = await import('../scripts/validate/canonical-jsonl.mjs');
-  const canonical = await readCanonicalRecords(path.resolve('data/canonical'));
+  const expectedSenseCount = canonical.records.reduce(
+    (sum, recordInfo) => sum + recordInfo.record.senses.length,
+    0,
+  );
+  assert.equal(result.recordCount, canonical.records.length);
   const audit = auditCanonicalLexicalQuality(canonical.records, { throwOnError: false });
   assert.equal(audit.scope, 'complete-canonical');
   assert.equal(audit.blocking_finding_count, 0);
-  assert.equal(audit.record_count, 5042);
-  assert.equal(audit.sense_count, 5301);
+  assert.equal(audit.record_count, canonical.records.length);
+  assert.equal(audit.sense_count, expectedSenseCount);
 });
 
 test('the shared production boundary rejects bulk gloss projection without a batch allowlist', () => {

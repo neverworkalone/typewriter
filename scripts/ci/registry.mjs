@@ -166,6 +166,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/m5-11.test.mjs', 'Test M5-11 expansion'),
       testCheck('tests/m5-11-admission.test.mjs', 'Test M5-11 admission'),
       testCheck('tests/m5-12.test.mjs', 'Test M5-12 historical pre-admission boundary'),
+      npmCheck('Validate Issue #204 corpus pilot admission', 'batch:issue-204:check'),
       inProcessCheck(
         'Validate M5-15 pre-admission boundary',
         'm5-15-pre-admission',
@@ -231,6 +232,7 @@ export const CI_CATEGORIES = Object.freeze({
       testCheck('tests/scale-benchmark.test.mjs', 'Test deterministic product-shaped scale fixture'),
       testCheck('tests/surface-form-projection.test.mjs', 'Test M6-3 surface-form projection and search'),
       testCheck('tests/search-regressions.test.mjs', 'Test search regressions'),
+      testCheck('tests/issue-204-search.test.mjs', 'Test Issue #204 exact and generated search'),
       testCheck('tests/m6-2-inflection-contract.test.mjs', 'Test M6-2 inflection search contract'),
       npmCheck('Run product unit tests', 'test:unit'),
       npmCheck('Build product extension', 'build'),
