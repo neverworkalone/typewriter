@@ -64,9 +64,9 @@ valid in-scope lexical entry.
 | M1 — Editorial model | `contract update` | [`editorial-model.md`](editorial-model.md) describes `reference-only` as a relation target not counted as a search start; [`pilot-scope.md`](pilot-scope.md) defines starts as selected from a fixed pilot list. Those describe historical scope but cannot continue as eligibility policy. | Keep old ledgers as history; put the current invariant and supported scope in the Editorial Model. |
 | M2 — Schema, validator, SQLite | `implementation change` | [`canonical-record.schema.json`](../schema/canonical-record.schema.json) encodes `role`; `dataset-integrity.mjs` and `lexical-quality.mjs` bind `start` to `w…` IDs and `candidate_id`, while pure `reference-only` records follow a separate identity path. SQLite stores the role. This makes search eligibility and identity bookkeeping depend on role. | Revisit role/identity constraints in the canonical schema, shared canonical and prospective admission validators, inventory validator, and SQLite representation. Preserve lexical identity, duplicate, sense, and reference integrity checks. |
 | M3 — Runtime | `implementation change` | [`sqlite-query.js`](../src/runtime/sqlite-query.js) filters lemma, search-form, and generated-surface queries to `role = 'start'`; it separately probes for a reference-only hit. [`search-query.js`](../src/runtime/search-query.js), [`search-session.js`](../src/domain/search-session.js), and [`projection.js`](../src/domain/projection.js) convert that role into an unsupported result or remove the record. | Remove the role-based gate across SQLite query, response normalization, session materialization, and result projection. Preserve local/offline lookup and relation navigation. |
-| M4 — Search contract | `implementation change` | [`m4-handoff.md`](m4-handoff.md) explicitly protects reference-only blocking. The shared M4 fixture has `m3-reference-only-free-search-blocked` and expects `reference-only-not-searchable`. | Replace that expectation with direct search for a valid in-scope relation target; retain no-data, input normalization, collision, sense, and result-precedence boundaries. |
-| M5 — Selection and admission | `implementation change` | [`m5-target-inventory.md`](m5-target-inventory.md) frames candidate selection around writer-facing axes and requires selection reason codes for planned starts. The shared producer intake requires authored `writer_use`, `writer_gloss`, and an axis. `lexical-selection.mjs` then applies authored semantic eligibility and bounded capacity; its score/rank orders qualified candidates rather than substituting for review. These are candidate-planning/review boundaries where perceived usefulness can leak into whether a normal word is admitted. | Keep capacity, audit, timing, provenance, and relation-quality gates. Change shared candidate/admission criteria so commonness, generality, low standalone usefulness, texture, or relation scarcity cannot reject an otherwise valid in-scope lexical unit. Do not alter historical dispositions in this task. |
-| M6 — Quality gates | `implementation change` | M6 already reports relation correctness, relation gaps, search reachability, ranking, and writer-task usefulness separately. However, the reachability population is defined as start lemmas/forms, and its gate requires zero reference-only leaks. | Make lexical coverage/reachability cover every valid in-scope lexical entry independently of role; keep relation quality/gaps and writer outcomes as separate dimensions. Reword the reference-only leak check so it cannot block valid entries. |
+| M4 — Search contract | `implementation change` | [`m4-handoff.md`](m4-handoff.md) explicitly protects reference-only blocking. The shared M4 fixture has `m3-reference-only-free-search-blocked` and expects `reference-only-not-searchable`. In addition, [`DictionaryResult.vue`](../src/components/DictionaryResult.vue) shows the relation-empty disclosure only for `role === 'start'`; the Web surface uses the same `DictionaryPanel`. | Replace the block expectation with direct search for a valid in-scope relation target. Make the relation-empty disclosure depend on relation state, not historical role, and preserve no-data, input normalization, collision, sense, and result-precedence boundaries. |
+| M5 — Selection and admission | `implementation change` | [`m5-target-inventory.md`](m5-target-inventory.md) frames candidate selection around writer-facing axes and requires selection reason codes for planned starts. The shared producer intake requires authored `writer_use`, `writer_gloss`, and an axis. The actual shared eligibility boundary is [`authored-semantic-decision-source.mjs`](../scripts/batch/authored-semantic-decision-source.mjs): it binds `gloss_judgment` to `included`/`corrected` (`fit`), `held` (`needs-context`), or `rejected` (`reject`), then passes `fit` to the selector. [`lexical-selection.mjs`](../scripts/batch/lexical-selection.mjs) owns bounded capacity and ordering among eligible rows. | Define `fit` and hold/reject evidence in terms of lexical and structural validity, not axis, generality, standalone usefulness, texture, or relation availability. Keep capacity, audit, timing, provenance, and relation-quality gates separate. Do not alter historical dispositions in this task. |
+| M6 — Quality gates | `implementation change` | M6 already reports relation correctness, relation gaps, search reachability, ranking, and writer-task usefulness separately. However, reachability covers start lemmas/forms and requires zero reference-only leaks. The [`m6-2-inflection-search-contract.md`](m6-2-inflection-search-contract.md) also limits generated surface forms and exact/generated collision candidates to `role: start`; [`surface-form-projection.mjs`](../scripts/inflection/surface-form-projection.mjs) rejects non-start exception/review targets and excludes those records from the supported surface-form and exact-collision projections. | Measure lexical reachability independently of role while preserving relation and writer-outcome dimensions. Extend only the existing bounded M6-2 surface-form classes to valid in-scope predicates regardless of historical role; review exact/generated collisions over the same supported lexical population. Keep the morphology whitelist and its sense-bound evidence. |
 | M7 — Scale and release hardening | `implementation change` | The scale benchmark documents a dedicated indexed reference-only probe as a prior 500K query blocker fix. The exact-query predicates and the synthetic role mix therefore include the old eligibility rule. | Recheck the affected lookup query plan and latency after Task B changes the query path. Re-run scale/package evidence only if the runtime or index representation changes materially; leave unrelated synthetic-scale and release gates intact. |
 | M8 — Release/product language | `no impact` | The M8 handoff records exact release-candidate counts, package hashes, measured readiness, and the existing redistribution hold. It does not establish a rule that only vivid or individually useful words may be admitted. The role counts are historical candidate-snapshot metadata. | Preserve package, provenance, performance, and publication gates. Future product copy or counts must not describe the role split as lexical eligibility. |
 
@@ -94,19 +94,43 @@ database query, and domain projection layers. The identified surfaces are:
    [`m4-handoff.md`](m4-handoff.md),
    [`m4-baseline.json`](../tests/fixtures/search-regressions/m4-baseline.json),
    [`search-regressions.mjs`](../scripts/validate/search-regressions.mjs), and
-   [`search-regressions.test.mjs`](../tests/search-regressions.test.mjs). Replace
-   the reference-only block regression with generalized role-independent
-   reachability coverage. Preserve exact lemma/search-form/generated-form
+   [`search-regressions.test.mjs`](../tests/search-regressions.test.mjs).
+   Include [`DictionaryResult.vue`](../src/components/DictionaryResult.vue),
+   which is consumed by the Extension and the shared [`DictionaryPanel.vue`](../src/components/DictionaryPanel.vue)
+   used in [`web/src/App.vue`](../web/src/App.vue), plus
+   [`product-shell.test.js`](../tests/product-shell.test.js). Replace the
+   reference-only block regression with generalized role-independent
+   reachability coverage. Make zero-relation disclosure role-independent in
+   both product surfaces. Preserve exact lemma/search-form/generated-form
    precedence, deterministic ordering, collision handling, and relation-target
    navigation.
 4. **Future batch intake:**
    [`lexical-production.mjs`](../scripts/batch/lexical-production.mjs),
+   [`authored-semantic-decision-source.mjs`](../scripts/batch/authored-semantic-decision-source.mjs),
    [`lexical-selection.mjs`](../scripts/batch/lexical-selection.mjs),
+   [`semantic-audit-decision-source.test.mjs`](../tests/semantic-audit-decision-source.test.mjs),
+   [`lexical-selection.test.mjs`](../tests/lexical-selection.test.mjs),
    [`m5-target-inventory.md`](m5-target-inventory.md), and
    [`m5-expansion-gate.md`](m5-expansion-gate.md). Keep source binding and
-   bounded capacity separate from lexical eligibility. A zero-relation record
-   must pass admission when its lexical identity and structure are valid.
-5. **Coverage and scale evidence:**
+   bounded capacity separate from lexical eligibility. Define the shared
+   `gloss_judgment` gate so a common/general candidate with no relations remains
+   eligible when its lexical identity and structure are valid. Capacity may
+   defer an eligible row without changing its lexical disposition.
+5. **Bounded generated-surface forms:**
+   [`surface-form-projection.mjs`](../scripts/inflection/surface-form-projection.mjs),
+   [`surface-form-projection.mjs` validator](../scripts/validate/surface-form-projection.mjs),
+   [`m6-2-inflection-search-contract.md`](m6-2-inflection-search-contract.md),
+   [`m6-2-inflection-exceptions.json`](../data/validation/m6-2-inflection-exceptions.json),
+   [`m6-3-surface-form-review.json`](../data/validation/m6-3-surface-form-review.json),
+   [`m6-2-inflection-contract.test.mjs`](../tests/m6-2-inflection-contract.test.mjs),
+   [`surface-form-projection.test.mjs`](../tests/surface-form-projection.test.mjs),
+   and [`m6-2-inflection-contract.json`](../tests/fixtures/search-regressions/m6-2-inflection-contract.json).
+   Include every valid in-scope predicate in the existing supported-form and
+   exact/generated collision projection regardless of historical role. Remove
+   role-only rejection of exception/review targets. Keep the existing POS,
+   citation-form, single-token, rule-class, exception, review, and collision
+   evidence constraints; this work does not authorize broader morphology.
+6. **Coverage and scale evidence:**
    [`m6-1-quality-baseline.mjs`](../scripts/validate/m6-1-quality-baseline.mjs),
    [`m6-1-quality-baseline.md`](m6-1-quality-baseline.md),
    [`m6-4-quality-audit.mjs`](../scripts/validate/m6-4-quality-audit.mjs),
@@ -116,11 +140,13 @@ database query, and domain projection layers. The identified surfaces are:
 
 The smallest system regression set for Task B must demonstrate that a valid
 ordinary entry—including one with no relations—can pass admission and direct
-search regardless of role; that invalid identity, true duplicates, unresolved
-sense boundaries, and collisions still fail or hold; and that existing match
-precedence and offline Extension/Web runtime behavior remain intact. These are
-general rules, not word-specific exceptions for `사람`, `없다`, or the Issue #204
-seed list.
+search regardless of role; that a valid former reference-only predicate
+resolves through an already supported generated form; and that invalid
+identity, true duplicates, unresolved sense boundaries, and collisions still
+fail or hold. Exact/search-form/generated-form precedence and deterministic
+collision review must remain intact, and a zero-relation result must show the
+same disclosure in Extension and Web. These are general rules, not word-specific
+exceptions for `사람`, `없다`, or the Issue #204 seed list.
 
 ## Retrospective disposition
 
