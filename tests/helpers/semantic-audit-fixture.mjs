@@ -22,6 +22,7 @@ import {
 import { inspectSenseBoundaryPairs } from '../../scripts/validate/sense-boundary.mjs';
 import {
   createLexicalProductionRun,
+  produceLexicalProductionState,
   productionBytesSha256,
   productionValueSha256,
   productionSourceBytes,
@@ -445,6 +446,22 @@ export function makeProductionState({
     payloads,
     lexicalAudit,
   };
+}
+
+export function makeHistoricalReplayState(production) {
+  // Preserve the fixture's stage evidence while marking it as historical, so
+  // current live admission rules do not reinterpret frozen batch candidates.
+  const stages = Object.fromEntries(production.state.stages.map((stage) => [stage.id, {
+    status: 'complete',
+    source_path: stage.source_path,
+    source_bytes: production.sources[stage.id],
+    ...(stage.id === 'selection' ? { policy: stage.policy } : {}),
+    ...(stage.id === 'admission' ? { authorization_ref: stage.authorization_ref } : {}),
+  }]));
+  return produceLexicalProductionState({
+    batchId: production.state.batch_id,
+    stages,
+  });
 }
 
 export function makeSemanticReview(

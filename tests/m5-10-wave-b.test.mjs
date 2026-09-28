@@ -32,6 +32,7 @@ import {
 import { evaluateExpansionGate } from '../scripts/batch/validate-m5-8-process.mjs';
 import { DEFAULT_CANONICAL_DIRECTORY, readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
+  makeHistoricalReplayState,
   makeProductionState,
   writeSemanticAuditFixture,
 } from './helpers/semantic-audit-fixture.mjs';
@@ -59,7 +60,7 @@ async function makeStagingDirectory() {
   const manifestPath = path.join(directory, 'manifest.json');
   const manifest = await readJson(DEFAULT_OUTPUT_PATH);
   manifest.review.semantic_audit_sha256 = semanticAudit.sha256;
-  const production = makeProductionState({
+  const production = makeHistoricalReplayState(makeProductionState({
     batchId: manifest.batch_id,
     candidateRecords: staged.records,
     reviewedRecords: staged.records,
@@ -67,7 +68,8 @@ async function makeStagingDirectory() {
     prospectiveRecords: [...baseCanonical.records, ...staged.records],
     semanticAudit: semanticAudit.artifact,
     artifactId: 'm5-10-wave-b-test-production',
-  });
+  }));
+  assert.equal(production.state.producer_mode, 'replay');
   manifest.production_state = production.state;
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   await writeFile(manifestPath, manifestBytes);

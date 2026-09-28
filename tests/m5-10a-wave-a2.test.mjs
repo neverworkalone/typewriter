@@ -39,20 +39,17 @@ import {
 import {
   validateExpansionStage,
 } from '../scripts/batch/validate-m5-8-process.mjs';
-import {
-  validateBatch,
-  validateHistoricalBatch,
-} from '../scripts/batch/validate-batch.mjs';
+import { validateHistoricalBatch } from '../scripts/batch/validate-batch.mjs';
 import {
   summarizeRelationDiff,
   validateRelationDiff,
 } from '../scripts/batch/relation-diff.mjs';
 import { readCanonicalRecords } from '../scripts/validate/canonical-jsonl.mjs';
 import {
+  makeHistoricalReplayState,
   makeProductionState,
   writeSemanticAuditFixture,
 } from './helpers/semantic-audit-fixture.mjs';
-import { produceLexicalProductionState } from '../scripts/batch/lexical-production-state.mjs';
 
 const BATCH_DIRECTORY = path.resolve('data/batches');
 const CURRENT_CANONICAL_DIRECTORY = path.resolve('data/canonical');
@@ -70,23 +67,6 @@ const A2_BOUNDARY_IDS = [
 
 async function readBatchJson(fileName) {
   return JSON.parse(await readFile(path.join(BATCH_DIRECTORY, fileName), 'utf8'));
-}
-
-function makeHistoricalReplayState(production) {
-  // These M5-10A fixtures replay frozen reviewed data. Keep them on the
-  // historical validation path so current M6 live admission rules do not
-  // reinterpret the old candidate universe.
-  const stages = Object.fromEntries(production.state.stages.map((stage) => [stage.id, {
-    status: 'complete',
-    source_path: stage.source_path,
-    source_bytes: production.sources[stage.id],
-    ...(stage.id === 'selection' ? { policy: stage.policy } : {}),
-    ...(stage.id === 'admission' ? { authorization_ref: stage.authorization_ref } : {}),
-  }]));
-  return produceLexicalProductionState({
-    batchId: production.state.batch_id,
-    stages,
-  });
 }
 
 function createSelfAuthoredA2ReferenceRecords(editorial, canonicalRecords) {
