@@ -98,6 +98,15 @@ test('shared lexical producer rejects canonical and seed term collisions', () =>
     sourceBytes,
     firstInventoryNumber: 3101,
     firstCanonicalNumber: 3181,
-    baseSeedTargets: [{ inventory_id: 'm5-0001', lemma: '기쁨', search_forms: [] }],
+    baseSeedTargets: [{ inventory_id: 'm5-0001', status: 'candidate', lemma: '기쁨', search_forms: [] }],
   }), /collides with seed:m5-0001/u);
+
+  assert.doesNotThrow(() => materializeLexicalUnitCandidates({
+    batchId: 'test-batch',
+    source,
+    sourceBytes,
+    firstInventoryNumber: 3101,
+    firstCanonicalNumber: 3181,
+    baseSeedTargets: [{ inventory_id: 'm5-0001', status: 'rejected', lemma: '기쁨', search_forms: [] }],
+  }), 'a rejected historical target is not an active search owner during a source-bound recovery');
 });

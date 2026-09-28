@@ -34232,6 +34232,25 @@
       "sense_profile": "boundary",
       "flags": [],
       "decision_note": "Issue #204 hold: 알리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5406",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "내다",
+      "search_forms": [
+        "내다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #211 hold: The single submitted gloss collapses distinct common senses of 내다. Keep the candidate unresolved until its sense boundaries are authored separately."
     }
   ]
 }
