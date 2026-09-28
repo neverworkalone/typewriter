@@ -105,7 +105,6 @@ async function runM512APreflightOnce({
   const outputDirectory = path.join(temporaryDirectory, 'dist');
   const sharedProductDatabasePath = path.join(temporaryDirectory, 'dictionary-shared.sqlite');
   const secondDatabasePath = path.join(temporaryDirectory, 'dictionary-second.sqlite');
-  const zipPath = path.join(temporaryDirectory, `${path.basename(temporaryDirectory)}_1.0.zip`);
   let firstDatabase;
   let secondDatabase;
   try {
@@ -133,6 +132,11 @@ async function runM512APreflightOnce({
       projectRoot: REPOSITORY_DIRECTORY,
       packageDirectory: outputDirectory,
     });
+    const packagedManifest = JSON.parse(await readFile(path.join(outputDirectory, 'manifest.json'), 'utf8'));
+    const zipPath = path.join(
+      temporaryDirectory,
+      `${path.basename(temporaryDirectory)}_${packagedManifest.version}.zip`,
+    );
     await execFileAsync('zip', ['-qr', zipPath, '.'], { cwd: outputDirectory });
 
     const packageResult = validatePackage({
