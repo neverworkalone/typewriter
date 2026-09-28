@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
@@ -153,6 +153,13 @@ async function runM512APreflightOnce({
   let secondDatabase;
   try {
     await mkdir(outputDirectory, { recursive: true });
+    await buildDictionary({
+      inputDirectory: prospectiveCanonicalDirectory,
+      outputPath: sharedProductDatabasePath,
+      checkPilotCompleteness: true,
+      repositoryDirectory: REPOSITORY_DIRECTORY,
+      allowDirty: true,
+    });
     await execFileAsync(VITE_PATH, ['build', '--config', path.join(REPOSITORY_DIRECTORY, 'vite.config.js')], {
       cwd: REPOSITORY_DIRECTORY,
       env: {
@@ -161,12 +168,12 @@ async function runM512APreflightOnce({
         TYPEWRITER_BUILD_MINIFY: 'false',
         TYPEWRITER_CANONICAL_DIRECTORY: prospectiveCanonicalDirectory,
         TYPEWRITER_BUILD_OUTPUT_DIRECTORY: outputDirectory,
+        TYPEWRITER_SHARED_DICTIONARY_PATH: sharedProductDatabasePath,
       },
       maxBuffer: 20 * 1024 * 1024,
     });
 
     const productDatabasePath = path.join(outputDirectory, 'dictionary.sqlite');
-    await copyFile(productDatabasePath, sharedProductDatabasePath);
     const initialProductDatabase = await captureProspectiveDatabase(
       productDatabasePath,
       expectedSummary,
