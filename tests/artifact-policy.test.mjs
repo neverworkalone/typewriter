@@ -175,6 +175,20 @@ test('artifact policy classifies projections before they can become tracked data
   assert.deepEqual(calibrationEvidence.generated, []);
   assert.deepEqual(calibrationEvidence.unclassified, []);
 
+  const issue210RecoveryInventory = classifyTrackedArtifacts(
+    ['data/inventory/issue-210-recovery-inventory.json'],
+    options,
+  );
+  assert.deepEqual(issue210RecoveryInventory.generated, []);
+  assert.deepEqual(issue210RecoveryInventory.unclassified, []);
+
+  const futureInventory = classifyTrackedArtifacts(
+    ['data/inventory/future-recovery-inventory.json'],
+    options,
+  );
+  assert.deepEqual(futureInventory.generated, []);
+  assert.deepEqual(futureInventory.unclassified, ['data/inventory/future-recovery-inventory.json']);
+
   const unclassified = classifyTrackedArtifacts(
     ['data/validation/future-derived-envelope.json'],
     options,
