@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { chmod, copyFile, cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import {
   buildDictionary,
 } from '../build/dictionary.mjs';
+import { prepareProductPackageDirectory } from '../build/prepare-product-package.mjs';
 import {
   getMetadata,
   readLogicalDatabaseSnapshot,
@@ -41,16 +42,6 @@ function fail(message, code = 'M5_12A_PREFLIGHT_ERROR') {
 
 function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
-}
-
-async function chmodFiles(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  await Promise.all(entries.map(async (entry) => {
-    const filePath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return chmodFiles(filePath);
-    if (entry.isFile()) await chmod(filePath, 0o644);
-    return undefined;
-  }));
 }
 
 function closeDatabase(database) {
@@ -138,14 +129,10 @@ async function runM512APreflightOnce({
       outputDirectory,
       databasePath: sharedProductDatabasePath,
     });
-    for (const fileName of ['favicon.ico', 'icon.png']) {
-      await rm(path.join(outputDirectory, fileName), { force: true });
-    }
-    await Promise.all([
-      cp(path.join(REPOSITORY_DIRECTORY, 'Apache-2.0.txt'), path.join(outputDirectory, 'Apache-2.0.txt')),
-      cp(path.join(REPOSITORY_DIRECTORY, 'THIRD-PARTY-NOTICES.txt'), path.join(outputDirectory, 'THIRD-PARTY-NOTICES.txt')),
-    ]);
-    await chmodFiles(outputDirectory);
+    await prepareProductPackageDirectory({
+      projectRoot: REPOSITORY_DIRECTORY,
+      packageDirectory: outputDirectory,
+    });
     await execFileAsync('zip', ['-qr', zipPath, '.'], { cwd: outputDirectory });
 
     const packageResult = validatePackage({

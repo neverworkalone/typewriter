@@ -1678,6 +1678,10 @@ export async function buildM512A({
     prospectiveRecords,
     semanticAudit,
     stageEvidence: productionStageEvidence,
+    // M5-12A is a frozen batch. Use the historical boundary so later live-only
+    // surface checks do not rewrite its original admission verdict.
+    allowReplay: true,
+    historicalReplay: true,
     catalogCount: M5_12A_SELECTION_COUNT,
     expectedSelectedCount: M5_12A_IMPORT_COUNT,
     checkPilotCompleteness: true,

@@ -28,18 +28,7 @@ fi
 cd "$PROJECT_ROOT"
 TYPEWRITER_BUILD_MINIFY="$typewriterMinify" npm run build
 
-# These public files are useful during development but are not product package
-# entrypoints. The logo is retained because the Settings page references it.
-rm -f "$DIST_DIR/favicon.ico" "$DIST_DIR/icon.png"
-find "$DIST_DIR" -name '.DS_Store' -type f -delete
-# Remove repository-only policy documents left by earlier package builds.
-rm -f "$DIST_DIR/LICENSE.md" "$DIST_DIR/DATA-LICENSE.md" \
-  "$DIST_DIR/BRAND.md" "$DIST_DIR/PRIVACY.md"
-
-cp "$PROJECT_ROOT/Apache-2.0.txt" "$DIST_DIR/Apache-2.0.txt"
-cp "$PROJECT_ROOT/THIRD-PARTY-NOTICES.txt" "$DIST_DIR/THIRD-PARTY-NOTICES.txt"
-node "$PROJECT_ROOT/scripts/build/write-release-info.mjs" "$DIST_DIR"
-find "$DIST_DIR" -type f -exec chmod 0644 {} +
+node "$PROJECT_ROOT/scripts/build/prepare-product-package.mjs" "$DIST_DIR"
 
 ZIP_NAME="$(python3 "$PROJECT_ROOT/pack.py")"
 ZIP_DIR="${TYPEWRITER_ZIP_DIR:-${HOME:-$PROJECT_ROOT}/Downloads}"
