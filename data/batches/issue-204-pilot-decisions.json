@@ -1,0 +1,3117 @@
+{
+  "schema_version": "1",
+  "issue": 204,
+  "parent_issue": 201,
+  "batch_id": "issue-204-corpus-pilot-20260928",
+  "authoring_mode": "agent-authored-decision",
+  "reviewer": "codex-agent",
+  "human_reviewed": false,
+  "publication_state": "local_reference_only_pending_owner_publication_confirmation",
+  "source_artifacts": {
+    "candidate_selection_path": "data/reference/pilots/issue-201/candidate-selection.json",
+    "candidate_selection_sha256": "bf5f4fc2185f572a3950b81a794d26b65084cb1b8d2b3b182f9f558a36a5c6fe",
+    "pilot_inventory_path": "data/reference/pilots/issue-201/pilot-inventory.json",
+    "pilot_inventory_sha256": "b318d7caa1edb05179a6e805864692ece922f434ccf29b4db73f4d89e9928be9",
+    "candidate_selection_created_at_utc": "2026-09-28T01:21:12.914175+00:00",
+    "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39",
+    "corpus_index_input_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
+    "corpus_index_logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+    "corpus_index_paragraph_count": 4988970,
+    "sample_paragraph_count": 251086,
+    "sample_fraction": 0.050328,
+    "canonical_revision_before": "8dad0cd312a7fb8c2073c3aaf8cd2c96e70875a035877e83e9292c6c74d359b9",
+    "candidate_count": 100,
+    "source_text_committed": false
+  },
+  "decision_policy": "editorial-meaning-and-writer-usefulness; corpus counts establish local coverage only; analyzer output proposes lemma/POS only",
+  "decision_counts": {
+    "admit": 10,
+    "hold": 39,
+    "reject": 25,
+    "already-covered": 0,
+    "invalid-lemma": 0,
+    "wrong-pos": 0,
+    "needs-sense-split": 25,
+    "search-surface-collision": 1
+  },
+  "decisions": [
+    {
+      "candidate_ordinal": 1,
+      "inventory_id": "m5-5301",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 61563,
+        "distinct_documents_in_sample": 3400,
+        "distinct_sources_in_sample": 3400,
+        "source_concentration_ratio_in_sample": 0.0127,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "하다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 13,
+        "analyzer_pos_interpretation_count": 3
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "하다: analyzer_pos_interpretation_count=3; ambiguous_observed_surface_count=13 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 2,
+      "inventory_id": "m5-5302",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 35900,
+        "distinct_documents_in_sample": 3392,
+        "distinct_sources_in_sample": 3392,
+        "source_concentration_ratio_in_sample": 0.0052,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "되다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "되다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 3,
+      "inventory_id": "m5-5303",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 31622,
+        "distinct_documents_in_sample": 3384,
+        "distinct_sources_in_sample": 3384,
+        "source_concentration_ratio_in_sample": 0.006,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "있다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 2
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "있다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 4,
+      "inventory_id": "m5-5304",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 37505,
+        "distinct_documents_in_sample": 3382,
+        "distinct_sources_in_sample": 3382,
+        "source_concentration_ratio_in_sample": 0.0055,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "없다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "없다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "writer_usefulness_rejection_class": "general-property",
+        "writer_usefulness_rejection_class_label": "일반 상태·정도어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 5,
+      "inventory_id": "m5-5305",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 23707,
+        "distinct_documents_in_sample": 3332,
+        "distinct_sources_in_sample": 3332,
+        "source_concentration_ratio_in_sample": 0.0111,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "보다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "보다: 보는 행위, 비교, 시도 등 서로 다른 용법을 한 감각으로 묶으면 대체 검색어로 오해될 수 있어 용법별 분리가 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 6,
+      "inventory_id": "m5-5306",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 28769,
+        "distinct_documents_in_sample": 3319,
+        "distinct_sources_in_sample": 3319,
+        "source_concentration_ratio_in_sample": 0.0063,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "사람",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "사람: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "writer_usefulness_rejection_class": "broad-human-category",
+        "writer_usefulness_rejection_class_label": "넓은 인물 범주어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 7,
+      "inventory_id": "m5-5307",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 20543,
+        "distinct_documents_in_sample": 3303,
+        "distinct_sources_in_sample": 3303,
+        "source_concentration_ratio_in_sample": 0.0088,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "같다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "같다: 동일성 판단과 추정·비유 용법이 갈리므로 한 sense로 넣기 전에 의미 범위를 나눠야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 8,
+      "inventory_id": "m5-5308",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 18045,
+        "distinct_documents_in_sample": 3253,
+        "distinct_sources_in_sample": 3253,
+        "source_concentration_ratio_in_sample": 0.0076,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "알다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "알다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 9,
+      "inventory_id": "m5-5309",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 18811,
+        "distinct_documents_in_sample": 3182,
+        "distinct_sources_in_sample": 3182,
+        "source_concentration_ratio_in_sample": 0.0146,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "가다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "가다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 10,
+      "inventory_id": "m5-5310",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 12531,
+        "distinct_documents_in_sample": 3083,
+        "distinct_sources_in_sample": 3083,
+        "source_concentration_ratio_in_sample": 0.0098,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "보이다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "보이다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 11,
+      "inventory_id": "m5-5311",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 12309,
+        "distinct_documents_in_sample": 3070,
+        "distinct_sources_in_sample": 3070,
+        "source_concentration_ratio_in_sample": 0.006,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "좋다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "좋다: 긍정 평가, 적합성, 감각적 상태가 문맥에 따라 달라질 수 있어 작가용 sense 경계가 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 12,
+      "inventory_id": "m5-5312",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 14588,
+        "distinct_documents_in_sample": 3051,
+        "distinct_sources_in_sample": 3051,
+        "source_concentration_ratio_in_sample": 0.0193,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "오다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "오다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 13,
+      "inventory_id": "m5-5313",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 12180,
+        "distinct_documents_in_sample": 3040,
+        "distinct_sources_in_sample": 3040,
+        "source_concentration_ratio_in_sample": 0.0113,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "모르다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "모르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 14,
+      "inventory_id": "m5-5314",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 9187,
+        "distinct_documents_in_sample": 2952,
+        "distinct_sources_in_sample": 2952,
+        "source_concentration_ratio_in_sample": 0.0071,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "크다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 2
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "크다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 15,
+      "inventory_id": "m5-5315",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 8933,
+        "distinct_documents_in_sample": 2898,
+        "distinct_sources_in_sample": 2898,
+        "source_concentration_ratio_in_sample": 0.0038,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "많다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "많다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "writer_usefulness_rejection_class": "general-property",
+        "writer_usefulness_rejection_class_label": "일반 상태·정도어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 16,
+      "inventory_id": "m5-5316",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 8534,
+        "distinct_documents_in_sample": 2873,
+        "distinct_sources_in_sample": 2873,
+        "source_concentration_ratio_in_sample": 0.0074,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "시작",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "과정의 출발점을 가리키며 장면의 전환과 시작 시점을 쓰는 문장에서 검색어로 쓸 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [
+          "w5349"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 17,
+      "inventory_id": "m5-5317",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 10115,
+        "distinct_documents_in_sample": 2872,
+        "distinct_sources_in_sample": 2872,
+        "source_concentration_ratio_in_sample": 0.009,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "위하다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "위하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 18,
+      "inventory_id": "m5-5318",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 12688,
+        "distinct_documents_in_sample": 2853,
+        "distinct_sources_in_sample": 2853,
+        "source_concentration_ratio_in_sample": 0.0076,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "자신",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "자신: 재귀 대명사적 용법과 자신감·확신의 뜻이 다르므로 품사와 sense 경계를 확인해야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 19,
+      "inventory_id": "m5-5319",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 10680,
+        "distinct_documents_in_sample": 2852,
+        "distinct_sources_in_sample": 2852,
+        "source_concentration_ratio_in_sample": 0.0074,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "대하다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "대하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 20,
+      "inventory_id": "m5-5320",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 8967,
+        "distinct_documents_in_sample": 2838,
+        "distinct_sources_in_sample": 2838,
+        "source_concentration_ratio_in_sample": 0.0219,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "나오다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "나오다: 안에서 밖으로 이동하는 뜻과 결과물·발화가 생기는 뜻이 달라 분리가 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 21,
+      "inventory_id": "m5-5321",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 9057,
+        "distinct_documents_in_sample": 2817,
+        "distinct_sources_in_sample": 2817,
+        "source_concentration_ratio_in_sample": 0.0031,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "시간",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "시간: 지속 시간, 시각, 여유 시간은 문장 안에서 서로 바꿔 쓰기 어려워 sense를 나눠야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 22,
+      "inventory_id": "m5-5322",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 8369,
+        "distinct_documents_in_sample": 2799,
+        "distinct_sources_in_sample": 2799,
+        "source_concentration_ratio_in_sample": 0.0043,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "살다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "살다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 23,
+      "inventory_id": "m5-5323",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 7443,
+        "distinct_documents_in_sample": 2695,
+        "distinct_sources_in_sample": 2695,
+        "source_concentration_ratio_in_sample": 0.0165,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "나다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "나다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 24,
+      "inventory_id": "m5-5324",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 7051,
+        "distinct_documents_in_sample": 2685,
+        "distinct_sources_in_sample": 2685,
+        "source_concentration_ratio_in_sample": 0.0039,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "만들다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "만들다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "writer_usefulness_rejection_class": "generic-action",
+        "writer_usefulness_rejection_class_label": "범용 동작어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 25,
+      "inventory_id": "m5-5325",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 8742,
+        "distinct_documents_in_sample": 2674,
+        "distinct_sources_in_sample": 2674,
+        "source_concentration_ratio_in_sample": 0.013,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "그러다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "그러다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 26,
+      "inventory_id": "m5-5326",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 6305,
+        "distinct_documents_in_sample": 2620,
+        "distinct_sources_in_sample": 2620,
+        "source_concentration_ratio_in_sample": 0.011,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "주다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "주다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 27,
+      "inventory_id": "m5-5327",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 7569,
+        "distinct_documents_in_sample": 2578,
+        "distinct_sources_in_sample": 2578,
+        "source_concentration_ratio_in_sample": 0.0157,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "이야기",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "서사로 구성된 이야기와 대화 중 오가는 내용을 분리하면 작가가 장면과 서술 방식을 찾을 때 각각 쓸 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [
+          "w5350"
+        ],
+        "admitted_sense_count": 2
+      }
+    },
+    {
+      "candidate_ordinal": 28,
+      "inventory_id": "m5-5328",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 6705,
+        "distinct_documents_in_sample": 2560,
+        "distinct_sources_in_sample": 2560,
+        "source_concentration_ratio_in_sample": 0.0137,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "느끼다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "느끼다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 29,
+      "inventory_id": "m5-5329",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 6809,
+        "distinct_documents_in_sample": 2547,
+        "distinct_sources_in_sample": 2547,
+        "source_concentration_ratio_in_sample": 0.0195,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "먹다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "먹다: 음식 섭취 외에 충격·마음·나이 등 확장 용법이 넓어 단일 정의로는 검색 의도를 설명하기 어렵다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 30,
+      "inventory_id": "m5-5330",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5993,
+        "distinct_documents_in_sample": 2523,
+        "distinct_sources_in_sample": 2523,
+        "source_concentration_ratio_in_sample": 0.0086,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "가지다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "가지다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 31,
+      "inventory_id": "m5-5331",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5741,
+        "distinct_documents_in_sample": 2487,
+        "distinct_sources_in_sample": 2487,
+        "source_concentration_ratio_in_sample": 0.0046,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "이상",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "이상: 기준보다 높은 상태, 비정상, 관념적 이상향 등 뜻이 달라 하나의 작가용 sense로 확정하기 어렵다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 32,
+      "inventory_id": "m5-5332",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5722,
+        "distinct_documents_in_sample": 2476,
+        "distinct_sources_in_sample": 2476,
+        "source_concentration_ratio_in_sample": 0.0096,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "따르다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "따르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 33,
+      "inventory_id": "m5-5333",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 6014,
+        "distinct_documents_in_sample": 2430,
+        "distinct_sources_in_sample": 2430,
+        "source_concentration_ratio_in_sample": 0.0054,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "정도",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "정도: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 34,
+      "inventory_id": "m5-5334",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5663,
+        "distinct_documents_in_sample": 2430,
+        "distinct_sources_in_sample": 2430,
+        "source_concentration_ratio_in_sample": 0.0045,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "동안",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "동안: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 35,
+      "inventory_id": "m5-5335",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5209,
+        "distinct_documents_in_sample": 2403,
+        "distinct_sources_in_sample": 2403,
+        "source_concentration_ratio_in_sample": 0.0098,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "내다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "내다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "writer_usefulness_rejection_class": "generic-action",
+        "writer_usefulness_rejection_class_label": "범용 동작어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 36,
+      "inventory_id": "m5-5336",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5855,
+        "distinct_documents_in_sample": 2399,
+        "distinct_sources_in_sample": 2399,
+        "source_concentration_ratio_in_sample": 0.0039,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "모습",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "눈에 보이는 외형과 상태·행동이 나타나는 양상을 나누어 묘사 대상과 드러나는 방식을 구별한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "S",
+        "canonical_record_ids": [
+          "w5351"
+        ],
+        "admitted_sense_count": 2
+      }
+    },
+    {
+      "candidate_ordinal": 37,
+      "inventory_id": "m5-5337",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5481,
+        "distinct_documents_in_sample": 2382,
+        "distinct_sources_in_sample": 2382,
+        "source_concentration_ratio_in_sample": 0.0047,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "세상",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "세상: 세계·사회·삶의 형편을 두루 가리켜 쓰임을 나눌 기준이 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 38,
+      "inventory_id": "m5-5338",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5441,
+        "distinct_documents_in_sample": 2364,
+        "distinct_sources_in_sample": 2364,
+        "source_concentration_ratio_in_sample": 0.0057,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "필요",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "필요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "writer_usefulness_rejection_class": "general-property",
+        "writer_usefulness_rejection_class_label": "일반 상태·정도어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 39,
+      "inventory_id": "m5-5339",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4843,
+        "distinct_documents_in_sample": 2362,
+        "distinct_sources_in_sample": 2362,
+        "source_concentration_ratio_in_sample": 0.0054,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "처음",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "처음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 40,
+      "inventory_id": "m5-5340",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5254,
+        "distinct_documents_in_sample": 2357,
+        "distinct_sources_in_sample": 2357,
+        "source_concentration_ratio_in_sample": 0.0057,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "보내다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "보내다: 대상의 이동과 시간을 지내는 용법이 달라 문장 대체 시 의미가 달라질 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 41,
+      "inventory_id": "m5-5341",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5150,
+        "distinct_documents_in_sample": 2342,
+        "distinct_sources_in_sample": 2342,
+        "source_concentration_ratio_in_sample": 0.0095,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "자리",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "자리: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 42,
+      "inventory_id": "m5-5342",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4897,
+        "distinct_documents_in_sample": 2322,
+        "distinct_sources_in_sample": 2322,
+        "source_concentration_ratio_in_sample": 0.0113,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "사다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 5,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "사다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 43,
+      "inventory_id": "m5-5343",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4717,
+        "distinct_documents_in_sample": 2322,
+        "distinct_sources_in_sample": 2322,
+        "source_concentration_ratio_in_sample": 0.0077,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "맞다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "맞다: 일치, 받아들임, 충돌·타격 등 용법의 방향이 달라 sense 분리가 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 44,
+      "inventory_id": "m5-5344",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5237,
+        "distinct_documents_in_sample": 2297,
+        "distinct_sources_in_sample": 2297,
+        "source_concentration_ratio_in_sample": 0.0048,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "다음",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "다음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 45,
+      "inventory_id": "m5-5345",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5522,
+        "distinct_documents_in_sample": 2289,
+        "distinct_sources_in_sample": 2289,
+        "source_concentration_ratio_in_sample": 0.0054,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "사실",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "사실: 객관적 사건·진술과 현실 상태를 가리키는 용법이 겹치므로 쓰임을 검토한 뒤 편입해야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 46,
+      "inventory_id": "m5-5346",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4733,
+        "distinct_documents_in_sample": 2287,
+        "distinct_sources_in_sample": 2287,
+        "source_concentration_ratio_in_sample": 0.005,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "지금",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "지금: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 47,
+      "inventory_id": "m5-5347",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5702,
+        "distinct_documents_in_sample": 2262,
+        "distinct_sources_in_sample": 2262,
+        "source_concentration_ratio_in_sample": 0.0235,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "서다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "서다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 48,
+      "inventory_id": "m5-5348",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5745,
+        "distinct_documents_in_sample": 2235,
+        "distinct_sources_in_sample": 2235,
+        "source_concentration_ratio_in_sample": 0.0139,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "죽다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "죽다: 생명 활동의 끝과 빛·기세 등이 사라지는 확장 용법을 나눠야 의미를 보존할 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 49,
+      "inventory_id": "m5-5349",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4694,
+        "distinct_documents_in_sample": 2234,
+        "distinct_sources_in_sample": 2234,
+        "source_concentration_ratio_in_sample": 0.0092,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "순간",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "짧은 시간의 한 지점을 가리켜 서술의 전환점이나 감각이 집중되는 때를 찾는 데 쓸 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "canonical_record_ids": [
+          "w5352"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 50,
+      "inventory_id": "m5-5350",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4703,
+        "distinct_documents_in_sample": 2208,
+        "distinct_sources_in_sample": 2208,
+        "source_concentration_ratio_in_sample": 0.0333,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "일어나다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "일어나다: 몸을 일으키는 행위와 사건의 발생을 분리해야 문장 대체가 정확하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 51,
+      "inventory_id": "m5-5351",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4947,
+        "distinct_documents_in_sample": 2201,
+        "distinct_sources_in_sample": 2201,
+        "source_concentration_ratio_in_sample": 0.0091,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "작다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "작다: 크기·정도·영향을 낮게 평가하는 용법이 달라 단일 sense로 범위를 확정하기 어렵다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 52,
+      "inventory_id": "m5-5352",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 5172,
+        "distinct_documents_in_sample": 2187,
+        "distinct_sources_in_sample": 2187,
+        "source_concentration_ratio_in_sample": 0.0063,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "친구",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "친구: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "writer_usefulness_rejection_class": "broad-human-category",
+        "writer_usefulness_rejection_class_label": "넓은 인물 범주어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 53,
+      "inventory_id": "m5-5353",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 6122,
+        "distinct_documents_in_sample": 2161,
+        "distinct_sources_in_sample": 2161,
+        "source_concentration_ratio_in_sample": 0.0281,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "사랑",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "애정의 방향을 담는 기본 정서어로 감정의 결을 조정하는 문장에서 유용하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "E",
+        "canonical_record_ids": [
+          "w5353"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 54,
+      "inventory_id": "m5-5354",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 7458,
+        "distinct_documents_in_sample": 2159,
+        "distinct_sources_in_sample": 2159,
+        "source_concentration_ratio_in_sample": 0.007,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "아이",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "아이: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 55,
+      "inventory_id": "m5-5355",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3936,
+        "distinct_documents_in_sample": 2135,
+        "distinct_sources_in_sample": 2135,
+        "source_concentration_ratio_in_sample": 0.0047,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "남다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "남다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 56,
+      "inventory_id": "m5-5356",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4378,
+        "distinct_documents_in_sample": 2053,
+        "distinct_sources_in_sample": 2053,
+        "source_concentration_ratio_in_sample": 0.0245,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "나가다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "나가다: 바깥으로 이동, 조직·경쟁에 참여, 비용·수량의 소모가 달라 용법별 경계가 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 57,
+      "inventory_id": "m5-5357",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4002,
+        "distinct_documents_in_sample": 2051,
+        "distinct_sources_in_sample": 2051,
+        "source_concentration_ratio_in_sample": 0.0311,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "들어오다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "들어오다: 공간 안으로 이동하는 뜻과 정보·사람이 도착하거나 유입되는 뜻을 분리해야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 58,
+      "inventory_id": "m5-5358",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3688,
+        "distinct_documents_in_sample": 2043,
+        "distinct_sources_in_sample": 2043,
+        "source_concentration_ratio_in_sample": 0.0032,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "다르다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "다르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 59,
+      "inventory_id": "m5-5359",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4262,
+        "distinct_documents_in_sample": 2027,
+        "distinct_sources_in_sample": 2027,
+        "source_concentration_ratio_in_sample": 0.0046,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "문제",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "문제: 풀어야 할 질문, 곤란한 상황, 논의 대상 등 뜻이 달라 sense 구분이 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 60,
+      "inventory_id": "m5-5360",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4039,
+        "distinct_documents_in_sample": 2019,
+        "distinct_sources_in_sample": 2019,
+        "source_concentration_ratio_in_sample": 0.0351,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "그때",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "그때: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 61,
+      "inventory_id": "m5-5361",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4153,
+        "distinct_documents_in_sample": 2010,
+        "distinct_sources_in_sample": 2010,
+        "source_concentration_ratio_in_sample": 0.007,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "향하다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "방향을 정하거나 대상에게 향하는 움직임을 나타내어 행위의 방향을 구체화한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [
+          "w5354"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 62,
+      "inventory_id": "m5-5362",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3552,
+        "distinct_documents_in_sample": 1994,
+        "distinct_sources_in_sample": 1994,
+        "source_concentration_ratio_in_sample": 0.0053,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "생기다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "생기다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 63,
+      "inventory_id": "m5-5363",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3976,
+        "distinct_documents_in_sample": 1986,
+        "distinct_sources_in_sample": 1986,
+        "source_concentration_ratio_in_sample": 0.0187,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "치다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "치다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 64,
+      "inventory_id": "m5-5364",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3858,
+        "distinct_documents_in_sample": 1968,
+        "distinct_sources_in_sample": 1968,
+        "source_concentration_ratio_in_sample": 0.0096,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "타다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "타다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 65,
+      "inventory_id": "m5-5365",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3658,
+        "distinct_documents_in_sample": 1951,
+        "distinct_sources_in_sample": 1951,
+        "source_concentration_ratio_in_sample": 0.0103,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "떨어지다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "떨어지다: 높은 곳에서 내려옴, 거리·관계의 분리, 수량·수준의 감소가 서로 다른 장면을 만든다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 66,
+      "inventory_id": "m5-5366",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3183,
+        "distinct_documents_in_sample": 1915,
+        "distinct_sources_in_sample": 1915,
+        "source_concentration_ratio_in_sample": 0.0056,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "빠지다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "빠지다: 안으로 빠져듦, 목록에서 누락됨, 상태·감정에 깊이 잠김이 달라 용법 구분이 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 67,
+      "inventory_id": "m5-5367",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4466,
+        "distinct_documents_in_sample": 1879,
+        "distinct_sources_in_sample": 1879,
+        "source_concentration_ratio_in_sample": 0.0096,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "대답",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "대화에서 발화 사이의 반응을 가리켜 말하기 장면의 행위를 구체화한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [
+          "w5355"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 68,
+      "inventory_id": "m5-5368",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3360,
+        "distinct_documents_in_sample": 1863,
+        "distinct_sources_in_sample": 1863,
+        "source_concentration_ratio_in_sample": 0.0091,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "기억",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "기억하는 작용과 마음에 남은 내용을 분리하여 회상 행위와 회상의 대상을 구별한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "E",
+        "canonical_record_ids": [
+          "w5356"
+        ],
+        "admitted_sense_count": 2
+      }
+    },
+    {
+      "candidate_ordinal": 69,
+      "inventory_id": "m5-5369",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3001,
+        "distinct_documents_in_sample": 1834,
+        "distinct_sources_in_sample": 1834,
+        "source_concentration_ratio_in_sample": 0.0093,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "두다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "두다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 70,
+      "inventory_id": "m5-5370",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3541,
+        "distinct_documents_in_sample": 1830,
+        "distinct_sources_in_sample": 1830,
+        "source_concentration_ratio_in_sample": 0.0235,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "오늘",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "오늘: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 71,
+      "inventory_id": "m5-5371",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3567,
+        "distinct_documents_in_sample": 1793,
+        "distinct_sources_in_sample": 1793,
+        "source_concentration_ratio_in_sample": 0.0194,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "통하다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "통하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 72,
+      "inventory_id": "m5-5372",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4916,
+        "distinct_documents_in_sample": 1790,
+        "distinct_sources_in_sample": 1790,
+        "source_concentration_ratio_in_sample": 0.0083,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "여자",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "여자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "writer_usefulness_rejection_class": "broad-human-category",
+        "writer_usefulness_rejection_class_label": "넓은 인물 범주어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 73,
+      "inventory_id": "m5-5373",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3324,
+        "distinct_documents_in_sample": 1785,
+        "distinct_sources_in_sample": 1785,
+        "source_concentration_ratio_in_sample": 0.0173,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "이해",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "이해: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "writer_usefulness_rejection_class": "low-texture-common-word",
+        "writer_usefulness_rejection_class_label": "문맥 의존적인 일반어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 74,
+      "inventory_id": "m5-5374",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3076,
+        "distinct_documents_in_sample": 1785,
+        "distinct_sources_in_sample": 1785,
+        "source_concentration_ratio_in_sample": 0.0103,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "다니다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "다니다: 오가며 이동하는 일과 학교·직장 등에 정기적으로 소속되는 용법을 분리해야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 75,
+      "inventory_id": "m5-5375",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4026,
+        "distinct_documents_in_sample": 1752,
+        "distinct_sources_in_sample": 1752,
+        "source_concentration_ratio_in_sample": 0.0156,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "인간",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "인간: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "writer_usefulness_rejection_class": "broad-human-category",
+        "writer_usefulness_rejection_class_label": "넓은 인물 범주어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 76,
+      "inventory_id": "m5-5376",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4565,
+        "distinct_documents_in_sample": 1748,
+        "distinct_sources_in_sample": 1748,
+        "source_concentration_ratio_in_sample": 0.0072,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "남자",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "남자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "writer_usefulness_rejection_class": "broad-human-category",
+        "writer_usefulness_rejection_class_label": "넓은 인물 범주어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 77,
+      "inventory_id": "m5-5377",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2840,
+        "distinct_documents_in_sample": 1748,
+        "distinct_sources_in_sample": 1748,
+        "source_concentration_ratio_in_sample": 0.008,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "혼자",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "혼자: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 78,
+      "inventory_id": "m5-5378",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2900,
+        "distinct_documents_in_sample": 1721,
+        "distinct_sources_in_sample": 1721,
+        "source_concentration_ratio_in_sample": 0.0095,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "어리다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 4,
+        "analyzer_pos_interpretation_count": 2
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "어리다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=4 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 79,
+      "inventory_id": "m5-5379",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2964,
+        "distinct_documents_in_sample": 1718,
+        "distinct_sources_in_sample": 1718,
+        "source_concentration_ratio_in_sample": 0.0246,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "정신",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "정신: 마음·의식, 주의력, 태도·기운을 가리키는 용법이 달라 writer-facing sense를 정해야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 80,
+      "inventory_id": "m5-5380",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2823,
+        "distinct_documents_in_sample": 1702,
+        "distinct_sources_in_sample": 1702,
+        "source_concentration_ratio_in_sample": 0.0056,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "준비",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "준비: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "writer_usefulness_rejection_class": "low-texture-common-word",
+        "writer_usefulness_rejection_class_label": "문맥 의존적인 일반어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 81,
+      "inventory_id": "m5-5381",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3092,
+        "distinct_documents_in_sample": 1701,
+        "distinct_sources_in_sample": 1701,
+        "source_concentration_ratio_in_sample": 0.0184,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "중요",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "중요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "writer_usefulness_rejection_class": "general-property",
+        "writer_usefulness_rejection_class_label": "일반 상태·정도어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 82,
+      "inventory_id": "m5-5382",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2942,
+        "distinct_documents_in_sample": 1685,
+        "distinct_sources_in_sample": 1685,
+        "source_concentration_ratio_in_sample": 0.0138,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "들리다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "들리다: 소리가 귀에 감지되는 뜻과 어떤 곳에 방문해 잠깐 머무는 뜻을 분리해야 한다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 83,
+      "inventory_id": "m5-5383",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3111,
+        "distinct_documents_in_sample": 1684,
+        "distinct_sources_in_sample": 1684,
+        "source_concentration_ratio_in_sample": 0.0044,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "힘들다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "힘들다: 신체적 수고와 정서적 곤란을 같은 정도 표현으로 처리하지 않도록 sense 경계가 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 84,
+      "inventory_id": "m5-5384",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2770,
+        "distinct_documents_in_sample": 1676,
+        "distinct_sources_in_sample": 1676,
+        "source_concentration_ratio_in_sample": 0.0149,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "넣다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "넣다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "writer_usefulness_rejection_class": "generic-action",
+        "writer_usefulness_rejection_class_label": "범용 동작어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 85,
+      "inventory_id": "m5-5385",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2896,
+        "distinct_documents_in_sample": 1671,
+        "distinct_sources_in_sample": 1671,
+        "source_concentration_ratio_in_sample": 0.0057,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "좋아하다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "좋아하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 86,
+      "inventory_id": "m5-5386",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2621,
+        "distinct_documents_in_sample": 1666,
+        "distinct_sources_in_sample": 1666,
+        "source_concentration_ratio_in_sample": 0.0049,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "깊다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "search-surface-collision",
+        "rationale": "깊다: the existing Typewriter search surface has a competing canonical owner. Keep this candidate out until the collision and intended lookup behavior are resolved.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "competing_canonical_matches": [
+          {
+            "record_id": "w052",
+            "match_kind": "curated_search_form"
+          }
+        ],
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 87,
+      "inventory_id": "m5-5387",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3143,
+        "distinct_documents_in_sample": 1665,
+        "distinct_sources_in_sample": 1665,
+        "source_concentration_ratio_in_sample": 0.0065,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "가능",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "가능: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "writer_usefulness_rejection_class": "general-property",
+        "writer_usefulness_rejection_class_label": "일반 상태·정도어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 88,
+      "inventory_id": "m5-5388",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2641,
+        "distinct_documents_in_sample": 1646,
+        "distinct_sources_in_sample": 1646,
+        "source_concentration_ratio_in_sample": 0.0065,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "마지막",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "마지막: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 89,
+      "inventory_id": "m5-5389",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2764,
+        "distinct_documents_in_sample": 1642,
+        "distinct_sources_in_sample": 1642,
+        "source_concentration_ratio_in_sample": 0.0083,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "올리다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "올리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 90,
+      "inventory_id": "m5-5390",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 4318,
+        "distinct_documents_in_sample": 1635,
+        "distinct_sources_in_sample": 1635,
+        "source_concentration_ratio_in_sample": 0.0178,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "아버지",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "아버지: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "O",
+        "writer_usefulness_rejection_class": "broad-human-category",
+        "writer_usefulness_rejection_class_label": "넓은 인물 범주어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 91,
+      "inventory_id": "m5-5391",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2505,
+        "distinct_documents_in_sample": 1619,
+        "distinct_sources_in_sample": 1619,
+        "source_concentration_ratio_in_sample": 0.0078,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "걸리다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "걸리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 92,
+      "inventory_id": "m5-5392",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 3094,
+        "distinct_documents_in_sample": 1617,
+        "distinct_sources_in_sample": 1617,
+        "source_concentration_ratio_in_sample": 0.0087,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "존재",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "needs-sense-split",
+        "rationale": "존재: 있음이라는 추상 상태와 존재하는 대상 자체를 한 정의로 합치기 어려워 구분이 필요하다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "X",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 93,
+      "inventory_id": "m5-5393",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2887,
+        "distinct_documents_in_sample": 1609,
+        "distinct_sources_in_sample": 1609,
+        "source_concentration_ratio_in_sample": 0.0074,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "기분",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "한때의 마음 상태를 가리키며 감정을 서술하는 문장에서 정서의 결을 잡는 기본어로 쓸 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "E",
+        "canonical_record_ids": [
+          "w5357"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 94,
+      "inventory_id": "m5-5394",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2541,
+        "distinct_documents_in_sample": 1605,
+        "distinct_sources_in_sample": 1605,
+        "source_concentration_ratio_in_sample": 0.009,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "길다",
+        "pos": "adjective",
+        "analyzer_pos": "VA",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 3,
+        "analyzer_pos_interpretation_count": 2
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "길다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 95,
+      "inventory_id": "m5-5395",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2473,
+        "distinct_documents_in_sample": 1593,
+        "distinct_sources_in_sample": 1593,
+        "source_concentration_ratio_in_sample": 0.0213,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "뜨다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "뜨다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 96,
+      "inventory_id": "m5-5396",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2414,
+        "distinct_documents_in_sample": 1584,
+        "distinct_sources_in_sample": 1584,
+        "source_concentration_ratio_in_sample": 0.0143,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "하루",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "admit",
+        "rationale": "하루의 시간 폭을 가리켜 사건의 지속과 일상 장면을 구성하는 데 쓸 수 있다.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "canonical_record_ids": [
+          "w5358"
+        ],
+        "admitted_sense_count": 1
+      }
+    },
+    {
+      "candidate_ordinal": 97,
+      "inventory_id": "m5-5397",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2791,
+        "distinct_documents_in_sample": 1565,
+        "distinct_sources_in_sample": 1565,
+        "source_concentration_ratio_in_sample": 0.0072,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "아래",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "아래: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "C",
+        "writer_usefulness_rejection_class": "deictic-or-frame-word",
+        "writer_usefulness_rejection_class_label": "시간·위치의 기본 지시어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 98,
+      "inventory_id": "m5-5398",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2733,
+        "distinct_documents_in_sample": 1554,
+        "distinct_sources_in_sample": 1554,
+        "source_concentration_ratio_in_sample": 0.017,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "돌리다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 1,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "돌리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 99,
+      "inventory_id": "m5-5399",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2323,
+        "distinct_documents_in_sample": 1550,
+        "distinct_sources_in_sample": 1550,
+        "source_concentration_ratio_in_sample": 0.0078,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "조금",
+        "pos": "noun",
+        "analyzer_pos": "NNG",
+        "ambiguity_status": "single_observed_analysis_unverified",
+        "ambiguous_observed_surface_count": 0,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "reject",
+        "rationale": "조금: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "Q",
+        "writer_usefulness_rejection_class": "general-property",
+        "writer_usefulness_rejection_class_label": "일반 상태·정도어",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    },
+    {
+      "candidate_ordinal": 100,
+      "inventory_id": "m5-5400",
+      "corpus_evidence": {
+        "paragraph_hits_in_sample": 2358,
+        "distinct_documents_in_sample": 1538,
+        "distinct_sources_in_sample": 1538,
+        "source_concentration_ratio_in_sample": 0.0056,
+        "sample_fraction": 0.050328
+      },
+      "morphology_proposal": {
+        "lemma": "알리다",
+        "pos": "verb",
+        "analyzer_pos": "VV",
+        "ambiguity_status": "held_surface_has_multiple_analyzer_interpretations",
+        "ambiguous_observed_surface_count": 2,
+        "analyzer_pos_interpretation_count": 1
+      },
+      "editorial_judgment": {
+        "disposition": "hold",
+        "rationale": "알리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity.",
+        "reviewer": "codex-agent",
+        "human_reviewed": false,
+        "corrected_lemma": null,
+        "corrected_pos": null,
+        "writer_use_axis": "A",
+        "canonical_record_ids": [],
+        "admitted_sense_count": 0
+      }
+    }
+  ],
+  "admission_source_id": "issue-204-authored-semantic-decisions-20260928-r1",
+  "contract_version": "issue-204-pilot-review-v1"
+}

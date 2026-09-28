@@ -477,8 +477,9 @@ test('the exact grandfathered M5-12A v2 source still replays through the shared 
   const { artifact } = await buildCanonicalSemanticAudit({
     artifactId: 'm5-12a-grandfathered-replay-regression',
   });
+  const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
 
-  assert.equal(artifact.record_count, 5042);
-  assert.equal(artifact.review.records.length, 5042);
+  assert.equal(artifact.record_count, canonical.records.length);
+  assert.equal(artifact.review.records.length, canonical.records.length);
   assert.ok(artifact.review.records.some((review) => review.record_id === 'w1279'));
 });

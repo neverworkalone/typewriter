@@ -1,0 +1,752 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v3",
+  "review_binding_contract_version": "source-bound-semantic-review-v1",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-204-authored-semantic-decisions-20260928-r1",
+  "issue": 204,
+  "parent_issue": 201,
+  "batch_id": "issue-204-corpus-pilot-20260928",
+  "authoring_mode": "agent-authored-decision",
+  "source_basis": {
+    "pilot_decision_ledger_sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b",
+    "candidate_selection_sha256": "bf5f4fc2185f572a3950b81a794d26b65084cb1b8d2b3b182f9f558a36a5c6fe",
+    "candidate_count": 100,
+    "admitted_candidate_ordinals": [
+      16,
+      27,
+      36,
+      49,
+      53,
+      61,
+      67,
+      68,
+      93,
+      96
+    ]
+  },
+  "provenance": {
+    "human_reviewed": false,
+    "generator_version": "issue-204-authored-semantic-review-v1",
+    "generation_pass_id": "issue-204-candidate-draft-20260928-r1",
+    "verification_pass_id": "issue-204-agent-editorial-review-20260928-r1"
+  },
+  "review": {
+    "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 10,
+    "reviewed_candidate_count": 10,
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-204-candidate-draft-20260928-r1",
+    "correction_passes": [],
+    "decision_counts": {
+      "included": 10,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "counts": {
+      "included": 10,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    }
+  },
+  "candidate_source": {
+    "source_id": "issue-204-corpus-candidates-20260928-r1",
+    "identity_sha256": "0a118a365981142f8ae52e0b6f5c654219424281cb11973167321c85a5a69878",
+    "identity_count": 10
+  },
+  "selection": {
+    "policy": "writer-usefulness-and-sense-boundary-reviewed-candidates",
+    "capacity": 10,
+    "imported": 10,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "A",
+      "C",
+      "E",
+      "S",
+      "X"
+    ],
+    "selection_rationale": "Admit every source-bound candidate judged fit in this bounded ten-record pilot; corpus frequency and selection rank do not substitute for semantic eligibility."
+  },
+  "candidate_records": [
+    {
+      "id": "w5349",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5349",
+      "lemma": "시작",
+      "search_forms": [
+        "시작"
+      ],
+      "senses": [
+        {
+          "id": "w5349-s1",
+          "pos": "noun",
+          "gloss": "일이나 과정에 들어서는 첫 단계."
+        }
+      ]
+    },
+    {
+      "id": "w5350",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5350",
+      "lemma": "이야기",
+      "search_forms": [
+        "이야기"
+      ],
+      "senses": [
+        {
+          "id": "w5350-s1",
+          "pos": "noun",
+          "gloss": "사건이나 경험의 흐름을 말이나 글로 엮어 전하는 내용."
+        },
+        {
+          "id": "w5350-s2",
+          "pos": "noun",
+          "gloss": "대화에서 서로 주고받는 말의 내용."
+        }
+      ]
+    },
+    {
+      "id": "w5351",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5351",
+      "lemma": "모습",
+      "search_forms": [
+        "모습"
+      ],
+      "senses": [
+        {
+          "id": "w5351-s1",
+          "pos": "noun",
+          "gloss": "사람이나 사물의 눈에 드러나는 겉모양."
+        },
+        {
+          "id": "w5351-s2",
+          "pos": "noun",
+          "gloss": "행동이나 상태에서 드러나는 양상."
+        }
+      ]
+    },
+    {
+      "id": "w5352",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5352",
+      "lemma": "순간",
+      "search_forms": [
+        "순간"
+      ],
+      "senses": [
+        {
+          "id": "w5352-s1",
+          "pos": "noun",
+          "gloss": "매우 짧게 이어지는 특정한 때."
+        }
+      ]
+    },
+    {
+      "id": "w5353",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5353",
+      "lemma": "사랑",
+      "search_forms": [
+        "사랑"
+      ],
+      "senses": [
+        {
+          "id": "w5353-s1",
+          "pos": "noun",
+          "gloss": "대상에게 애틋한 마음을 품고 아끼는 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5354",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5354",
+      "lemma": "향하다",
+      "search_forms": [
+        "향하다"
+      ],
+      "senses": [
+        {
+          "id": "w5354-s1",
+          "pos": "verb",
+          "gloss": "특정한 대상이나 방향 쪽으로 움직임을 두다."
+        }
+      ]
+    },
+    {
+      "id": "w5355",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5355",
+      "lemma": "대답",
+      "search_forms": [
+        "대답"
+      ],
+      "senses": [
+        {
+          "id": "w5355-s1",
+          "pos": "noun",
+          "gloss": "물음이나 말에 응하여 내놓는 말."
+        }
+      ]
+    },
+    {
+      "id": "w5356",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5356",
+      "lemma": "기억",
+      "search_forms": [
+        "기억"
+      ],
+      "senses": [
+        {
+          "id": "w5356-s1",
+          "pos": "noun",
+          "gloss": "지난 일을 마음속에 간직하는 정신 작용."
+        },
+        {
+          "id": "w5356-s2",
+          "pos": "noun",
+          "gloss": "마음에 남아 다시 떠오르는 지난 일의 내용."
+        }
+      ]
+    },
+    {
+      "id": "w5357",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5357",
+      "lemma": "기분",
+      "search_forms": [
+        "기분"
+      ],
+      "senses": [
+        {
+          "id": "w5357-s1",
+          "pos": "noun",
+          "gloss": "마음에 나타나는 감정의 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5358",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5358",
+      "lemma": "하루",
+      "search_forms": [
+        "하루"
+      ],
+      "senses": [
+        {
+          "id": "w5358-s1",
+          "pos": "noun",
+          "gloss": "해가 뜨고 지는 한 차례의 낮과 밤으로 이루어진 시간."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "a54644878caba1acdb94b8744b58546288b31a99eb67122f8960362ae0afb02d",
+  "decisions": [
+    {
+      "candidate_record_id": "w5349",
+      "inventory_id": "m5-5316",
+      "candidate_record_sha256": "2c5f2cd69a54683e3c9dd5a4057581f9234c5942d3a7003e01c5d0cec8083aff",
+      "decision": "included",
+      "rank": 1,
+      "decision_rationale": "m5-5316 w5349 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5349-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5316 w5349 w5349-s1 d6d0c13c7709: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5316 w5349-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5349",
+        "candidate_record_sha256": "2c5f2cd69a54683e3c9dd5a4057581f9234c5942d3a7003e01c5d0cec8083aff",
+        "decision_evidence_sha256": "9f05e9bb56f7ecae1d607a3935a622fa05a881e27c6f7c2bc86be2031c79e32c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5349-s1",
+            "sense_sha256": "0877649586340419964977b822c5cc9b8aafbd47c6688b08fa8e4eee0227fd51",
+            "gloss_sha256": "d6d0c13c7709ed27e5c30082230816932c58e763dfe413159ed01d741aa828ba",
+            "evidence_sha256": "133998abf20d3b12aa21cca4e1b709f7ee43b78e0924c7340104314e1d9dcebd"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5350",
+      "inventory_id": "m5-5327",
+      "candidate_record_sha256": "cdd353a5eb77636cb11cefab1da557f1b816e4bd516979139a1131cbae2c4ab0",
+      "decision": "included",
+      "rank": 2,
+      "decision_rationale": "m5-5327 w5350 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "X",
+      "sense_reviews": [
+        {
+          "sense_id": "w5350-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5327 w5350 w5350-s1 819431e49187: 서사와 대화는 쓰임과 구성 방식이 달라 독립된 sense로 유지한다.",
+          "semantic_rationale": "이 sense는 사건이나 경험을 말·글로 엮어 전하는 서사 내용에 해당한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5327 w5350-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        },
+        {
+          "sense_id": "w5350-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5327 w5350 w5350-s2 adc82eedc035: 서사와 대화는 쓰임과 구성 방식이 달라 독립된 sense로 유지한다.",
+          "semantic_rationale": "이 sense는 대화에서 서로 주고받는 말의 내용을 가리키며, 사건을 엮어 전하는 서사와 구별된다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5327 w5350-s2에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "w5350-s1",
+          "right_sense_id": "w5350-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "819431e49187338be91f0940da403949cdcc13d32a7ecf02a1da7f27bf6453ce",
+          "right_gloss_sha256": "adc82eedc035e905b9395025259ea9508971564ab4caaa107b3fce59bbd59dcd",
+          "evidence_basis": "Typewriter-authored gloss comparison and writer-facing use distinction",
+          "distinguishing_feature": "narrated events and experience versus exchanged dialogue content",
+          "rationale": "w5350 w5350-s1 w5350-s2 retain distinct uses; gloss hashes 819431e49187 and adc82eedc035 bind the reviewed definitions."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5350",
+        "candidate_record_sha256": "cdd353a5eb77636cb11cefab1da557f1b816e4bd516979139a1131cbae2c4ab0",
+        "decision_evidence_sha256": "2c8d535169c01b0002b95fb495f04eee3238e3da11e115b9fde4145f9e421ea4",
+        "sense_evidence": [
+          {
+            "sense_id": "w5350-s1",
+            "sense_sha256": "a5d1385899912a8d4ad2a5f8176b1548d0ebfaebbc67f0378751443089dbf663",
+            "gloss_sha256": "819431e49187338be91f0940da403949cdcc13d32a7ecf02a1da7f27bf6453ce",
+            "evidence_sha256": "09b8794d560244a64a77d652aebb367f03c201e1aa1491efe712aa9baf4e50c3"
+          },
+          {
+            "sense_id": "w5350-s2",
+            "sense_sha256": "cd4b8c36e550d3bdb1439f4666a40133ade721555bd8e62c7eb1b96fcff270ea",
+            "gloss_sha256": "adc82eedc035e905b9395025259ea9508971564ab4caaa107b3fce59bbd59dcd",
+            "evidence_sha256": "b2924045827b8b76032a0b8ecf64ee99857ffd23b1b75601420fc1cc72cb1cb2"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5351",
+      "inventory_id": "m5-5336",
+      "candidate_record_sha256": "5f0f7a2b077db31c8907d279c81f21b3fca334949eb45e3e8bbd3cb42cad09d6",
+      "decision": "included",
+      "rank": 3,
+      "decision_rationale": "m5-5336 w5351 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5351-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5336 w5351 w5351-s1 edd809cc6903: 겉모양과 드러난 양상은 묘사 대상이 달라 독립된 sense로 유지한다.",
+          "semantic_rationale": "이 sense는 사람이나 사물에서 눈에 보이는 겉모양과 외형을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5336 w5351-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        },
+        {
+          "sense_id": "w5351-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5336 w5351 w5351-s2 accb1deaba4e: 겉모양과 드러난 양상은 묘사 대상이 달라 독립된 sense로 유지한다.",
+          "semantic_rationale": "이 sense는 외형 자체가 아니라 행동이나 상태에서 드러나는 양상을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5336 w5351-s2에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "w5351-s1",
+          "right_sense_id": "w5351-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "edd809cc69030943041f8930a8f08495a1b05705e2935f45c1fc77fedbe47a19",
+          "right_gloss_sha256": "accb1deaba4e250bd62f5440fb03a15333d2498ee794762df612ecf457db556b",
+          "evidence_basis": "Typewriter-authored gloss comparison and writer-facing use distinction",
+          "distinguishing_feature": "visible outer form versus an expressed manner or state",
+          "rationale": "w5351 w5351-s1 w5351-s2 retain distinct uses; gloss hashes edd809cc6903 and accb1deaba4e bind the reviewed definitions."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5351",
+        "candidate_record_sha256": "5f0f7a2b077db31c8907d279c81f21b3fca334949eb45e3e8bbd3cb42cad09d6",
+        "decision_evidence_sha256": "8a21971ce90a3953548525b5e73e47e5eea4173320f9c1abecc325267dbc9099",
+        "sense_evidence": [
+          {
+            "sense_id": "w5351-s1",
+            "sense_sha256": "5d535faab8bf2959e9d7cd54763991feb1d24ed45a13eb0068a430a702f7a85f",
+            "gloss_sha256": "edd809cc69030943041f8930a8f08495a1b05705e2935f45c1fc77fedbe47a19",
+            "evidence_sha256": "5df7d567fee93e12e587657ba5299a4bce7cc826492686e1e680a4262d94f137"
+          },
+          {
+            "sense_id": "w5351-s2",
+            "sense_sha256": "96148ad315aea9500ba549c27b506f5ef4818aeaa012489a3e28a804c7b37051",
+            "gloss_sha256": "accb1deaba4e250bd62f5440fb03a15333d2498ee794762df612ecf457db556b",
+            "evidence_sha256": "be5c98b01449e54764e68ec4fca212aebf94b9213dba02079e9d9e3732d116f6"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5352",
+      "inventory_id": "m5-5349",
+      "candidate_record_sha256": "7a4c4e57f0b9f0d32cbf7ed16802ef378db59ecce051fadf9dd831e929ee35aa",
+      "decision": "included",
+      "rank": 4,
+      "decision_rationale": "m5-5349 w5352 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5352-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5349 w5352 w5352-s1 2ceb51d79219: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5349 w5352-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5352",
+        "candidate_record_sha256": "7a4c4e57f0b9f0d32cbf7ed16802ef378db59ecce051fadf9dd831e929ee35aa",
+        "decision_evidence_sha256": "8dddd704309cbc1298889634a77f36aa1b928c9435afc16a304658371c174dab",
+        "sense_evidence": [
+          {
+            "sense_id": "w5352-s1",
+            "sense_sha256": "aad0c8980138a1c6b364ea39438aba88002f5a87778b9cbddfca6ab604dc8ac6",
+            "gloss_sha256": "2ceb51d79219bd87a722611f9fc93f8d70985cd8ffd2476ae193757975ba5a8a",
+            "evidence_sha256": "de0109c827c67a0895db9a1348b6ebe58b10a467deafdfffee4c37e1d6d88ccc"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5353",
+      "inventory_id": "m5-5353",
+      "candidate_record_sha256": "01fc6a66779ff02e211b5cf9070fbebfcb2a1db5c959a22cfa89c475f382e5c9",
+      "decision": "included",
+      "rank": 5,
+      "decision_rationale": "m5-5353 w5353 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "E",
+      "sense_reviews": [
+        {
+          "sense_id": "w5353-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5353 w5353 w5353-s1 b5a38d306d81: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5353 w5353-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5353",
+        "candidate_record_sha256": "01fc6a66779ff02e211b5cf9070fbebfcb2a1db5c959a22cfa89c475f382e5c9",
+        "decision_evidence_sha256": "f362d751174fc2656de706b66bf0f3f7e9c745daa0046b5846c331bd32b78361",
+        "sense_evidence": [
+          {
+            "sense_id": "w5353-s1",
+            "sense_sha256": "14957b1fcbd38cfc68b0bc89b4d9ffca305c26139883a0d6baf5c40643e85d23",
+            "gloss_sha256": "b5a38d306d81b6741b5d72857026672727f7fbb4ebf0997ec1efb24d48d0cf3d",
+            "evidence_sha256": "605956fafed64bc309ed4e8a295775e9fce9ef2676cc54c6d9764c7f3f09a9dc"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5354",
+      "inventory_id": "m5-5361",
+      "candidate_record_sha256": "e38a3bf1304aeefec6bc829529c9b9b1db9ec0ce3ad8342d186d880d480ffae5",
+      "decision": "included",
+      "rank": 6,
+      "decision_rationale": "m5-5361 w5354 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5354-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5361 w5354 w5354-s1 013514fd2636: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5361 w5354-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5354",
+        "candidate_record_sha256": "e38a3bf1304aeefec6bc829529c9b9b1db9ec0ce3ad8342d186d880d480ffae5",
+        "decision_evidence_sha256": "de6773411391e7a400b857dda4ca29cb9e2138e2f62d3af1577bfef572bac56d",
+        "sense_evidence": [
+          {
+            "sense_id": "w5354-s1",
+            "sense_sha256": "ffe249220bece502e6aac2ac912ec3a9ac4371159a34376e0701a04a99b324b9",
+            "gloss_sha256": "013514fd26360169c7923ffd17331f7d3cb4e3ce37c4692ed13551749eb5a08a",
+            "evidence_sha256": "3c64dff98be2971b6822e41c990674479ee151b2b325144b37c8c1764dcbb8ed"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5355",
+      "inventory_id": "m5-5367",
+      "candidate_record_sha256": "fdcc67f9896893b86226b9173a17b9fc848420fadf0edcefe08fbb65c3af9c84",
+      "decision": "included",
+      "rank": 7,
+      "decision_rationale": "m5-5367 w5355 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5355-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5367 w5355 w5355-s1 cd7787f659b1: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5367 w5355-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5355",
+        "candidate_record_sha256": "fdcc67f9896893b86226b9173a17b9fc848420fadf0edcefe08fbb65c3af9c84",
+        "decision_evidence_sha256": "2c0f83b9399f5a6a39fba2f2457b765c2c48b88f586ddc111651aa92a7fbfef9",
+        "sense_evidence": [
+          {
+            "sense_id": "w5355-s1",
+            "sense_sha256": "fe999d680ba6212d999318010a686f3f41998a8788ae5b9115cca0782c542f8d",
+            "gloss_sha256": "cd7787f659b1684899ad37cbcd63e30e94264acd8bc439f62cf0987754aa832a",
+            "evidence_sha256": "44d20f73341b700dff9f01d6e7472e46febe3ebaab42f61dfaea34bac3e8e084"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5356",
+      "inventory_id": "m5-5368",
+      "candidate_record_sha256": "242db4764668d5475c474305aab7d5af14b0b155ebcb31e351b69fa8dcd93808",
+      "decision": "included",
+      "rank": 8,
+      "decision_rationale": "m5-5368 w5356 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "E",
+      "sense_reviews": [
+        {
+          "sense_id": "w5356-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5368 w5356 w5356-s1 9e34a250ba74: 기억하는 작용과 회상되는 내용은 행위와 대상이 달라 독립된 sense로 유지한다.",
+          "semantic_rationale": "이 sense는 지난 일을 마음속에 간직하는 정신 작용을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5368 w5356-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        },
+        {
+          "sense_id": "w5356-s2",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5368 w5356 w5356-s2 c631ee6b2a6e: 기억하는 작용과 회상되는 내용은 행위와 대상이 달라 독립된 sense로 유지한다.",
+          "semantic_rationale": "이 sense는 간직된 과거의 사건이 나중에 마음에 다시 떠오르는 내용을 가리킨다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5368 w5356-s2에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "boundary_pairs": [
+        {
+          "left_sense_id": "w5356-s1",
+          "right_sense_id": "w5356-s2",
+          "relationship": "distinct",
+          "decision": "retain",
+          "left_gloss_sha256": "9e34a250ba7406e118ca55de3881d2a7120af33c48a0868c9794f1de1a995bb6",
+          "right_gloss_sha256": "c631ee6b2a6e6ad55d0a949158a0b0bd18d6e89282e5c1d3b226972548d3e1ba",
+          "evidence_basis": "Typewriter-authored gloss comparison and writer-facing use distinction",
+          "distinguishing_feature": "mental act of retaining the past versus the remembered content",
+          "rationale": "w5356 w5356-s1 w5356-s2 retain distinct uses; gloss hashes 9e34a250ba74 and c631ee6b2a6e bind the reviewed definitions."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5356",
+        "candidate_record_sha256": "242db4764668d5475c474305aab7d5af14b0b155ebcb31e351b69fa8dcd93808",
+        "decision_evidence_sha256": "0d9aeabc89fad6460c14f27a5c97bde5f297d0dc63c7b2f5fb7b9a23f97a86dc",
+        "sense_evidence": [
+          {
+            "sense_id": "w5356-s1",
+            "sense_sha256": "64d963b2c2dd25413ffb4bfa849edc3660485c3b3172f11232f24710eb3ea908",
+            "gloss_sha256": "9e34a250ba7406e118ca55de3881d2a7120af33c48a0868c9794f1de1a995bb6",
+            "evidence_sha256": "ae974c6f7a9c3ee00da2f83cd2d1d5292318ea2c70dfe2cad78ba2c641de1453"
+          },
+          {
+            "sense_id": "w5356-s2",
+            "sense_sha256": "0875e0ed5925db21610d2267bcf938e01def6c80510c267c672322148ab83cb7",
+            "gloss_sha256": "c631ee6b2a6e6ad55d0a949158a0b0bd18d6e89282e5c1d3b226972548d3e1ba",
+            "evidence_sha256": "92a8fb82002ebf17e99947467136abacd6d3468ffaa14a3b523fe91716173d2a"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5357",
+      "inventory_id": "m5-5393",
+      "candidate_record_sha256": "759a863c1e913da899428baabcbd9727f1c7883663a1a90b268c0485d913abaf",
+      "decision": "included",
+      "rank": 9,
+      "decision_rationale": "m5-5393 w5357 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "E",
+      "sense_reviews": [
+        {
+          "sense_id": "w5357-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5393 w5357 w5357-s1 efb53db4b8e3: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5393 w5357-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5357",
+        "candidate_record_sha256": "759a863c1e913da899428baabcbd9727f1c7883663a1a90b268c0485d913abaf",
+        "decision_evidence_sha256": "b4125c90cc46f1f5e186cd7bd45276d6461ef416fb1e0dab15f41e8b4743ffd0",
+        "sense_evidence": [
+          {
+            "sense_id": "w5357-s1",
+            "sense_sha256": "02c993ae9ec03670e3d469670fa952f14cee66b006f5e2ee166b3fa6d4533919",
+            "gloss_sha256": "efb53db4b8e3e6e74602e79a8f4ae752fa3f658ec9a774c85bd494741b919527",
+            "evidence_sha256": "c1cc41e4d5dcbc7df65ec9e372e148331904e6c84b6ec59bc3147b5118634f86"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5358",
+      "inventory_id": "m5-5396",
+      "candidate_record_sha256": "28eb23968b03cdcb2d063bd33e5e81f1034208def1c9f9d337a896e5c95b1bcb",
+      "decision": "included",
+      "rank": 10,
+      "decision_rationale": "m5-5396 w5358 admitted after separate lexical and writer-use review; corpus breadth supports coverage only.",
+      "review_pass_id": "issue-204-agent-editorial-review-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5358-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5396 w5358 w5358-s1 899cedbfd5b2: 정의가 하나의 writer-facing 의미 단위를 설명하며 다른 sense와 겹치지 않는다.",
+          "semantic_rationale": "Typewriter gloss는 후보 lemma의 핵심 writer-facing 의미를 간결하게 한정한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5396 w5358-s1에는 공기만으로 정당화할 수 있는 직접 대체·의미 관계가 없어 관계를 추가하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v1",
+        "candidate_record_id": "w5358",
+        "candidate_record_sha256": "28eb23968b03cdcb2d063bd33e5e81f1034208def1c9f9d337a896e5c95b1bcb",
+        "decision_evidence_sha256": "41ec15bf2571f3e2d1729f333fd44327220df4f8f9078992eae524fa2735e59e",
+        "sense_evidence": [
+          {
+            "sense_id": "w5358-s1",
+            "sense_sha256": "bc0b65d32b29b602854e7eb8d2b3256ce55e376dc5afb645702051275c78f09c",
+            "gloss_sha256": "899cedbfd5b221f777d051f43b7a29e15347490d6a5788fd731e95d7ca6e87a8",
+            "evidence_sha256": "de31467bfe02ac1c8cc7a7f71555036941fd25ae91c581612bf9d5826daa47ce"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_sha256": "bd48c2a3ac46c47926be5939be41607c45863dbf149274d76e370f4d14476504"
+}

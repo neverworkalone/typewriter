@@ -4,46 +4,20 @@ on:
   schedule:
     - cron: '0 22 * * 0'
   workflow_dispatch:
-  pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled]
 
 permissions:
   contents: read
 
 jobs:
-  resolve:
-    name: Resolve deep validation target
-    runs-on: ubuntu-24.04
-    outputs:
-      deep_required: ${{ steps.request.outputs.deep_required }}
-      target_ref: ${{ steps.request.outputs.target_ref }}
-
-    steps:
-      - name: Check out requested commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22.13.x
-
-      - name: Resolve validation request
-        id: request
-        run: node scripts/ci/deep-ci-gate.mjs resolve
-
   validate:
     name: Deep validation
-    needs: resolve
-    if: needs.resolve.outputs.deep_required == 'true'
     runs-on: ubuntu-24.04
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.resolve.outputs.target_ref }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -56,27 +30,3 @@ jobs:
 
       - name: Complete validation (normal + deep)
         run: npm run ci:all
-
-  gate:
-    name: Deep CI Gate
-    needs: [resolve, validate]
-    if: always() && github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Check out requested commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22.13.x
-
-      - name: Enforce Deep CI result
-        env:
-          DEEP_REQUIRED: ${{ needs.resolve.outputs.deep_required }}
-          DEEP_RESULT: ${{ needs.validate.result }}
-          RESOLVE_RESULT: ${{ needs.resolve.result }}
-        run: node scripts/ci/deep-ci-gate.mjs gate

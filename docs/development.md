@@ -280,10 +280,12 @@ runs `npm run ci:normal` in one process. The normal runner emits the `ci:fast`
 checkpoint and then continues with the remaining normal checks; the fast
 checkpoint is not started as a second GitHub Actions workflow.
 
-`.github/workflows/deep.yml` owns scheduled and manual full validation. It runs
-`npm run ci:all`, which includes normal validation followed by historical replay,
-reproducibility, and the scale benchmark. Its weekly schedule is Sunday 22:00 UTC
-(Monday 07:00 KST).
+`.github/workflows/deep.yml` owns scheduled and manual full validation. Manual
+dispatch validates the selected branch or commit. It runs `npm run ci:all`, which
+includes normal validation followed by historical replay, reproducibility, and the
+scale benchmark. Its weekly schedule is Sunday 22:00 UTC (Monday 07:00 KST). Deep
+CI does not run automatically for pull requests; use the manual dispatch when a PR
+needs the full validation path.
 
 The normal category order is:
 

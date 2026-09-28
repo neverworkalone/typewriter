@@ -210,15 +210,63 @@ function validateStageArtifact(stage, review, decisionSource, currentDirectory) 
   return true;
 }
 
-async function validatePromotionState({ currentCanonical, currentDigest, currentSeedPath, promotionLedgerPath, admissionPath, promotionPath }) {
+async function validatePromotionState({
+  currentCanonical,
+  currentDigest,
+  currentSeedPath,
+  promotionLedgerPath,
+  admissionPath,
+  promotionPath,
+  allowLaterCanonicalRevision = false,
+}) {
   const admission = (await readJson(admissionPath, 'M5-15 admission')).value;
   const promotionFile = await readJson(promotionPath, 'M5-15 promotion');
   const promotion = promotionFile.value;
   assertEqual(admission.gate.gate_status, 'pass', 'admission gate status');
   assertEqual(promotion.status, 'promoted', 'promotion status');
-  assertEqual(promotion.outputs.canonical_directory_sha256, currentDigest, 'promoted canonical digest');
   assertEqual(promotion.admission_sha256, sha256(await readFile(admissionPath)), 'promotion admission digest');
-  assertEqual((await readJson(currentSeedPath, 'current M5 seed')).value.revision, 'm5-15', 'promoted seed revision');
+  const currentSeed = (await readJson(currentSeedPath, 'current M5 seed')).value;
+  const promotionCanonicalDigest = promotion.outputs?.canonical_directory_sha256;
+  assertEqual(
+    promotion.post_promotion_audit?.canonical_directory_sha256,
+    promotionCanonicalDigest,
+    'M5-15 promoted canonical digest binding',
+  );
+  assertEqual(
+    promotion.outputs?.canonical_import?.path,
+    path.relative(REPOSITORY_DIRECTORY, CANONICAL_IMPORT_PATH),
+    'M5-15 canonical import path',
+  );
+  assertEqual(
+    promotion.outputs?.canonical_import?.sha256,
+    sha256(await readFile(CANONICAL_IMPORT_PATH)),
+    'M5-15 canonical import digest',
+  );
+  assertEqual(promotion.outputs?.canonical_import?.record_count, M5_15_IMPORT_COUNT, 'M5-15 canonical import count');
+
+  if (allowLaterCanonicalRevision) {
+    const seedRevision = /^m5-(\d+)$/u.exec(currentSeed.revision)?.[1];
+    if (seedRevision === undefined || Number(seedRevision) <= 15) {
+      fail('later canonical additions require a later M5 seed revision', 'CANONICAL_SUMMARY_MISMATCH');
+    }
+
+    const imported = await readCanonicalRecords(CANONICAL_IMPORT_PATH, { useSharedContext: false });
+    const currentRecordsById = new Map(currentCanonical.records.map((recordInfo) => {
+      const record = recordOf(recordInfo);
+      return [record.id, record];
+    }));
+    for (const importedRecordInfo of imported.records) {
+      const importedRecord = recordOf(importedRecordInfo);
+      const currentRecord = currentRecordsById.get(importedRecord.id);
+      if (!currentRecord || JSON.stringify(currentRecord) !== JSON.stringify(importedRecord)) {
+        fail(`M5-15 promoted record ${importedRecord.id} is missing or changed in the later canonical revision`, 'PROMOTION_CANONICAL_BINDING_MISMATCH');
+      }
+    }
+  } else {
+    assertEqual(promotionCanonicalDigest, currentDigest, 'promoted canonical digest');
+    assertEqual(currentSeed.revision, 'm5-15', 'promoted seed revision');
+  }
+
   const ledger = await readPromotionLedger(promotionLedgerPath);
   const decisionSource = (await readJson(path.join(REPOSITORY_DIRECTORY, 'data/validation/canonical-semantic-decision-source.json'), 'canonical semantic decision source')).value;
   validatePromotionLedgerBindings({
@@ -226,6 +274,19 @@ async function validatePromotionState({ currentCanonical, currentDigest, current
     canonicalRecords: currentCanonical.records.map(recordOf),
     decisionSource,
   });
+  if (allowLaterCanonicalRevision) {
+    const m515Entries = ledger.filter(({ batch_id: batchId }) => batchId === M5_15_BATCH_ID);
+    assertEqual(m515Entries.length, M5_15_IMPORT_COUNT, 'M5-15 promotion ledger event count');
+    const promotedIds = new Set(m515Entries.map(({ canonical_id: canonicalId }) => canonicalId));
+    const imported = await readCanonicalRecords(CANONICAL_IMPORT_PATH, { useSharedContext: false });
+    assertEqual(promotedIds.size, imported.records.length, 'M5-15 promoted canonical identity count');
+    for (const recordInfo of imported.records) {
+      const record = recordOf(recordInfo);
+      if (!promotedIds.has(record.id)) {
+        fail(`M5-15 promotion ledger is missing canonical record ${record.id}`, 'PROMOTION_LEDGER_HISTORY_MISMATCH');
+      }
+    }
+  }
   return { admission, promotion };
 }
 
@@ -267,7 +328,7 @@ export async function validateM515({
   if (!inventory || typeof inventory.revision !== 'string') fail('current target inventory is invalid', 'INVENTORY_SHAPE_ERROR');
   const isBase = JSON.stringify(currentSummary) === JSON.stringify(M5_15_BASE_SUMMARY);
   const isFinal = JSON.stringify(currentSummary) === JSON.stringify(M5_15_FINAL_SUMMARY);
-  if (!isBase && !isFinal) fail('current canonical summary is neither the M5-14 base nor the M5-15 prospective result', 'CANONICAL_SUMMARY_MISMATCH');
+  const isLaterRevision = !isBase && !isFinal;
   let promotion;
   if (isBase) {
     await assertMissing(CANONICAL_IMPORT_PATH, 'M5-15 canonical import');
@@ -279,6 +340,7 @@ export async function validateM515({
       promotionLedgerPath: currentPromotionLedgerPath,
       admissionPath: ADMISSION_PATH,
       promotionPath: PROMOTION_PATH,
+      allowLaterCanonicalRevision: isLaterRevision,
     });
   }
   return {

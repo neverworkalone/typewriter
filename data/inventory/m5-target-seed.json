@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
   "inventory_id": "m5-core-5k",
-  "revision": "m5-15",
+  "revision": "m5-16",
   "targets": [
     {
       "inventory_id": "m5-001",
@@ -32521,6 +32521,1717 @@
         "direct-boundary"
       ],
       "decision_note": "m5-5300 semantic_decision=included; selection=reserve after separate generation m5-15-generation-20260923-r1 and verification m5-15-agent-semantic-review-20260923-r1."
+    },
+    {
+      "inventory_id": "m5-5301",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "하다",
+      "search_forms": [
+        "하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 하다: analyzer_pos_interpretation_count=3; ambiguous_observed_surface_count=13 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5302",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "되다",
+      "search_forms": [
+        "되다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 되다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5303",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "있다",
+      "search_forms": [
+        "있다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 있다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5304",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "없다",
+      "search_forms": [
+        "없다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 없다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5305",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "보다",
+      "search_forms": [
+        "보다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 보다: 보는 행위, 비교, 시도 등 서로 다른 용법을 한 감각으로 묶으면 대체 검색어로 오해될 수 있어 용법별 분리가 필요하다."
+    },
+    {
+      "inventory_id": "m5-5306",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "사람",
+      "search_forms": [
+        "사람"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 사람: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5307",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "같다",
+      "search_forms": [
+        "같다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 같다: 동일성 판단과 추정·비유 용법이 갈리므로 한 sense로 넣기 전에 의미 범위를 나눠야 한다."
+    },
+    {
+      "inventory_id": "m5-5308",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "알다",
+      "search_forms": [
+        "알다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 알다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5309",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "가다",
+      "search_forms": [
+        "가다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 가다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5310",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "보이다",
+      "search_forms": [
+        "보이다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 보이다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5311",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "좋다",
+      "search_forms": [
+        "좋다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 좋다: 긍정 평가, 적합성, 감각적 상태가 문맥에 따라 달라질 수 있어 작가용 sense 경계가 필요하다."
+    },
+    {
+      "inventory_id": "m5-5312",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "오다",
+      "search_forms": [
+        "오다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 오다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5313",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "모르다",
+      "search_forms": [
+        "모르다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 모르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5314",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "크다",
+      "search_forms": [
+        "크다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 크다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5315",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "많다",
+      "search_forms": [
+        "많다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 많다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5317",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "위하다",
+      "search_forms": [
+        "위하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 위하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5318",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "자신",
+      "search_forms": [
+        "자신"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 자신: 재귀 대명사적 용법과 자신감·확신의 뜻이 다르므로 품사와 sense 경계를 확인해야 한다."
+    },
+    {
+      "inventory_id": "m5-5319",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "대하다",
+      "search_forms": [
+        "대하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 대하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5320",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "나오다",
+      "search_forms": [
+        "나오다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 나오다: 안에서 밖으로 이동하는 뜻과 결과물·발화가 생기는 뜻이 달라 분리가 필요하다."
+    },
+    {
+      "inventory_id": "m5-5321",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "시간",
+      "search_forms": [
+        "시간"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 시간: 지속 시간, 시각, 여유 시간은 문장 안에서 서로 바꿔 쓰기 어려워 sense를 나눠야 한다."
+    },
+    {
+      "inventory_id": "m5-5322",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "살다",
+      "search_forms": [
+        "살다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 살다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5323",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "나다",
+      "search_forms": [
+        "나다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 나다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5324",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "만들다",
+      "search_forms": [
+        "만들다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 만들다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5325",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "그러다",
+      "search_forms": [
+        "그러다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 그러다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5326",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "주다",
+      "search_forms": [
+        "주다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 주다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5328",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "느끼다",
+      "search_forms": [
+        "느끼다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 느끼다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5329",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "먹다",
+      "search_forms": [
+        "먹다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 먹다: 음식 섭취 외에 충격·마음·나이 등 확장 용법이 넓어 단일 정의로는 검색 의도를 설명하기 어렵다."
+    },
+    {
+      "inventory_id": "m5-5330",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "가지다",
+      "search_forms": [
+        "가지다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 가지다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5331",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "이상",
+      "search_forms": [
+        "이상"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 이상: 기준보다 높은 상태, 비정상, 관념적 이상향 등 뜻이 달라 하나의 작가용 sense로 확정하기 어렵다."
+    },
+    {
+      "inventory_id": "m5-5332",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "따르다",
+      "search_forms": [
+        "따르다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 따르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5333",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "정도",
+      "search_forms": [
+        "정도"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 정도: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5334",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "동안",
+      "search_forms": [
+        "동안"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 동안: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5335",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "내다",
+      "search_forms": [
+        "내다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 내다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5337",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "세상",
+      "search_forms": [
+        "세상"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 세상: 세계·사회·삶의 형편을 두루 가리켜 쓰임을 나눌 기준이 필요하다."
+    },
+    {
+      "inventory_id": "m5-5338",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "필요",
+      "search_forms": [
+        "필요"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 필요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5339",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "처음",
+      "search_forms": [
+        "처음"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 처음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5340",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "보내다",
+      "search_forms": [
+        "보내다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 보내다: 대상의 이동과 시간을 지내는 용법이 달라 문장 대체 시 의미가 달라질 수 있다."
+    },
+    {
+      "inventory_id": "m5-5341",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "자리",
+      "search_forms": [
+        "자리"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 자리: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5342",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "사다",
+      "search_forms": [
+        "사다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 사다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=5 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5343",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "맞다",
+      "search_forms": [
+        "맞다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 맞다: 일치, 받아들임, 충돌·타격 등 용법의 방향이 달라 sense 분리가 필요하다."
+    },
+    {
+      "inventory_id": "m5-5344",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "다음",
+      "search_forms": [
+        "다음"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 다음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5345",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "사실",
+      "search_forms": [
+        "사실"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 사실: 객관적 사건·진술과 현실 상태를 가리키는 용법이 겹치므로 쓰임을 검토한 뒤 편입해야 한다."
+    },
+    {
+      "inventory_id": "m5-5346",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "지금",
+      "search_forms": [
+        "지금"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 지금: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5347",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "서다",
+      "search_forms": [
+        "서다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 서다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5348",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "죽다",
+      "search_forms": [
+        "죽다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 죽다: 생명 활동의 끝과 빛·기세 등이 사라지는 확장 용법을 나눠야 의미를 보존할 수 있다."
+    },
+    {
+      "inventory_id": "m5-5350",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "일어나다",
+      "search_forms": [
+        "일어나다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 일어나다: 몸을 일으키는 행위와 사건의 발생을 분리해야 문장 대체가 정확하다."
+    },
+    {
+      "inventory_id": "m5-5351",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "작다",
+      "search_forms": [
+        "작다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 작다: 크기·정도·영향을 낮게 평가하는 용법이 달라 단일 sense로 범위를 확정하기 어렵다."
+    },
+    {
+      "inventory_id": "m5-5352",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "친구",
+      "search_forms": [
+        "친구"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 친구: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5354",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "아이",
+      "search_forms": [
+        "아이"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 아이: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5355",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "남다",
+      "search_forms": [
+        "남다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 남다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5356",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "나가다",
+      "search_forms": [
+        "나가다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 나가다: 바깥으로 이동, 조직·경쟁에 참여, 비용·수량의 소모가 달라 용법별 경계가 필요하다."
+    },
+    {
+      "inventory_id": "m5-5357",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "들어오다",
+      "search_forms": [
+        "들어오다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 들어오다: 공간 안으로 이동하는 뜻과 정보·사람이 도착하거나 유입되는 뜻을 분리해야 한다."
+    },
+    {
+      "inventory_id": "m5-5358",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "다르다",
+      "search_forms": [
+        "다르다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 다르다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5359",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "문제",
+      "search_forms": [
+        "문제"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 문제: 풀어야 할 질문, 곤란한 상황, 논의 대상 등 뜻이 달라 sense 구분이 필요하다."
+    },
+    {
+      "inventory_id": "m5-5360",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "그때",
+      "search_forms": [
+        "그때"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 그때: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5362",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "생기다",
+      "search_forms": [
+        "생기다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 생기다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5363",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "치다",
+      "search_forms": [
+        "치다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 치다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5364",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "타다",
+      "search_forms": [
+        "타다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 타다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5365",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "떨어지다",
+      "search_forms": [
+        "떨어지다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 떨어지다: 높은 곳에서 내려옴, 거리·관계의 분리, 수량·수준의 감소가 서로 다른 장면을 만든다."
+    },
+    {
+      "inventory_id": "m5-5366",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "빠지다",
+      "search_forms": [
+        "빠지다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 빠지다: 안으로 빠져듦, 목록에서 누락됨, 상태·감정에 깊이 잠김이 달라 용법 구분이 필요하다."
+    },
+    {
+      "inventory_id": "m5-5369",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "두다",
+      "search_forms": [
+        "두다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 두다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5370",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "오늘",
+      "search_forms": [
+        "오늘"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 오늘: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5371",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "통하다",
+      "search_forms": [
+        "통하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 통하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5372",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "여자",
+      "search_forms": [
+        "여자"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 여자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5373",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "이해",
+      "search_forms": [
+        "이해"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 이해: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5374",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "다니다",
+      "search_forms": [
+        "다니다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 다니다: 오가며 이동하는 일과 학교·직장 등에 정기적으로 소속되는 용법을 분리해야 한다."
+    },
+    {
+      "inventory_id": "m5-5375",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "인간",
+      "search_forms": [
+        "인간"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 인간: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5376",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "남자",
+      "search_forms": [
+        "남자"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 남자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5377",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "혼자",
+      "search_forms": [
+        "혼자"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 혼자: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5378",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "어리다",
+      "search_forms": [
+        "어리다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 어리다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=4 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5379",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "정신",
+      "search_forms": [
+        "정신"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 정신: 마음·의식, 주의력, 태도·기운을 가리키는 용법이 달라 writer-facing sense를 정해야 한다."
+    },
+    {
+      "inventory_id": "m5-5380",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "준비",
+      "search_forms": [
+        "준비"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 준비: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5381",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "중요",
+      "search_forms": [
+        "중요"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 중요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5382",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "들리다",
+      "search_forms": [
+        "들리다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 들리다: 소리가 귀에 감지되는 뜻과 어떤 곳에 방문해 잠깐 머무는 뜻을 분리해야 한다."
+    },
+    {
+      "inventory_id": "m5-5383",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "힘들다",
+      "search_forms": [
+        "힘들다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 힘들다: 신체적 수고와 정서적 곤란을 같은 정도 표현으로 처리하지 않도록 sense 경계가 필요하다."
+    },
+    {
+      "inventory_id": "m5-5384",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "넣다",
+      "search_forms": [
+        "넣다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 넣다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5385",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "좋아하다",
+      "search_forms": [
+        "좋아하다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 좋아하다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5386",
+      "status": "duplicate",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "깊다",
+      "search_forms": [
+        "깊다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 search-surface-collision: 깊다: the existing Typewriter search surface has a competing canonical owner. Keep this candidate out until the collision and intended lookup behavior are resolved.",
+      "related_canonical_id": "w052"
+    },
+    {
+      "inventory_id": "m5-5387",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "가능",
+      "search_forms": [
+        "가능"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 가능: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5388",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "마지막",
+      "search_forms": [
+        "마지막"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 마지막: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5389",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "올리다",
+      "search_forms": [
+        "올리다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 올리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5390",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "아버지",
+      "search_forms": [
+        "아버지"
+      ],
+      "reason_codes": [
+        "O"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 아버지: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5391",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "걸리다",
+      "search_forms": [
+        "걸리다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 걸리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5392",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "존재",
+      "search_forms": [
+        "존재"
+      ],
+      "reason_codes": [
+        "X"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 needs-sense-split: 존재: 있음이라는 추상 상태와 존재하는 대상 자체를 한 정의로 합치기 어려워 구분이 필요하다."
+    },
+    {
+      "inventory_id": "m5-5394",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "길다",
+      "search_forms": [
+        "길다"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "adjective"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 길다: analyzer_pos_interpretation_count=2; ambiguous_observed_surface_count=3 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5395",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "뜨다",
+      "search_forms": [
+        "뜨다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 뜨다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5397",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "아래",
+      "search_forms": [
+        "아래"
+      ],
+      "reason_codes": [
+        "C"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 아래: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5398",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "돌리다",
+      "search_forms": [
+        "돌리다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 돌리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=1 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
+    },
+    {
+      "inventory_id": "m5-5399",
+      "status": "rejected",
+      "planned_role": null,
+      "record_type": "entry",
+      "lemma": "조금",
+      "search_forms": [
+        "조금"
+      ],
+      "reason_codes": [
+        "Q"
+      ],
+      "pos": [
+        "noun"
+      ],
+      "sense_profile": "single",
+      "flags": [],
+      "decision_note": "Issue #204 reject: 조금: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
+    },
+    {
+      "inventory_id": "m5-5400",
+      "status": "held",
+      "planned_role": "start",
+      "record_type": "entry",
+      "lemma": "알리다",
+      "search_forms": [
+        "알리다"
+      ],
+      "reason_codes": [
+        "A"
+      ],
+      "pos": [
+        "verb"
+      ],
+      "sense_profile": "boundary",
+      "flags": [],
+      "decision_note": "Issue #204 hold: 알리다: analyzer_pos_interpretation_count=1; ambiguous_observed_surface_count=2 (sampled surface forms with multiple analyzer interpretations). The first count summarizes candidate POS interpretations; the second counts affected sampled forms. Hold for context-bound morphology review; sample breadth is usage evidence, not a resolution of the ambiguity."
     }
   ]
 }

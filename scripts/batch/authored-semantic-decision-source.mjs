@@ -140,6 +140,25 @@ export function decisionSenseReviews(candidate, row, label, config) {
   return row.sense_reviews;
 }
 
+export function validateDistinctSenseSemanticRationales(candidate, senseReviews) {
+  if (!Array.isArray(candidate?.senses) || !Array.isArray(senseReviews)
+    || candidate.senses.length !== senseReviews.length) {
+    throw new Error('semantic rationales must bind one-to-one with candidate senses');
+  }
+  const rationaleByText = new Map();
+  for (const [index, sense] of candidate.senses.entries()) {
+    const rationale = senseReviews[index]?.semantic_rationale;
+    if (typeof rationale !== 'string' || typeof sense?.gloss !== 'string') continue;
+    const normalizedRationale = rationale.normalize('NFC').trim().replace(/\s+/gu, ' ');
+    const previousGloss = rationaleByText.get(normalizedRationale);
+    if (previousGloss !== undefined && previousGloss !== sense.gloss) {
+      throw new Error('identical semantic rationale cannot support distinct sense glosses');
+    }
+    rationaleByText.set(normalizedRationale, sense.gloss);
+  }
+  return true;
+}
+
 function validateDecisionRow(row, { identity, candidate, decisionSourceId, reviewPassCandidates, config } = {}) {
   const label = `decision ${identity.inventory_id}`;
   requireObject(row, label, config);
@@ -178,6 +197,11 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId, revie
     fail(`${label}.gloss_judgment contradicts its authored decision`, 'DECISION_SOURCE_COHERENCE', config);
   }
   const senseReviews = decisionSenseReviews(candidate, row, label, config);
+  try {
+    validateDistinctSenseSemanticRationales(candidate, senseReviews);
+  } catch (error) {
+    fail(`${label} semantic evidence failed: ${error.message}`, 'DECISION_SOURCE_BINDING', config);
+  }
   try {
     validateAuthoredSemanticReviewBinding(row, candidate);
   } catch (error) {

@@ -1,8 +1,10 @@
 # Corpus lemma pilot report (#201)
 
-Run date: 2026-09-28. This report records a local reference workflow run. The
-candidate names and corpus contexts remain in the ignored local inventory, not
-in Git.
+Run date: 2026-09-28. This report records the initial local reference workflow
+run. At that stage candidate names and corpus contexts remained in the ignored
+local inventory. Issue #204 later records all 100 editorial outcomes and the
+bounded canonical follow-up; see
+[corpus-lemma-pilot-report-issue-204.md](corpus-lemma-pilot-report-issue-204.md).
 
 ## Input and reproducibility
 
@@ -99,3 +101,12 @@ All three files below are ignored under `data/reference/`:
 
 No source paragraph, candidate name, or evidence excerpt is stored in this
 tracked report.
+
+## Issue #204 follow-up
+
+After this initial extraction report, issue #204 reviewed all 100 candidates and
+prepared ten new searchable starts containing 13 senses through the shared
+lexical production/admission path. The complete disposition, provenance,
+search validation, and publication-gate status are recorded in the
+[issue #204 follow-up report](corpus-lemma-pilot-report-issue-204.md). Its
+canonical-mutating PR remains unmerged pending owner confirmation.
