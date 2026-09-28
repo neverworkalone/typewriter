@@ -1186,6 +1186,13 @@ async function reconstructBaseSeed(currentSeedPath = CURRENT_SEED_PATH) {
   return { current, baseSeed, baseSeedBytes };
 }
 
+function isLaterM5GenerationNote(decisionNote) {
+  if (typeof decisionNote !== 'string') return false;
+  const generationId = decisionNote.match(/after separate generation (m5-\S+)/u)?.[1];
+  const milestone = generationId?.match(/^m5-(\d+)/u)?.[1];
+  return milestone !== undefined && Number(milestone) > 12;
+}
+
 async function loadBaseInputs({
   currentSeedPath = CURRENT_SEED_PATH,
   currentPromotionLedgerPath = CURRENT_PROMOTION_LEDGER_PATH,
@@ -2256,7 +2263,7 @@ export async function validateM512AFinal({
       ...currentSeed,
       revision: 'm5-12',
       targets: currentSeed.targets.filter(({ decision_note: decisionNote }) => (
-        !decisionNote?.includes('m5-13-generation-')
+        !isLaterM5GenerationNote(decisionNote)
       )),
     };
     const historicalSeedBytes = jsonBytes(historicalSeed);
