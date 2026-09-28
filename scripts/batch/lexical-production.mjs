@@ -15,6 +15,7 @@ import {
   validateLexicalRecord,
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
+import { validateLexicalDispositionBasis } from '../validate/lexical-disposition.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_DECISIONS = Object.freeze([
@@ -77,6 +78,25 @@ function semanticReviewInput(entry, index) {
   }
   requireObject(entry.semantic_review, `${label}.semantic_review`);
   return entry;
+}
+
+function validateProductionDisposition(entry, label) {
+  const errorCodePrefix = 'LEXICAL_PRODUCTION_DECISION';
+  validateLexicalDispositionBasis(entry, { label, errorCodePrefix });
+  const authoredDecision = entry.semantic_review.authored_decision;
+  validateLexicalDispositionBasis(authoredDecision, {
+    label: `${label}.semantic_review.authored_decision`,
+    errorCodePrefix,
+  });
+  if (['held', 'rejected'].includes(entry.decision)) {
+    const basisKey = entry.decision === 'held' ? 'hold_basis' : 'rejection_basis';
+    if (authoredDecision?.[basisKey] !== entry[basisKey]) {
+      fail(
+        `${label}.${basisKey} must match the independently authored semantic-review disposition`,
+        'LEXICAL_PRODUCTION_DECISION_BASIS_BINDING',
+      );
+    }
+  }
 }
 
 function valuesOf(recordInfos) {
@@ -569,6 +589,12 @@ export function validateLexicalProduction({
   const candidateIds = new Set();
   for (const [index, rawEntry] of reviewRows.entries()) {
     const entry = semanticReviewInput(rawEntry, index);
+    // Frozen sources use an explicit historical replay boundary. Every live
+    // admission must carry the same source-bound lexical basis on both the
+    // producer row and its independently authored semantic-review evidence.
+    if (historicalReplay !== true) {
+      validateProductionDisposition(entry, `production.reviews[${index}]`);
+    }
     const candidate = recordOf(candidates[index]);
     if (entry.candidate_id !== candidate.id) {
       fail(`production.reviews[${index}].candidate_id is not bound to ${candidate.id}`, 'LEXICAL_PRODUCTION_BINDING');

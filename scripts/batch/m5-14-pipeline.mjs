@@ -995,6 +995,9 @@ export async function buildM514({
     prospectiveRecords,
     semanticAudit,
     stageEvidence: productionStageEvidence,
+    // M5-14 remains a byte-pinned v3 historical decision source.
+    allowReplay: true,
+    historicalReplay: true,
     catalogCount: M5_14_SELECTION_COUNT,
     expectedSelectedCount: M5_14_IMPORT_COUNT,
     checkPilotCompleteness: true,

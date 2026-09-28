@@ -412,6 +412,8 @@ function makeProductionSemanticReview(record, identity, decisionRow, semanticDec
       candidate_record_sha256: decisionRow.candidate_record_sha256,
       reviewed_record_sha256: reviewedDigest,
       decision: decisionRow.decision,
+      ...(decisionRow.hold_basis ? { hold_basis: decisionRow.hold_basis } : {}),
+      ...(decisionRow.rejection_basis ? { rejection_basis: decisionRow.rejection_basis } : {}),
       selection_rank: decisionRow.rank,
       selection_axis: decisionRow.selection_axis,
       rationale: decisionRow.decision_rationale,
@@ -506,6 +508,8 @@ function buildReviewRows(identities, candidateRecords, semanticDecisionSource) {
       generation_pass_id: M5_13_GENERATION_PASS_ID,
       verification_pass_id: decisionRow.review_pass_id,
       decision: decisionRow.decision,
+      ...(decisionRow.hold_basis ? { hold_basis: decisionRow.hold_basis } : {}),
+      ...(decisionRow.rejection_basis ? { rejection_basis: decisionRow.rejection_basis } : {}),
       selection_status: selectionStatus,
       expected_record_type: identity.record_type,
       semantic_review: makeProductionSemanticReview(
@@ -981,6 +985,10 @@ export async function buildM513({
     prospectiveRecords,
     semanticAudit,
     stageEvidence: productionStageEvidence,
+    // The checked-in M5-13 source is a byte-pinned v3 historical artifact.
+    // New live decision sources go through the strict disposition-basis gate.
+    allowReplay: true,
+    historicalReplay: true,
     catalogCount: M5_13_SELECTION_COUNT,
     expectedSelectedCount: M5_13_IMPORT_COUNT,
     checkPilotCompleteness: true,

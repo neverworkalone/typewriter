@@ -587,6 +587,9 @@ export async function validateIssue204() {
       prospectiveRecords: canonical.records,
       semanticAudit,
     }),
+    // Issue #204 is replayed from its byte-pinned v3 decision source.
+    allowReplay: true,
+    historicalReplay: true,
     catalogCount: 10,
     expectedSelectedCount: 10,
     candidateLabel: 'Issue #204 admitted pilot candidates',

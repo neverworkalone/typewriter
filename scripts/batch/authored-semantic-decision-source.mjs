@@ -14,22 +14,12 @@ import {
   compactAuthoredSemanticDecisionRow,
   validateAuthoredSemanticReviewBinding,
 } from '../validate/semantic-decision-row.mjs';
+import { validateLexicalDispositionBasis } from '../validate/lexical-disposition.mjs';
 import { selectReviewedCandidates } from './lexical-selection.mjs';
 
 const DECISION_COUNT_KEYS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
-const HOLD_BASES = new Set([
-  'unresolved-lexical-unit',
-  'unresolved-identity',
-  'unresolved-sense',
-  'unresolved-scope',
-]);
-const REJECTION_BASES = new Set([
-  'duplicate-identity',
-  'not-a-lexical-unit',
-  'unsupported-scope',
-]);
 const MAX_CORRECTION_RATE = 0.5;
 
 export class AuthoredSemanticDecisionSourceError extends Error {
@@ -111,37 +101,18 @@ export function validateAuthoredDecisionDisposition(row, label = 'decision', con
   label: 'semantic decision source',
   errorPrefix: 'AUTHORED_SEMANTIC',
 }) {
-  if (row.decision === 'held') {
-    if (!HOLD_BASES.has(row.hold_basis) || Object.hasOwn(row, 'rejection_basis')) {
-      fail(
-        `${label}.hold_basis must identify an unresolved lexical-unit, identity, sense, or scope question`,
-        'DECISION_SOURCE_HOLD_BASIS',
-        config,
-      );
+  try {
+    return validateLexicalDispositionBasis(row, {
+      label,
+      errorCodePrefix: `${config.errorPrefix}_DECISION_SOURCE`,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.code?.startsWith(`${config.errorPrefix}_DECISION_SOURCE_`)) {
+      const suffix = error.code.slice(`${config.errorPrefix}_DECISION_SOURCE_`.length);
+      fail(error.message, `DECISION_SOURCE_${suffix}`, config);
     }
-  } else if (row.decision === 'rejected') {
-    if (!REJECTION_BASES.has(row.rejection_basis)) {
-      fail(
-        `${label}.rejection_basis must identify a lexical-unit, identity, or scope defect`,
-        'DECISION_SOURCE_REJECTION_BASIS',
-        config,
-      );
-    }
-    if (Object.hasOwn(row, 'hold_basis')) {
-      fail(
-        `${label}.hold_basis is only valid for a held lexical identity`,
-        'DECISION_SOURCE_HOLD_BASIS',
-        config,
-      );
-    }
-  } else if (Object.hasOwn(row, 'rejection_basis') || Object.hasOwn(row, 'hold_basis')) {
-    fail(
-      `${label} hold_basis and rejection_basis are only valid for held or rejected lexical identities`,
-      'DECISION_SOURCE_DISPOSITION_BASIS',
-      config,
-    );
+    throw error;
   }
-  return row;
 }
 
 export function candidateRecordsFromAuthoredSemanticDecisionSource(source, identities, config) {

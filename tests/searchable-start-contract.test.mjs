@@ -58,6 +58,18 @@ function makeReferenceCandidate() {
   };
 }
 
+function makeCommonGeneralCandidate(id, lemma, gloss) {
+  return {
+    ...makeReferenceCandidate(),
+    id,
+    role: 'start',
+    candidate_id: id,
+    lemma,
+    search_forms: [lemma],
+    senses: [{ id: `${id}-s1`, pos: 'noun', gloss }],
+  };
+}
+
 function sourceForCandidate(candidate) {
   const candidateRecords = [candidate];
   return {
@@ -369,8 +381,9 @@ test('a source-bound unresolved hold and lexical rejections are excluded before 
   const production = makeProductionState({
     batchId: 'searchable-start-shared-admission',
     artifactId: 'searchable-start-shared-admission',
-    candidateRecords: [selectedCandidate],
+    candidateRecords: candidates,
     reviewedRecords: [selectedCandidate],
+    decisionRows: validation.rows,
     baseRecords,
     prospectiveRecords,
     semanticAudit,
@@ -395,7 +408,7 @@ test('a source-bound unresolved hold and lexical rejections are excluded before 
   };
   const admitted = validateLexicalProduction({
     batchId: 'searchable-start-shared-admission',
-    candidateRecords: [selectedCandidate],
+    candidateRecords: candidates,
     reviews: production.payloads.semantic_review.output.review_rows,
     baseRecords,
     prospectiveRecords,
@@ -404,11 +417,76 @@ test('a source-bound unresolved hold and lexical rejections are excluded before 
     productionStateSources: production.sources,
     productionPayloads: production.payloads,
     canonicalContext,
-    catalogCount: 1,
+    catalogCount: candidates.length,
     expectedSelectedCount: 1,
   });
   assert.equal(admitted.selected_count, 1);
   assert.equal(admitted.production_payloads.admission.output.status, 'admitted');
+
+  const validReviewRows = production.payloads.semantic_review.output.review_rows;
+  for (const [decision, field, expectedCode] of [
+    ['held', 'hold_basis', 'LEXICAL_PRODUCTION_DECISION_HOLD_BASIS'],
+    ['rejected', 'rejection_basis', 'LEXICAL_PRODUCTION_DECISION_REJECTION_BASIS'],
+  ]) {
+    for (const invalidBasis of [
+      undefined,
+      'low-writer-usefulness',
+      'low-vividness',
+      'common-general-term',
+      'zero-relations',
+      'axis-deficiency',
+    ]) {
+      const invalidReviewRows = structuredClone(validReviewRows);
+      const row = invalidReviewRows.find((entry) => entry.decision === decision);
+      if (invalidBasis === undefined) {
+        delete row[field];
+        delete row.semantic_review.authored_decision[field];
+      } else {
+        row[field] = invalidBasis;
+        row.semantic_review.authored_decision[field] = invalidBasis;
+      }
+      assert.throws(
+        () => validateLexicalProduction({
+          batchId: 'searchable-start-shared-admission',
+          candidateRecords: candidates,
+          reviews: invalidReviewRows,
+          baseRecords,
+          prospectiveRecords,
+          semanticAudit,
+          productionState: production.state,
+          productionStateSources: production.sources,
+          productionPayloads: production.payloads,
+          canonicalContext,
+          catalogCount: candidates.length,
+          expectedSelectedCount: 1,
+        }),
+        (error) => error.code === expectedCode,
+        `${decision} cannot exclude a common, general, zero-relation candidate with ${String(invalidBasis)}`,
+      );
+    }
+  }
+
+  const unboundReviewRows = structuredClone(validReviewRows);
+  const unboundProductionHold = unboundReviewRows.find((entry) => entry.decision === 'held');
+  unboundProductionHold.hold_basis = 'unresolved-identity';
+  assert.throws(
+    () => validateLexicalProduction({
+      batchId: 'searchable-start-shared-admission',
+      candidateRecords: candidates,
+      reviews: unboundReviewRows,
+      baseRecords,
+      prospectiveRecords,
+      semanticAudit,
+      productionState: production.state,
+      productionStateSources: production.sources,
+      productionPayloads: production.payloads,
+      canonicalContext,
+      catalogCount: candidates.length,
+      expectedSelectedCount: 1,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_DECISION_BASIS_BINDING',
+    'a valid but changed production hold basis must remain bound to the independent semantic review',
+  );
 
   for (const [decision, field, invalidBasis, expectedCode] of [
     ...['low-writer-usefulness', 'low-vividness', 'common-general-term', 'zero-relations', 'axis-deficiency']
@@ -449,6 +527,124 @@ test('a source-bound unresolved hold and lexical rejections are excluded before 
     }),
     (error) => error.code === 'M5_13_DECISION_SOURCE_BINDING',
     'a valid but changed hold basis must remain covered by the authored review binding',
+  );
+});
+
+test('active shared production constrains mixed common-general zero-relation dispositions', () => {
+  const candidates = [
+    makeCommonGeneralCandidate('w9910', '공통예시어', '일상에서 흔히 쓰이는 일반적인 사물 이름.'),
+    makeCommonGeneralCandidate('w9911', '보통예시어', '보통 대화에서 자주 쓰이는 일반적인 낱말.'),
+    makeCommonGeneralCandidate('w9912', '평범예시어', '일반적인 상황에서 널리 쓰이는 평범한 표현.'),
+    makeCommonGeneralCandidate('w9913', '일상예시어', '일상적인 환경에서 흔히 쓰이는 보통 개념어.'),
+  ];
+  const selectedCandidate = candidates[0];
+  const decisionRows = [
+    { candidate_record_id: 'w9910', decision: 'included' },
+    { candidate_record_id: 'w9911', decision: 'held', hold_basis: 'unresolved-sense' },
+    { candidate_record_id: 'w9912', decision: 'rejected', rejection_basis: 'duplicate-identity' },
+    { candidate_record_id: 'w9913', decision: 'rejected', rejection_basis: 'not-a-lexical-unit' },
+  ];
+  const baseRecord = {
+    id: 'w9909',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w9909',
+    lemma: '기준예시어',
+    search_forms: ['기준예시어'],
+    senses: [{ id: 'w9909-s1', pos: 'noun', gloss: '회귀 검증의 기준이 되는 의미.' }],
+  };
+  const baseRecords = [{ record: baseRecord, source: 'base-canonical' }];
+  const prospectiveRecords = [
+    ...baseRecords,
+    { record: selectedCandidate, source: 'prospective-canonical' },
+  ];
+  const semanticAudit = makeSemanticAudit(prospectiveRecords, {
+    artifactId: 'searchable-start-common-general-dispositions',
+  });
+  const production = makeProductionState({
+    batchId: 'searchable-start-common-general-dispositions',
+    artifactId: 'searchable-start-common-general-dispositions',
+    candidateRecords: candidates,
+    reviewedRecords: [selectedCandidate],
+    decisionRows,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+  });
+  const canonicalContext = {
+    records: prospectiveRecords,
+    canonicalDirectory: 'synthetic-common-general-dispositions',
+    derived: {
+      surfaceFormExceptionManifest: {
+        schema_version: 1,
+        contract_id: 'm6-2-inflection-exceptions-v1',
+        exceptions: [],
+      },
+      surfaceFormReviewManifest: {
+        schema_version: 1,
+        contract_id: 'm6-3-searchable-predicate-review-v2',
+        source_issue: 209,
+        dispositions: [],
+        reviewed_collisions: { exact_generated: [], ambiguous_generated: [] },
+      },
+    },
+  };
+  const producerArgs = {
+    batchId: 'searchable-start-common-general-dispositions',
+    candidateRecords: candidates,
+    reviews: production.payloads.semantic_review.output.review_rows,
+    baseRecords,
+    prospectiveRecords,
+    semanticAudit,
+    productionState: production.state,
+    productionStateSources: production.sources,
+    productionPayloads: production.payloads,
+    canonicalContext,
+    catalogCount: candidates.length,
+    expectedSelectedCount: 1,
+  };
+
+  assert.equal(selectedCandidate.senses[0].relations?.length ?? 0, 0);
+  const admitted = validateLexicalProduction(producerArgs);
+  assert.equal(admitted.selected_count, 1);
+  assert.equal(admitted.production_payloads.admission.output.status, 'admitted');
+
+  for (const [decision, field, expectedCode] of [
+    ['held', 'hold_basis', 'LEXICAL_PRODUCTION_DECISION_HOLD_BASIS'],
+    ['rejected', 'rejection_basis', 'LEXICAL_PRODUCTION_DECISION_REJECTION_BASIS'],
+  ]) {
+    for (const invalidBasis of [
+      undefined,
+      'low-writer-usefulness',
+      'low-vividness',
+      'common-general-term',
+      'zero-relations',
+      'axis-deficiency',
+    ]) {
+      const invalidReviews = structuredClone(producerArgs.reviews);
+      const row = invalidReviews.find((entry) => entry.decision === decision);
+      if (invalidBasis === undefined) {
+        delete row[field];
+        delete row.semantic_review.authored_decision[field];
+      } else {
+        row[field] = invalidBasis;
+        row.semantic_review.authored_decision[field] = invalidBasis;
+      }
+      assert.throws(
+        () => validateLexicalProduction({ ...producerArgs, reviews: invalidReviews }),
+        (error) => error.code === expectedCode,
+        `${decision} cannot exclude this common/general/zero-relation candidate with ${String(invalidBasis)}`,
+      );
+    }
+  }
+
+  const changedBasisReviews = structuredClone(producerArgs.reviews);
+  const changedHold = changedBasisReviews.find((entry) => entry.decision === 'held');
+  changedHold.hold_basis = 'unresolved-identity';
+  assert.throws(
+    () => validateLexicalProduction({ ...producerArgs, reviews: changedBasisReviews }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_DECISION_BASIS_BINDING',
+    'valid but changed basis values remain bound to the independent authored review',
   );
 });
 
