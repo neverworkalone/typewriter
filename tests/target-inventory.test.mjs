@@ -167,7 +167,24 @@ test('rejects a candidate that collides with an active canonical start', async (
     }),
     (error) => {
       assert.ok(error instanceof TargetInventoryError);
-      assert.equal(error.code, 'DUPLICATE_START_LEMMA');
+      assert.equal(error.code, 'DUPLICATE_SEARCH_LEMMA');
+      return true;
+    },
+  );
+});
+
+test('rejects a candidate that collides with a historical reference-only searchable record', async () => {
+  await assert.rejects(
+    validateModifiedInventory((inventory) => {
+      const candidate = inventory.entries.find((entry) => entry.inventory_id === 'm5-135');
+      const historicalReference = inventory.entries.find((entry) => entry.inventory_id === 'canonical-r001');
+      candidate.status = 'candidate';
+      candidate.lemma = historicalReference.lemma;
+      candidate.search_forms = [...historicalReference.search_forms];
+    }),
+    (error) => {
+      assert.ok(error instanceof TargetInventoryError);
+      assert.equal(error.code, 'DUPLICATE_SEARCH_LEMMA');
       return true;
     },
   );

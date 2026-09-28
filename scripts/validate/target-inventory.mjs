@@ -387,7 +387,7 @@ function validateEditorialEntry(entry, canonicalById, index) {
 function validateActiveCollisions(entries) {
   const activeEntries = entries.filter(
     (entry) =>
-      (entry.source === 'canonical' && entry.planned_role === 'start') ||
+      entry.source === 'canonical' ||
       (entry.source === 'editorial' && entry.status === 'candidate'),
   );
   const lemmas = new Map();
@@ -409,12 +409,12 @@ function validateActiveCollisions(entries) {
 
   for (const [lemma, owners] of lemmas) {
     if (owners.length > 1) {
-      fail(`active start lemma ${lemma} is duplicated by ${owners.join(', ')}`, 'DUPLICATE_START_LEMMA');
+      fail(`active searchable lemma ${lemma} is duplicated by ${owners.join(', ')}`, 'DUPLICATE_SEARCH_LEMMA');
     }
   }
   for (const [form, owners] of forms) {
     if (owners.length > 1) {
-      fail(`active start search form ${form} is duplicated by ${owners.join(', ')}`, 'DUPLICATE_START_SEARCH_FORM');
+      fail(`active searchable form ${form} is duplicated by ${owners.join(', ')}`, 'DUPLICATE_SEARCH_FORM');
     }
   }
 }

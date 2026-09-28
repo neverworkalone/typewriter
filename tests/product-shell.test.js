@@ -650,7 +650,7 @@ describe('product MV3 Vue shells', () => {
         if (mode === 'gap') return [{ id: 'gap' }];
         return [];
       },
-      getRecord: async (id) => (id === 'gap' ? makeRecord('gap', '마당') : null),
+      getRecord: async (id) => (id === 'gap' ? makeRecord('gap', '마당', 'reference-only') : null),
     };
     const host = mountWithProps(PopupApp, {
       runtime,

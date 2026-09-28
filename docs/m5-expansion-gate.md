@@ -5,6 +5,12 @@ to the next bounded batch before any 5K generation or bulk issue is opened. The
 gate is deliberately small and uses only metrics derived from the manifest,
 relation diff, canonical import, and audit findings.
 
+These historical bounded-batch counts do not define current search eligibility.
+For future batches, lexical fit is determined by identity and supported record
+structure; commonness, generality, low writer usefulness, or relation absence
+cannot by themselves reject a candidate. Capacity and relation quality remain
+separate checks.
+
 ## Definitions
 
 - `selected`: inventory rows with `source: "inventory"` and `role: "start"`.

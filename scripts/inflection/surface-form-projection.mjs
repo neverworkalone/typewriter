@@ -58,8 +58,8 @@ const REVIEW_DISPOSITION_CLASS_IDS = new Set([
 ]);
 const EMPTY_SURFACE_FORM_REVIEW_MANIFEST = Object.freeze({
   schema_version: 1,
-  contract_id: 'm6-3-surface-form-review-v1',
-  source_issue: 175,
+  contract_id: 'm6-3-searchable-predicate-review-v2',
+  source_issue: 209,
   dispositions: Object.freeze([]),
   reviewed_collisions: Object.freeze({
     exact_generated: Object.freeze([]),
@@ -578,9 +578,9 @@ function validateManifestBindings(records, manifest, requireTargets) {
         'MISSING_EXCEPTION_SENSE',
       );
     }
-    if (record.role !== 'start' || record.record_type !== 'entry') {
+    if (record.record_type !== 'entry') {
       throw new SurfaceFormProjectionError(
-        'Exception bindings may only target searchable entry records.',
+        'Exception bindings may only target entry records.',
         'INVALID_EXCEPTION_TARGET',
       );
     }
@@ -625,8 +625,8 @@ function validateReviewManifestBindings(
   if (
     !manifest
     || manifest.schema_version !== 1
-    || manifest.contract_id !== 'm6-3-surface-form-review-v1'
-    || manifest.source_issue !== 175
+    || manifest.contract_id !== 'm6-3-searchable-predicate-review-v2'
+    || manifest.source_issue !== 209
     || !Array.isArray(manifest.dispositions)
     || !manifest.reviewed_collisions
     || !Array.isArray(manifest.reviewed_collisions.exact_generated)
@@ -696,9 +696,9 @@ function validateReviewManifestBindings(
         'MISSING_SURFACE_FORM_REVIEW_SENSE',
       );
     }
-    if (record.role !== 'start' || record.record_type !== 'entry') {
+    if (record.record_type !== 'entry') {
       throw new SurfaceFormProjectionError(
-        'Review dispositions may only target searchable entry records.',
+        'Review dispositions may only target entry records.',
         'INVALID_SURFACE_FORM_REVIEW_TARGET',
       );
     }
@@ -736,8 +736,7 @@ function allRelevantRecords(records) {
   return records
     .map((recordInfo) => ({ info: recordInfo, record: recordOf(recordInfo) }))
     .filter(({ record }) => (
-      record?.role === 'start'
-      && record?.record_type === 'entry'
+      record?.record_type === 'entry'
       && Array.isArray(record.senses)
     ));
 }
@@ -776,7 +775,7 @@ function exactFormsIndex(records) {
   const index = new Map();
   for (const recordInfo of records) {
     const record = recordOf(recordInfo);
-    if (record?.role !== 'start') continue;
+    if (!record) continue;
     for (const [field, value] of [
       ['lemma', record.lemma],
       ...(record.search_forms ?? []).map((form) => ['search-form', form]),

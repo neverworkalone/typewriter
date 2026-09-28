@@ -182,10 +182,8 @@ export class SearchSession {
       operation.historyEntry.queryMeta = response;
       operation.emptyReason = response.reason || 'no-exact-match';
 
-      const startSummaries = response.matches.filter(
-        (summary) => summary.role !== 'reference-only',
-      );
-      const records = await Promise.all(startSummaries.map((summary) => (
+      const candidateSummaries = response.matches;
+      const records = await Promise.all(candidateSummaries.map((summary) => (
         hasFullRecord(summary) ? summary : this.runtime.getRecord(summary.id)
       )));
 
@@ -196,7 +194,7 @@ export class SearchSession {
         );
       }
 
-      const results = projectSearchResults(records, startSummaries);
+      const results = projectSearchResults(records, candidateSummaries);
       operation.request = {
         ...operation.request,
         selectedRecordId: results[0]?.id ?? null,

@@ -62,7 +62,9 @@ apply migrations. An output path inside `data/canonical/` is rejected.
 The read-only helpers in [`scripts/build/query.mjs`](../scripts/build/query.mjs)
 support the same conservative search response as the product worker: raw query,
 NFC-plus-surrounding-trim normalization, exact lemma/search-form provenance,
-reference-only blocking, and structured `no-match`/`unsupported` outcomes.
+role-independent exact lookup for valid in-scope records, and structured
+`no-match`/`unsupported` outcomes. `role` remains stored for historical
+editorial and inventory reporting; it is not a search filter.
 Complete record/sense retrieval and source-sense relations include target lemma,
 part of speech, and gloss display. Fuzzy search, broad relevance scoring,
 morphology, user data,

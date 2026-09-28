@@ -72,8 +72,8 @@ function surfaceFormTestContext(records, {
   };
   context.derived.surfaceFormReviewManifest = {
     schema_version: 1,
-    contract_id: 'm6-3-surface-form-review-v1',
-    source_issue: 175,
+    contract_id: 'm6-3-searchable-predicate-review-v2',
+    source_issue: 209,
     dispositions,
     reviewed_collisions: {
       exact_generated: [],
@@ -90,7 +90,7 @@ function validateLexicalAddition(options = {}) {
   if (options.canonicalContext) return validateLexicalAdditionImpl(options);
   const recordInfos = asSurfaceFormTestRecordInfos(options.prospectiveRecords);
   const dispositions = recordInfos.flatMap(({ record }) => (
-    record.role === 'start' && record.record_type === 'entry'
+    record.record_type === 'entry'
       ? record.senses
         .filter((sense) => ['verb', 'adjective'].includes(sense.pos) && record.lemma.endsWith('다'))
         .map((sense) => ({

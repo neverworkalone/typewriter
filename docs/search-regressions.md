@@ -12,10 +12,10 @@ The corpus separates the following cases:
 
 | `input_class` | Meaning | M4 acceptance status |
 | --- | --- | --- |
-| `exact-lemma` | The query is a canonical lemma for a `start` record. | Baseline-supported. |
+| `exact-lemma` | The query is a canonical lemma for a valid in-scope record, regardless of historical role. | Baseline-supported. |
 | `exact-search-form` | The query is an explicitly curated `search_forms` value. | Baseline-supported. |
 | `normalization-candidate` | A narrow Unicode or surrounding-whitespace rule is approved and recorded. | Baseline-supported only for NFC and surrounding trim. |
-| `no-data` | No canonical start record is asserted for the query. | Return a structured no-match; do not invent an answer. |
+| `no-data` | No canonical searchable record is asserted for the query. | Return a structured no-match; do not invent an answer. |
 | `unsupported` | The current policy intentionally does not interpret the input. | Show the policy boundary, not a guessed match. |
 | `editorial-gap` | A record exists, but relation or editorial coverage is not established. | `pending`; do not manufacture a relation. |
 
@@ -23,11 +23,11 @@ The corpus separates the following cases:
 `pending` when the case needs evidence or a later policy decision. The editorial
 gap remains pending; the two narrow normalization rules are now baseline cases.
 
-The current M3/M4 boundary is deliberately narrow:
+The current search boundary is deliberately narrow:
 
 - Exact lemma and exact `search_forms` are supported.
-- `reference-only` records can be opened through an explicit relation target, but
-  are never free-search starts.
+- A valid in-scope record is directly searchable regardless of historical
+  `start` / `reference-only` role. Relation-target navigation remains available.
 - Expressions are matched as their exact canonical phrase. Tokenization and
   expression rewriting are not implied.
 - Unicode NFC canonical equivalence and trimming surrounding whitespace are the
@@ -38,12 +38,15 @@ The current M3/M4 boundary is deliberately narrow:
 - A missing relation is an editorial question. The corpus can record that gap but
   cannot supply a target without Typewriter editorial evidence.
 
-The M4 fixture retains `담담했다` as a pending, exact-only runtime observation:
-the M4 runtime reports no match. M6-2 has since resolved the policy by including
-the plain past form `-하다 → -했다`; the runtime will remain no-match until M6-3
-implements the generated projection. Keep this historical M4 case intact and
-use the separate [M6-2 contract fixture](../tests/fixtures/search-regressions/m6-2-inflection-contract.json)
-for the new expected behavior.
+The old M3/M4 reference-only block policy in the dated handoff below has been
+superseded by Issue #209. This corpus now includes role-independent search cases.
+
+The M4 fixture retains `담담했다` as a pending, exact-only observation: its
+`actual` field records that the M4 runtime reported no match. M6-2 resolved the
+policy by including the plain past form `-하다 → -했다`, and M6-3 implemented
+the generated projection. Keep this historical M4 observation intact and use
+the separate [M6-2 contract fixture](../tests/fixtures/search-regressions/m6-2-inflection-contract.json)
+for current generated-form behavior.
 
 These rules preserve the existing Editorial Model v1 relation types. A `direct`
 relation is not promoted above `near`, `mood`, or association relations by the

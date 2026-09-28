@@ -31,10 +31,12 @@ relation group은 생성하지 않는다. `projectSearchResults()`는 입력 배
 source order나 canonical relation type을 재분류하지 않는다. 우선순위와 동점
 규칙은 [`docs/search-candidates.md`](search-candidates.md)에 고정한다.
 
-`reference-only` target은 검색 결과 projection에서 출발어로 승격되지 않는다.
-관계 항목의 `action.type = "open-relation-target"`와 target ID를 사용해 별도의
-ID 탐색을 시작할 수 있다. relation에 `target_sense`가 있으면 해당 sense도
-함께 전달되어 다의어 target에서 지정된 뜻만 표시한다.
+`role`은 과거의 relation-closure 편집 분류를 보존하며 직접 검색 eligibility를
+결정하지 않는다. 유효한 in-scope record는 `start`와 `reference-only` 모두
+동일한 exact lookup projection을 사용한다. 관계 항목의
+`action.type = "open-relation-target"`와 target ID는 직접 검색과 별개로
+관계 위치에서 target을 여는 탐색 경로다. relation에 `target_sense`가 있으면
+해당 sense도 함께 전달되어 다의어 target에서 지정된 뜻만 표시한다.
 
 ## Search state
 

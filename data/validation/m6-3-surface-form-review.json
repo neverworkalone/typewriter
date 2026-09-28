@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "contract_id": "m6-3-surface-form-review-v1",
-  "source_issue": 175,
+  "contract_id": "m6-3-searchable-predicate-review-v2",
+  "source_issue": 209,
   "dispositions": [
     {
       "class_id": "m6-3-open-vowel-past-excluded",
@@ -2108,6 +2108,18 @@
       "record_id": "w972",
       "sense_id": "w972-s1",
       "reason": "Plain past is unsupported for this open-vowel class; retain its other applicable rules."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "r019",
+      "sense_id": "r019-s1",
+      "reason": "Plain past remains outside the existing open-vowel whitelist; retain its other applicable bounded forms."
+    },
+    {
+      "class_id": "m6-3-open-vowel-past-excluded",
+      "record_id": "r031",
+      "sense_id": "r031-s1",
+      "reason": "Plain past remains outside the existing open-vowel whitelist; retain its other applicable bounded forms."
     }
   ],
   "reviewed_collisions": {
@@ -2290,6 +2302,29 @@
             "record_id": "w192",
             "sense_id": "w192-s1",
             "rule_id": "predicate-future-adnominal-eul"
+          }
+        ],
+        "reason": "Exact lemma and search-form lookup keeps precedence while the generated candidate remains available."
+      },
+      {
+        "form": "원한",
+        "exact_candidates": [
+          {
+            "record_id": "w799",
+            "record_type": "entry",
+            "field": "lemma"
+          },
+          {
+            "record_id": "w799",
+            "record_type": "entry",
+            "field": "search-form"
+          }
+        ],
+        "generated_candidates": [
+          {
+            "record_id": "r013",
+            "sense_id": "r013-s1",
+            "rule_id": "verb-past-adnominal-eun"
           }
         ],
         "reason": "Exact lemma and search-form lookup keeps precedence while the generated candidate remains available."

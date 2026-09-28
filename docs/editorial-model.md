@@ -55,10 +55,10 @@ Subcategories not represented separately (for example, proper nouns within
 `reference-only` records were historically admitted to close relation targets;
 that origin does not make a valid, in-scope lexical entry permanently
 non-searchable. Search eligibility follows lexical validity and supported
-scope, not the record's historical role. Task B must remove role-based search
-blocking while preserving the ability to navigate to relation targets. The
-existing role/count fields may remain as historical or inventory metadata only
-if they no longer veto direct search.
+scope, not the record's historical role. Both `start` and `reference-only`
+records use direct search when valid and in scope; relation navigation remains a
+separate path. The existing role/count fields preserve editorial provenance and
+historical inventory totals only.
 
 ## 범위와 상태
 
@@ -96,8 +96,8 @@ M1-7에서 다음 네 가지를 v1의 기준으로 확정한다.
 - `direct`, `near`, `antonym`, `mood`, `scene`, `sensory`, `action`,
   `association`은 서로 다른 편집 판단을 보존하며 자동으로 합치거나 대칭화하지 않는다.
 - source sense, target sense, 품사, relation note를 함께 읽어야 검색 결과의
-  거리를 설명할 수 있다. `reference-only`는 관계 도착점으로 표시할 수 있지만
-  검색 출발어 수에는 포함하지 않는다.
+  거리를 설명할 수 있다. `reference-only`는 당시 관계 도착점 역할을 보존하며,
+  현재 직접 검색 가능 여부는 역할과 분리한다.
 - M2는 아래에 적은 구조·참조 무결성을 기계적으로 검사하고, sense 분할·관계
   type·방향·writer usefulness 같은 의미 판단은 편집 검토로 남긴다.
 
@@ -816,7 +816,7 @@ JSON Schema 파일 자체를 고정하는 것은 아니다.
 | --- | --- |
 | `id` | 후보표에 있는 항목은 기존 `w###`, 후보표 밖의 순수 참조는 `r###`인 저장소 내부 식별자 |
 | `record_type` | 일반 표제어 `entry` 또는 고정된 표현 `expression` |
-| `role` | 검색 출발어 `start` 또는 관계 도착점 전용 `reference-only` |
+| `role` | 과거 editorial 분류인 `start` 또는 `reference-only`; 직접 검색 여부를 정하지 않음 |
 | `candidate_id` | 후보표에 대응하는 출발어 또는 참조 전용 레코드의 후보 ID. 후보표 밖 순수 참조에는 없음 |
 | `lemma` | 현재 배치에서 편집 기준으로 삼은 표제어. 활용·어근형 후보는 필요한 만큼 dictionary form으로 정리 |
 | `search_forms` | 후보표의 표면형과 현재 검색에 필요한 정규화형. 표현은 고정된 띄어쓰기를 유지 |
@@ -873,7 +873,8 @@ projection 규칙은 다음과 같다.
    보존한다.
 4. projection은 source sense 단위로 수행한다. target record가 같아도
    target sense가 다르면 합치지 않으며, `reference-only` target도 결과로
-   표시할 수 있지만 검색 출발어로 승격해 세지 않는다.
+   표시할 수 있다. 직접 검색은 `role`에 관계없이 유효한 in-scope record에
+   적용하며 과거 출발어 집계와 분리한다.
 5. relation이 없는 sense는 빈 관계 묶음을 만들지 않는다. 결과를 만들기
    위해 일반적인 장면·association을 자동 생성하지 않는다.
 
@@ -1003,8 +1004,8 @@ M2는 v1의 의미를 추측하거나 자동으로 보정하지 않고, 저장·
 - expression을 독립 검색 단위로 둘지, 고정 표현을 어디서 sense로 나눌지,
   lemma와 search form을 어떻게 편집할지, relation note가 해당 source sense만
   설명하는지;
-- 수량을 채우기 위해 일반적인 target을 추가하지 않는지, reference-only를
-  start 결과로 잘못 세지 않는지;
+- 수량을 채우기 위해 일반적인 target을 추가하지 않는지, 역사적 role을
+  직접 검색 eligibility와 혼동하지 않는지;
 - UI에서 같은 묶음으로 보이는 type도 canonical에서는 분리되어 있는지.
 
 ### M3 이후로 명시적으로 보류할 것
@@ -1017,9 +1018,9 @@ M2의 정규화는 구조 보존과 기본값 처리만 담당하며, 실제 검
 ## M1 대표 UI projection audit
 
 관계 type을 UI의 다섯 표시 묶음으로 투영해도 직접 대체어와 먼 연상이
-섞이지 않는지 대표 source sense를 수동으로 확인했다. target이
-`reference-only`여도 결과로 표시할 수 있고, 별도 검색 출발어로 세지 않는
-규칙을 함께 확인했다.
+섞이지 않는지 대표 source sense를 수동으로 확인했다. 이 audit의 역할 집계는
+당시 스냅샷 기록이며, 현재 검색은 유효한 in-scope target을 역할과 무관하게
+직접 노출한다.
 
 | source sense | canonical relation | UI projection | 확인 결과 |
 | --- | --- | --- | --- |

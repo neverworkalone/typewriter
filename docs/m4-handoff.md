@@ -1,5 +1,9 @@
 # M4 search UX handoff
 
+> Historical handoff: its start-only and reference-only-blocking behavior is
+> superseded by the current role-independent search contract in Issue #209 and
+> [`docs/search-regressions.md`](search-regressions.md).
+
 M4 keeps the writer-facing search boundary deliberately small: exact canonical
 lemmas, exact curated search forms, and the two approved normalization rules.
 The popup now reports why a search did not produce a usable result instead of

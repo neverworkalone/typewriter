@@ -136,7 +136,6 @@ export function projectSearchResults(records, matches = null) {
     : null;
 
   return records
-    .filter((record) => record.role !== 'reference-only')
     .map((record, position) => {
       const match = matchById?.has(record.id)
         ? matchById.get(record.id)

@@ -35,7 +35,6 @@ export const SEARCH_NORMALIZATION_RULES = Object.freeze({
 export const SEARCH_UNSUPPORTED_REASONS = Object.freeze({
   emptyAfterNormalization: 'empty-after-normalization',
   internalWhitespace: 'internal-whitespace-not-normalized',
-  referenceOnly: 'reference-only-not-searchable',
 });
 
 function requireRawQuery(rawQuery) {
@@ -281,7 +280,6 @@ export function createGeneratedSurfaceMatch(summary, {
 export function createSearchResponseFromRows(input, {
   exactRows = [],
   generatedRows = [],
-  hasReferenceOnlyMatch = false,
 } = {}) {
   if (input.unsupportedReason) {
     return createSearchResponse(input);
@@ -332,20 +330,12 @@ export function createSearchResponseFromRows(input, {
     })
   ));
   const matches = [...exactMatches, ...generatedMatches];
-  if (matches.length === 0 && hasReferenceOnlyMatch) {
-    return createSearchResponse(input, [], {
-      reason: SEARCH_UNSUPPORTED_REASONS.referenceOnly,
-    });
-  }
   return createSearchResponse(input, matches);
 }
 
 export function createSearchResponse(input, matches = [], { reason = null } = {}) {
   const normalizedMatches = rankSearchMatches(matches);
-  const status = (
-    input.unsupportedReason
-    || reason === SEARCH_UNSUPPORTED_REASONS.referenceOnly
-  )
+  const status = input.unsupportedReason
     ? SEARCH_RESULT_STATUSES.unsupported
     : normalizedMatches.length > 0
       ? SEARCH_RESULT_STATUSES.ready

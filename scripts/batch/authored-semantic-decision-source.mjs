@@ -18,6 +18,11 @@ import { selectReviewedCandidates } from './lexical-selection.mjs';
 const DECISION_COUNT_KEYS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
+const REJECTION_BASES = new Set([
+  'duplicate-identity',
+  'not-a-lexical-unit',
+  'unsupported-scope',
+]);
 const MAX_CORRECTION_RATE = 0.5;
 
 export class AuthoredSemanticDecisionSourceError extends Error {
@@ -85,13 +90,36 @@ function validateAuthoredCandidateRecord(candidate, identity, label, config) {
     fail(`${label} failed shared lexical intake: ${error.message}`, 'CANDIDATE_SOURCE_BINDING', config);
   }
   if (candidate.record_type !== identity.record_type
-    || candidate.role !== 'start'
-    || candidate.candidate_id !== identity.candidate_record_id
+    || (Object.hasOwn(candidate, 'candidate_id')
+      && candidate.candidate_id !== identity.candidate_record_id)
     || candidate.senses.some((sense, index) => sense.id !== `${identity.candidate_record_id}-s${index + 1}`)
     || !candidate.senses.some((sense) => sense.pos === identity.pos)) {
     fail(`${label} is not bound to the authored candidate identity`, 'CANDIDATE_SOURCE_BINDING', config);
   }
   return candidate;
+}
+
+/** Keep rejection authority inside lexical identity and supported scope. */
+export function validateAuthoredDecisionDisposition(row, label = 'decision', config = {
+  label: 'semantic decision source',
+  errorPrefix: 'AUTHORED_SEMANTIC',
+}) {
+  if (row.decision === 'rejected') {
+    if (!REJECTION_BASES.has(row.rejection_basis)) {
+      fail(
+        `${label}.rejection_basis must identify a lexical-unit, identity, or scope defect`,
+        'DECISION_SOURCE_REJECTION_BASIS',
+        config,
+      );
+    }
+  } else if (Object.hasOwn(row, 'rejection_basis')) {
+    fail(
+      `${label}.rejection_basis is only valid for a rejected lexical identity`,
+      'DECISION_SOURCE_REJECTION_BASIS',
+      config,
+    );
+  }
+  return row;
 }
 
 export function candidateRecordsFromAuthoredSemanticDecisionSource(source, identities, config) {
@@ -169,6 +197,7 @@ function validateDecisionRow(row, { identity, candidate, decisionSourceId, revie
     fail(`${label}.candidate_record_sha256 does not bind the candidate`, 'DECISION_SOURCE_BINDING', config);
   }
   if (!DECISIONS.has(row.decision)) fail(`${label}.decision is unsupported`, 'DECISION_SOURCE_VALUE', config);
+  validateAuthoredDecisionDisposition(row, label, config);
   if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > config.selectionCount) {
     fail(`${label}.rank must be within the complete candidate pool`, 'DECISION_SOURCE_VALUE', config);
   }
@@ -391,8 +420,10 @@ export function validateAuthoredSemanticDecisionSource({
     }
   }
   const counts = expectedDecisionCounts(source.decisions);
-  // Gloss judgment owns eligibility. The selector derives selected and reserve
-  // outcomes from every fit row; authored decisions contain semantic outcomes only.
+  // `fit` describes a valid lexical identity and supported record structure.
+  // Role, relation count, writer-usefulness prose, and the coverage axis do not
+  // determine eligibility. The selector uses the axis only to distribute
+  // capacity among fit rows.
   const selectionResult = selectReviewedCandidates(source.decisions, {
     capacity: config.importCount,
     coverageField: selection.coverage_field,

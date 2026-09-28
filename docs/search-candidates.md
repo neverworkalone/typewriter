@@ -1,10 +1,11 @@
 # M4 candidate order
 
-The runtime search candidate unit is one `start` record. A sense or relation is
-not ranked independently. In the exact-result UI, however, a record with more
-than one sense expands into ordered sense options so a writer can choose the
-intended homonym; a single-sense record remains one record option. Record order
-comes from the runtime, and sense order comes from the canonical record.
+The runtime search candidate unit is one valid in-scope record, independent of
+its historical `role`. A sense or relation is not ranked independently. In the
+exact-result UI, however, a record with more than one sense expands into ordered
+sense options so a writer can choose the intended homonym; a single-sense record
+remains one record option. Record order comes from the runtime, and sense order
+comes from the canonical record.
 
 ## Match tiers
 
@@ -24,15 +25,15 @@ their canonical editorial types.
 
 ## M6-2 generated surface-form tier
 
-The [M6-2 contract](m6-2-inflection-search-contract.md) defines a future
-`generated-surface-form` tier below every result from the current lemma and
-curated `search_forms` path, including current NFC/trim-normalized results. If
-one record is reached by both paths, the current exact/search-form match is
-retained once with its current provenance. Distinct generated record/sense
-candidates are preserved in deterministic record and canonical sense order.
+The [M6-2 contract](m6-2-inflection-search-contract.md), implemented by M6-3,
+defines a `generated-surface-form` tier below every result from the lemma and
+curated `search_forms` path, including NFC/trim-normalized results. If one
+record is reached by both paths, the exact/search-form match is retained once
+with its provenance. Distinct generated record/sense candidates are preserved
+in deterministic record and canonical sense order.
 
-This is a contract only: the M4 runtime remains exact-only until M6-3 adds the
-projection and shared Extension/Web query behavior.
+The generated-form projection is shared by Extension and Web and remains bounded
+by the M6-2 contract.
 
 If one record is returned through more than one path, the best path is retained
 once. Within a tier, the runtime keeps the deterministic SQLite source order; the

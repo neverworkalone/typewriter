@@ -12,7 +12,6 @@ import {
   SQLITE_SCHEMA_VERSION,
 } from '../src/runtime/dictionary-contract.js';
 import {
-  REFERENCE_ONLY_MATCH_SQL,
   findRecordsBySearchTerm,
   getMetadata,
   getRecord,
@@ -92,8 +91,10 @@ test('the shared search adapter returns the same exact, form, surface, and ambig
     assert.equal(findRecordsBySearchTerm(wasm, '가다').matches[0].match.field, 'lemma');
     assert.equal(findRecordsBySearchTerm(wasm, '가').matches[0].match.field, 'search-form');
     assert.equal(findRecordsBySearchTerm(wasm, '가는').matches[0].match.field, 'generated-surface-form');
-    assert.equal(findRecordsBySearchTerm(wasm, '빛').reason, 'reference-only-not-searchable');
-    assert.equal(findRecordsBySearchTerm(wasm, '빛나다').reason, 'reference-only-not-searchable');
+    assert.equal(findRecordsBySearchTerm(wasm, '빛').matches[0].id, 'r003');
+    assert.equal(findRecordsBySearchTerm(wasm, '빛').matches[0].role, 'reference-only');
+    assert.equal(findRecordsBySearchTerm(wasm, '빛나다').matches[0].id, 'r003');
+    assert.equal(findRecordsBySearchTerm(wasm, '빛나다').matches[0].match.field, 'search-form');
     assert.equal(getRecord(wasm, 'w002').senses.length, 2);
     assert.equal(getRecord(native, 'w002').senses.length, 2);
     assert.deepEqual(getMetadata(wasm), getMetadata(native));
@@ -101,7 +102,21 @@ test('the shared search adapter returns the same exact, form, surface, and ambig
     assert.deepEqual(getRecord(wasm, 'w001'), getRecord(native, 'w001'));
 
     for (const database of [native, wasm]) {
-      const plan = queryPlan(database, REFERENCE_ONLY_MATCH_SQL, ['term', 'term']);
+      const plan = queryPlan(database, `
+        SELECT id, record_type, role, candidate_id, lemma,
+               'lemma' AS match_field, lemma AS match_value, 0 AS match_priority
+        FROM records
+        WHERE lemma = ?
+        UNION ALL
+        SELECT records.id, records.record_type, records.role,
+               records.candidate_id, records.lemma,
+               'search-form' AS match_field, search_forms.form AS match_value,
+               1 AS match_priority
+        FROM records
+        INNER JOIN search_forms ON search_forms.record_id = records.id
+        WHERE search_forms.form = ?
+        ORDER BY id, match_priority
+      `, ['term', 'term']);
       assert.match(plan, /idx_records_lemma/u);
       assert.match(plan, /idx_search_forms_form/u);
       assert.doesNotMatch(plan, /SCAN (?:records|search_forms)/u);

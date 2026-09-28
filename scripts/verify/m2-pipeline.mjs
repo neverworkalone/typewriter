@@ -305,8 +305,8 @@ export async function runM2Pipeline({
     };
     context.derived.surfaceFormReviewManifest = {
       schema_version: 1,
-      contract_id: 'm6-3-surface-form-review-v1',
-      source_issue: 175,
+      contract_id: 'm6-3-searchable-predicate-review-v2',
+      source_issue: 209,
       dispositions: [],
       reviewed_collisions: { exact_generated: [], ambiguous_generated: [] },
     };

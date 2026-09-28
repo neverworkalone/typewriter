@@ -1,34 +1,36 @@
-# M6-1 5K quality baseline and 1.0 gates
+# M6-1 searchable lexical baseline and 1.0 gates
 
 ## Decision
 
-This issue records the accepted issue-start canonical dictionary, its measured
-search behavior, and the prospective quality gates for M6 evidence. The
-snapshot is a measurement of the current curated corpus; it does not establish
-writer satisfaction, full-corpus relation correctness, or useful ranking where
-the product exposes no ambiguous result.
+This snapshot measures direct search across every valid supported canonical
+record, including records whose historical role was `reference-only`. Role
+counts remain available as provenance, while reachability, relation-gap, and
+writer-facing candidate measures use the complete searchable population. The
+snapshot does not establish writer satisfaction, full-corpus relation
+correctness, or useful ranking where the product exposes no ambiguous result.
 
-The completion boundary is M6-2 planning and implementation. This issue does
-not authorize corpus expansion, morphology, bulk relation generation, or
-ranking redesign.
+The population correction keeps the existing bounded M6-2/M6-3 forms and
+collision review. It does not authorize corpus recovery, broader morphology,
+bulk relation generation, or ranking redesign.
 
 ## Reproduction
 
-`docs/m6-1-quality-baseline.json` is the machine-readable snapshot. It binds the
+`docs/m6-1-searchable-lexical-baseline.json` is the machine-readable snapshot. It binds the
 canonical JSONL digest and the M4 search regression fixture digest. The
 checker reloads canonical JSONL without a shared cached context, builds a
-temporary SQLite database, checks all distinct start lemmas and search forms,
-and compares the derived metrics, gate contract, and generated report with the
-committed artifacts. The temporary database is deleted after the run.
+temporary SQLite database, checks all distinct valid canonical lemmas and
+search forms, and compares the derived metrics, gate contract, and generated
+report with the committed artifacts. The temporary database is deleted after
+the run.
 
 ```sh
 npm run baseline:m6-1
 node --test tests/m6-1-quality-baseline.test.mjs
 ```
 
-The snapshot is tied to the issue-start canonical digest. If a later M6 change
-changes canonical data, preserve this version as historical evidence and
-create a new versioned baseline instead of rewriting it.
+This version is tied to the Issue #209 start canonical digest. If a later M6
+change changes canonical data or the search population contract, preserve this
+version as historical evidence and create a new versioned baseline.
 
 ## Measured snapshot
 

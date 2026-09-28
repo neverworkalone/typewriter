@@ -3,22 +3,6 @@ import {
   normalizeSearchInput,
 } from './search-query.js';
 
-export const REFERENCE_ONLY_MATCH_SQL = `
-  SELECT (
-    EXISTS (
-      SELECT 1
-      FROM records
-      WHERE role = 'reference-only' AND lemma = ?
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM search_forms
-      INNER JOIN records ON records.id = search_forms.record_id
-      WHERE records.role = 'reference-only' AND search_forms.form = ?
-    )
-  ) AS has_reference_only_match
-`;
-
 function allRows(database, sql, parameters = []) {
   if (typeof database.selectObjects === 'function') {
     return database.selectObjects(sql, parameters).map((row) => ({ ...row }));
@@ -41,7 +25,7 @@ function findSearchRows(database, term) {
     SELECT id, record_type, role, candidate_id, lemma,
            'lemma' AS match_field, lemma AS match_value, 0 AS match_priority
     FROM records
-    WHERE role = 'start' AND lemma = ?
+    WHERE lemma = ?
     UNION ALL
     SELECT records.id, records.record_type, records.role,
            records.candidate_id, records.lemma,
@@ -49,7 +33,7 @@ function findSearchRows(database, term) {
            1 AS match_priority
     FROM records
     INNER JOIN search_forms ON search_forms.record_id = records.id
-    WHERE records.role = 'start' AND search_forms.form = ?
+    WHERE search_forms.form = ?
     ORDER BY id, match_priority
   `, [term, term]);
 }
@@ -67,14 +51,9 @@ function findGeneratedSurfaceRows(database, term) {
     INNER JOIN records ON records.id = generated_surface_forms.record_id
     INNER JOIN senses ON senses.id = generated_surface_forms.sense_id
       AND senses.record_id = generated_surface_forms.record_id
-    WHERE records.role = 'start' AND generated_surface_forms.form = ?
+    WHERE generated_surface_forms.form = ?
     ORDER BY records.id, senses.position, generated_surface_forms.rule_id
   `, [term]);
-}
-
-function hasReferenceOnlyMatch(database, term) {
-  const row = firstRow(database, REFERENCE_ONLY_MATCH_SQL, [term, term]);
-  return Number(row?.has_reference_only_match) === 1;
 }
 
 export function findRecordsBySearchTerm(database, rawQuery) {
@@ -86,7 +65,6 @@ export function findRecordsBySearchTerm(database, rawQuery) {
   return createSearchResponseFromRows(input, {
     exactRows: findSearchRows(database, input.normalizedQuery),
     generatedRows: findGeneratedSurfaceRows(database, input.normalizedQuery),
-    hasReferenceOnlyMatch: hasReferenceOnlyMatch(database, input.normalizedQuery),
   });
 }
 
