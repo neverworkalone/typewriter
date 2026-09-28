@@ -56,6 +56,50 @@ function compareLogicalDatabaseSnapshots(first, second) {
   return JSON.stringify(first) === JSON.stringify(second);
 }
 
+async function captureProspectiveDatabase(databasePath, expectedSummary, phase) {
+  let database;
+  try {
+    database = new DatabaseSync(databasePath, { readOnly: true });
+    const metadata = getMetadata(database);
+    const expectedMetadata = {
+      record_count: expectedSummary.record_count,
+      start_count: expectedSummary.start_count,
+      reference_only_count: expectedSummary.reference_only_count,
+      sense_count: expectedSummary.sense_count,
+      relation_count: expectedSummary.relation_count,
+      expression_count: expectedSummary.expression_count,
+    };
+    const mismatches = Object.entries(expectedMetadata)
+      .filter(([key, value]) => metadata[key] !== String(value))
+      .map(([key, value]) => `${key} expected ${value}, received ${metadata[key]}`);
+    if (mismatches.length > 0) {
+      fail(
+        `M5-12A ${phase} dictionary is not bound to its prospective canonical summary: ${mismatches.join('; ')}`,
+        'M5_12A_PREFLIGHT_SQLITE_FAILED',
+      );
+    }
+
+    const logicalSnapshot = readLogicalDatabaseSnapshot(database);
+    const bytesSha256 = sha256(await readFile(databasePath));
+    return { metadata, logicalSnapshot, bytesSha256 };
+  } catch (error) {
+    if (error instanceof M512APreflightError) throw error;
+    fail(`M5-12A ${phase} dictionary could not be read: ${error.message}`, 'M5_12A_PREFLIGHT_SQLITE_FAILED');
+  } finally {
+    closeDatabase(database);
+  }
+}
+
+function assertProspectiveDatabaseUnchanged(before, after, phase) {
+  if (before.bytesSha256 !== after.bytesSha256
+    || !compareLogicalDatabaseSnapshots(before.logicalSnapshot, after.logicalSnapshot)) {
+    fail(
+      `M5-12A ${phase} changed the prospective dictionary after it was built`,
+      'M5_12A_PREFLIGHT_SQLITE_FAILED',
+    );
+  }
+}
+
 async function runProspectiveProductChecks({ canonicalDirectory, outputDirectory, databasePath }) {
   const environment = {
     TYPEWRITER_ALLOW_DIRTY: 'true',
@@ -123,15 +167,40 @@ async function runM512APreflightOnce({
 
     const productDatabasePath = path.join(outputDirectory, 'dictionary.sqlite');
     await copyFile(productDatabasePath, sharedProductDatabasePath);
+    const initialProductDatabase = await captureProspectiveDatabase(
+      productDatabasePath,
+      expectedSummary,
+      'initial build',
+    );
     await runProspectiveProductChecks({
       canonicalDirectory: prospectiveCanonicalDirectory,
       outputDirectory,
       databasePath: sharedProductDatabasePath,
     });
+    const postChecksDatabase = await captureProspectiveDatabase(
+      productDatabasePath,
+      expectedSummary,
+      'product checks',
+    );
+    assertProspectiveDatabaseUnchanged(
+      initialProductDatabase,
+      postChecksDatabase,
+      'product checks',
+    );
     await prepareProductPackageDirectory({
       projectRoot: REPOSITORY_DIRECTORY,
       packageDirectory: outputDirectory,
     });
+    const packagedDatabase = await captureProspectiveDatabase(
+      productDatabasePath,
+      expectedSummary,
+      'package preparation',
+    );
+    assertProspectiveDatabaseUnchanged(
+      initialProductDatabase,
+      packagedDatabase,
+      'package preparation',
+    );
     const packagedManifest = JSON.parse(await readFile(path.join(outputDirectory, 'manifest.json'), 'utf8'));
     const zipPath = path.join(
       temporaryDirectory,
@@ -229,6 +298,17 @@ async function runM512APreflightOnce({
           input_canonical_directory_sha256: prospectiveCanonicalDigest,
           package_file_count: packageResult.actualFiles.length,
           zip_file_count: packageResult.zipFiles.length,
+        },
+        prospective_dictionary_stability: {
+          status: 'pass',
+          input_canonical_directory_sha256: prospectiveCanonicalDigest,
+          record_count: packagedDatabase.metadata.record_count,
+          generated_surface_form_count: packagedDatabase.metadata.generated_surface_form_count,
+          surface_form_eligible_sense_count: packagedDatabase.metadata.surface_form_eligible_sense_count,
+          surface_form_exclusion_count: packagedDatabase.metadata.surface_form_exclusion_count,
+          product_checks_preserved_database: true,
+          package_preparation_preserved_database: true,
+          database_sha256: packagedDatabase.bytesSha256,
         },
         artifact_policy_clean_checkout: {
           status: 'pass',

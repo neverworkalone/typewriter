@@ -63,6 +63,11 @@ not run fast and normal as separate fresh processes that duplicate canonical
 parse/index/build work. Changed-only validation may accelerate failure
 feedback but must not become the final correctness gate.
 
+Changes to Deep CI or a Deep validation regression require a successful
+`Deep CI Gate` for the exact PR head. Applying the `deep-ci` label runs the
+shared `ci:all` validation for that head; ordinary PRs pass this gate without
+running the expensive Deep validation.
+
 ## Depth by risk
 
 Do not review every changed file at equal depth.

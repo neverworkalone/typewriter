@@ -86,6 +86,20 @@ test('M5-12A binds all 802 identities and admits exactly 722 through the shared 
   assert.equal(result.relation.events.length, 0);
 });
 
+test('M5-12A prospective dictionary remains unchanged through product checks and packaging', async () => {
+  const { preflight } = await buildM512A();
+  const evidence = preflight.checks.prospective_dictionary_stability;
+
+  assert.equal(evidence.status, 'pass');
+  assert.equal(evidence.record_count, '2042');
+  assert.equal(evidence.generated_surface_form_count, '2112');
+  assert.equal(evidence.surface_form_eligible_sense_count, '644');
+  assert.equal(evidence.surface_form_exclusion_count, '170');
+  assert.equal(evidence.product_checks_preserved_database, true);
+  assert.equal(evidence.package_preparation_preserved_database, true);
+  assert.match(evidence.database_sha256, /^[a-f0-9]{64}$/u);
+});
+
 test('M5-12A decision scaffolding cannot manufacture or overwrite semantic authority', async () => {
   const sourcePath = path.resolve('data/batches/m5-12a-semantic-decisions.json');
   const sourceBefore = await readFile(sourcePath);

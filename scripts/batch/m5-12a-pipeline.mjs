@@ -1314,6 +1314,7 @@ function buildGate({
     canonical_integrity: JSON.stringify(finalSummary) === JSON.stringify(M5_12A_FINAL_SUMMARY),
     deterministic_sqlite: preflightPassed('deterministic_sqlite'),
     search_product_regression: preflightPassed('search_product_regression'),
+    prospective_dictionary_stability: preflightPassed('prospective_dictionary_stability'),
     extension_build: preflightPassed('extension_build'),
     package_validation: preflightPassed('package_validation'),
     artifact_policy_clean_checkout: preflightPassed('artifact_policy_clean_checkout'),
@@ -1882,6 +1883,7 @@ function assertPreflightEvidence(result) {
   const requiredChecks = [
     'deterministic_sqlite',
     'search_product_regression',
+    'prospective_dictionary_stability',
     'extension_build',
     'package_validation',
     'artifact_policy_clean_checkout',
