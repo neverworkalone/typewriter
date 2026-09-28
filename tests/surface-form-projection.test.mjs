@@ -127,10 +127,16 @@ test('the complete 5K canonical domain has deterministic declared projection cov
     requireClassDispositions: true,
     requireCollisionReview: true,
   });
-  const declaredPredicateSenseCount = contract.inventory.predicate_sense_counts.verb
-    + contract.inventory.predicate_sense_counts.adjective;
+  const livePredicateSenseCount = records
+    .filter(({ role, record_type: recordType }) => role === 'start' && recordType === 'entry')
+    .reduce(
+    (count, record) => count + record.senses.filter(
+      ({ pos }) => pos === 'verb' || pos === 'adjective',
+    ).length,
+    0,
+    );
 
-  assert.equal(projection.coverage.eligible_sense_count, declaredPredicateSenseCount);
+  assert.equal(projection.coverage.eligible_sense_count, livePredicateSenseCount);
   assert.equal(
     projection.coverage.complete_rule_decision_count,
     projection.coverage.expected_rule_decision_count,
