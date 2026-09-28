@@ -38,6 +38,7 @@ import { hashCanonicalDirectory } from '../scripts/batch/validate-m5-8-process.m
 import {
   buildM512ASemanticDecisionScaffold,
 } from '../scripts/batch/build-m5-12a-decision-scaffold.mjs';
+import { makeHistoricalReplayState } from './helpers/semantic-audit-fixture.mjs';
 
 function jsonSha256(value) {
   return createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
@@ -464,6 +465,10 @@ test('M5-12A historical producer admits multi-sense evidence and rejects missing
     semanticDecisionSource: validated,
   });
   const production = await import('../scripts/batch/lexical-production.mjs');
+  const historicalProductionState = makeHistoricalReplayState({
+    state: result.production.production_state,
+    sources: result.production.production_state_sources,
+  });
   assert.doesNotThrow(() => production.validateLexicalProduction({
     batchId: 'm5-12a-expansion-20260920',
     candidateRecords,
@@ -471,8 +476,8 @@ test('M5-12A historical producer admits multi-sense evidence and rejects missing
     baseRecords: result.inputs.baseCanonical.records,
     prospectiveRecords: result.prospective.canonical.records,
     semanticAudit: result.semanticAudit,
-    productionState: result.production.production_state,
-    productionStateSources: result.production.production_state_sources,
+    productionState: historicalProductionState.state,
+    productionStateSources: historicalProductionState.sources,
     allowReplay: true,
     historicalReplay: true,
     catalogCount: M5_12A_SELECTION_COUNT,

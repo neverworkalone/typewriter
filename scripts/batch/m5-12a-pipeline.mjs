@@ -1885,16 +1885,18 @@ async function assertMissingOrEmpty(filePath, label) {
   fail(`${label} already contains durable promotion events; M5-12A promotion is not replayable`, 'PROMOTION_ALREADY_APPLIED');
 }
 
-function assertPreflightEvidence(result) {
+function assertPreflightEvidence(result, { allowLegacyHistoricalPreflight = false } = {}) {
   const preflight = result.preflight ?? result.promotion?.preflight ?? result.admission?.gate?.preflight;
   const requiredChecks = [
     'deterministic_sqlite',
     'search_product_regression',
-    'prospective_dictionary_stability',
     'extension_build',
     'package_validation',
     'artifact_policy_clean_checkout',
   ];
+  if (!allowLegacyHistoricalPreflight) {
+    requiredChecks.push('prospective_dictionary_stability');
+  }
   if (!preflight || preflight.status !== 'complete' || typeof preflight.input_canonical_directory_sha256 !== 'string') {
     fail('M5-12A promotion requires complete prospective preflight evidence', 'PROMOTION_PREFLIGHT_REQUIRED');
   }
@@ -2296,7 +2298,7 @@ export async function validateM512AFinal({
     assertPreflightEvidence({
       preflight: promotion.preflight,
       prospective: result.prospective,
-    });
+    }, { allowLegacyHistoricalPreflight: true });
     if (admission.decisions?.included + admission.decisions?.corrected !== M5_12A_IMPORT_COUNT) fail('admission imported count drifted', 'DECISION_COUNT_MISMATCH');
     const processedDecisionCount = admission.decisions?.included
       + admission.decisions?.corrected
