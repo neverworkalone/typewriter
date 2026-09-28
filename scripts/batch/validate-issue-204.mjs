@@ -590,6 +590,10 @@ export async function validateIssue204() {
     // Issue #204 is replayed from its byte-pinned v3 decision source.
     allowReplay: true,
     historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/issue-204-semantic-decisions.json',
+      sourceBytes: decisionBytes,
+    },
     catalogCount: 10,
     expectedSelectedCount: 10,
     candidateLabel: 'Issue #204 admitted pilot candidates',

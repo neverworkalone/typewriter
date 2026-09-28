@@ -998,6 +998,10 @@ export async function buildM514({
     // M5-14 remains a byte-pinned v3 historical decision source.
     allowReplay: true,
     historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/m5-14-semantic-decisions.json',
+      sourceBytes: artifacts.semanticDecisionSourceBytes,
+    },
     catalogCount: M5_14_SELECTION_COUNT,
     expectedSelectedCount: M5_14_IMPORT_COUNT,
     checkPilotCompleteness: true,

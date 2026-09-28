@@ -261,6 +261,12 @@ export async function buildM511({
           candidate_id: candidateRecords[index].record.id,
           inventory_id: catalogEntry.inventory_id,
           decision: decisionResult.decision.decision,
+          ...(decisionResult.decision.hold_basis
+            ? { hold_basis: decisionResult.decision.hold_basis }
+            : {}),
+          ...(decisionResult.decision.rejection_basis
+            ? { rejection_basis: decisionResult.decision.rejection_basis }
+            : {}),
           semantic_review: editorial.artifact.decisions[index].semantic_review,
           ...(decisionResult.record ? { reviewed_record: decisionResult.record } : {}),
           expected_record_type: catalogEntry.flags.includes('expression-unit') ? 'expression' : 'entry',
@@ -272,6 +278,10 @@ export async function buildM511({
       stageEvidence: productionStageEvidence,
       allowReplay: true,
       historicalReplay: true,
+      historicalDispositionSource: {
+        sourceBytes: editorialSource.bytes,
+        proposalSourceBytes: proposalSource.bytes,
+      },
       checkPilotCompleteness: true,
       catalogCount: M5_11_CATALOG.length,
       expectedSelectedCount: IMPORTED_RECORD_COUNT,

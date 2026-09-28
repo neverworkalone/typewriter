@@ -989,6 +989,10 @@ export async function buildM513({
     // New live decision sources go through the strict disposition-basis gate.
     allowReplay: true,
     historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/m5-13-semantic-decisions.json',
+      sourceBytes: artifacts.semanticDecisionSourceBytes,
+    },
     catalogCount: M5_13_SELECTION_COUNT,
     expectedSelectedCount: M5_13_IMPORT_COUNT,
     checkPilotCompleteness: true,

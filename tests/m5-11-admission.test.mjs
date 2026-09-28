@@ -602,6 +602,13 @@ function makeAgentSources(catalog) {
       pass_id: 'agent-generation-pass',
     },
   });
+  // Synthetic future-source fixtures exercise the shared producer's active
+  // disposition contract. The actual frozen M5-11 artifact is separately
+  // grandfathered only through its exact pinned source bytes.
+  for (const decision of fixture.editorial.decisions) {
+    if (decision.decision === 'held') decision.hold_basis = 'unresolved-sense';
+    if (decision.decision === 'rejected') decision.rejection_basis = 'duplicate-identity';
+  }
   fixture.relationDiff = compareRelationSnapshots({
     batchId: BATCH_ID,
     before: [],
@@ -637,6 +644,8 @@ function makeAgentSources(catalog) {
       candidate_record_sha256: sha256Json(producerCandidate),
       reviewed_record_sha256: sha256Json(record),
       decision: decision.decision,
+      ...(decision.hold_basis ? { hold_basis: decision.hold_basis } : {}),
+      ...(decision.rejection_basis ? { rejection_basis: decision.rejection_basis } : {}),
       selection_rank: ranks[index],
       selection_score: selectionScore,
     });
@@ -676,6 +685,8 @@ function makeAgentSources(catalog) {
         candidate_record_sha256: sha256Json(producerCandidate),
         reviewed_record_sha256: sha256Json(record),
         decision: decision.decision,
+        ...(decision.hold_basis ? { hold_basis: decision.hold_basis } : {}),
+        ...(decision.rejection_basis ? { rejection_basis: decision.rejection_basis } : {}),
         selection_rank: ranks[index],
         selection_score: selectionScore,
         rationale: `${catalogEntry.inventory_id} was selected from the separately authored M5-11 fixture decision source.`,

@@ -1690,6 +1690,10 @@ export async function buildM512A({
     // surface checks do not rewrite its original admission verdict.
     allowReplay: true,
     historicalReplay: true,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/m5-12a-semantic-decisions.json',
+      sourceBytes: semanticDecisionSourceFile.sourceBytes,
+    },
     catalogCount: M5_12A_SELECTION_COUNT,
     expectedSelectedCount: M5_12A_IMPORT_COUNT,
     checkPilotCompleteness: true,

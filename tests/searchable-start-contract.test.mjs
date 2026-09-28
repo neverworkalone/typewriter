@@ -22,6 +22,15 @@ import {
   SOURCE_BOUND_SEMANTIC_DECISION_SOURCE_CONTRACT_VERSION,
 } from '../scripts/validate/semantic-decision-row.mjs';
 import { validateLexicalProduction } from '../scripts/batch/lexical-production.mjs';
+import { verifyGrandfatheredHistoricalDispositions } from '../scripts/batch/historical-disposition-source.mjs';
+import {
+  candidateRecordsFromM513DecisionSource,
+  readM513DecisionSource,
+} from '../scripts/batch/m5-13-decision-source.mjs';
+import {
+  candidateRecordsFromM512ADecisionSource,
+  readM512ADecisionSource,
+} from '../scripts/batch/m5-12a-decision-source.mjs';
 import { SQLITE_SCHEMA_SQL } from '../scripts/build/sqlite-schema.mjs';
 import { SearchSession } from '../src/domain/search-session.js';
 import {
@@ -635,6 +644,16 @@ test('active shared production constrains mixed common-general zero-relation dis
         (error) => error.code === expectedCode,
         `${decision} cannot exclude this common/general/zero-relation candidate with ${String(invalidBasis)}`,
       );
+      assert.throws(
+        () => validateLexicalProduction({
+          ...producerArgs,
+          reviews: invalidReviews,
+          allowReplay: true,
+          historicalReplay: true,
+        }),
+        (error) => error.code === expectedCode,
+        `historicalReplay cannot bypass ${decision} basis validation for ${String(invalidBasis)}`,
+      );
     }
   }
 
@@ -646,6 +665,73 @@ test('active shared production constrains mixed common-general zero-relation dis
     (error) => error.code === 'LEXICAL_PRODUCTION_DECISION_BASIS_BINDING',
     'valid but changed basis values remain bound to the independent authored review',
   );
+});
+
+test('historicalReplay exempts only rows bound to exact grandfathered M5 decision sources', async () => {
+  const sourceFile = await readM513DecisionSource();
+  const candidates = candidateRecordsFromM513DecisionSource(sourceFile.source);
+  const reviews = sourceFile.source.decisions.map((row) => ({
+    candidate_id: row.candidate_record_id,
+    inventory_id: row.inventory_id,
+    decision: row.decision,
+    semantic_review: {},
+  }));
+  const historicalDispositionSource = {
+    sourcePath: 'data/batches/m5-13-semantic-decisions.json',
+    sourceBytes: sourceFile.sourceBytes,
+  };
+  const grandfatheredIds = verifyGrandfatheredHistoricalDispositions({
+    batchId: sourceFile.source.batch_id,
+    candidateRecords: candidates,
+    reviews,
+    historicalDispositionSource,
+  });
+  assert.equal(grandfatheredIds.size, 46);
+  assert.ok(grandfatheredIds.has('w2252'));
+
+  const changedReview = structuredClone(reviews);
+  changedReview.find(({ candidate_id: id }) => id === 'w2252').decision = 'included';
+  assert.throws(
+    () => verifyGrandfatheredHistoricalDispositions({
+      batchId: sourceFile.source.batch_id,
+      candidateRecords: candidates,
+      reviews: changedReview,
+      historicalDispositionSource,
+    }),
+    (error) => error.code === 'LEXICAL_PRODUCTION_HISTORICAL_SOURCE_BINDING',
+  );
+
+  const alteredSourceBytes = Buffer.from(`${sourceFile.sourceBytes.toString('utf8')} `, 'utf8');
+  assert.equal(verifyGrandfatheredHistoricalDispositions({
+    batchId: sourceFile.source.batch_id,
+    candidateRecords: candidates,
+    reviews,
+    historicalDispositionSource: {
+      ...historicalDispositionSource,
+      sourceBytes: alteredSourceBytes,
+    },
+  }).size, 0);
+
+  const m512aSourceFile = await readM512ADecisionSource();
+  const m512aCandidates = candidateRecordsFromM512ADecisionSource(
+    m512aSourceFile.source,
+  );
+  const m512aReviews = m512aSourceFile.source.decisions.map((row) => ({
+    candidate_id: row.candidate_record_id,
+    inventory_id: row.inventory_id,
+    decision: row.decision,
+    semantic_review: {},
+  }));
+  const m512aGrandfatheredIds = verifyGrandfatheredHistoricalDispositions({
+    batchId: m512aSourceFile.source.batch_id,
+    candidateRecords: m512aCandidates,
+    reviews: m512aReviews,
+    historicalDispositionSource: {
+      sourcePath: 'data/batches/m5-12a-semantic-decisions.json',
+      sourceBytes: m512aSourceFile.sourceBytes,
+    },
+  });
+  assert.equal(m512aGrandfatheredIds.size, 50);
 });
 
 test('native and WASM SQLite search relation targets by lemma, form, and supported generated surface form', async () => {

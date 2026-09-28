@@ -16,6 +16,7 @@ import {
   validateLexicalSemanticReview,
 } from '../validate/lexical-quality.mjs';
 import { validateLexicalDispositionBasis } from '../validate/lexical-disposition.mjs';
+import { verifyGrandfatheredHistoricalDispositions } from './historical-disposition-source.mjs';
 
 export const LEXICAL_PRODUCTION_PIPELINE_VERSION = 'lexical-production-v1';
 export const LEXICAL_PRODUCTION_DECISIONS = Object.freeze([
@@ -512,6 +513,7 @@ export function validateLexicalProduction({
   canonicalContext,
   allowReplay = false,
   historicalReplay = false,
+  historicalDispositionSource,
   checkPilotCompleteness = false,
   catalogCount,
   expectedSelectedCount,
@@ -537,6 +539,14 @@ export function validateLexicalProduction({
   }
   const candidates = requireArray(candidateRecords, 'production.candidate_records');
   const reviewRows = requireArray(reviews, 'production.reviews');
+  const grandfatheredDispositionIds = historicalReplay === true
+    ? verifyGrandfatheredHistoricalDispositions({
+      batchId,
+      candidateRecords: candidates,
+      reviews: reviewRows,
+      historicalDispositionSource,
+    })
+    : new Set();
   const correctionRows = requireArray(corrections, 'production.corrections');
   if (candidates.length === 0 && correctionRows.length === 0) {
     fail('production must contain candidate records or reviewed corrections', 'LEXICAL_PRODUCTION_SCOPE');
@@ -589,10 +599,15 @@ export function validateLexicalProduction({
   const candidateIds = new Set();
   for (const [index, rawEntry] of reviewRows.entries()) {
     const entry = semanticReviewInput(rawEntry, index);
-    // Frozen sources use an explicit historical replay boundary. Every live
-    // admission must carry the same source-bound lexical basis on both the
-    // producer row and its independently authored semantic-review evidence.
-    if (historicalReplay !== true) {
+    const missingDispositionBasis = (entry.decision === 'held' && !Object.hasOwn(entry, 'hold_basis'))
+      || (entry.decision === 'rejected' && !Object.hasOwn(entry, 'rejection_basis'));
+    // Replay does not disable the shared rule. Only exact source rows whose
+    // bytes and candidate bindings were reverified at this boundary may retain
+    // a pre-basis held/rejected verdict.
+    const grandfatheredLegacyDisposition = historicalReplay === true
+      && missingDispositionBasis
+      && grandfatheredDispositionIds.has(entry.candidate_id);
+    if (!grandfatheredLegacyDisposition) {
       validateProductionDisposition(entry, `production.reviews[${index}]`);
     }
     const candidate = recordOf(candidates[index]);
