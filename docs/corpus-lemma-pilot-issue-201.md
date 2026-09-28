@@ -43,10 +43,14 @@ the database file is never loaded into a JavaScript or Python buffer.
 - Before selection, candidates are checked against every canonical lemma,
   curated search form, and generated surface form from the current product
   projection. The comparison uses the runtime's Unicode NFC and surrounding
-  whitespace normalization.
-- Exactly 100 uncovered lemma strings are selected in deterministic order by
-  source spread, document spread, analyzer occurrences, then lemma. These are
-  review candidates, not an admission quota or quality ranking.
+  whitespace normalization and retains each match kind, record ID, canonical
+  lemma, and generated sense/POS/rule provenance.
+- An exact canonical lemma match is covered. A curated search-form or generated
+  surface collision remains in the inventory as a held candidate; it is not
+  silently discarded as an existing lemma. Exactly 100 candidates without an
+  exact canonical lemma are selected in deterministic order by source spread,
+  document spread, analyzer occurrences, then lemma. These are review
+  candidates, not an admission quota or quality ranking.
 - For each candidate, the dominant observed surface is passed to
   `countCorpusMatches()` for a complete SQL literal paragraph-match count and
   to `searchCorpusIndex()` for at most three representative paragraphs. The

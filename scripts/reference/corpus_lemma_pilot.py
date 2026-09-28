@@ -127,22 +127,124 @@ def read_database_metadata(database: sqlite3.Connection) -> dict[str, str]:
     return metadata
 
 
-def read_product_surface(database: sqlite3.Connection) -> set[str]:
-    """Read only the current product search surface, in bounded batches."""
-    covered_forms: set[str] = set()
+def read_product_surface(database: sqlite3.Connection) -> dict[str, list[dict]]:
+    """Read normalized product forms with their distinct runtime match sources."""
+    matches_by_form: dict[str, list[dict]] = defaultdict(list)
     query = """
-        SELECT lemma AS form FROM records
-        UNION ALL SELECT form FROM search_forms
-        UNION ALL SELECT form FROM generated_surface_forms
+        SELECT lemma AS form, 'canonical_lemma' AS match_kind,
+               id AS record_id, lemma AS canonical_lemma,
+               NULL AS sense_id, NULL AS pos, NULL AS rule_id
+        FROM records
+        UNION ALL
+        SELECT sf.form, 'curated_search_form', r.id, r.lemma,
+               NULL, NULL, NULL
+        FROM search_forms AS sf
+        JOIN records AS r ON r.id = sf.record_id
+        UNION ALL
+        SELECT g.form, 'generated_surface_form', r.id, r.lemma,
+               g.sense_id, s.pos, g.rule_id
+        FROM generated_surface_forms AS g
+        JOIN records AS r ON r.id = g.record_id
+        JOIN senses AS s ON s.id = g.sense_id AND s.record_id = g.record_id
     """
     cursor = database.execute(query)
     while True:
         batch = cursor.fetchmany(1024)
         if not batch:
             break
-        for (form,) in batch:
-            covered_forms.add(normalize_search_form(str(form)))
-    return covered_forms
+        for form, match_kind, record_id, canonical_lemma, sense_id, pos, rule_id in batch:
+            normalized_form = normalize_search_form(str(form))
+            matches_by_form[normalized_form].append(
+                {
+                    "match_kind": str(match_kind),
+                    "record_id": str(record_id),
+                    "canonical_lemma": str(canonical_lemma),
+                    "sense_id": str(sense_id) if sense_id is not None else None,
+                    "pos": str(pos) if pos is not None else None,
+                    "rule_id": str(rule_id) if rule_id is not None else None,
+                }
+            )
+    for matches in matches_by_form.values():
+        matches.sort(
+            key=lambda match: (
+                match["match_kind"],
+                match["record_id"],
+                match["sense_id"] or "",
+                match["rule_id"] or "",
+            )
+        )
+    return dict(matches_by_form)
+
+
+def apply_product_coverage(
+    staging: sqlite3.Connection,
+    product_matches: dict[str, list[dict]],
+) -> dict[str, int]:
+    """Cover exact lemmas and retain search/generated collisions as held candidates."""
+    match_kind_counts = {
+        "canonical_lemma": 0,
+        "curated_search_form": 0,
+        "generated_surface_form": 0,
+    }
+    cursor = staging.execute(
+        "SELECT DISTINCT normalized_lemma FROM candidates ORDER BY normalized_lemma COLLATE BINARY"
+    )
+    while True:
+        batch = cursor.fetchmany(1024)
+        if not batch:
+            break
+        updates = []
+        for (normalized_lemma,) in batch:
+            matches = product_matches.get(str(normalized_lemma), [])
+            exact_matches = [
+                match for match in matches if match["match_kind"] == "canonical_lemma"
+            ]
+            if exact_matches:
+                match_kind_counts["canonical_lemma"] += 1
+                coverage_status = "exact_canonical_lemma"
+                covered = 1
+            else:
+                collision_kinds = {
+                    match["match_kind"]
+                    for match in matches
+                    if match["match_kind"] in {
+                        "curated_search_form",
+                        "generated_surface_form",
+                    }
+                }
+                match_kind_counts["curated_search_form"] += int(
+                    "curated_search_form" in collision_kinds
+                )
+                match_kind_counts["generated_surface_form"] += int(
+                    "generated_surface_form" in collision_kinds
+                )
+                if collision_kinds == {"curated_search_form"}:
+                    coverage_status = "search_form_collision"
+                elif collision_kinds == {"generated_surface_form"}:
+                    coverage_status = "generated_surface_collision"
+                elif collision_kinds:
+                    coverage_status = "search_and_generated_surface_collision"
+                else:
+                    coverage_status = "uncovered"
+                covered = 0
+            updates.append(
+                (
+                    covered,
+                    coverage_status,
+                    json.dumps(matches, ensure_ascii=False, separators=(",", ":")),
+                    normalized_lemma,
+                )
+            )
+        staging.executemany(
+            """
+            UPDATE candidates
+            SET covered = ?, coverage_status = ?, coverage_matches_json = ?
+            WHERE normalized_lemma = ?
+            """,
+            updates,
+        )
+    staging.commit()
+    return match_kind_counts
 
 
 def candidate_from_token(token, paragraph: str):
@@ -205,6 +307,8 @@ def create_staging_schema(database: sqlite3.Connection) -> None:
             source_count INTEGER NOT NULL DEFAULT 0,
             max_source_token_count INTEGER NOT NULL DEFAULT 0,
             covered INTEGER NOT NULL DEFAULT 0,
+            coverage_status TEXT NOT NULL DEFAULT 'uncovered',
+            coverage_matches_json TEXT NOT NULL DEFAULT '[]',
             ambiguous_surface_count INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (lemma, pos)
         ) STRICT;
@@ -382,7 +486,7 @@ def select_candidate_rows(
         SELECT lemma, normalized_lemma, pos, analyzer_tag,
                token_count, oov_token_count, paragraph_hits, document_count, source_count,
                max_source_token_count, ambiguous_surface_count,
-               pos_interpretation_count
+               pos_interpretation_count, coverage_status, coverage_matches_json
         FROM ranked_pos
         WHERE pos_rank = 1
         ORDER BY source_count DESC, document_count DESC, token_count DESC,
@@ -406,6 +510,8 @@ def select_candidate_rows(
             max_source_token_count,
             ambiguous_surface_count,
             pos_interpretation_count,
+            coverage_status,
+            coverage_matches_json,
         ) = row
         surfaces = staging.execute(
             """
@@ -429,11 +535,15 @@ def select_candidate_rows(
             """,
             (lemma, pos, TOP_SURFACE_FORMS),
         ).fetchall()
-        ambiguous = (
+        morphology_ambiguous = (
             int(ambiguous_surface_count) > 0
             or int(pos_interpretation_count) > 1
             or int(oov_token_count) > 0
         )
+        coverage_collision = str(coverage_status) not in {
+            "uncovered",
+            "exact_canonical_lemma",
+        }
         if int(ambiguous_surface_count) > 0:
             ambiguity_status = "held_surface_has_multiple_analyzer_interpretations"
         elif int(pos_interpretation_count) > 1:
@@ -460,8 +570,9 @@ def select_candidate_rows(
                 "ambiguous_observed_surface_count_in_sample": int(ambiguous_surface_count),
                 "ambiguity_status": ambiguity_status,
                 "analyzer_confidence": "not_calibrated",
-                "decision_state": "held" if ambiguous else "candidate",
-                "covered_by_typewriter_search_surface": False,
+                "decision_state": "held" if morphology_ambiguous or coverage_collision else "candidate",
+                "coverage_status": str(coverage_status),
+                "typewriter_surface_matches": json.loads(str(coverage_matches_json)),
                 "observed_surface_forms": [
                     {
                         "surface": str(form),
@@ -547,7 +658,18 @@ def run_extraction(
     candidate_rows: list[dict] = []
 
     try:
-        covered_forms = read_product_surface(product)
+        product_surface_matches = read_product_surface(product)
+        product_surface_key_counts = {
+            match_kind: sum(
+                any(match["match_kind"] == match_kind for match in matches)
+                for matches in product_surface_matches.values()
+            )
+            for match_kind in (
+                "canonical_lemma",
+                "curated_search_form",
+                "generated_surface_form",
+            )
+        }
         product_metadata = dict(product.execute("SELECT key, value FROM metadata").fetchall())
         index_database = index.execute(
             """
@@ -686,18 +808,7 @@ def run_extraction(
         close_source(staging, source_candidates, source_surfaces, source_eojeols)
         staging.commit()
 
-        covered_values = {
-            form for form in covered_forms if form
-        }
-        staging.execute("CREATE TEMP TABLE typewriter_surface(form TEXT PRIMARY KEY) WITHOUT ROWID")
-        staging.executemany(
-            "INSERT OR IGNORE INTO typewriter_surface(form) VALUES (?)",
-            ((form,) for form in covered_values),
-        )
-        staging.execute(
-            "UPDATE candidates SET covered = 1 WHERE normalized_lemma IN (SELECT form FROM typewriter_surface)"
-        )
-        staging.commit()
+        apply_product_coverage(staging, product_surface_matches)
         candidate_rows = select_candidate_rows(staging, candidate_limit)
         if len(candidate_rows) != candidate_limit:
             raise RuntimeError(
@@ -709,10 +820,39 @@ def run_extraction(
         total_candidate_lemmas = int(
             staging.execute("SELECT COUNT(DISTINCT normalized_lemma) FROM candidates").fetchone()[0]
         )
-        covered_candidate_lemmas = int(
+        exact_canonical_lemma_candidates = int(
             staging.execute(
                 "SELECT COUNT(DISTINCT normalized_lemma) FROM candidates WHERE covered = 1"
             ).fetchone()[0]
+        )
+        coverage_collision_counts = {
+            str(status): int(count)
+            for status, count in staging.execute(
+                """
+                SELECT coverage_status, COUNT(DISTINCT normalized_lemma)
+                FROM candidates
+                WHERE coverage_status IN (
+                    'search_form_collision',
+                    'generated_surface_collision',
+                    'search_and_generated_surface_collision'
+                )
+                GROUP BY coverage_status
+                """
+            ).fetchall()
+        }
+        search_form_collision_candidates = coverage_collision_counts.get(
+            "search_form_collision", 0
+        )
+        generated_surface_collision_candidates = coverage_collision_counts.get(
+            "generated_surface_collision", 0
+        )
+        search_and_generated_collision_candidates = coverage_collision_counts.get(
+            "search_and_generated_surface_collision", 0
+        )
+        total_surface_collision_candidates = (
+            search_form_collision_candidates
+            + generated_surface_collision_candidates
+            + search_and_generated_collision_candidates
         )
         ambiguous_candidate_lemmas = int(
             staging.execute(
@@ -760,7 +900,16 @@ def run_extraction(
                 "record_count": int(product_metadata.get("record_count", "0")),
                 "search_form_count": int(product_metadata.get("search_form_count", "0")),
                 "generated_surface_form_count": int(product_metadata.get("generated_surface_form_count", "0")),
-                "normalized_surface_key_count": len(covered_values),
+                "normalized_surface_key_count": len(product_surface_matches),
+                "normalized_keys_with_canonical_lemmas": product_surface_key_counts[
+                    "canonical_lemma"
+                ],
+                "normalized_keys_with_curated_search_forms": product_surface_key_counts[
+                    "curated_search_form"
+                ],
+                "normalized_keys_with_generated_surface_forms": product_surface_key_counts[
+                    "generated_surface_form"
+                ],
                 "normalization": "Unicode NFC plus surrounding whitespace trim, matching runtime search input",
             },
             "extractor": {
@@ -784,8 +933,16 @@ def run_extraction(
                 "rejected_span_observations": rejected_span_count,
                 "unique_lemma_pos_candidates_before_coverage": total_candidate_rows,
                 "unique_lemma_candidates_before_coverage": total_candidate_lemmas,
-                "covered_lemma_candidates": covered_candidate_lemmas,
-                "uncovered_lemma_candidates": total_candidate_lemmas - covered_candidate_lemmas,
+                "exact_canonical_lemma_candidates": exact_canonical_lemma_candidates,
+                "candidate_lemmas_without_exact_canonical_match": (
+                    total_candidate_lemmas - exact_canonical_lemma_candidates
+                ),
+                "search_form_collision_lemma_candidates": search_form_collision_candidates,
+                "generated_surface_collision_lemma_candidates": generated_surface_collision_candidates,
+                "search_and_generated_surface_collision_lemma_candidates": (
+                    search_and_generated_collision_candidates
+                ),
+                "total_surface_collision_lemma_candidates": total_surface_collision_candidates,
                 "ambiguous_lemma_candidates_before_coverage": ambiguous_candidate_lemmas,
                 "oov_lemma_candidates_before_coverage": int(
                     staging.execute("SELECT COUNT(*) FROM candidates WHERE oov_token_count > 0").fetchone()[0]
@@ -844,8 +1001,13 @@ def main() -> int:
                 "sample_fraction": result["index"]["sample_fraction"],
                 "raw_eligible_morpheme_observations": result["yield"]["accepted_morpheme_observations_in_sample"],
                 "unique_lemma_candidates": result["yield"]["unique_lemma_candidates_before_coverage"],
-                "covered_lemma_candidates": result["yield"]["covered_lemma_candidates"],
-                "uncovered_lemma_candidates": result["yield"]["uncovered_lemma_candidates"],
+                "exact_canonical_lemma_candidates": result["yield"]["exact_canonical_lemma_candidates"],
+                "candidate_lemmas_without_exact_canonical_match": (
+                    result["yield"]["candidate_lemmas_without_exact_canonical_match"]
+                ),
+                "total_surface_collision_lemma_candidates": (
+                    result["yield"]["total_surface_collision_lemma_candidates"]
+                ),
                 "ambiguous_lemma_candidates": result["yield"]["ambiguous_lemma_candidates_before_coverage"],
                 "selected_inventory_count": result["yield"]["selected_inventory_count"],
                 "elapsed_seconds": result["elapsed_seconds"],

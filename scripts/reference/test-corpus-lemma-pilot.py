@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -25,6 +26,7 @@ class FakeAnalyzer:
         ],
         "푸른": [("푸르", "VA", 0, 2)],
         "기록": [("기록", "NNG", 0, 2)],
+        "녹음": [("녹음", "NNG", 0, 2)],
     }
 
     def tokenize(self, text):
@@ -74,7 +76,7 @@ def create_index(path: Path) -> None:
             ("schema_version", "1"),
             ("source_count", "2"),
             ("document_count", "2"),
-            ("paragraph_count", "5"),
+            ("paragraph_count", "6"),
             ("input_manifest_sha256", "manifest-digest"),
             ("logical_rows_sha256", "logical-digest"),
             ("sqlite_version", sqlite3.sqlite_version),
@@ -91,8 +93,9 @@ def create_index(path: Path) -> None:
             (1, 1, "a-0", 0, "바람물결"),
             (2, 1, "a-1", 1, "푸른"),
             (3, 1, "a-2", 2, "기록"),
-            (4, 2, "b-0", 0, "바람물결"),
-            (5, 2, "b-1", 1, "푸른"),
+            (4, 1, "a-3", 3, "녹음"),
+            (5, 2, "b-0", 0, "바람물결"),
+            (6, 2, "b-1", 1, "푸른"),
         ],
     )
     database.commit()
@@ -103,15 +106,25 @@ def create_dictionary(path: Path) -> None:
     database = sqlite3.connect(path)
     database.executescript(
         """
-        CREATE TABLE records(lemma TEXT NOT NULL);
-        CREATE TABLE search_forms(form TEXT NOT NULL);
-        CREATE TABLE generated_surface_forms(form TEXT NOT NULL);
+        CREATE TABLE records(id TEXT PRIMARY KEY, lemma TEXT NOT NULL);
+        CREATE TABLE search_forms(form TEXT NOT NULL, record_id TEXT NOT NULL);
+        CREATE TABLE senses(id TEXT PRIMARY KEY, record_id TEXT NOT NULL, pos TEXT NOT NULL);
+        CREATE TABLE generated_surface_forms(
+            form TEXT NOT NULL,
+            record_id TEXT NOT NULL,
+            sense_id TEXT NOT NULL,
+            rule_id TEXT NOT NULL
+        );
         CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
         """
     )
-    database.execute("INSERT INTO records(lemma) VALUES ('녹음')")
-    database.execute("INSERT INTO search_forms(form) VALUES ('물결')")
-    database.execute("INSERT INTO generated_surface_forms(form) VALUES ('기록')")
+    database.execute("INSERT INTO records(id, lemma) VALUES ('record-녹음', '녹음')")
+    database.execute("INSERT INTO senses(id, record_id, pos) VALUES ('sense-녹음', 'record-녹음', 'noun')")
+    database.execute("INSERT INTO search_forms(form, record_id) VALUES ('물결', 'record-녹음')")
+    database.execute(
+        "INSERT INTO generated_surface_forms(form, record_id, sense_id, rule_id) "
+        "VALUES ('기록', 'record-녹음', 'sense-녹음', 'predicate-plain-past-open-a')"
+    )
     database.executemany(
         "INSERT INTO metadata(key, value) VALUES (?, ?)",
         [("dictionary_version", "test"), ("canonical_revision", "synthetic"),
@@ -133,7 +146,7 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Allowed lexical-reference use"):
                 pilot.read_permission_record(permission_path)
 
-    def test_incremental_extraction_covers_all_typewriter_surfaces_and_holds_ambiguity(self):
+    def test_exact_lemma_is_covered_while_search_and_generated_collisions_are_held(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             index_path = root / "index.sqlite"
@@ -153,18 +166,63 @@ class CorpusLemmaPilotTests(unittest.TestCase):
                 permission_record_path=permission_path,
                 analyzer=FakeAnalyzer(),
                 sample_every=1,
-                candidate_limit=3,
+                candidate_limit=5,
                 batch_size=2,
             )
 
-            self.assertEqual(result["index"]["sample_paragraph_count"], 5)
+            self.assertEqual(result["index"]["sample_paragraph_count"], 6)
             self.assertEqual(result["index"]["sample_document_count"], 2)
             self.assertEqual(result["index"]["sample_source_count"], 2)
-            self.assertEqual(result["yield"]["covered_lemma_candidates"], 2)
-            self.assertEqual(result["yield"]["selected_inventory_count"], 3)
+            self.assertEqual(result["yield"]["exact_canonical_lemma_candidates"], 1)
+            self.assertEqual(result["yield"]["search_form_collision_lemma_candidates"], 1)
+            self.assertEqual(result["yield"]["generated_surface_collision_lemma_candidates"], 1)
+            self.assertEqual(result["yield"]["selected_inventory_count"], 5)
             candidates = {row["proposed_lemma"]: row for row in result["candidates"]}
-            self.assertNotIn("기록", candidates)
-            self.assertNotIn("물결", candidates)
+            self.assertNotIn("녹음", candidates)
+            staging = sqlite3.connect(staging_path)
+            exact_match = staging.execute(
+                "SELECT covered, coverage_status, coverage_matches_json "
+                "FROM candidates WHERE normalized_lemma = '녹음'"
+            ).fetchone()
+            staging.close()
+            self.assertEqual(exact_match[0:2], (1, "exact_canonical_lemma"))
+            self.assertEqual(
+                json.loads(exact_match[2]),
+                [{
+                    "match_kind": "canonical_lemma",
+                    "record_id": "record-녹음",
+                    "canonical_lemma": "녹음",
+                    "sense_id": None,
+                    "pos": None,
+                    "rule_id": None,
+                }],
+            )
+            self.assertEqual(candidates["물결"]["coverage_status"], "search_form_collision")
+            self.assertEqual(candidates["물결"]["decision_state"], "held")
+            self.assertEqual(
+                candidates["물결"]["typewriter_surface_matches"],
+                [{
+                    "match_kind": "curated_search_form",
+                    "record_id": "record-녹음",
+                    "canonical_lemma": "녹음",
+                    "sense_id": None,
+                    "pos": None,
+                    "rule_id": None,
+                }],
+            )
+            self.assertEqual(candidates["기록"]["coverage_status"], "generated_surface_collision")
+            self.assertEqual(candidates["기록"]["decision_state"], "held")
+            self.assertEqual(
+                candidates["기록"]["typewriter_surface_matches"],
+                [{
+                    "match_kind": "generated_surface_form",
+                    "record_id": "record-녹음",
+                    "canonical_lemma": "녹음",
+                    "sense_id": "sense-녹음",
+                    "pos": "noun",
+                    "rule_id": "predicate-plain-past-open-a",
+                }],
+            )
             self.assertEqual(
                 candidates["바람"]["ambiguity_status"],
                 "held_surface_has_multiple_analyzer_interpretations",
