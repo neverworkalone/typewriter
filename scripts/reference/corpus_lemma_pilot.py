@@ -1,0 +1,860 @@
+#!/usr/bin/env python3
+"""Bounded, local-only Kiwi lemma candidate extraction for issue #201.
+
+The extractor reads paragraph rows from the ignored SQLite reference index in
+small batches. It writes counts and candidate metadata to ignored local files;
+it never writes corpus paragraph text. Search evidence is added by the Node
+orchestrator through the shared bounded corpus-index APIs.
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections import defaultdict
+from datetime import datetime, timezone
+import hashlib
+from importlib.metadata import PackageNotFoundError, version as package_version
+import json
+import os
+from pathlib import Path
+import re
+import sqlite3
+import sys
+import time
+import unicodedata
+
+
+REPOSITORY_DIRECTORY = Path(__file__).resolve().parents[2]
+DEFAULT_INDEX_PATH = REPOSITORY_DIRECTORY / "data/reference/indexes/written-corpus-2025.sqlite"
+DEFAULT_PERMISSION_RECORD_PATH = REPOSITORY_DIRECTORY / "docs/external-material-review-written-corpus-2025.md"
+LOCAL_PILOT_DIRECTORY = REPOSITORY_DIRECTORY / "data/reference/pilots/issue-201"
+DEFAULT_STAGING_PATH = LOCAL_PILOT_DIRECTORY / "candidate-analysis.sqlite"
+DEFAULT_SELECTION_PATH = LOCAL_PILOT_DIRECTORY / "candidate-selection.json"
+EXTRACTOR_VERSION = "1"
+SAMPLE_EVERY_PARAGRAPHS = 20
+TARGET_CANDIDATES = 100
+ROW_BATCH_SIZE = 32
+TOP_SURFACE_FORMS = 5
+ELIGIBLE_TAGS = {
+    "NNG": "noun",
+    "VV": "verb",
+    "VA": "adjective",
+}
+KOREAN_LEMMA = re.compile(r"^[가-힣]{2,}$")
+REQUIRED_PERMISSION_FIELDS = {
+    "Decision": "permitted for stated role",
+    "Intended role": "reference",
+    "Allowed local storage": "permitted",
+    "Allowed schema scanning and processing": "permitted",
+    "Allowed SQLite/FTS indexing": "permitted",
+    "Allowed lexical-reference use": "permitted",
+    "Distribution/embedding terms reviewed": "complete",
+    "Attribution/notice terms reviewed": "complete",
+}
+
+
+def normalize_search_form(value: str) -> str:
+    """Match the runtime's NFC plus surrounding-whitespace normalization."""
+    return unicodedata.normalize("NFC", value).strip()
+
+
+def installed_package_version(name: str) -> str:
+    try:
+        return package_version(name)
+    except PackageNotFoundError:
+        return "not-installed-test-analyzer"
+
+
+def read_permission_record(permission_record_path: Path) -> str:
+    try:
+        record = permission_record_path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise RuntimeError(
+            f"Corpus use is not authorized: cannot read permission record {permission_record_path}: {error}"
+        ) from error
+
+    fields: dict[str, str] = {}
+    recognized_fields = set(REQUIRED_PERMISSION_FIELDS)
+    for line in record.splitlines():
+        match = re.match(r"^- ([^:]+):\s*(.*?)\s*$", line)
+        if not match:
+            continue
+        field = match.group(1).strip()
+        if field not in recognized_fields:
+            continue
+        if field in fields:
+            raise RuntimeError(f"Permission record has a duplicate field: {field}")
+        fields[field] = match.group(2).strip().lower()
+
+    unresolved = [
+        field
+        for field, expected in REQUIRED_PERMISSION_FIELDS.items()
+        if fields.get(field) != expected
+    ]
+    if unresolved:
+        raise RuntimeError(
+            "Corpus scanning, morphology analysis, and local lexical-reference use are blocked; "
+            "unresolved permission fields: " + ", ".join(unresolved)
+        )
+    return hashlib.sha256(record.encode("utf-8")).hexdigest()
+
+
+def open_readonly_database(database_path: Path) -> sqlite3.Connection:
+    uri = database_path.resolve().as_uri() + "?mode=ro"
+    database = sqlite3.connect(uri, uri=True)
+    database.execute("PRAGMA query_only = ON")
+    return database
+
+
+def read_database_metadata(database: sqlite3.Connection) -> dict[str, str]:
+    try:
+        rows = database.execute("SELECT key, value FROM index_metadata").fetchall()
+    except sqlite3.Error as error:
+        raise RuntimeError(f"Corpus index metadata is unavailable: {error}") from error
+    metadata = {str(key): str(value) for key, value in rows}
+    required = {
+        "schema_version",
+        "source_count",
+        "document_count",
+        "paragraph_count",
+        "input_manifest_sha256",
+        "logical_rows_sha256",
+        "sqlite_version",
+    }
+    missing = sorted(required - metadata.keys())
+    if missing:
+        raise RuntimeError("Corpus index metadata is incomplete: " + ", ".join(missing))
+    return metadata
+
+
+def read_product_surface(database: sqlite3.Connection) -> set[str]:
+    """Read only the current product search surface, in bounded batches."""
+    covered_forms: set[str] = set()
+    query = """
+        SELECT lemma AS form FROM records
+        UNION ALL SELECT form FROM search_forms
+        UNION ALL SELECT form FROM generated_surface_forms
+    """
+    cursor = database.execute(query)
+    while True:
+        batch = cursor.fetchmany(1024)
+        if not batch:
+            break
+        for (form,) in batch:
+            covered_forms.add(normalize_search_form(str(form)))
+    return covered_forms
+
+
+def candidate_from_token(token, paragraph: str):
+    tag = str(token.tag)
+    pos = ELIGIBLE_TAGS.get(tag)
+    if pos is None:
+        return None
+
+    form = str(token.form)
+    lemma = form + "다" if tag in {"VV", "VA"} else form
+    lemma = unicodedata.normalize("NFC", lemma)
+    if KOREAN_LEMMA.fullmatch(lemma) is None:
+        return None
+
+    start = int(token.start)
+    length = int(token.len)
+    if start < 0 or length < 1 or start + length > len(paragraph):
+        return None
+    morpheme_surface = unicodedata.normalize("NFC", paragraph[start : start + length])
+    if not morpheme_surface.strip():
+        return None
+
+    surface_start = start
+    surface_end = start + length
+    while surface_start > 0 and not paragraph[surface_start - 1].isspace():
+        surface_start -= 1
+    while surface_end < len(paragraph) and not paragraph[surface_end].isspace():
+        surface_end += 1
+    while (
+        surface_start < surface_end
+        and unicodedata.category(paragraph[surface_start]).startswith("P")
+    ):
+        surface_start += 1
+    while (
+        surface_end > surface_start
+        and unicodedata.category(paragraph[surface_end - 1]).startswith("P")
+    ):
+        surface_end -= 1
+    observed_surface = unicodedata.normalize("NFC", paragraph[surface_start:surface_end])
+    if not observed_surface:
+        return None
+
+    return lemma, pos, tag, observed_surface, morpheme_surface, bool(getattr(token, "oov", False))
+
+
+def create_staging_schema(database: sqlite3.Connection) -> None:
+    database.executescript(
+        """
+        PRAGMA journal_mode = OFF;
+        PRAGMA synchronous = OFF;
+        CREATE TABLE candidates (
+            lemma TEXT NOT NULL,
+            normalized_lemma TEXT NOT NULL,
+            pos TEXT NOT NULL,
+            analyzer_tag TEXT NOT NULL,
+            token_count INTEGER NOT NULL DEFAULT 0,
+            oov_token_count INTEGER NOT NULL DEFAULT 0,
+            paragraph_hits INTEGER NOT NULL DEFAULT 0,
+            document_count INTEGER NOT NULL DEFAULT 0,
+            source_count INTEGER NOT NULL DEFAULT 0,
+            max_source_token_count INTEGER NOT NULL DEFAULT 0,
+            covered INTEGER NOT NULL DEFAULT 0,
+            ambiguous_surface_count INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (lemma, pos)
+        ) STRICT;
+        CREATE TABLE candidate_surfaces (
+            lemma TEXT NOT NULL,
+            pos TEXT NOT NULL,
+            surface TEXT NOT NULL,
+            token_count INTEGER NOT NULL DEFAULT 0,
+            paragraph_hits INTEGER NOT NULL DEFAULT 0,
+            document_count INTEGER NOT NULL DEFAULT 0,
+            source_count INTEGER NOT NULL DEFAULT 0,
+            max_source_token_count INTEGER NOT NULL DEFAULT 0,
+            interpretation_count INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (lemma, pos, surface),
+            FOREIGN KEY (lemma, pos) REFERENCES candidates(lemma, pos)
+        ) STRICT;
+        CREATE TABLE candidate_eojeol_forms (
+            lemma TEXT NOT NULL,
+            pos TEXT NOT NULL,
+            form TEXT NOT NULL,
+            token_count INTEGER NOT NULL DEFAULT 0,
+            paragraph_hits INTEGER NOT NULL DEFAULT 0,
+            document_count INTEGER NOT NULL DEFAULT 0,
+            source_count INTEGER NOT NULL DEFAULT 0,
+            max_source_token_count INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (lemma, pos, form),
+            FOREIGN KEY (lemma, pos) REFERENCES candidates(lemma, pos)
+        ) STRICT;
+        CREATE INDEX idx_candidates_coverage_rank
+            ON candidates(covered, normalized_lemma, source_count, document_count, token_count);
+        CREATE INDEX idx_candidate_surfaces_form ON candidate_surfaces(surface);
+        CREATE INDEX idx_candidate_eojeol_forms_form ON candidate_eojeol_forms(form);
+        PRAGMA foreign_keys = ON;
+        """
+    )
+
+
+def add_document_aggregates(
+    database: sqlite3.Connection,
+    document_candidates: dict,
+    document_surfaces: dict,
+    document_eojeols: dict,
+    source_candidates: dict,
+    source_surfaces: dict,
+    source_eojeols: dict,
+) -> None:
+    if not document_candidates:
+        return
+    for (lemma, pos), counts in document_candidates.items():
+        database.execute(
+            """
+            INSERT INTO candidates
+                (lemma, normalized_lemma, pos, analyzer_tag, token_count, oov_token_count,
+                 paragraph_hits, document_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            ON CONFLICT(lemma, pos) DO UPDATE SET
+                token_count = token_count + excluded.token_count,
+                oov_token_count = oov_token_count + excluded.oov_token_count,
+                paragraph_hits = paragraph_hits + excluded.paragraph_hits,
+                document_count = document_count + 1
+            """,
+            (lemma, normalize_search_form(lemma), pos, counts["analyzer_tag"],
+             counts["token_count"], counts["oov_token_count"], counts["paragraph_hits"]),
+        )
+        source_candidates[(lemma, pos)] += counts["token_count"]
+
+    for (lemma, pos, surface), counts in document_surfaces.items():
+        database.execute(
+            """
+            INSERT INTO candidate_surfaces
+                (lemma, pos, surface, token_count, paragraph_hits, document_count)
+            VALUES (?, ?, ?, ?, ?, 1)
+            ON CONFLICT(lemma, pos, surface) DO UPDATE SET
+                token_count = token_count + excluded.token_count,
+                paragraph_hits = paragraph_hits + excluded.paragraph_hits,
+                document_count = document_count + 1
+            """,
+            (lemma, pos, surface, counts["token_count"], counts["paragraph_hits"]),
+        )
+        source_surfaces[(lemma, pos, surface)] += counts["token_count"]
+
+    for (lemma, pos, form), counts in document_eojeols.items():
+        database.execute(
+            """
+            INSERT INTO candidate_eojeol_forms
+                (lemma, pos, form, token_count, paragraph_hits, document_count)
+            VALUES (?, ?, ?, ?, ?, 1)
+            ON CONFLICT(lemma, pos, form) DO UPDATE SET
+                token_count = token_count + excluded.token_count,
+                paragraph_hits = paragraph_hits + excluded.paragraph_hits,
+                document_count = document_count + 1
+            """,
+            (lemma, pos, form, counts["token_count"], counts["paragraph_hits"]),
+        )
+        source_eojeols[(lemma, pos, form)] += counts["token_count"]
+
+
+def close_source(
+    database: sqlite3.Connection,
+    source_candidates: dict,
+    source_surfaces: dict,
+    source_eojeols: dict,
+) -> None:
+    for (lemma, pos), token_count in source_candidates.items():
+        database.execute(
+            """
+            UPDATE candidates
+            SET source_count = source_count + 1,
+                max_source_token_count = MAX(max_source_token_count, ?)
+            WHERE lemma = ? AND pos = ?
+            """,
+            (token_count, lemma, pos),
+        )
+    for (lemma, pos, surface), token_count in source_surfaces.items():
+        database.execute(
+            """
+            UPDATE candidate_surfaces
+            SET source_count = source_count + 1,
+                max_source_token_count = MAX(max_source_token_count, ?)
+            WHERE lemma = ? AND pos = ? AND surface = ?
+            """,
+            (token_count, lemma, pos, surface),
+        )
+    for (lemma, pos, form), token_count in source_eojeols.items():
+        database.execute(
+            """
+            UPDATE candidate_eojeol_forms
+            SET source_count = source_count + 1,
+                max_source_token_count = MAX(max_source_token_count, ?)
+            WHERE lemma = ? AND pos = ? AND form = ?
+            """,
+            (token_count, lemma, pos, form),
+        )
+
+
+def select_candidate_rows(
+    staging: sqlite3.Connection,
+    candidate_limit: int,
+) -> list[dict]:
+    staging.execute(
+        """
+        UPDATE candidate_surfaces
+        SET interpretation_count = (
+            SELECT COUNT(*) FROM candidate_surfaces AS other
+            WHERE other.surface = candidate_surfaces.surface
+        )
+        """
+    )
+    staging.execute(
+        """
+        UPDATE candidates
+        SET ambiguous_surface_count = (
+            SELECT COUNT(*) FROM candidate_surfaces AS surface
+            WHERE surface.lemma = candidates.lemma
+              AND surface.pos = candidates.pos
+              AND surface.interpretation_count > 1
+        )
+        """
+    )
+    staging.commit()
+
+    rows = staging.execute(
+        """
+        WITH ranked_pos AS (
+            SELECT candidates.*,
+                   COUNT(*) OVER (PARTITION BY normalized_lemma) AS pos_interpretation_count,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY normalized_lemma
+                       ORDER BY source_count DESC, document_count DESC,
+                                token_count DESC, pos COLLATE BINARY
+                   ) AS pos_rank
+            FROM candidates
+            WHERE covered = 0
+        )
+        SELECT lemma, normalized_lemma, pos, analyzer_tag,
+               token_count, oov_token_count, paragraph_hits, document_count, source_count,
+               max_source_token_count, ambiguous_surface_count,
+               pos_interpretation_count
+        FROM ranked_pos
+        WHERE pos_rank = 1
+        ORDER BY source_count DESC, document_count DESC, token_count DESC,
+                 lemma COLLATE BINARY
+        LIMIT ?
+        """,
+        (candidate_limit,),
+    ).fetchall()
+    candidates: list[dict] = []
+    for row in rows:
+        (
+            lemma,
+            normalized_lemma,
+            pos,
+            analyzer_tag,
+            token_count,
+            oov_token_count,
+            paragraph_hits,
+            document_count,
+            source_count,
+            max_source_token_count,
+            ambiguous_surface_count,
+            pos_interpretation_count,
+        ) = row
+        surfaces = staging.execute(
+            """
+            SELECT surface, token_count, paragraph_hits, document_count, source_count,
+                   max_source_token_count, interpretation_count
+            FROM candidate_surfaces
+            WHERE lemma = ? AND pos = ?
+            ORDER BY token_count DESC, paragraph_hits DESC, surface COLLATE BINARY
+            LIMIT ?
+            """,
+            (lemma, pos, TOP_SURFACE_FORMS),
+        ).fetchall()
+        eojeol_forms = staging.execute(
+            """
+            SELECT form, token_count, paragraph_hits, document_count, source_count,
+                   max_source_token_count
+            FROM candidate_eojeol_forms
+            WHERE lemma = ? AND pos = ?
+            ORDER BY token_count DESC, paragraph_hits DESC, form COLLATE BINARY
+            LIMIT ?
+            """,
+            (lemma, pos, TOP_SURFACE_FORMS),
+        ).fetchall()
+        ambiguous = (
+            int(ambiguous_surface_count) > 0
+            or int(pos_interpretation_count) > 1
+            or int(oov_token_count) > 0
+        )
+        if int(ambiguous_surface_count) > 0:
+            ambiguity_status = "held_surface_has_multiple_analyzer_interpretations"
+        elif int(pos_interpretation_count) > 1:
+            ambiguity_status = "held_lemma_has_multiple_pos_interpretations"
+        elif int(oov_token_count) > 0:
+            ambiguity_status = "held_oov_morphology"
+        else:
+            ambiguity_status = "single_observed_analysis_unverified"
+        candidates.append(
+            {
+                "proposed_lemma": lemma,
+                "proposed_pos": pos,
+                "analyzer_pos": analyzer_tag,
+                "kiwi_morpheme_occurrences_in_sample": int(token_count),
+                "oov_morpheme_occurrences_in_sample": int(oov_token_count),
+                "paragraph_hits_in_sample": int(paragraph_hits),
+                "distinct_documents_in_sample": int(document_count),
+                "distinct_sources_in_sample": int(source_count),
+                "max_source_morpheme_occurrences_in_sample": int(max_source_token_count),
+                "source_concentration_ratio_in_sample": round(
+                    int(max_source_token_count) / int(token_count), 4
+                ),
+                "pos_interpretation_count_in_sample": int(pos_interpretation_count),
+                "ambiguous_observed_surface_count_in_sample": int(ambiguous_surface_count),
+                "ambiguity_status": ambiguity_status,
+                "analyzer_confidence": "not_calibrated",
+                "decision_state": "held" if ambiguous else "candidate",
+                "covered_by_typewriter_search_surface": False,
+                "observed_surface_forms": [
+                    {
+                        "surface": str(form),
+                        "kiwi_morpheme_occurrences_in_sample": int(form_tokens),
+                        "paragraph_hits_in_sample": int(form_paragraphs),
+                        "distinct_documents_in_sample": int(form_documents),
+                        "distinct_sources_in_sample": int(form_sources),
+                        "max_source_morpheme_occurrences_in_sample": int(form_max_source_tokens),
+                    }
+                    for (
+                        form,
+                        form_tokens,
+                        form_paragraphs,
+                        form_documents,
+                        form_sources,
+                        form_max_source_tokens,
+                    ) in eojeol_forms
+                ],
+                "observed_morpheme_spans": [
+                    {
+                        "surface": str(surface),
+                        "kiwi_morpheme_occurrences_in_sample": int(surface_tokens),
+                        "paragraph_hits_in_sample": int(surface_paragraphs),
+                        "distinct_documents_in_sample": int(surface_documents),
+                        "distinct_sources_in_sample": int(surface_sources),
+                        "max_source_morpheme_occurrences_in_sample": int(surface_max_source_tokens),
+                        "interpretation_count_in_sample": int(interpretation_count),
+                    }
+                    for (
+                        surface,
+                        surface_tokens,
+                        surface_paragraphs,
+                        surface_documents,
+                        surface_sources,
+                        surface_max_source_tokens,
+                        interpretation_count,
+                    ) in surfaces
+                ],
+                "coverage_normalized_key": normalized_lemma,
+            }
+        )
+    return candidates
+
+
+def run_extraction(
+    *,
+    index_path: Path = DEFAULT_INDEX_PATH,
+    dictionary_path: Path,
+    staging_path: Path = DEFAULT_STAGING_PATH,
+    candidate_output_path: Path = DEFAULT_SELECTION_PATH,
+    permission_record_path: Path = DEFAULT_PERMISSION_RECORD_PATH,
+    analyzer,
+    sample_every: int = SAMPLE_EVERY_PARAGRAPHS,
+    candidate_limit: int = TARGET_CANDIDATES,
+    batch_size: int = ROW_BATCH_SIZE,
+) -> dict:
+    if sample_every < 1 or candidate_limit < 1 or batch_size < 1:
+        raise ValueError("Sample interval, candidate limit, and row batch size must be positive integers.")
+    permission_sha256 = read_permission_record(permission_record_path)
+    for path in (index_path, dictionary_path):
+        if not path.is_file():
+            raise RuntimeError(f"Required local SQLite input is missing: {path}")
+
+    index = open_readonly_database(index_path)
+    product = open_readonly_database(dictionary_path)
+    staging_path.parent.mkdir(parents=True, exist_ok=True)
+    candidate_output_path.parent.mkdir(parents=True, exist_ok=True)
+    if staging_path.exists():
+        staging_path.unlink()
+
+    started = time.perf_counter()
+    paragraph_count = 0
+    eligible_tag_token_count = 0
+    accepted_morpheme_count = 0
+    rejected_lemma_shape_count = 0
+    rejected_span_count = 0
+    sampled_documents: set[int] = set()
+    sampled_sources: set[str] = set()
+    database_metadata = read_database_metadata(index)
+    index_paragraph_count = int(database_metadata["paragraph_count"])
+    index_database = None
+    staging = None
+    candidate_rows: list[dict] = []
+
+    try:
+        covered_forms = read_product_surface(product)
+        product_metadata = dict(product.execute("SELECT key, value FROM metadata").fetchall())
+        index_database = index.execute(
+            """
+            SELECT sf.source_path, d.document_rowid, d.document_id, d.document_ordinal,
+                   p.paragraph_id, p.ordinal AS paragraph_ordinal, p.form
+            FROM paragraphs AS p
+            JOIN documents AS d ON d.document_rowid = p.document_rowid
+            JOIN source_files AS sf ON sf.source_path = d.source_path
+            WHERE p.ordinal % ? = 0
+            ORDER BY sf.source_path COLLATE BINARY, d.document_ordinal, p.ordinal
+            """,
+            (sample_every,),
+        )
+        staging = sqlite3.connect(staging_path)
+        create_staging_schema(staging)
+        staging.execute("BEGIN")
+
+        current_document: int | None = None
+        current_source: str | None = None
+        document_candidates: dict = defaultdict(
+            lambda: {"token_count": 0, "oov_token_count": 0, "paragraph_hits": 0, "analyzer_tag": ""}
+        )
+        document_surfaces: dict = defaultdict(
+            lambda: {"token_count": 0, "paragraph_hits": 0}
+        )
+        document_eojeols: dict = defaultdict(
+            lambda: {"token_count": 0, "paragraph_hits": 0}
+        )
+        source_candidates: dict = defaultdict(int)
+        source_surfaces: dict = defaultdict(int)
+        source_eojeols: dict = defaultdict(int)
+
+        while True:
+            batch = index_database.fetchmany(batch_size)
+            if not batch:
+                break
+            for row in batch:
+                source_path, document_rowid, _document_id, _document_ordinal, _paragraph_id, _paragraph_ordinal, paragraph = row
+                document_rowid = int(document_rowid)
+                source_path = str(source_path)
+                if current_document is not None and document_rowid != current_document:
+                    add_document_aggregates(
+                        staging,
+                        document_candidates,
+                        document_surfaces,
+                        document_eojeols,
+                        source_candidates,
+                        source_surfaces,
+                        source_eojeols,
+                    )
+                    document_candidates.clear()
+                    document_surfaces.clear()
+                    document_eojeols.clear()
+                    current_document = None
+                if current_source is not None and source_path != current_source:
+                    close_source(staging, source_candidates, source_surfaces, source_eojeols)
+                    source_candidates.clear()
+                    source_surfaces.clear()
+                    source_eojeols.clear()
+                    current_source = None
+                if current_document is None:
+                    current_document = document_rowid
+                    sampled_documents.add(document_rowid)
+                if current_source is None:
+                    current_source = source_path
+                    sampled_sources.add(source_path)
+
+                paragraph = str(paragraph)
+                paragraph_candidates: dict = defaultdict(int)
+                paragraph_candidate_tags: dict = {}
+                paragraph_candidate_oov: dict = defaultdict(int)
+                paragraph_surfaces: dict = defaultdict(int)
+                paragraph_eojeols: dict = defaultdict(int)
+                for token in analyzer.tokenize(paragraph):
+                    if str(token.tag) in ELIGIBLE_TAGS:
+                        eligible_tag_token_count += 1
+                    candidate = candidate_from_token(token, paragraph)
+                    if candidate is None:
+                        if str(token.tag) in ELIGIBLE_TAGS:
+                            form = str(token.form)
+                            lemma = form + "다" if str(token.tag) in {"VV", "VA"} else form
+                            if KOREAN_LEMMA.fullmatch(unicodedata.normalize("NFC", lemma)) is None:
+                                rejected_lemma_shape_count += 1
+                            else:
+                                rejected_span_count += 1
+                        continue
+                    lemma, pos, tag, observed_surface, morpheme_surface, is_oov = candidate
+                    key = (lemma, pos)
+                    paragraph_candidates[key] += 1
+                    paragraph_candidate_tags[key] = tag
+                    if is_oov:
+                        paragraph_candidate_oov[key] += 1
+                    paragraph_surfaces[(lemma, pos, morpheme_surface)] += 1
+                    paragraph_eojeols[(lemma, pos, observed_surface)] += 1
+                    accepted_morpheme_count += 1
+
+                for (lemma, pos), count in paragraph_candidates.items():
+                    target = document_candidates[(lemma, pos)]
+                    target["token_count"] += count
+                    target["oov_token_count"] += paragraph_candidate_oov[(lemma, pos)]
+                    target["paragraph_hits"] += 1
+                    target["analyzer_tag"] = paragraph_candidate_tags[(lemma, pos)]
+                for (lemma, pos, surface), count in paragraph_surfaces.items():
+                    target = document_surfaces[(lemma, pos, surface)]
+                    target["token_count"] += count
+                    target["paragraph_hits"] += 1
+                for (lemma, pos, form), count in paragraph_eojeols.items():
+                    target = document_eojeols[(lemma, pos, form)]
+                    target["token_count"] += count
+                    target["paragraph_hits"] += 1
+
+                paragraph_count += 1
+                if paragraph_count % 20000 == 0:
+                    elapsed = max(time.perf_counter() - started, 0.001)
+                    print(
+                        json.dumps(
+                            {
+                                "processed_sample_paragraphs": paragraph_count,
+                                "sample_paragraphs_per_second": round(paragraph_count / elapsed, 1),
+                                "eligible_morpheme_observations": accepted_morpheme_count,
+                            }
+                        ),
+                        file=sys.stderr,
+                        flush=True,
+                    )
+
+        add_document_aggregates(
+            staging,
+            document_candidates,
+            document_surfaces,
+            document_eojeols,
+            source_candidates,
+            source_surfaces,
+            source_eojeols,
+        )
+        close_source(staging, source_candidates, source_surfaces, source_eojeols)
+        staging.commit()
+
+        covered_values = {
+            form for form in covered_forms if form
+        }
+        staging.execute("CREATE TEMP TABLE typewriter_surface(form TEXT PRIMARY KEY) WITHOUT ROWID")
+        staging.executemany(
+            "INSERT OR IGNORE INTO typewriter_surface(form) VALUES (?)",
+            ((form,) for form in covered_values),
+        )
+        staging.execute(
+            "UPDATE candidates SET covered = 1 WHERE normalized_lemma IN (SELECT form FROM typewriter_surface)"
+        )
+        staging.commit()
+        candidate_rows = select_candidate_rows(staging, candidate_limit)
+        if len(candidate_rows) != candidate_limit:
+            raise RuntimeError(
+                f"The sample produced only {len(candidate_rows)} uncovered lemma candidates; "
+                f"the pilot requires {candidate_limit}."
+            )
+
+        total_candidate_rows = int(staging.execute("SELECT COUNT(*) FROM candidates").fetchone()[0])
+        total_candidate_lemmas = int(
+            staging.execute("SELECT COUNT(DISTINCT normalized_lemma) FROM candidates").fetchone()[0]
+        )
+        covered_candidate_lemmas = int(
+            staging.execute(
+                "SELECT COUNT(DISTINCT normalized_lemma) FROM candidates WHERE covered = 1"
+            ).fetchone()[0]
+        )
+        ambiguous_candidate_lemmas = int(
+            staging.execute(
+                """
+                SELECT COUNT(*) FROM (
+                    SELECT normalized_lemma
+                    FROM candidates
+                    WHERE ambiguous_surface_count > 0
+                       OR normalized_lemma IN (
+                           SELECT normalized_lemma FROM candidates
+                           GROUP BY normalized_lemma HAVING COUNT(*) > 1
+                       )
+                    GROUP BY normalized_lemma
+                )
+                """
+            ).fetchone()[0]
+        )
+        if accepted_morpheme_count == 0:
+            raise RuntimeError("The analyzer produced no eligible Korean noun, verb, or adjective morphemes.")
+
+        elapsed_seconds = round(time.perf_counter() - started, 3)
+        metadata = {
+            "schema_version": 1,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "publication_state": "local_reference_only_pending_owner_publication_confirmation",
+            "permission_record_sha256": permission_sha256,
+            "index": {
+                "source_count": int(database_metadata["source_count"]),
+                "document_count": int(database_metadata["document_count"]),
+                "paragraph_count": index_paragraph_count,
+                "input_manifest_sha256": database_metadata["input_manifest_sha256"],
+                "logical_rows_sha256": database_metadata["logical_rows_sha256"],
+                "sqlite_version": database_metadata["sqlite_version"],
+                "database_bytes": index_path.stat().st_size,
+                "sample_policy": f"one paragraph when paragraph ordinal modulo {sample_every} is zero, within each source-ordered document",
+                "sample_every_paragraphs": sample_every,
+                "sample_paragraph_count": paragraph_count,
+                "sample_fraction": round(paragraph_count / index_paragraph_count, 6),
+                "sample_document_count": len(sampled_documents),
+                "sample_source_count": len(sampled_sources),
+            },
+            "typewriter_surface": {
+                "dictionary_version": product_metadata.get("dictionary_version"),
+                "canonical_revision": product_metadata.get("canonical_revision"),
+                "record_count": int(product_metadata.get("record_count", "0")),
+                "search_form_count": int(product_metadata.get("search_form_count", "0")),
+                "generated_surface_form_count": int(product_metadata.get("generated_surface_form_count", "0")),
+                "normalized_surface_key_count": len(covered_values),
+                "normalization": "Unicode NFC plus surrounding whitespace trim, matching runtime search input",
+            },
+            "extractor": {
+                "name": "Kiwi morphological analyzer via kiwipiepy",
+                "extractor_version": EXTRACTOR_VERSION,
+                "python_version": sys.version.split()[0],
+                "kiwipiepy_version": installed_package_version("kiwipiepy"),
+                "kiwipiepy_model_version": installed_package_version("kiwipiepy_model"),
+                "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                "eligible_analyzer_tags": sorted(ELIGIBLE_TAGS),
+                "tag_to_typewriter_pos": ELIGIBLE_TAGS,
+                "predicate_lemma_rule": "VV and VA morpheme forms receive the citation ending 다; NNG forms remain unchanged",
+                "minimum_lemma_shape": "two or more precomposed Hangul syllables",
+                "confidence": "not calibrated; Kiwi one-best output is a proposal",
+                "row_batch_size": batch_size,
+            },
+            "yield": {
+                "eligible_pos_token_observations_before_shape_filter": eligible_tag_token_count,
+                "accepted_morpheme_observations_in_sample": accepted_morpheme_count,
+                "rejected_lemma_shape_observations": rejected_lemma_shape_count,
+                "rejected_span_observations": rejected_span_count,
+                "unique_lemma_pos_candidates_before_coverage": total_candidate_rows,
+                "unique_lemma_candidates_before_coverage": total_candidate_lemmas,
+                "covered_lemma_candidates": covered_candidate_lemmas,
+                "uncovered_lemma_candidates": total_candidate_lemmas - covered_candidate_lemmas,
+                "ambiguous_lemma_candidates_before_coverage": ambiguous_candidate_lemmas,
+                "oov_lemma_candidates_before_coverage": int(
+                    staging.execute("SELECT COUNT(*) FROM candidates WHERE oov_token_count > 0").fetchone()[0]
+                ),
+                "selected_inventory_count": len(candidate_rows),
+                "selected_count": 0,
+                "admitted_count": 0,
+                "correction_rate": "NOT_MEASURED_NO_HUMAN_REVIEW",
+                "editorial_workload": "NOT_MEASURED_NO_WRITER_REVIEW",
+                "extraction_error_classes": [
+                    "one-best morphology can misclassify unknown or context-ambiguous forms",
+                    "compound segmentation can surface morphemes that still need lexical-boundary review",
+                    "POS and lemma confidence have no calibrated score in this pilot",
+                ],
+            },
+            "elapsed_seconds": elapsed_seconds,
+            "candidates": candidate_rows,
+        }
+        temporary_output = candidate_output_path.with_suffix(candidate_output_path.suffix + ".tmp")
+        temporary_output.write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary_output, candidate_output_path)
+        return metadata
+    finally:
+        if staging is not None:
+            staging.close()
+        product.close()
+        index.close()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dictionary", required=True, type=Path)
+    parser.add_argument("--staging-db", type=Path, default=DEFAULT_STAGING_PATH)
+    parser.add_argument("--candidate-json", type=Path, default=DEFAULT_SELECTION_PATH)
+    arguments = parser.parse_args()
+    try:
+        from kiwipiepy import Kiwi
+    except ImportError as error:
+        raise SystemExit(
+            "Install the locally pinned analyzer first: python -m pip install kiwipiepy==0.24.0"
+        ) from error
+
+    result = run_extraction(
+        dictionary_path=arguments.dictionary.resolve(),
+        staging_path=arguments.staging_db.resolve(),
+        candidate_output_path=arguments.candidate_json.resolve(),
+        analyzer=Kiwi(),
+    )
+    print(
+        json.dumps(
+            {
+                "sample_paragraphs": result["index"]["sample_paragraph_count"],
+                "sample_fraction": result["index"]["sample_fraction"],
+                "raw_eligible_morpheme_observations": result["yield"]["accepted_morpheme_observations_in_sample"],
+                "unique_lemma_candidates": result["yield"]["unique_lemma_candidates_before_coverage"],
+                "covered_lemma_candidates": result["yield"]["covered_lemma_candidates"],
+                "uncovered_lemma_candidates": result["yield"]["uncovered_lemma_candidates"],
+                "ambiguous_lemma_candidates": result["yield"]["ambiguous_lemma_candidates_before_coverage"],
+                "selected_inventory_count": result["yield"]["selected_inventory_count"],
+                "elapsed_seconds": result["elapsed_seconds"],
+                "candidate_selection_path": str(arguments.candidate_json.resolve()),
+            }
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
