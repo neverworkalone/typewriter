@@ -25,13 +25,17 @@ import {
   validateAuthoredSemanticDecisionSource,
   authoredSemanticDecisionRowDigest,
 } from './authored-semantic-decision-source.mjs';
-import { validateIssue204MorphologyEvidence } from './issue-204-review-contract.mjs';
+import {
+  validateIssue204HoldSeedNotes,
+  validateIssue204MorphologyEvidence,
+} from './issue-204-review-contract.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
 import { productionBytesSha256, productionSourceBytes } from './lexical-production-state.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 const PILOT_DECISION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-204-pilot-decisions.json');
+const TARGET_SEED_PATH = path.join(REPOSITORY_DIRECTORY, 'data/inventory/m5-target-seed.json');
 const SEMANTIC_DECISION_PATH = path.join(REPOSITORY_DIRECTORY, 'data/batches/issue-204-semantic-decisions.json');
 const CANONICAL_IMPORT_PATH = path.join(REPOSITORY_DIRECTORY, 'data/canonical/issue-204-corpus-pilot.jsonl');
 const BATCH_ID = 'issue-204-corpus-pilot-20260928';
@@ -484,13 +488,23 @@ function buildProductionStageEvidence({ pilotBytes, decisionBytes, prospectiveRe
 }
 
 export async function validateIssue204() {
-  const [pilotBytes, decisionBytes, importBytes] = await Promise.all([
+  const [pilotBytes, decisionBytes, importBytes, targetSeedBytes] = await Promise.all([
     readFile(PILOT_DECISION_PATH),
     readFile(SEMANTIC_DECISION_PATH),
     readFile(CANONICAL_IMPORT_PATH),
+    readFile(TARGET_SEED_PATH),
   ]);
   const ledger = JSON.parse(pilotBytes.toString('utf8'));
   const dispositionCounts = validateDispositionLedger(ledger, pilotBytes);
+  const targetSeed = JSON.parse(targetSeedBytes.toString('utf8'));
+  try {
+    validateIssue204HoldSeedNotes({
+      ledgerDecisions: ledger.decisions,
+      seedTargets: targetSeed.targets,
+    });
+  } catch (error) {
+    fail(error.message);
+  }
   const source = JSON.parse(decisionBytes.toString('utf8'));
   const importedRecords = importBytes.toString('utf8').trimEnd().split('\n').map((line) => JSON.parse(line));
   const admittedRows = ledger.decisions.filter((row) => row.editorial_judgment.disposition === 'admit');

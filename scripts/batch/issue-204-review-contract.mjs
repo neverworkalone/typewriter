@@ -41,3 +41,38 @@ export function validateIssue204MorphologyEvidence({
   }
   return true;
 }
+
+export function validateIssue204HoldSeedNotes({ ledgerDecisions, seedTargets } = {}) {
+  if (!Array.isArray(ledgerDecisions) || !Array.isArray(seedTargets)) {
+    fail('the pilot ledger and inventory seed must both provide decision rows');
+  }
+  const holdDecisions = ledgerDecisions.filter(
+    (row) => row?.editorial_judgment?.disposition === 'hold',
+  );
+  const holdSeedRows = seedTargets.filter(
+    (row) => typeof row?.decision_note === 'string'
+      && row.decision_note.startsWith('Issue #204 hold:'),
+  );
+  if (holdDecisions.length !== holdSeedRows.length) {
+    fail(`the seed has ${holdSeedRows.length} Issue #204 hold notes for ${holdDecisions.length} held pilot candidates`);
+  }
+
+  const seedByInventoryId = new Map();
+  for (const seedRow of holdSeedRows) {
+    if (seedByInventoryId.has(seedRow.inventory_id)) {
+      fail(`the seed duplicates Issue #204 hold note ${seedRow.inventory_id}`);
+    }
+    seedByInventoryId.set(seedRow.inventory_id, seedRow);
+  }
+  for (const decision of holdDecisions) {
+    const seedRow = seedByInventoryId.get(decision.inventory_id);
+    const expectedNote = `Issue #204 hold: ${decision.editorial_judgment.rationale}`;
+    if (!seedRow
+      || seedRow.status !== 'held'
+      || seedRow.lemma !== decision.morphology_proposal?.lemma
+      || seedRow.decision_note !== expectedNote) {
+      fail(`${decision.inventory_id} seed hold note must match its source-bound morphology rationale`);
+    }
+  }
+  return true;
+}
