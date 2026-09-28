@@ -114,6 +114,10 @@
       "contract": "candidate_source"
     },
     {
+      "pattern": "data/batches/issue-211-lexical-unit-source.json",
+      "contract": "issue_211_candidate_source"
+    },
+    {
       "pattern": "data/batches/m5-13-review.json",
       "contract": "pre_admission_review"
       },
@@ -1000,6 +1004,106 @@
           "$.candidate_records.*": ["id", "record_type", "role", "candidate_id", "lemma", "search_forms", "senses"],
           "$.candidate_records.*.senses.*": ["id", "pos", "gloss", "relations"],
           "$.candidate_records.*.senses.*.relations.*": ["target", "target_sense", "type", "note"]
+        }
+      },
+      "issue_211_candidate_source": {
+        "contract_versions": [
+          "lexical-candidate-source-v1"
+        ],
+        "required_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "issue",
+          "parent_issue",
+          "batch_id",
+          "authoring_mode",
+          "generation_pass_id",
+          "base_canonical_records_sha256",
+          "base_seed_sha256",
+          "candidate_count",
+          "candidate_buffer",
+          "axis_counts",
+          "units",
+          "pool_sha256",
+          "artifact_sha256"
+        ],
+        "allowed_fields": [
+          "schema_version",
+          "contract_version",
+          "kind",
+          "source_id",
+          "issue",
+          "parent_issue",
+          "batch_id",
+          "authoring_mode",
+          "generation_pass_id",
+          "base_canonical_records_sha256",
+          "base_seed_sha256",
+          "candidate_count",
+          "candidate_buffer",
+          "axis_counts",
+          "units",
+          "pool_sha256",
+          "artifact_sha256"
+        ],
+        "field_types": {
+          "schema_version": "string",
+          "contract_version": "string",
+          "kind": "string",
+          "source_id": "string",
+          "issue": "integer",
+          "parent_issue": "integer",
+          "batch_id": "string",
+          "authoring_mode": "string",
+          "generation_pass_id": "string",
+          "base_canonical_records_sha256": "string",
+          "base_seed_sha256": "string",
+          "candidate_count": "number",
+          "candidate_buffer": "number",
+          "axis_counts": "object",
+          "units": "array<object>",
+          "pool_sha256": "string",
+          "artifact_sha256": "string"
+        },
+        "nested_allowed_fields": {
+          "$.axis_counts": ["E", "Q", "S", "C", "A", "O", "X"],
+          "$.units.*": [
+            "source_unit_id",
+            "prior_inventory_id",
+            "lemma",
+            "axis",
+            "flags",
+            "record_type",
+            "pos",
+            "source_kind",
+            "writer_use",
+            "writer_gloss"
+          ]
+        },
+        "nested_field_types": {
+          "$.axis_counts": {
+            "E": "number",
+            "Q": "number",
+            "S": "number",
+            "C": "number",
+            "A": "number",
+            "O": "number",
+            "X": "number"
+          },
+          "$.units.*": {
+            "source_unit_id": "string",
+            "prior_inventory_id": "string",
+            "lemma": "string",
+            "axis": "string",
+            "flags": "array<string>",
+            "record_type": "string",
+            "pos": "string",
+            "source_kind": "string",
+            "writer_use": "string",
+            "writer_gloss": "string"
+          }
         }
       },
       "candidate_source": {
