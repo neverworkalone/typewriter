@@ -15,8 +15,7 @@ not write or rewrite prose.
 
 ## Availability
 
-- **Live demo:** There is no public demo yet. A link will be added here after a
-  web release is approved and built from data cleared for redistribution.
+- **Live demo:** https://neverworkalone.net/typewriter/
 - **Chrome extension:** The extension is a development prototype and has no
   Chrome Web Store listing. Its build and package contain dictionary data. The
   current canonical corpus and derived distributions remain held from
