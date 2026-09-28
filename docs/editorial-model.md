@@ -1,5 +1,65 @@
 # Typewriter Editorial Model v1 — M1 pilot (#17–#23)
 
+## Current searchable-start policy (Issue #208, 2026-09-28)
+
+This section is the current product contract. The M1 counts, ledgers, and role
+decisions below remain historical records of the pilot; where their old
+`start` / `reference-only` rules conflict with this section, this section
+controls future admission and search behavior.
+
+> **Every valid lexical entry within Typewriter's supported lexical scope may
+> serve as a searchable start.**
+
+Lexical validity, search eligibility, relation enrichment, and writer-facing
+ranking/usefulness are separate decisions:
+
+- Commonness, generality, low standalone writer usefulness, low vividness or
+  texture, no current relations, and a sparse relation graph do not by
+  themselves make an otherwise valid lexical entry ineligible for admission or
+  direct search.
+- Validity review concerns lexical and structural identity: whether the lemma
+  is lexical, its lemma/POS identity is resolved, its sense boundary is
+  understood, it is not a true duplicate of an already represented sense, and
+  its identity does not collide with another search identity. When one of
+  these is unresolved, hold the candidate until it is resolved. A lexical
+  category outside the supported scope needs an explicit product decision.
+- Relations are optional editorial enrichment. A record with no relations
+  still has its definition and may be searched directly. Relation type,
+  direction, sense binding, and quality remain subject to their own editorial
+  checks.
+- Ranking and writer usefulness describe which valid result helps a writer and
+  where curation effort should go. They must not be reused as lexical-admission
+  or search-eligibility tests.
+
+### Supported lexical scope
+
+The current canonical model supports two record shapes:
+
+| Record shape | Currently supported sense POS |
+| --- | --- |
+| `entry` | `noun`, `adjective`, `verb`, `adverb` |
+| `expression` | `expression` (a fixed expression represented as its own lexical unit) |
+
+An in-scope record may be searched by its canonical `lemma` and curated
+`search_forms`; the existing generated-surface-form contract remains a separate
+search path. The current shape has no POS representation for categories such as
+pronouns, numerals, determiners, particles, or interjections. Their product
+scope is unresolved: this issue does not add POS values or change the schema,
+and their absence from the enum is a model boundary to decide explicitly, not a
+judgment that those words are too common or insufficiently writer-useful.
+Subcategories not represented separately (for example, proper nouns within
+`noun`) are not excluded by a missing subcategory field.
+
+### `start` and `reference-only`
+
+`reference-only` records were historically admitted to close relation targets;
+that origin does not make a valid, in-scope lexical entry permanently
+non-searchable. Search eligibility follows lexical validity and supported
+scope, not the record's historical role. Task B must remove role-based search
+blocking while preserving the ability to navigate to relation targets. The
+existing role/count fields may remain as historical or inventory metadata only
+if they no longer veto direct search.
+
 ## 범위와 상태
 
 이 문서는 M1-2에서 처음 canonical에 넣은 대표 출발어 40개, M1-3에서
