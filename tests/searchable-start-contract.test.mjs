@@ -80,6 +80,28 @@ function makeCommonGeneralCandidate(id, lemma, gloss) {
   };
 }
 
+function makeSingleSenseBoundaryReview(record, decisionSourceId, {
+  sentenceFrame,
+  relationType,
+  targetClass,
+}) {
+  const sense = record.senses[0];
+  return {
+    status: 'pass',
+    sense_id: sense.id,
+    gloss_sha256: sha256Json(sense.gloss),
+    decision_source_id: decisionSourceId,
+    decision: 'retain',
+    frame_observations: [{
+      gloss_excerpt: sense.gloss,
+      gloss_start: 0,
+      sentence_frame: sentenceFrame,
+      writer_route: { relation_type: relationType, target_class: targetClass },
+    }],
+    rationale: `${record.id} ${sense.id} exact gloss span was checked in a writer-facing frame.`,
+  };
+}
+
 function sourceForCandidate(candidate) {
   const candidateRecords = [candidate];
   return {
@@ -120,6 +142,17 @@ async function makeSourceBoundDispositionFixture() {
       row.gloss_judgment = 'reject';
       row.rejection_basis = index === 2 ? 'duplicate-identity' : 'not-a-lexical-unit';
       row.decision_rationale = `${identity.inventory_id} ${candidate.id}: synthetic ${row.rejection_basis} regression disposition.`;
+    }
+    if (index === 0) {
+      row.sense_reviews[0].single_sense_boundary_review = makeSingleSenseBoundaryReview(
+        candidate,
+        original.source_id,
+        {
+          sentenceFrame: '그는 기대한 만큼 채워진 결과에 흡족했다.',
+          relationType: 'mood',
+          targetClass: 'satisfaction after expectations are met',
+        },
+      );
     }
   });
 
@@ -719,6 +752,18 @@ test('active shared production constrains mixed common-general zero-relation dis
     { candidate_record_id: 'w9912', decision: 'rejected', rejection_basis: 'duplicate-identity' },
     { candidate_record_id: 'w9913', decision: 'rejected', rejection_basis: 'not-a-lexical-unit' },
   ];
+  decisionRows[0].sense_reviews = [{
+    sense_id: selectedCandidate.senses[0].id,
+    single_sense_boundary_review: makeSingleSenseBoundaryReview(
+      selectedCandidate,
+      'searchable-start-common-general-dispositions:decision-source',
+      {
+        sentenceFrame: '그 사물은 일상에서 흔히 쓰이는 물건이다.',
+        relationType: 'direct',
+        targetClass: 'common everyday object',
+      },
+    ),
+  }];
   const baseRecord = {
     id: 'w9909',
     record_type: 'entry',
