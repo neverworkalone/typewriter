@@ -56,6 +56,11 @@ async function copyEvidence(root) {
     ['show', `${BASE_DECISION_SOURCE_COMMIT}:${path.relative(REPOSITORY_DIRECTORY, DECISION_SOURCE_PATH)}`],
     { cwd: REPOSITORY_DIRECTORY, maxBuffer: 10 * 1024 * 1024 },
   );
+  const { stdout: historicalBoundaryDecisions } = await execFileAsync(
+    'git',
+    ['show', `${BASE_DECISION_SOURCE_COMMIT}:${path.relative(REPOSITORY_DIRECTORY, BOUNDARY_DECISIONS_PATH)}`],
+    { cwd: REPOSITORY_DIRECTORY, maxBuffer: 10 * 1024 * 1024 },
+  );
   const historicalSource = JSON.parse(historicalDecisionSource);
   const historicalCanonical = await readCanonicalRecords(CANONICAL_DIRECTORY);
   const senseById = new Map(
@@ -82,7 +87,7 @@ async function copyEvidence(root) {
   historicalSource.authored_review_sha256 = sha256Json(historicalSource.authored_review);
   await Promise.all([
     writeFile(paths.decisionSourcePath, `${JSON.stringify(historicalSource, null, 2)}\n`, 'utf8'),
-    cp(BOUNDARY_DECISIONS_PATH, paths.boundaryDecisionsPath),
+    writeFile(paths.boundaryDecisionsPath, historicalBoundaryDecisions, 'utf8'),
   ]);
   return paths;
 }
