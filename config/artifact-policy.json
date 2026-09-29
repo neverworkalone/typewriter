@@ -765,7 +765,18 @@
             "sense_reviews": "array<object>",
             "review_binding": "object",
             "correction": "object",
-            "boundary_pairs": "array<object>"
+            "boundary_pairs": "array<object>",
+            "lexical_unit_review": "object"
+          },
+          "$.decisions.*.lexical_unit_review": {
+            "contract_version": "string",
+            "judgment": "string",
+            "rationale": "string",
+            "evidence": "array<object>"
+          },
+          "$.decisions.*.lexical_unit_review.evidence.*": {
+            "source": "string",
+            "observation": "string"
           },
           "$.decisions.*.correction": {
             "action": "string",
@@ -871,6 +882,7 @@
             "criteria": "array<string>",
             "decision_counts": "object",
             "admission_rule": "string",
+            "expression_lexical_unit_review_contract_version": "string",
             "prior_generator_replaced": "boolean",
             "prior_generator_verification_pass_id": "string",
             "correction_passes": "array<object>",
@@ -938,7 +950,8 @@
           "sense_reviews",
           "review_binding",
           "correction",
-          "boundary_pairs"
+          "boundary_pairs",
+          "lexical_unit_review"
         ],
         "sense_review_allowed_fields": [
           "sense_id",
@@ -997,7 +1010,9 @@
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
-          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "selection_axis", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "hold_basis", "rejection_basis", "sense_reviews", "review_binding", "correction", "boundary_pairs"],
+          "$.decisions.*": ["candidate_record_id", "inventory_id", "candidate_record_sha256", "decision", "rank", "score", "selection_axis", "decision_rationale", "selection_rationale", "review_pass_id", "gloss_judgment", "hold_basis", "rejection_basis", "sense_reviews", "review_binding", "correction", "boundary_pairs", "lexical_unit_review"],
+          "$.decisions.*.lexical_unit_review": ["contract_version", "judgment", "rationale", "evidence"],
+          "$.decisions.*.lexical_unit_review.evidence.*": ["source", "observation"],
           "$.decisions.*.review_binding": ["contract_version", "candidate_record_id", "candidate_record_sha256", "decision_evidence_sha256", "sense_evidence"],
           "$.decisions.*.review_binding.sense_evidence.*": ["sense_id", "sense_sha256", "gloss_sha256", "evidence_sha256"],
           "$.decisions.*.correction": ["action", "record", "output_record_sha256"],
@@ -1009,7 +1024,7 @@
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analyses.*": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
-          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "prior_generator_replaced", "prior_generator_verification_pass_id", "correction_passes", "counts"],
+          "$.review": ["review_pass_id", "reviewer", "status", "candidate_count", "reviewed_candidate_count", "method", "criteria", "decision_counts", "admission_rule", "expression_lexical_unit_review_contract_version", "prior_generator_replaced", "prior_generator_verification_pass_id", "correction_passes", "counts"],
           "$.review.correction_passes.*": ["review_pass_id", "prior_review_pass_id", "reviewer", "status", "candidate_record_count", "candidate_record_ids", "method"],
           "$.review.decision_counts": ["included", "corrected", "held", "rejected", "deferred"],
           "$.review.counts": ["included", "corrected", "held", "rejected", "deferred"],
