@@ -671,6 +671,11 @@ export async function validateIssue211({ writeReport = false } = {}) {
     baseRecords,
     prospectiveRecords: historicalCanonical.records,
     semanticAudit: historicalSemanticAudit,
+    // Issue #211 is already part of the canonical history. Revalidate its
+    // original source-bound admission as a replay instead of applying newer
+    // fresh-admission evidence requirements to that historical decision.
+    allowReplay: true,
+    historicalReplay: true,
     stageEvidence: productionStageEvidence({
       candidateSourceBytes,
       semanticSourceBytes,
