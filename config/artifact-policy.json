@@ -879,7 +879,28 @@
             "relation_count": "number",
             "relation_ids": "array<string>",
             "no_relation_rationale": "string",
-            "review_basis": "object"
+            "review_basis": "object",
+            "single_sense_boundary_review": "object"
+          },
+          "$.decisions.*.sense_reviews.*.single_sense_boundary_review": {
+            "status": "string",
+            "sense_id": "string",
+            "gloss_sha256": "string",
+            "decision_source_id": "string",
+            "decision": "string",
+            "frame_observations": "array<object>",
+            "rationale": "string"
+          },
+          "$.decisions.*.sense_reviews.*.single_sense_boundary_review.frame_observations.*": {
+            "gloss_excerpt": "string",
+            "gloss_start": "integer",
+            "sentence_frame": "string",
+            "writer_route": "object"
+          },
+          "$.decisions.*.sense_reviews.*.single_sense_boundary_review.frame_observations.*.writer_route": {
+            "relation_type": "string",
+            "target_pos": "string",
+            "target_class": "string"
           },
           "$.decisions.*.sense_reviews.*.review_basis": {
             "topic_analysis": "object",
@@ -1003,7 +1024,8 @@
           "relation_count",
           "relation_ids",
           "no_relation_rationale",
-          "review_basis"
+          "review_basis",
+          "single_sense_boundary_review"
         ],
         "review_binding_allowed_fields": [
           "contract_version",
@@ -1064,7 +1086,10 @@
           "$.decisions.*.boundary_pairs.*.writer_boundary.right_frame": ["gloss_excerpt", "sentence_frame"],
           "$.decisions.*.boundary_pairs.*.writer_boundary.left_route": ["relation_type"],
           "$.decisions.*.boundary_pairs.*.writer_boundary.right_route": ["relation_type"],
-          "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis"],
+          "$.decisions.*.sense_reviews.*": ["sense_id", "boundary_action", "boundary_classification", "boundary_decision", "boundary_rationale", "semantic_rationale", "relation_decision", "relation_count", "relation_ids", "no_relation_rationale", "review_basis", "single_sense_boundary_review"],
+          "$.decisions.*.sense_reviews.*.single_sense_boundary_review": ["status", "sense_id", "gloss_sha256", "decision_source_id", "decision", "frame_observations", "rationale"],
+          "$.decisions.*.sense_reviews.*.single_sense_boundary_review.frame_observations.*": ["gloss_excerpt", "gloss_start", "sentence_frame", "writer_route"],
+          "$.decisions.*.sense_reviews.*.single_sense_boundary_review.frame_observations.*.writer_route": ["relation_type", "target_pos", "target_class"],
           "$.decisions.*.sense_reviews.*.review_basis": ["topic_analysis", "topic_analyses"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analysis": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
           "$.decisions.*.sense_reviews.*.review_basis.topic_analyses.*": ["status", "state", "topic", "particle", "predicate", "token_index", "topic_pos", "evidence_basis", "gloss_sha256", "rationale", "decision_source_id"],
