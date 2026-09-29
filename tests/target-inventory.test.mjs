@@ -41,13 +41,13 @@ test('validates the M5-16 inventory and keeps independent start counts', async (
   const summary = await validateTargetInventory();
 
   assert.equal(summary.inventoryEntryCount, 5660);
-  assert.equal(summary.canonicalRecordCount, 5096);
-  assert.equal(summary.currentStartCount, 5054);
+  assert.equal(summary.canonicalRecordCount, 5077);
+  assert.equal(summary.currentStartCount, 5035);
   assert.equal(summary.currentReferenceOnlyCount, 42);
   assert.equal(summary.candidateStartCount, 19);
-  assert.equal(summary.plannedStartCount, 5073);
-  assert.equal(summary.heldCount, 189);
-  assert.equal(summary.rejectedCount, 52);
+  assert.equal(summary.plannedStartCount, 5054);
+  assert.equal(summary.heldCount, 198);
+  assert.equal(summary.rejectedCount, 62);
   assert.equal(summary.deferredCount, 299);
   assert.equal(summary.duplicateCount, 3);
   assert.equal(summary.inflectedFormCount, 2);
@@ -59,7 +59,7 @@ test('validates the M5-16 inventory and keeps independent start counts', async (
   );
   assert.deepEqual(summary.reasonCodeCounts, {
     A: 1219,
-    C: 1078,
+    C: 1059,
     E: 444,
     O: 915,
     Q: 430,
@@ -68,7 +68,7 @@ test('validates the M5-16 inventory and keeps independent start counts', async (
   });
   assert.deepEqual(summary.recordTypeCounts, {
     entry: 3894,
-    expression: 1179,
+    expression: 1160,
   });
 });
 
@@ -79,7 +79,7 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
   try {
     const generated = await generateTargetInventory({ outputPath });
     assert.equal(generated.entries.length, 5660);
-    assert.equal(generated.canonical_snapshot.record_count, 5096);
+    assert.equal(generated.canonical_snapshot.record_count, 5077);
     assert.equal(
       generated.entries.find((entry) => entry.inventory_id === 'm5-001').source,
       'canonical',
@@ -101,7 +101,7 @@ test('regenerates the inventory from canonical plus the non-canonical seed', asy
 
 test('inventory candidates remain outside canonical input and SQLite build scope', async () => {
   const canonical = await readCanonicalRecords(DEFAULT_CANONICAL_DIRECTORY);
-  assert.equal(canonical.records.length, 5096);
+  assert.equal(canonical.records.length, 5077);
   assert.equal(canonical.records.some(({ record }) => record.id === 'm5-001'), false);
   assert.equal(canonical.records.some(({ record }) => record.id === 'w301'), true);
   assert.equal(canonical.records.some(({ record }) => record.lemma === '말문이 막히다'), false);
