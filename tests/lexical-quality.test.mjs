@@ -2081,18 +2081,18 @@ test('shared semantic admission blocks a source POS that conflicts with independ
   }));
 });
 
-test('fresh single-sense admission rejects distinct writer frames hidden behind one source gloss', () => {
+test('fresh single-sense admission rejects an under-split background gloss with distinct writer routes', () => {
   const candidateRecord = {
     id: 'w-single-sense-under-split',
     record_type: 'entry',
     role: 'start',
     candidate_id: 'w-single-sense-under-split',
-    lemma: '합성 믿다',
-    search_forms: ['합성 믿다'],
+    lemma: '배경',
+    search_forms: ['배경'],
     senses: [{
       id: 'w-single-sense-under-split-s1',
-      pos: 'verb',
-      gloss: '사람이나 말이 참되다고 여기다.',
+      pos: 'noun',
+      gloss: '앞에 놓인 대상 뒤에서 장면이나 내용을 받치는 환경.',
     }],
   };
   const review = productionReview({
@@ -2101,15 +2101,15 @@ test('fresh single-sense admission rejects distinct writer frames hidden behind 
     boundaryDecision: 'atomic',
   });
   const boundary = review.sense_boundary.findings[0].single_sense_boundary_review;
-  boundary.frame_observations[0].sentence_frame = '사람을 믿다';
+  boundary.frame_observations[0].sentence_frame = '산을 배경으로 사진을 찍었다.';
   boundary.frame_observations[0].writer_route = {
-    relation_type: 'near',
-    target_class: 'person trust and reliance',
+    relation_type: 'scene',
+    target_class: 'visual setting and depicted scene',
   };
-  boundary.frame_observations[1].sentence_frame = '말을 믿다';
+  boundary.frame_observations[1].sentence_frame = '사건의 배경을 조사했다.';
   boundary.frame_observations[1].writer_route = {
-    relation_type: 'near',
-    target_class: 'statement truth and credibility',
+    relation_type: 'association',
+    target_class: 'circumstances and causes behind an event',
   };
 
   assert.throws(
@@ -2125,7 +2125,7 @@ test('fresh single-sense admission rejects distinct writer frames hidden behind 
   );
 });
 
-test('fresh single-sense admission retains atomic and coordinated frames with one writer route', () => {
+test('fresh single-sense admission retains atomic, same-route argument, and coordinated frames', () => {
   const atomicRecord = {
     id: 'w-single-sense-atomic',
     record_type: 'entry',
@@ -2143,6 +2143,41 @@ test('fresh single-sense admission retains atomic and coordinated frames with on
   assert.doesNotThrow(() => validateLexicalSemanticReview(atomicReview, {
     decision: 'included',
     candidateRecord: atomicRecord,
+    catalogCount: 1,
+    requireSemanticEvidence: true,
+    requireWriterBoundaryEvidence: true,
+  }));
+
+  const trustRecord = {
+    id: 'w-single-sense-trust',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-single-sense-trust',
+    lemma: '믿다',
+    search_forms: ['믿다'],
+    senses: [{
+      id: 'w-single-sense-trust-s1',
+      pos: 'verb',
+      gloss: '사람이나 말이 참되고 믿을 만하다고 여기다.',
+    }],
+  };
+  const trustReview = productionReview({
+    candidateRecord: trustRecord,
+    gloss: trustRecord.senses[0].gloss,
+    boundaryDecision: 'atomic',
+  });
+  const trustFrames = trustReview.sense_boundary.findings[0].single_sense_boundary_review.frame_observations;
+  trustFrames[0].sentence_frame = '나는 그 사람을 믿었다.';
+  trustFrames[1].sentence_frame = '나는 그 말을 믿었다.';
+  for (const frame of trustFrames) {
+    frame.writer_route = {
+      relation_type: 'near',
+      target_class: 'trust and confidence; not doubt',
+    };
+  }
+  assert.doesNotThrow(() => validateLexicalSemanticReview(trustReview, {
+    decision: 'included',
+    candidateRecord: trustRecord,
     catalogCount: 1,
     requireSemanticEvidence: true,
     requireWriterBoundaryEvidence: true,

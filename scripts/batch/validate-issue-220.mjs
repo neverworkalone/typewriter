@@ -449,18 +449,20 @@ function countBy(items, keyOf) {
 }
 
 function defectFindingsFor(candidates) {
-  const unresolved = candidates.filter(({ decision }) => decision === 'held');
+  const unresolved = candidates.filter(({ decision, candidate_record_id: id }) => (
+    decision === 'held' && id !== 'w5398'
+  ));
   const projectionGap = candidates.filter(({ candidate_record_id: id }) => id === 'w5399');
-  const singleSenseUnderSplits = candidates.filter(({ candidate_record_id: id }) => ['w5398', 'w5416'].includes(id));
+  const singleSenseUnderSplits = candidates.filter(({ candidate_record_id: id }) => id === 'w5398');
   const surfaceDispositionGaps = candidates.filter(({ candidate_record_id: id, decision }) => (
     ['w5418', 'w5423'].includes(id) && decision === 'included'
   ));
-  assert.equal(unresolved.length, 23);
+  assert.equal(unresolved.length, 21);
   assert.equal(projectionGap.length, 1);
   assert.equal(projectionGap[0].batch_number, 1);
-  assert.equal(singleSenseUnderSplits.length, 2);
-  assert.deepEqual(singleSenseUnderSplits.map(({ candidate_record_id: id }) => id), ['w5398', 'w5416']);
-  assert.deepEqual(singleSenseUnderSplits.map(({ batch_number: batch }) => batch), [1, 2]);
+  assert.equal(singleSenseUnderSplits.length, 1);
+  assert.deepEqual(singleSenseUnderSplits.map(({ candidate_record_id: id }) => id), ['w5398']);
+  assert.deepEqual(singleSenseUnderSplits.map(({ batch_number: batch }) => batch), [1]);
   assert.equal(surfaceDispositionGaps.length, 2);
   assert.ok(surfaceDispositionGaps.every(({ batch_number: batch }) => batch === 2));
   return [
@@ -481,9 +483,9 @@ function defectFindingsFor(candidates) {
     {
       defect_class: 'A fresh one-sense gloss combined distinct sentence frames and writer routes',
       occurrence_count: singleSenseUnderSplits.length,
-      affected_batches: [1, 2],
+      affected_batches: [1],
       affected_candidate_ids: singleSenseUnderSplits.map(({ candidate_record_id: id }) => id),
-      disposition: 'Added a shared source-bound frame-and-route review gate and held both candidates until the split is represented by separately reviewed senses.',
+      disposition: 'Kept the candidate held until separately reviewed senses are authored; the shared frame-and-route gate requires a genuine writer-route difference, not a different argument frame alone.',
     },
     {
       defect_class: 'Two admitted verb senses needed explicit M6-3 surface-form decisions',
@@ -671,8 +673,8 @@ export async function validateIssue220({ writeReport = false } = {}) {
       batch,
     });
     assert.equal(semanticDecisionSource.rows.length, 20);
-    assert.equal(semanticDecisionSource.counts.included, batch.number === 1 ? 13 : 4);
-    assert.equal(semanticDecisionSource.counts.held, batch.number === 1 ? 7 : 16);
+    assert.equal(semanticDecisionSource.counts.included, batch.number === 1 ? 13 : 5);
+    assert.equal(semanticDecisionSource.counts.held, batch.number === 1 ? 7 : 15);
     assert.equal(semanticDecisionSource.counts.rejected, 0);
     assert.equal(semanticDecisionSource.selection.reserve.length, 0);
     assert.equal(semanticDecisionSource.selection.selected.length, semanticDecisionSource.counts.included);
@@ -697,7 +699,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
   }
 
   const allImports = batchResults.flatMap(({ importRecords }) => importRecords);
-  assert.equal(allImports.length, 17);
+  assert.equal(allImports.length, 18);
   const importedIds = new Set(allImports.map(({ id }) => id));
   assert.equal(importedIds.size, allImports.length);
   assert.equal(currentRecords.length, historicalRecords.length + allImports.length);
@@ -802,7 +804,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     }
   }
   const issue220SeedTargets = currentSeed.targets.filter(({ inventory_id: id }) => issue220InventoryIds.includes(id));
-  assert.equal(issue220SeedTargets.length, 23);
+  assert.equal(issue220SeedTargets.length, 22);
   assert.ok(issue220SeedTargets.every(({ status }) => status === 'held'));
 
   const inventoryValidation = await validateTargetInventory({
@@ -886,9 +888,9 @@ export async function validateIssue220({ writeReport = false } = {}) {
     senses.every((sense) => (sense.relations ?? []).length === 0)
   )).length;
   assert.equal(currentRecoverable, baselineRecoverable - admittedCount, 'remaining disposition counts match recovery outcomes');
-  assert.equal(recoveredCount, 41, 'Issue #210 inventory includes prior and M9-B recoveries');
+  assert.equal(recoveredCount, 42, 'Issue #210 inventory includes prior and M9-B recoveries');
   assert.equal(baselineRecoverable, 545, 'pinned historical potential count');
-  assert.equal(currentRecoverable, 528, 'remaining potentially recoverable historical records');
+  assert.equal(currentRecoverable, 527, 'remaining potentially recoverable historical records');
   assert.equal(recoveryCeiling, 5621, 'historical-only source-pool ceiling');
   assert.equal(Math.max(0, 6000 - recoveryCeiling), 379);
 

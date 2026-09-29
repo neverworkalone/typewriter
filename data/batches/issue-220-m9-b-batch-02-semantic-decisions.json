@@ -32,22 +32,34 @@
       "single-sense gloss spans, sentence frames, and next writer routes are explicitly compared before fresh admission"
     ],
     "decision_counts": {
-      "included": 4,
+      "included": 5,
       "corrected": 0,
-      "held": 16,
+      "held": 15,
       "rejected": 0,
       "deferred": 0
     },
     "counts": {
-      "included": 4,
+      "included": 5,
       "corrected": 0,
-      "held": 16,
+      "held": 15,
       "rejected": 0,
       "deferred": 0
     },
     "prior_generator_replaced": true,
     "prior_generator_verification_pass_id": "issue-220-historical-slice-selection-20260929-r1",
-    "correction_passes": [],
+    "correction_passes": [
+      {
+        "review_pass_id": "issue-220-agent-correction-20260929-batch-02",
+        "prior_review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
+        "reviewer": "codex-agent",
+        "status": "complete",
+        "candidate_record_ids": [
+          "w5416"
+        ],
+        "candidate_record_count": 1,
+        "method": "Re-evaluated the admitted Issue #220 single-sense decisions under the clarified writer-route criterion; object and argument differences count as one sense when both frames lead to the same replacement route."
+      }
+    ],
     "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
   },
   "candidate_source": {
@@ -58,13 +70,13 @@
   "selection": {
     "policy": "shared-authored-axis-coverage-selection-v6",
     "capacity": 20,
-    "imported": 4,
+    "imported": 5,
     "reserve": 0,
     "coverage_field": "selection_axis",
     "coverage_basis": [
       "fresh M9-B lexical eligibility after source-bound candidate review"
     ],
-    "selection_rationale": "4 source-bound dispositions qualify for ordinary admission; 16 remain held for unresolved lexical identity or sense boundary. No admission or relation quota applies."
+    "selection_rationale": "5 source-bound dispositions qualify for ordinary admission; 15 remain held for unresolved lexical identity or sense boundary. No admission or relation quota applies."
   },
   "decisions": [
     {
@@ -623,19 +635,19 @@
       "candidate_record_id": "w5416",
       "inventory_id": "m5-2811",
       "candidate_record_sha256": "5e0981f2dda1a619851f45ca1a9ed6adef66f6e1076b5491ab85cb6f6190f982",
-      "decision": "held",
+      "decision": "included",
       "rank": 13,
-      "decision_rationale": "m5-2811 w5416: independently reviewed frames and next writer routes diverge inside the one-sense gloss; hold until source-bound separate senses are authored.",
-      "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
-      "gloss_judgment": "needs-context",
+      "decision_rationale": "m5-2811 w5416: trusting a person and believing a statement use different frames but lead to the same trust and confidence writer route.",
+      "review_pass_id": "issue-220-agent-correction-20260929-batch-02",
+      "gloss_judgment": "fit",
       "sense_reviews": [
         {
           "sense_id": "w5416-s1",
-          "boundary_action": "split",
-          "boundary_classification": "separated",
-          "boundary_decision": "split",
-          "boundary_rationale": "m5-2811 w5416 w5416-s1: w5416 w5416-s1 spans trust in a person and belief in a statement; distinct next writer routes require a source-bound split before admission.",
-          "semantic_rationale": "믿다: one source gloss combines distinct frame and writer-route meanings; do not admit until split.",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-2811 w5416 w5416-s1 gloss 93852bd75aa6: person and statement frames both lead to the same trust and confidence writer route, so their argument difference does not require a split.",
+          "semantic_rationale": "믿다: 사람을 믿는 경우와 말을 믿는 경우 모두 신뢰하고 의심하지 않는 같은 writer-facing route로 이어진다.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
@@ -645,28 +657,28 @@
             "sense_id": "w5416-s1",
             "gloss_sha256": "93852bd75aa6608388b966026f942bed65d3332b255b8b2f9d9a98329ea962e9",
             "decision_source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
-            "decision": "split",
+            "decision": "retain",
             "frame_observations": [
               {
                 "gloss_excerpt": "사람",
                 "gloss_start": 0,
-                "sentence_frame": "그 사람을 믿고 일을 맡긴다.",
+                "sentence_frame": "나는 그 사람을 믿었다.",
                 "writer_route": {
                   "relation_type": "near",
-                  "target_class": "person trust and reliance"
+                  "target_class": "trust and confidence; not doubt"
                 }
               },
               {
                 "gloss_excerpt": "말",
                 "gloss_start": 5,
-                "sentence_frame": "그 말을 믿고 사실로 받아들인다.",
+                "sentence_frame": "나는 그 말을 믿었다.",
                 "writer_route": {
-                  "relation_type": "association",
-                  "target_class": "statement truth and credibility"
+                  "relation_type": "near",
+                  "target_class": "trust and confidence; not doubt"
                 }
               }
             ],
-            "rationale": "w5416 w5416-s1 spans trust in a person and belief in a statement; distinct next writer routes require a source-bound split before admission."
+            "rationale": "w5416 w5416-s1 exact gloss spans show different argument frames that lead to the same trust and confidence writer route."
           }
         }
       ],
@@ -675,17 +687,16 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w5416",
         "candidate_record_sha256": "5e0981f2dda1a619851f45ca1a9ed6adef66f6e1076b5491ab85cb6f6190f982",
-        "decision_evidence_sha256": "45305d442d5d91485b4f58a517ba3e616d1a265427377d15cc06eec7392804f4",
+        "decision_evidence_sha256": "b31698a93d812a91249a79605e6cf4a81fd8a363fcd6784196cbd681ced31ac9",
         "sense_evidence": [
           {
             "sense_id": "w5416-s1",
             "sense_sha256": "d8576f3fe555a61aef9f17f37bcc9aa0ac3ebd91d785758e655ffa2f287456a9",
             "gloss_sha256": "93852bd75aa6608388b966026f942bed65d3332b255b8b2f9d9a98329ea962e9",
-            "evidence_sha256": "aad11a775540d5c98d45fcc305dd84f70ce29c5bb05bfba37b95621bf915e1c9"
+            "evidence_sha256": "21478c9cb703d1abcd0a1e7372a8a6b16bc109e1a1724e571be1443d6061290e"
           }
         ]
-      },
-      "hold_basis": "unresolved-sense"
+      }
     },
     {
       "candidate_record_id": "w5417",
@@ -1428,5 +1439,5 @@
     }
   ],
   "candidate_records_sha256": "8c227292f1f7e96b3ffcf4742a81dd2bb0835a68db1f09b15b6839a082b945f8",
-  "artifact_sha256": "4392c0ccc6c1b1532c2a54b8bebb9933db8c56d0a481679c507412e299a38bbf"
+  "artifact_sha256": "4abff2128d058882336e4f5ff710622d3b0defdf9a6ecbac61a2b74633359d61"
 }

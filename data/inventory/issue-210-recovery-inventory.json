@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "60da3ac890206a74c247a4853a229f4af04e1f46a0d487ecedb7c7df15594d71",
+    "current_canonical_revision": "91cfad7fee114ceb01c904844506b4d59a98203671acf33e81e9f6d5694fc68f",
     "source_manifest": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -233,8 +233,8 @@
       },
       {
         "path": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-        "sha256": "3b870148ed668a30c211aa5eea9a087538cdb576fb9157cd657ca831ed4ebcd1",
-        "byte_count": 67809
+        "sha256": "01c1415e6b51ae14f0e2db08fad0dd5e2f0a73b32bbc9f1431496e636d5199d6",
+        "byte_count": 68321
       },
       {
         "path": "data/batches/issue-220-m9-b-selection.json",
@@ -413,8 +413,8 @@
       },
       {
         "path": "data/canonical/issue-220-m9-b-batch-02.jsonl",
-        "sha256": "7aa627918906c4071f48f53bf6550dafb0bfcf4a3d830780013088829ac1b8f3",
-        "byte_count": 996
+        "sha256": "b57ae64af48cd99b8395c055c99b0bc09f7e5333d396eb9025cd01a4b9de51db",
+        "byte_count": 1227
       },
       {
         "path": "data/canonical/m5-10-wave-a.jsonl",
@@ -483,28 +483,28 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "52f88239896eccac1f8957dfcf1e101385e2bdd2b79e255469fbad9d2e2293c4",
-        "byte_count": 2513198
+        "sha256": "213bb80d8c85c93f37a4345add0517725b88f517eff5a3c7902a5c5c925b38de",
+        "byte_count": 2513898
       },
       {
         "path": "data/inventory/m5-target-seed.json",
-        "sha256": "7da8e2b9c2aeaa456906db82861cc64a8a0ac71c7e9e54ba71e12065bcb952a5",
-        "byte_count": 857249
+        "sha256": "a1a9c7b629c428a3fa7c979acdff96e9557735d0384248a84c54fcbf945170dd",
+        "byte_count": 856700
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "3f11d1b40e693f390a28baff20625ddb15224e4e108304235b024a800f2d576d",
-        "byte_count": 4865429
+        "sha256": "caf3d9e2e7adbd573924d602a77ef340ed2bf72f68426153b50f654ec91acf03",
+        "byte_count": 4866343
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "30dbbae59c40dd0ba15fe6242276edff10788e3b4bf93796c2e023153b2c95af",
+        "sha256": "7d5e9602f5baae9c20729c16a4260557b21a4b0db2c4fcf5a05559e91cbaffa8",
         "byte_count": 11354
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "ac64d4603719788868ba9d54f51e777111345d8287c6c2c7293425e065c3d7ee",
-        "byte_count": 29617
+        "sha256": "dafd27e29e4c1974dbed226b5f5aaae9436c607588feec1560f6b2985d9dc5a6",
+        "byte_count": 29626
       },
       {
         "path": "data/validation/m6-2-inflection-exceptions.json",
@@ -513,8 +513,8 @@
       },
       {
         "path": "data/validation/m6-3-surface-form-review.json",
-        "sha256": "edaa275b775fa786d2bd016fe334ba79919c73cff35941542e41dd50a5e9bd9f",
-        "byte_count": 311190
+        "sha256": "06c8bc9612c99124dae0b3b4fc38ab9aa757ad5024f380150aa1f089165eaf65",
+        "byte_count": 311609
       },
       {
         "path": "docs/editorial-model.md",
@@ -538,13 +538,13 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "4cd0306665741ad44df76f6c958f25cfbae3f11f3fdd3dd5acfdea11734ca48d",
+        "sha256": "f0a782e66dde3223a061f70164e5524997ee6d9a875cc509a065a07169a1e502",
         "byte_count": 5991
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "267614ac7ac5ed437716e8d577967f2c814a85db6e6cd94b6ebf9e1ea3ec1552",
-        "byte_count": 8709
+        "sha256": "20cf5046b592a6a2837d4c05e36ebf79d8a43b0cb1065ad5b25c391b4f90c9af",
+        "byte_count": 8732
       },
       {
         "path": "docs/m3-handoff.md",
@@ -633,8 +633,8 @@
       },
       {
         "path": "scripts/batch/validate-issue-211.mjs",
-        "sha256": "edf7ecd0c3ee863df6fefb8b6225208063ea037c158f5427835055be2e49f2b9",
-        "byte_count": 34920
+        "sha256": "f9f448819aae8b701d5db8ec8d7e99fe4f0df710f9ebae9ae2d9d53ec248d898",
+        "byte_count": 35197
       },
       {
         "path": "scripts/batch/validate-issue-219.mjs",
@@ -643,8 +643,8 @@
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "42bfbdcc9149e7357358563eeb782cd190234746c36e73fe3c627951cff09de6",
-        "byte_count": 56588
+        "sha256": "8409b74aa2b2e336e93b09e2d2b1705bf468041ffb854b0cdbc0617a7ba9c201",
+        "byte_count": 56651
       },
       {
         "path": "scripts/ci/registry.mjs",
@@ -653,7 +653,7 @@
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "69df34558365eda45bebda76d93e8ef9afe4d2429725d745f462c6550ddc0ee6",
+        "sha256": "d3246c9c1e002dd664d9550b909c76857d9846e9eb0c98bea129c823fc9f6cf0",
         "byte_count": 71537
       },
       {
@@ -688,23 +688,23 @@
       },
       {
         "path": "tests/searchable-start-contract.test.mjs",
-        "sha256": "8e2014fae124aef7a5f4afd597ff1761ab1dca3884040fe89cdf3c65b15f6c85",
-        "byte_count": 38763
+        "sha256": "c6b8ee44b120c358bb7c01fddcb968d232d24153185d43da47d8fe7ec1938c1d",
+        "byte_count": 40210
       }
     ]
   },
   "audit_scope": {
     "m1_m4": "Reviewed the durable M1 pilot selection, canonical pilot records, M3/M4 handoffs, and current reference-only population. These artifacts do not contain a complete durable candidate rejection/defer ledger; no missing ephemeral output or external material was reconstructed.",
-    "m5": "Screened all 1,562 M5 target rows, including Issue #220 recoveries; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219/#220 recovery outcomes. Issue #219 reviewed 20 expressions; Issue #220 reviewed 40 historical reserves, admitting 17 and holding 23.",
+    "m5": "Screened all 1,562 M5 target rows, including Issue #220 recoveries; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219/#220 recovery outcomes. Issue #219 reviewed 20 expressions; Issue #220 reviewed 40 historical reserves, admitting 18 and holding 22.",
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
-    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 17 through current shared admission.",
+    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 18 through current shared admission.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
     "m5_target_rows_screened": 1562,
     "m5_target_status_counts": {
       "promoted": 978,
-      "held": 222,
+      "held": 221,
       "duplicate": 3,
       "inflected-form": 2,
       "candidate": 19,
@@ -712,15 +712,15 @@
       "rejected": 62
     },
     "m5_promoted_seed_rows_present_in_canonical": 978,
-    "m5_promotion_ledger_events_audited": 3773,
+    "m5_promotion_ledger_events_audited": 3774,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
     "issue_219_held_count": 10,
     "issue_219_rejected_count": 10,
     "issue_220_decisions_audited": 40,
-    "issue_220_admitted_count": 17,
-    "issue_220_held_count": 23,
+    "issue_220_admitted_count": 18,
+    "issue_220_held_count": 22,
     "issue_220_rejected_count": 0,
     "issue_220_priority_reserve_remaining": 194,
     "issue_220_historical_candidate_pool_count": 584,
@@ -737,12 +737,12 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 5093,
-    "exact_search_key_count": 5349,
+    "directly_searchable_canonical_record_count": 5094,
+    "exact_search_key_count": 5350,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
-    "unresolved_sense_pos_or_context_case_count": 205,
+    "unresolved_sense_pos_or_context_case_count": 204,
     "additional_rationale_or_lexical_unit_holds": 75,
     "search_collision_count": 1,
     "unsupported_scope_candidate_count": 0,
@@ -752,8 +752,8 @@
       "duplicate": 2,
       "invalid-lemma": 2,
       "admit-candidate": 248,
-      "recovered": 41,
-      "needs-sense-split": 29,
+      "recovered": 42,
+      "needs-sense-split": 28,
       "not-a-lexical-unit": 10,
       "search-surface-collision": 1
     },
@@ -771,20 +771,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 5093,
-    "directly_searchable_record_count": 5093,
+    "canonical_record_count": 5094,
+    "directly_searchable_record_count": 5094,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 5349,
+    "exact_search_key_count": 5350,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 5051,
+      "start": 5052,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 3898,
+      "start/entry": 3899,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -15834,9 +15834,24 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 99,
+          "batch": "m5-13-expansion-20260922",
+          "artifact": "data/batches/m5-13-semantic-decisions.json"
+        },
+        {
+          "issue": 220,
+          "batch": "m9-b-issue-220-historical-batch-02-20260929",
+          "artifact": "data/batches/issue-220-m9-b-batch-02-lexical-unit-source.json"
+        },
+        {
           "issue": 220,
           "batch": "m9-b-issue-220-historical-batch-02-20260929",
           "artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json"
+        },
+        {
+          "issue": 220,
+          "batch": "m9-b-recovery-selection-v1",
+          "artifact": "data/batches/issue-220-m9-b-selection.json"
         }
       ],
       "source_inventory_id": "m5-2811",
@@ -15849,43 +15864,68 @@
         "믿다"
       ],
       "historical_role_disposition": {
-        "planned_role": "start",
-        "disposition": "held",
+        "planned_role": null,
+        "disposition": "deferred",
         "related_canonical_id": null
       },
-      "historical_rationale": "m5-2811 w5416: the single-sense gloss has distinct sentence frames and writer routes. Keep it held until source-bound separate senses are authored.",
+      "historical_rationale": "m5-2811 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5.",
       "historical_decision_events": [
         {
           "source_issue": null,
           "source_batch": "m5-16",
           "source_artifact": "data/inventory/m5-target-seed.json",
-          "historical_disposition": "held",
-          "historical_rationale": "m5-2811 w5416: the single-sense gloss has distinct sentence frames and writer routes. Keep it held until source-bound separate senses are authored."
+          "historical_disposition": "deferred",
+          "historical_rationale": "m5-2811 semantic_decision=included; selection=reserve after separate generation m5-13-generation-20260923-r4 and verification m5-13-agent-semantic-review-20260923-r5."
+        },
+        {
+          "source_issue": 99,
+          "source_batch": "m5-13-expansion-20260922",
+          "source_artifact": "data/batches/m5-13-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-2811 w2891: 사람·말을 참되고 믿을 만하다고 여기는 동사다."
         },
         {
           "source_issue": 220,
           "source_batch": "m9-b-issue-220-historical-batch-02-20260929",
           "source_artifact": "data/batches/issue-220-m9-b-batch-02-semantic-decisions.json",
-          "historical_disposition": "held/needs-context",
-          "historical_rationale": "m5-2811 w5416: independently reviewed frames and next writer routes diverge inside the one-sense gloss; hold until source-bound separate senses are authored."
+          "historical_disposition": "included",
+          "historical_rationale": "m5-2811 w5416: trusting a person and believing a statement use different frames but lead to the same trust and confidence writer route."
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5416"
+        ],
+        "all_query_match_ids": [
+          "w5416"
+        ],
         "queries": [
           {
             "query": "믿다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "믿다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5416",
+                "lemma": "믿다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "믿다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "no",
-      "new_review_state": "needs-sense-split",
-      "follow_up_reason_and_evidence": "Issue #220 found distinct sentence frames and writer routes inside the one-sense candidate. Keep it held until a source-bound multi-sense record resolves that boundary."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #220 independently re-reviewed the historical source row and admitted this candidate through the ordinary shared lexical producer, semantic audit, and admission ledger. Its exact canonical lemma resolves to the same record ID; retain prior M5 fit and reserve decisions as history only.",
+      "current_canonical_id": "w5416"
     },
     {
       "source_issue_batch_artifacts": [
@@ -41087,7 +41127,7 @@
       "group": "Previously included M5-13/14/15 reserve candidates deferred only by capacity",
       "count": 194,
       "batching": "Issue #219 calibrated a 20-record first batch; review later batches in bounded groups sized from observed defects and workload.",
-      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issues #219 and #220 reviewed 60 rows; #220 admitted 17 and held 23 for unresolved lexical-unit evidence."
+      "gate": "Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Issues #219 and #220 reviewed 60 rows; #220 admitted 18 and held 22 for unresolved lexical-unit evidence."
     },
     {
       "sequence": 3,
@@ -41099,7 +41139,7 @@
     {
       "sequence": 4,
       "group": "Held or otherwise unresolved rows",
-      "count": 280,
+      "count": 279,
       "batching": "Resolve blockers individually, then place only cleared records into later bounded batches.",
       "gate": "Keep the 203 explicit sense/POS/context/lexical-unit cases and 75 additional rationale holds visible until their evidence is complete."
     },
@@ -41111,5 +41151,5 @@
       "gate": "Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes."
     }
   ],
-  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 17 M5-13 reserves through ordinary shared lexical production and admission."
+  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 18 M5-13 reserves through ordinary shared lexical production and admission."
 }

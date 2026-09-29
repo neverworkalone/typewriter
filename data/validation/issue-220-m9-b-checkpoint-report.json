@@ -24,20 +24,20 @@
     ],
     "semantic_sources_sha256": [
       "3ce1c8db0f214449a6c3b1489ac2958f5385e6c3996c878899c0d95bbcb2d6c4",
-      "3b870148ed668a30c211aa5eea9a087538cdb576fb9157cd657ca831ed4ebcd1"
+      "01c1415e6b51ae14f0e2db08fad0dd5e2f0a73b32bbc9f1431496e636d5199d6"
     ]
   },
   "outcomes": {
     "reviewed_count": 40,
-    "admitted_count": 17,
-    "held_count": 23,
+    "admitted_count": 18,
+    "held_count": 22,
     "rejected_count": 0,
     "duplicate_count": 0,
     "collision_count": 0,
     "corrected_count": 0,
     "correction_rate": 0,
     "relation_count": 0,
-    "zero_relation_admission_count": 17
+    "zero_relation_admission_count": 18
   },
   "batches": [
     {
@@ -55,8 +55,8 @@
       "number": 2,
       "batch_id": "m9-b-issue-220-historical-batch-02-20260929",
       "reviewed_count": 20,
-      "admitted_count": 4,
-      "held_count": 16,
+      "admitted_count": 5,
+      "held_count": 15,
       "rejected_count": 0,
       "duplicate_count": 0,
       "collision_count": 0,
@@ -639,17 +639,19 @@
       "batch_number": 2,
       "inventory_id": "m5-2811",
       "candidate_record_id": "w5416",
-      "canonical_id": null,
+      "canonical_id": "w5416",
       "lemma": "믿다",
       "pos": "verb",
       "record_type": "entry",
       "source_unit_id": "m5-13-source-unit-0811",
       "prior_selection_outcome": "reserve",
-      "decision": "held",
-      "lexical_unit_status": "unresolved",
+      "decision": "included",
+      "lexical_unit_status": "supported",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": []
+      "search_result_ids": [
+        "w5416"
+      ]
     },
     {
       "selection_order": 34,
@@ -782,11 +784,11 @@
   "historical_pool": {
     "candidate_count": 584,
     "potentially_recoverable_before_count": 545,
-    "potentially_recoverable_after_count": 528,
+    "potentially_recoverable_after_count": 527,
     "recovery_ceiling": 5621,
     "target_count": 6000,
     "shortfall_to_6000": 379,
-    "recovered_count": 41,
+    "recovered_count": 42,
     "remaining_counts_by_disposition": [
       {
         "disposition": "admit-candidate",
@@ -806,7 +808,7 @@
       },
       {
         "disposition": "needs-sense-split",
-        "count": 29
+        "count": 28
       },
       {
         "disposition": "not-a-lexical-unit",
@@ -827,16 +829,16 @@
     ]
   },
   "current": {
-    "canonical_sha256": "b29d0aeac00ee04ee2868a57ac5c02fa6675cc4fae9bdfe3e93d8cc773afc543",
-    "canonical_record_count": 5093,
-    "canonical_start_count": 5051,
+    "canonical_sha256": "0e47a9675a0c7a9e268ee34bab7185a53d0dc9cba0ada9c0595c7c8b238cd185",
+    "canonical_record_count": 5094,
+    "canonical_start_count": 5052,
     "reference_only_count": 42,
-    "sense_count": 5355,
+    "sense_count": 5356,
     "relation_count": 487,
-    "canonical_search_form_count": 5349,
-    "searchable_lemma_count": 5093,
+    "canonical_search_form_count": 5350,
+    "searchable_lemma_count": 5094,
     "record_type_counts": {
-      "entry": 3939,
+      "entry": 3940,
       "expression": 1154
     },
     "sense_pos_counts": {
@@ -844,17 +846,17 @@
       "adverb": 4,
       "expression": 1176,
       "noun": 3185,
-      "verb": 674
+      "verb": 675
     },
-    "relation_empty_searchable_record_count": 4757,
+    "relation_empty_searchable_record_count": 4758,
     "exact_search_coverage": {
-      "expected_lemma_count": 5093,
-      "covered_lemma_count": 5093,
+      "expected_lemma_count": 5094,
+      "covered_lemma_count": 5094,
       "non_searchable_record_count": 0,
       "non_searchable_records": [],
-      "distinct_search_form_count": 5349,
-      "expected_form_owner_key_count": 5349,
-      "covered_form_owner_key_count": 5349,
+      "distinct_search_form_count": 5350,
+      "expected_form_owner_key_count": 5350,
+      "covered_form_owner_key_count": 5350,
       "missing_form_owner_key_count": 0,
       "unexpected_form_owner_key_count": 0,
       "cross_record_collision_key_count": 0
@@ -891,12 +893,12 @@
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_digest": "1cdd79ed49b8bbab2a10900e6deb0919f2c23a3120ef81ff765a50fb757e74e2"
+    "logical_database_digest": "83b992a57f6a5a3904cb913cf92009faa20a4507c92949819823b278f46ffefe"
   },
   "defect_findings": [
     {
       "defect_class": "Historical lexical-unit fixedness is not established by the retained source",
-      "occurrence_count": 23,
+      "occurrence_count": 21,
       "affected_batches": [
         1,
         2
@@ -904,7 +906,6 @@
       "affected_candidate_ids": [
         "w5387",
         "w5389",
-        "w5398",
         "w5400",
         "w5401",
         "w5402",
@@ -921,7 +922,6 @@
         "w5413",
         "w5414",
         "w5415",
-        "w5416",
         "w5419",
         "w5420",
         "w5421"
@@ -941,16 +941,14 @@
     },
     {
       "defect_class": "A fresh one-sense gloss combined distinct sentence frames and writer routes",
-      "occurrence_count": 2,
+      "occurrence_count": 1,
       "affected_batches": [
-        1,
-        2
+        1
       ],
       "affected_candidate_ids": [
-        "w5398",
-        "w5416"
+        "w5398"
       ],
-      "disposition": "Added a shared source-bound frame-and-route review gate and held both candidates until the split is represented by separately reviewed senses."
+      "disposition": "Kept the candidate held until separately reviewed senses are authored; the shared frame-and-route gate requires a genuine writer-route difference, not a different argument frame alone."
     },
     {
       "defect_class": "Two admitted verb senses needed explicit M6-3 surface-form decisions",
@@ -1013,6 +1011,6 @@
   "normal_ci": {
     "command": "npm run ci:normal",
     "result": "pass",
-    "canonical_sha256": "b29d0aeac00ee04ee2868a57ac5c02fa6675cc4fae9bdfe3e93d8cc773afc543"
+    "canonical_sha256": "0e47a9675a0c7a9e268ee34bab7185a53d0dc9cba0ada9c0595c7c8b238cd185"
   }
 }

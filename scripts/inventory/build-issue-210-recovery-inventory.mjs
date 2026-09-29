@@ -916,14 +916,14 @@ async function buildInventory() {
     assert.deepEqual(issue204MandatoryLemmas, EXPECTED_ISSUE_204_REJECTS);
     assert.equal(reviewStateCounts['admit-candidate'], 248);
     assert.equal(reviewStateCounts.hold, 251);
-    assert.equal(reviewStateCounts['needs-sense-split'], 29);
-    assert.equal(reviewStateCounts.recovered, 41);
+    assert.equal(reviewStateCounts['needs-sense-split'], 28);
+    assert.equal(reviewStateCounts.recovered, 42);
     assert.equal(reviewStateCounts.duplicate, 2);
     assert.equal(reviewStateCounts['search-surface-collision'], 1);
     assert.equal(reviewStateCounts['invalid-lemma'], 2);
     assert.equal(reviewStateCounts['not-a-lexical-unit'], 10);
-    assert.equal(issue220DecisionCounts.included + (issue220DecisionCounts.corrected ?? 0), 17);
-    assert.equal(issue220DecisionCounts.held, 23);
+    assert.equal(issue220DecisionCounts.included + (issue220DecisionCounts.corrected ?? 0), 18);
+    assert.equal(issue220DecisionCounts.held, 22);
     assert.equal(issue220DecisionCounts.rejected ?? 0, 0);
     assert.ok(['m5-360', 'm5-361'].every((id) => (
       entries.find(({ source_inventory_id: entryId }) => entryId === id)?.historical_rationale_conflicts_with_new_invariant === 'mixed'
@@ -940,7 +940,7 @@ async function buildInventory() {
       pos.some((value) => !['noun', 'adjective', 'verb', 'adverb', 'expression'].includes(value))
       || !['entry', 'expression'].includes(recordType)
     )).length;
-    assert.equal(explicitSensePosContextCases, 205);
+    assert.equal(explicitSensePosContextCases, 204);
     assert.equal(unsupportedLexicalCategoryCount, 0);
     const remainingCapacityReserveCount = entries.filter(({ historical_decision_events: events, new_review_state: state }) => (
       state === 'admit-candidate'
