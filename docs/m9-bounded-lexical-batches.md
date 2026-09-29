@@ -33,4 +33,4 @@ Batch size controls review scope only. It does not define how many candidates mu
 
 ## Validation boundary
 
-`npm run batch:issue-219:check` validates the frozen selection evidence, shared producer output, semantic-source bindings, ordinary lexical admission, complete semantic audit, target inventory and promotion ledger, baseline/current exact search, deterministic SQLite logical contents, and machine report schema. The candidate and snapshot artifacts remain reviewable in Git; corpus/reference material stays outside this recovery path.
+`npm run batch:issue-219:check` validates the frozen selection evidence, shared producer output, semantic-source bindings, ordinary lexical admission, complete semantic audit, target inventory and promotion ledger, baseline/current exact search, deterministic SQLite logical contents, and machine report schema. The recorded logical-content digest excludes Git revision and working-tree provenance metadata, which change when the validation code is committed. The candidate and snapshot artifacts remain reviewable in Git; corpus/reference material stays outside this recovery path.

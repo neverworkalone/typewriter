@@ -265,6 +265,22 @@ async function validateDeterministicCurrentBuild() {
   }
 }
 
+function logicalDatabaseContentSnapshot(snapshot) {
+  const buildProvenanceKeys = new Set([
+    'source_revision',
+    'source_revision_source',
+    'source_revision_verified',
+    'worktree_state',
+  ]);
+  return {
+    ...snapshot,
+    rows: {
+      ...snapshot.rows,
+      metadata: snapshot.rows.metadata.filter(({ key }) => !buildProvenanceKeys.has(key)),
+    },
+  };
+}
+
 export async function validateIssue219({ writeReport = false } = {}) {
   const [selectionBytes, candidateSourceBytes, semanticSourceBytes, importBytes, baseSeedBytes, baseInventoryBytes,
     m515DecisionBytes, currentSeedBytes] = await Promise.all([
@@ -504,7 +520,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
       semantic_audit: 'pass',
       deterministic_sqlite: 'pass',
       logical_database_record_count: logicalDatabase.rows.records.length,
-      logical_database_digest: sha256Json(logicalDatabase),
+      logical_database_digest: sha256Json(logicalDatabaseContentSnapshot(logicalDatabase)),
     },
   };
   await validateReportSchema(report);

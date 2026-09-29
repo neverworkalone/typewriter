@@ -102,7 +102,10 @@
         "semantic_audit": { "const": "pass" },
         "deterministic_sqlite": { "const": "pass" },
         "logical_database_record_count": { "type": "integer", "minimum": 0 },
-        "logical_database_digest": { "$ref": "#/$defs/sha256" }
+        "logical_database_digest": {
+          "$ref": "#/$defs/sha256",
+          "description": "Stable logical-content digest excluding source revision and working-tree build provenance metadata."
+        }
       }
     }
   },
