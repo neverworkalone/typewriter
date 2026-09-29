@@ -106,6 +106,10 @@
         "contract": "issue_204_pilot_ledger"
       },
       {
+        "pattern": "data/batches/issue-221-corpus-candidate-review.json",
+        "contract": "issue_221_corpus_candidate_review"
+      },
+      {
       "pattern": "data/batches/*-semantic-decisions.json",
       "contract": "decision_source"
     },
@@ -734,7 +738,13 @@
             "pilot_decision_ledger_sha256": "string",
             "candidate_selection_sha256": "string",
             "candidate_count": "integer",
-            "admitted_candidate_ordinals": "array<integer>"
+            "admitted_candidate_ordinals": "array<integer>",
+            "candidate_review_sha256": "string",
+            "candidate_evidence_sha256": "string",
+            "exclusion_manifest_sha256": "string",
+            "source_manifest_sha256": "string",
+            "logical_rows_sha256": "string",
+            "permission_record_sha256": "string"
           },
           "$.provenance": {
             "generator": "string",
@@ -1067,7 +1077,7 @@
           "decision_source_id"
         ],
         "nested_allowed_fields": {
-          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals"],
+          "$.source_basis": ["pilot_decision_ledger_sha256", "candidate_selection_sha256", "candidate_count", "admitted_candidate_ordinals", "candidate_review_sha256", "candidate_evidence_sha256", "exclusion_manifest_sha256", "source_manifest_sha256", "logical_rows_sha256", "permission_record_sha256"],
           "$.provenance": ["generator", "generator_version", "generation_pass_id", "verification_pass_id", "human_reviewed", "authoring_note"],
           "$.candidate_source": ["source_id", "identity_sha256", "identity_count", "candidate_records_sha256"],
           "$.selection": ["policy", "capacity", "imported", "reserve", "score_basis", "coverage_field", "coverage_basis", "selection_rationale"],
@@ -2570,6 +2580,500 @@
           "$.decisions.*.editorial_judgment.competing_canonical_matches.*": {
             "record_id": "string",
             "match_kind": "string"
+          }
+        }
+      },
+      "issue_221_corpus_candidate_review": {
+        "contract_versions": [
+          "m9-corpus-candidate-review-v1"
+        ],
+        "required_fields": [
+          "artifact_sha256",
+          "authoring_mode",
+          "batch_id",
+          "contract_version",
+          "decision_counts",
+          "decisions",
+          "human_reviewed",
+          "issue",
+          "kind",
+          "parent_issue",
+          "provenance",
+          "publication_state",
+          "reviewer",
+          "schema_version",
+          "selection",
+          "source",
+          "source_artifacts",
+          "source_id",
+          "yield"
+        ],
+        "allowed_fields": [
+          "artifact_sha256",
+          "authoring_mode",
+          "batch_id",
+          "contract_version",
+          "decision_counts",
+          "decisions",
+          "human_reviewed",
+          "issue",
+          "kind",
+          "parent_issue",
+          "provenance",
+          "publication_state",
+          "reviewer",
+          "schema_version",
+          "selection",
+          "source",
+          "source_artifacts",
+          "source_id",
+          "yield"
+        ],
+        "field_types": {
+          "artifact_sha256": "string",
+          "authoring_mode": "string",
+          "batch_id": "string",
+          "contract_version": "string",
+          "decision_counts": "object",
+          "decisions": "array<object>",
+          "human_reviewed": "boolean",
+          "issue": "integer",
+          "kind": "string",
+          "parent_issue": "integer",
+          "provenance": "object",
+          "publication_state": "string",
+          "reviewer": "string",
+          "schema_version": "string",
+          "selection": "object",
+          "source": "object",
+          "source_artifacts": "object",
+          "source_id": "string",
+          "yield": "object"
+        },
+        "nested_allowed_fields": {
+          "$.decision_counts": [
+            "admit",
+            "hold",
+            "reject"
+          ],
+          "$.decisions.*.bounded_provenance.representative_hits.*": [
+            "corpus_id",
+            "document_id",
+            "document_ordinal",
+            "paragraph_id",
+            "paragraph_ordinal",
+            "source_category",
+            "source_path",
+            "source_year"
+          ],
+          "$.decisions.*.bounded_provenance": [
+            "evidence_type",
+            "representative_hit_count",
+            "representative_hit_limit",
+            "representative_hits"
+          ],
+          "$.decisions.*.corpus_evidence": [
+            "coverage_status",
+            "distinct_documents_in_sample",
+            "distinct_sources_in_sample",
+            "kiwi_morpheme_occurrences_in_sample",
+            "literal_match_count",
+            "literal_match_count_semantics",
+            "literal_match_query",
+            "paragraph_hits_in_sample",
+            "sample_fraction",
+            "sample_paragraph_count",
+            "search_mode",
+            "source_concentration_ratio_in_sample"
+          ],
+          "$.decisions.*.editorial_judgment": [
+            "admitted_sense_count",
+            "candidate_record_id",
+            "disposition",
+            "human_reviewed",
+            "rationale",
+            "reviewer",
+            "writer_gloss",
+            "writer_use",
+            "writer_use_axis"
+          ],
+          "$.decisions.*.morphology_proposal": [
+            "ambiguity_status",
+            "ambiguous_observed_surface_count_in_sample",
+            "analyzer_confidence",
+            "analyzer_pos",
+            "lemma",
+            "oov_morpheme_occurrences_in_sample",
+            "pos",
+            "pos_interpretation_count_in_sample"
+          ],
+          "$.decisions.*.observed_morpheme_spans.*": [
+            "distinct_documents_in_sample",
+            "distinct_sources_in_sample",
+            "interpretation_count_in_sample",
+            "kiwi_morpheme_occurrences_in_sample",
+            "max_source_morpheme_occurrences_in_sample",
+            "paragraph_hits_in_sample",
+            "surface"
+          ],
+          "$.decisions.*.observed_surface_forms.*": [
+            "distinct_documents_in_sample",
+            "distinct_sources_in_sample",
+            "kiwi_morpheme_occurrences_in_sample",
+            "max_source_morpheme_occurrences_in_sample",
+            "paragraph_hits_in_sample",
+            "surface"
+          ],
+          "$.decisions.*": [
+            "bounded_provenance",
+            "candidate_id",
+            "candidate_ordinal",
+            "corpus_evidence",
+            "coverage_status",
+            "editorial_judgment",
+            "inventory_id",
+            "morphology_proposal",
+            "observed_morpheme_spans",
+            "observed_surface_forms",
+            "typewriter_surface_matches"
+          ],
+          "$.provenance": [
+            "generation_pass_id",
+            "generator_version",
+            "method",
+            "review_pass_id"
+          ],
+          "$.selection.exclusion_source_artifacts.*": [
+            "path",
+            "sha256"
+          ],
+          "$.selection": [
+            "candidate_limit",
+            "candidate_selection_sha256",
+            "contract_version",
+            "exclusion_sha256",
+            "exclusion_source_artifacts",
+            "ordering",
+            "sample_every_paragraphs",
+            "sample_policy",
+            "selected_candidate_count",
+            "selection_rationale"
+          ],
+          "$.source.index": [
+            "database_bytes",
+            "document_count",
+            "input_manifest_sha256",
+            "logical_rows_sha256",
+            "paragraph_count",
+            "sample_document_count",
+            "sample_every_paragraphs",
+            "sample_fraction",
+            "sample_paragraph_count",
+            "sample_policy",
+            "sample_source_count",
+            "source_count",
+            "sqlite_version"
+          ],
+          "$.source.tools": [
+            "extractor_script_sha256",
+            "extractor_version",
+            "kiwipiepy_model_version",
+            "kiwipiepy_version",
+            "node_sqlite_version",
+            "node_version",
+            "orchestrator_script_sha256",
+            "python_version"
+          ],
+          "$.source.typewriter_surface": [
+            "canonical_revision",
+            "dictionary_version",
+            "generated_surface_form_count",
+            "normalization",
+            "normalized_keys_with_canonical_lemmas",
+            "normalized_keys_with_curated_search_forms",
+            "normalized_keys_with_generated_surface_forms",
+            "normalized_surface_key_count",
+            "record_count",
+            "search_form_count"
+          ],
+          "$.source": [
+            "index",
+            "name",
+            "permission_record_path",
+            "permission_record_sha256",
+            "source_text_committed",
+            "tools",
+            "typewriter_surface"
+          ],
+          "$.source_artifacts.exclusion_source_artifacts.*": [
+            "path",
+            "sha256"
+          ],
+          "$.source_artifacts": [
+            "candidate_evidence_path",
+            "candidate_evidence_sha256",
+            "candidate_selection_path",
+            "candidate_selection_sha256",
+            "exclusion_manifest_sha256",
+            "exclusion_source_artifacts"
+          ],
+          "$.yield.coverage_status_counts_by_distinct_lemma": [
+            "exact_canonical_lemma",
+            "generated_surface_collision",
+            "search_form_collision",
+            "uncovered"
+          ],
+          "$.yield": [
+            "accepted_morpheme_observations_in_sample",
+            "admitted_count",
+            "ambiguous_lemma_candidates_before_coverage",
+            "candidate_lemmas_without_exact_canonical_match",
+            "correction_rate",
+            "coverage_status_counts_by_distinct_lemma",
+            "curated_or_generated_surface_collision_candidate_count",
+            "editorial_workload",
+            "eligible_pos_token_observations_before_shape_filter",
+            "exact_canonical_lemma_candidates",
+            "exact_lemma_covered_candidate_count",
+            "excluded_candidate_lemma_count",
+            "extraction_error_classes",
+            "generated_surface_collision_lemma_candidates",
+            "literal_fallback_query_count",
+            "maximum_total_paragraph_rows_materialized",
+            "oov_lemma_candidates_before_coverage",
+            "rejected_lemma_shape_observations",
+            "rejected_span_observations",
+            "search_and_generated_surface_collision_lemma_candidates",
+            "search_form_collision_lemma_candidates",
+            "selected_candidate_count",
+            "selected_count",
+            "selected_inventory_count",
+            "selected_with_bounded_evidence",
+            "total_surface_collision_lemma_candidates",
+            "unique_lemma_candidates_before_coverage",
+            "unique_lemma_pos_candidates_before_coverage",
+            "writer_usefulness"
+          ],
+          "$.decisions.*.typewriter_surface_matches.*": [
+            "canonical_lemma",
+            "match_kind",
+            "pos",
+            "record_id",
+            "rule_id",
+            "sense_id"
+          ]
+        },
+        "nested_field_types": {
+          "$.decision_counts": {
+            "admit": "integer",
+            "hold": "integer",
+            "reject": "integer"
+          },
+          "$.decisions.*.bounded_provenance.representative_hits.*": {
+            "corpus_id": "string",
+            "document_id": "string",
+            "document_ordinal": "integer",
+            "paragraph_id": "string",
+            "paragraph_ordinal": "integer",
+            "source_category": "string",
+            "source_path": "string",
+            "source_year": "string"
+          },
+          "$.decisions.*.bounded_provenance": {
+            "evidence_type": "string",
+            "representative_hit_count": "integer",
+            "representative_hit_limit": "integer",
+            "representative_hits": "array<object>"
+          },
+          "$.decisions.*.corpus_evidence": {
+            "coverage_status": "string",
+            "distinct_documents_in_sample": "integer",
+            "distinct_sources_in_sample": "integer",
+            "kiwi_morpheme_occurrences_in_sample": "integer",
+            "literal_match_count": "integer",
+            "literal_match_count_semantics": "string",
+            "literal_match_query": "string",
+            "paragraph_hits_in_sample": "integer",
+            "sample_fraction": "number",
+            "sample_paragraph_count": "integer",
+            "search_mode": "string",
+            "source_concentration_ratio_in_sample": "number"
+          },
+          "$.decisions.*.editorial_judgment": {
+            "admitted_sense_count": "integer",
+            "candidate_record_id": "null|string",
+            "disposition": "string",
+            "human_reviewed": "boolean",
+            "rationale": "string",
+            "reviewer": "string",
+            "writer_gloss": "string",
+            "writer_use": "string",
+            "writer_use_axis": "string"
+          },
+          "$.decisions.*.morphology_proposal": {
+            "ambiguity_status": "string",
+            "ambiguous_observed_surface_count_in_sample": "integer",
+            "analyzer_confidence": "string",
+            "analyzer_pos": "string",
+            "lemma": "string",
+            "oov_morpheme_occurrences_in_sample": "integer",
+            "pos": "string",
+            "pos_interpretation_count_in_sample": "integer"
+          },
+          "$.decisions.*.observed_morpheme_spans.*": {
+            "distinct_documents_in_sample": "integer",
+            "distinct_sources_in_sample": "integer",
+            "interpretation_count_in_sample": "integer",
+            "kiwi_morpheme_occurrences_in_sample": "integer",
+            "max_source_morpheme_occurrences_in_sample": "integer",
+            "paragraph_hits_in_sample": "integer",
+            "surface": "string"
+          },
+          "$.decisions.*.observed_surface_forms.*": {
+            "distinct_documents_in_sample": "integer",
+            "distinct_sources_in_sample": "integer",
+            "kiwi_morpheme_occurrences_in_sample": "integer",
+            "max_source_morpheme_occurrences_in_sample": "integer",
+            "paragraph_hits_in_sample": "integer",
+            "surface": "string"
+          },
+          "$.decisions.*": {
+            "bounded_provenance": "object",
+            "candidate_id": "string",
+            "candidate_ordinal": "integer",
+            "corpus_evidence": "object",
+            "coverage_status": "string",
+            "editorial_judgment": "object",
+            "inventory_id": "string",
+            "morphology_proposal": "object",
+            "observed_morpheme_spans": "array<object>",
+            "observed_surface_forms": "array<object>",
+            "typewriter_surface_matches": "array"
+          },
+          "$.provenance": {
+            "generation_pass_id": "string",
+            "generator_version": "string",
+            "method": "string",
+            "review_pass_id": "string"
+          },
+          "$.selection.exclusion_source_artifacts.*": {
+            "path": "string",
+            "sha256": "string"
+          },
+          "$.selection": {
+            "candidate_limit": "integer",
+            "candidate_selection_sha256": "string",
+            "contract_version": "string",
+            "exclusion_sha256": "string",
+            "exclusion_source_artifacts": "array<object>",
+            "ordering": "array<string>",
+            "sample_every_paragraphs": "integer",
+            "sample_policy": "string",
+            "selected_candidate_count": "integer",
+            "selection_rationale": "string"
+          },
+          "$.source.index": {
+            "database_bytes": "integer",
+            "document_count": "integer",
+            "input_manifest_sha256": "string",
+            "logical_rows_sha256": "string",
+            "paragraph_count": "integer",
+            "sample_document_count": "integer",
+            "sample_every_paragraphs": "integer",
+            "sample_fraction": "number",
+            "sample_paragraph_count": "integer",
+            "sample_policy": "string",
+            "sample_source_count": "integer",
+            "source_count": "integer",
+            "sqlite_version": "string"
+          },
+          "$.source.tools": {
+            "extractor_script_sha256": "string",
+            "extractor_version": "string",
+            "kiwipiepy_model_version": "string",
+            "kiwipiepy_version": "string",
+            "node_sqlite_version": "string",
+            "node_version": "string",
+            "orchestrator_script_sha256": "string",
+            "python_version": "string"
+          },
+          "$.source.typewriter_surface": {
+            "canonical_revision": "string",
+            "dictionary_version": "string",
+            "generated_surface_form_count": "integer",
+            "normalization": "string",
+            "normalized_keys_with_canonical_lemmas": "integer",
+            "normalized_keys_with_curated_search_forms": "integer",
+            "normalized_keys_with_generated_surface_forms": "integer",
+            "normalized_surface_key_count": "integer",
+            "record_count": "integer",
+            "search_form_count": "integer"
+          },
+          "$.source": {
+            "index": "object",
+            "name": "string",
+            "permission_record_path": "string",
+            "permission_record_sha256": "string",
+            "source_text_committed": "boolean",
+            "tools": "object",
+            "typewriter_surface": "object"
+          },
+          "$.source_artifacts.exclusion_source_artifacts.*": {
+            "path": "string",
+            "sha256": "string"
+          },
+          "$.source_artifacts": {
+            "candidate_evidence_path": "string",
+            "candidate_evidence_sha256": "string",
+            "candidate_selection_path": "string",
+            "candidate_selection_sha256": "string",
+            "exclusion_manifest_sha256": "string",
+            "exclusion_source_artifacts": "array<object>"
+          },
+          "$.yield.coverage_status_counts_by_distinct_lemma": {
+            "exact_canonical_lemma": "integer",
+            "generated_surface_collision": "integer",
+            "search_form_collision": "integer",
+            "uncovered": "integer"
+          },
+          "$.yield": {
+            "accepted_morpheme_observations_in_sample": "integer",
+            "admitted_count": "integer",
+            "ambiguous_lemma_candidates_before_coverage": "integer",
+            "candidate_lemmas_without_exact_canonical_match": "integer",
+            "correction_rate": "string",
+            "coverage_status_counts_by_distinct_lemma": "object",
+            "curated_or_generated_surface_collision_candidate_count": "integer",
+            "editorial_workload": "string",
+            "eligible_pos_token_observations_before_shape_filter": "integer",
+            "exact_canonical_lemma_candidates": "integer",
+            "exact_lemma_covered_candidate_count": "integer",
+            "excluded_candidate_lemma_count": "integer",
+            "extraction_error_classes": "array<string>",
+            "generated_surface_collision_lemma_candidates": "integer",
+            "literal_fallback_query_count": "integer",
+            "maximum_total_paragraph_rows_materialized": "integer",
+            "oov_lemma_candidates_before_coverage": "integer",
+            "rejected_lemma_shape_observations": "integer",
+            "rejected_span_observations": "integer",
+            "search_and_generated_surface_collision_lemma_candidates": "integer",
+            "search_form_collision_lemma_candidates": "integer",
+            "selected_candidate_count": "integer",
+            "selected_count": "integer",
+            "selected_inventory_count": "integer",
+            "selected_with_bounded_evidence": "integer",
+            "total_surface_collision_lemma_candidates": "integer",
+            "unique_lemma_candidates_before_coverage": "integer",
+            "unique_lemma_pos_candidates_before_coverage": "integer",
+            "writer_usefulness": "string"
+          },
+          "$.decisions.*.typewriter_surface_matches.*": {
+            "canonical_lemma": "string",
+            "match_kind": "string",
+            "pos": "null|string",
+            "record_id": "string",
+            "rule_id": "null|string",
+            "sense_id": "null|string"
           }
         }
       },
