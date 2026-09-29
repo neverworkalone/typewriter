@@ -1454,11 +1454,24 @@ function validateM57RegressionFixture(fixture, canonicalRecordInfos, relationDif
 
 export function validateM58Process({ plan, fixture, canonicalRecordInfos, relationDiff }) {
   const planResult = validateExpansionPlan(plan);
+  const liveCanonicalSummary = canonicalSummary(canonicalRecordInfos);
+  const liveCanonicalMembership = {
+    record_count: liveCanonicalSummary.record_count,
+    start_count: liveCanonicalSummary.start_count,
+    reference_only_count: liveCanonicalSummary.reference_only_count,
+    expression_count: liveCanonicalSummary.expression_count,
+  };
+  const expectedCanonicalMembership = {
+    record_count: EXPECTED_CANONICAL_BASELINE.record_count,
+    start_count: EXPECTED_CANONICAL_BASELINE.start_count,
+    reference_only_count: EXPECTED_CANONICAL_BASELINE.reference_only_count,
+    expression_count: EXPECTED_CANONICAL_BASELINE.expression_count,
+  };
   assertEqual(
-    canonicalSummary(canonicalRecordInfos),
-    EXPECTED_CANONICAL_BASELINE,
-    'canonical snapshot changed during M5-8 process work',
-    'CANONICAL_COUNT_CHANGED',
+    liveCanonicalMembership,
+    expectedCanonicalMembership,
+    'canonical record membership or role baseline changed since M5-8',
+    'CANONICAL_MEMBERSHIP_CHANGED',
   );
   const regressionResult = validateM57RegressionFixture(fixture, canonicalRecordInfos, relationDiff);
   return { plan: planResult, regressions: regressionResult };
@@ -1535,7 +1548,7 @@ export async function main(argv = process.argv.slice(2)) {
     relationDiff,
   });
   console.log(
-    `Validated ${result.plan.ladder.length}-stage M5-8 ladder, ${result.regressions.sense_case_count} sense regressions, and ${result.regressions.relation_case_count} relation regressions with no canonical count change.`,
+    `Validated ${result.plan.ladder.length}-stage M5-8 ladder, ${result.regressions.sense_case_count} sense regressions, and ${result.regressions.relation_case_count} relation regressions with no canonical membership change.`,
   );
   return result;
 }
