@@ -85,7 +85,7 @@ const BATCHES = Object.freeze([
 ]);
 const BASELINE_INVENTORY_SHA256 = '5dbe54ee92b5f8548e41208a46e73f5b68c3fb1d1562afefd5a39f85d9670dde';
 const BASELINE_CANONICAL_SHA256 = '93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e';
-const NORMAL_CI_RESULT = 'pending';
+const NORMAL_CI_RESULT = 'pass';
 const REMAINING_RECOVERY_DISPOSITIONS = Object.freeze([
   'admit-candidate',
   'duplicate',

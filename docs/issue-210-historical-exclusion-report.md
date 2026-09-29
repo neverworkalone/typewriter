@@ -243,7 +243,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `data/inventory/m5-target-seed.json` | `35a17052b0a2c91765ef2d50720433d3f7b2952877c8fec935810370b4e948fe` |
 | `data/validation/canonical-semantic-decision-source.json` | `09fdb1bf41b88b8f130252efb04c7a852a03e58e7efcfdf12ae9acf740d4f692` |
 | `data/validation/issue-219-m9-lexical-batch-report.json` | `9a4a55f18b32e10f61623d7f9521a5c592b1b9a1a06e9b31fc3223ffb53ef56b` |
-| `data/validation/issue-220-m9-b-checkpoint-report.json` | `c2afc014c0a7d40c056478002923a561e6c7bfccb340182e85e50785ab78982d` |
+| `data/validation/issue-220-m9-b-checkpoint-report.json` | `389974e3bdc480c21eb07171a4d168867e834c3bba0829b1862d9243c3e06a38` |
 | `data/validation/m6-2-inflection-exceptions.json` | `037661676b8ab5e106a4a9889f3e018d97c9b5d8c4c4b18367d4247cbc8916c6` |
 | `data/validation/m6-3-surface-form-review.json` | `06c8bc9612c99124dae0b3b4fc38ab9aa757ad5024f380150aa1f089165eaf65` |
 | `docs/editorial-model.md` | `308d56389339f8aa82247ef6382f314637087351b911e4cf642bee055ae2bdaf` |
@@ -251,7 +251,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `docs/issue-208-searchable-start-retrospective.md` | `3e5dfd512389b4a505010686c10c32e0cdfdbb328290e1f4f0bc92a8f6aa6621` |
 | `docs/issue-211-bounded-lexical-recovery.md` | `e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294` |
 | `docs/issue-219-m9-a-recovery.md` | `10bbec71225ca898ddd329816edd3f5e3d3331169f41430af94b2007430dbae2` |
-| `docs/issue-220-m9-b-checkpoint.md` | `89f6aa2ce5cbdebde1c10df409449c0a1920a48d6fa4a0341ad3c521431fad58` |
+| `docs/issue-220-m9-b-checkpoint.md` | `be55a0e3f391e4733c586e5e72e27156a2110b4d5908db8f1696e658b96b39de` |
 | `docs/m3-handoff.md` | `215dedb02808c108ba06c9d20258d9fde5c03b3c5a35da556320a8c652ab3b04` |
 | `docs/m4-handoff.md` | `4492845b7a362c70b4ddb7a4c7582f2d37b3e6d2c9a9afa394edb414ed714c49` |
 | `docs/m5-16-final-audit-report.md` | `a60a58a20551d72c0388b8fd99fe5d92b3fd19c3a76cd3701c7d7e8fc82739f8` |
@@ -271,7 +271,7 @@ Every path below is hashed in the machine inventory. The inventory preserves eac
 | `scripts/batch/m5-13-decision-source.mjs` | `a4c5972f19608b74fefc89cd86bf31d453c2fac17033471cba5aead527516537` |
 | `scripts/batch/validate-issue-211.mjs` | `5fe09fbf2e1f7a9b697caea9802680fa0a42927a81c535c9b936e2243aa48f4b` |
 | `scripts/batch/validate-issue-219.mjs` | `44e8366633a2f977f68ff4f8375e9ff886fabab9d9af91425998009acf420587` |
-| `scripts/batch/validate-issue-220.mjs` | `6fb9b52742e6ca943b127ef033380c2ec20dab6d0669db4c3b8ba379371edaff` |
+| `scripts/batch/validate-issue-220.mjs` | `affd8f4d1eca7f11b2f14b81b9c783adb492fc138a70cc9f3eee0ca184562f0a` |
 | `scripts/ci/registry.mjs` | `02fa81e3f3edc2175a502cf2782eece2402812ce590d8f5772ef5981c31eb946` |
 | `scripts/inventory/build-issue-210-recovery-inventory.mjs` | `fb6ce1525b8a77e44d9df1dff6c2b82dfc33be141b725ae3dd6fb263ca6457fa` |
 | `scripts/validate/semantic-audit.mjs` | `455ffab77f27069d73712974dbf79c703e7b9b90de0be152a831c23d08a5704f` |
