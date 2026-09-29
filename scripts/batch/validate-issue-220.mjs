@@ -897,8 +897,8 @@ export async function validateIssue220({ writeReport = false } = {}) {
   assert.equal(recoveredCount, 42, 'Issue #210 inventory includes prior and M9-B recoveries');
   assert.equal(baselineRecoverable, 545, 'pinned historical potential count');
   assert.equal(currentRecoverable, 527, 'remaining potentially recoverable historical records');
-  assert.equal(recoveryCeiling, 5630, 'historical-only source-pool ceiling');
-  assert.equal(Math.max(0, 6000 - recoveryCeiling), 370);
+  assert.equal(recoveryCeiling, 5632, 'current canonical plus historical source-pool ceiling');
+  assert.equal(Math.max(0, 6000 - recoveryCeiling), 368);
 
   const report = {
     schema_version: 1,

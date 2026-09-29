@@ -36,6 +36,8 @@ const ALLOWED_REVIEW_STATES = new Set([
 ]);
 const SOURCE_PATHS = [
   'package.json',
+  'AGENTS.md',
+  'config/artifact-policy.json',
   'scripts/inventory/build-issue-210-recovery-inventory.mjs',
   'docs/pilot-scope.md',
   'data/canonical/pilot.jsonl',
@@ -79,6 +81,7 @@ const SOURCE_PATHS = [
   'data/batches/issue-220-m9-b-batch-02-semantic-decisions.json',
   'data/batches/issue-221-corpus-candidate-review.json',
   'data/batches/issue-221-corpus-semantic-decisions.json',
+  'data/canonical/issue-221-corpus-production.jsonl',
   'data/canonical/issue-220-m9-b-batch-01.jsonl',
   'data/canonical/issue-220-m9-b-batch-02.jsonl',
   'data/validation/issue-220-m9-b-checkpoint-report.json',
@@ -128,6 +131,9 @@ const SOURCE_PATHS = [
   'scripts/reference/run-corpus-lemma-pilot.mjs',
   'scripts/reference/test-corpus-lemma-pilot.py',
   'scripts/reference/run-corpus-lemma-pilot.test.mjs',
+  'scripts/reference/corpus-candidate-review.test.mjs',
+  'scripts/reference/validate-corpus-candidate-review.mjs',
+  'scripts/validate/corpus-candidate-review.mjs',
   'schema/m9-lexical-batch-report.schema.json',
   'tests/issue-219-content-digest.test.mjs',
   'tests/issue-219-search.test.mjs',
@@ -983,7 +989,7 @@ async function buildInventory() {
       + (reviewStateCounts.hold ?? 0)
       + (reviewStateCounts['needs-sense-split'] ?? 0);
     const historicalRecoveryCeiling = searchMetrics.canonical_record_count + potentiallyRecoverableHistoricalRows;
-    assert.equal(historicalRecoveryCeiling, 5630, 'Historical Issue #210 source-pool ceiling changed');
+    assert.equal(historicalRecoveryCeiling, 5632, 'Current canonical plus historical Issue #210 source-pool ceiling changed');
 
     const mandatoryIssue204Rejects = entries
       .filter(({ source_inventory_id: id }) => (

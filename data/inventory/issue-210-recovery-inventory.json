@@ -4,8 +4,18 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "7a82b43812184649c2b19dd02cd5642ca8536acb1e223198931c3ffd4fc6a806",
+    "current_canonical_revision": "56772da538d68d17fb1e04146f451b3868c9d5520fffd000585d6755e4561a2a",
     "source_manifest": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "80a51e7cd719ef617ce631ef734805f2b16ec931d591f13a6543814810d35290",
+        "byte_count": 12783
+      },
+      {
+        "path": "config/artifact-policy.json",
+        "sha256": "b72b3c3eea08f479e0d9b33053ea98b887e0b6f5f61f0df6bf6752d1756ceab2",
+        "byte_count": 128808
+      },
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
         "sha256": "f2f6636b3fd2edf9c85d3f19e657a1edee9a6f9779d81fc427792a054f96c58b",
@@ -243,13 +253,13 @@
       },
       {
         "path": "data/batches/issue-221-corpus-candidate-review.json",
-        "sha256": "248c5a6e28a3529dd8b8d0cd31484a3181ba3afc7aacab437d6f9e603097273c",
-        "byte_count": 119663
+        "sha256": "87178d7fa5c3b656f82f8ef8e80464793b5094c3c99c0c6ed69bafaa58f75228",
+        "byte_count": 122682
       },
       {
         "path": "data/batches/issue-221-corpus-semantic-decisions.json",
-        "sha256": "14999658fa2167d301563661f7d9f2157e0081596ebe751da155d5b41fd513b8",
-        "byte_count": 42039
+        "sha256": "f247489a8fdabf63ff44d477dce9627fb2aa0a429c64af0036db1e76708d86fe",
+        "byte_count": 51434
       },
       {
         "path": "data/batches/m5-10-wave-a.json",
@@ -428,8 +438,8 @@
       },
       {
         "path": "data/canonical/issue-221-corpus-production.jsonl",
-        "sha256": "f6a9831da834007f0636502a66386bbd996d32cc0eb7dc6cbc546ed738372c3b",
-        "byte_count": 2036
+        "sha256": "50f3f9ec9aeaf993671938fe626d129965a42b504fcf2635bd14646f0e90169d",
+        "byte_count": 2469
       },
       {
         "path": "data/canonical/m5-10-wave-a.jsonl",
@@ -498,8 +508,8 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "df62e37351e20314e8165ae4aa28bd406ddfdfa7020ecdcbaf0954e986bfe0f9",
-        "byte_count": 2520837
+        "sha256": "88af452381d2cc748046caea29da8d26843c5db090202e3a897d9595e9e2ede6",
+        "byte_count": 2521719
       },
       {
         "path": "data/inventory/m5-target-seed.json",
@@ -508,17 +518,17 @@
       },
       {
         "path": "data/validation/canonical-semantic-decision-source.json",
-        "sha256": "d41dc1e76bbba54ab8c11abdc2a1c97a3481b8b058a8d7a24c2ba1a0e77d8e0e",
-        "byte_count": 4874479
+        "sha256": "172df9b7d0dca09f695212681338e6cd91b6951e6ed1cff5fe99a329d1c8ac0a",
+        "byte_count": 4876289
       },
       {
         "path": "data/validation/issue-219-m9-lexical-batch-report.json",
-        "sha256": "96d5aca6546c4563aa987b14d5a7d2975a8111fff604b357e70d3d6cd88e316c",
+        "sha256": "9919a2dd2548881370ec5a05351674ee698476c11dcd0b934dc207cdef2c605d",
         "byte_count": 11354
       },
       {
         "path": "data/validation/issue-220-m9-b-checkpoint-report.json",
-        "sha256": "69e43b6264faab6ac0c9539d71024e8cecdbe288e2f6de41220d5cfcd7fe09e6",
+        "sha256": "47d58c9e84742b14dabd243715820db0f85c00a70b50f0a3f3fb4dbb7c36e8c9",
         "byte_count": 29626
       },
       {
@@ -553,12 +563,12 @@
       },
       {
         "path": "docs/issue-219-m9-a-recovery.md",
-        "sha256": "fc303b409c4ee43db111103591f5eb973620aee342195102ff30d4995c309bbb",
+        "sha256": "e2fa71057efc2c7f4df5df57dce9932e0983964e71b55fcdbf4bafb35cd9e866",
         "byte_count": 5991
       },
       {
         "path": "docs/issue-220-m9-b-checkpoint.md",
-        "sha256": "6e6c762d8abd54497cc2a5d630395eb072fc62bf3f3a1fcda4bd6bdb611913e2",
+        "sha256": "93dd9c5ab3ac596ccb5bfab7ca17b260818ceb56c04fa3e849bcf86f5c35a299",
         "byte_count": 8732
       },
       {
@@ -603,8 +613,8 @@
       },
       {
         "path": "docs/m9-corpus-production.md",
-        "sha256": "9b46f7d6c23b1de621aabc784677b39f7c11d082e47eeebac3afef39f8e7673c",
-        "byte_count": 8600
+        "sha256": "8a69bc9aa32ed90ccc3430000deb15aa6bcead9bdfede70f76e96b66c51dfe3b",
+        "byte_count": 9724
       },
       {
         "path": "docs/pilot-scope.md",
@@ -613,8 +623,8 @@
       },
       {
         "path": "package.json",
-        "sha256": "3cc8d4e0a26d2a54ee9e6581c55ee444f83a81ad96d8f63ad15b59d080257fec",
-        "byte_count": 10309
+        "sha256": "eb60187ab2ff9c26e5de2218303adbf3d6ea277a226fdec319e4d1bba242b8dc",
+        "byte_count": 10412
       },
       {
         "path": "schema/issue-220-m9-b-checkpoint-report.schema.json",
@@ -663,13 +673,13 @@
       },
       {
         "path": "scripts/batch/validate-issue-220.mjs",
-        "sha256": "cfc48beb83634be4ddbc069051ddec7fa1b3a19194fd04196537f302d3541b1f",
-        "byte_count": 56840
+        "sha256": "cb1991dca4e46fd978ea70154d319997280cf08be1193668fde371d41cafcb78",
+        "byte_count": 56858
       },
       {
         "path": "scripts/batch/validate-issue-221.mjs",
-        "sha256": "ce1169891fed197a8239773b78dfd119510bf20a07cc929fd48f631c5cecc5ad",
-        "byte_count": 24749
+        "sha256": "f4d45a6820de9050d714ea7f3711dffb2040fd4ec0f25434e9508b14fad3957a",
+        "byte_count": 25042
       },
       {
         "path": "scripts/ci/registry.mjs",
@@ -678,8 +688,13 @@
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "0a95577c05176e299b5d56c0cdc742ea729aa37df45223fdc558ae275840c527",
-        "byte_count": 75804
+        "sha256": "b5ca2a44f685e9e854a1577473540f943fffc8472860bf56cf7238ec61b0ce86",
+        "byte_count": 76095
+      },
+      {
+        "path": "scripts/reference/corpus-candidate-review.test.mjs",
+        "sha256": "c49ffbf2d2e108b01fa67b42e0161bd495ccc3bc24fcecf19bf46ae9832c39ad",
+        "byte_count": 5597
       },
       {
         "path": "scripts/reference/corpus_lemma_pilot.py",
@@ -700,6 +715,16 @@
         "path": "scripts/reference/test-corpus-lemma-pilot.py",
         "sha256": "211438df85d59f9be80e71280620c27f38a4f6ba4c816813895f6f4a03a45940",
         "byte_count": 12150
+      },
+      {
+        "path": "scripts/reference/validate-corpus-candidate-review.mjs",
+        "sha256": "63da46188f3a115e8f7b9d08bc94aae6334f85756290a1273b56fe5f4a8a0299",
+        "byte_count": 1710
+      },
+      {
+        "path": "scripts/validate/corpus-candidate-review.mjs",
+        "sha256": "aaab99576807b8ce3b7730f10e0509a2739906591fd14f0cba5ce33ef891971a",
+        "byte_count": 7291
       },
       {
         "path": "scripts/validate/semantic-audit.mjs",
@@ -743,7 +768,7 @@
     "m5": "Screened all 1,562 M5 target rows, including Issue #220 recoveries; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219/#220 recovery outcomes. Issue #219 reviewed 20 expressions; Issue #220 reviewed 40 historical reserves, admitting 18 and holding 22.",
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
     "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 reviewed 20 previously capacity-deferred M5-15 expressions; Issue #220 then reviewed 40 M5-13 reserve candidates and admitted 18 through current shared admission.",
-    "issue_221": "Issue #221 separately reviewed 20 bounded corpus-derived proposals: 9 passed ordinary source-bound lexical admission and entered the promotion ledger, while 11 remain held. These corpus records are not added to the historical M5 recovery candidate pool; publication remains pending owner confirmation.",
+    "issue_221": "Issue #221 separately reviewed 20 bounded corpus-derived proposals: 11 passed ordinary source-bound lexical admission and entered the promotion ledger, while 9 remain held. These corpus records are not added to the historical M5 recovery candidate pool; publication remains pending owner confirmation.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts and text-free Issue #221 provenance only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
@@ -758,7 +783,7 @@
       "rejected": 62
     },
     "m5_promoted_seed_rows_present_in_canonical": 978,
-    "m5_promotion_ledger_events_audited": 3783,
+    "m5_promotion_ledger_events_audited": 3785,
     "issue_204_decisions_audited": 100,
     "issue_219_decisions_audited": 20,
     "issue_219_admitted_count": 0,
@@ -771,12 +796,12 @@
     "issue_220_priority_reserve_remaining": 194,
     "issue_220_historical_candidate_pool_count": 584,
     "issue_221_candidates_reviewed": 20,
-    "issue_221_admitted_count": 9,
-    "issue_221_held_count": 11,
+    "issue_221_admitted_count": 11,
+    "issue_221_held_count": 9,
     "issue_221_rejected_count": 0,
-    "issue_221_promotion_events_audited": 9,
-    "historical_recovery_ceiling_count": 5630,
-    "historical_recovery_shortfall_to_6000": 370,
+    "issue_221_promotion_events_audited": 11,
+    "historical_recovery_ceiling_count": 5632,
+    "historical_recovery_shortfall_to_6000": 368,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
     "recovery_candidate_count": 584,
@@ -788,8 +813,8 @@
     "historical_rejection_to_hold_transitions": 11,
     "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 5103,
-    "exact_search_key_count": 5359,
+    "directly_searchable_canonical_record_count": 5105,
+    "exact_search_key_count": 5361,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 10,
@@ -822,20 +847,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 5103,
-    "directly_searchable_record_count": 5103,
+    "canonical_record_count": 5105,
+    "directly_searchable_record_count": 5105,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 5359,
+    "exact_search_key_count": 5361,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 5061,
+      "start": 5063,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 3908,
+      "start/entry": 3910,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -41202,5 +41227,5 @@
       "gate": "Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes."
     }
   ],
-  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 18 M5-13 reserves; Issue #221 admitted 9 corpus-derived records through ordinary shared lexical production and admission. The Issue #221 source remains local-reference-only pending owner publication confirmation."
+  "canonical_mutation": "Issue #219 admitted 0 M5-15 reserves; Issue #220 admitted 18 M5-13 reserves; Issue #221 admitted 11 corpus-derived records through ordinary shared lexical production and admission. The Issue #221 source remains local-reference-only pending owner publication confirmation."
 }

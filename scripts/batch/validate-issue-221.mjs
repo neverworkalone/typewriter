@@ -24,6 +24,7 @@ import {
   validateAuthoredSemanticDecisionSource,
 } from './authored-semantic-decision-source.mjs';
 import { validateLexicalProduction } from './lexical-production.mjs';
+import { validateCorpusCandidateReviewDispositions } from '../validate/corpus-candidate-review.mjs';
 import {
   productionReviewRows,
   productionStageEvidence,
@@ -176,6 +177,10 @@ export async function validateIssue221() {
   assert.equal(candidateReview.batch_id, BATCH_ID);
   assert.ok(Array.isArray(candidateReview.decisions));
   assert.equal(candidateReview.decisions.length, candidateReview.selection.selected_candidate_count);
+  const validatedDispositionCounts = validateCorpusCandidateReviewDispositions(candidateReview.decisions, {
+    label: 'Issue #221 corpus candidate review',
+  });
+  assert.deepEqual(validatedDispositionCounts, candidateReview.decision_counts);
   assertTextFreeArtifact(candidateReview, 'Issue #221 corpus candidate review');
   const reviewWithoutDigest = structuredClone(candidateReview);
   delete reviewWithoutDigest.artifact_sha256;
@@ -311,7 +316,6 @@ export async function validateIssue221() {
       assert.equal(row.morphology_proposal.ambiguity_status, 'single_observed_analysis_unverified', `${row.inventory_id} morphology must be unambiguous in the sample`);
       assert.ok(row.editorial_judgment.candidate_record_id);
       assert.ok(row.editorial_judgment.writer_gloss);
-      assert.ok(row.editorial_judgment.writer_use);
     } else {
       assert.equal(row.editorial_judgment.candidate_record_id, null);
     }

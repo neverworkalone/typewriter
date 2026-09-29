@@ -2690,12 +2690,27 @@
             "admitted_sense_count",
             "candidate_record_id",
             "disposition",
+            "disposition_basis",
             "human_reviewed",
+            "lexical_unit_evidence",
             "rationale",
             "reviewer",
+            "sense_boundary_evidence",
             "writer_gloss",
             "writer_use",
             "writer_use_axis"
+          ],
+          "$.decisions.*.editorial_judgment.sense_boundary_evidence": [
+            "directions",
+            "evidence_type"
+          ],
+          "$.decisions.*.editorial_judgment.sense_boundary_evidence.directions.*": [
+            "label",
+            "paragraph_ids"
+          ],
+          "$.decisions.*.editorial_judgment.lexical_unit_evidence": [
+            "evidence_type",
+            "paragraph_ids"
           ],
           "$.decisions.*.morphology_proposal": [
             "ambiguity_status",
@@ -2903,12 +2918,27 @@
             "admitted_sense_count": "integer",
             "candidate_record_id": "null|string",
             "disposition": "string",
+            "disposition_basis": "string",
             "human_reviewed": "boolean",
+            "lexical_unit_evidence": "object",
             "rationale": "string",
             "reviewer": "string",
+            "sense_boundary_evidence": "object",
             "writer_gloss": "string",
             "writer_use": "string",
             "writer_use_axis": "string"
+          },
+          "$.decisions.*.editorial_judgment.sense_boundary_evidence": {
+            "directions": "array<object>",
+            "evidence_type": "string"
+          },
+          "$.decisions.*.editorial_judgment.sense_boundary_evidence.directions.*": {
+            "label": "string",
+            "paragraph_ids": "array<string>"
+          },
+          "$.decisions.*.editorial_judgment.lexical_unit_evidence": {
+            "evidence_type": "string",
+            "paragraph_ids": "array<string>"
           },
           "$.decisions.*.morphology_proposal": {
             "ambiguity_status": "string",

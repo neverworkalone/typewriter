@@ -48,11 +48,11 @@ These relation types are current working categories, not immutable ontology. Pre
 
 Prefer:
 
-- writer usefulness over lexicographic completeness;
+- Writer usefulness, vividness, generality, and relation richness may guide enrichment or prioritization, but must never be used to admit, hold, reject, or exclude an otherwise valid in-scope lexical entry;
 - explicit relation type over a flat undifferentiated synonym list;
 - sense-aware relations when the distinction matters in actual use;
 - concise, evocative records over encyclopedic definitions;
-- high-quality common writing vocabulary over broad low-value coverage;
+- prioritize enrichment of high-quality writing vocabulary without using writer usefulness as lexical-admission authority;
 - human editorial judgment over automated confidence treated as truth.
 
 Do not turn Typewriter into sentence generation. The writer writes the sentence; Typewriter helps the writer find words.
