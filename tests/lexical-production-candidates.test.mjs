@@ -80,7 +80,7 @@ test('shared lexical producer rejects duplicate candidate lemmas', () => {
   }), /duplicates a source unit identity or lemma/u);
 });
 
-test('shared lexical producer rejects canonical and seed term collisions', () => {
+test('shared lexical producer rejects canonical collisions and only reopens rejected seed rows', () => {
   const { source, sourceBytes } = sourceWithUnits([unit('unit-1', '기쁨')]);
 
   assert.throws(() => materializeLexicalUnitCandidates({
@@ -92,12 +92,23 @@ test('shared lexical producer rejects canonical and seed term collisions', () =>
     baseRecords: [{ record: { id: 'w0001', lemma: 'joy', search_forms: ['기쁨'] } }],
   }), /collides with canonical:w0001/u);
 
-  assert.throws(() => materializeLexicalUnitCandidates({
+  for (const status of ['candidate', 'held', 'deferred', 'inflected-form', undefined]) {
+    assert.throws(() => materializeLexicalUnitCandidates({
+      batchId: 'test-batch',
+      source,
+      sourceBytes,
+      firstInventoryNumber: 3101,
+      firstCanonicalNumber: 3181,
+      baseSeedTargets: [{ inventory_id: 'm5-0001', status, lemma: '기쁨', search_forms: [] }],
+    }), /collides with seed:m5-0001/u, `status=${String(status)} retains seed collision ownership`);
+  }
+
+  assert.doesNotThrow(() => materializeLexicalUnitCandidates({
     batchId: 'test-batch',
     source,
     sourceBytes,
     firstInventoryNumber: 3101,
     firstCanonicalNumber: 3181,
-    baseSeedTargets: [{ inventory_id: 'm5-0001', lemma: '기쁨', search_forms: [] }],
-  }), /collides with seed:m5-0001/u);
+    baseSeedTargets: [{ inventory_id: 'm5-0001', status: 'rejected', lemma: '기쁨', search_forms: [] }],
+  }), 'a rejected historical target is not an active search owner during a source-bound recovery');
 });

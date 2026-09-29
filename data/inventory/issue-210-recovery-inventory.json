@@ -4,7 +4,7 @@
   "generated_from": {
     "policy_source": "Issue #207; Issues #208 and #209 are complete prerequisites.",
     "searchable_lexical_invariant": "Every valid lexical entry within Typewriter supported lexical scope may serve as a searchable start.",
-    "current_canonical_revision": "34e71c58f9855fd2f5f4cd7478c77a40e8b2f1ba63bc29201b3f3ed86d0b3e09",
+    "current_canonical_revision": "98264ef2163ea9eb43a759978766aefa090a21d8bc8cf7b5c9c9dd47f5cdfe34",
     "source_manifest": [
       {
         "path": "data/batches/issue-204-pilot-decisions.json",
@@ -15,6 +15,16 @@
         "path": "data/batches/issue-204-semantic-decisions.json",
         "sha256": "66d96ed2b0c104dab185625ebd5f09ef06b21092c9b84e1f3d1ad0d8b76fd60e",
         "byte_count": 32678
+      },
+      {
+        "path": "data/batches/issue-211-lexical-unit-source.json",
+        "sha256": "683ac43752125bdc23de25cf5c3f5c64c406055706609d719bee8f847eb22185",
+        "byte_count": 12148
+      },
+      {
+        "path": "data/batches/issue-211-semantic-decisions.json",
+        "sha256": "f55f82ba211c68a4c427f2a133ab1f36ab4b0fcada315d692c239ffe13cf6262",
+        "byte_count": 69789
       },
       {
         "path": "data/batches/m5-10-wave-a.json",
@@ -167,6 +177,11 @@
         "byte_count": 2538
       },
       {
+        "path": "data/canonical/issue-211-bounded-recovery.jsonl",
+        "sha256": "3844cfa4d38e4d99cfd4623670913b224f6b77feaf507d8d48589fb3e95531e9",
+        "byte_count": 5450
+      },
+      {
         "path": "data/canonical/m5-10-wave-a.jsonl",
         "sha256": "08e0afedcfb7c530b3e22f9144f43c1d8c923dc545ab96fec1cc961eaca384ed",
         "byte_count": 15089
@@ -233,13 +248,28 @@
       },
       {
         "path": "data/inventory/m5-target-promotions.jsonl",
-        "sha256": "1795f57c5514139dc99f89fabde1bfcbf9e5a33e201114e87bd0bd3f6ee60b6e",
-        "byte_count": 2486612
+        "sha256": "39612f60bda0d8d73bc7b39cdd8e2b579a2e41826c6ae41f71a030633965de59",
+        "byte_count": 2501876
       },
       {
         "path": "data/inventory/m5-target-seed.json",
-        "sha256": "ee97606ca3f9dec506329e995fdd930c5a9d9958620925b5cc07a92a0e68bdfe",
-        "byte_count": 861754
+        "sha256": "28f2d5a1b0d9f75386d7c39e8d41a923db6a2ade020c0eb57c6fa4832b2f32da",
+        "byte_count": 862291
+      },
+      {
+        "path": "data/validation/canonical-semantic-decision-source.json",
+        "sha256": "a4e8c22c15cc0fa37f42ec5ace4ddc280023458fadeb6a362219c6bb2f34b006",
+        "byte_count": 4849898
+      },
+      {
+        "path": "data/validation/m6-2-inflection-exceptions.json",
+        "sha256": "037661676b8ab5e106a4a9889f3e018d97c9b5d8c4c4b18367d4247cbc8916c6",
+        "byte_count": 6326
+      },
+      {
+        "path": "data/validation/m6-3-surface-form-review.json",
+        "sha256": "0f6cc8f968c7a208dfcee33e33d82936827dbe2ea9433de27ab4c249501cce60",
+        "byte_count": 310540
       },
       {
         "path": "docs/editorial-model.md",
@@ -250,6 +280,11 @@
         "path": "docs/issue-208-searchable-start-retrospective.md",
         "sha256": "2412184b048853d870a5914f28d0eec6d65de4562585d62b113d7a0c3ac3f8b6",
         "byte_count": 15805
+      },
+      {
+        "path": "docs/issue-211-bounded-lexical-recovery.md",
+        "sha256": "e0a264b879f612b32fd20ebbb3c0a475d324ded5f461d4d0406f27bcb820a294",
+        "byte_count": 4917
       },
       {
         "path": "docs/m3-handoff.md",
@@ -293,28 +328,38 @@
       },
       {
         "path": "package.json",
-        "sha256": "f8c7ffd2a91e690832f5ab7a6c890bb699da1bd2c0d5e5ca73f09089a71b68e8",
-        "byte_count": 9572
+        "sha256": "0ef95e0d3e45fcd7f08d01e39b012d6cb93e76ca7bc4e54106c36e6bff171b48",
+        "byte_count": 9736
+      },
+      {
+        "path": "scripts/batch/validate-issue-211.mjs",
+        "sha256": "d3e8e15ccfcfc59cab25395b12753bd83e6682a07187f5fb4fd316fde4f5fe75",
+        "byte_count": 31642
       },
       {
         "path": "scripts/inventory/build-issue-210-recovery-inventory.mjs",
-        "sha256": "27ced39d83717df7a5352b125ea614af9514df3ba5fea046411618a9d58a9e29",
-        "byte_count": 51411
+        "sha256": "63e58f102694deee0b98681b6e5bd25e55e1eb108214d34d42c09fc27e5d4ea0",
+        "byte_count": 54401
+      },
+      {
+        "path": "tests/issue-211-search.test.mjs",
+        "sha256": "2c8936af05ef33e592cc9482f239ef75609ebcfbd992a2ade1b79856897cde25",
+        "byte_count": 7228
       }
     ]
   },
   "audit_scope": {
     "m1_m4": "Reviewed the durable M1 pilot selection, canonical pilot records, M3/M4 handoffs, and current reference-only population. These artifacts do not contain a complete durable candidate rejection/defer ledger; no missing ephemeral output or external material was reconstructed.",
-    "m5": "Screened all 1,561 rows in the M5 target seed; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, and M5-3/M5-7 correction history where applicable.",
+    "m5": "Screened all 1,562 rows in the M5 target seed; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and Issue #211 re-review outcomes where applicable.",
     "m6": "Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.",
-    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs.",
+    "issue_204": "Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split.",
     "source_material_boundary": "Uses tracked Typewriter decision artifacts only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material."
   },
   "summary": {
-    "m5_target_rows_screened": 1561,
+    "m5_target_rows_screened": 1562,
     "m5_target_status_counts": {
       "promoted": 978,
-      "held": 188,
+      "held": 189,
       "duplicate": 3,
       "inflected-form": 2,
       "candidate": 19,
@@ -322,25 +367,25 @@
       "rejected": 52
     },
     "m5_promoted_seed_rows_present_in_canonical": 978,
-    "m5_promotion_ledger_events_audited": 3732,
+    "m5_promotion_ledger_events_audited": 3756,
     "issue_204_decisions_audited": 100,
     "issue_204_decisions_overlaid_on_m5_targets": 90,
     "already_admitted_issue_204_count": 10,
-    "recovery_candidate_count": 583,
+    "recovery_candidate_count": 584,
     "current_reference_only_record_count": 42,
     "resolved_historical_policy_case_count": 4,
     "issue_204_mandatory_reject_count": 25,
     "historical_policy_rejection_events": 31,
     "m5_10a_usefulness_rejections_later_held": 2,
     "historical_rejection_to_hold_transitions": 11,
-    "confirmed_active_usefulness_or_generality_exclusions": 25,
+    "confirmed_active_usefulness_or_generality_exclusions": 0,
     "current_non_searchable_lexical_record_count": 0,
-    "directly_searchable_canonical_record_count": 5052,
-    "exact_search_key_count": 5308,
+    "directly_searchable_canonical_record_count": 5076,
+    "exact_search_key_count": 5332,
     "true_duplicate_count": 2,
     "invalid_lemma_count": 2,
     "non_lexical_proposal_count_confirmed": 0,
-    "unresolved_sense_pos_or_context_case_count": 170,
+    "unresolved_sense_pos_or_context_case_count": 172,
     "additional_rationale_or_lexical_unit_holds": 75,
     "search_collision_count": 1,
     "unsupported_scope_candidate_count": 0,
@@ -349,8 +394,9 @@
       "hold": 220,
       "duplicate": 2,
       "invalid-lemma": 2,
-      "admit-candidate": 333,
-      "needs-sense-split": 25,
+      "admit-candidate": 308,
+      "recovered": 24,
+      "needs-sense-split": 27,
       "search-surface-collision": 1
     },
     "reference_only_by_record_type": {
@@ -367,20 +413,20 @@
     "all_reference_only_lemmas_reachable": true
   },
   "search_coverage": {
-    "canonical_record_count": 5052,
-    "directly_searchable_record_count": 5052,
+    "canonical_record_count": 5076,
+    "directly_searchable_record_count": 5076,
     "current_non_searchable_lexical_record_count": 0,
     "current_non_searchable_lexical_records": [],
-    "exact_search_key_count": 5308,
+    "exact_search_key_count": 5332,
     "missing_expected_key_owners": [],
     "unexpected_key_owners": [],
     "cross_record_key_collision_count": 0,
     "historical_role_counts": {
-      "start": 5010,
+      "start": 5034,
       "reference-only": 42
     },
     "role_and_record_type_counts": {
-      "start/entry": 3857,
+      "start/entry": 3881,
       "start/expression": 1153,
       "reference-only/entry": 41,
       "reference-only/expression": 1
@@ -29733,6 +29779,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -29762,6 +29813,13 @@
           "historical_rationale": "Issue #204 reject: 없다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5401 w5359: 부재를 단정하는 형용사적 서술어로, 감각·사람·기회 등 여러 문장 성분에 직접 적용되는 기본 서술 단위다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -29770,21 +29828,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5359"
+        ],
+        "all_query_match_ids": [
+          "w5359"
+        ],
         "queries": [
           {
             "query": "없다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "없다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5359",
+                "lemma": "없다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "없다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -29855,6 +29930,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -29884,6 +29964,13 @@
           "historical_rationale": "Issue #204 reject: 사람: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5402 w5360: 개별 인간을 가리키는 명사로 인물 서술의 주체를 바로 찾는 검색어다. 넓은 범주라는 이유는 배제 근거가 아니다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -29892,21 +29979,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5360"
+        ],
+        "all_query_match_ids": [
+          "w5360"
+        ],
         "queries": [
           {
             "query": "사람",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "사람",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5360",
+                "lemma": "사람",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "사람",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -30404,6 +30508,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -30433,6 +30542,13 @@
           "historical_rationale": "Issue #204 reject: 많다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5403 w5361: 수량이나 수효가 큰 상태를 서술하는 형용사로 수와 양의 정도를 직접 표현한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -30441,21 +30557,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5361"
+        ],
+        "all_query_match_ids": [
+          "w5361"
+        ],
         "queries": [
           {
             "query": "많다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "많다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5361",
+                "lemma": "많다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "많다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -30892,6 +31025,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -30921,6 +31059,13 @@
           "historical_rationale": "Issue #204 reject: 만들다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5404 w5362: 재료나 요소를 새 물건 또는 결과로 이루는 동사로 생산 행위를 하나의 중심 뜻으로 설명한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -30929,21 +31074,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5362"
+        ],
+        "all_query_match_ids": [
+          "w5362"
+        ],
         "queries": [
           {
             "query": "만들다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "만들다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5362",
+                "lemma": "만들다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "만들다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -31441,6 +31603,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -31470,6 +31637,13 @@
           "historical_rationale": "Issue #204 reject: 동안: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5405 w5363: 두 시점이나 사건 사이의 시간 길이를 가리키는 명사 sense를 한정했다. 얼굴의 동안은 별도 lexical identity로 다룬다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -31478,21 +31652,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5363"
+        ],
+        "all_query_match_ids": [
+          "w5363"
+        ],
         "queries": [
           {
             "query": "동안",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "동안",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5363",
+                "lemma": "동안",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "동안",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -31500,6 +31691,11 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
         },
         {
           "issue": 204,
@@ -31531,6 +31727,13 @@
           "historical_rationale": "Issue #204 reject: 내다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "held/needs-context",
+          "historical_rationale": "m5-5406 w5364: 현재 작성한 바깥으로 나오게 하거나 드러내는 뜻풀이만으로는 내다의 발행·지불·산출·결과 도달 등 구별되는 용법을 설명할 수 없다. 문맥용 단일 sense로 축소하지 않고 unresolved-sense로 보류한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -31552,8 +31755,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "needs-sense-split",
+      "follow_up_reason_and_evidence": "Issue #211 held this candidate because the proposed gloss collapses distinct uses. Source-bound sense boundaries must be resolved before admission."
     },
     {
       "source_issue_batch_artifacts": [
@@ -31624,6 +31827,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -31653,6 +31861,13 @@
           "historical_rationale": "Issue #204 reject: 필요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5407 w5365: 목표나 과업을 위해 요구되는 조건 또는 대상을 가리키는 명사로 요구 상태를 직접 찾는 writer-facing 단위다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -31661,21 +31876,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5365"
+        ],
+        "all_query_match_ids": [
+          "w5365"
+        ],
         "queries": [
           {
             "query": "필요",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "필요",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5365",
+                "lemma": "필요",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "필요",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -31683,6 +31915,11 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
         },
         {
           "issue": 204,
@@ -31714,6 +31951,13 @@
           "historical_rationale": "Issue #204 reject: 처음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5408 w5366: 일이나 과정의 맨 앞 차례를 가리키는 명사로 순서와 시간의 시작을 표현한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -31722,21 +31966,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5366"
+        ],
+        "all_query_match_ids": [
+          "w5366"
+        ],
         "queries": [
           {
             "query": "처음",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "처음",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5366",
+                "lemma": "처음",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "처음",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -31990,6 +32251,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -32019,6 +32285,13 @@
           "historical_rationale": "Issue #204 reject: 다음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5409 w5367: 정해진 순서에서 바로 뒤에 놓이는 차례나 대상을 가리키는 명사다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -32027,21 +32300,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5367"
+        ],
+        "all_query_match_ids": [
+          "w5367"
+        ],
         "queries": [
           {
             "query": "다음",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "다음",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5367",
+                "lemma": "다음",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "다음",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -32112,6 +32402,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -32141,6 +32436,13 @@
           "historical_rationale": "Issue #204 reject: 지금: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5410 w5368: 말하는 시점과 일치하는 현재 시간을 가리키는 명사 sense로 시간 기준을 직접 지정한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -32149,21 +32451,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5368"
+        ],
+        "all_query_match_ids": [
+          "w5368"
+        ],
         "queries": [
           {
             "query": "지금",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "지금",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5368",
+                "lemma": "지금",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "지금",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -32417,6 +32736,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -32446,6 +32770,13 @@
           "historical_rationale": "Issue #204 reject: 친구: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5411 w5369: 친밀한 교류와 정을 나누는 상대를 가리키는 명사로 일반적인 사람 범주와 구별되는 관계 단위다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -32454,21 +32785,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5369"
+        ],
+        "all_query_match_ids": [
+          "w5369"
+        ],
         "queries": [
           {
             "query": "친구",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "친구",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5369",
+                "lemma": "친구",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "친구",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -32844,6 +33192,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -32873,6 +33226,13 @@
           "historical_rationale": "Issue #204 reject: 그때: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5412 w5370: 앞서 언급한 특정 시점을 다시 가리키는 명사로 서사 안에서 시간 지시를 이어 준다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -32881,21 +33241,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5370"
+        ],
+        "all_query_match_ids": [
+          "w5370"
+        ],
         "queries": [
           {
             "query": "그때",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "그때",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5370",
+                "lemma": "그때",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "그때",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33271,6 +33648,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -33300,6 +33682,13 @@
           "historical_rationale": "Issue #204 reject: 오늘: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5413 w5371: 달력에서 현재 날짜에 해당하는 하루를 가리키는 명사로 시간 범위를 직접 지정한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33308,21 +33697,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5371"
+        ],
+        "all_query_match_ids": [
+          "w5371"
+        ],
         "queries": [
           {
             "query": "오늘",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "오늘",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5371",
+                "lemma": "오늘",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "오늘",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33393,6 +33799,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -33422,6 +33833,13 @@
           "historical_rationale": "Issue #204 reject: 여자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5414 w5372: 여성 성별에 속하는 사람을 가리키는 명사로 인물의 성별 표현에 쓰이는 범주 단위다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33430,21 +33848,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5372"
+        ],
+        "all_query_match_ids": [
+          "w5372"
+        ],
         "queries": [
           {
             "query": "여자",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "여자",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5372",
+                "lemma": "여자",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "여자",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33452,6 +33887,11 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
         },
         {
           "issue": 204,
@@ -33483,6 +33923,13 @@
           "historical_rationale": "Issue #204 reject: 이해: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5415 w5373: 말이나 상황의 뜻을 파악하고 헤아리는 일을 가리키는 명사로 인지 행위를 직접 명명한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33491,21 +33938,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5373"
+        ],
+        "all_query_match_ids": [
+          "w5373"
+        ],
         "queries": [
           {
             "query": "이해",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "이해",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5373",
+                "lemma": "이해",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "이해",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33576,6 +34040,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -33605,6 +34074,13 @@
           "historical_rationale": "Issue #204 reject: 인간: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5416 w5374: 사람이라는 생물종의 개별 구성원이나 인류 범주를 가리키는 명사다. 사람과 뜻이 가까워도 lexical identity와 writer framing이 다른 별도 lemma다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33613,21 +34089,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5374"
+        ],
+        "all_query_match_ids": [
+          "w5374"
+        ],
         "queries": [
           {
             "query": "인간",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "인간",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5374",
+                "lemma": "인간",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "인간",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33635,6 +34128,11 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
         },
         {
           "issue": 204,
@@ -33666,6 +34164,13 @@
           "historical_rationale": "Issue #204 reject: 남자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5417 w5375: 남성 성별에 속하는 사람을 가리키는 명사로 인물의 성별 표현에 쓰이는 범주 단위다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33674,21 +34179,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5375"
+        ],
+        "all_query_match_ids": [
+          "w5375"
+        ],
         "queries": [
           {
             "query": "남자",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "남자",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5375",
+                "lemma": "남자",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "남자",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33881,6 +34403,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -33910,6 +34437,13 @@
           "historical_rationale": "Issue #204 reject: 준비: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5418 w5376: 일을 시작하거나 상황을 맞기 위해 필요한 것을 미리 갖추는 일을 가리키는 명사다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33918,21 +34452,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5376"
+        ],
+        "all_query_match_ids": [
+          "w5376"
+        ],
         "queries": [
           {
             "query": "준비",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "준비",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5376",
+                "lemma": "준비",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "준비",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -33940,6 +34491,11 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
         },
         {
           "issue": 204,
@@ -33971,6 +34527,13 @@
           "historical_rationale": "Issue #204 reject: 중요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5419 w5377: 판단이나 결과에 큰 영향을 주는 정도 또는 성질을 가리키는 명사로 중요성을 직접 지칭한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -33979,21 +34542,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5377"
+        ],
+        "all_query_match_ids": [
+          "w5377"
+        ],
         "queries": [
           {
             "query": "중요",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "중요",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5377",
+                "lemma": "중요",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "중요",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -34125,6 +34705,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -34154,6 +34739,13 @@
           "historical_rationale": "Issue #204 reject: 넣다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5420 w5378: 대상이나 내용물을 공간 또는 범위 안으로 들이는 동사로 이동 방향이 분명한 기본 동작 단위다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -34162,21 +34754,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5378"
+        ],
+        "all_query_match_ids": [
+          "w5378"
+        ],
         "queries": [
           {
             "query": "넣다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "넣다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5378",
+                "lemma": "넣다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "넣다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -34323,6 +34932,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -34352,6 +34966,13 @@
           "historical_rationale": "Issue #204 reject: 가능: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5421 w5379: 일이나 현상이 실제로 이루어질 수 있는 성질을 가리키는 명사로 실현 여지를 직접 명명한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -34360,21 +34981,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5379"
+        ],
+        "all_query_match_ids": [
+          "w5379"
+        ],
         "queries": [
           {
             "query": "가능",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "가능",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5379",
+                "lemma": "가능",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "가능",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -34382,6 +35020,11 @@
           "issue": null,
           "batch": "m5-16",
           "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
         },
         {
           "issue": 204,
@@ -34413,6 +35056,13 @@
           "historical_rationale": "Issue #204 reject: 마지막: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5422 w5380: 차례나 시간에서 더 뒤에 이어질 것이 없는 끝부분을 가리키는 명사다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -34421,21 +35071,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5380"
+        ],
+        "all_query_match_ids": [
+          "w5380"
+        ],
         "queries": [
           {
             "query": "마지막",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "마지막",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5380",
+                "lemma": "마지막",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "마지막",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -34506,6 +35173,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -34535,6 +35207,13 @@
           "historical_rationale": "Issue #204 reject: 아버지: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5423 w5381: 자녀를 둔 남성 부모를 가리키는 명사로 가족 관계를 직접 지칭한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -34543,21 +35222,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5381"
+        ],
+        "all_query_match_ids": [
+          "w5381"
+        ],
         "queries": [
           {
             "query": "아버지",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "아버지",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5381",
+                "lemma": "아버지",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "아버지",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -34811,6 +35507,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -34840,6 +35541,13 @@
           "historical_rationale": "Issue #204 reject: 아래: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5424 w5382: 기준이 되는 곳보다 낮은 쪽이나 밑부분을 가리키는 명사로 공간·배치의 위치를 직접 지정한다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -34848,21 +35556,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5382"
+        ],
+        "all_query_match_ids": [
+          "w5382"
+        ],
         "queries": [
           {
             "query": "아래",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "아래",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5382",
+                "lemma": "아래",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "아래",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -34933,6 +35658,11 @@
           "artifact": "data/inventory/m5-target-seed.json"
         },
         {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        },
+        {
           "issue": 204,
           "batch": "issue-204-corpus-pilot-20260928",
           "artifact": "data/batches/issue-204-pilot-decisions.json"
@@ -34962,6 +35692,13 @@
           "historical_rationale": "Issue #204 reject: 조금: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch."
         },
         {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "included/fit",
+          "historical_rationale": "m5-5425 w5383: 비교 기준보다 작은 양이나 변화 폭을 명사로 가리키는 한 가지 writer-facing reading을 채택한다. 짧은 시간 명사와 정도·시간 부사 용법은 이 sense에 합치지 않는다."
+        },
+        {
           "source_issue": 204,
           "source_batch": "issue-204-corpus-pilot-20260928",
           "source_artifact": "data/batches/issue-204-pilot-decisions.json",
@@ -34970,21 +35707,38 @@
         }
       ],
       "current_canonical_search_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5383"
+        ],
+        "all_query_match_ids": [
+          "w5383"
+        ],
         "queries": [
           {
             "query": "조금",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "조금",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5383",
+                "lemma": "조금",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "조금",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "source_issue_batch_artifacts": [
@@ -35046,6 +35800,67 @@
       "historical_rationale_conflicts_with_new_invariant": "no",
       "new_review_state": "hold",
       "follow_up_reason_and_evidence": "Resolve the source-specific lexical or morphology blocker recorded in the Issue #204 rationale before re-review."
+    },
+    {
+      "source_issue_batch_artifacts": [
+        {
+          "issue": null,
+          "batch": "m5-16",
+          "artifact": "data/inventory/m5-target-seed.json"
+        },
+        {
+          "issue": 211,
+          "batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "artifact": "data/batches/issue-211-semantic-decisions.json"
+        }
+      ],
+      "source_inventory_id": "m5-5406",
+      "lemma": "내다",
+      "proposed_pos": [
+        "verb"
+      ],
+      "record_type": "entry",
+      "search_forms": [
+        "내다"
+      ],
+      "historical_role_disposition": {
+        "planned_role": "start",
+        "disposition": "held",
+        "related_canonical_id": null
+      },
+      "historical_rationale": "Issue #211 hold: The single submitted gloss collapses distinct common senses of 내다. Keep the candidate unresolved until its sense boundaries are authored separately.",
+      "historical_decision_events": [
+        {
+          "source_issue": null,
+          "source_batch": "m5-16",
+          "source_artifact": "data/inventory/m5-target-seed.json",
+          "historical_disposition": "held",
+          "historical_rationale": "Issue #211 hold: The single submitted gloss collapses distinct common senses of 내다. Keep the candidate unresolved until its sense boundaries are authored separately."
+        },
+        {
+          "source_issue": 211,
+          "source_batch": "m5-211-issue-204-bounded-recovery-20260928",
+          "source_artifact": "data/batches/issue-211-semantic-decisions.json",
+          "historical_disposition": "held/needs-context",
+          "historical_rationale": "m5-5406 w5364: 현재 작성한 바깥으로 나오게 하거나 드러내는 뜻풀이만으로는 내다의 발행·지불·산출·결과 도달 등 구별되는 용법을 설명할 수 없다. 문맥용 단일 sense로 축소하지 않고 unresolved-sense로 보류한다."
+        }
+      ],
+      "current_canonical_search_coverage": {
+        "status": "no-canonical-lemma-match",
+        "exact_lemma_match_ids": [],
+        "all_query_match_ids": [],
+        "queries": [
+          {
+            "query": "내다",
+            "status": "no-match",
+            "normalized_query": "내다",
+            "matches": []
+          }
+        ]
+      },
+      "historical_rationale_conflicts_with_new_invariant": "no",
+      "new_review_state": "needs-sense-split",
+      "follow_up_reason_and_evidence": "Issue #211 held this candidate because the proposed gloss collapses distinct uses. Source-bound sense boundaries must be resolved before admission."
     }
   ],
   "current_reference_only_records": [
@@ -38196,21 +39011,38 @@
       ],
       "historical_rationale": "없다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5359"
+        ],
+        "all_query_match_ids": [
+          "w5359"
+        ],
         "queries": [
           {
             "query": "없다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "없다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5359",
+                "lemma": "없다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "없다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 6,
@@ -38221,21 +39053,38 @@
       ],
       "historical_rationale": "사람: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5360"
+        ],
+        "all_query_match_ids": [
+          "w5360"
+        ],
         "queries": [
           {
             "query": "사람",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "사람",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5360",
+                "lemma": "사람",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "사람",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 15,
@@ -38246,21 +39095,38 @@
       ],
       "historical_rationale": "많다: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5361"
+        ],
+        "all_query_match_ids": [
+          "w5361"
+        ],
         "queries": [
           {
             "query": "많다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "많다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5361",
+                "lemma": "많다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "많다",
+                "current_pos": [
+                  "adjective"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 24,
@@ -38271,21 +39137,38 @@
       ],
       "historical_rationale": "만들다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5362"
+        ],
+        "all_query_match_ids": [
+          "w5362"
+        ],
         "queries": [
           {
             "query": "만들다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "만들다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5362",
+                "lemma": "만들다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "만들다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 34,
@@ -38296,21 +39179,38 @@
       ],
       "historical_rationale": "동안: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5363"
+        ],
+        "all_query_match_ids": [
+          "w5363"
+        ],
         "queries": [
           {
             "query": "동안",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "동안",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5363",
+                "lemma": "동안",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "동안",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 35,
@@ -38334,8 +39234,8 @@
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "needs-sense-split",
+      "follow_up_reason_and_evidence": "Issue #211 held this candidate because the proposed gloss collapses distinct uses. Source-bound sense boundaries must be resolved before admission."
     },
     {
       "candidate_ordinal": 38,
@@ -38346,21 +39246,38 @@
       ],
       "historical_rationale": "필요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5365"
+        ],
+        "all_query_match_ids": [
+          "w5365"
+        ],
         "queries": [
           {
             "query": "필요",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "필요",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5365",
+                "lemma": "필요",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "필요",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 39,
@@ -38371,21 +39288,38 @@
       ],
       "historical_rationale": "처음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5366"
+        ],
+        "all_query_match_ids": [
+          "w5366"
+        ],
         "queries": [
           {
             "query": "처음",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "처음",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5366",
+                "lemma": "처음",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "처음",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 44,
@@ -38396,21 +39330,38 @@
       ],
       "historical_rationale": "다음: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5367"
+        ],
+        "all_query_match_ids": [
+          "w5367"
+        ],
         "queries": [
           {
             "query": "다음",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "다음",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5367",
+                "lemma": "다음",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "다음",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 46,
@@ -38421,21 +39372,38 @@
       ],
       "historical_rationale": "지금: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5368"
+        ],
+        "all_query_match_ids": [
+          "w5368"
+        ],
         "queries": [
           {
             "query": "지금",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "지금",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5368",
+                "lemma": "지금",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "지금",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 52,
@@ -38446,21 +39414,38 @@
       ],
       "historical_rationale": "친구: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5369"
+        ],
+        "all_query_match_ids": [
+          "w5369"
+        ],
         "queries": [
           {
             "query": "친구",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "친구",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5369",
+                "lemma": "친구",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "친구",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 60,
@@ -38471,21 +39456,38 @@
       ],
       "historical_rationale": "그때: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5370"
+        ],
+        "all_query_match_ids": [
+          "w5370"
+        ],
         "queries": [
           {
             "query": "그때",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "그때",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5370",
+                "lemma": "그때",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "그때",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 70,
@@ -38496,21 +39498,38 @@
       ],
       "historical_rationale": "오늘: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5371"
+        ],
+        "all_query_match_ids": [
+          "w5371"
+        ],
         "queries": [
           {
             "query": "오늘",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "오늘",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5371",
+                "lemma": "오늘",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "오늘",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 72,
@@ -38521,21 +39540,38 @@
       ],
       "historical_rationale": "여자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5372"
+        ],
+        "all_query_match_ids": [
+          "w5372"
+        ],
         "queries": [
           {
             "query": "여자",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "여자",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5372",
+                "lemma": "여자",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "여자",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 73,
@@ -38546,21 +39582,38 @@
       ],
       "historical_rationale": "이해: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5373"
+        ],
+        "all_query_match_ids": [
+          "w5373"
+        ],
         "queries": [
           {
             "query": "이해",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "이해",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5373",
+                "lemma": "이해",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "이해",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 75,
@@ -38571,21 +39624,38 @@
       ],
       "historical_rationale": "인간: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5374"
+        ],
+        "all_query_match_ids": [
+          "w5374"
+        ],
         "queries": [
           {
             "query": "인간",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "인간",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5374",
+                "lemma": "인간",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "인간",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 76,
@@ -38596,21 +39666,38 @@
       ],
       "historical_rationale": "남자: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5375"
+        ],
+        "all_query_match_ids": [
+          "w5375"
+        ],
         "queries": [
           {
             "query": "남자",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "남자",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5375",
+                "lemma": "남자",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "남자",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 80,
@@ -38621,21 +39708,38 @@
       ],
       "historical_rationale": "준비: 문맥 의존적인 일반어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5376"
+        ],
+        "all_query_match_ids": [
+          "w5376"
+        ],
         "queries": [
           {
             "query": "준비",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "준비",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5376",
+                "lemma": "준비",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "준비",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 81,
@@ -38646,21 +39750,38 @@
       ],
       "historical_rationale": "중요: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5377"
+        ],
+        "all_query_match_ids": [
+          "w5377"
+        ],
         "queries": [
           {
             "query": "중요",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "중요",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5377",
+                "lemma": "중요",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "중요",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 84,
@@ -38671,21 +39792,38 @@
       ],
       "historical_rationale": "넣다: 범용 동작어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5378"
+        ],
+        "all_query_match_ids": [
+          "w5378"
+        ],
         "queries": [
           {
             "query": "넣다",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "넣다",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5378",
+                "lemma": "넣다",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "넣다",
+                "current_pos": [
+                  "verb"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 87,
@@ -38696,21 +39834,38 @@
       ],
       "historical_rationale": "가능: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5379"
+        ],
+        "all_query_match_ids": [
+          "w5379"
+        ],
         "queries": [
           {
             "query": "가능",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "가능",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5379",
+                "lemma": "가능",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "가능",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 88,
@@ -38721,21 +39876,38 @@
       ],
       "historical_rationale": "마지막: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5380"
+        ],
+        "all_query_match_ids": [
+          "w5380"
+        ],
         "queries": [
           {
             "query": "마지막",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "마지막",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5380",
+                "lemma": "마지막",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "마지막",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 90,
@@ -38746,21 +39918,38 @@
       ],
       "historical_rationale": "아버지: 넓은 인물 범주어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5381"
+        ],
+        "all_query_match_ids": [
+          "w5381"
+        ],
         "queries": [
           {
             "query": "아버지",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "아버지",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5381",
+                "lemma": "아버지",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "아버지",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 97,
@@ -38771,21 +39960,38 @@
       ],
       "historical_rationale": "아래: 시간·위치의 기본 지시어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5382"
+        ],
+        "all_query_match_ids": [
+          "w5382"
+        ],
         "queries": [
           {
             "query": "아래",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "아래",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5382",
+                "lemma": "아래",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "아래",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     },
     {
       "candidate_ordinal": 99,
@@ -38796,30 +40002,47 @@
       ],
       "historical_rationale": "조금: 일반 상태·정도어 does not supply a sufficiently differentiated writer-facing direction as a standalone start in this bounded pilot. Corpus recurrence establishes coverage only, so reject it from this first admission batch.",
       "current_canonical_coverage": {
-        "status": "no-canonical-lemma-match",
-        "exact_lemma_match_ids": [],
-        "all_query_match_ids": [],
+        "status": "canonical-lemma-present",
+        "exact_lemma_match_ids": [
+          "w5383"
+        ],
+        "all_query_match_ids": [
+          "w5383"
+        ],
         "queries": [
           {
             "query": "조금",
-            "status": "no-match",
+            "status": "ready",
             "normalized_query": "조금",
-            "matches": []
+            "matches": [
+              {
+                "record_id": "w5383",
+                "lemma": "조금",
+                "record_type": "entry",
+                "historical_role": "start",
+                "match_kind": "exact-lemma",
+                "match_field": "lemma",
+                "match_value": "조금",
+                "current_pos": [
+                  "noun"
+                ]
+              }
+            ]
           }
         ]
       },
       "historical_rationale_conflicts_with_new_invariant": "yes",
-      "new_review_state": "admit-candidate",
-      "follow_up_reason_and_evidence": "Create a fresh source-bound lexical record and resolve lemma, POS, sense, duplicate, and search-collision checks in a bounded batch. The pilot supplied a lemma/POS proposal, not an admitted canonical body."
+      "new_review_state": "recovered",
+      "follow_up_reason_and_evidence": "Issue #211 completed a fresh source-bound review and ordinary shared admission. The canonical lemma is searchable under its exact identity; retain the earlier disposition as history and do not recreate this candidate."
     }
   ],
   "recommended_bounded_recovery_order": [
     {
       "sequence": 1,
       "group": "Issue #204 mandatory rejects",
-      "count": 25,
-      "batching": "10 + 10 + 5 candidates, preserving candidate ordinal.",
-      "gate": "Create and review a fresh source-bound lexical body for each candidate; check lemma/POS, sense, duplicate, and search-surface collision before any canonical admission."
+      "count": 1,
+      "batching": "Issue #211 completed the source-bound 25-candidate re-review: 24 admitted and one held.",
+      "gate": "Resolve the remaining 내다 sense split with source-bound evidence; preserve the old Issue #204 rejection and #211 hold as history."
     },
     {
       "sequence": 2,
@@ -38838,9 +40061,9 @@
     {
       "sequence": 4,
       "group": "Held or otherwise unresolved rows",
-      "count": 245,
+      "count": 247,
       "batching": "Resolve blockers individually, then place only cleared records into later bounded batches.",
-      "gate": "Keep the 170 explicit sense/POS/context cases and 75 other rationale or lexical-unit holds visible until their evidence is complete."
+      "gate": "Keep the 172 explicit sense/POS/context cases and 75 other rationale or lexical-unit holds visible until their evidence is complete."
     },
     {
       "sequence": 5,

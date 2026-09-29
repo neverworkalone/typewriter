@@ -1,0 +1,1475 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-211-authored-semantic-decisions-20260928-r1",
+  "issue": 211,
+  "parent_issue": 207,
+  "batch_id": "m5-211-issue-204-bounded-recovery-20260928",
+  "authoring_mode": "agent-authored-decision",
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-211-authored-semantic-review-v1",
+    "generation_pass_id": "issue-211-candidate-authoring-20260928-r1",
+    "verification_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+    "human_reviewed": false,
+    "authoring_note": "The separately authored verification pass rechecked each prior rejected lexical unit for citation lemma, supported POS, current canonical/search ownership, writer-facing sense scope, sense boundary, and relation evidence. Commonness, broad category, low texture, and zero relations were not exclusion criteria. The held 내다 item remains unresolved because the submitted single-sense gloss collapses distinct lexical uses."
+  },
+  "review": {
+    "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 25,
+    "reviewed_candidate_count": 25,
+    "method": "Candidate-by-candidate source-bound lexical and POS verification, exact canonical/search collision check, one-sense boundary review, then shared semantic-eligibility and axis selection.",
+    "criteria": [
+      "citation lemma and lexical validity",
+      "supported part of speech",
+      "current canonical and exact-search ownership",
+      "bounded writer-facing sense and unresolved polysemy",
+      "no-relation allowance without relation fabrication",
+      "supported Typewriter lexical scope"
+    ],
+    "decision_counts": {
+      "included": 24,
+      "corrected": 0,
+      "held": 1,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-211-candidate-authoring-20260928-r1",
+    "counts": {
+      "included": 24,
+      "corrected": 0,
+      "held": 1,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "correction_passes": []
+  },
+  "candidate_source": {
+    "source_id": "issue-211-typewriter-authored-lexical-units-20260928-r1",
+    "identity_sha256": "8582fe00357fc22c61c9f0622efd182d9f109df6cdaeddd18a3fd866f69c0730",
+    "identity_count": 25
+  },
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 25,
+    "imported": 24,
+    "reserve": 1,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "source-bound Typewriter lexical axis after semantic eligibility"
+    ],
+    "selection_rationale": "The shared selector admits every separately verified fit candidate; the unresolved 내다 sense is held before capacity selection. Commonness, low standalone texture, relation count, and category breadth do not determine eligibility."
+  },
+  "candidate_records": [
+    {
+      "id": "w5359",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5359",
+      "lemma": "없다",
+      "search_forms": [
+        "없다"
+      ],
+      "senses": [
+        {
+          "id": "w5359-s1",
+          "pos": "adjective",
+          "gloss": "존재나 소유가 성립하지 않는 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5360",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5360",
+      "lemma": "사람",
+      "search_forms": [
+        "사람"
+      ],
+      "senses": [
+        {
+          "id": "w5360-s1",
+          "pos": "noun",
+          "gloss": "생각하고 행동하며 사회 속에서 살아가는 개별 인간."
+        }
+      ]
+    },
+    {
+      "id": "w5361",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5361",
+      "lemma": "많다",
+      "search_forms": [
+        "많다"
+      ],
+      "senses": [
+        {
+          "id": "w5361-s1",
+          "pos": "adjective",
+          "gloss": "수량이나 수효가 큰 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5362",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5362",
+      "lemma": "만들다",
+      "search_forms": [
+        "만들다"
+      ],
+      "senses": [
+        {
+          "id": "w5362-s1",
+          "pos": "verb",
+          "gloss": "재료나 요소를 모으고 손질해 새 물건이나 결과를 이루는 동작."
+        }
+      ]
+    },
+    {
+      "id": "w5363",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5363",
+      "lemma": "동안",
+      "search_forms": [
+        "동안"
+      ],
+      "senses": [
+        {
+          "id": "w5363-s1",
+          "pos": "noun",
+          "gloss": "두 시점이나 사건 사이에 이어지는 시간의 길이."
+        }
+      ]
+    },
+    {
+      "id": "w5364",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5364",
+      "lemma": "내다",
+      "search_forms": [
+        "내다"
+      ],
+      "senses": [
+        {
+          "id": "w5364-s1",
+          "pos": "verb",
+          "gloss": "안쪽의 것을 밖으로 나오게 하거나 드러내는 동작."
+        }
+      ]
+    },
+    {
+      "id": "w5365",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5365",
+      "lemma": "필요",
+      "search_forms": [
+        "필요"
+      ],
+      "senses": [
+        {
+          "id": "w5365-s1",
+          "pos": "noun",
+          "gloss": "목표나 과업을 이루는 데 요구되는 조건 또는 대상."
+        }
+      ]
+    },
+    {
+      "id": "w5366",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5366",
+      "lemma": "처음",
+      "search_forms": [
+        "처음"
+      ],
+      "senses": [
+        {
+          "id": "w5366-s1",
+          "pos": "noun",
+          "gloss": "일이나 과정의 맨 앞 차례."
+        }
+      ]
+    },
+    {
+      "id": "w5367",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5367",
+      "lemma": "다음",
+      "search_forms": [
+        "다음"
+      ],
+      "senses": [
+        {
+          "id": "w5367-s1",
+          "pos": "noun",
+          "gloss": "정해진 순서에서 바로 뒤에 오는 차례나 대상."
+        }
+      ]
+    },
+    {
+      "id": "w5368",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5368",
+      "lemma": "지금",
+      "search_forms": [
+        "지금"
+      ],
+      "senses": [
+        {
+          "id": "w5368-s1",
+          "pos": "noun",
+          "gloss": "말하는 시점과 일치하는 현재 시간."
+        }
+      ]
+    },
+    {
+      "id": "w5369",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5369",
+      "lemma": "친구",
+      "search_forms": [
+        "친구"
+      ],
+      "senses": [
+        {
+          "id": "w5369-s1",
+          "pos": "noun",
+          "gloss": "친밀한 교류와 정을 나누는 상대."
+        }
+      ]
+    },
+    {
+      "id": "w5370",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5370",
+      "lemma": "그때",
+      "search_forms": [
+        "그때"
+      ],
+      "senses": [
+        {
+          "id": "w5370-s1",
+          "pos": "noun",
+          "gloss": "앞서 언급한 특정 시점."
+        }
+      ]
+    },
+    {
+      "id": "w5371",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5371",
+      "lemma": "오늘",
+      "search_forms": [
+        "오늘"
+      ],
+      "senses": [
+        {
+          "id": "w5371-s1",
+          "pos": "noun",
+          "gloss": "달력에서 현재 날짜로 가리키는 하루."
+        }
+      ]
+    },
+    {
+      "id": "w5372",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5372",
+      "lemma": "여자",
+      "search_forms": [
+        "여자"
+      ],
+      "senses": [
+        {
+          "id": "w5372-s1",
+          "pos": "noun",
+          "gloss": "여성 성별에 속하는 사람."
+        }
+      ]
+    },
+    {
+      "id": "w5373",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5373",
+      "lemma": "이해",
+      "search_forms": [
+        "이해"
+      ],
+      "senses": [
+        {
+          "id": "w5373-s1",
+          "pos": "noun",
+          "gloss": "말이나 상황의 뜻을 파악하고 헤아림."
+        }
+      ]
+    },
+    {
+      "id": "w5374",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5374",
+      "lemma": "인간",
+      "search_forms": [
+        "인간"
+      ],
+      "senses": [
+        {
+          "id": "w5374-s1",
+          "pos": "noun",
+          "gloss": "사람이라는 생물종의 개별 구성원 또는 인류 전체."
+        }
+      ]
+    },
+    {
+      "id": "w5375",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5375",
+      "lemma": "남자",
+      "search_forms": [
+        "남자"
+      ],
+      "senses": [
+        {
+          "id": "w5375-s1",
+          "pos": "noun",
+          "gloss": "남성 성별에 속하는 사람."
+        }
+      ]
+    },
+    {
+      "id": "w5376",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5376",
+      "lemma": "준비",
+      "search_forms": [
+        "준비"
+      ],
+      "senses": [
+        {
+          "id": "w5376-s1",
+          "pos": "noun",
+          "gloss": "일을 시작하거나 상황을 맞기 위해 필요한 것을 미리 갖춤."
+        }
+      ]
+    },
+    {
+      "id": "w5377",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5377",
+      "lemma": "중요",
+      "search_forms": [
+        "중요"
+      ],
+      "senses": [
+        {
+          "id": "w5377-s1",
+          "pos": "noun",
+          "gloss": "판단이나 결과에 큰 영향을 주는 정도나 성질."
+        }
+      ]
+    },
+    {
+      "id": "w5378",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5378",
+      "lemma": "넣다",
+      "search_forms": [
+        "넣다"
+      ],
+      "senses": [
+        {
+          "id": "w5378-s1",
+          "pos": "verb",
+          "gloss": "대상이나 내용물을 어떤 공간이나 범위 안으로 들이는 동작."
+        }
+      ]
+    },
+    {
+      "id": "w5379",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5379",
+      "lemma": "가능",
+      "search_forms": [
+        "가능"
+      ],
+      "senses": [
+        {
+          "id": "w5379-s1",
+          "pos": "noun",
+          "gloss": "일이나 현상이 실제로 이루어질 수 있는 성질."
+        }
+      ]
+    },
+    {
+      "id": "w5380",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5380",
+      "lemma": "마지막",
+      "search_forms": [
+        "마지막"
+      ],
+      "senses": [
+        {
+          "id": "w5380-s1",
+          "pos": "noun",
+          "gloss": "차례나 시간에서 더 뒤에 이어질 것이 없는 끝부분."
+        }
+      ]
+    },
+    {
+      "id": "w5381",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5381",
+      "lemma": "아버지",
+      "search_forms": [
+        "아버지"
+      ],
+      "senses": [
+        {
+          "id": "w5381-s1",
+          "pos": "noun",
+          "gloss": "자녀를 둔 남성 부모."
+        }
+      ]
+    },
+    {
+      "id": "w5382",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5382",
+      "lemma": "아래",
+      "search_forms": [
+        "아래"
+      ],
+      "senses": [
+        {
+          "id": "w5382-s1",
+          "pos": "noun",
+          "gloss": "기준이 되는 곳보다 낮은 쪽이나 밑부분."
+        }
+      ]
+    },
+    {
+      "id": "w5383",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5383",
+      "lemma": "조금",
+      "search_forms": [
+        "조금"
+      ],
+      "senses": [
+        {
+          "id": "w5383-s1",
+          "pos": "noun",
+          "gloss": "비교 기준보다 작은 양이나 변화 폭을 가리키는 말."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "c3869a6807f5e700d1355645ba93d4538a1868a8f5f4dc8552ce5b518257f9e7",
+  "decisions": [
+    {
+      "candidate_record_id": "w5359",
+      "inventory_id": "m5-5401",
+      "candidate_record_sha256": "597b86ef218ca1693ac15d69cc59a5a224f1346cacd94a527a4896553000641b",
+      "decision": "included",
+      "rank": 1,
+      "decision_rationale": "m5-5401 w5359: 부재를 단정하는 형용사적 서술어로, 감각·사람·기회 등 여러 문장 성분에 직접 적용되는 기본 서술 단위다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "Q",
+      "sense_reviews": [
+        {
+          "sense_id": "w5359-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5401 w5359 w5359-s1 1ee6c0f9e5fa: m5-5401 w5359: 부재를 단정하는 형용사적 서술어로, 감각·사람·기회 등 여러 문장 성분에 직접 적용되는 기본 서술 단위다.",
+          "semantic_rationale": "m5-5401 w5359 w5359-s1 1ee6c0f9e5fa: 없다의 작성된 뜻풀이는 “존재나 소유가 성립하지 않는 상태.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5401 w5359 w5359-s1 1ee6c0f9e5fa: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5359",
+        "candidate_record_sha256": "597b86ef218ca1693ac15d69cc59a5a224f1346cacd94a527a4896553000641b",
+        "decision_evidence_sha256": "58b9d2182c954e6f1d0647910b28ebe5afadb86f7bd3980c3349f72c872874e3",
+        "sense_evidence": [
+          {
+            "sense_id": "w5359-s1",
+            "sense_sha256": "5c7df476699c600474e2f6d25ec3bd68aca072981254208c8b9dc082ac7859e8",
+            "gloss_sha256": "1ee6c0f9e5fa109e3ace1c20d1925244367aee11935c2342dd54c17b36f56572",
+            "evidence_sha256": "1df0a1db3fdc4c70fd88e9e0269b135ba5cb48f1a889dcc5d62d6b5183a06c7a"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5360",
+      "inventory_id": "m5-5402",
+      "candidate_record_sha256": "1395caf946349da3eb0bef7a698534adc1e03fabb53160bf100d97a57f16d6b0",
+      "decision": "included",
+      "rank": 2,
+      "decision_rationale": "m5-5402 w5360: 개별 인간을 가리키는 명사로 인물 서술의 주체를 바로 찾는 검색어다. 넓은 범주라는 이유는 배제 근거가 아니다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "O",
+      "sense_reviews": [
+        {
+          "sense_id": "w5360-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5402 w5360 w5360-s1 9d9ff0f47af4: m5-5402 w5360: 개별 인간을 가리키는 명사로 인물 서술의 주체를 바로 찾는 검색어다. 넓은 범주라는 이유는 배제 근거가 아니다.",
+          "semantic_rationale": "m5-5402 w5360 w5360-s1 9d9ff0f47af4: 사람의 작성된 뜻풀이는 “생각하고 행동하며 사회 속에서 살아가는 개별 인간.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5402 w5360 w5360-s1 9d9ff0f47af4: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5360",
+        "candidate_record_sha256": "1395caf946349da3eb0bef7a698534adc1e03fabb53160bf100d97a57f16d6b0",
+        "decision_evidence_sha256": "f600d87be5b360eb8ebb41f5ea889b163be258a783e3c36d9e6a751e08d38d54",
+        "sense_evidence": [
+          {
+            "sense_id": "w5360-s1",
+            "sense_sha256": "e1d1ef3297743ebaa107dace0cd1c14c9411df3b9b5338ad6d2882b085dcbc17",
+            "gloss_sha256": "9d9ff0f47af4a49d80fe47063cc65da9e2ba1357fbf86ed7bdf7e6a032d3fc5a",
+            "evidence_sha256": "84c676839dc47a3a94bcfb681fa0de300c7b9a2a50215f6e0f5c63aa0eec810b"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5361",
+      "inventory_id": "m5-5403",
+      "candidate_record_sha256": "0ebf7ffee68f166b3eb03c24190116aa43f4d8fe6da5621502de1dc79f69e6e6",
+      "decision": "included",
+      "rank": 3,
+      "decision_rationale": "m5-5403 w5361: 수량이나 수효가 큰 상태를 서술하는 형용사로 수와 양의 정도를 직접 표현한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "Q",
+      "sense_reviews": [
+        {
+          "sense_id": "w5361-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5403 w5361 w5361-s1 184046721b6a: m5-5403 w5361: 수량이나 수효가 큰 상태를 서술하는 형용사로 수와 양의 정도를 직접 표현한다.",
+          "semantic_rationale": "m5-5403 w5361 w5361-s1 184046721b6a: 많다의 작성된 뜻풀이는 “수량이나 수효가 큰 상태.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5403 w5361 w5361-s1 184046721b6a: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5361",
+        "candidate_record_sha256": "0ebf7ffee68f166b3eb03c24190116aa43f4d8fe6da5621502de1dc79f69e6e6",
+        "decision_evidence_sha256": "429964b4be4b045a9ececaa9719adc933e0a928ed95d2ca6f81a03fa829053d8",
+        "sense_evidence": [
+          {
+            "sense_id": "w5361-s1",
+            "sense_sha256": "428848c2ef8e3e7317979b42072185dead3e03ea1914d2b41ac4b91cffbdd3ad",
+            "gloss_sha256": "184046721b6a33b7f7c9576a5da779c7ae56981e48a4d8d93ffbe17400422763",
+            "evidence_sha256": "aa99655ebf04801f3e79d777e1f972c75331f9cdd5ae153dd13a44d50687583e"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5362",
+      "inventory_id": "m5-5404",
+      "candidate_record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
+      "decision": "included",
+      "rank": 4,
+      "decision_rationale": "m5-5404 w5362: 재료나 요소를 새 물건 또는 결과로 이루는 동사로 생산 행위를 하나의 중심 뜻으로 설명한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5362-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5404 w5362 w5362-s1 eadd85cdf584: m5-5404 w5362: 재료나 요소를 새 물건 또는 결과로 이루는 동사로 생산 행위를 하나의 중심 뜻으로 설명한다.",
+          "semantic_rationale": "m5-5404 w5362 w5362-s1 eadd85cdf584: 만들다의 작성된 뜻풀이는 “재료나 요소를 모으고 손질해 새 물건이나 결과를 이루는 동작.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5404 w5362 w5362-s1 eadd85cdf584: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5362",
+        "candidate_record_sha256": "e1545463d1dbad45a7f23690eccd5cc9fb559c690d44326e2371f99c4acbdf12",
+        "decision_evidence_sha256": "6b79af116043c6e08dd32bcd51504b0100cedce3b187859e53d003beaa07aeb0",
+        "sense_evidence": [
+          {
+            "sense_id": "w5362-s1",
+            "sense_sha256": "a82a3149a43e314db7865c3af64d798ce17a02e098dc875e2a5fda295a915535",
+            "gloss_sha256": "eadd85cdf5844d87ba04529ae18cb40beae9680d27e14d174f49418c56f601cf",
+            "evidence_sha256": "2360deac6b45d09d6ba8b69971e2399c89e642b5de672300f0472bdae30c680f"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5363",
+      "inventory_id": "m5-5405",
+      "candidate_record_sha256": "d1a7499c633928ff9459aa1f2fb61140d19cdfe1c23cabe8bb12f9c719887797",
+      "decision": "included",
+      "rank": 5,
+      "decision_rationale": "m5-5405 w5363: 두 시점이나 사건 사이의 시간 길이를 가리키는 명사 sense를 한정했다. 얼굴의 동안은 별도 lexical identity로 다룬다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5363-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5405 w5363 w5363-s1 215ffd9a2bd7: m5-5405 w5363: 두 시점이나 사건 사이의 시간 길이를 가리키는 명사 sense를 한정했다. 얼굴의 동안은 별도 lexical identity로 다룬다.",
+          "semantic_rationale": "m5-5405 w5363 w5363-s1 215ffd9a2bd7: 동안의 작성된 뜻풀이는 “두 시점이나 사건 사이에 이어지는 시간의 길이.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5405 w5363 w5363-s1 215ffd9a2bd7: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5363",
+        "candidate_record_sha256": "d1a7499c633928ff9459aa1f2fb61140d19cdfe1c23cabe8bb12f9c719887797",
+        "decision_evidence_sha256": "9c1c6231b0cceaeb64620525739604012ab33bccdb45a008dd800a9698b49e27",
+        "sense_evidence": [
+          {
+            "sense_id": "w5363-s1",
+            "sense_sha256": "a436fe8c673bed2af5d51923557031ee6e0328c4eb92bdb24a384fa21806b18d",
+            "gloss_sha256": "215ffd9a2bd7dff1717153a8e7cbbd1df20f1400e4eb13e7332bd36c8906f0f1",
+            "evidence_sha256": "ab5beca564a316e72d17192de75ceed23cb50a921bef6ebfb070f9fb959ca893"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5364",
+      "inventory_id": "m5-5406",
+      "candidate_record_sha256": "0188da322d5b937020d745974cf30846619490f1625f9aa0b2fa3b3aee1b4654",
+      "decision": "held",
+      "rank": 6,
+      "decision_rationale": "m5-5406 w5364: 현재 작성한 바깥으로 나오게 하거나 드러내는 뜻풀이만으로는 내다의 발행·지불·산출·결과 도달 등 구별되는 용법을 설명할 수 없다. 문맥용 단일 sense로 축소하지 않고 unresolved-sense로 보류한다.",
+      "hold_basis": "unresolved-sense",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "needs-context",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5364-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5406 w5364 w5364-s1 768c7468e651: m5-5406 w5364: 현재 작성한 바깥으로 나오게 하거나 드러내는 뜻풀이만으로는 내다의 발행·지불·산출·결과 도달 등 구별되는 용법을 설명할 수 없다. 문맥용 단일 sense로 축소하지 않고 unresolved-sense로 보류한다.",
+          "semantic_rationale": "m5-5406 w5364 w5364-s1 768c7468e651: 내다의 작성된 뜻풀이는 “안쪽의 것을 밖으로 나오게 하거나 드러내는 동작.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5406 w5364 w5364-s1 768c7468e651: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5364",
+        "candidate_record_sha256": "0188da322d5b937020d745974cf30846619490f1625f9aa0b2fa3b3aee1b4654",
+        "decision_evidence_sha256": "bb064e63f1b2b43c8a86b6b0142df9361527f5aa844b0d7d0b7c13be123651a7",
+        "sense_evidence": [
+          {
+            "sense_id": "w5364-s1",
+            "sense_sha256": "540fd9f622260095678556fb21700e89a1c665eddc6f1ae7191b3340d2bfcdba",
+            "gloss_sha256": "768c7468e6514bcbd88956cdf07c856540e19f05843d6b94cdae69e940a60dd4",
+            "evidence_sha256": "5b78159c5365fbdfb7051e7cc0cbd177f96099665103f2ae7a46e551ab049010"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5365",
+      "inventory_id": "m5-5407",
+      "candidate_record_sha256": "f4efbee1fc409de357c2010f846423bae9211d68f7dfb29269d4a4e16f7d009f",
+      "decision": "included",
+      "rank": 7,
+      "decision_rationale": "m5-5407 w5365: 목표나 과업을 위해 요구되는 조건 또는 대상을 가리키는 명사로 요구 상태를 직접 찾는 writer-facing 단위다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "X",
+      "sense_reviews": [
+        {
+          "sense_id": "w5365-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5407 w5365 w5365-s1 d419451cb70a: m5-5407 w5365: 목표나 과업을 위해 요구되는 조건 또는 대상을 가리키는 명사로 요구 상태를 직접 찾는 writer-facing 단위다.",
+          "semantic_rationale": "m5-5407 w5365 w5365-s1 d419451cb70a: 필요의 작성된 뜻풀이는 “목표나 과업을 이루는 데 요구되는 조건 또는 대상.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5407 w5365 w5365-s1 d419451cb70a: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5365",
+        "candidate_record_sha256": "f4efbee1fc409de357c2010f846423bae9211d68f7dfb29269d4a4e16f7d009f",
+        "decision_evidence_sha256": "f71fc8e0a41915d3d560650ffb3aa96cf7e1a7b1a9a6ed8723f0fbb9f2710750",
+        "sense_evidence": [
+          {
+            "sense_id": "w5365-s1",
+            "sense_sha256": "8435b5613edfe8a8804847890ea397eff664ad6699ef96d89363b71bd7559a32",
+            "gloss_sha256": "d419451cb70a170c67127c9bb51816b08c8a0ea798b0b4e0b4a860b5e45e0a67",
+            "evidence_sha256": "2395d90278b52f8960970ed1ce66b086fcab572c7921efa60fed3dbe2054d8cf"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5366",
+      "inventory_id": "m5-5408",
+      "candidate_record_sha256": "b14aac63c83b6ec44547810ff2989cd129febdf29f54c615037e5741320fb4a0",
+      "decision": "included",
+      "rank": 8,
+      "decision_rationale": "m5-5408 w5366: 일이나 과정의 맨 앞 차례를 가리키는 명사로 순서와 시간의 시작을 표현한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5366-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5408 w5366 w5366-s1 44e4514170d0: m5-5408 w5366: 일이나 과정의 맨 앞 차례를 가리키는 명사로 순서와 시간의 시작을 표현한다.",
+          "semantic_rationale": "m5-5408 w5366 w5366-s1 44e4514170d0: 처음의 작성된 뜻풀이는 “일이나 과정의 맨 앞 차례.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5408 w5366 w5366-s1 44e4514170d0: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5366",
+        "candidate_record_sha256": "b14aac63c83b6ec44547810ff2989cd129febdf29f54c615037e5741320fb4a0",
+        "decision_evidence_sha256": "991e5a28ccb3e63c1684c96e56f6b07e0c1d0e75620a95eaa2ee97789d500d76",
+        "sense_evidence": [
+          {
+            "sense_id": "w5366-s1",
+            "sense_sha256": "3094fc660509e357facf36a60d1bed7a737472e5f21a5e2970d1b983a1e85387",
+            "gloss_sha256": "44e4514170d034c55f4eff9e178c5a2a27669ed1cabeb488ec97ca9b3a1ddbf2",
+            "evidence_sha256": "0d2ff02e90e3be8677c82f68e973602e8a3d7f5444acc6a904849c0be28a3bfe"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5367",
+      "inventory_id": "m5-5409",
+      "candidate_record_sha256": "a893793074fb352f13c9496478e243d6fa31da29fae2183d248277768b12ea73",
+      "decision": "included",
+      "rank": 9,
+      "decision_rationale": "m5-5409 w5367: 정해진 순서에서 바로 뒤에 놓이는 차례나 대상을 가리키는 명사다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5367-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5409 w5367 w5367-s1 8bdf900e78fe: m5-5409 w5367: 정해진 순서에서 바로 뒤에 놓이는 차례나 대상을 가리키는 명사다.",
+          "semantic_rationale": "m5-5409 w5367 w5367-s1 8bdf900e78fe: 다음의 작성된 뜻풀이는 “정해진 순서에서 바로 뒤에 오는 차례나 대상.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5409 w5367 w5367-s1 8bdf900e78fe: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5367",
+        "candidate_record_sha256": "a893793074fb352f13c9496478e243d6fa31da29fae2183d248277768b12ea73",
+        "decision_evidence_sha256": "397b71758d86b3a9302e6b38e7eb71b7add605ce548d2fecff695b6bbc3d599f",
+        "sense_evidence": [
+          {
+            "sense_id": "w5367-s1",
+            "sense_sha256": "f874f096301935bf1a5341c0af5606d11cad7fcf119a3e7b66d1e4fcbab7ec92",
+            "gloss_sha256": "8bdf900e78fe2e0e4658f00e76e13c2aedda8e0107b8ce911568a53732b3fc3c",
+            "evidence_sha256": "fa4dac92c7eba34af7a42d636627cd481659f7e2ea751b2d93caef57dc53dcc1"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5368",
+      "inventory_id": "m5-5410",
+      "candidate_record_sha256": "bed9da5d9e565a7d7dbcf82038cbb256e632978b0ad04e5ce707b39200287e61",
+      "decision": "included",
+      "rank": 10,
+      "decision_rationale": "m5-5410 w5368: 말하는 시점과 일치하는 현재 시간을 가리키는 명사 sense로 시간 기준을 직접 지정한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5368-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5410 w5368 w5368-s1 1a4a01276c11: m5-5410 w5368: 말하는 시점과 일치하는 현재 시간을 가리키는 명사 sense로 시간 기준을 직접 지정한다.",
+          "semantic_rationale": "m5-5410 w5368 w5368-s1 1a4a01276c11: 지금의 작성된 뜻풀이는 “말하는 시점과 일치하는 현재 시간.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5410 w5368 w5368-s1 1a4a01276c11: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5368",
+        "candidate_record_sha256": "bed9da5d9e565a7d7dbcf82038cbb256e632978b0ad04e5ce707b39200287e61",
+        "decision_evidence_sha256": "658c1afd32cda707f199ac25ce5a6d9516d29487a1c24935a45f7518e47fa4da",
+        "sense_evidence": [
+          {
+            "sense_id": "w5368-s1",
+            "sense_sha256": "c3348115c3af160a1114bc892169d0dedd76ea80ac56f3a3afd927669f42fc5e",
+            "gloss_sha256": "1a4a01276c11466bfdf73763bf927c2bee4943c500dc24739686f2b3f1b07d1d",
+            "evidence_sha256": "beac155d3015e2d1ca68f07befa5e5bc087bfa30a588997ddb4fd14b95a68880"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5369",
+      "inventory_id": "m5-5411",
+      "candidate_record_sha256": "760495abd812681a7e4a749820ea21c38949072df5f7c38fe43ea09b3ac52c45",
+      "decision": "included",
+      "rank": 11,
+      "decision_rationale": "m5-5411 w5369: 친밀한 교류와 정을 나누는 상대를 가리키는 명사로 일반적인 사람 범주와 구별되는 관계 단위다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "O",
+      "sense_reviews": [
+        {
+          "sense_id": "w5369-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5411 w5369 w5369-s1 f0cc7b3cfc06: m5-5411 w5369: 친밀한 교류와 정을 나누는 상대를 가리키는 명사로 일반적인 사람 범주와 구별되는 관계 단위다.",
+          "semantic_rationale": "m5-5411 w5369 w5369-s1 f0cc7b3cfc06: 친구의 작성된 뜻풀이는 “친밀한 교류와 정을 나누는 상대.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5411 w5369 w5369-s1 f0cc7b3cfc06: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5369",
+        "candidate_record_sha256": "760495abd812681a7e4a749820ea21c38949072df5f7c38fe43ea09b3ac52c45",
+        "decision_evidence_sha256": "e6a7811267bedbf899bf97992d1972e1de877721c55b9f9413c101702250eb19",
+        "sense_evidence": [
+          {
+            "sense_id": "w5369-s1",
+            "sense_sha256": "071bd684ee3bcf0fbbe4fd79a5331208aa2b84aa0ed6c4b4476582c489350ff6",
+            "gloss_sha256": "f0cc7b3cfc0636619d16b8aa58330dfdb50f2253a4b4cd4e3e39999efc1f80f9",
+            "evidence_sha256": "9e4c636a88b88addd53525fdc2b53f9ed543e99606f7ba47e3328f49c15d2980"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5370",
+      "inventory_id": "m5-5412",
+      "candidate_record_sha256": "2bd60f77dad8ef24759884f503f8644a4b80463490c18d0294a3b09e4b6664b0",
+      "decision": "included",
+      "rank": 12,
+      "decision_rationale": "m5-5412 w5370: 앞서 언급한 특정 시점을 다시 가리키는 명사로 서사 안에서 시간 지시를 이어 준다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5370-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5412 w5370 w5370-s1 10f58614fb3f: m5-5412 w5370: 앞서 언급한 특정 시점을 다시 가리키는 명사로 서사 안에서 시간 지시를 이어 준다.",
+          "semantic_rationale": "m5-5412 w5370 w5370-s1 10f58614fb3f: 그때의 작성된 뜻풀이는 “앞서 언급한 특정 시점.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5412 w5370 w5370-s1 10f58614fb3f: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5370",
+        "candidate_record_sha256": "2bd60f77dad8ef24759884f503f8644a4b80463490c18d0294a3b09e4b6664b0",
+        "decision_evidence_sha256": "df0704c52ce48de229ac63b63f342ba1f9a20cef74ab28fca9c30fe41caea74d",
+        "sense_evidence": [
+          {
+            "sense_id": "w5370-s1",
+            "sense_sha256": "034402e94436c7e2ba6f48a8c58d176e3ef8b64c6c696289e16a92f59267ed30",
+            "gloss_sha256": "10f58614fb3fee19e05c94d08f630b92036d51f06fa293b5038a95b98836a09a",
+            "evidence_sha256": "8636d2ef437973d915796d076614a5e66b8ad15926babdd278c22678f55dd110"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5371",
+      "inventory_id": "m5-5413",
+      "candidate_record_sha256": "87596887f1dda9040aed94dc6c2f03c42bceed7eb81ea4b44ed50993842717f4",
+      "decision": "included",
+      "rank": 13,
+      "decision_rationale": "m5-5413 w5371: 달력에서 현재 날짜에 해당하는 하루를 가리키는 명사로 시간 범위를 직접 지정한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5371-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5413 w5371 w5371-s1 313e9c55ce36: m5-5413 w5371: 달력에서 현재 날짜에 해당하는 하루를 가리키는 명사로 시간 범위를 직접 지정한다.",
+          "semantic_rationale": "m5-5413 w5371 w5371-s1 313e9c55ce36: 오늘의 작성된 뜻풀이는 “달력에서 현재 날짜로 가리키는 하루.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5413 w5371 w5371-s1 313e9c55ce36: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5371",
+        "candidate_record_sha256": "87596887f1dda9040aed94dc6c2f03c42bceed7eb81ea4b44ed50993842717f4",
+        "decision_evidence_sha256": "95818ce8a30e5152bb094e9da2926fb3f534e8ffaede0fbbbeca128e9699a1ad",
+        "sense_evidence": [
+          {
+            "sense_id": "w5371-s1",
+            "sense_sha256": "aa25530985335605249d5f7e4e55d620c8254749736fb82cd1b77e991a2135f6",
+            "gloss_sha256": "313e9c55ce365333994b543fc6a5537ce74f7a2f6bd4e4a61eaf559611fd9691",
+            "evidence_sha256": "5a250767c00615c9e264f517703b668ae1339ebcc15008b02e2a544736fa8c27"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5372",
+      "inventory_id": "m5-5414",
+      "candidate_record_sha256": "5103027a37f23494821890bf1a13829e8cd617cf731950102cec3f3f9d7ecc9b",
+      "decision": "included",
+      "rank": 14,
+      "decision_rationale": "m5-5414 w5372: 여성 성별에 속하는 사람을 가리키는 명사로 인물의 성별 표현에 쓰이는 범주 단위다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "O",
+      "sense_reviews": [
+        {
+          "sense_id": "w5372-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5414 w5372 w5372-s1 e8a178b76a67: m5-5414 w5372: 여성 성별에 속하는 사람을 가리키는 명사로 인물의 성별 표현에 쓰이는 범주 단위다.",
+          "semantic_rationale": "m5-5414 w5372 w5372-s1 e8a178b76a67: 여자의 작성된 뜻풀이는 “여성 성별에 속하는 사람.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5414 w5372 w5372-s1 e8a178b76a67: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5372",
+        "candidate_record_sha256": "5103027a37f23494821890bf1a13829e8cd617cf731950102cec3f3f9d7ecc9b",
+        "decision_evidence_sha256": "15ae49ee1fcfefd0c66e1d54b7ed31ca052056566f5b648149d472859b104b63",
+        "sense_evidence": [
+          {
+            "sense_id": "w5372-s1",
+            "sense_sha256": "4df96c55de0d6cf5d20fae38bb620a5f6d6d53233e6fffc077b27443b2ce729f",
+            "gloss_sha256": "e8a178b76a6732716af4de80019d0c3b745000da6a5058eb5b0c04e89e34ec84",
+            "evidence_sha256": "1ac8aa06a3f21bddf3b125bb2d8bcc0e4ffe8fd57f22994a7815eac3ee1fe440"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5373",
+      "inventory_id": "m5-5415",
+      "candidate_record_sha256": "622e399780b981085f6a4601e4b8b0267c5cb06305efdab262f36b4e3da80342",
+      "decision": "included",
+      "rank": 15,
+      "decision_rationale": "m5-5415 w5373: 말이나 상황의 뜻을 파악하고 헤아리는 일을 가리키는 명사로 인지 행위를 직접 명명한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "X",
+      "sense_reviews": [
+        {
+          "sense_id": "w5373-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5415 w5373 w5373-s1 c05d2f3c27ea: m5-5415 w5373: 말이나 상황의 뜻을 파악하고 헤아리는 일을 가리키는 명사로 인지 행위를 직접 명명한다.",
+          "semantic_rationale": "m5-5415 w5373 w5373-s1 c05d2f3c27ea: 이해의 작성된 뜻풀이는 “말이나 상황의 뜻을 파악하고 헤아림.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5415 w5373 w5373-s1 c05d2f3c27ea: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5373",
+        "candidate_record_sha256": "622e399780b981085f6a4601e4b8b0267c5cb06305efdab262f36b4e3da80342",
+        "decision_evidence_sha256": "bdd5fdda396bc506d02af81e6883df98d8954064b651e38a6ff5eeb8e1bdce3c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5373-s1",
+            "sense_sha256": "77a8ee9cef04667223ab77eb60271cd2e34fc1b99f716cd98acfce136964ca96",
+            "gloss_sha256": "c05d2f3c27ea378396121771f11ca187137bf0d73bae9224ca30d4d222d2b9ec",
+            "evidence_sha256": "dc4279f9229e7835a668b7bb0317c68c8d50860ca5bd14eb23410554c0241a22"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5374",
+      "inventory_id": "m5-5416",
+      "candidate_record_sha256": "a94389aa003ef291b7f45988d761a2bfbff814162ad043d573c8244be9647d84",
+      "decision": "included",
+      "rank": 16,
+      "decision_rationale": "m5-5416 w5374: 사람이라는 생물종의 개별 구성원이나 인류 범주를 가리키는 명사다. 사람과 뜻이 가까워도 lexical identity와 writer framing이 다른 별도 lemma다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "O",
+      "sense_reviews": [
+        {
+          "sense_id": "w5374-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5416 w5374 w5374-s1 81e6020a6c4e: m5-5416 w5374: 사람이라는 생물종의 개별 구성원이나 인류 범주를 가리키는 명사다. 사람과 뜻이 가까워도 lexical identity와 writer framing이 다른 별도 lemma다.",
+          "semantic_rationale": "m5-5416 w5374 w5374-s1 81e6020a6c4e: 인간의 작성된 뜻풀이는 “사람이라는 생물종의 개별 구성원 또는 인류 전체.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5416 w5374 w5374-s1 81e6020a6c4e: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5374",
+        "candidate_record_sha256": "a94389aa003ef291b7f45988d761a2bfbff814162ad043d573c8244be9647d84",
+        "decision_evidence_sha256": "c68c5afd3fa251ad3818ebac8e756bbcc43a3994ab23f3f3b41ee3070a359ecb",
+        "sense_evidence": [
+          {
+            "sense_id": "w5374-s1",
+            "sense_sha256": "6931579bf60b5901f30c5f619abeb08cf63fccef8c032963ef0f0df7558bdfa7",
+            "gloss_sha256": "81e6020a6c4e8070e2aeaf0c1babc8d90081309e9616ddeb56a33a48ba3101c0",
+            "evidence_sha256": "3481ffa896d300b36e1d240f8cd773ddde0332e4c2af9f2004240e7c66467b2c"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5375",
+      "inventory_id": "m5-5417",
+      "candidate_record_sha256": "a08d483fb7c3e5687c6349bedef90f6b994e1c40f9af5c362b68e3b302e5066c",
+      "decision": "included",
+      "rank": 17,
+      "decision_rationale": "m5-5417 w5375: 남성 성별에 속하는 사람을 가리키는 명사로 인물의 성별 표현에 쓰이는 범주 단위다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "O",
+      "sense_reviews": [
+        {
+          "sense_id": "w5375-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5417 w5375 w5375-s1 2323fc6ed1ff: m5-5417 w5375: 남성 성별에 속하는 사람을 가리키는 명사로 인물의 성별 표현에 쓰이는 범주 단위다.",
+          "semantic_rationale": "m5-5417 w5375 w5375-s1 2323fc6ed1ff: 남자의 작성된 뜻풀이는 “남성 성별에 속하는 사람.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5417 w5375 w5375-s1 2323fc6ed1ff: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5375",
+        "candidate_record_sha256": "a08d483fb7c3e5687c6349bedef90f6b994e1c40f9af5c362b68e3b302e5066c",
+        "decision_evidence_sha256": "92abbdde2cf242fb59aae35e79b7a7e5eb7beac868d320e2187d62a6b2652268",
+        "sense_evidence": [
+          {
+            "sense_id": "w5375-s1",
+            "sense_sha256": "3079add14b1016b680e0af2483d5e04ab5314346eb58ff107ca85e787a82754c",
+            "gloss_sha256": "2323fc6ed1ffcc28b92f990b9d0cc01a366fb93159d1c4ad11a0e2988e6c48ee",
+            "evidence_sha256": "c275ad0279c31a8bc3dccb0fb49457f4a2844259b203615b00b7f40001b99d89"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5376",
+      "inventory_id": "m5-5418",
+      "candidate_record_sha256": "575faefce65bd106e98c3b3a2d5aacdf62d0371b7ac80e8824a96a6b3ad82506",
+      "decision": "included",
+      "rank": 18,
+      "decision_rationale": "m5-5418 w5376: 일을 시작하거나 상황을 맞기 위해 필요한 것을 미리 갖추는 일을 가리키는 명사다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5376-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5418 w5376 w5376-s1 06349609cc74: m5-5418 w5376: 일을 시작하거나 상황을 맞기 위해 필요한 것을 미리 갖추는 일을 가리키는 명사다.",
+          "semantic_rationale": "m5-5418 w5376 w5376-s1 06349609cc74: 준비의 작성된 뜻풀이는 “일을 시작하거나 상황을 맞기 위해 필요한 것을 미리 갖춤.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5418 w5376 w5376-s1 06349609cc74: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5376",
+        "candidate_record_sha256": "575faefce65bd106e98c3b3a2d5aacdf62d0371b7ac80e8824a96a6b3ad82506",
+        "decision_evidence_sha256": "7bb05ebc3f437093fb05126b8ec3afe3d3ebe98df97ed549bf5a651e467f3df4",
+        "sense_evidence": [
+          {
+            "sense_id": "w5376-s1",
+            "sense_sha256": "9857c0054114f01e1ce0b7a26140a70756f69262117a007900d231d2cea33b03",
+            "gloss_sha256": "06349609cc74fc13e64a1c4509df0ac389b24347d672e39528e461cf48dc4919",
+            "evidence_sha256": "011ac1cc49d720b4ab1be365320d7e3bdb69a968528d5357209b4d61da26b3f9"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5377",
+      "inventory_id": "m5-5419",
+      "candidate_record_sha256": "7ece32f445bfcf09cd10427bc34f4094935d634bb8fb94d81088cda2e61275be",
+      "decision": "included",
+      "rank": 19,
+      "decision_rationale": "m5-5419 w5377: 판단이나 결과에 큰 영향을 주는 정도 또는 성질을 가리키는 명사로 중요성을 직접 지칭한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "Q",
+      "sense_reviews": [
+        {
+          "sense_id": "w5377-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5419 w5377 w5377-s1 3134e05b9b80: m5-5419 w5377: 판단이나 결과에 큰 영향을 주는 정도 또는 성질을 가리키는 명사로 중요성을 직접 지칭한다.",
+          "semantic_rationale": "m5-5419 w5377 w5377-s1 3134e05b9b80: 중요의 작성된 뜻풀이는 “판단이나 결과에 큰 영향을 주는 정도나 성질.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5419 w5377 w5377-s1 3134e05b9b80: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5377",
+        "candidate_record_sha256": "7ece32f445bfcf09cd10427bc34f4094935d634bb8fb94d81088cda2e61275be",
+        "decision_evidence_sha256": "5549451dfdf3c3383fdf6ce9282eebb7cd12392e36a1037908119699b0449b7e",
+        "sense_evidence": [
+          {
+            "sense_id": "w5377-s1",
+            "sense_sha256": "284f9d77f50b4253bf35ac65ce80bdb185933bb02fbeafd2dc555e5af4f06bac",
+            "gloss_sha256": "3134e05b9b80178372127631593999b16d43b76c9722a9157cac85476e2e6f59",
+            "evidence_sha256": "5e141d3b99c08590afb9953ee643482f2358badc4420d2592cf666c47163c083"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5378",
+      "inventory_id": "m5-5420",
+      "candidate_record_sha256": "e549e88730a29ead0d4e08dd4b4c1e4b7b7f9f14bee702111034a37a33876494",
+      "decision": "included",
+      "rank": 20,
+      "decision_rationale": "m5-5420 w5378: 대상이나 내용물을 공간 또는 범위 안으로 들이는 동사로 이동 방향이 분명한 기본 동작 단위다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5378-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5420 w5378 w5378-s1 06c913839db3: m5-5420 w5378: 대상이나 내용물을 공간 또는 범위 안으로 들이는 동사로 이동 방향이 분명한 기본 동작 단위다.",
+          "semantic_rationale": "m5-5420 w5378 w5378-s1 06c913839db3: 넣다의 작성된 뜻풀이는 “대상이나 내용물을 어떤 공간이나 범위 안으로 들이는 동작.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5420 w5378 w5378-s1 06c913839db3: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5378",
+        "candidate_record_sha256": "e549e88730a29ead0d4e08dd4b4c1e4b7b7f9f14bee702111034a37a33876494",
+        "decision_evidence_sha256": "675c67dcb4345ab1233262a7b95e1b04db6406bd23e417508c06ba5ec3662d16",
+        "sense_evidence": [
+          {
+            "sense_id": "w5378-s1",
+            "sense_sha256": "b63a879a024c9d0921614491df96526d85603a5780bcc1fe09dfae97af34f514",
+            "gloss_sha256": "06c913839db3c362abbc7cfd1c79bc0a344c61c9e16e05d3fd7dfde9d2cfd8b0",
+            "evidence_sha256": "be25c55311441a3641715f8fa4e6b1b0772ed9eb0693630d492e5d1f61011076"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5379",
+      "inventory_id": "m5-5421",
+      "candidate_record_sha256": "f9a55355f2f03c57c147dc349e9b31d424789e470477ef2bdb2e81f56b77de63",
+      "decision": "included",
+      "rank": 21,
+      "decision_rationale": "m5-5421 w5379: 일이나 현상이 실제로 이루어질 수 있는 성질을 가리키는 명사로 실현 여지를 직접 명명한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "X",
+      "sense_reviews": [
+        {
+          "sense_id": "w5379-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5421 w5379 w5379-s1 ff8063ed2ad4: m5-5421 w5379: 일이나 현상이 실제로 이루어질 수 있는 성질을 가리키는 명사로 실현 여지를 직접 명명한다.",
+          "semantic_rationale": "m5-5421 w5379 w5379-s1 ff8063ed2ad4: 가능의 작성된 뜻풀이는 “일이나 현상이 실제로 이루어질 수 있는 성질.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5421 w5379 w5379-s1 ff8063ed2ad4: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5379",
+        "candidate_record_sha256": "f9a55355f2f03c57c147dc349e9b31d424789e470477ef2bdb2e81f56b77de63",
+        "decision_evidence_sha256": "0f442c3bb26c77231c92301ada76cab042114dc35e2329dc9004194a0c962de5",
+        "sense_evidence": [
+          {
+            "sense_id": "w5379-s1",
+            "sense_sha256": "c4b0730c84183cbb32f5874a6a568bdaeaec22cddb2f254ba98e5803d973aac7",
+            "gloss_sha256": "ff8063ed2ad420535c811a6e3e14870281f659d425405126084b7b0832e951d1",
+            "evidence_sha256": "6e083bbafe037cffefc6ae5435496752859ed4581bbc18f1d67e3450a8c71d7d"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5380",
+      "inventory_id": "m5-5422",
+      "candidate_record_sha256": "cf711a296e46cefa4dd4a7e1cc0aacfb7bf4f249329cdfc66d64d104bcf65146",
+      "decision": "included",
+      "rank": 22,
+      "decision_rationale": "m5-5422 w5380: 차례나 시간에서 더 뒤에 이어질 것이 없는 끝부분을 가리키는 명사다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5380-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5422 w5380 w5380-s1 e2f86540f94a: m5-5422 w5380: 차례나 시간에서 더 뒤에 이어질 것이 없는 끝부분을 가리키는 명사다.",
+          "semantic_rationale": "m5-5422 w5380 w5380-s1 e2f86540f94a: 마지막의 작성된 뜻풀이는 “차례나 시간에서 더 뒤에 이어질 것이 없는 끝부분.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5422 w5380 w5380-s1 e2f86540f94a: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5380",
+        "candidate_record_sha256": "cf711a296e46cefa4dd4a7e1cc0aacfb7bf4f249329cdfc66d64d104bcf65146",
+        "decision_evidence_sha256": "c75f22a8f8daaead793957fbed8a33061f7bdd0665e7c108e63368a1abe19b39",
+        "sense_evidence": [
+          {
+            "sense_id": "w5380-s1",
+            "sense_sha256": "2f3bc075a60f373ddf0bda8b05e63a7e3d66907d155701b3bfd9b846f5987054",
+            "gloss_sha256": "e2f86540f94ae0b2376a4afb058ee92ef4713a8c37c101734d31383756addf1b",
+            "evidence_sha256": "c883b6850891409a70739c96837bf01f3343876bd836fd8ca0f07c803ab3512e"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5381",
+      "inventory_id": "m5-5423",
+      "candidate_record_sha256": "7aa8d3a11676c7522d03b0a36482a032d1f86638c882f87bb5d265289d7285da",
+      "decision": "included",
+      "rank": 23,
+      "decision_rationale": "m5-5423 w5381: 자녀를 둔 남성 부모를 가리키는 명사로 가족 관계를 직접 지칭한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "O",
+      "sense_reviews": [
+        {
+          "sense_id": "w5381-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5423 w5381 w5381-s1 5180e50910a9: m5-5423 w5381: 자녀를 둔 남성 부모를 가리키는 명사로 가족 관계를 직접 지칭한다.",
+          "semantic_rationale": "m5-5423 w5381 w5381-s1 5180e50910a9: 아버지의 작성된 뜻풀이는 “자녀를 둔 남성 부모.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5423 w5381 w5381-s1 5180e50910a9: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5381",
+        "candidate_record_sha256": "7aa8d3a11676c7522d03b0a36482a032d1f86638c882f87bb5d265289d7285da",
+        "decision_evidence_sha256": "d3942eeb4d8266d4855292715c8034cb6fc75d628ffbc3591e42687c4ad3e96f",
+        "sense_evidence": [
+          {
+            "sense_id": "w5381-s1",
+            "sense_sha256": "0a7acc28162300472c7acfdb24776e0d9c9c86b74aacdb915c6ce4d5c1ad7039",
+            "gloss_sha256": "5180e50910a9685a98f34e503efcb46316de995844fa509c4874cde52427ba91",
+            "evidence_sha256": "61f62e1017b1109e4303c42b1e5bb774d1fa4d6f4806b9ec30114f24fc9fd9cb"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5382",
+      "inventory_id": "m5-5424",
+      "candidate_record_sha256": "d89293754d3d0e6c08b941fac19895d4d94ae112aea26e4218a8071e0d5d94d6",
+      "decision": "included",
+      "rank": 24,
+      "decision_rationale": "m5-5424 w5382: 기준이 되는 곳보다 낮은 쪽이나 밑부분을 가리키는 명사로 공간·배치의 위치를 직접 지정한다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "C",
+      "sense_reviews": [
+        {
+          "sense_id": "w5382-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5424 w5382 w5382-s1 f603145b239f: m5-5424 w5382: 기준이 되는 곳보다 낮은 쪽이나 밑부분을 가리키는 명사로 공간·배치의 위치를 직접 지정한다.",
+          "semantic_rationale": "m5-5424 w5382 w5382-s1 f603145b239f: 아래의 작성된 뜻풀이는 “기준이 되는 곳보다 낮은 쪽이나 밑부분.”라는 writer-facing lexical reading 하나에 대응한다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5424 w5382 w5382-s1 f603145b239f: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5382",
+        "candidate_record_sha256": "d89293754d3d0e6c08b941fac19895d4d94ae112aea26e4218a8071e0d5d94d6",
+        "decision_evidence_sha256": "d8611d35b8dce0e861f90c72fa80048bd465d299c2037e871597ca00dc45e114",
+        "sense_evidence": [
+          {
+            "sense_id": "w5382-s1",
+            "sense_sha256": "d5d02fdf0220dc1a8ade5e729716b64e9223c0756d255f447bf32653b753c00f",
+            "gloss_sha256": "f603145b239f32f03bd7a1ec36ef18b5e465b240c908694af3a2016bae1bbdad",
+            "evidence_sha256": "00968c263748299bad568a9cebcd7a0bd5b67408487726a0606de9b6ce0e6b65"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5383",
+      "inventory_id": "m5-5425",
+      "candidate_record_sha256": "f0aa18e6933a71fbf090018b24fdcb1fdf177a3a869432ef536ef37e82865f00",
+      "decision": "included",
+      "rank": 25,
+      "decision_rationale": "m5-5425 w5383: 비교 기준보다 작은 양이나 변화 폭을 명사로 가리키는 한 가지 writer-facing reading을 채택한다. 짧은 시간 명사와 정도·시간 부사 용법은 이 sense에 합치지 않는다.",
+      "review_pass_id": "issue-211-separate-semantic-verification-20260928-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "Q",
+      "sense_reviews": [
+        {
+          "sense_id": "w5383-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5425 w5383 w5383-s1 30f65b9a8339: 작성된 gloss는 비교 기준보다 작은 양이나 변화 폭을 가리키는 명사 reading 하나로 한정한다. 짧은 시간 명사와 정도·시간 부사 용법은 별도 경계로 남긴다.",
+          "semantic_rationale": "m5-5425 w5383 w5383-s1 30f65b9a8339: 조금의 작성된 gloss는 작은 양·변화 폭을 가리키는 명사 reading에 대응한다. 시간 길이나 정도·시간을 수식하는 부사 용법은 이 sense 범위에 포함하지 않는다.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5425 w5383 w5383-s1 a31ac370c3e5: 별도로 검증된 relation tuple이 없으므로 관계를 만들지 않는다. 검색 시작 항목의 admission은 관계 수에 의존하지 않는다."
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5383",
+        "candidate_record_sha256": "f0aa18e6933a71fbf090018b24fdcb1fdf177a3a869432ef536ef37e82865f00",
+        "decision_evidence_sha256": "0d828c8b5429b02f6e4e6ce881e56b07cfc969b1538facc2e803e6e709c0be54",
+        "sense_evidence": [
+          {
+            "sense_id": "w5383-s1",
+            "sense_sha256": "b4b80ae6a471bc5e5201b4fad2618f19d77ee8bac35e30f7e627065b2b03a4bd",
+            "gloss_sha256": "30f65b9a833923f98cdd9e94d99d755a58749d521db4e42ef46fcda815b80cba",
+            "evidence_sha256": "abee3e0ff76b55373e8b7237796c83a8c4bb4f9f835cc52c326a209ec4c63479"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_sha256": "bd442e66adf3472db2819f2e2b532ad555eceac27fadfcb5214b2d176f3dd7c2"
+}

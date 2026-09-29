@@ -174,6 +174,10 @@ export function materializeLexicalUnitCandidates({
   }
   for (const [index, target] of baseSeedTargets.entries()) {
     requireObject(target, `candidate_source.base_seed_targets[${index}]`);
+    // Only historical rejected rows may be re-opened under a new identity by
+    // a separately authored recovery source. Held, deferred, inflected-form,
+    // candidate, and legacy statusless rows retain collision ownership.
+    if (target.status === 'rejected') continue;
     for (const term of [target.lemma, ...(Array.isArray(target.search_forms) ? target.search_forms : [])]) {
       if (typeof term === 'string' && term.length > 0) {
         baseTerms.set(term.normalize('NFC'), `seed:${target.inventory_id ?? index}`);
