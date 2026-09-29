@@ -20,7 +20,13 @@ import { selectReviewedCandidates } from './lexical-selection.mjs';
 const DECISION_COUNT_KEYS = Object.freeze(['included', 'corrected', 'held', 'rejected', 'deferred']);
 const DECISIONS = new Set(['included', 'corrected', 'held', 'rejected']);
 const GLOSS_JUDGMENTS = new Set(['fit', 'needs-context', 'reject']);
+const EXPRESSION_LEXICAL_UNIT_JUDGMENTS = new Set([
+  'fixed-or-lexicalized-unit',
+  'compositional-phrase',
+  'unresolved',
+]);
 const MAX_CORRECTION_RATE = 0.5;
+export const M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION = 'm9-expression-lexical-unit-review-v1';
 
 export class AuthoredSemanticDecisionSourceError extends Error {
   constructor(message, code = 'AUTHORED_SEMANTIC_DECISION_SOURCE_ERROR') {
@@ -115,6 +121,54 @@ export function validateAuthoredDecisionDisposition(row, label = 'decision', con
   }
 }
 
+function validateExpressionLexicalUnitReview(row, identity, candidate, label, config) {
+  const contractVersion = config.expressionLexicalUnitReviewContractVersion;
+  if (!contractVersion || candidate.record_type !== 'expression') return;
+
+  if (!row.lexical_unit_review
+    || typeof row.lexical_unit_review !== 'object'
+    || Array.isArray(row.lexical_unit_review)) {
+    fail(`${label}.lexical_unit_review is required for every M9 expression`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
+  const review = row.lexical_unit_review;
+  if (review.contract_version !== contractVersion
+    || !EXPRESSION_LEXICAL_UNIT_JUDGMENTS.has(review.judgment)) {
+    fail(`${label}.lexical_unit_review has no supported fixedness judgment`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
+  requireString(review.rationale, `${label}.lexical_unit_review.rationale`, config);
+  if (![identity.inventory_id, candidate.id, candidate.lemma].every((identityText) => (
+    review.rationale.includes(identityText)
+  ))) {
+    fail(`${label}.lexical_unit_review.rationale must identify the inventory row, candidate, and exact expression`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
+  if (!Array.isArray(review.evidence)) {
+    fail(`${label}.lexical_unit_review.evidence must be an array`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
+  for (const [index, evidenceValue] of review.evidence.entries()) {
+    const evidence = requireObject(evidenceValue, `${label}.lexical_unit_review.evidence[${index}]`, config);
+    requireString(evidence.source, `${label}.lexical_unit_review.evidence[${index}].source`, config);
+    requireString(evidence.observation, `${label}.lexical_unit_review.evidence[${index}].observation`, config);
+    if (!evidence.observation.includes(candidate.lemma)) {
+      fail(`${label}.lexical_unit_review evidence must preserve the exact observed expression`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+    }
+  }
+
+  if (review.judgment === 'fixed-or-lexicalized-unit' && review.evidence.length === 0) {
+    fail(`${label}.lexical_unit_review requires evidence for a fixed or lexicalized expression`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
+  if (review.judgment === 'compositional-phrase') {
+    const hasDispositionBasis = (row.decision === 'rejected' && row.rejection_basis === 'not-a-lexical-unit')
+      || (row.decision === 'held' && row.hold_basis === 'unresolved-lexical-unit');
+    if (!hasDispositionBasis) {
+      fail(`${label} cannot admit a compositional phrase; hold it as unresolved or reject it as not a lexical unit`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+    }
+  }
+  if (review.judgment === 'unresolved'
+    && (row.decision !== 'held' || row.hold_basis !== 'unresolved-lexical-unit')) {
+    fail(`${label} must hold an unresolved expression lexical-unit judgment`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
+}
+
 export function candidateRecordsFromAuthoredSemanticDecisionSource(source, identities, config) {
   requireObject(source, `${config.label} semantic decision source`, config);
   const candidates = source.candidate_records;
@@ -198,6 +252,7 @@ function validateDecisionRow(row, {
   }
   if (!DECISIONS.has(row.decision)) fail(`${label}.decision is unsupported`, 'DECISION_SOURCE_VALUE', config);
   if (!legacyDispositionSource) validateAuthoredDecisionDisposition(row, label, config);
+  validateExpressionLexicalUnitReview(row, identity, candidate, label, config);
   if (!Number.isInteger(row.rank) || row.rank < 1 || row.rank > config.selectionCount) {
     fail(`${label}.rank must be within the complete candidate pool`, 'DECISION_SOURCE_VALUE', config);
   }
@@ -335,6 +390,10 @@ export function validateAuthoredSemanticDecisionSource({
     || review.prior_generator_verification_pass_id !== config.generationPassId) {
     fail(`${config.label} authored semantic review is incomplete`, 'DECISION_SOURCE_PROVENANCE', config);
   }
+  if (config.expressionLexicalUnitReviewContractVersion
+    && review.expression_lexical_unit_review_contract_version !== config.expressionLexicalUnitReviewContractVersion) {
+    fail(`${config.label} expression lexical-unit review contract is missing or unsupported`, 'EXPRESSION_LEXICAL_UNIT_REVIEW', config);
+  }
   if (!Array.isArray(review.correction_passes)) {
     fail(`${config.label} correction-pass provenance is missing`, 'DECISION_SOURCE_PROVENANCE', config);
   }
@@ -369,10 +428,20 @@ export function validateAuthoredSemanticDecisionSource({
     fail(`${config.label} source is not bound to the identity source`, 'DECISION_SOURCE_BINDING', config);
   }
   const selection = requireObject(source.selection, `${config.label} semantic decision source.selection`, config);
+  if (config.importCountFromDecisions === true && !Array.isArray(source.decisions)) {
+    fail(`${config.label} decisions are required before deriving the import count`, 'DECISION_SOURCE_SCOPE', config);
+  }
+  if (config.noAdmissionQuota === true && config.importCountFromDecisions !== true) {
+    fail(`${config.label} no-quota selection must derive capacity from authored dispositions`, 'DECISION_SOURCE_SCOPE', config);
+  }
+  const importCount = config.importCountFromDecisions === true
+    ? source.decisions.filter((row) => row?.decision === 'included' || row?.decision === 'corrected').length
+    : config.importCount;
+  const reserveCount = config.noAdmissionQuota === true ? 0 : config.reserveCount;
   if (selection.policy !== config.selectionPolicy
     || selection.capacity !== config.selectionCount
-    || selection.imported !== config.importCount
-    || selection.reserve !== config.reserveCount
+    || selection.imported !== importCount
+    || selection.reserve !== reserveCount
     || selection.coverage_field !== 'selection_axis'
     || !Array.isArray(selection.coverage_basis)
     || selection.coverage_basis.length === 0
@@ -435,7 +504,7 @@ export function validateAuthoredSemanticDecisionSource({
   // determine eligibility. The selector uses the axis only to distribute
   // capacity among fit rows.
   const selectionResult = selectReviewedCandidates(source.decisions, {
-    capacity: config.importCount,
+    capacity: importCount,
     coverageField: selection.coverage_field,
     eligibilityField: 'gloss_judgment',
     eligibilityValue: 'fit',
@@ -446,8 +515,11 @@ export function validateAuthoredSemanticDecisionSource({
   const imported = selectionResult.selected.length;
   const heldOrRejected = counts.held + counts.rejected;
   const processed = source.decisions.length;
-  if (imported !== config.importCount
-    || selectionResult.reserve.length + heldOrRejected !== config.reserveCount
+  const dispositionCountsMatch = config.noAdmissionQuota === true
+    ? selectionResult.reserve.length === 0 && selectionResult.excluded.length === heldOrRejected
+    : selectionResult.reserve.length + heldOrRejected === config.reserveCount;
+  if (imported !== importCount
+    || !dispositionCountsMatch
     || processed !== counts.included + counts.corrected + heldOrRejected
     || processed <= 0
     || counts.corrected / processed > MAX_CORRECTION_RATE) {

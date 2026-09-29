@@ -23,6 +23,8 @@ Every batch binds the issue and parent, a pinned baseline canonical and inventor
 - final exact search result after admission;
 - promotion-ledger binding to the decision source and canonical record digest.
 
+For `record_type: expression`, the shared authored semantic-decision contract also requires an explicit candidate-bound lexical-unit judgment: `fixed-or-lexicalized-unit`, `compositional-phrase`, or `unresolved`. A fixed or lexicalized judgment needs evidence that names the exact form. A compositional phrase cannot be included; it must be rejected as `not-a-lexical-unit` or held as `unresolved-lexical-unit`. An unresolved judgment must remain held. This separates fixedness from an atomic scene description and applies to each future M9 batch using the contract.
+
 The machine report records reviewed and admitted counts, holds, rejections, corrections, duplicates, search collisions, senses, relations, expressions, observed defect classes, validation status, and any measured review duration. Preserve `NOT_MEASURED` when a duration was not recorded; do not infer throughput from candidate count.
 
 ## Initial batch-size calibration
@@ -33,4 +35,4 @@ Batch size controls review scope only. It does not define how many candidates mu
 
 ## Validation boundary
 
-`npm run batch:issue-219:check` validates the frozen selection evidence, shared producer output, semantic-source bindings, ordinary lexical admission, complete semantic audit, target inventory and promotion ledger, baseline/current exact search, deterministic SQLite logical contents, and machine report schema. The recorded logical-content digest excludes Git revision and working-tree provenance metadata, which change when the validation code is committed. The candidate and snapshot artifacts remain reviewable in Git; corpus/reference material stays outside this recovery path.
+`npm run batch:issue-219:check` validates the frozen selection evidence, shared producer output, semantic-source bindings, expression fixedness judgments, ordinary lexical admission, complete semantic audit, target inventory and promotion ledger, baseline/current exact search, deterministic SQLite logical contents, and machine report schema. The tracked logical-content digest excludes Git provenance plus Node and SQLite execution-environment metadata. The deterministic-build check still compares complete snapshots, including that metadata; only the content digest removes it. Candidate and snapshot artifacts remain reviewable in Git; corpus/reference material stays outside this recovery path.

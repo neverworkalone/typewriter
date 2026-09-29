@@ -99,6 +99,7 @@ function reviewDecisionEvidence(row) {
   };
   if (Object.hasOwn(row, 'hold_basis')) evidence.hold_basis = row.hold_basis;
   if (Object.hasOwn(row, 'rejection_basis')) evidence.rejection_basis = row.rejection_basis;
+  if (Object.hasOwn(row, 'lexical_unit_review')) evidence.lexical_unit_review = row.lexical_unit_review;
   return evidence;
 }
 

@@ -27,6 +27,7 @@ import {
 import { validateTargetInventory } from '../validate/target-inventory.mjs';
 import {
   authoredSemanticDecisionRowDigest,
+  M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
   validateAuthoredSemanticDecisionSource,
 } from './authored-semantic-decision-source.mjs';
 import { materializeLexicalUnitCandidates, validateLexicalProduction } from './lexical-production.mjs';
@@ -60,8 +61,17 @@ const REPORT_PATH = path.join(ROOT, 'docs/issue-219-m9-a-recovery.md');
 const MACHINE_REPORT_PATH = path.join(ROOT, 'data/validation/issue-219-m9-lexical-batch-report.json');
 const REPORT_SCHEMA_PATH = path.join(ROOT, 'schema/m9-lexical-batch-report.schema.json');
 const BATCH_ID = 'm9-a-issue-219-first-recovery-20260929';
-const VERIFICATION_PASS_ID = 'issue-219-separate-semantic-verification-20260929-r1';
+const VERIFICATION_PASS_ID = 'issue-219-separate-semantic-verification-20260929-r2';
 const BASELINE_INVENTORY_SHA256 = 'fcaa572119d307a1efc0f15782b8d77a0585f4e9786e735ce42623dd4710e539';
+const LOGICAL_CONTENT_EXCLUDED_METADATA_KEYS = new Set([
+  'source_revision',
+  'source_revision_source',
+  'source_revision_verified',
+  'worktree_state',
+  'node_version',
+  'sqlite_module',
+  'sqlite_version',
+]);
 
 const sha256Bytes = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const jsonBytes = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -96,8 +106,11 @@ function semanticDecisionConfig(candidateSource, semanticSource) {
     semanticReviewVersion: semanticSource.provenance.generator_version,
     selectionPolicy: 'shared-authored-axis-coverage-selection-v6',
     selectionCount: 20,
-    importCount: 20,
+    importCount: semanticSource.decisions.filter(({ decision }) => decision === 'included' || decision === 'corrected').length,
+    importCountFromDecisions: true,
+    noAdmissionQuota: true,
     reserveCount: 0,
+    expressionLexicalUnitReviewContractVersion: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
   };
 }
 
@@ -181,8 +194,11 @@ function assertSelectionSource(selection, baseIssue210, m515SourceBytes, m515Dec
 
 function renderReport(report) {
   const rows = report.candidates.map((candidate) => (
-    `| ${candidate.selection_order} | ${candidate.inventory_id} | ${candidate.canonical_id} | ${candidate.lemma} | ${candidate.pos} | ${candidate.decision} | ${candidate.relation_count} | ${candidate.search_result_ids.join(', ')} |`
+    `| ${candidate.selection_order} | ${candidate.inventory_id} | ${candidate.canonical_id ?? '—'} | ${candidate.lemma} | ${candidate.lexical_unit_judgment} | ${candidate.decision} | ${candidate.relation_count} | ${candidate.search_result_ids.join(', ') || '—'} |`
   )).join('\n');
+  const fixedCount = report.candidates.filter(({ lexical_unit_judgment: judgment }) => judgment === 'fixed-or-lexicalized-unit').length;
+  const compositionalCount = report.candidates.filter(({ lexical_unit_judgment: judgment }) => judgment === 'compositional-phrase').length;
+  const unresolvedCount = report.candidates.filter(({ lexical_unit_judgment: judgment }) => judgment === 'unresolved').length;
   return [
     '# Issue #219 — M9-A bounded recovery',
     '',
@@ -190,9 +206,9 @@ function renderReport(report) {
     '',
     'M9 recovery selects historical candidates from a pinned source inventory, but every admitted record receives a new source-bound Issue #219 semantic decision and passes the ordinary shared lexical producer, semantic audit, and admission path. Historical fit and capacity-reserve status select candidates for review; they do not authorize canonical admission.',
     '',
-    'The recovery contract prioritizes high-confidence capacity-deferred source candidates, then source-recoverable legacy deferred candidates and open M5 candidates. Holds and known collisions stay outside a batch until their specific evidence is resolved. Every row records inventory and canonical identity, lemma, POS, source unit, decision, relation outcome, base search ownership, and final exact search result. There is no commonness, usefulness, vividness, or relation quota.',
+    'The recovery contract prioritizes high-confidence capacity-deferred source candidates, then source-recoverable legacy deferred candidates and open M5 candidates. For every `expression`, the shared semantic decision contract separately records whether the exact phrase is fixed or lexicalized, compositional, or unresolved. A compositional phrase cannot be admitted; it must be held for an unresolved lexical question or rejected as not a lexical unit. A fixedness admission needs candidate-specific evidence. Every row records inventory and candidate identity, lemma, POS, source unit, lexical-unit judgment, disposition, relation outcome, baseline search ownership, and final exact search result. There is no commonness, usefulness, vividness, or relation quota.',
     '',
-    'The first slice is the first 20 numeric identities in the 32-row M5-15 axis C reserve cohort, selected from the exact Issue #210 baseline. All 20 were included/fit and deferred only by M5-15 capacity, remained `admit-candidate`, and had no canonical lemma or search match in the baseline. They were separately reviewed under #219 before admission.',
+    'The first slice is the first 20 numeric identities in the 32-row M5-15 axis C reserve cohort, selected from the exact Issue #210 baseline. All 20 were separately reviewed under #219; their previous M5-15 fit status only selected them for review. The fresh review classified the exact phrase as fixed/lexicalized for ' + fixedCount + ', compositional for ' + compositionalCount + ', and unresolved for ' + unresolvedCount + '.',
     '',
     '## Outcome',
     '',
@@ -207,21 +223,21 @@ function renderReport(report) {
     `| Observed defect classes | ${report.outcomes.defect_classes.join(', ') || 'none'} |`,
     `| Review duration | ${report.outcomes.review_duration} |`,
     '',
-    'Every candidate kept one supported expression sense with its Typewriter-authored gloss. The shared selector admitted all 20 after independent current review. No relation was added because the evidence did not support a separately authored relation; zero relations do not block search admission.',
+    'Only candidates marked `included` or `corrected` enter the canonical import. Held and rejected rows remain visible in the recovery seed with their source-bound decisions. The admitted records keep their Typewriter-authored senses and no relations; zero relations do not block search admission.',
     '',
     '## Candidate and search results',
     '',
-    '| Order | Inventory | Canonical | Lemma | POS | Decision | Relations | Exact search result IDs |',
+    '| Order | Inventory | Canonical | Lemma | Lexical-unit judgment | Decision | Relations | Exact search result IDs |',
     '| ---: | --- | --- | --- | --- | --- | ---: | --- |',
     rows,
     '',
-    'The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. The current dictionary returns each lemma as exactly its own `ready` exact-lemma result. The 20 records are canonical starts and remain relation-empty.',
+    'The frozen baseline dictionary produced no exact canonical or generated-surface result for any candidate. The current dictionary returns the admitted lemma as its own `ready` exact-lemma result; held and rejected proposals have no current search result.',
     '',
     '## Batch-size calibration',
     '',
-    'Use 20 records as the initial M9 review batch size: this coherent 20-record slice completed with no identity, POS, sense, duplicate, search-collision, or relation-evidence defects and passed the shared admission contract. Review duration was not measured, so this is a successful-slice calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not a quota.',
+    'Use 20 candidates as the initial M9 review batch size: this coherent slice completed a candidate-by-candidate fixedness review, shared admission, and exact-search validation after the generalized expression rule was added. Review duration was not measured, so 20 is a slice-size calibration, not a throughput estimate. Reassess the size from later defect and workload observations; the size is not an admission quota.',
     '',
-    `The batch added ${report.outcomes.admitted_count} searchable starts and brought the canonical start count from ${report.baseline.canonical_start_count} to ${report.current.canonical_start_count}. This issue does not target 6,000 starts or corpus expansion.`,
+    `The batch added ${report.outcomes.admitted_count} searchable start${report.outcomes.admitted_count === 1 ? '' : 's'} and brought the canonical start count from ${report.baseline.canonical_start_count} to ${report.current.canonical_start_count}. This issue does not target 6,000 starts or corpus expansion.`,
     '',
     '## Reproduction and boundaries',
     '',
@@ -265,18 +281,12 @@ async function validateDeterministicCurrentBuild() {
   }
 }
 
-function logicalDatabaseContentSnapshot(snapshot) {
-  const buildProvenanceKeys = new Set([
-    'source_revision',
-    'source_revision_source',
-    'source_revision_verified',
-    'worktree_state',
-  ]);
+export function logicalDatabaseContentSnapshot(snapshot) {
   return {
     ...snapshot,
     rows: {
       ...snapshot.rows,
-      metadata: snapshot.rows.metadata.filter(({ key }) => !buildProvenanceKeys.has(key)),
+      metadata: snapshot.rows.metadata.filter(({ key }) => !LOGICAL_CONTENT_EXCLUDED_METADATA_KEYS.has(key)),
     },
   };
 }
@@ -316,7 +326,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
   assert.equal(candidateSource.units.length, 20);
   assert.equal(candidateSource.source_id, semanticSource.candidate_source.source_id);
   assert.equal(candidateSource.generation_pass_id, semanticSource.provenance.generation_pass_id);
-  assert.equal(semanticSource.source_id, 'issue-219-authored-semantic-decisions-20260929-r1');
+  assert.equal(semanticSource.source_id, 'issue-219-authored-semantic-decisions-20260929-r2');
 
   const historicalCanonical = await readCanonicalRecords(BASE_CANONICAL_DIRECTORY);
   assert.equal(canonicalRecordsSha256(historicalCanonical.records), selection.baseline.canonical_records_sha256, 'frozen pre-admission canonical digest');
@@ -342,11 +352,8 @@ export async function validateIssue219({ writeReport = false } = {}) {
   assert.deepEqual(materialized.identities.map(({ candidate_record_id: id }) => id), selection.selected_candidates.map(({ admitted_identity: identity }) => identity.candidate_record_id));
   assert.deepEqual(materialized.identities.map(({ lemma }) => lemma), selection.selected_candidates.map(({ admitted_identity: identity }) => identity.lemma));
 
-  const importRecords = readJsonl(importBytes, 'Issue #219 canonical import');
-  assert.deepEqual(importRecords, materialized.candidateRecords, 'Issue #219 canonical import equals shared producer output');
   assert.deepEqual(semanticSource.candidate_records, materialized.candidateRecords, 'semantic candidates equal shared producer output');
   assert.equal(semanticSource.candidate_records_sha256, sha256Json(materialized.candidateRecords));
-  assert.deepEqual(semanticSource.decisions.map(({ candidate_record_id: id, decision }) => ({ id, decision })), importRecords.map(({ id }) => ({ id, decision: 'included' })));
   const semanticDecisionSource = validateIssue219SemanticDecisionSource({
     candidateSource,
     semanticSource,
@@ -354,15 +361,20 @@ export async function validateIssue219({ writeReport = false } = {}) {
     identities: materialized.identities,
     candidateRecords: materialized.candidateRecords,
   });
-  assert.deepEqual(semanticDecisionSource.counts, {
-    included: 20,
-    corrected: 0,
-    held: 0,
-    rejected: 0,
-    deferred: 0,
-  });
-  assert.equal(semanticDecisionSource.selection.selected.length, 20);
+  assert.equal(semanticDecisionSource.rows.length, 20);
+  assert.equal(
+    semanticDecisionSource.counts.included + semanticDecisionSource.counts.corrected
+      + semanticDecisionSource.counts.held + semanticDecisionSource.counts.rejected,
+    20,
+    'all selected candidates have a current lexical disposition',
+  );
+  assert.equal(semanticDecisionSource.selection.selected.length, semanticDecisionSource.counts.included + semanticDecisionSource.counts.corrected);
   assert.equal(semanticDecisionSource.selection.reserve.length, 0);
+
+  const selectedCandidateIds = new Set(semanticDecisionSource.selection.selected.map(({ candidate_record_id: id }) => id));
+  const expectedImportRecords = materialized.candidateRecords.filter(({ id }) => selectedCandidateIds.has(id));
+  const importRecords = readJsonl(importBytes, 'Issue #219 canonical import');
+  assert.deepEqual(importRecords, expectedImportRecords, 'Issue #219 canonical import contains only source-bound admitted candidates');
 
   const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(CURRENT_ROOT_SOURCE_PATH);
   const currentDigest = canonicalRecordsSha256(currentCanonical.records);
@@ -404,7 +416,7 @@ export async function validateIssue219({ writeReport = false } = {}) {
       semanticSourcePath: 'data/batches/issue-219-m9-a-semantic-decisions.json',
     }),
     catalogCount: 20,
-    expectedSelectedCount: 20,
+    expectedSelectedCount: importRecords.length,
     candidateLabel: 'Issue #219 shared production candidates',
     reviewedLabel: 'Issue #219 source-bound candidate decisions',
     prospectiveLabel: 'Issue #219 complete prospective canonical records',
@@ -413,15 +425,24 @@ export async function validateIssue219({ writeReport = false } = {}) {
   assert.equal(production.admission?.semantic_audit?.coverage_complete, true, 'complete prospective semantic audit coverage');
 
   const currentImportIds = new Set(importRecords.map(({ id }) => id));
-  assert.equal(currentImportIds.size, 20);
+  assert.equal(currentImportIds.size, importRecords.length);
   for (const record of importRecords) assert.deepEqual(currentById.get(record.id), record, `${record.id} live canonical admission`);
-  const selectedIds = new Set(selectedInventoryIds);
-  assert.equal(currentSeed.targets.filter(({ inventory_id: id }) => selectedIds.has(id)).length, 0,
-    'promoted M9 rows move from deferred seed ownership into the promotion ledger');
+  const currentM9SeedById = new Map(currentSeed.targets
+    .filter(({ inventory_id: id }) => selectedInventoryIds.includes(id))
+    .map((target) => [target.inventory_id, target]));
+  for (const identity of materialized.identities) {
+    const decision = semanticSource.decisions.find(({ candidate_record_id: id }) => id === identity.candidate_record_id);
+    const seedTarget = currentM9SeedById.get(identity.inventory_id);
+    if (decision.decision === 'included' || decision.decision === 'corrected') {
+      assert.equal(seedTarget, undefined, `${identity.inventory_id} admitted rows leave seed ownership`);
+    } else {
+      assert.equal(seedTarget?.status, decision.decision, `${identity.inventory_id} ${decision.decision} disposition remains visible in the target seed`);
+    }
+  }
   const ledgerText = await readFile(DEFAULT_PROMOTION_PATH, 'utf8');
   const ledgerRows = ledgerText.split(/\r?\n/u).filter(Boolean).map((line) => JSON.parse(line));
   const issue219LedgerRows = ledgerRows.filter(({ batch_id: batchId }) => batchId === BATCH_ID);
-  assert.equal(issue219LedgerRows.length, 20);
+  assert.equal(issue219LedgerRows.length, importRecords.length);
   const decisionSourceDigest = sha256Bytes(semanticSourceBytes);
   for (const row of issue219LedgerRows) {
     const identity = materialized.identities.find(({ inventory_id: id }) => id === row.inventory_id);
@@ -454,23 +475,26 @@ export async function validateIssue219({ writeReport = false } = {}) {
 
   const candidateRows = materialized.identities.map((identity) => {
     const record = importRecords.find(({ id }) => id === identity.candidate_record_id);
-    const decision = semanticSource.decisions.find(({ candidate_record_id: id }) => id === record.id);
+    const candidate = semanticSource.candidate_records.find(({ id }) => id === identity.candidate_record_id);
+    const decision = semanticSource.decisions.find(({ candidate_record_id: id }) => id === identity.candidate_record_id);
     return {
       selection_order: identity.catalog_index + 1,
       inventory_id: identity.inventory_id,
-      canonical_id: identity.candidate_record_id,
+      candidate_record_id: identity.candidate_record_id,
+      canonical_id: record ? identity.candidate_record_id : null,
       lemma: identity.lemma,
       pos: identity.pos,
       record_type: identity.record_type,
       source_unit_id: identity.source_basis.source_unit_id,
       decision: decision.decision,
-      relation_count: record.senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0),
-      baseline_exact_result_ids: searchResults[record.lemma].baseline_result_ids,
-      search_result_ids: searchResults[record.lemma].result_ids,
+      lexical_unit_judgment: decision.lexical_unit_review.judgment,
+      relation_count: (record ?? candidate).senses.reduce((count, sense) => count + (sense.relations?.length ?? 0), 0),
+      baseline_exact_result_ids: searchResults[identity.lemma]?.baseline_result_ids ?? [],
+      search_result_ids: searchResults[identity.lemma]?.result_ids ?? [],
     };
   });
   const outcomes = {
-    reviewed_count: 20,
+    reviewed_count: semanticDecisionSource.rows.length,
     admitted_count: importRecords.length,
     held_count: semanticDecisionSource.counts.held,
     rejected_count: semanticDecisionSource.counts.rejected,
@@ -481,12 +505,11 @@ export async function validateIssue219({ writeReport = false } = {}) {
     new_relation_count: importRecords.reduce((count, record) => count + record.senses.reduce((inner, sense) => inner + (sense.relations?.length ?? 0), 0), 0),
     new_expression_count: importRecords.filter(({ record_type: type }) => type === 'expression').length,
     zero_relation_admission_count: importRecords.filter((record) => record.senses.every((sense) => (sense.relations ?? []).length === 0)).length,
-    defect_classes: [],
+    defect_classes: ['expression-lexical-unit-fixedness'],
     review_duration: 'NOT_MEASURED',
   };
   assert.equal(outcomes.new_relation_count, 0);
-  assert.equal(outcomes.zero_relation_admission_count, 20);
-  assert.equal(outcomes.admitted_count, 20);
+  assert.equal(outcomes.zero_relation_admission_count, importRecords.length);
 
   const report = {
     schema_version: 1,

@@ -18,63 +18,67 @@
     "cohort_count": 32,
     "selection_order": "first 20 by numeric historical inventory identity",
     "candidate_source_sha256": "65c1b93e16840cb339ff3fb8a522f044783a909c265dff14fdad38cdc3dbb1c2",
-    "semantic_source_sha256": "1db5a53895dc5e58cb13d936b51d777b837830941390b297258504eb60234243"
+    "semantic_source_sha256": "3768d2a12398989d012d003c1c93f5f661d8be4ca00091542d74284d37e49d07"
   },
   "outcomes": {
     "reviewed_count": 20,
-    "admitted_count": 20,
-    "held_count": 0,
-    "rejected_count": 0,
+    "admitted_count": 1,
+    "held_count": 9,
+    "rejected_count": 10,
     "corrected_count": 0,
     "duplicate_count": 0,
     "search_collision_count": 0,
-    "new_sense_count": 20,
+    "new_sense_count": 1,
     "new_relation_count": 0,
-    "new_expression_count": 20,
-    "zero_relation_admission_count": 20,
-    "defect_classes": [],
+    "new_expression_count": 1,
+    "zero_relation_admission_count": 1,
+    "defect_classes": [
+      "expression-lexical-unit-fixedness"
+    ],
     "review_duration": "NOT_MEASURED"
   },
   "candidates": [
     {
       "selection_order": 1,
       "inventory_id": "m5-4619",
-      "canonical_id": "w4699",
+      "candidate_record_id": "w4699",
+      "canonical_id": null,
       "lemma": "택배물류 허브",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0419",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4699"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 2,
       "inventory_id": "m5-4620",
-      "canonical_id": "w4700",
+      "candidate_record_id": "w4700",
+      "canonical_id": null,
       "lemma": "화물터미널 야적장",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0420",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4700"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 3,
       "inventory_id": "m5-4621",
+      "candidate_record_id": "w4701",
       "canonical_id": "w4701",
       "lemma": "컨테이너 야드",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0421",
       "decision": "included",
+      "lexical_unit_judgment": "fixed-or-lexicalized-unit",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
       "search_result_ids": [
@@ -84,267 +88,267 @@
     {
       "selection_order": 4,
       "inventory_id": "m5-4622",
-      "canonical_id": "w4702",
+      "candidate_record_id": "w4702",
+      "canonical_id": null,
       "lemma": "철도 화물역",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0422",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4702"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 5,
       "inventory_id": "m5-4623",
-      "canonical_id": "w4703",
+      "candidate_record_id": "w4703",
+      "canonical_id": null,
       "lemma": "철도 차량기지",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0423",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4703"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 6,
       "inventory_id": "m5-4624",
-      "canonical_id": "w4704",
+      "candidate_record_id": "w4704",
+      "canonical_id": null,
       "lemma": "지하철 유치선",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0424",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4704"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 7,
       "inventory_id": "m5-4625",
-      "canonical_id": "w4705",
+      "candidate_record_id": "w4705",
+      "canonical_id": null,
       "lemma": "전철 종착역 승강장",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0425",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4705"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 8,
       "inventory_id": "m5-4626",
-      "canonical_id": "w4706",
+      "candidate_record_id": "w4706",
+      "canonical_id": null,
       "lemma": "역무실 옆 계단",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0426",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4706"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 9,
       "inventory_id": "m5-4627",
-      "canonical_id": "w4707",
+      "candidate_record_id": "w4707",
+      "canonical_id": null,
       "lemma": "역 구내 지하도",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0427",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4707"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 10,
       "inventory_id": "m5-4628",
-      "canonical_id": "w4708",
+      "candidate_record_id": "w4708",
+      "canonical_id": null,
       "lemma": "철도 건널목 경비실",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0428",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4708"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 11,
       "inventory_id": "m5-4629",
-      "canonical_id": "w4709",
+      "candidate_record_id": "w4709",
+      "canonical_id": null,
       "lemma": "버스 환승센터 대기실",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0429",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4709"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 12,
       "inventory_id": "m5-4630",
-      "canonical_id": "w4710",
+      "candidate_record_id": "w4710",
+      "canonical_id": null,
       "lemma": "시외버스터미널 승차장",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0430",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4710"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 13,
       "inventory_id": "m5-4631",
-      "canonical_id": "w4711",
+      "candidate_record_id": "w4711",
+      "canonical_id": null,
       "lemma": "고속버스 화물칸 앞",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0431",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4711"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 14,
       "inventory_id": "m5-4632",
-      "canonical_id": "w4712",
+      "candidate_record_id": "w4712",
+      "canonical_id": null,
       "lemma": "공항 리무진 정류장",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0432",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4712"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 15,
       "inventory_id": "m5-4633",
-      "canonical_id": "w4713",
+      "candidate_record_id": "w4713",
+      "canonical_id": null,
       "lemma": "택시 대기열 맨끝",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0433",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4713"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 16,
       "inventory_id": "m5-4634",
-      "canonical_id": "w4714",
+      "candidate_record_id": "w4714",
+      "canonical_id": null,
       "lemma": "승객 없는 정류장",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0434",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4714"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 17,
       "inventory_id": "m5-4635",
-      "canonical_id": "w4715",
+      "candidate_record_id": "w4715",
+      "canonical_id": null,
       "lemma": "종점 회차공간",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0435",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4715"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 18,
       "inventory_id": "m5-4636",
-      "canonical_id": "w4716",
+      "candidate_record_id": "w4716",
+      "canonical_id": null,
       "lemma": "도로공사 우회구간",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0436",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4716"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 19,
       "inventory_id": "m5-4637",
-      "canonical_id": "w4717",
+      "candidate_record_id": "w4717",
+      "canonical_id": null,
       "lemma": "임시 보행자통로",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0437",
-      "decision": "included",
+      "decision": "held",
+      "lexical_unit_judgment": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4717"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 20,
       "inventory_id": "m5-4638",
-      "canonical_id": "w4718",
+      "candidate_record_id": "w4718",
+      "canonical_id": null,
       "lemma": "차량 통제선 안쪽",
       "pos": "expression",
       "record_type": "expression",
       "source_unit_id": "m5-15-source-unit-0438",
-      "decision": "included",
+      "decision": "rejected",
+      "lexical_unit_judgment": "compositional-phrase",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w4718"
-      ]
+      "search_result_ids": []
     }
   ],
   "current": {
-    "canonical_sha256": "fa827b149af95425c1eb8185a80ca163f97225935d18c066662ee2b0be34713d",
-    "canonical_start_count": 5054,
+    "canonical_sha256": "3b63273a5b43d7e33c104cc41e8d20169512258c20bd62efa54ff1801b8c9ed1",
+    "canonical_start_count": 5035,
     "inventory_validation": "pass",
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_record_count": 5096,
-    "logical_database_digest": "a8995645530fe4897b30abb1dfea0340a9c7dd922d383965ddb49627c2116606"
+    "logical_database_record_count": 5077,
+    "logical_database_digest": "0b33b01c37ba5b9c0beb54e311832e516d8dacafb676c7968da55819027a43b6"
   }
 }
