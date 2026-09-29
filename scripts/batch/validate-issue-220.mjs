@@ -702,9 +702,15 @@ export async function validateIssue220({ writeReport = false } = {}) {
   assert.equal(allImports.length, 18);
   const importedIds = new Set(allImports.map(({ id }) => id));
   assert.equal(importedIds.size, allImports.length);
-  assert.equal(currentRecords.length, historicalRecords.length + allImports.length);
   const currentAdditions = currentRecords.filter(({ id }) => !historicalIds.has(id));
-  assert.deepEqual(currentAdditions, allImports, 'current canonical set adds exactly both Issue #220 admitted imports');
+  const currentIssue220Additions = currentAdditions
+    .filter(({ id }) => importedIds.has(id))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  assert.deepEqual(
+    currentIssue220Additions,
+    [...allImports].sort((left, right) => left.id.localeCompare(right.id)),
+    'current canonical data preserves both complete Issue #220 admitted imports alongside later batches',
+  );
   for (const record of allImports) assert.deepEqual(currentById.get(record.id), record, `${record.id} live canonical admission`);
 
   const currentRootDecisionSource = await readSemanticDecisionSourceArtifact(CURRENT_ROOT_SOURCE_PATH);
@@ -891,8 +897,8 @@ export async function validateIssue220({ writeReport = false } = {}) {
   assert.equal(recoveredCount, 42, 'Issue #210 inventory includes prior and M9-B recoveries');
   assert.equal(baselineRecoverable, 545, 'pinned historical potential count');
   assert.equal(currentRecoverable, 527, 'remaining potentially recoverable historical records');
-  assert.equal(recoveryCeiling, 5621, 'historical-only source-pool ceiling');
-  assert.equal(Math.max(0, 6000 - recoveryCeiling), 379);
+  assert.equal(recoveryCeiling, 5632, 'current canonical plus historical source-pool ceiling');
+  assert.equal(Math.max(0, 6000 - recoveryCeiling), 368);
 
   const report = {
     schema_version: 1,

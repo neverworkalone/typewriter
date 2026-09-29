@@ -98,6 +98,7 @@ export const DEFAULT_AUTHORED_BATCH_DECISION_SOURCE_PATHS = Object.freeze([
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-219-m9-a-semantic-decisions.json'),
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-220-m9-b-batch-01-semantic-decisions.json'),
   path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-220-m9-b-batch-02-semantic-decisions.json'),
+  path.resolve(SCRIPT_DIRECTORY, '../../data/batches/issue-221-corpus-semantic-decisions.json'),
 ]);
 const REPOSITORY_DIRECTORY = path.resolve(SCRIPT_DIRECTORY, '../..');
 

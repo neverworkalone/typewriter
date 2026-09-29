@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import sqlite3
@@ -47,6 +48,17 @@ def create_permission(path: Path, **overrides) -> None:
     }
     values.update(overrides)
     path.write_text("\n".join(f"- {key}: {value}" for key, value in values.items()), encoding="utf-8")
+
+
+def create_exclusion_manifest(path: Path, lemmas: list[str]) -> None:
+    payload = {
+        "schema_version": "m9-reviewed-lemma-exclusions-v1",
+        "source_artifacts": [],
+        "lemmas": sorted(set(lemmas)),
+    }
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    payload["exclusion_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
 
 def create_index(path: Path) -> None:
@@ -152,11 +164,13 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             index_path = root / "index.sqlite"
             dictionary_path = root / "dictionary.sqlite"
             permission_path = root / "permission.md"
+            exclusion_path = root / "excluded.json"
             staging_path = root / "staging.sqlite"
             candidate_path = root / "candidates.json"
             create_index(index_path)
             create_dictionary(dictionary_path)
             create_permission(permission_path)
+            create_exclusion_manifest(exclusion_path, ["바람"])
 
             result = pilot.run_extraction(
                 index_path=index_path,
@@ -177,6 +191,8 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             self.assertEqual(result["yield"]["search_form_collision_lemma_candidates"], 1)
             self.assertEqual(result["yield"]["generated_surface_collision_lemma_candidates"], 1)
             self.assertEqual(result["yield"]["selected_inventory_count"], 5)
+            self.assertEqual(result["selection"]["excluded_candidate_lemma_count"], 0)
+            self.assertEqual(result["selection"]["selected_candidate_count"], 5)
             candidates = {row["proposed_lemma"]: row for row in result["candidates"]}
             self.assertNotIn("녹음", candidates)
             staging = sqlite3.connect(staging_path)
@@ -235,6 +251,31 @@ class CorpusLemmaPilotTests(unittest.TestCase):
             self.assertEqual(candidates["푸르다"]["observed_surface_forms"][0]["surface"], "푸른")
             self.assertEqual(candidates["바람"]["observed_surface_forms"][0]["surface"], "바람물결")
             self.assertEqual(candidates["바람"]["observed_morpheme_spans"][0]["surface"], "바람")
+
+            excluded = pilot.run_extraction(
+                index_path=index_path,
+                dictionary_path=dictionary_path,
+                staging_path=root / "excluded-staging.sqlite",
+                candidate_output_path=root / "excluded-candidates.json",
+                permission_record_path=permission_path,
+                exclusion_manifest_path=exclusion_path,
+                analyzer=FakeAnalyzer(),
+                sample_every=1,
+                candidate_limit=4,
+                batch_size=2,
+            )
+            excluded_candidates = {row["proposed_lemma"] for row in excluded["candidates"]}
+            self.assertNotIn("바람", excluded_candidates)
+            self.assertIn("바라다", excluded_candidates)
+            self.assertEqual(excluded["selection"]["excluded_candidate_lemma_count"], 1)
+
+    def test_candidate_limit_is_bounded(self):
+        with self.assertRaisesRegex(ValueError, "candidate limit must be 1-200"):
+            pilot.run_extraction(
+                dictionary_path=Path("missing.sqlite"),
+                analyzer=FakeAnalyzer(),
+                candidate_limit=201,
+            )
 
 
 if __name__ == "__main__":

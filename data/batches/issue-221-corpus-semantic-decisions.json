@@ -1,0 +1,1009 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-semantic-decision-source-v4",
+  "review_binding_contract_version": "source-bound-semantic-review-v2",
+  "kind": "separately-authored-semantic-decision-source",
+  "source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+  "issue": 221,
+  "parent_issue": 218,
+  "batch_id": "issue-221-m9-c-batch-01-20260929",
+  "authoring_mode": "agent-authored-decision",
+  "source_basis": {
+    "candidate_review_sha256": "87178d7fa5c3b656f82f8ef8e80464793b5094c3c99c0c6ed69bafaa58f75228",
+    "candidate_selection_sha256": "ecdae67504cf3efda994ba69a062426e6b61bf2516a5c2834b3c7a9659317dd0",
+    "candidate_evidence_sha256": "3af9f450ff5086188608cc0fe0bf2870d19474dbbb71d64104f48eada29666bc",
+    "exclusion_manifest_sha256": "b0225e52b474275cef3efb982e198e9681eeccaf19de95c8ef2241d11f782b3f",
+    "source_manifest_sha256": "50dd0c6c4ecb9250e75c11dde9e854e1b39de14e12d7a7087d2da041d75ef211",
+    "logical_rows_sha256": "c3b2befa1480804bf6c005cb4a43eb7b2e82d6ad7d77790af4dc82b76f4bd1dd",
+    "permission_record_sha256": "b3a2c1c82e3f6bb86b3fe7e70f7f3af7263771c802e5b3c2e6cb0309b9e4ed39"
+  },
+  "provenance": {
+    "generator": "codex",
+    "generator_version": "issue-221-authored-semantic-review-v1",
+    "generation_pass_id": "issue-221-corpus-extraction-20260929-r1",
+    "verification_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+    "human_reviewed": false,
+    "authoring_note": "Bounded morphology and candidate existence come from the approved local source/index evidence. Each admitted lexical identity, gloss, and disposition is Typewriter-authored. Diagnostic sentence frames and route labels are editorial consistency and enrichment metadata, not corpus excerpts, admission criteria, or measured writer outcomes. Unresolved identity or sense candidates remain held; no relation or admission is generated automatically."
+  },
+  "review": {
+    "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+    "reviewer": "codex-agent",
+    "status": "complete",
+    "candidate_count": 11,
+    "reviewed_candidate_count": 11,
+    "method": "Separately verify candidate identity, POS, and Typewriter surface coverage against source-bound evidence; author a concise lexical gloss; review one-sense boundaries in two Typewriter-authored diagnostic frames; then apply the common semantic admission contract. Writer-use notes and route labels are optional enrichment metadata. Corpus counts prioritize the bounded queue only.",
+    "criteria": [
+      "exact source-bound candidate identity, observed morpheme and proposed POS",
+      "no canonical lemma, curated search-form or generated-surface collision",
+      "unambiguous observed morphology and a bounded in-scope lexical meaning",
+      "Typewriter-authored lexical gloss and one-sense boundary review",
+      "single-sense boundary review with exact gloss binding",
+      "zero relations when no candidate-specific relation is separately supported",
+      "no admission by corpus frequency or unmeasured writer usefulness"
+    ],
+    "decision_counts": {
+      "included": 11,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "prior_generator_replaced": true,
+    "prior_generator_verification_pass_id": "issue-221-corpus-extraction-20260929-r1",
+    "counts": {
+      "included": 11,
+      "corrected": 0,
+      "held": 0,
+      "rejected": 0,
+      "deferred": 0
+    },
+    "correction_passes": [],
+    "expression_lexical_unit_review_contract_version": "m9-expression-lexical-unit-review-v1"
+  },
+  "candidate_source": {
+    "source_id": "issue-221-corpus-candidate-review-20260929-r1",
+    "identity_sha256": "d039377e9bb26bc77423b1ed74e4317db1f14a13c812f325a2be039bc14a2364",
+    "identity_count": 11
+  },
+  "selection": {
+    "policy": "shared-authored-axis-coverage-selection-v6",
+    "capacity": 11,
+    "imported": 11,
+    "reserve": 0,
+    "coverage_field": "selection_axis",
+    "coverage_basis": [
+      "source-bound Typewriter lexical axis after semantic eligibility"
+    ],
+    "selection_rationale": "The semantic import count is derived from the complete separately authored candidate review: only rows marked admit enter this semantic pool, and all source-bound admitted lexical entries are included after shared eligibility. Writer-use axes, corpus priority order, and the 20-row review limit are not admission quotas."
+  },
+  "candidate_records": [
+    {
+      "id": "w5424",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5424",
+      "lemma": "대신",
+      "search_forms": [
+        "대신"
+      ],
+      "senses": [
+        {
+          "id": "w5424-s1",
+          "pos": "noun",
+          "gloss": "본래 맡기로 한 대상의 자리를 다른 대상이 대신함."
+        }
+      ]
+    },
+    {
+      "id": "w5425",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5425",
+      "lemma": "행복",
+      "search_forms": [
+        "행복"
+      ],
+      "senses": [
+        {
+          "id": "w5425-s1",
+          "pos": "noun",
+          "gloss": "마음이 기쁘고 만족스러워 흐뭇한 상태."
+        }
+      ]
+    },
+    {
+      "id": "w5426",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5426",
+      "lemma": "행동",
+      "search_forms": [
+        "행동"
+      ],
+      "senses": [
+        {
+          "id": "w5426-s1",
+          "pos": "noun",
+          "gloss": "사람이 실제로 하는 행위."
+        }
+      ]
+    },
+    {
+      "id": "w5433",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5433",
+      "lemma": "상태",
+      "search_forms": [
+        "상태"
+      ],
+      "senses": [
+        {
+          "id": "w5433-s1",
+          "pos": "noun",
+          "gloss": "대상이 한 시점에 놓인 형편."
+        }
+      ]
+    },
+    {
+      "id": "w5427",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5427",
+      "lemma": "나타나다",
+      "search_forms": [
+        "나타나다"
+      ],
+      "senses": [
+        {
+          "id": "w5427-s1",
+          "pos": "verb",
+          "gloss": "보이지 않던 대상이 장면에 드러나 보이게 되다."
+        }
+      ]
+    },
+    {
+      "id": "w5428",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5428",
+      "lemma": "생활",
+      "search_forms": [
+        "생활"
+      ],
+      "senses": [
+        {
+          "id": "w5428-s1",
+          "pos": "noun",
+          "gloss": "사람이 하루를 이어 가며 보내는 일상."
+        }
+      ]
+    },
+    {
+      "id": "w5429",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5429",
+      "lemma": "갖다",
+      "search_forms": [
+        "갖다"
+      ],
+      "senses": [
+        {
+          "id": "w5429-s1",
+          "pos": "verb",
+          "gloss": "어떤 대상을 자기 것으로 지니다."
+        }
+      ]
+    },
+    {
+      "id": "w5434",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5434",
+      "lemma": "이번",
+      "search_forms": [
+        "이번"
+      ],
+      "senses": [
+        {
+          "id": "w5434-s1",
+          "pos": "noun",
+          "gloss": "말하는 시점에서 가리키는 차례나 기간."
+        }
+      ]
+    },
+    {
+      "id": "w5430",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5430",
+      "lemma": "발견",
+      "search_forms": [
+        "발견"
+      ],
+      "senses": [
+        {
+          "id": "w5430-s1",
+          "pos": "noun",
+          "gloss": "전에 알지 못했던 것을 새로 알아내는 일."
+        }
+      ]
+    },
+    {
+      "id": "w5431",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5431",
+      "lemma": "말씀",
+      "search_forms": [
+        "말씀"
+      ],
+      "senses": [
+        {
+          "id": "w5431-s1",
+          "pos": "noun",
+          "gloss": "상대의 말을 높여 이르는 표현."
+        }
+      ]
+    },
+    {
+      "id": "w5432",
+      "record_type": "entry",
+      "role": "start",
+      "candidate_id": "w5432",
+      "lemma": "잃다",
+      "search_forms": [
+        "잃다"
+      ],
+      "senses": [
+        {
+          "id": "w5432-s1",
+          "pos": "verb",
+          "gloss": "가지고 있던 것을 더 이상 자기 것으로 유지하지 못하다."
+        }
+      ]
+    }
+  ],
+  "candidate_records_sha256": "e706637755cca4053e1497e6eec0cc9cca478348590a302e4e2e7ff431ee5350",
+  "decisions": [
+    {
+      "candidate_record_id": "w5424",
+      "inventory_id": "m5-5426",
+      "candidate_record_sha256": "b1b92b8650a6d82cfa750bf3716578a11221fe98ca86484626eaa052f6ef1876",
+      "decision": "included",
+      "rank": 1,
+      "decision_rationale": "m5-5426 w5424: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5424-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5426 w5424 w5424-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 85450b20837e.",
+          "semantic_rationale": "w5424 w5424-s1: 본래 맡기로 한 대상의 자리를 다른 대상이 대신함. is a concise Typewriter-authored gloss for the in-scope 대신 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5426 w5424-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5424-s1",
+            "gloss_sha256": "85450b20837eb9b61892638acee7a477247f29b834b12e2fff056534b340f9c5",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "본래 맡기로 한 대상의 자리를 다른 대상이 대신함.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 친구 대신 발표를 맡았다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "a substitute taking another person or object place"
+                }
+              },
+              {
+                "gloss_excerpt": "본래 맡기로 한 대상의 자리를 다른 대상이 대신함.",
+                "gloss_start": 0,
+                "sentence_frame": "그날은 형 대신 동생이 가게를 지켰다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "a substitute taking another person or object place"
+                }
+              }
+            ],
+            "rationale": "w5424 w5424-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5424",
+        "candidate_record_sha256": "b1b92b8650a6d82cfa750bf3716578a11221fe98ca86484626eaa052f6ef1876",
+        "decision_evidence_sha256": "288e421f90e265d1a2049d632dc53a7b9fb1ef9312ae32cbef45b61f5f207f18",
+        "sense_evidence": [
+          {
+            "sense_id": "w5424-s1",
+            "sense_sha256": "4ec58865af3ced6da1bcc13427ebb8eb052ead0560af816b2ad1650058113f16",
+            "gloss_sha256": "85450b20837eb9b61892638acee7a477247f29b834b12e2fff056534b340f9c5",
+            "evidence_sha256": "2822597631d36bba47ddde958c00ac694a0ea3caf648ae6dd412bcbfc2f33b7c"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5425",
+      "inventory_id": "m5-5427",
+      "candidate_record_sha256": "e8fee67ee8a88bac6812951d2cf7b65cd541e53527d618b672d5d3a792d297d7",
+      "decision": "included",
+      "rank": 2,
+      "decision_rationale": "m5-5427 w5425: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "E",
+      "sense_reviews": [
+        {
+          "sense_id": "w5425-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5427 w5425 w5425-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 da44421fb178.",
+          "semantic_rationale": "w5425 w5425-s1: 마음이 기쁘고 만족스러워 흐뭇한 상태. is a concise Typewriter-authored gloss for the in-scope 행복 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5427 w5425-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5425-s1",
+            "gloss_sha256": "da44421fb178939331706490c78fc78771ca87565e949ab0a4a21de490370fdc",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "마음이 기쁘고 만족스러워 흐뭇한 상태.",
+                "gloss_start": 0,
+                "sentence_frame": "오랜만에 가족을 만나 행복을 느꼈다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "joy and contentment"
+                }
+              },
+              {
+                "gloss_excerpt": "마음이 기쁘고 만족스러워 흐뭇한 상태.",
+                "gloss_start": 0,
+                "sentence_frame": "그녀는 작은 성취에 행복해했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "joy and contentment"
+                }
+              }
+            ],
+            "rationale": "w5425 w5425-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5425",
+        "candidate_record_sha256": "e8fee67ee8a88bac6812951d2cf7b65cd541e53527d618b672d5d3a792d297d7",
+        "decision_evidence_sha256": "b8d0be79e209cb637bf345a2ff95c1d99f09fff04c8b913955de2a13efee687a",
+        "sense_evidence": [
+          {
+            "sense_id": "w5425-s1",
+            "sense_sha256": "134d082cd9066edd5675a64c1fff80428355e3cb31e3b7cf019950baa908b5e2",
+            "gloss_sha256": "da44421fb178939331706490c78fc78771ca87565e949ab0a4a21de490370fdc",
+            "evidence_sha256": "f64970faa1a25199f9549bd685b864c1206693c63e1db9e74e6fe27aa8cac4be"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5426",
+      "inventory_id": "m5-5428",
+      "candidate_record_sha256": "f1c0ba9e8153dbca443ab02b524b24b899428530d9c354367981bc66b823fa87",
+      "decision": "included",
+      "rank": 3,
+      "decision_rationale": "m5-5428 w5426: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5426-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5428 w5426 w5426-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 437db8de894c.",
+          "semantic_rationale": "w5426 w5426-s1: 사람이 실제로 하는 행위. is a concise Typewriter-authored gloss for the in-scope 행동 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5428 w5426-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5426-s1",
+            "gloss_sha256": "437db8de894c861fce22d3b8828a98a7c0f755a88be3372d8085c9a31f20909e",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "사람이 실제로 하는 행위.",
+                "gloss_start": 0,
+                "sentence_frame": "그의 행동이 대화를 멈추게 했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "observable human acts"
+                }
+              },
+              {
+                "gloss_excerpt": "사람이 실제로 하는 행위.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 행동으로 결심을 보였다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "observable human acts"
+                }
+              }
+            ],
+            "rationale": "w5426 w5426-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5426",
+        "candidate_record_sha256": "f1c0ba9e8153dbca443ab02b524b24b899428530d9c354367981bc66b823fa87",
+        "decision_evidence_sha256": "daba46d1be0da217c2ec318c3b0f02c8fc9392e6401e06c3499a45e5903254fb",
+        "sense_evidence": [
+          {
+            "sense_id": "w5426-s1",
+            "sense_sha256": "c1d01f60ca9c0ed863902ea9e77f314a1c561e80d12d200281c3262bbbf86b2a",
+            "gloss_sha256": "437db8de894c861fce22d3b8828a98a7c0f755a88be3372d8085c9a31f20909e",
+            "evidence_sha256": "60d94c5212664a3ccee89f175a06072ce2c1d74ad72f15e2f6a949acfd07ebf3"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5433",
+      "inventory_id": "m5-5430",
+      "candidate_record_sha256": "d083fd8ebb3f6d9c10704baad0d7f5622a02cecc138926c609f8007e5ec043a1",
+      "decision": "included",
+      "rank": 4,
+      "decision_rationale": "m5-5430 w5433: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5433-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5430 w5433 w5433-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 3942321f5cd7.",
+          "semantic_rationale": "w5433 w5433-s1: 대상이 한 시점에 놓인 형편. is a concise Typewriter-authored gloss for the in-scope 상태 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5430 w5433-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5433-s1",
+            "gloss_sha256": "3942321f5cd7083f68ecf5f9b79a65f52d8fd2f42d0b7ab7900f3f11e9edbe77",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "대상이 한 시점에 놓인 형편.",
+                "gloss_start": 0,
+                "sentence_frame": "그의 상태는 시간이 지나며 차츰 나아졌다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "the condition of a person or object at a point in time"
+                }
+              },
+              {
+                "gloss_excerpt": "대상이 한 시점에 놓인 형편.",
+                "gloss_start": 0,
+                "sentence_frame": "방은 정돈된 상태를 유지했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "the condition of a person or object at a point in time"
+                }
+              }
+            ],
+            "rationale": "w5433 w5433-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5433",
+        "candidate_record_sha256": "d083fd8ebb3f6d9c10704baad0d7f5622a02cecc138926c609f8007e5ec043a1",
+        "decision_evidence_sha256": "cb90cb085e354b321e4d1103f8ef02b229001f120983612d615ffa8cdc02208e",
+        "sense_evidence": [
+          {
+            "sense_id": "w5433-s1",
+            "sense_sha256": "69e4e97ea2af46087f1bde8c2be0bff58ed05a977028a99b4e529e82f29c6df6",
+            "gloss_sha256": "3942321f5cd7083f68ecf5f9b79a65f52d8fd2f42d0b7ab7900f3f11e9edbe77",
+            "evidence_sha256": "ad35b3b9ceda96edaf2edc3731a6ac20cc85ce3c8a5fbfdf7eb13d6162c80b38"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5427",
+      "inventory_id": "m5-5432",
+      "candidate_record_sha256": "8216224c973f0e53b5db89edc5db44c97ebdd698e20901ef642c56d504dddc05",
+      "decision": "included",
+      "rank": 5,
+      "decision_rationale": "m5-5432 w5427: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5427-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5432 w5427 w5427-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 c6cc2910f9fd.",
+          "semantic_rationale": "w5427 w5427-s1: 보이지 않던 대상이 장면에 드러나 보이게 되다. is a concise Typewriter-authored gloss for the in-scope 나타나다 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5432 w5427-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5427-s1",
+            "gloss_sha256": "c6cc2910f9fdcb87b7750669ea39418994af0655cb1920376be1ed4262bf1691",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "보이지 않던 대상이 장면에 드러나 보이게 되다.",
+                "gloss_start": 0,
+                "sentence_frame": "문이 열리자 아이가 나타났다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "a person or object becoming visible in a scene"
+                }
+              },
+              {
+                "gloss_excerpt": "보이지 않던 대상이 장면에 드러나 보이게 되다.",
+                "gloss_start": 0,
+                "sentence_frame": "안개 사이로 산등성이가 나타났다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "a person or object becoming visible in a scene"
+                }
+              }
+            ],
+            "rationale": "w5427 w5427-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5427",
+        "candidate_record_sha256": "8216224c973f0e53b5db89edc5db44c97ebdd698e20901ef642c56d504dddc05",
+        "decision_evidence_sha256": "234681f4f3611ae4c347b89037c3dd6f29b4a44cf6282363bec0f455388761d0",
+        "sense_evidence": [
+          {
+            "sense_id": "w5427-s1",
+            "sense_sha256": "fa13b05368c17da03276d7bcc62d33d205120a6f6fcaa32a6d54c05a2ea94b1d",
+            "gloss_sha256": "c6cc2910f9fdcb87b7750669ea39418994af0655cb1920376be1ed4262bf1691",
+            "evidence_sha256": "aaccc361768396a82ddfdeacd92a9487b827ebc5f57af71fc13395dc48ad03c1"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5428",
+      "inventory_id": "m5-5433",
+      "candidate_record_sha256": "743a9b0291a5b6fe7e31f4503c4466643addf8e5349261baafed0395635f12de",
+      "decision": "included",
+      "rank": 6,
+      "decision_rationale": "m5-5433 w5428: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5428-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5433 w5428 w5428-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 e954e24ce715.",
+          "semantic_rationale": "w5428 w5428-s1: 사람이 하루를 이어 가며 보내는 일상. is a concise Typewriter-authored gloss for the in-scope 생활 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5433 w5428-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5428-s1",
+            "gloss_sha256": "e954e24ce715b4af3633896389e3ca902fea46ec836461c62e0ad19a8e74fb8b",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "사람이 하루를 이어 가며 보내는 일상.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 새로운 생활에 익숙해졌다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "the texture and conditions of everyday life"
+                }
+              },
+              {
+                "gloss_excerpt": "사람이 하루를 이어 가며 보내는 일상.",
+                "gloss_start": 0,
+                "sentence_frame": "그들의 생활은 바닷가에서 이어졌다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "the texture and conditions of everyday life"
+                }
+              }
+            ],
+            "rationale": "w5428 w5428-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5428",
+        "candidate_record_sha256": "743a9b0291a5b6fe7e31f4503c4466643addf8e5349261baafed0395635f12de",
+        "decision_evidence_sha256": "8e61b187b3fb180026a0a044c43302132a36df2d3c88183d323f4a5a6b38931c",
+        "sense_evidence": [
+          {
+            "sense_id": "w5428-s1",
+            "sense_sha256": "cf5f13ac73d906814bd9a713fc5428d950d44df6462ad9d0181aad0f65193b40",
+            "gloss_sha256": "e954e24ce715b4af3633896389e3ca902fea46ec836461c62e0ad19a8e74fb8b",
+            "evidence_sha256": "ee6137809c79691b0fb0eb90e133202922e51af7c224c86955e0ce8e69b54b1f"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5429",
+      "inventory_id": "m5-5434",
+      "candidate_record_sha256": "a57dde0f8228b5b0fa14bf28b929e5668e0926d04585ca6982bf3b55d1bb90cc",
+      "decision": "included",
+      "rank": 7,
+      "decision_rationale": "m5-5434 w5429: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "A",
+      "sense_reviews": [
+        {
+          "sense_id": "w5429-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5434 w5429 w5429-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 fb373db84a8b.",
+          "semantic_rationale": "w5429 w5429-s1: 어떤 대상을 자기 것으로 지니다. is a concise Typewriter-authored gloss for the in-scope 갖다 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5434 w5429-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5429-s1",
+            "gloss_sha256": "fb373db84a8bb1b5f259a2b4ca730583bdade9a6b2e1461ab92d1f1f41194b99",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "어떤 대상을 자기 것으로 지니다.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 열쇠를 갖고 있었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "possession or holding of an object or attribute"
+                }
+              },
+              {
+                "gloss_excerpt": "어떤 대상을 자기 것으로 지니다.",
+                "gloss_start": 0,
+                "sentence_frame": "그녀는 자신만의 기준을 갖고 일했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "possession or holding of an object or attribute"
+                }
+              }
+            ],
+            "rationale": "w5429 w5429-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5429",
+        "candidate_record_sha256": "a57dde0f8228b5b0fa14bf28b929e5668e0926d04585ca6982bf3b55d1bb90cc",
+        "decision_evidence_sha256": "c484b3c005c554c73b1c10f429ebde5d020b433d6e276cb1abf71b49a5fdd9a6",
+        "sense_evidence": [
+          {
+            "sense_id": "w5429-s1",
+            "sense_sha256": "20ae977920137dccc93322af7e2bc7461eca19aef1b8aa515ff5e4d8ed1d3ae0",
+            "gloss_sha256": "fb373db84a8bb1b5f259a2b4ca730583bdade9a6b2e1461ab92d1f1f41194b99",
+            "evidence_sha256": "4e9c2ffd4d4ac2ad0d94c0c8a5d090ffbd451d8c215ab5595c7c961e661b8643"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5434",
+      "inventory_id": "m5-5437",
+      "candidate_record_sha256": "8b14c44f6c20ce07c7cc3d6968e7303380410f6792c04d1253cf46fa83473072",
+      "decision": "included",
+      "rank": 8,
+      "decision_rationale": "m5-5437 w5434: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5434-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5437 w5434 w5434-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 dfe775991f0e.",
+          "semantic_rationale": "w5434 w5434-s1: 말하는 시점에서 가리키는 차례나 기간. is a concise Typewriter-authored gloss for the in-scope 이번 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5437 w5434-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5434-s1",
+            "gloss_sha256": "dfe775991f0ec3f216f5b7b3a30434375e870ac688215f452ac28a8e8d042658",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "말하는 시점에서 가리키는 차례나 기간.",
+                "gloss_start": 0,
+                "sentence_frame": "이번에는 먼저 말을 걸었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "the current occasion or period being referred to"
+                }
+              },
+              {
+                "gloss_excerpt": "말하는 시점에서 가리키는 차례나 기간.",
+                "gloss_start": 0,
+                "sentence_frame": "이번 주말은 조용히 보내기로 했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "the current occasion or period being referred to"
+                }
+              }
+            ],
+            "rationale": "w5434 w5434-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5434",
+        "candidate_record_sha256": "8b14c44f6c20ce07c7cc3d6968e7303380410f6792c04d1253cf46fa83473072",
+        "decision_evidence_sha256": "a04cb85b3c329e22e504e65917ab7350617f54bfdcbae405460e166f519bfeb1",
+        "sense_evidence": [
+          {
+            "sense_id": "w5434-s1",
+            "sense_sha256": "3d9fc551af2c9d5a88a2de41142c178e81fa882294498c0441af8462f103d00d",
+            "gloss_sha256": "dfe775991f0ec3f216f5b7b3a30434375e870ac688215f452ac28a8e8d042658",
+            "evidence_sha256": "a311a755424dd17bd8a3e2d89f3d4bb03c763f92d9fe8305294a9fe564954635"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5430",
+      "inventory_id": "m5-5441",
+      "candidate_record_sha256": "8fc0bc4db27799a451a501f4cdfc63cffe195711c1f751b124964d8dc0d134cc",
+      "decision": "included",
+      "rank": 9,
+      "decision_rationale": "m5-5441 w5430: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5430-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5441 w5430 w5430-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 d946d3c7afb2.",
+          "semantic_rationale": "w5430 w5430-s1: 전에 알지 못했던 것을 새로 알아내는 일. is a concise Typewriter-authored gloss for the in-scope 발견 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5441 w5430-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5430-s1",
+            "gloss_sha256": "d946d3c7afb2220d4f4ab9a4567eacd48ee90c4d96916c7c60e147058336faf0",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "전에 알지 못했던 것을 새로 알아내는 일.",
+                "gloss_start": 0,
+                "sentence_frame": "산책길에서 작은 꽃을 발견했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "newly finding or learning what was unknown"
+                }
+              },
+              {
+                "gloss_excerpt": "전에 알지 못했던 것을 새로 알아내는 일.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 대화 중 새로운 실마리를 발견했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "newly finding or learning what was unknown"
+                }
+              }
+            ],
+            "rationale": "w5430 w5430-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5430",
+        "candidate_record_sha256": "8fc0bc4db27799a451a501f4cdfc63cffe195711c1f751b124964d8dc0d134cc",
+        "decision_evidence_sha256": "49738a365772a2a2d74ef5c2eddcbadf43397074d3e5744c858975fdb490d7bc",
+        "sense_evidence": [
+          {
+            "sense_id": "w5430-s1",
+            "sense_sha256": "abbd10042cfb35ae8cadded4500ef093f964a39143e7e19acbe4806b1dde294a",
+            "gloss_sha256": "d946d3c7afb2220d4f4ab9a4567eacd48ee90c4d96916c7c60e147058336faf0",
+            "evidence_sha256": "71301243cf546d53e7ef48fbef5ef25ec8d416777d9c7524b98a04f8d2d6d8d3"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5431",
+      "inventory_id": "m5-5442",
+      "candidate_record_sha256": "5066aecf4c774d1d2144a3623602de8978454f2c9d8fdcff3f9a0247949a5447",
+      "decision": "included",
+      "rank": 10,
+      "decision_rationale": "m5-5442 w5431: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "S",
+      "sense_reviews": [
+        {
+          "sense_id": "w5431-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5442 w5431 w5431-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 107b1964bd42.",
+          "semantic_rationale": "w5431 w5431-s1: 상대의 말을 높여 이르는 표현. is a concise Typewriter-authored gloss for the in-scope 말씀 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5442 w5431-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5431-s1",
+            "gloss_sha256": "107b1964bd42d36b8343b5b27cde911cd78dff3b91a1d0d0b17903aa7e66512d",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "상대의 말을 높여 이르는 표현.",
+                "gloss_start": 0,
+                "sentence_frame": "선생님의 말씀을 다시 떠올렸다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "respectful or honorific speech"
+                }
+              },
+              {
+                "gloss_excerpt": "상대의 말을 높여 이르는 표현.",
+                "gloss_start": 0,
+                "sentence_frame": "말씀으로 조심스러운 뜻을 전했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "respectful or honorific speech"
+                }
+              }
+            ],
+            "rationale": "w5431 w5431-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5431",
+        "candidate_record_sha256": "5066aecf4c774d1d2144a3623602de8978454f2c9d8fdcff3f9a0247949a5447",
+        "decision_evidence_sha256": "1b522bd44664219abaeebf1715b6438da761f6085993b624c5e5908c554f72c7",
+        "sense_evidence": [
+          {
+            "sense_id": "w5431-s1",
+            "sense_sha256": "13395c1933a0877bbaed2b8fd8341071730988bc88b55d200f8589cf5c145b5b",
+            "gloss_sha256": "107b1964bd42d36b8343b5b27cde911cd78dff3b91a1d0d0b17903aa7e66512d",
+            "evidence_sha256": "4138afd25b102433a1703d5de88def1f859f9daf160d0fd44f257aa95b73bc3e"
+          }
+        ]
+      }
+    },
+    {
+      "candidate_record_id": "w5432",
+      "inventory_id": "m5-5443",
+      "candidate_record_sha256": "4bd966338864eaf8d2116509924a84f7098e5d330436cbc3fb1708076b485c49",
+      "decision": "included",
+      "rank": 11,
+      "decision_rationale": "m5-5443 w5432: the corpus-backed candidate identity and POS were checked against bounded source evidence; the Typewriter-authored gloss describes a valid in-scope lexical entry. Writer usefulness, generality, and corpus frequency are not admission criteria.",
+      "review_pass_id": "issue-221-separate-semantic-verification-20260929-r1",
+      "gloss_judgment": "fit",
+      "selection_axis": "E",
+      "sense_reviews": [
+        {
+          "sense_id": "w5432-s1",
+          "boundary_action": "retain",
+          "boundary_classification": "atomic",
+          "boundary_decision": "atomic",
+          "boundary_rationale": "m5-5443 w5432 w5432-s1: the gloss presents one bounded lexical meaning. Two separately authored Typewriter example frames check whether that meaning remains stable across different contexts; they are diagnostic examples, not corpus quotations or writer-outcome evidence. Reviewed gloss SHA-256 7db5359f7b9c.",
+          "semantic_rationale": "w5432 w5432-s1: 가지고 있던 것을 더 이상 자기 것으로 유지하지 못하다. is a concise Typewriter-authored gloss for the in-scope 잃다 entry.",
+          "relation_decision": "no-relations",
+          "relation_count": 0,
+          "relation_ids": [],
+          "no_relation_rationale": "m5-5443 w5432-s1: no candidate-specific lexical relation is separately authored and supported by this bounded batch; zero relations are valid.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5432-s1",
+            "gloss_sha256": "7db5359f7b9c7641acd5eab3fdd8394c787917da384050f94c450eb1ab285d01",
+            "decision_source_id": "issue-221-authored-semantic-decisions-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "가지고 있던 것을 더 이상 자기 것으로 유지하지 못하다.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 지갑을 잃었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "loss of a possessed object or state"
+                }
+              },
+              {
+                "gloss_excerpt": "가지고 있던 것을 더 이상 자기 것으로 유지하지 못하다.",
+                "gloss_start": 0,
+                "sentence_frame": "긴 기다림에 자신감을 잃었다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "loss of a possessed object or state"
+                }
+              }
+            ],
+            "rationale": "w5432 w5432-s1: the two Typewriter-authored diagnostic frames preserve the same proposed lexical meaning. Route labels are enrichment metadata, not admission evidence; these frames are not corpus excerpts or writer-use measurements."
+          }
+        }
+      ],
+      "review_binding": {
+        "contract_version": "source-bound-semantic-review-v2",
+        "candidate_record_id": "w5432",
+        "candidate_record_sha256": "4bd966338864eaf8d2116509924a84f7098e5d330436cbc3fb1708076b485c49",
+        "decision_evidence_sha256": "0219ec488cf5775281d688bf5297afe491836e35f9b8b67ae4dd4fdbf132b5e1",
+        "sense_evidence": [
+          {
+            "sense_id": "w5432-s1",
+            "sense_sha256": "e6708b62bf6228c07a0f7af91cee05ec753355629088fc1b1b18b61c2ab48bce",
+            "gloss_sha256": "7db5359f7b9c7641acd5eab3fdd8394c787917da384050f94c450eb1ab285d01",
+            "evidence_sha256": "f4fd4a3d11bfbee62fd1f850bde677a4e30c56a6c57b91f5c88dbcc8327007d4"
+          }
+        ]
+      }
+    }
+  ],
+  "artifact_sha256": "7c44d46a2b4e357c6714e5208d02ef155f75f66ac86cae870ebcf192be72f205"
+}

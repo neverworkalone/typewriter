@@ -1,0 +1,149 @@
+const SUPPORTED_POS = new Set(['noun', 'verb', 'adjective']);
+const TYPEWRITER_SCOPE_POS = new Set(['noun', 'verb', 'adjective', 'adverb', 'expression']);
+const COLLISION_STATUSES = new Set([
+  'search_form_collision',
+  'generated_surface_collision',
+  'search_and_generated_surface_collision',
+]);
+const MORPHOLOGY_BLOCKING_STATUSES = new Set([
+  'held_surface_has_multiple_analyzer_interpretations',
+  'held_lemma_has_multiple_pos_interpretations',
+  'held_oov_morphology',
+]);
+const VALID_DISPOSITIONS = new Set(['admit', 'hold', 'reject']);
+const HOLD_BASES = new Set(['unresolved-identity', 'unresolved-sense', 'search-collision']);
+const REJECTION_BASES = new Set(['duplicate-identity', 'not-a-lexical-unit', 'unsupported-scope']);
+
+function fail(label, message, suffix = 'DISPOSITION') {
+  const error = new Error(`${label} ${message}`);
+  error.code = `CORPUS_CANDIDATE_REVIEW_${suffix}`;
+  throw error;
+}
+
+function hasMorphologyBlocker(proposal) {
+  return MORPHOLOGY_BLOCKING_STATUSES.has(proposal?.ambiguity_status)
+    || proposal?.ambiguous_observed_surface_count_in_sample > 0
+    || proposal?.pos_interpretation_count_in_sample > 1
+    || proposal?.oov_morpheme_occurrences_in_sample > 0;
+}
+
+function hasCoverageCollision(row) {
+  return COLLISION_STATUSES.has(row?.coverage_status)
+    && Array.isArray(row?.typewriter_surface_matches)
+    && row.typewriter_surface_matches.length > 0;
+}
+
+function hasExactCanonicalDuplicate(row) {
+  return row?.coverage_status === 'exact_canonical_lemma'
+    && Array.isArray(row?.typewriter_surface_matches)
+    && row.typewriter_surface_matches.some((match) => (
+      match?.match_kind === 'canonical_lemma'
+      && match.canonical_lemma === row.morphology_proposal.lemma
+    ));
+}
+
+function validateSenseBoundaryEvidence(row, label) {
+  const evidence = row.editorial_judgment.sense_boundary_evidence;
+  const hits = row.bounded_provenance?.representative_hits;
+  if (evidence?.evidence_type !== 'distinct-sense-directions-in-reviewed-bounded-contexts'
+    || !Array.isArray(evidence.directions)
+    || evidence.directions.length < 2
+    || !Array.isArray(hits)) {
+    fail(label, 'needs source-bound evidence for at least two distinct unresolved sense directions', 'SENSE_EVIDENCE');
+  }
+
+  const availableParagraphIds = new Set(hits.map(({ paragraph_id: id }) => id).filter((id) => typeof id === 'string'));
+  const assignedParagraphIds = new Set();
+  for (const [index, direction] of evidence.directions.entries()) {
+    if (typeof direction?.label !== 'string' || direction.label.trim() === ''
+      || !Array.isArray(direction.paragraph_ids) || direction.paragraph_ids.length === 0) {
+      fail(`${label}.sense_boundary_evidence.directions[${index}]`, 'needs a label and reviewed paragraph IDs', 'SENSE_EVIDENCE');
+    }
+    for (const paragraphId of direction.paragraph_ids) {
+      if (!availableParagraphIds.has(paragraphId) || assignedParagraphIds.has(paragraphId)) {
+        fail(`${label}.sense_boundary_evidence.directions[${index}]`, 'must cite distinct IDs from its bounded representative contexts', 'SENSE_EVIDENCE');
+      }
+      assignedParagraphIds.add(paragraphId);
+    }
+  }
+}
+
+function validateLexicalUnitRejectionEvidence(row, label) {
+  const evidence = row.editorial_judgment.lexical_unit_evidence;
+  const hits = row.bounded_provenance?.representative_hits;
+  const availableParagraphIds = new Set((Array.isArray(hits) ? hits : [])
+    .map(({ paragraph_id: id }) => id).filter((id) => typeof id === 'string'));
+  if (evidence?.evidence_type !== 'reviewed-bounded-contexts-show-nonlexical-unit'
+    || !Array.isArray(evidence.paragraph_ids)
+    || evidence.paragraph_ids.length === 0
+    || evidence.paragraph_ids.some((id) => !availableParagraphIds.has(id))) {
+    fail(label, 'needs cited bounded-context evidence that the proposal is not a lexical unit', 'LEXICAL_UNIT_EVIDENCE');
+  }
+}
+
+/**
+ * Validate the lexical basis for every M9 corpus candidate disposition.
+ * Writer-use metadata and relation counts are deliberately not consulted:
+ * they can guide enrichment or review priority, never lexical eligibility.
+ */
+export function validateCorpusCandidateReviewDispositions(decisions, { label = 'corpus candidate review' } = {}) {
+  if (!Array.isArray(decisions)) fail(label, 'decisions must be an array', 'SHAPE');
+  const counts = { admit: 0, hold: 0, reject: 0 };
+
+  for (const [index, row] of decisions.entries()) {
+    const rowLabel = `${label}.decisions[${index}]${row?.inventory_id ? ` (${row.inventory_id})` : ''}`;
+    const judgment = row?.editorial_judgment;
+    const proposal = row?.morphology_proposal;
+    if (!VALID_DISPOSITIONS.has(judgment?.disposition)) {
+      fail(rowLabel, 'must have an explicit admit, hold, or reject disposition', 'SHAPE');
+    }
+    counts[judgment.disposition] += 1;
+    if (typeof proposal?.lemma !== 'string' || proposal.lemma.length === 0) {
+      fail(rowLabel, 'must bind a proposed lexical identity', 'IDENTITY');
+    }
+
+    if (judgment.disposition === 'admit') {
+      if (judgment.disposition_basis !== 'valid-in-scope-lexical-entry'
+        || !SUPPORTED_POS.has(proposal.pos)
+        || row.coverage_status !== 'uncovered'
+        || hasMorphologyBlocker(proposal)
+        || typeof judgment.candidate_record_id !== 'string'
+        || judgment.candidate_record_id.length === 0) {
+        fail(rowLabel, 'admission requires an in-scope lexical identity, clear morphology and coverage, and a canonical candidate ID', 'ADMISSION_BASIS');
+      }
+      continue;
+    }
+
+    if (judgment.candidate_record_id !== null) {
+      fail(rowLabel, 'held or rejected candidates cannot have a canonical candidate ID', 'CANDIDATE_ID');
+    }
+
+    if (judgment.disposition === 'hold') {
+      if (!HOLD_BASES.has(judgment.disposition_basis)) {
+        fail(rowLabel, 'hold needs a lexical identity, sense-boundary, or search-collision basis', 'HOLD_BASIS');
+      }
+      if (judgment.disposition_basis === 'unresolved-identity' && !hasMorphologyBlocker(proposal)) {
+        fail(rowLabel, 'cannot hold a clear lexical identity without morphology or POS evidence', 'IDENTITY_EVIDENCE');
+      }
+      if (judgment.disposition_basis === 'unresolved-sense') validateSenseBoundaryEvidence(row, rowLabel);
+      if (judgment.disposition_basis === 'search-collision' && !hasCoverageCollision(row)) {
+        fail(rowLabel, 'needs a recorded canonical search-surface collision', 'COLLISION_EVIDENCE');
+      }
+      continue;
+    }
+
+    if (!REJECTION_BASES.has(judgment.disposition_basis)) {
+      fail(rowLabel, 'rejection needs duplicate, nonlexical-unit, or unsupported-scope evidence', 'REJECTION_BASIS');
+    }
+    if (judgment.disposition_basis === 'duplicate-identity' && !hasExactCanonicalDuplicate(row)) {
+      fail(rowLabel, 'duplicate rejection needs an exact canonical-lemma match', 'COLLISION_EVIDENCE');
+    }
+    if (judgment.disposition_basis === 'not-a-lexical-unit') validateLexicalUnitRejectionEvidence(row, rowLabel);
+    if (judgment.disposition_basis === 'unsupported-scope'
+      && (typeof proposal.pos !== 'string' || proposal.pos.trim() === '' || TYPEWRITER_SCOPE_POS.has(proposal.pos))) {
+      fail(rowLabel, 'unsupported-scope rejection needs an explicit out-of-scope part of speech', 'SCOPE_EVIDENCE');
+    }
+  }
+
+  return counts;
+}

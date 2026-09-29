@@ -30,9 +30,10 @@ DEFAULT_PERMISSION_RECORD_PATH = REPOSITORY_DIRECTORY / "docs/external-material-
 LOCAL_PILOT_DIRECTORY = REPOSITORY_DIRECTORY / "data/reference/pilots/issue-201"
 DEFAULT_STAGING_PATH = LOCAL_PILOT_DIRECTORY / "candidate-analysis.sqlite"
 DEFAULT_SELECTION_PATH = LOCAL_PILOT_DIRECTORY / "candidate-selection.json"
-EXTRACTOR_VERSION = "1"
+EXTRACTOR_VERSION = "2"
 SAMPLE_EVERY_PARAGRAPHS = 20
 TARGET_CANDIDATES = 100
+MAX_CANDIDATE_LIMIT = 200
 ROW_BATCH_SIZE = 32
 TOP_SURFACE_FORMS = 5
 ELIGIBLE_TAGS = {
@@ -125,6 +126,50 @@ def read_database_metadata(database: sqlite3.Connection) -> dict[str, str]:
     if missing:
         raise RuntimeError("Corpus index metadata is incomplete: " + ", ".join(missing))
     return metadata
+
+
+def read_exclusion_manifest(exclusion_path: Path | None) -> dict:
+    if exclusion_path is None:
+        payload = {
+            "schema_version": "m9-reviewed-lemma-exclusions-v1",
+            "source_artifacts": [],
+            "lemmas": [],
+        }
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        payload["exclusion_sha256"] = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        return payload
+
+    try:
+        payload = json.loads(exclusion_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Reviewed-lemma exclusion manifest is unreadable: {error}") from error
+    if not isinstance(payload, dict) or payload.get("schema_version") != "m9-reviewed-lemma-exclusions-v1":
+        raise RuntimeError("Reviewed-lemma exclusion manifest has an unsupported contract.")
+    lemmas = payload.get("lemmas")
+    source_artifacts = payload.get("source_artifacts")
+    if not isinstance(lemmas, list) or not isinstance(source_artifacts, list):
+        raise RuntimeError("Reviewed-lemma exclusion manifest is incomplete.")
+    normalized = []
+    for lemma in lemmas:
+        if not isinstance(lemma, str) or not lemma or lemma != lemma.strip() or lemma != unicodedata.normalize("NFC", lemma):
+            raise RuntimeError("Reviewed-lemma exclusion values must be non-empty trimmed NFC strings.")
+        normalized.append(lemma)
+    if normalized != sorted(set(normalized)):
+        raise RuntimeError("Reviewed-lemma exclusions must be unique and sorted deterministically.")
+    for artifact in source_artifacts:
+        if (not isinstance(artifact, dict)
+                or not isinstance(artifact.get("path"), str)
+                or not re.fullmatch(r"[0-9a-f]{64}", str(artifact.get("sha256", "")))):
+            raise RuntimeError("Reviewed-lemma exclusion source bindings must include paths and SHA-256 digests.")
+    expected = hashlib.sha256(json.dumps(
+        {"schema_version": payload["schema_version"], "source_artifacts": source_artifacts, "lemmas": normalized},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    if payload.get("exclusion_sha256") != expected:
+        raise RuntimeError("Reviewed-lemma exclusion digest does not match its contents.")
+    return payload
 
 
 def read_product_surface(database: sqlite3.Connection) -> dict[str, list[dict]]:
@@ -447,6 +492,7 @@ def close_source(
 def select_candidate_rows(
     staging: sqlite3.Connection,
     candidate_limit: int,
+    excluded_lemmas: list[str] | None = None,
 ) -> list[dict]:
     staging.execute(
         """
@@ -470,6 +516,12 @@ def select_candidate_rows(
     )
     staging.commit()
 
+    staging.execute("CREATE TEMP TABLE excluded_candidate_lemmas (normalized_lemma TEXT PRIMARY KEY) STRICT")
+    staging.executemany(
+        "INSERT INTO excluded_candidate_lemmas(normalized_lemma) VALUES (?)",
+        [(lemma,) for lemma in (excluded_lemmas or [])],
+    )
+
     rows = staging.execute(
         """
         WITH ranked_pos AS (
@@ -482,6 +534,10 @@ def select_candidate_rows(
                    ) AS pos_rank
             FROM candidates
             WHERE covered = 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM excluded_candidate_lemmas AS excluded
+                  WHERE excluded.normalized_lemma = candidates.normalized_lemma
+              )
         )
         SELECT lemma, normalized_lemma, pos, analyzer_tag,
                token_count, oov_token_count, paragraph_hits, document_count, source_count,
@@ -624,14 +680,18 @@ def run_extraction(
     staging_path: Path = DEFAULT_STAGING_PATH,
     candidate_output_path: Path = DEFAULT_SELECTION_PATH,
     permission_record_path: Path = DEFAULT_PERMISSION_RECORD_PATH,
+    exclusion_manifest_path: Path | None = None,
     analyzer,
     sample_every: int = SAMPLE_EVERY_PARAGRAPHS,
     candidate_limit: int = TARGET_CANDIDATES,
     batch_size: int = ROW_BATCH_SIZE,
 ) -> dict:
-    if sample_every < 1 or candidate_limit < 1 or batch_size < 1:
-        raise ValueError("Sample interval, candidate limit, and row batch size must be positive integers.")
+    if sample_every < 1 or candidate_limit < 1 or candidate_limit > MAX_CANDIDATE_LIMIT or batch_size < 1:
+        raise ValueError(
+            f"Sample interval and row batch size must be positive; candidate limit must be 1-{MAX_CANDIDATE_LIMIT}."
+        )
     permission_sha256 = read_permission_record(permission_record_path)
+    exclusion_manifest = read_exclusion_manifest(exclusion_manifest_path)
     for path in (index_path, dictionary_path):
         if not path.is_file():
             raise RuntimeError(f"Required local SQLite input is missing: {path}")
@@ -809,12 +869,7 @@ def run_extraction(
         staging.commit()
 
         apply_product_coverage(staging, product_surface_matches)
-        candidate_rows = select_candidate_rows(staging, candidate_limit)
-        if len(candidate_rows) != candidate_limit:
-            raise RuntimeError(
-                f"The sample produced only {len(candidate_rows)} uncovered lemma candidates; "
-                f"the pilot requires {candidate_limit}."
-            )
+        candidate_rows = select_candidate_rows(staging, candidate_limit, exclusion_manifest["lemmas"])
 
         total_candidate_rows = int(staging.execute("SELECT COUNT(*) FROM candidates").fetchone()[0])
         total_candidate_lemmas = int(
@@ -838,6 +893,12 @@ def run_extraction(
                 )
                 GROUP BY coverage_status
                 """
+            ).fetchall()
+        }
+        coverage_status_counts = {
+            str(status): int(count)
+            for status, count in staging.execute(
+                "SELECT coverage_status, COUNT(DISTINCT normalized_lemma) FROM candidates GROUP BY coverage_status ORDER BY coverage_status COLLATE BINARY"
             ).fetchall()
         }
         search_form_collision_candidates = coverage_collision_counts.get(
@@ -926,6 +987,20 @@ def run_extraction(
                 "confidence": "not calibrated; Kiwi one-best output is a proposal",
                 "row_batch_size": batch_size,
             },
+            "selection": {
+                "contract_version": "m9-corpus-candidate-selection-v1",
+                "candidate_limit": candidate_limit,
+                "selected_candidate_count": len(candidate_rows),
+                "ordering": [
+                    "source_count descending",
+                    "document_count descending",
+                    "analyzer_morpheme_observations_in_sample descending",
+                    "lemma Unicode binary ascending",
+                ],
+                "excluded_candidate_lemma_count": len(exclusion_manifest["lemmas"]),
+                "exclusion_sha256": exclusion_manifest["exclusion_sha256"],
+                "exclusion_source_artifacts": exclusion_manifest["source_artifacts"],
+            },
             "yield": {
                 "eligible_pos_token_observations_before_shape_filter": eligible_tag_token_count,
                 "accepted_morpheme_observations_in_sample": accepted_morpheme_count,
@@ -943,6 +1018,9 @@ def run_extraction(
                     search_and_generated_collision_candidates
                 ),
                 "total_surface_collision_lemma_candidates": total_surface_collision_candidates,
+                "coverage_status_counts_by_distinct_lemma": coverage_status_counts,
+                "exact_lemma_covered_candidate_count": coverage_status_counts.get("exact_canonical_lemma", 0),
+                "curated_or_generated_surface_collision_candidate_count": total_surface_collision_candidates,
                 "ambiguous_lemma_candidates_before_coverage": ambiguous_candidate_lemmas,
                 "oov_lemma_candidates_before_coverage": int(
                     staging.execute("SELECT COUNT(*) FROM candidates WHERE oov_token_count > 0").fetchone()[0]
@@ -980,6 +1058,8 @@ def main() -> int:
     parser.add_argument("--dictionary", required=True, type=Path)
     parser.add_argument("--staging-db", type=Path, default=DEFAULT_STAGING_PATH)
     parser.add_argument("--candidate-json", type=Path, default=DEFAULT_SELECTION_PATH)
+    parser.add_argument("--candidate-limit", type=int, default=TARGET_CANDIDATES)
+    parser.add_argument("--exclusion-manifest", type=Path)
     arguments = parser.parse_args()
     try:
         from kiwipiepy import Kiwi
@@ -992,6 +1072,8 @@ def main() -> int:
         dictionary_path=arguments.dictionary.resolve(),
         staging_path=arguments.staging_db.resolve(),
         candidate_output_path=arguments.candidate_json.resolve(),
+        candidate_limit=arguments.candidate_limit,
+        exclusion_manifest_path=arguments.exclusion_manifest.resolve() if arguments.exclusion_manifest else None,
         analyzer=Kiwi(),
     )
     print(
