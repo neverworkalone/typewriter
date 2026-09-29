@@ -1026,6 +1026,117 @@ function validateAuthoredBoundaryPairs(
   return pairwise;
 }
 
+/**
+ * Review the use frames inside a candidate that is presented with only one
+ * sense. Pairwise sense checks cannot see an under-split gloss because that
+ * gloss has no second sense yet. This source-bound review makes the proposed
+ * frame(s) and writer route explicit before a fresh single-sense admission.
+ */
+export function validateSingleSenseBoundaryReview(record, review, {
+  productionDecision,
+  decisionSourceId,
+  action,
+  classification,
+  boundaryDecision,
+  label = 'single_sense_boundary_review',
+} = {}) {
+  if (!Array.isArray(record?.senses) || record.senses.length !== 1) {
+    fail(`${label} applies only to a one-sense candidate`, 'LEXICAL_SEMANTIC_SCOPE');
+  }
+  requireObject(review, label);
+  const sense = record.senses[0];
+  if (review.status !== 'pass' || review.sense_id !== sense.id) {
+    fail(`${label} must pass for the exact candidate sense`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+  if (review.gloss_sha256 !== sha256Json(sense.gloss)) {
+    fail(`${label}.gloss_sha256 does not bind the reviewed gloss`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+  requireString(review.decision_source_id, `${label}.decision_source_id`);
+  if (decisionSourceId !== undefined && review.decision_source_id !== decisionSourceId) {
+    fail(`${label}.decision_source_id is not bound to the authored decision source`, 'LEXICAL_SEMANTIC_PROVENANCE');
+  }
+  requireEnum(review.decision, ['retain', 'split'], `${label}.decision`);
+  const frames = requireArray(review.frame_observations, `${label}.frame_observations`, { minItems: 1 });
+  const routes = [];
+  const connectorObservations = inspectGlossConnectors(sense.gloss);
+  if (connectorObservations.length > 0 && frames.length < connectorObservations.length + 1) {
+    fail(
+      `${label}.frame_observations must cover both sides of every gloss connector`,
+      'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+    );
+  }
+  for (const [index, frameValue] of frames.entries()) {
+    const frameLabel = `${label}.frame_observations[${index}]`;
+    const frame = requireObject(frameValue, frameLabel);
+    requireString(frame.gloss_excerpt, `${frameLabel}.gloss_excerpt`);
+    if (!Number.isInteger(frame.gloss_start)
+      || frame.gloss_start < 0
+      || !sense.gloss.startsWith(frame.gloss_excerpt, frame.gloss_start)) {
+      fail(`${frameLabel} does not bind an exact span of the reviewed gloss`, 'LEXICAL_SEMANTIC_BINDING');
+    }
+    requireString(frame.sentence_frame, `${frameLabel}.sentence_frame`);
+    const route = requireObject(frame.writer_route, `${frameLabel}.writer_route`);
+    requireEnum(route.relation_type, WRITER_ROUTE_RELATION_TYPES, `${frameLabel}.writer_route.relation_type`);
+    if (route.target_pos !== undefined) {
+      requireEnum(route.target_pos, WRITER_ROUTE_TARGET_POS, `${frameLabel}.writer_route.target_pos`);
+    }
+    if (route.target_class !== undefined) {
+      requireString(route.target_class, `${frameLabel}.writer_route.target_class`);
+    }
+    if (route.target_pos === undefined && route.target_class === undefined) {
+      fail(`${frameLabel}.writer_route must name an expected target POS or semantic class`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+    routes.push(route);
+  }
+  for (const observation of connectorObservations) {
+    const leftCovered = frames.some((frame) => frame.gloss_start + frame.gloss_excerpt.length <= observation.index);
+    const rightCovered = frames.some((frame) => frame.gloss_start >= observation.index + observation.connector.length);
+    if (!leftCovered || !rightCovered) {
+      fail(
+        `${label}.frame_observations do not bind both sides of ${observation.connector} at gloss offset ${observation.index}`,
+        'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+      );
+    }
+  }
+
+  let distinctFrameAndRoutePairFound = false;
+  for (let leftIndex = 0; leftIndex < frames.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < frames.length; rightIndex += 1) {
+      const framesDiffer = frames[leftIndex].sentence_frame !== frames[rightIndex].sentence_frame;
+      if (framesDiffer && hasDistinctAuthoredWriterRoutes(routes[leftIndex], routes[rightIndex])) {
+        distinctFrameAndRoutePairFound = true;
+      }
+    }
+  }
+  requireString(review.rationale, `${label}.rationale`);
+  if (!review.rationale.includes(record.id) || !review.rationale.includes(sense.id)) {
+    fail(`${label}.rationale must bind the reviewed record and sense`, 'LEXICAL_SEMANTIC_BINDING');
+  }
+  if (review.decision === 'retain') {
+    if (distinctFrameAndRoutePairFound) {
+      fail(
+        `${label} combines distinct sentence frames and writer routes; split or hold the candidate before admission`,
+        'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+      );
+    }
+    if (action !== 'retain' || !['atomic', 'coordinated'].includes(classification)
+      || !['atomic', 'coordinated'].includes(boundaryDecision)) {
+      fail(`${label} retain decision does not match the record-level boundary outcome`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+  } else {
+    if (!distinctFrameAndRoutePairFound) {
+      fail(`${label} split decision lacks both a distinct sentence frame and writer route`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+    if (action !== 'split' || classification !== 'separated' || boundaryDecision !== 'split') {
+      fail(`${label} split evidence does not match the record-level boundary outcome`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+    if (['included', 'corrected'].includes(productionDecision)) {
+      fail(`${label} requires a source-bound split before this candidate can be admitted`, 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER');
+    }
+  }
+  return { distinctFrameAndRoutePairFound, connectorCount: connectorObservations.length };
+}
+
 function recordOf(recordInfo) {
   return recordInfo?.record ?? recordInfo;
 }
@@ -1918,6 +2029,29 @@ export function validateLexicalSemanticReview(review, {
         },
       );
     }
+  }
+
+  const singleSenseBoundaryReview = findings[0]?.single_sense_boundary_review;
+  if (record.senses.length === 1) {
+    if (requireWriterBoundaryEvidence && singleSenseBoundaryReview === undefined) {
+      fail(
+        `${label}.sense_boundary.findings[0].single_sense_boundary_review is required for a fresh single-sense admission`,
+        'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER',
+      );
+    }
+    if (singleSenseBoundaryReview !== undefined) {
+      validateSingleSenseBoundaryReview(record, singleSenseBoundaryReview, {
+        productionDecision: decision,
+        decisionSourceId,
+        action: findings[0].action,
+        classification: findings[0].classification,
+        boundaryDecision: findings[0].semantic_evidence?.boundary_decision
+          ?? boundaryDecisionForFinding(findings[0].action, findings[0].classification),
+        label: `${label}.sense_boundary.findings[0].single_sense_boundary_review`,
+      });
+    }
+  } else if (findings.some((finding) => finding.single_sense_boundary_review !== undefined)) {
+    fail(`${label}.single_sense_boundary_review must not replace pairwise multi-sense review`, 'LEXICAL_SEMANTIC_SCOPE');
   }
 
   const pos = requireObject(review.pos, `${label}.pos`);

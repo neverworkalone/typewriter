@@ -1888,7 +1888,35 @@ test('common admission rejects prospective values that are not derived from revi
   );
 });
 
-function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDecision }) {
+function fixtureSingleSenseBoundaryReview(record, sense, gloss, decisionSourceId) {
+  const connectors = inspectGlossConnectors(gloss);
+  const spans = connectors.length === 0
+    ? [{ gloss_excerpt: gloss, gloss_start: 0 }]
+    : connectors.flatMap(({ connector, index }) => {
+      const leftExcerpt = /\S+$/u.exec(gloss.slice(0, index).trimEnd())?.[0];
+      const rightExcerpt = /^\S+/u.exec(gloss.slice(index + connector.length).trimStart())?.[0];
+      assert.ok(leftExcerpt && rightExcerpt, `${record.id} fixture connector has both source spans`);
+      return [
+        { gloss_excerpt: leftExcerpt, gloss_start: gloss.lastIndexOf(leftExcerpt, index) },
+        { gloss_excerpt: rightExcerpt, gloss_start: gloss.indexOf(rightExcerpt, index + connector.length) },
+      ];
+    });
+  return {
+    status: 'pass',
+    sense_id: sense.id,
+    gloss_sha256: sha256Json(gloss),
+    decision_source_id: decisionSourceId,
+    decision: 'retain',
+    frame_observations: spans.map((span, index) => ({
+      ...span,
+      sentence_frame: `${record.lemma} writer frame ${index + 1}`,
+      writer_route: { relation_type: 'near', target_class: 'one bounded writer-facing route' },
+    })),
+    rationale: `${record.id} ${sense.id} frames and next writer routes were independently compared.`,
+  };
+}
+
+function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDecision, classification = 'atomic' }) {
   const record = reviewedRecord ?? candidateRecord;
   const sense = record.senses[0];
   const evidence = inspectWriterDomainEvidence(gloss);
@@ -1949,8 +1977,9 @@ function productionReview({ candidateRecord, reviewedRecord, gloss, boundaryDeci
       findings: [{
         sense_id: sense.id,
         action: 'retain',
-        classification: 'atomic',
+        classification,
         rationale: `future-batch ${sense.id} semantic boundary was reviewed`,
+        single_sense_boundary_review: fixtureSingleSenseBoundaryReview(record, sense, gloss, decisionSourceId),
         semantic_evidence: {
           status: 'pass',
           gloss_sha256: createHash('sha256').update(JSON.stringify(gloss), 'utf8').digest('hex'),
@@ -2049,6 +2078,97 @@ test('shared semantic admission blocks a source POS that conflicts with independ
     catalogCount: 1,
     requireSemanticEvidence: true,
     requireIndependentDecisionEvidence: true,
+  }));
+});
+
+test('fresh single-sense admission rejects distinct writer frames hidden behind one source gloss', () => {
+  const candidateRecord = {
+    id: 'w-single-sense-under-split',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-single-sense-under-split',
+    lemma: '합성 믿다',
+    search_forms: ['합성 믿다'],
+    senses: [{
+      id: 'w-single-sense-under-split-s1',
+      pos: 'verb',
+      gloss: '사람이나 말이 참되다고 여기다.',
+    }],
+  };
+  const review = productionReview({
+    candidateRecord,
+    gloss: candidateRecord.senses[0].gloss,
+    boundaryDecision: 'atomic',
+  });
+  const boundary = review.sense_boundary.findings[0].single_sense_boundary_review;
+  boundary.frame_observations[0].sentence_frame = '사람을 믿다';
+  boundary.frame_observations[0].writer_route = {
+    relation_type: 'near',
+    target_class: 'person trust and reliance',
+  };
+  boundary.frame_observations[1].sentence_frame = '말을 믿다';
+  boundary.frame_observations[1].writer_route = {
+    relation_type: 'near',
+    target_class: 'statement truth and credibility',
+  };
+
+  assert.throws(
+    () => validateLexicalSemanticReview(review, {
+      decision: 'included',
+      candidateRecord,
+      catalogCount: 1,
+      requireSemanticEvidence: true,
+      requireWriterBoundaryEvidence: true,
+    }),
+    (error) => error.code === 'LEXICAL_SEMANTIC_BOUNDARY_BLOCKER'
+      && error.message.includes('distinct sentence frames and writer routes'),
+  );
+});
+
+test('fresh single-sense admission retains atomic and coordinated frames with one writer route', () => {
+  const atomicRecord = {
+    id: 'w-single-sense-atomic',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-single-sense-atomic',
+    lemma: '합성 악의',
+    search_forms: ['합성 악의'],
+    senses: [{ id: 'w-single-sense-atomic-s1', pos: 'noun', gloss: '남을 해치려는 나쁜 뜻.' }],
+  };
+  const atomicReview = productionReview({
+    candidateRecord: atomicRecord,
+    gloss: atomicRecord.senses[0].gloss,
+    boundaryDecision: 'atomic',
+  });
+  assert.doesNotThrow(() => validateLexicalSemanticReview(atomicReview, {
+    decision: 'included',
+    candidateRecord: atomicRecord,
+    catalogCount: 1,
+    requireSemanticEvidence: true,
+    requireWriterBoundaryEvidence: true,
+  }));
+
+  const coordinatedRecord = {
+    id: 'w-single-sense-coordinated',
+    record_type: 'entry',
+    role: 'start',
+    candidate_id: 'w-single-sense-coordinated',
+    lemma: '합성 잠금장치',
+    search_forms: ['합성 잠금장치'],
+    senses: [{ id: 'w-single-sense-coordinated-s1', pos: 'noun', gloss: '가방이나 상자를 여닫는 장치.' }],
+  };
+  const coordinatedReview = productionReview({
+    candidateRecord: coordinatedRecord,
+    gloss: coordinatedRecord.senses[0].gloss,
+    boundaryDecision: 'coordinated',
+    classification: 'coordinated',
+  });
+  assert.doesNotThrow(() => validateLexicalSemanticReview(coordinatedReview, {
+    decision: 'included',
+    candidateRecord: coordinatedRecord,
+    catalogCount: 1,
+    requireSemanticEvidence: true,
+    requireWriterBoundaryEvidence: true,
   }));
 });
 

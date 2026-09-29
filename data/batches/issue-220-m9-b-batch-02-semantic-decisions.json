@@ -22,25 +22,26 @@
     "status": "complete",
     "candidate_count": 20,
     "reviewed_candidate_count": 20,
-    "method": "Review each selected historical source row, exact authored lexical unit and gloss, present canonical/search identity, supported POS and bounded sense; hold unresolved multiword or morphology boundaries; admit only source-supported standalone units through shared admission; add no unsupported relations.",
+    "method": "Review each selected historical source row, exact authored lexical unit and gloss, present canonical/search identity, supported POS and bounded sense; for every single-sense candidate, compare exact gloss-span sentence frames with the next writer route; hold unresolved lexical and sense boundaries; admit only source-supported standalone units through shared admission; add no unsupported relations.",
     "criteria": [
       "exact historical inventory and M5-13 source identity binding",
       "fresh lexical-unit and supported POS review independent of M5 fit/reserve",
       "bounded current sense without unsupported sense splitting",
       "exact canonical and generated-search ownership absence",
-      "zero relations allowed without relation fabrication"
+      "zero relations allowed without relation fabrication",
+      "single-sense gloss spans, sentence frames, and next writer routes are explicitly compared before fresh admission"
     ],
     "decision_counts": {
-      "included": 5,
+      "included": 4,
       "corrected": 0,
-      "held": 15,
+      "held": 16,
       "rejected": 0,
       "deferred": 0
     },
     "counts": {
-      "included": 5,
+      "included": 4,
       "corrected": 0,
-      "held": 15,
+      "held": 16,
       "rejected": 0,
       "deferred": 0
     },
@@ -57,13 +58,13 @@
   "selection": {
     "policy": "shared-authored-axis-coverage-selection-v6",
     "capacity": 20,
-    "imported": 5,
+    "imported": 4,
     "reserve": 0,
     "coverage_field": "selection_axis",
     "coverage_basis": [
       "fresh M9-B lexical eligibility after source-bound candidate review"
     ],
-    "selection_rationale": "The 20-row slice size controls independent review workload only. 5 source-bound dispositions qualify for ordinary admission; 15 remain held for unresolved lexical identity. No admission or relation quota applies."
+    "selection_rationale": "4 source-bound dispositions qualify for ordinary admission; 16 remain held for unresolved lexical identity or sense boundary. No admission or relation quota applies."
   },
   "decisions": [
     {
@@ -622,23 +623,51 @@
       "candidate_record_id": "w5416",
       "inventory_id": "m5-2811",
       "candidate_record_sha256": "5e0981f2dda1a619851f45ca1a9ed6adef66f6e1076b5491ab85cb6f6190f982",
-      "decision": "included",
+      "decision": "held",
       "rank": 13,
-      "decision_rationale": "m5-2811 w5416: 사람이나 말이 참되고 믿을 만하다고 판단하는 단일 동사 의미다.",
+      "decision_rationale": "m5-2811 w5416: independently reviewed frames and next writer routes diverge inside the one-sense gloss; hold until source-bound separate senses are authored.",
       "review_pass_id": "issue-220-separate-semantic-verification-20260929-r2",
-      "gloss_judgment": "fit",
+      "gloss_judgment": "needs-context",
       "sense_reviews": [
         {
           "sense_id": "w5416-s1",
-          "boundary_action": "retain",
-          "boundary_classification": "atomic",
-          "boundary_decision": "atomic",
-          "boundary_rationale": "m5-2811 w5416 w5416-s1: source-bound gloss “사람이나 말이 참되고 믿을 만하다고 여기다.” supports one bounded candidate use; no second sense is added. Reviewed gloss SHA-256 prefix: 93852bd75aa6.",
-          "semantic_rationale": "믿다: 사람이나 말이 참되고 믿을 만하다고 여기다.",
+          "boundary_action": "split",
+          "boundary_classification": "separated",
+          "boundary_decision": "split",
+          "boundary_rationale": "m5-2811 w5416 w5416-s1: w5416 w5416-s1 spans trust in a person and belief in a statement; distinct next writer routes require a source-bound split before admission.",
+          "semantic_rationale": "믿다: one source gloss combines distinct frame and writer-route meanings; do not admit until split.",
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
-          "no_relation_rationale": "m5-2811 w5416-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+          "no_relation_rationale": "m5-2811 w5416-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5416-s1",
+            "gloss_sha256": "93852bd75aa6608388b966026f942bed65d3332b255b8b2f9d9a98329ea962e9",
+            "decision_source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
+            "decision": "split",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "사람",
+                "gloss_start": 0,
+                "sentence_frame": "그 사람을 믿고 일을 맡긴다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "person trust and reliance"
+                }
+              },
+              {
+                "gloss_excerpt": "말",
+                "gloss_start": 5,
+                "sentence_frame": "그 말을 믿고 사실로 받아들인다.",
+                "writer_route": {
+                  "relation_type": "association",
+                  "target_class": "statement truth and credibility"
+                }
+              }
+            ],
+            "rationale": "w5416 w5416-s1 spans trust in a person and belief in a statement; distinct next writer routes require a source-bound split before admission."
+          }
         }
       ],
       "selection_axis": "A",
@@ -646,16 +675,17 @@
         "contract_version": "source-bound-semantic-review-v2",
         "candidate_record_id": "w5416",
         "candidate_record_sha256": "5e0981f2dda1a619851f45ca1a9ed6adef66f6e1076b5491ab85cb6f6190f982",
-        "decision_evidence_sha256": "4edf681b494517d664f7c7d517494b66452747674556e12ad0fb5d9c059ec778",
+        "decision_evidence_sha256": "45305d442d5d91485b4f58a517ba3e616d1a265427377d15cc06eec7392804f4",
         "sense_evidence": [
           {
             "sense_id": "w5416-s1",
             "sense_sha256": "d8576f3fe555a61aef9f17f37bcc9aa0ac3ebd91d785758e655ffa2f287456a9",
             "gloss_sha256": "93852bd75aa6608388b966026f942bed65d3332b255b8b2f9d9a98329ea962e9",
-            "evidence_sha256": "9ed31958d372d2a9d6b6d623bb8aea05b32ed99ab7d8a89cc7f49e4e2d052eb2"
+            "evidence_sha256": "aad11a775540d5c98d45fcc305dd84f70ce29c5bb05bfba37b95621bf915e1c9"
           }
         ]
-      }
+      },
+      "hold_basis": "unresolved-sense"
     },
     {
       "candidate_record_id": "w5417",
@@ -677,7 +707,35 @@
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
-          "no_relation_rationale": "m5-2812 w5417-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+          "no_relation_rationale": "m5-2812 w5417-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5417-s1",
+            "gloss_sha256": "586f610241e723640994d1922a3538454f0e644234ec7b6b62ec871719e2b77a",
+            "decision_source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "일",
+                "gloss_start": 7,
+                "sentence_frame": "기억해야 할 일을 망각했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "forgetting something that should be remembered"
+                }
+              },
+              {
+                "gloss_excerpt": "사실을",
+                "gloss_start": 11,
+                "sentence_frame": "기억해야 할 사실을 망각했다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "forgetting something that should be remembered"
+                }
+              }
+            ],
+            "rationale": "w5417 w5417-s1 exact gloss spans were tested in writer-facing frames; both routes stay within forgetting something that should be remembered."
+          }
         }
       ],
       "selection_axis": "A",
@@ -691,7 +749,7 @@
             "sense_id": "w5417-s1",
             "sense_sha256": "38d77e43af6a9ac8a284b7453086d3f7caed6b966b1330b53c4c107822060e65",
             "gloss_sha256": "586f610241e723640994d1922a3538454f0e644234ec7b6b62ec871719e2b77a",
-            "evidence_sha256": "9ae838d4b337b5cf1c099cb363fddd2dbcbe42381e8a2b458a9851e4aa63a81c"
+            "evidence_sha256": "232efe1d7116b1a421db7de4ba99a0d183afa7b252d750facc48a30fa050aeb1"
           }
         ]
       }
@@ -716,7 +774,35 @@
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
-          "no_relation_rationale": "m5-2813 w5418-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+          "no_relation_rationale": "m5-2813 w5418-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5418-s1",
+            "gloss_sha256": "58222484ec978d00421114768a54cf8a7f666c970931c8acf8b801837969fd86",
+            "decision_source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "말",
+                "gloss_start": 5,
+                "sentence_frame": "이미 한 말을 되새겼다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "deliberate recollection and reflection"
+                }
+              },
+              {
+                "gloss_excerpt": "겪은",
+                "gloss_start": 9,
+                "sentence_frame": "이미 겪은 일을 되새겼다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "deliberate recollection and reflection"
+                }
+              }
+            ],
+            "rationale": "w5418 w5418-s1 exact gloss spans were tested in writer-facing frames; both routes stay within deliberate recollection and reflection."
+          }
         }
       ],
       "selection_axis": "A",
@@ -730,7 +816,7 @@
             "sense_id": "w5418-s1",
             "sense_sha256": "49bf20c721cc0890af892fc7a4ffc17882429ea302ef0d900e395e2196e5fdfd",
             "gloss_sha256": "58222484ec978d00421114768a54cf8a7f666c970931c8acf8b801837969fd86",
-            "evidence_sha256": "ac8fe839b90f74947dc33a31f8d8dc242aa5c2851206ef56554e77e691ef2d72"
+            "evidence_sha256": "f5457336e50a4f9a1be872325bc09b67e5c9a06ddf1ca6da8730c27c26d0dd96"
           }
         ]
       }
@@ -893,7 +979,26 @@
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
-          "no_relation_rationale": "m5-2818 w5422-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+          "no_relation_rationale": "m5-2818 w5422-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5422-s1",
+            "gloss_sha256": "9d357c57a8f7b967e3589044fdf88a80128fd05bb044b941dd1d38ba2246e449",
+            "decision_source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "있던 장소를 벗어나 다른 곳으로 가다.",
+                "gloss_start": 0,
+                "sentence_frame": "그는 있던 장소를 벗어나 다른 곳으로 떠나갔다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "leaving a place for another location"
+                }
+              }
+            ],
+            "rationale": "w5422 w5422-s1 exact gloss spans were tested in writer-facing frames; both routes stay within leaving a place for another location."
+          }
         }
       ],
       "selection_axis": "A",
@@ -907,7 +1012,7 @@
             "sense_id": "w5422-s1",
             "sense_sha256": "09144d46d560d9a716e40641a17001852f4f4298907430b47a8930e16cd5d591",
             "gloss_sha256": "9d357c57a8f7b967e3589044fdf88a80128fd05bb044b941dd1d38ba2246e449",
-            "evidence_sha256": "164a34cbdab71624b1d30c9e5566a6745473d2972083f6a51d64075d200e9c47"
+            "evidence_sha256": "eccb751085a55208b44be51e28180f701f523dc4da534f1df40de61b6dd7bcc5"
           }
         ]
       }
@@ -932,7 +1037,35 @@
           "relation_decision": "no-relations",
           "relation_count": 0,
           "relation_ids": [],
-          "no_relation_rationale": "m5-2819 w5423-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search."
+          "no_relation_rationale": "m5-2819 w5423-s1: the selected source contains no independently authored relation tuple; keep relations empty without blocking direct search.",
+          "single_sense_boundary_review": {
+            "status": "pass",
+            "sense_id": "w5423-s1",
+            "gloss_sha256": "51a8c4f7763a7ec2a7deedb4fce9b48dd39a2a7e9baf44115c5f9a8bd6815e6f",
+            "decision_source_id": "issue-220-authored-semantic-decisions-batch-02-20260929-r1",
+            "decision": "retain",
+            "frame_observations": [
+              {
+                "gloss_excerpt": "사람",
+                "gloss_start": 0,
+                "sentence_frame": "붙잡지 않고 사람을 떠나보냈다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "letting a person or object go"
+                }
+              },
+              {
+                "gloss_excerpt": "대상을",
+                "gloss_start": 5,
+                "sentence_frame": "붙잡지 않고 대상을 떠나보냈다.",
+                "writer_route": {
+                  "relation_type": "near",
+                  "target_class": "letting a person or object go"
+                }
+              }
+            ],
+            "rationale": "w5423 w5423-s1 exact gloss spans were tested in writer-facing frames; both routes stay within letting a person or object go."
+          }
         }
       ],
       "selection_axis": "A",
@@ -946,7 +1079,7 @@
             "sense_id": "w5423-s1",
             "sense_sha256": "30a1fae8480502e413bcb73020cc1db0ac3da110a5aa75c47e00a95bbbf5e0d4",
             "gloss_sha256": "51a8c4f7763a7ec2a7deedb4fce9b48dd39a2a7e9baf44115c5f9a8bd6815e6f",
-            "evidence_sha256": "8025b0acd84e85e5ca619414beeb38547caa30b5ebcc1f0fe62e1d3fb1bda1e9"
+            "evidence_sha256": "b2070959dd966f9825f6d240501efddd9174e2bbb04c61e956953d4dd00c6405"
           }
         ]
       }
@@ -1295,5 +1428,5 @@
     }
   ],
   "candidate_records_sha256": "8c227292f1f7e96b3ffcf4742a81dd2bb0835a68db1f09b15b6839a082b945f8",
-  "artifact_sha256": "23fa5cf4e2538cd3c1224fbc6f561f04a468228a00201d75edf8c64087012df0"
+  "artifact_sha256": "4392c0ccc6c1b1532c2a54b8bebb9933db8c56d0a481679c507412e299a38bbf"
 }

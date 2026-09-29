@@ -23,29 +23,29 @@
       "e190d5f30333756eb11caa0ac28332100da2dc47c2566e24a8a214e6d17c1fed"
     ],
     "semantic_sources_sha256": [
-      "b5ff1276b356873a6ac4ba1a0490d78294ab4028bb5e84c4b0ea3f2d21074427",
-      "b2a6f934a9da04cd7db40fe7f0bd32f4d30f4e15018bf8b76f15e6db409fb739"
+      "3ce1c8db0f214449a6c3b1489ac2958f5385e6c3996c878899c0d95bbcb2d6c4",
+      "3b870148ed668a30c211aa5eea9a087538cdb576fb9157cd657ca831ed4ebcd1"
     ]
   },
   "outcomes": {
     "reviewed_count": 40,
-    "admitted_count": 19,
-    "held_count": 21,
+    "admitted_count": 17,
+    "held_count": 23,
     "rejected_count": 0,
     "duplicate_count": 0,
     "collision_count": 0,
     "corrected_count": 0,
     "correction_rate": 0,
     "relation_count": 0,
-    "zero_relation_admission_count": 19
+    "zero_relation_admission_count": 17
   },
   "batches": [
     {
       "number": 1,
       "batch_id": "m9-b-issue-220-historical-batch-01-20260929",
       "reviewed_count": 20,
-      "admitted_count": 14,
-      "held_count": 6,
+      "admitted_count": 13,
+      "held_count": 7,
       "rejected_count": 0,
       "duplicate_count": 0,
       "collision_count": 0,
@@ -55,8 +55,8 @@
       "number": 2,
       "batch_id": "m9-b-issue-220-historical-batch-02-20260929",
       "reviewed_count": 20,
-      "admitted_count": 5,
-      "held_count": 15,
+      "admitted_count": 4,
+      "held_count": 16,
       "rejected_count": 0,
       "duplicate_count": 0,
       "collision_count": 0,
@@ -331,19 +331,17 @@
       "batch_number": 1,
       "inventory_id": "m5-2318",
       "candidate_record_id": "w5398",
-      "canonical_id": "w5398",
+      "canonical_id": null,
       "lemma": "배경",
       "pos": "noun",
       "record_type": "entry",
       "source_unit_id": "m5-13-source-unit-0318",
       "prior_selection_outcome": "reserve",
-      "decision": "included",
-      "lexical_unit_status": "supported",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w5398"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 16,
@@ -641,19 +639,17 @@
       "batch_number": 2,
       "inventory_id": "m5-2811",
       "candidate_record_id": "w5416",
-      "canonical_id": "w5416",
+      "canonical_id": null,
       "lemma": "믿다",
       "pos": "verb",
       "record_type": "entry",
       "source_unit_id": "m5-13-source-unit-0811",
       "prior_selection_outcome": "reserve",
-      "decision": "included",
-      "lexical_unit_status": "supported",
+      "decision": "held",
+      "lexical_unit_status": "unresolved",
       "relation_count": 0,
       "baseline_exact_result_ids": [],
-      "search_result_ids": [
-        "w5416"
-      ]
+      "search_result_ids": []
     },
     {
       "selection_order": 34,
@@ -786,11 +782,11 @@
   "historical_pool": {
     "candidate_count": 584,
     "potentially_recoverable_before_count": 545,
-    "potentially_recoverable_after_count": 526,
+    "potentially_recoverable_after_count": 528,
     "recovery_ceiling": 5621,
     "target_count": 6000,
     "shortfall_to_6000": 379,
-    "recovered_count": 43,
+    "recovered_count": 41,
     "remaining_counts_by_disposition": [
       {
         "disposition": "admit-candidate",
@@ -810,7 +806,7 @@
       },
       {
         "disposition": "needs-sense-split",
-        "count": 27
+        "count": 29
       },
       {
         "disposition": "not-a-lexical-unit",
@@ -831,52 +827,39 @@
     ]
   },
   "current": {
-    "canonical_sha256": "b412683229857335b6b7d8550dcca9abbc53777d6b0c0967279285cef51a646f",
-    "canonical_record_count": 5095,
-    "canonical_start_count": 5053,
+    "canonical_sha256": "b29d0aeac00ee04ee2868a57ac5c02fa6675cc4fae9bdfe3e93d8cc773afc543",
+    "canonical_record_count": 5093,
+    "canonical_start_count": 5051,
     "reference_only_count": 42,
-    "sense_count": 5357,
+    "sense_count": 5355,
     "relation_count": 487,
-    "canonical_search_form_count": 5351,
-    "searchable_lemma_count": 5095,
+    "canonical_search_form_count": 5349,
+    "searchable_lemma_count": 5093,
     "record_type_counts": {
-      "entry": 3941,
+      "entry": 3939,
       "expression": 1154
     },
     "sense_pos_counts": {
       "adjective": 316,
       "adverb": 4,
       "expression": 1176,
-      "noun": 3186,
-      "verb": 675
+      "noun": 3185,
+      "verb": 674
     },
-    "relation_empty_searchable_record_count": 4759,
+    "relation_empty_searchable_record_count": 4757,
     "exact_search_coverage": {
-      "expected_lemma_count": 5095,
-      "covered_lemma_count": 5095,
+      "expected_lemma_count": 5093,
+      "covered_lemma_count": 5093,
       "non_searchable_record_count": 0,
       "non_searchable_records": [],
-      "distinct_search_form_count": 5351,
-      "expected_form_owner_key_count": 5351,
-      "covered_form_owner_key_count": 5351,
+      "distinct_search_form_count": 5349,
+      "expected_form_owner_key_count": 5349,
+      "covered_form_owner_key_count": 5349,
       "missing_form_owner_key_count": 0,
       "unexpected_form_owner_key_count": 0,
       "cross_record_collision_key_count": 0
     },
     "surface_form_regressions": [
-      {
-        "record_id": "w5416",
-        "lemma": "믿다",
-        "included_forms": [
-          "믿은",
-          "믿었다"
-        ],
-        "excluded_forms": [
-          "미든",
-          "미었다"
-        ],
-        "result": "pass"
-      },
       {
         "record_id": "w5418",
         "lemma": "되새기다",
@@ -908,12 +891,12 @@
     "production_admission": "pass",
     "semantic_audit": "pass",
     "deterministic_sqlite": "pass",
-    "logical_database_digest": "9dd14b193909fe01d4e25d2e7e7f72206d50446a6af06ff2f68c9671165af7b8"
+    "logical_database_digest": "1cdd79ed49b8bbab2a10900e6deb0919f2c23a3120ef81ff765a50fb757e74e2"
   },
   "defect_findings": [
     {
       "defect_class": "Historical lexical-unit fixedness is not established by the retained source",
-      "occurrence_count": 21,
+      "occurrence_count": 23,
       "affected_batches": [
         1,
         2
@@ -921,6 +904,7 @@
       "affected_candidate_ids": [
         "w5387",
         "w5389",
+        "w5398",
         "w5400",
         "w5401",
         "w5402",
@@ -937,6 +921,7 @@
         "w5413",
         "w5414",
         "w5415",
+        "w5416",
         "w5419",
         "w5420",
         "w5421"
@@ -955,13 +940,25 @@
       "disposition": "Fixed in the shared projection so authored topic_analysis and topic_analyses reach the exact-span semantic audit."
     },
     {
-      "defect_class": "Three admitted verb senses needed explicit M6-3 surface-form decisions",
-      "occurrence_count": 3,
+      "defect_class": "A fresh one-sense gloss combined distinct sentence frames and writer routes",
+      "occurrence_count": 2,
+      "affected_batches": [
+        1,
+        2
+      ],
+      "affected_candidate_ids": [
+        "w5398",
+        "w5416"
+      ],
+      "disposition": "Added a shared source-bound frame-and-route review gate and held both candidates until the split is represented by separately reviewed senses."
+    },
+    {
+      "defect_class": "Two admitted verb senses needed explicit M6-3 surface-form decisions",
+      "occurrence_count": 2,
       "affected_batches": [
         2
       ],
       "affected_candidate_ids": [
-        "w5416",
         "w5418",
         "w5423"
       ],
@@ -969,6 +966,18 @@
     }
   ],
   "system_fixes": [
+    {
+      "area": "single-sense writer-boundary admission",
+      "batches": [
+        1,
+        2
+      ],
+      "files": [
+        "scripts/validate/lexical-quality.mjs",
+        "scripts/batch/authored-semantic-decision-source.mjs"
+      ],
+      "summary": "The shared source-bound gate requires exact-gloss frame spans and compares sentence frames together with writer routes; unresolved splits stay held until a multi-sense candidate is authored."
+    },
     {
       "area": "historical candidate materialization",
       "batches": [
@@ -998,12 +1007,12 @@
       "files": [
         "data/validation/m6-3-surface-form-review.json"
       ],
-      "summary": "Added sense-bound M6-3 decisions for the three admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed."
+      "summary": "Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed."
     }
   ],
   "normal_ci": {
     "command": "npm run ci:normal",
     "result": "pass",
-    "canonical_sha256": "b412683229857335b6b7d8550dcca9abbc53777d6b0c0967279285cef51a646f"
+    "canonical_sha256": "b29d0aeac00ee04ee2868a57ac5c02fa6675cc4fae9bdfe3e93d8cc773afc543"
   }
 }

@@ -4,26 +4,26 @@
 
 This checkpoint re-opened the first 40 numeric M5-13 Typewriter-authored fit reserves from the pinned Issue #210 historical inventory. The earlier M5 fit/reserve result sets lineage and review order only. Every row received a fresh Issue #220 decision and passed the shared source-bound producer, semantic audit, admission, and exact-search boundary before an admitted record entered canonical data.
 
-The two independent review slices contain 20 rows each. There was no admission or relation quota. A held row remains in the target inventory with its unresolved lexical-unit basis; it is not counted as a canonical recovery.
+The two independent review slices contain 20 rows each. There was no admission or relation quota. A held row remains in the target inventory with its unresolved lexical-unit or sense-boundary basis; it is not counted as a canonical recovery.
 
 ## Outcome
 
 | Measure | Result |
 | --- | ---: |
 | Reviewed | 40 |
-| Admitted and searchable | 19 |
-| Held for unresolved lexical identity | 21 |
+| Admitted and searchable | 17 |
+| Held for unresolved lexical or sense boundaries | 23 |
 | Rejected | 0 |
 | Duplicates | 0 |
 | Search collisions | 0 |
 | Corrected | 0 (0.0% of reviewed) |
 | Relations added | 0 |
-| Admitted with zero relations | 19 |
+| Admitted with zero relations | 17 |
 
 | Batch | Reviewed | Admitted | Held | Rejected | Duplicate | Collision | Corrected |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 20 | 14 | 6 | 0 | 0 | 0 | 0 |
-| 2 | 20 | 5 | 15 | 0 | 0 | 0 | 0 |
+| 1 | 20 | 13 | 7 | 0 | 0 | 0 | 0 |
+| 2 | 20 | 4 | 16 | 0 | 0 | 0 | 0 |
 
 ## Candidate dispositions
 
@@ -43,7 +43,7 @@ The two independent review slices contain 20 rows each. There was no admission o
 | 12 | 1 | m5-2315 | 정돈 | included | supported | w5395 |
 | 13 | 1 | m5-2316 | 뒤섞임 | included | supported | w5396 |
 | 14 | 1 | m5-2317 | 배치 | included | supported | w5397 |
-| 15 | 1 | m5-2318 | 배경 | included | supported | w5398 |
+| 15 | 1 | m5-2318 | 배경 | held | unresolved | — |
 | 16 | 1 | m5-2319 | 전경 | included | supported | w5399 |
 | 17 | 1 | m5-2473 | 손끝의 저림 | held | unresolved | — |
 | 18 | 1 | m5-2474 | 손끝의 온도 | held | unresolved | — |
@@ -61,7 +61,7 @@ The two independent review slices contain 20 rows each. There was no admission o
 | 30 | 2 | m5-2638 | 공원 한쪽 | held | unresolved | — |
 | 31 | 2 | m5-2639 | 집 앞 | held | unresolved | — |
 | 32 | 2 | m5-2640 | 집 뒤 | held | unresolved | — |
-| 33 | 2 | m5-2811 | 믿다 | included | supported | w5416 |
+| 33 | 2 | m5-2811 | 믿다 | held | unresolved | — |
 | 34 | 2 | m5-2812 | 망각하다 | included | supported | w5417 |
 | 35 | 2 | m5-2813 | 되새기다 | included | supported | w5418 |
 | 36 | 2 | m5-2814 | 새겨두다 | held | unresolved | — |
@@ -72,7 +72,7 @@ The two independent review slices contain 20 rows each. There was no admission o
 
 ## Historical checkpoint
 
-The pinned Issue #210 candidate inventory contains 584 classified rows. Its remaining potentially recoverable rows plus the current 5,095 canonical records yield a historical-only ceiling of 5,621, 379 short of 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates. Further expansion requires a separately approved source workflow.
+The pinned Issue #210 candidate inventory contains 584 classified rows. Its remaining potentially recoverable rows plus the current 5,093 canonical records yield a historical-only ceiling of 5,621, 379 short of 6,000. This is a source-pool limit, not a reason to admit held rows or reconstruct absent candidates. Further expansion requires a separately approved source workflow.
 
 | Remaining Issue #210 disposition | Count |
 | --- | ---: |
@@ -80,18 +80,18 @@ The pinned Issue #210 candidate inventory contains 584 classified rows. Its rema
 | duplicate | 2 |
 | hold | 251 |
 | invalid-lemma | 2 |
-| needs-sense-split | 27 |
+| needs-sense-split | 29 |
 | not-a-lexical-unit | 10 |
 | search-surface-collision | 1 |
 | unsupported-scope | 0 |
 | wrong-pos | 0 |
-| Recovered in the current inventory | 43 |
+| Recovered in the current inventory | 41 |
 
-Current canonical totals: 5,095 records (5,053 starts and 42 reference-only records), 5,357 senses, 487 relations, and 5,351 canonical search-form rows. Relation-empty searchable records: 4,759.
+Current canonical totals: 5,093 records (5,051 starts and 42 reference-only records), 5,355 senses, 487 relations, and 5,349 canonical search-form rows. Relation-empty searchable records: 4,757.
 
 | Record type | Records |
 | --- | ---: |
-| entry | 3941 |
+| entry | 3939 |
 | expression | 1154 |
 
 Sense POS distribution:
@@ -101,14 +101,13 @@ Sense POS distribution:
 | adjective | 316 |
 | adverb | 4 |
 | expression | 1176 |
-| noun | 3186 |
-| verb | 675 |
+| noun | 3185 |
+| verb | 674 |
 
-Direct exact lemma coverage: 5095/5095; non-searchable records: 0. Exact search-form owner keys: 5351/5351; missing owners: 0; unexpected owners: 0; cross-record collision keys: 0.
+Direct exact lemma coverage: 5093/5093; non-searchable records: 0. Exact search-form owner keys: 5349/5349; missing owners: 0; unexpected owners: 0; cross-record collision keys: 0.
 
 | Surface-form regression | Included forms | Excluded forms | Result |
 | --- | --- | --- | --- |
-| 믿다 (w5416) | 믿은, 믿었다 | 미든, 미었다 | pass |
 | 되새기다 (w5418) | 되새기는, 되새긴, 되새길 | 되새겼다 | pass |
 | 떠나보내다 (w5423) | 떠나보내는, 떠나보낸, 떠나보낼 | 떠나보냈다 | pass |
 
@@ -116,17 +115,19 @@ Direct exact lemma coverage: 5095/5095; non-searchable records: 0. Exact search-
 
 | Defect class | Count | Batches | Affected candidate IDs | Resolution |
 | --- | ---: | --- | --- | --- |
-| Historical lexical-unit fixedness is not established by the retained source | 21 | 1, 2 | w5387, w5389, w5400, w5401, w5402, w5403, w5404, w5405, w5406, w5407, w5408, w5409, w5410, w5411, w5412, w5413, w5414, w5415, w5419, w5420, w5421 | Held by the shared source-bound lexical-unit contract; no row-specific admission exception was added. |
+| Historical lexical-unit fixedness is not established by the retained source | 23 | 1, 2 | w5387, w5389, w5398, w5400, w5401, w5402, w5403, w5404, w5405, w5406, w5407, w5408, w5409, w5410, w5411, w5412, w5413, w5414, w5415, w5416, w5419, w5420, w5421 | Held by the shared source-bound lexical-unit contract; no row-specific admission exception was added. |
 | Authored topic-span analysis was omitted from the shared production evidence projection | 1 | 1 | w5399 | Fixed in the shared projection so authored topic_analysis and topic_analyses reach the exact-span semantic audit. |
-| Three admitted verb senses needed explicit M6-3 surface-form decisions | 3 | 2 | w5416, w5418, w5423 | Added sense-bound authored classifications/exclusions to the shared M6-3 review source; the common projection gate remains fail-closed. |
+| A fresh one-sense gloss combined distinct sentence frames and writer routes | 2 | 1, 2 | w5398, w5416 | Added a shared source-bound frame-and-route review gate and held both candidates until the split is represented by separately reviewed senses. |
+| Two admitted verb senses needed explicit M6-3 surface-form decisions | 2 | 2 | w5418, w5423 | Added sense-bound authored classifications/exclusions to the shared M6-3 review source; the common projection gate remains fail-closed. |
 
 | Shared fix area | Batches | Files | Fix |
 | --- | --- | --- | --- |
+| single-sense writer-boundary admission | 1, 2 | scripts/validate/lexical-quality.mjs, scripts/batch/authored-semantic-decision-source.mjs | The shared source-bound gate requires exact-gloss frame spans and compares sentence frames together with writer routes; unresolved splits stay held until a multi-sense candidate is authored. |
 | historical candidate materialization | 1, 2 | scripts/batch/lexical-production.mjs | The common producer accepts explicit historical inventory identities and retains source positions when a pinned source pool is split into bounded review batches. |
 | authored semantic evidence projection | 1 | scripts/batch/validate-issue-211.mjs | The common producer projects authored topic_analysis and topic_analyses into the shared semantic evidence for the exact reviewed span, including w5399. |
-| surface-form decision coverage | 2 | data/validation/m6-3-surface-form-review.json | Added sense-bound M6-3 decisions for the three admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed. |
+| surface-form decision coverage | 2 | data/validation/m6-3-surface-form-review.json | Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed. |
 
-Normal CI: `npm run ci:normal` — pass for canonical digest `b412683229857335b6b7d8550dcca9abbc53777d6b0c0967279285cef51a646f`.
+Normal CI: `npm run ci:normal` — pass for canonical digest `b29d0aeac00ee04ee2868a57ac5c02fa6675cc4fae9bdfe3e93d8cc773afc543`.
 Extension/Web parity is covered by the normal CI product builds and output-contract validation: pass.
 
 ## Reproduction

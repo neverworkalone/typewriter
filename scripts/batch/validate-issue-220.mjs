@@ -99,6 +99,12 @@ const REMAINING_RECOVERY_DISPOSITIONS = Object.freeze([
 ]);
 const ISSUE_220_SYSTEM_FIXES = Object.freeze([
   {
+    area: 'single-sense writer-boundary admission',
+    batches: [1, 2],
+    files: ['scripts/validate/lexical-quality.mjs', 'scripts/batch/authored-semantic-decision-source.mjs'],
+    summary: 'The shared source-bound gate requires exact-gloss frame spans and compares sentence frames together with writer routes; unresolved splits stay held until a multi-sense candidate is authored.',
+  },
+  {
     area: 'historical candidate materialization',
     batches: [1, 2],
     files: ['scripts/batch/lexical-production.mjs'],
@@ -114,7 +120,7 @@ const ISSUE_220_SYSTEM_FIXES = Object.freeze([
     area: 'surface-form decision coverage',
     batches: [2],
     files: ['data/validation/m6-3-surface-form-review.json'],
-    summary: 'Added sense-bound M6-3 decisions for the three admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed.',
+    summary: 'Added sense-bound M6-3 decisions for the two admitted verb senses whose regular inflection or open-vowel past projection needed explicit review; the shared projection remains fail-closed.',
   },
 ]);
 const LOGICAL_CONTENT_EXCLUDED_METADATA_KEYS = new Set([
@@ -162,6 +168,7 @@ function semanticDecisionConfig(candidateSource, semanticSource, batch) {
     importCountFromDecisions: true,
     noAdmissionQuota: true,
     reserveCount: 0,
+    requireSingleSenseBoundaryReview: true,
     expressionLexicalUnitReviewContractVersion: M9_EXPRESSION_LEXICAL_UNIT_REVIEW_CONTRACT_VERSION,
   };
 }
@@ -391,12 +398,6 @@ async function validateDeterministicBuild(currentRecords) {
           };
           const regressionCases = [
             {
-              record_id: 'w5416',
-              lemma: '믿다',
-              included_forms: ['믿은', '믿었다'],
-              excluded_forms: ['미든', '미었다'],
-            },
-            {
               record_id: 'w5418',
               lemma: '되새기다',
               included_forms: ['되새기는', '되새긴', '되새길'],
@@ -450,13 +451,17 @@ function countBy(items, keyOf) {
 function defectFindingsFor(candidates) {
   const unresolved = candidates.filter(({ decision }) => decision === 'held');
   const projectionGap = candidates.filter(({ candidate_record_id: id }) => id === 'w5399');
-  const surfaceDispositionGaps = candidates.filter(({ candidate_record_id: id }) => (
-    ['w5416', 'w5418', 'w5423'].includes(id)
+  const singleSenseUnderSplits = candidates.filter(({ candidate_record_id: id }) => ['w5398', 'w5416'].includes(id));
+  const surfaceDispositionGaps = candidates.filter(({ candidate_record_id: id, decision }) => (
+    ['w5418', 'w5423'].includes(id) && decision === 'included'
   ));
-  assert.equal(unresolved.length, 21);
+  assert.equal(unresolved.length, 23);
   assert.equal(projectionGap.length, 1);
   assert.equal(projectionGap[0].batch_number, 1);
-  assert.equal(surfaceDispositionGaps.length, 3);
+  assert.equal(singleSenseUnderSplits.length, 2);
+  assert.deepEqual(singleSenseUnderSplits.map(({ candidate_record_id: id }) => id), ['w5398', 'w5416']);
+  assert.deepEqual(singleSenseUnderSplits.map(({ batch_number: batch }) => batch), [1, 2]);
+  assert.equal(surfaceDispositionGaps.length, 2);
   assert.ok(surfaceDispositionGaps.every(({ batch_number: batch }) => batch === 2));
   return [
     {
@@ -474,7 +479,14 @@ function defectFindingsFor(candidates) {
       disposition: 'Fixed in the shared projection so authored topic_analysis and topic_analyses reach the exact-span semantic audit.',
     },
     {
-      defect_class: 'Three admitted verb senses needed explicit M6-3 surface-form decisions',
+      defect_class: 'A fresh one-sense gloss combined distinct sentence frames and writer routes',
+      occurrence_count: singleSenseUnderSplits.length,
+      affected_batches: [1, 2],
+      affected_candidate_ids: singleSenseUnderSplits.map(({ candidate_record_id: id }) => id),
+      disposition: 'Added a shared source-bound frame-and-route review gate and held both candidates until the split is represented by separately reviewed senses.',
+    },
+    {
+      defect_class: 'Two admitted verb senses needed explicit M6-3 surface-form decisions',
       occurrence_count: surfaceDispositionGaps.length,
       affected_batches: [2],
       affected_candidate_ids: surfaceDispositionGaps.map(({ candidate_record_id: id }) => id),
@@ -494,7 +506,7 @@ function renderReport(report) {
     '',
     'This checkpoint re-opened the first 40 numeric M5-13 Typewriter-authored fit reserves from the pinned Issue #210 historical inventory. The earlier M5 fit/reserve result sets lineage and review order only. Every row received a fresh Issue #220 decision and passed the shared source-bound producer, semantic audit, admission, and exact-search boundary before an admitted record entered canonical data.',
     '',
-    'The two independent review slices contain 20 rows each. There was no admission or relation quota. A held row remains in the target inventory with its unresolved lexical-unit basis; it is not counted as a canonical recovery.',
+    'The two independent review slices contain 20 rows each. There was no admission or relation quota. A held row remains in the target inventory with its unresolved lexical-unit or sense-boundary basis; it is not counted as a canonical recovery.',
     '',
     '## Outcome',
     '',
@@ -502,7 +514,7 @@ function renderReport(report) {
     '| --- | ---: |',
     `| Reviewed | ${report.outcomes.reviewed_count} |`,
     `| Admitted and searchable | ${report.outcomes.admitted_count} |`,
-    `| Held for unresolved lexical identity | ${report.outcomes.held_count} |`,
+    `| Held for unresolved lexical or sense boundaries | ${report.outcomes.held_count} |`,
     `| Rejected | ${report.outcomes.rejected_count} |`,
     `| Duplicates | ${report.outcomes.duplicate_count} |`,
     `| Search collisions | ${report.outcomes.collision_count} |`,
@@ -659,8 +671,8 @@ export async function validateIssue220({ writeReport = false } = {}) {
       batch,
     });
     assert.equal(semanticDecisionSource.rows.length, 20);
-    assert.equal(semanticDecisionSource.counts.included, batch.number === 1 ? 14 : 5);
-    assert.equal(semanticDecisionSource.counts.held, batch.number === 1 ? 6 : 15);
+    assert.equal(semanticDecisionSource.counts.included, batch.number === 1 ? 13 : 4);
+    assert.equal(semanticDecisionSource.counts.held, batch.number === 1 ? 7 : 16);
     assert.equal(semanticDecisionSource.counts.rejected, 0);
     assert.equal(semanticDecisionSource.selection.reserve.length, 0);
     assert.equal(semanticDecisionSource.selection.selected.length, semanticDecisionSource.counts.included);
@@ -685,7 +697,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
   }
 
   const allImports = batchResults.flatMap(({ importRecords }) => importRecords);
-  assert.equal(allImports.length, 19);
+  assert.equal(allImports.length, 17);
   const importedIds = new Set(allImports.map(({ id }) => id));
   assert.equal(importedIds.size, allImports.length);
   assert.equal(currentRecords.length, historicalRecords.length + allImports.length);
@@ -790,7 +802,7 @@ export async function validateIssue220({ writeReport = false } = {}) {
     }
   }
   const issue220SeedTargets = currentSeed.targets.filter(({ inventory_id: id }) => issue220InventoryIds.includes(id));
-  assert.equal(issue220SeedTargets.length, 21);
+  assert.equal(issue220SeedTargets.length, 23);
   assert.ok(issue220SeedTargets.every(({ status }) => status === 'held'));
 
   const inventoryValidation = await validateTargetInventory({
@@ -874,9 +886,9 @@ export async function validateIssue220({ writeReport = false } = {}) {
     senses.every((sense) => (sense.relations ?? []).length === 0)
   )).length;
   assert.equal(currentRecoverable, baselineRecoverable - admittedCount, 'remaining disposition counts match recovery outcomes');
-  assert.equal(recoveredCount, 43, 'Issue #210 inventory includes prior and M9-B recoveries');
+  assert.equal(recoveredCount, 41, 'Issue #210 inventory includes prior and M9-B recoveries');
   assert.equal(baselineRecoverable, 545, 'pinned historical potential count');
-  assert.equal(currentRecoverable, 526, 'remaining potentially recoverable historical records');
+  assert.equal(currentRecoverable, 528, 'remaining potentially recoverable historical records');
   assert.equal(recoveryCeiling, 5621, 'historical-only source-pool ceiling');
   assert.equal(Math.max(0, 6000 - recoveryCeiling), 379);
 

@@ -213,8 +213,8 @@
         },
         "surface_form_regressions": {
           "type": "array",
-          "minItems": 3,
-          "maxItems": 3,
+          "minItems": 2,
+          "maxItems": 2,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -237,8 +237,8 @@
     },
     "defect_findings": {
     "type": "array",
-    "minItems": 3,
-    "maxItems": 3,
+    "minItems": 4,
+    "maxItems": 4,
     "items": {
       "type": "object",
       "additionalProperties": false,
@@ -254,8 +254,8 @@
   },
   "system_fixes": {
     "type": "array",
-    "minItems": 3,
-    "maxItems": 3,
+    "minItems": 4,
+    "maxItems": 4,
     "items": {
       "type": "object",
       "additionalProperties": false,

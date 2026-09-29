@@ -223,6 +223,9 @@ function productionSemanticReview(record, identity, decisionRow, decisionSource,
           action: senseReview.boundary_action,
           classification: senseReview.boundary_classification,
           rationale: senseReview.boundary_rationale,
+          ...(senseReview.single_sense_boundary_review
+            ? { single_sense_boundary_review: structuredClone(senseReview.single_sense_boundary_review) }
+            : {}),
           semantic_evidence: semanticEvidenceForSense(sense),
         };
       }),
