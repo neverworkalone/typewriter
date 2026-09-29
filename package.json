@@ -95,6 +95,8 @@
     "batch:issue-204:check": "node scripts/batch/validate-issue-204.mjs",
     "batch:issue-211:check": "node scripts/batch/validate-issue-211.mjs",
     "batch:issue-211:report": "node scripts/batch/validate-issue-211.mjs --write-report",
+    "batch:issue-219:check": "node scripts/batch/validate-issue-219.mjs",
+    "batch:issue-219:report": "node scripts/batch/validate-issue-219.mjs --write-report",
     "batch:m5-12a:check": "node scripts/batch/m5-12a-pipeline.mjs",
     "batch:m5-12a:decision-scaffold:build": "node scripts/batch/build-m5-12a-decision-scaffold.mjs",
     "batch:m5-12a:promote": "node scripts/batch/m5-12a-pipeline.mjs --promote",

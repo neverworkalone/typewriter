@@ -45,6 +45,8 @@ const SOURCE_PATHS = [
   'docs/m5-16-final-audit-report.md',
   'docs/issue-208-searchable-start-retrospective.md',
   'docs/issue-211-bounded-lexical-recovery.md',
+  'docs/issue-219-m9-a-recovery.md',
+  'docs/m9-bounded-lexical-batches.md',
   'docs/m6-1-searchable-lexical-baseline.md',
   'docs/m6-1-searchable-lexical-baseline.json',
   'docs/m6-1-quality-baseline.json',
@@ -57,6 +59,13 @@ const SOURCE_PATHS = [
   'data/batches/issue-204-semantic-decisions.json',
   'data/batches/issue-211-lexical-unit-source.json',
   'data/batches/issue-211-semantic-decisions.json',
+  'data/batches/issue-219-m9-a-base-seed.json',
+  'data/batches/issue-219-m9-a-base-issue-210-recovery-inventory.json',
+  'data/batches/issue-219-m9-a-recovery-selection.json',
+  'data/batches/issue-219-m9-a-lexical-unit-source.json',
+  'data/batches/issue-219-m9-a-semantic-decisions.json',
+  'data/canonical/issue-219-m9-a-recovery.jsonl',
+  'data/validation/issue-219-m9-lexical-batch-report.json',
   'data/batches/m5-3-calibration.json',
   'data/batches/m5-5-recalibration.json',
   'data/batches/m5-7-recalibration.json',
@@ -87,6 +96,12 @@ const SOURCE_PATHS = [
   'data/batches/m5-15-semantic-decisions.json',
   'data/batches/m5-15-admission.json',
   'scripts/batch/validate-issue-211.mjs',
+  'scripts/batch/validate-issue-219.mjs',
+  'scripts/batch/lexical-production.mjs',
+  'schema/m9-lexical-batch-report.schema.json',
+  'tests/issue-219-search.test.mjs',
+  'tests/lexical-production-candidates.test.mjs',
+  'scripts/ci/registry.mjs',
   'tests/issue-211-search.test.mjs',
 ];
 
@@ -109,9 +124,13 @@ async function buildSourceManifest() {
   const canonicalNames = (await readdir(path.join(ROOT, 'data/canonical')))
     .filter((name) => name.endsWith('.jsonl'))
     .sort();
+  const historicalCanonicalNames = (await readdir(path.join(ROOT, 'data/batches/issue-219-m9-a-base-canonical')))
+    .filter((name) => name.endsWith('.jsonl'))
+    .sort();
   const paths = stableUnique([
     ...SOURCE_PATHS,
     ...canonicalNames.map((name) => `data/canonical/${name}`),
+    ...historicalCanonicalNames.map((name) => `data/batches/issue-219-m9-a-base-canonical/${name}`),
   ]).sort();
   return Promise.all(paths.map(async (relativePath) => {
     const bytes = await readFile(path.join(ROOT, relativePath));
@@ -477,9 +496,9 @@ async function buildInventory() {
   const issue204RejectLemmas = issue204Rejected.map(({ morphology_proposal: proposal }) => proposal.lemma);
 
   assert.deepEqual(issue204RejectLemmas, EXPECTED_ISSUE_204_REJECTS, 'Issue #204 mandatory reject list changed');
-  assert.equal(seed.targets.length, 1562, 'M5 target inventory row count changed');
-  assert.equal(seedStatuses.promoted, 978, 'M5 promoted row count changed');
-  assert.equal(promotions.length, 3756, 'M5 promotion ledger row count changed');
+  assert.equal(seed.targets.length, 1542, 'M9 current M5 seed row count changed');
+  assert.equal(seedStatuses.promoted, 978, 'M5 promoted seed row count changed');
+  assert.equal(promotions.length, 3776, 'M5 promotion ledger row count changed');
   assert.equal(issue204.decisions.length, 100, 'Issue #204 decision overlay row count changed');
   assert.equal(issue204Admitted.length, 10, 'Issue #204 admitted row count changed');
   assert.equal(issue204.decisions.filter(({ inventory_id: id }) => seedByInventoryId.has(id)).length, 90, 'Issue #204/M5 target overlay row count changed');
@@ -515,7 +534,7 @@ async function buildInventory() {
       referenceHistoryBatch: m5SevenPreimport.revision,
     });
     const { recordsById, inventoryCandidates, referenceOnlyRecords, searchMetrics } = coverage;
-    assert.equal(inventoryCandidates.length, 584, 'M5 non-promoted inventory count changed');
+    assert.equal(inventoryCandidates.length, 564, 'M5 non-promoted inventory count changed');
     assert.equal(searchMetrics.current_non_searchable_lexical_record_count, 0, 'Current canonical searchable coverage regressed');
     assert.deepEqual(searchMetrics.missing_expected_key_owners, [], 'A canonical lemma/search form no longer resolves directly');
     assert.deepEqual(searchMetrics.unexpected_key_owners, [], 'A direct exact key resolves outside its canonical owners');
@@ -699,10 +718,10 @@ async function buildInventory() {
       issue204ByInventoryId.get(id)?.editorial_judgment.disposition === 'reject'
     ));
     const issue204MandatoryLemmas = issue204MandatoryEntries.map(({ lemma }) => lemma);
-    assert.equal(entries.length, 584);
+    assert.equal(entries.length, 564);
     assert.equal(policyOpen.length, 0);
     assert.deepEqual(issue204MandatoryLemmas, EXPECTED_ISSUE_204_REJECTS);
-    assert.equal(reviewStateCounts['admit-candidate'], 308);
+    assert.equal(reviewStateCounts['admit-candidate'], 288);
     assert.equal(reviewStateCounts.hold, 220);
     assert.equal(reviewStateCounts['needs-sense-split'], 27);
     assert.equal(reviewStateCounts.recovered, 24);
@@ -759,9 +778,9 @@ async function buildInventory() {
       },
       audit_scope: {
         m1_m4: 'Reviewed the durable M1 pilot selection, canonical pilot records, M3/M4 handoffs, and current reference-only population. These artifacts do not contain a complete durable candidate rejection/defer ledger; no missing ephemeral output or external material was reconstructed.',
-        m5: 'Screened all 1,562 rows in the M5 target seed; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and Issue #211 re-review outcomes where applicable.',
+        m5: 'Screened the 1,542 remaining M5 seed rows; joined preserved M5-12A through M5-15 semantic decisions, M5-10A2 rejections, M5-3/M5-7 correction history, and source-bound Issue #211/#219 recovery outcomes. The 20 #219 promotions are tracked in the promotion ledger and frozen baseline.',
         m6: 'Bound current search coverage to the M6-1 searchable baseline and a fresh exact-key runtime query over the current canonical JSONL.',
-        issue_204: 'Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split.',
+        issue_204: 'Joined all 100 Issue #204 pilot decisions. Ninety decision rows overlay the M5 target inventory; the ten admitted rows are tracked separately against their current canonical IDs. Issue #211 crosswalks all 25 former rejects to 24 recovered records and one held sense split. Issue #219 admitted 20 previously capacity-deferred M5-15 candidates after fresh source-bound review.',
         source_material_boundary: 'Uses tracked Typewriter decision artifacts only. It does not reconstruct ephemeral LLM output or include raw external/corpus source material.',
       },
       summary: {
@@ -817,9 +836,9 @@ async function buildInventory() {
         {
           sequence: 2,
           group: 'Previously included M5-13/14/15 reserve candidates deferred only by capacity',
-          count: 254,
-          batching: '10–20 records per reviewed batch after the mandatory seed.',
-          gate: 'Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota.',
+          count: 234,
+          batching: 'Issue #219 calibrated a 20-record first batch; review later batches in bounded groups sized from observed defects and workload.',
+          gate: 'Treat historical fit as useful provenance, then re-run current lexical identity and sense checks; do not admit by quota. Twenty of the original 254 are now admitted and searchable.',
         },
         {
           sequence: 3,
@@ -843,7 +862,7 @@ async function buildInventory() {
           gate: 'Preserve the 2 true duplicates, 2 inflected-form proposals, and 1 search collision as separate outcomes.',
         },
       ],
-      canonical_mutation: 'none',
+      canonical_mutation: 'Issue #219 admitted 20 previously capacity-deferred M5-15 candidates through ordinary shared lexical production and admission.',
     };
     const report = renderReport(inventory);
     return { inventory, report };
@@ -878,7 +897,7 @@ function renderReport(inventory) {
   return `# Issue #210 — Historical exclusion recovery inventory\n\n\
 Generated from the machine inventory at \`data/inventory/issue-210-recovery-inventory.json\`. The generator builds a temporary SQLite database and checks current canonical search coverage without changing canonical records.\n\n\
 ## Scope and policy\n\n\
-The current invariant from Issues #207–#209 is: every valid lexical entry within Typewriter's supported scope may serve as a searchable start. Historical roles and decisions remain recorded as history; they do not determine current search eligibility. This report inventories and classifies candidates only. No canonical admission or relation generation occurred.\n\n\
+The current invariant from Issues #207–#209 is: every valid lexical entry within Typewriter's supported scope may serve as a searchable start. Historical roles and decisions remain recorded as history; they do not determine current search eligibility. This report inventories current unresolved candidates and records Issue #219's separately validated admission of a bounded reserve slice. Relation counts are not admission quotas.\n\n\
 The audit screened all ${s.m5_target_rows_screened.toLocaleString('en-US')} M5 target rows, joined all ${s.issue_204_decisions_audited} Issue #204 decisions (${s.issue_204_decisions_overlaid_on_m5_targets} map to M5 rows; ${s.already_admitted_issue_204_count} admitted rows are tracked separately), audited ${s.m5_promotion_ledger_events_audited.toLocaleString('en-US')} promotion ledger events, traced ${s.resolved_historical_policy_case_count} corrected M5-3 policy cases, and checked all current reference-only records. The M1–M4 pilot tables and handoffs do not preserve a complete standalone rejected/deferred candidate ledger. No unavailable ephemeral drafts or external raw material were reconstructed.\n\n\
 ## Counts\n\n\
 | Measure | Count |\n| --- | ---: |\n| Recovery candidate records classified | ${s.recovery_candidate_count} |\n| Issue #204 records already admitted and searchable | ${s.already_admitted_issue_204_count} |\n| Current canonical records | ${s.directly_searchable_canonical_record_count.toLocaleString('en-US')} |\n| Current non-searchable lexical records | ${s.current_non_searchable_lexical_record_count} |\n| Current reference-only records, now searchable | ${s.current_reference_only_record_count} |\n| Confirmed active usefulness/generality exclusions (#204) | ${s.confirmed_active_usefulness_or_generality_exclusions} |\n| Historical policy-rejection events, including later holds/corrections | ${s.historical_policy_rejection_events} |\n| True duplicate proposals | ${s.true_duplicate_count} |\n| Invalid inflected-form proposals | ${s.invalid_lemma_count} |\n| Confirmed non-lexical proposals | ${s.non_lexical_proposal_count_confirmed} |\n| Search-surface collisions | ${s.search_collision_count} |\n| Explicit unresolved sense/POS/context cases | ${s.unresolved_sense_pos_or_context_case_count} |\n| Additional rationale or lexical-unit holds | ${s.additional_rationale_or_lexical_unit_holds} |\n| Unsupported lexical categories | ${s.unsupported_lexical_category_count} |\n| Exact canonical search keys checked | ${s.exact_search_key_count.toLocaleString('en-US')} |\n\n\
@@ -886,7 +905,7 @@ The 31 historical policy-rejection events include 25 Issue #204 rejects re-revie
 All ${s.directly_searchable_canonical_record_count.toLocaleString('en-US')} current canonical records resolve directly. Their ${s.exact_search_key_count.toLocaleString('en-US')} canonical lemma/search-form keys have no missing owner, unexpected owner, or cross-record collision. This includes ${s.current_reference_only_record_count} historical reference-only records (${recordTypeCounts['reference-only/entry'] ?? 0} entries and ${recordTypeCounts['reference-only/expression'] ?? 0} expression); all their current lemmas resolve by the same canonical ID.\n\n\
 ## New review states\n\n\
 | State | Count |\n| --- | ---: |\n${stateRows}\n\n\
-\`admit-candidate\` means eligible for fresh bounded review, not admitted. It includes 254 source-reviewed capacity reserves, 35 older capacity-deferred rows whose authored candidate body must be recovered, and 19 open M5 candidates. Issue #211 recovered 24 of the 25 mandatory Issue #204 candidates; the remaining candidate is held for a source-bound sense split. Holds preserve unresolved identity, context, sense, lexical-unit, or historical-rationale questions. The 20 generic M5-12A rejects are not called non-lexical: their candidate-specific lexical-unit status is unresolved. No proposed POS or record type falls outside the current supported category set.\n\n\
+\`admit-candidate\` means eligible for fresh bounded review, not admitted. It includes 234 remaining source-reviewed capacity reserves, 35 older capacity-deferred rows whose authored candidate body must be recovered, and 19 open M5 candidates. Issue #219 freshly reviewed and admitted 20 of the original 254 M5-13/14/15 capacity reserves. Issue #211 recovered 24 of the 25 mandatory Issue #204 candidates; the remaining candidate is held for a source-bound sense split. Holds preserve unresolved identity, context, sense, lexical-unit, or historical-rationale questions. The 20 generic M5-12A rejects are not called non-lexical: their candidate-specific lexical-unit status is unresolved. No proposed POS or record type falls outside the current supported category set.\n\n\
 ## Mandatory Issue #204 rejects\n\nThe full historical rationale and follow-up are retained in the JSON inventory.\n\n| #204 ordinal | Lemma | Proposed POS | Current canonical coverage | New review state |\n| ---: | --- | --- | --- | --- |\n${mandatoryRejectRows}\n\n## Recommended bounded recovery order\n\n\
 | Order | Candidate group | Count | Batch size | Gate |\n| ---: | --- | ---: | --- | --- |\n${batchRows}\n\n\
 ## Current reference-only records\n\n\

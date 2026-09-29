@@ -1,0 +1,285 @@
+{
+  "schema_version": "1",
+  "contract_version": "lexical-candidate-source-v1",
+  "kind": "typewriter-authored-lexical-unit-source",
+  "source_id": "issue-219-m9-a-source-bound-recovery-20260929-r1",
+  "authoring_mode": "historical-typewriter-authored-source-slice",
+  "base_canonical_records_sha256": "93f4939c782b7d766774deb89c012f14d88609782570f46a184f3f53efe9686e",
+  "base_seed_sha256": "28f2d5a1b0d9f75386d7c39e8d41a923db6a2ade020c0eb57c6fa4832b2f32da",
+  "generation_pass_id": "issue-219-historical-slice-selection-20260929-r1",
+  "candidate_buffer": 0,
+  "axis_counts": {
+    "E": 0,
+    "Q": 0,
+    "S": 0,
+    "C": 20,
+    "A": 0,
+    "O": 0,
+    "X": 0
+  },
+  "pool_sha256": "85b1971922946e44fd7afb90bb4ea25fa3a0dcd4d9d6ed9fbe75729fd0d787d9",
+  "candidate_count": 20,
+  "units": [
+    {
+      "source_unit_id": "m5-15-source-unit-0419",
+      "lemma": "택배물류 허브",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설.",
+      "writer_gloss": "여러 지역에서 온 상자를 모아 목적지별로 다시 나누는 시설."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0420",
+      "lemma": "화물터미널 야적장",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간.",
+      "writer_gloss": "트럭과 화물 상자를 임시로 세우고 쌓아 두는 넓은 바깥 공간."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0421",
+      "lemma": "컨테이너 야드",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역.",
+      "writer_gloss": "화물 컨테이너를 크레인으로 쌓아 두는 항만이나 물류 구역."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0422",
+      "lemma": "철도 화물역",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "여객보다 화물열차와 적재 작업을 중심으로 운영하는 역.",
+      "writer_gloss": "여객보다 화물열차와 적재 작업을 중심으로 운영하는 역."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0423",
+      "lemma": "철도 차량기지",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설.",
+      "writer_gloss": "열차를 밤새 세우고 바퀴와 전기 설비를 점검하는 시설."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0424",
+      "lemma": "지하철 유치선",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로.",
+      "writer_gloss": "운행하지 않는 전철 차량을 잠시 세워 두는 옆 선로."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0425",
+      "lemma": "전철 종착역 승강장",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼.",
+      "writer_gloss": "노선의 마지막 역에서 열차가 되돌아가거나 운행을 마치는 플랫폼."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0426",
+      "lemma": "역무실 옆 계단",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "역 직원 공간과 승강장 출입구 가까이에 놓인 계단.",
+      "writer_gloss": "역 직원 공간과 승강장 출입구 가까이에 놓인 계단."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0427",
+      "lemma": "역 구내 지하도",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "선로 아래에서 서로 다른 승강장을 잇는 보행 통로.",
+      "writer_gloss": "선로 아래에서 서로 다른 승강장을 잇는 보행 통로."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0428",
+      "lemma": "철도 건널목 경비실",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방.",
+      "writer_gloss": "열차가 지나갈 때 차단기를 내리고 주변을 살피는 작은 방."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0429",
+      "lemma": "버스 환승센터 대기실",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간.",
+      "writer_gloss": "여러 노선으로 갈아타는 사람들이 차례를 기다리는 실내 공간."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0430",
+      "lemma": "시외버스터미널 승차장",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역.",
+      "writer_gloss": "도시 밖으로 가는 버스가 정차하고 손님이 오르는 구역."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0431",
+      "lemma": "고속버스 화물칸 앞",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리.",
+      "writer_gloss": "수화물을 싣고 빼는 버스 옆 짐칸 입구의 자리."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0432",
+      "lemma": "공항 리무진 정류장",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "공항과 도심을 오가는 버스를 타고 내리는 전용 장소.",
+      "writer_gloss": "공항과 도심을 오가는 버스를 타고 내리는 전용 장소."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0433",
+      "lemma": "택시 대기열 맨끝",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽.",
+      "writer_gloss": "손님을 태우려는 택시가 늘어선 줄의 가장 뒤쪽."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0434",
+      "lemma": "승객 없는 정류장",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리.",
+      "writer_gloss": "차량은 지나가지만 기다리거나 내리는 사람이 보이지 않는 자리."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0435",
+      "lemma": "종점 회차공간",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역.",
+      "writer_gloss": "버스가 방향을 돌려 반대편으로 출발하도록 비워 둔 넓은 구역."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0436",
+      "lemma": "도로공사 우회구간",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분.",
+      "writer_gloss": "차량이 공사장을 피해 임시로 다른 길을 따라 지나가는 부분."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0437",
+      "lemma": "임시 보행자통로",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로.",
+      "writer_gloss": "공사나 사고로 원래 길이 막혀 사람을 위해 따로 낸 통로."
+    },
+    {
+      "source_unit_id": "m5-15-source-unit-0438",
+      "lemma": "차량 통제선 안쪽",
+      "axis": "C",
+      "flags": [
+        "scene-expansion"
+      ],
+      "record_type": "expression",
+      "pos": "expression",
+      "source_kind": "typewriter-authored-expression",
+      "writer_use": "행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역.",
+      "writer_gloss": "행사나 작업 때문에 일반 차량이 들어오지 못하게 막은 구역."
+    }
+  ],
+  "artifact_sha256": "c2bb5c386612d088a752191050c9d472055508dafd4d7d649993759724c2725d"
+}
